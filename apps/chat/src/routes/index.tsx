@@ -2,15 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { UIMessage } from "@tanstack/ai";
 import { fetchServerSentEvents, useChat } from "@tanstack/ai-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import {
-  Button,
-  cn,
-  Link as GovLink,
-  linkVariants,
-  Logo,
-  Text,
-  TextArea,
-} from "@govtech-bb/react";
+import { Button } from "@govtech-bb/react";
 import {
   useCallback,
   useEffect,
@@ -20,24 +12,26 @@ import {
   useState,
 } from "react";
 import { Bubble } from "#/components/chat/bubble";
+import { ChatHeader, SiteHeader } from "#/components/chat/chrome";
+import { Composer } from "#/components/chat/composer";
+import {
+  NoticeBubble,
+  OptimisticUserBubble,
+  ThinkingIndicator,
+  WelcomeBubble,
+} from "#/components/chat/static-bubbles";
 import { TridentAvatar } from "#/components/trident-avatar";
-import { FEEDBACK_TRIGGER_PHRASE } from "#/lib/chat/feedback";
-import { extractText, hasAnyToolCall } from "#/lib/chat/messages";
+import { FEEDBACK_TRIGGER_PHRASE } from "#/lib/chat/feedback-trigger";
+import { awaitingFieldAnswer, extractText } from "#/lib/chat/messages";
 import {
   chatPersistence,
   citationsStore,
   getSessionThreadId,
+  linkTokensStore,
   resetSessionThreadId,
 } from "#/lib/chat/persistence";
+import { shouldShowThinking } from "#/lib/chat/thinking";
 import type { Citation } from "#/lib/chat/types";
-import { LANDING_URL } from "#/config/landing";
-import {
-  askFieldDef,
-  offerFeedbackDef,
-  presentChoicesDef,
-  reviewFormDef,
-  submitFormDef,
-} from "#/lib/chat-tools";
 
 export const Route = createFileRoute("/")({
   component: ChatPage,
@@ -70,16 +64,28 @@ function ChatPage() {
   // True between the submit_form tool's "submitting" and "submitted"/"failed"
   // custom events, so the UI can show progress during the blocking POST.
   const [submitting, setSubmitting] = useState(false);
+  // Whether the in-flight submission is the feedback form, so the indicator can
+  // read "Submitting your feedback" instead of "...your application". Only
+  // meaningful while `submitting` is true; carried on the submit_status event.
+  const [submittingIsFeedback, setSubmittingIsFeedback] = useState(false);
   const parentRef = useRef<HTMLDivElement>(null);
   // Citations keyed by assistant messageId. Populated from the `citations`
   // custom event the server emits right after TEXT_MESSAGE_START.
   const [citationsByMessageId, setCitationsByMessageId] = useState<
     Record<string, Citation[]>
   >(citationsStore.load);
+  // Link-token maps keyed the same way (#1270): the assistant's text carries
+  // opaque link_N tokens; the map restores them to real URLs at render time.
+  const [linkTokensByMessageId, setLinkTokensByMessageId] = useState<
+    Record<string, Record<string, string>>
+  >(linkTokensStore.load);
 
   useEffect(() => {
     citationsStore.save(citationsByMessageId);
   }, [citationsByMessageId]);
+  useEffect(() => {
+    linkTokensStore.save(linkTokensByMessageId);
+  }, [linkTokensByMessageId]);
 
   const connection = useMemo(() => fetchServerSentEvents("/api/chat"), []);
 
@@ -103,7 +109,11 @@ function ChatPage() {
     onCustomEvent: (eventType, data) => {
       if (eventType === "citations") {
         const payload = data as
-          | { messageId?: string; citations?: Citation[] }
+          | {
+              messageId?: string;
+              citations?: Citation[];
+              linkTokens?: Record<string, string>;
+            }
           | undefined;
         if (payload?.messageId && Array.isArray(payload.citations)) {
           const id = payload.messageId;
@@ -111,12 +121,22 @@ function ChatPage() {
           setCitationsByMessageId((prev) =>
             prev[id] ? prev : { ...prev, [id]: cs },
           );
+          const tokens = payload.linkTokens;
+          if (tokens && Object.keys(tokens).length) {
+            setLinkTokensByMessageId((prev) =>
+              prev[id] ? prev : { ...prev, [id]: tokens },
+            );
+          }
         }
         return;
       }
       if (eventType === "submit_status") {
-        const state = (data as { state?: string } | undefined)?.state;
-        setSubmitting(state === "submitting");
+        const payload = data as
+          | { state?: string; isFeedback?: boolean }
+          | undefined;
+        const isSubmitting = payload?.state === "submitting";
+        setSubmitting(isSubmitting);
+        if (isSubmitting) setSubmittingIsFeedback(payload?.isFeedback === true);
       }
     },
   });
@@ -250,38 +270,19 @@ function ChatPage() {
     setInput("");
   }
 
-  // The notice banner's "Give feedback" link starts the chat-feedback form the
+  // The notice banner's inline "feedback" link starts the chat-feedback form the
   // same way the model's offer does — a matcher phrase the server pins. Manual
-  // counterpart to offer_feedback; see #1066.
+  // counterpart to offer_feedback; see #1066. No-op while streaming (sending is
+  // disabled then), but the link stays visible — it never disappears on click.
   const handleGiveFeedback = useCallback(() => {
     if (isStreaming) return;
     sendMessage(FEEDBACK_TRIGGER_PHRASE);
   }, [isStreaming, sendMessage]);
 
-  // Hide the feedback link while a form is mid-collection (the latest assistant
-  // turn ended on a visible form prompt) — otherwise the trigger phrase would be
-  // swallowed by that form instead of starting feedback. Mirrors shouldShowThinking.
-  const formActive = useMemo(
-    () =>
-      hasAnyToolCall(messages.slice(-1), [
-        askFieldDef.name,
-        presentChoicesDef.name,
-        reviewFormDef.name,
-        submitFormDef.name,
-      ]),
-    [messages],
-  );
-  const canGiveFeedback = !isStreaming && !formActive;
-
   function renderRow(row: ChatRow) {
     switch (row.kind) {
       case "notice":
-        return (
-          <NoticeBubble
-            onGiveFeedback={handleGiveFeedback}
-            canGiveFeedback={canGiveFeedback}
-          />
-        );
+        return <NoticeBubble onGiveFeedback={handleGiveFeedback} />;
       case "welcome":
         return <WelcomeBubble />;
       case "optimistic":
@@ -289,7 +290,15 @@ function ChatPage() {
       case "thinking":
         return <ThinkingIndicator />;
       case "submitting":
-        return <ThinkingIndicator label="Submitting your application" />;
+        return (
+          <ThinkingIndicator
+            label={
+              submittingIsFeedback
+                ? "Submitting your feedback"
+                : "Submitting your application"
+            }
+          />
+        );
       case "error":
         // role="alert" so it's announced. Plain-language guidance instead of
         // the raw error; reload() re-runs the failed turn without a dup.
@@ -322,6 +331,7 @@ function ChatPage() {
             onApproval={onApproval}
             choicesDisabled={row.index < lastInteractiveIndex}
             citations={citationsByMessageId[row.message.id]}
+            linkTokens={linkTokensByMessageId[row.message.id]}
           />
         );
     }
@@ -388,241 +398,13 @@ function ChatPage() {
         onStop={handleStop}
         onSubmit={() => submit(input)}
         streaming={isStreaming}
+        placeholder={
+          awaitingFieldAnswer(messages)
+            ? "Type your answer…"
+            : "Ask a question..."
+        }
       />
     </div>
   );
 }
 
-function SiteHeader() {
-  return (
-    <div>
-      <div className="bg-blue-100 text-white-00">
-        <div className="container flex items-center gap-xs py-xs">
-          <img
-            alt=""
-            aria-hidden="true"
-            className="block"
-            height={16}
-            src="/coat-of-arms.png"
-            width={17}
-          />
-          <Text as="span" className="text-white-00" size="caption">
-            Official government website
-          </Text>
-        </div>
-      </div>
-      <header className="bg-yellow-100">
-        <div className="container py-s md:py-m">
-          <a href={LANDING_URL} aria-label="Go to the alpha.gov.bb homepage">
-            <Logo
-              aria-hidden="true"
-              width="auto"
-              className="h-7 w-auto md:h-9"
-            />
-          </a>
-        </div>
-      </header>
-    </div>
-  );
-}
-
-function ChatHeader({ onStartAgain }: { onStartAgain: () => void }) {
-  return (
-    <header className="bg-white-00">
-      <div className="container flex items-center gap-s py-xm">
-        <div className="flex-1">
-          <GovLink href={LANDING_URL}>Close</GovLink>
-        </div>
-        <TridentAvatar size="sm" tone="filled" />
-        <div className="flex flex-1 justify-end">
-          <button
-            type="button"
-            onClick={onStartAgain}
-            className={cn(linkVariants())}
-          >
-            Start again
-          </button>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function OptimisticUserBubble({ text }: { text: string }) {
-  return (
-    <div className="flex justify-end">
-      <div className="text-bubble max-w-[75%] rounded-[16px_16px_4px_16px] bg-blue-100 px-4 py-2.5 text-white-00">
-        {text}
-      </div>
-    </div>
-  );
-}
-
-// Beta disclaimer rendered as the first chat row, above the welcome bubble.
-// Intentionally always shown (no dismiss / once-per-session suppression) and
-// styled as a full-width yellow WARNING banner — not a chat bubble — so it
-// reads as a standing notice rather than a message from the assistant. Carries
-// a "Give feedback" link (the manual counterpart to the model's offer); it is
-// hidden while a form is mid-collection so its trigger isn't swallowed.
-function NoticeBubble({
-  onGiveFeedback,
-  canGiveFeedback,
-}: {
-  onGiveFeedback: () => void;
-  canGiveFeedback: boolean;
-}) {
-  return (
-    <div
-      role="note"
-      className="mb-s flex items-start gap-2.5 rounded-lg bg-yellow-10 px-4 py-3"
-    >
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-        className="mt-px size-5 shrink-0 text-yellow-00"
-      >
-        <path
-          fill="currentColor"
-          d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"
-        />
-      </svg>
-      <Text as="p" size="caption" className="text-black-00">
-        This assistant is still new and improving. Your feedback helps us make
-        it better!{" "}
-        {canGiveFeedback && (
-          <button
-            type="button"
-            onClick={onGiveFeedback}
-            className="font-medium text-black-00 underline underline-offset-2"
-          >
-            Give feedback
-          </button>
-        )}
-      </Text>
-    </div>
-  );
-}
-
-function WelcomeBubble() {
-  return (
-    <div className="flex max-w-[92%] items-start gap-2.5">
-      <TridentAvatar size="sm" tone="filled" />
-      <div className="text-bubble rounded-[16px_16px_16px_4px] bg-blue-10 px-4 py-3 text-black-00 sm:px-5 sm:py-3.5">
-        Welcome to <strong>alpha.gov.bb.</strong> What would you like help with
-        today?
-      </div>
-    </div>
-  );
-}
-
-function shouldShowThinking(messages: UIMessage[]): boolean {
-  const last = messages.at(-1);
-  if (!last) return false;
-  if (last.role === "user") return true;
-  // Hide once something renderable lands: text deltas, a present_choices
-  // tool call, or a submit_form approval prompt. set_field is invisible.
-  // offer_feedback also ends the turn's "work" (it pins the feedback form),
-  // so treat it as a stop signal to avoid a hung indicator if no text follows.
-  if (extractText(last).length > 0) return false;
-  if (
-    hasAnyToolCall([last], [
-      presentChoicesDef.name,
-      askFieldDef.name,
-      reviewFormDef.name,
-      submitFormDef.name,
-      offerFeedbackDef.name,
-    ])
-  ) {
-    return false;
-  }
-  return true;
-}
-
-function ThinkingIndicator({ label = "Thinking" }: { label?: string }) {
-  return (
-    // role="status" announces the working state to screen readers; the
-    // gradient text is otherwise visual-only.
-    <div role="status" className="flex items-center gap-2.5">
-      <TridentAvatar size="sm" tone="filled" />
-      {/* motion-reduce disables the shimmer under prefers-reduced-motion; the
-          gradient text stays legible static. */}
-      <span
-        className="text-bubble animate-[shimmer_2.5s_linear_infinite] bg-clip-text font-medium text-transparent motion-reduce:animate-none"
-        style={{
-          backgroundImage:
-            "linear-gradient(90deg, var(--color-blue-40) 0%, var(--color-teal-00) 35%, var(--color-teal-100) 50%, var(--color-teal-00) 65%, var(--color-blue-40) 100%)",
-          backgroundSize: "200% 100%",
-        }}
-      >
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function Composer({
-  input,
-  onChange,
-  onSubmit,
-  onStop,
-  streaming,
-}: {
-  input: string;
-  onChange: (v: string) => void;
-  onSubmit: () => void;
-  onStop: () => void;
-  streaming: boolean;
-}) {
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => {
-    if (!streaming) inputRef.current?.focus();
-  }, [streaming]);
-
-  const hasInput = input.trim().length > 0;
-
-  return (
-    <footer className="px-s pb-s">
-      <form
-        className="mx-auto flex max-w-2xl flex-col items-center gap-xs"
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSubmit();
-        }}
-      >
-        <div className="flex w-full items-end gap-xs">
-          <TextArea
-            aria-label="Ask the government assistant"
-            className="composer-field flex-1 text-black-00"
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                if (!streaming) onSubmit();
-              }
-            }}
-            placeholder="Ask a question..."
-            ref={inputRef}
-            rows={1}
-            value={input}
-          />
-          {streaming ? (
-            <Button
-              aria-label="Stop generating the response"
-              onClick={onStop}
-              type="button"
-            >
-              Stop
-            </Button>
-          ) : (
-            <Button disabled={!hasInput} type="submit">
-              Send
-            </Button>
-          )}
-        </div>
-        <p className="text-disclaimer text-center text-mid-grey-00">
-          Responses are based on official Government of Barbados information
-        </p>
-      </form>
-    </footer>
-  );
-}

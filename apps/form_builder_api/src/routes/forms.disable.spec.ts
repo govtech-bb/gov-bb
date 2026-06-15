@@ -1,19 +1,20 @@
+import type { Mock } from "vitest";
 import type { Request, Response } from "express";
 
 // routes/forms.ts imports FormDefinitionEntity (used only by the POST handler).
 // Stub it so loading the module doesn't drag in the full TypeORM entity graph.
-jest.mock("@govtech-bb/database", () => ({
+vi.mock("@govtech-bb/database", () => ({
   FormDefinitionEntity: class FormDefinitionEntity {},
 }));
 
 // The DataSource is the unit under control: mock the accessor so each test
 // drives a fake query layer.
-jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
+vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
 
 import { getDataSource } from "../db.js";
 import { disableFormHandler } from "./forms";
 
-const getDataSourceMock = getDataSource as jest.Mock;
+const getDataSourceMock = getDataSource as Mock;
 
 function mockReq(params: Record<string, string>, body: unknown): Request {
   return { params, body } as unknown as Request;
@@ -26,11 +27,11 @@ interface CapturingResponse extends Response {
 
 function mockRes(): CapturingResponse {
   const res = { statusCode: 200, body: undefined } as CapturingResponse;
-  res.status = jest.fn((code: number) => {
+  res.status = vi.fn((code: number) => {
     res.statusCode = code;
     return res;
   }) as unknown as Response["status"];
-  res.json = jest.fn((payload: unknown) => {
+  res.json = vi.fn((payload: unknown) => {
     res.body = payload;
     return res;
   }) as unknown as Response["json"];
@@ -39,17 +40,17 @@ function mockRes(): CapturingResponse {
 
 function fakeDataSource() {
   const ds = {
-    query: jest.fn(async () => []),
+    query: vi.fn(async () => []),
   };
   return { ds };
 }
 
-function sqlsOf(ds: { query: jest.Mock }): string[] {
+function sqlsOf(ds: { query: Mock }): string[] {
   return ds.query.mock.calls.map((call) => call[0] as string);
 }
 
 describe("POST /builder/forms/:formId/disable", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   describe("body validation (zod)", () => {
     it.each([

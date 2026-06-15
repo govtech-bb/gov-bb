@@ -3,7 +3,7 @@ import { createHmac } from "crypto";
 import { WebhookProcessor } from "./webhook.processor";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
-const mockFetch = jest.fn();
+const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 function makePayload(
@@ -46,7 +46,7 @@ describe("WebhookProcessor", () => {
   let processor: WebhookProcessor;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockFetch.mockResolvedValue({ ok: true, status: 200 });
     processor = new WebhookProcessor();
   });
@@ -143,7 +143,9 @@ describe("WebhookProcessor", () => {
   });
 
   it("skips and warns when no url is configured", async () => {
-    const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
     const payload = makePayload();
     payload.processors = [
       { type: "webhook", config: {} },

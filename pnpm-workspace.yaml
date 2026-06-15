@@ -6,6 +6,45 @@ packages:
 # about unknown config — see docs/decisions/0002
 nodeLinker: hoisted
 
+# pnpm 11 supply-chain hardening: no git/URL deps in the transitive graph.
+# NOTE: trustPolicy no-downgrade was tried and reverted — it blocks
+# @govtech-bb/design and @govtech-bb/react@1.0.0-alpha.16, which were
+# published without provenance attestation (earlier versions had it).
+# Re-enable once the design-system publish pipeline attests again.
+blockExoticSubdeps: true
+
+# pnpm 11 prompts before purging node_modules; non-TTY contexts (Docker
+# image builds, Amplify) abort instead of prompting. Restore v10 behavior.
+confirmModulesPurge: false
+
+# Security overrides, mostly for transitive deps flagged by dependabot.
+# Lived in package.json "pnpm.overrides" until pnpm 11 stopped reading it.
+overrides:
+  "tmp@<0.2.6": ">=0.2.6"
+  "yaml@>=2.0.0 <2.8.3": ">=2.8.3"
+  "brace-expansion@>=5.0.0 <5.0.6": ">=5.0.6"
+  "uuid@<11.1.1": ">=11.1.1"
+  "esbuild@<0.25.0": ">=0.25.0"
+  "shell-quote@<1.8.4": ">=1.8.4"
+  "dompurify@<3.4.0": ">=3.4.0"
+  "postcss@<8.5.10": ">=8.5.10"
+
+# pnpm blocks dependency build scripts by default; allowBuilds is the
+# reviewed decision list. true = must run (fetch/verify native binaries).
+# false = consciously blocked: telemetry/analytics postinstalls (@scarf,
+# nestjs, protobufjs) or native modules with a working JS/WASM fallback
+# (nx, unrs-resolver). A new dep with a build script stays blocked until
+# reviewed and sorted here.
+allowBuilds:
+  "@swc/core": true
+  esbuild: true
+  sharp: true
+  "@nestjs/core": false
+  "@scarf/scarf": false
+  nx: false
+  protobufjs: false
+  unrs-resolver: false
+
 catalog:
   "@tanstack/ai": "^0.28.0"
   "@tanstack/ai-react": "^0.15.4"

@@ -1,50 +1,69 @@
-import type { StreamChunk, SystemPrompt, UIMessage } from "@tanstack/ai";
+import type { StreamChunk, UIMessage } from "@tanstack/ai";
 import { chat } from "@tanstack/ai";
 import { bedrockText } from "@govtech-bb/ai-bedrock";
 import { childController } from "#/lib/abort";
 import { getServerEnv } from "#/config/env";
+import { landingStartPath } from "#/lib/rag/start-page";
 import {
+  applyRagFallback,
   buildEndOfChatTools,
   buildFeedbackTools,
+  buildFieldSpec,
   buildFormTools,
   buildOfferTools,
-  getFormSlugs,
+  consumeOfferReply,
+  funnelPhase,
   getOrCreateSession,
-  resolveActiveForm,
+  matchChangeField,
   matchFormsFromText,
-  resetSessionForNewForm,
+  matchPendingOption,
+  nextAskableField,
+  nextRequiredAskableField,
+  parkHandoff,
+  pinSessionForm,
+  recordMissOutcome,
+  recordOptionValue,
+  resetFieldForChange,
+  resolveActiveForm,
   withThreadLock,
   type FormResolution,
-  type FormSession,
   type FormTurnContext,
+  type PinResult,
 } from "./form";
-import { FEEDBACK_FORM_ID, shouldBindFeedbackOffer } from "./feedback";
-import { citationsMiddleware, turnLogMiddleware } from "./middleware";
-import { capMessageHistory, lastUserText, recentUserText } from "./messages";
+import { representChoicesStream } from "./represent-choices-stream";
+import { representFieldStream } from "./represent-field-stream";
 import {
-  FEEDBACK_COLLECTION_GUIDANCE,
-  FEEDBACK_OFFER_GUIDANCE,
-  FORM_COLLECTION_PROTOCOL,
-  NO_FORM_DISCLOSURE,
-  SYSTEM_PROMPT,
-  buildFormLinkOfferDisclosure,
-  buildHandoffContinuationDisclosure,
-  buildHandoffDisclosure,
-  buildHandoffOfferDisclosure,
-  buildMissDisclosure,
-  buildSchemaDisclosure,
-} from "./prompts";
+  cancelFeedbackForm,
+  consumeFeedbackChoice,
+  FEEDBACK_ABOUT_ASSISTANT,
+  FEEDBACK_ABOUT_SERVICE,
+  FEEDBACK_DISAMBIGUATION_QUESTION,
+  FEEDBACK_FORM_ID,
+  FEEDBACK_TRIGGER_PHRASE,
+  shouldBindFeedbackOffer,
+  shouldReleaseFeedbackOffer,
+} from "./feedback";
+import {
+  isInfoQuestion,
+  looksLikeFeedbackIntent,
+  looksLikeJailbreak,
+} from "./guards";
+import {
+  citationsMiddleware,
+  toolCallGuardMiddleware,
+  turnLogMiddleware,
+} from "./middleware";
+import { capMessageHistory, lastAssistantText, lastUserText } from "./messages";
+import { buildSystemPrompts } from "./prompt-builder";
 import {
   buildCitedContext,
-  decideRagFallback,
+  isConversationalCloser,
   isGreetingOrTooShort,
   retrieve,
-  topHandoffCandidateSlug,
+  topServiceCandidates,
 } from "./retrieval";
 import { rewriteRetrievalQuery } from "./rewrite";
 import type { RetrievedContext, Source } from "./types";
-
-type SystemEntry = SystemPrompt<never>;
 
 export interface RunTurnInput {
   messages: UIMessage[];
@@ -88,19 +107,189 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   }
 
   const session = getOrCreateSession(threadId);
-  await pinSessionForm(session, messages);
 
-  let resolution: FormResolution = session.slug
-    ? await resolveActiveForm(session.slug, session.values)
-    : { kind: "none" };
+  // A pending RAG offer resolves FIRST, deterministically: the choice pills
+  // send their label verbatim, so "fill it here" pins the form and "just the
+  // link" parks it — code, not model interpretation (ADR 0048). Any other
+  // reply lapses the offer and falls through to normal routing.
+  const offerReply = consumeOfferReply(session, latest);
+  // Same link policy as resolveActiveForm's handoff: prefer the landing start
+  // page over the bare forms-app URL, so an offer's "just send me the link"
+  // matches what a handoff would have given.
+  const offerStartPath =
+    offerReply?.kind === "link"
+      ? await landingStartPath(offerReply.slug)
+      : null;
+  const linkRequested =
+    offerReply?.kind === "link"
+      ? {
+          title: offerReply.title,
+          url: offerStartPath
+            ? `${getServerEnv().LANDING_URL}${offerStartPath}`
+            : `${getServerEnv().FORMS_URL}/forms/${encodeURIComponent(offerReply.slug)}`,
+        }
+      : undefined;
+
+  // A pending feedback disambiguation resolves deterministically too (same
+  // contract as the offer pills). "About this assistant" pins chat-feedback
+  // here, so the normal collect-feedback flow takes over below; "About a service
+  // or the site" sets serviceFeedback, which hands over the general feedback
+  // form link and bypasses retrieval/matching for the rest of the turn.
+  const feedbackChoice = consumeFeedbackChoice(session, latest);
+  const serviceFeedback =
+    feedbackChoice?.kind === "service"
+      ? { url: `${getServerEnv().LANDING_URL}/feedback` }
+      : undefined;
+
+  // Explicit feedback intent on a no-form turn: ask ONE quick question — about
+  // the assistant, or about a service / the site — as deterministic choice
+  // pills, BEFORE the matcher can route a lingering service topic from the
+  // rolling window. The tap is resolved next turn by consumeFeedbackChoice.
+  // Gated so we don't hijack: only when no form is pinned coming in, this turn
+  // isn't itself an offer/choice reply, and no choices are already pending
+  // (feedbackChoice === null means none were on the table). The banner phrase is
+  // already-scoped to the assistant, so it's excluded — it keeps pinning
+  // chat-feedback directly via pinSessionForm (#1206).
+  if (
+    !serviceFeedback &&
+    feedbackChoice === null &&
+    offerReply === null &&
+    !session.slug &&
+    latest !== FEEDBACK_TRIGGER_PHRASE &&
+    looksLikeFeedbackIntent(latest)
+  ) {
+    session.feedbackChoice = "pending";
+    session.updatedAt = Date.now();
+    return {
+      kind: "ok",
+      stream: representChoicesStream(
+        FEEDBACK_DISAMBIGUATION_QUESTION,
+        [FEEDBACK_ABOUT_ASSISTANT, FEEDBACK_ABOUT_SERVICE],
+        { runId, threadId, model },
+      ),
+      abortController: childController(signal),
+    };
+  }
+
+  // Was a form already active coming INTO this turn? Distinguishes a re-trigger
+  // of the current form (banner clicked again) from a first activation.
+  const pinnedBefore = session.slug;
+
+  // serviceFeedback short-circuits matching: the user deliberately asked for the
+  // general feedback link, so don't let the rolling-window matcher re-pin a
+  // service topic and override it. When the matcher finds the request names
+  // several forms about equally well it pins NONE and hands the titles back, so
+  // the disambiguation below can ask which one instead of guessing (#1296).
+  const pinResult: PinResult = serviceFeedback
+    ? {}
+    : await pinSessionForm(session, messages);
+  const matcherAmbiguousTitles = pinResult.ambiguousTitles;
+
+  let resolution: FormResolution =
+    !serviceFeedback && session.slug
+      ? await resolveActiveForm(session.slug, session.values)
+      : { kind: "none" };
   const retrievalBoostSlug = session.slug ?? undefined;
 
   // Handoff carries no in-progress state. Don't pin the session to it, or the
-  // user stays stuck getting the same handoff link on every later turn. Record
+  // user stays stuck getting the same handoff link on every later turn. Park
   // it so the matcher above won't immediately re-hand-off the same form.
   if (resolution.kind === "handoff") {
-    session.handedOffSlug = session.slug;
-    session.slug = null;
+    parkHandoff(session, session.slug);
+  }
+
+  // DETERMINISTIC FORM INTERACTIONS (no model in the loop). Option clicks and
+  // form re-triggers are unambiguous UI actions; routing their plain-text label
+  // through the model is what made "Okay" read as chit-chat and made a repeated
+  // banner click re-prompt in prose. Handle them in code instead, re-rendering
+  // the field via the same ask_field tool-result the model path emits.
+  if (resolution.kind === "collect") {
+    const form = resolution.form;
+    // (1) The user picked an option for the current choice question — record it
+    // ourselves, then deterministically present the next field. Only when there
+    // IS a next field; once all are presented, fall through so the model runs
+    // review_form/submit_form (the approval flow it owns).
+    const answer = matchPendingOption(form, session, latest);
+    if (answer && recordOptionValue(form, session, answer)) {
+      const next = nextAskableField(
+        form.contract,
+        session.values,
+        session.askedFieldIds,
+      );
+      if (next) {
+        session.askedFieldIds.add(next.field.fieldId);
+        return {
+          kind: "ok",
+          stream: representFieldStream(
+            buildFieldSpec(
+              form.contract,
+              next.field,
+              session.values,
+              session.askedFieldIds,
+            ),
+            { runId, threadId, model },
+          ),
+          abortController: childController(signal),
+          activeFormSlug: session.slug ?? undefined,
+        };
+      }
+    } else if (pinnedBefore === session.slug) {
+      // (2) The user clicked "Change" on a check-your-answers row — re-present
+      // that one field deterministically. Routing it through the model made it
+      // emit present_choices AND ask_field for the same field, rendering the
+      // question twice (#1255). Reset the field (keeping it presented, so a
+      // re-picked choice is recorded by the option path above; a free-text
+      // re-answer falls to the model), then re-render it.
+      const change = matchChangeField(form, session, latest);
+      if (change) {
+        resetFieldForChange(session, change.field.fieldId);
+        session.askedFieldIds.add(change.field.fieldId);
+        return {
+          kind: "ok",
+          stream: representFieldStream(
+            buildFieldSpec(
+              form.contract,
+              change.field,
+              session.values,
+              session.askedFieldIds,
+            ),
+            { runId, threadId, model },
+          ),
+          abortController: childController(signal),
+          activeFormSlug: session.slug ?? undefined,
+        };
+      }
+      // (3) The user re-invoked the form they're already in (e.g. the banner
+      // "Give feedback" link clicked again) with a REQUIRED question still
+      // unanswered — re-render that question and its options. Gated on a real
+      // re-match of the active form so a field answer or a side question can't
+      // trip it.
+      const pending = nextRequiredAskableField(
+        form.contract,
+        session.values,
+        session.askedFieldIds,
+      );
+      if (
+        pending &&
+        (await matchFormsFromText(latest))?.formId === session.slug
+      ) {
+        session.askedFieldIds.add(pending.field.fieldId);
+        return {
+          kind: "ok",
+          stream: representFieldStream(
+            buildFieldSpec(
+              form.contract,
+              pending.field,
+              session.values,
+              session.askedFieldIds,
+            ),
+            { runId, threadId, model },
+          ),
+          abortController: childController(signal),
+          activeFormSlug: session.slug ?? undefined,
+        };
+      }
+    }
   }
 
   // Skip the rewrite LLM call and RAG retrieval only once the user is ACTIVELY
@@ -113,7 +302,28 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // same question sometimes answers, sometimes form-fills).
   const activelyCollecting =
     resolution.kind === "collect" && Object.keys(session.values).length > 0;
-  const skipRetrieval = isGreetingOrTooShort(latest) || activelyCollecting;
+
+  // A conversational closer ("thanks, bye", or "no"/"ok" right after we asked
+  // "anything else?") winds the chat down. Detected here so the turn routes to a
+  // warm sign-off + feedback invitation rather than being mistaken for a
+  // retrieval miss (a closer and a miss BOTH return zero citations — #1125).
+  // Gated to non-collect turns: while a form is active, a terse "no"/"ok" is a
+  // field answer, not a goodbye. Skips retrieval — there's nothing to ground.
+  const closer =
+    resolution.kind !== "collect" &&
+    isConversationalCloser(latest, lastAssistantText(messages));
+  // Mid-collection, most turns are field answers ("Aaron", "1990-05-04",
+  // "Yes") — retrieval is dead weight there. But a QUESTION mid-form ("how
+  // much does this cost?", "what documents do I need?") must stay grounded:
+  // skipping retrieval left the model answering service questions from
+  // nothing. retrievalBoostSlug keeps the active form's own pages on top.
+  // Offer replies are clicks on known affordances — nothing to ground.
+  const skipRetrieval =
+    isGreetingOrTooShort(latest) ||
+    (activelyCollecting && !isInfoQuestion(latest)) ||
+    offerReply !== null ||
+    serviceFeedback !== undefined ||
+    closer;
 
   // A form matched on an INFO question (nothing collected yet, the message is a
   // question rather than apply-intent): answer from RAG and offer the form, but
@@ -125,25 +335,14 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     resolution.kind === "collect" &&
     Object.keys(session.values).length === 0 &&
     isInfoQuestion(latest);
-  // The rewrite also classifies intent (info vs apply) and flags fraud/bribery-
-  // framed requests. Skipped turns (greeting / actively collecting) default to
-  // "apply" + legitimate — the link-preserving, no-false-refusal defaults.
+  // The rewrite also classifies intent (info vs apply). Skipped turns
+  // (greeting / actively collecting) default to "apply" — the link-preserving
+  // default.
   const rewrite = skipRetrieval
-    ? { query: latest, intent: "apply" as const, illegitimate: false }
+    ? { query: latest, intent: "apply" as const }
     : await rewriteRetrievalQuery(messages, signal);
   const query = rewrite.query;
   const intent = rewrite.intent;
-
-  // Fraud / bribery / falsification-framed request: NEVER offer a form. A
-  // bribery ask ("how much to pay to get my child into a better school") can
-  // match a legitimate form (school choice) and the offer path would then
-  // helpfully present it. Neutralise any matched form and skip the RAG-driven
-  // handoff below, so the model declines per the ILLEGITIMATE REQUESTS section
-  // of the system prompt (optionally naming the legitimate route) instead.
-  if (rewrite.illegitimate) {
-    resolution = { kind: "none" };
-    session.slug = null;
-  }
 
   const { contexts, rawSources, degraded } = await fetchContext(
     ragUrl,
@@ -153,22 +352,65 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     retrievalBoostSlug,
   );
 
-  const { block: contextBlock, citations } = buildCitedContext(
+  const {
+    block: contextBlock,
+    citations,
+    linkTokens,
+  } = buildCitedContext(
     contexts,
     rawSources,
     query,
+    getServerEnv().LANDING_URL,
   );
 
-  const ragFallback = await applyRagFallback(
-    resolution,
-    session,
-    rawSources,
-    rewrite.illegitimate,
-    signal,
-  );
+  // A zero-value chat-feedback pin is an open offer, not active collection — but
+  // a pinned form suppresses the RAG routing backstop below. If this turn's
+  // retrieval surfaced a real service, the user changed topic (the title matcher
+  // misses natural phrasings, e.g. "conductor license", and a non-question never
+  // tripped the pinSessionForm release), so release the pin and let the normal
+  // no-form path route to that service (#1202). cancelFeedbackForm preserves
+  // feedbackOffered, and re-asserting it keeps the never-re-offer invariant: a
+  // topic switch reads as an implicit decline.
+  const serviceCandidatesRaw = topServiceCandidates(rawSources);
+  if (
+    shouldReleaseFeedbackOffer(
+      resolution,
+      Object.keys(session.values).length,
+      serviceCandidatesRaw.length > 0,
+    )
+  ) {
+    cancelFeedbackForm(session);
+    session.feedbackOffered = true;
+    resolution = { kind: "none" };
+  }
+
+  // Server-driven disambiguation (ADR 0048, stage 3): when retrieval covers
+  // SEVERAL distinct services and no form is pinned, winner-take-all routing
+  // would guess — narrow with clickable choices instead. Suppresses the RAG
+  // fallback for the turn (its top-1 pick is exactly the guess we're
+  // avoiding). The disclosure keeps a model escape hatch for follow-ups
+  // whose topic the conversation already established.
+  const serviceCandidates =
+    resolution.kind === "none" && !session.slug ? serviceCandidatesRaw : [];
+  // Prefer the title matcher's tied set when it has one: the user's wording
+  // lexically named several forms (a high-signal ambiguity), so disambiguate on
+  // those exact forms rather than the fuzzier RAG service candidates (#1296).
+  // A matcher tie pins nothing, so resolution is "none" and the session stays
+  // unpinned — the same gating the RAG path relies on.
+  const disambiguation =
+    matcherAmbiguousTitles && matcherAmbiguousTitles.length >= 2
+      ? { titles: matcherAmbiguousTitles }
+      : serviceCandidates.length >= 2
+        ? { titles: serviceCandidates.map((c) => c.title) }
+        : undefined;
+
+  const ragFallback = disambiguation
+    ? { resolution }
+    : await applyRagFallback(resolution, session, rawSources, signal);
   resolution = ragFallback.resolution;
   const handoffContinuation = ragFallback.handoffContinuation;
-  const ragCollectLink = ragFallback.ragCollectLink;
+  const formOffer = ragFallback.formOffer;
+  const unapprovedForm = ragFallback.unapprovedForm ?? false;
 
   // Info-intent on a handoff service: buildSystemPrompts offers the link in
   // prose instead of pushing it. We deliberately leave the form PARKED (as the
@@ -181,10 +423,19 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
   // A genuine retrieval miss: we actually queried RAG (not a greeting / active
   // collection) and it returned no grounded context (zero citations). Route the
   // miss disclosure (keep guiding, ask to clarify) instead of the misapplied
-  // NO_FORM_DISCLOSURE. Illegitimate requests are excluded so they stay on the
-  // existing decline path rather than being invited to "clarify" (#1099).
-  const noContext =
-    citations.length === 0 && !skipRetrieval && !rewrite.illegitimate;
+  // NO_FORM_DISCLOSURE (#1099).
+  const noContext = citations.length === 0 && !skipRetrieval;
+
+  // Clarify ONCE on a miss, then disclose we can't help instead of re-asking
+  // turn over turn (#1176). recordMissOutcome tracks consecutive misses on the
+  // session: the first miss clarifies, the second+ consecutive miss exhausts
+  // the clarify and switches to the can't-help disclosure. A non-miss turn
+  // resets the streak. Skipped turns (greeting / closer / active collection)
+  // are not misses, so they reset it too.
+  const { clarifyExhausted: missClarifyExhausted } = recordMissOutcome(
+    session,
+    noContext,
+  );
 
   // No active form, feedback not yet offered, and not parked mid-handoff:
   // expose offer_feedback so the model can invite feedback at a natural stop.
@@ -197,37 +448,61 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
       session.feedbackOffered ?? false,
     ) &&
     !handoffContinuation &&
-    !ragCollectLink &&
-    !rewrite.illegitimate &&
+    !formOffer &&
+    !linkRequested &&
+    !serviceFeedback &&
+    !disambiguation &&
     !noContext;
 
-  const systemPrompts = buildSystemPrompts(
+  const env = getServerEnv();
+  const systemPrompts = buildSystemPrompts({
     contextBlock,
     resolution,
     session,
+    formsUrl: env.FORMS_URL,
     handoffContinuation,
     offerOnly,
     intent,
-    ragCollectLink,
+    formOffer,
+    linkRequested,
+    serviceFeedback,
+    disambiguation,
+    unapprovedForm,
     noContext,
+    missClarifyExhausted,
     offerFeedback,
-  );
+    closer,
+  });
 
-  // collect + apply-intent → full field tools. collect + info question
-  // (offerOnly) → present_choices ONLY, so the model offers a clickable "Start
-  // the application" affordance rather than a dead-end prose "want to start?",
-  // but still can't silently record fields on a question. Anything else → none.
-  // The field tools read session/form/signal from chat()'s runtime context.
-  const tools =
+  // The turn ACTION decides which tools the model gets — it cannot upgrade
+  // an offer into collection (no field tools bound) or collect outside an
+  // active form. The action is code-derived; the model only executes it
+  // conversationally (ADR 0048).
+  //   collect           → full field tools
+  //   collect-feedback  → field tools + decline_feedback
+  //   offer-start       → present_choices ONLY (matcher offerOnly + RAG offer)
+  //   feedback-offer    → offer_feedback only
+  //   none              → no tools
+  const action =
     resolution.kind === "collect"
       ? offerOnly
-        ? buildOfferTools()
+        ? "offer-start"
         : resolution.form.slug === FEEDBACK_FORM_ID
-          ? buildFeedbackTools()
-          : buildFormTools()
-      : offerFeedback
-        ? buildEndOfChatTools()
-        : [];
+          ? "collect-feedback"
+          : "collect"
+      : formOffer || disambiguation
+        ? "offer-start"
+        : offerFeedback
+          ? "feedback-offer"
+          : "none";
+  const TOOLSETS = {
+    collect: buildFormTools,
+    "collect-feedback": buildFeedbackTools,
+    "offer-start": buildOfferTools,
+    "feedback-offer": buildEndOfChatTools,
+    none: () => [],
+  } as const;
+  const tools = TOOLSETS[action]();
   const formContext: FormTurnContext = {
     session,
     form: resolution.kind === "collect" ? resolution.form : null,
@@ -236,7 +511,6 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
 
   const abortController = childController(signal);
 
-  const env = getServerEnv();
   const stream = chat({
     adapter: bedrockText(model, {
       region: env.BEDROCK_REGION,
@@ -249,7 +523,10 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     modelOptions: { maxTokens: 600, temperature: 0 },
     abortController,
     middleware: [
-      citationsMiddleware(citations),
+      // First, so everything downstream (citations, turn log, the wire) sees
+      // the cleaned text.
+      toolCallGuardMiddleware(),
+      citationsMiddleware(citations, linkTokens),
       turnLogMiddleware(
         {
           ts: new Date().toISOString(),
@@ -260,6 +537,8 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
           query: activelyCollecting ? undefined : latest.slice(0, 120),
           retrieved: rawSources.map((s) => ({ id: s.id, score: s.score })),
           formSlug: session.slug ?? undefined,
+          action,
+          phase: funnelPhase(session),
           retrieveDegraded: degraded,
         },
         startedAt,
@@ -277,127 +556,6 @@ async function runTurnInner(input: RunTurnInput): Promise<RunTurnResult> {
     abortController,
     activeFormSlug: session.slug ?? undefined,
   };
-}
-
-// Pin the session to a form the user's recent messages name (token-overlap
-// matcher). A handed-off form (file upload / payment) isn't pinned to the
-// session, so it re-enters matching from the rolling window. If the window
-// still points at the form we just handed off, defer to what the user's
-// LATEST message matches (possibly nothing) so they aren't re-handed the same
-// link turn after turn, and a genuine topic switch still activates.
-async function pinSessionForm(
-  session: FormSession,
-  messages: UIMessage[],
-): Promise<void> {
-  // The feedback form is terminal: once submitted it can't be re-matched from
-  // conversation text (it was pinned programmatically, not by the matcher), so
-  // clear it instead of leaving the session stuck in feedback-collect forever.
-  // feedbackOffered is preserved, so it is never re-offered this session.
-  if (session.slug === FEEDBACK_FORM_ID && session.status === "submitted") {
-    resetSessionForNewForm(session);
-  }
-  if (session.slug && session.status !== "submitted") return;
-  const windowMatch = await matchFormsFromText(recentUserText(messages));
-  const matched =
-    windowMatch && windowMatch.formId === session.handedOffSlug
-      ? await matchFormsFromText(lastUserText(messages))
-      : windowMatch;
-  if (matched) {
-    if (matched.formId !== session.slug) resetSessionForNewForm(session);
-    session.slug = matched.formId;
-    // Feedback can be started manually (the banner "Give feedback" link sends a
-    // matcher phrase) as well as by the model's offer_feedback tool. Either way,
-    // mark it spent so the model never also offers feedback later this session.
-    if (matched.formId === FEEDBACK_FORM_ID) session.feedbackOffered = true;
-  }
-}
-
-// RAG-driven handoff (and its follow-up continuation). The title-token matcher
-// only fires when the user's wording overlaps a form title (e.g. "conductor
-// licence"). When it didn't pin a form, fall back to the top retrieved
-// service — if it maps to a published form that must be completed in the
-// forms app (file upload / payment), surface that link rather than a plain
-// informational answer. This is what makes phrasings like "how do I become a
-// conductor" reach the conductor application.
-//
-// A candidate is computed only when no form is pinned: kind "none" so we never
-// upgrade a matched collectible form, and !session.slug so a pinned form that
-// merely failed to resolve (a transient form-API blip) can't redirect the user
-// elsewhere. The matcher ran this turn, so the form index is warm-cached.
-async function applyRagFallback(
-  resolution: FormResolution,
-  session: FormSession,
-  rawSources: Source[],
-  illegitimate: boolean,
-  signal: AbortSignal,
-): Promise<{
-  resolution: FormResolution;
-  handoffContinuation?: { title: string; url: string };
-  // Approved collect form RAG surfaced that the matcher missed (ADR 0045).
-  ragCollectLink?: { title: string; url: string };
-}> {
-  const ragCandidate =
-    resolution.kind === "none" && !session.slug && !illegitimate
-      ? topHandoffCandidateSlug(rawSources)
-      : null;
-  // Resolve against the forms API only when there's a candidate, and gate on
-  // the form index so a retrieved info-only service with no published form
-  // doesn't trigger a doomed form-definition fetch and a 404 warning per turn.
-  let ragResolution: FormResolution = { kind: "none" };
-  if (ragCandidate && (await getFormSlugs(signal)).includes(ragCandidate)) {
-    ragResolution = await resolveActiveForm(ragCandidate, {});
-  }
-  const ragDecision = decideRagFallback({
-    candidate: ragCandidate,
-    candidateHandoff: ragResolution.kind === "handoff",
-    handedOffSlug: session.handedOffSlug ?? null,
-  });
-  if (
-    ragDecision.action === "fresh-handoff" &&
-    ragResolution.kind === "handoff"
-  ) {
-    // Park it like the matcher-driven handoff does, so the user isn't
-    // re-handed the strict link on every later turn.
-    session.handedOffSlug = ragCandidate;
-    return { resolution: ragResolution };
-  }
-  if (
-    ragDecision.action === "continuation" &&
-    ragResolution.kind === "handoff"
-  ) {
-    // The user was already handed this form's link and is following up ("ok
-    // let's begin", "what's next?"). Re-issuing the strict link-only handoff
-    // is noisy, but the no-form path makes the model hallucinate inline
-    // collection or deny the form exists. Instead keep answering
-    // informationally while pointing back to the link. (Already parked.)
-    return {
-      resolution,
-      handoffContinuation: {
-        title: ragResolution.title,
-        url: ragResolution.url,
-      },
-    };
-  }
-  if (ragResolution.kind === "collect" && ragCandidate) {
-    // RAG surfaced an APPROVED collect form the title matcher missed (e.g. a
-    // follow-up like "is there a form i can fill out", or a paraphrase that
-    // doesn't overlap the form title). Per ADR 0045, RAG must NOT auto-start
-    // inline collection — that stays behind the higher-confidence title
-    // matcher. But we also must not fall through to the no-online-form /
-    // paper path (the bug behind business-mail & deceased-mail). So OFFER the
-    // form LINK — the low-commitment action the ADR explicitly lets the fuzzy
-    // RAG signal trigger. No pin, no collect: if the user then clearly states
-    // intent, the matcher/apply path starts collection. ragCandidate is gated
-    // to allowlisted published forms above.
-    return {
-      resolution,
-      ragCollectLink: {
-        title: ragResolution.form.contract.title,
-        url: `${getServerEnv().FORMS_URL}/forms/${encodeURIComponent(ragCandidate)}`,
-      },
-    };
-  }
-  return { resolution };
 }
 
 async function fetchContext(
@@ -422,179 +580,4 @@ async function fetchContext(
     rawSources: result.data.sources,
     degraded: false,
   };
-}
-
-function buildSystemPrompts(
-  contextBlock: string,
-  resolution: FormResolution,
-  session: FormSession,
-  handoffContinuation?: { title: string; url: string },
-  offerOnly = false,
-  intent: "info" | "apply" = "apply",
-  ragCollectLink?: { title: string; url: string },
-  noContext = false,
-  offerFeedback = false,
-): SystemEntry[] {
-  const prompts: SystemEntry[] = [
-    SYSTEM_PROMPT,
-    `Context for this turn:\n${contextBlock}`,
-  ];
-
-  if (resolution.kind === "handoff") {
-    // apply-intent → hand over the link (the link IS the answer). info-intent
-    // (a fact question that happens to map to a handoff service, e.g. "what
-    // does a conductor's licence cost and where do I apply?") → answer the
-    // question first and OFFER the link in prose, don't push it. The user
-    // asked for a fact, not the form.
-    prompts.push(
-      intent === "info"
-        ? buildHandoffOfferDisclosure(resolution.title)
-        : buildHandoffDisclosure(resolution.title, resolution.url),
-    );
-    return prompts;
-  }
-
-  if (resolution.kind === "collect") {
-    const { slug, schema } = resolution.form;
-    // The canonical form link — the SAME URL the landing page's "Start now"
-    // button uses (FORMS_URL/forms/<id>). Offered as the self-serve online
-    // option alongside in-chat filling; we never send users to paper/in-person.
-    const formUrl = `${getServerEnv().FORMS_URL}/forms/${encodeURIComponent(slug)}`;
-    const formTitle = resolution.form.contract.title;
-    // The form-collection / review / submit protocol is injected ONLY here —
-    // when a form is actually active — rather than living in the always-on
-    // SYSTEM_PROMPT. On info / out-of-corpus / refusal / handoff turns (no
-    // collectible form) those ~1.3k tokens of set_field/submit rules would just
-    // compete for attention, so they stay out. Active-form behaviour is
-    // unchanged: SYSTEM_PROMPT + this protocol == the old combined prompt.
-    prompts.push(FORM_COLLECTION_PROTOCOL);
-    // One combined form-state block instead of 3-4 separate system entries.
-    // The schema disclosure already names the slug, so no separate marker.
-    const parts = [buildSchemaDisclosure(slug, schema)];
-    const entries = Object.entries(session.values);
-    if (entries.length) {
-      const lines = entries
-        .map(([k, v]) => `- ${k}: ${JSON.stringify(v)}`)
-        .join("\n");
-      parts.push(
-        `Already collected (do NOT re-ask these unless the user wants to change them):\n${lines}`,
-      );
-    } else if (offerOnly) {
-      // Collect-form matched on an INFO question, nothing collected yet. Answer,
-      // then offer the TWO online options (fill in chat / use the link) via
-      // present_choices — never a dead-end prose "want to start?".
-      parts.push(
-        'The user asked an INFORMATION question about this service and has NOT said they want to apply yet. First, answer their question from the context above. Then offer the online options by calling present_choices with a short question like "Want to apply? I can fill it out with you here, or send you the form link." and choices ["Fill it out with you here", "Just send me the link"]. Lead by mentioning you can fill it out together (many people do not realise the chat can do this). Do NOT ask for any form field and do NOT call set_field this turn — only answer, then offer the choice.',
-      );
-    } else {
-      // Collect-form matched with apply-intent, first turn: begin collecting per
-      // the SYSTEM_PROMPT. Answer any side question they bundled in first.
-      parts.push(
-        "The user wants to apply and has not started yet. Open with a one-line acknowledgement and call ask_field with the FIRST field listed in the schema. If they also asked a side question, answer it from the context first.",
-      );
-    }
-    // ONLINE OPTIONS — applies whenever this form is active. This service has a
-    // working online form. The user has two ONLINE choices: fill it out with you
-    // here in the chat, or do it themselves at the link. If they ask "is there a
-    // form", "can I do it myself", or want the link, give them this markdown
-    // link. NEVER suggest a paper form, downloading/printing, or visiting an
-    // office in person — we encourage the online options only.
-    parts.push(
-      `ONLINE FORM LINK for this service: [${formTitle}](${formUrl}). If the user wants the link or prefers to do it themselves, share exactly that markdown link. NEVER suggest a paper form, printing/downloading a form, or going to an office in person — the only options to offer are filling it out here with you, or this online link.`,
-    );
-    if (session.status === "submitted" && session.referenceNumber) {
-      parts.push(
-        `Submission complete. Reference number: ${session.referenceNumber}. Do NOT submit again.`,
-      );
-    } else if (session.status === "failed" && session.lastError) {
-      parts.push(
-        `Last submission attempt failed: ${session.lastError}. Help the user correct the listed fields, then retry submit_form.`,
-      );
-    }
-    prompts.push(parts.join("\n\n"));
-    // The optional feedback form was offered as an invitation the user can
-    // decline — give the model the accept/decline guidance and remind it the
-    // rating comes from ask_field, not from any reply to the invitation.
-    if (slug === FEEDBACK_FORM_ID) prompts.push(FEEDBACK_COLLECTION_GUIDANCE);
-  } else if (handoffContinuation) {
-    // Follow-up after a handoff: keep helping informationally but keep the link
-    // in front of the user — never collect inline, never deny the form exists.
-    prompts.push(
-      buildHandoffContinuationDisclosure(
-        handoffContinuation.title,
-        handoffContinuation.url,
-      ),
-    );
-  } else if (ragCollectLink) {
-    // RAG surfaced an approved collect form the matcher missed: offer its online
-    // form link (ADR 0045 — RAG hands off a link, never auto-collects). This
-    // replaces the no-online-form / paper fallback for these turns.
-    prompts.push(
-      buildFormLinkOfferDisclosure(ragCollectLink.title, ragCollectLink.url),
-    );
-  } else if (noContext) {
-    // Retrieval ran and returned nothing grounded: keep guiding the user toward
-    // the closest service (ask to clarify) instead of dead-ending. Replaces the
-    // misapplied NO_FORM_DISCLOSURE, which assumes there IS context to answer
-    // from and would frame a non-existent service as in-person-only (#1099).
-    prompts.push(buildMissDisclosure());
-  } else {
-    prompts.push(NO_FORM_DISCLOSURE);
-    if (offerFeedback) prompts.push(FEEDBACK_OFFER_GUIDANCE);
-  }
-  return prompts;
-}
-
-// Cheap synchronous deny-list for the obvious script-kiddie attempts.
-// Claude already refuses sophisticated jailbreaks; this catches the lazy
-// "ignore previous instructions" / "you are now DAN" / system-prompt-dump
-// requests without an extra LLM round-trip.
-const JAILBREAK_PATTERNS: ReadonlyArray<RegExp> = [
-  /ignore (all |previous |your |the )?(prior )?(instructions|rules|guidelines)/i,
-  /you are (now )?(DAN|a different AI|jailbroken)/i,
-  /(reveal|show|print|repeat).{0,20}(system prompt|your instructions|your rules)/i,
-  /pretend (you|that you).{0,20}(have no|don't have).{0,20}(rules|restrictions)/i,
-  /disregard (all |previous |your )?(instructions|rules)/i,
-];
-
-function looksLikeJailbreak(input: string): boolean {
-  if (!input || input.length < 6) return false;
-  return JAILBREAK_PATTERNS.some((re) => re.test(input));
-}
-
-// Does the message read as an information-seeking question rather than intent to
-// apply? Decides whether a matched form answers + offers (info) or enters field
-// collection (apply). A plain first-word list (not a pattern catalogue) keeps it
-// maintainable; bias is toward "info" — when unsure, answer the question and
-// offer the form rather than railroad the user into field prompts.
-const QUESTION_OPENERS: ReadonlySet<string> = new Set([
-  "what",
-  "how",
-  "where",
-  "when",
-  "why",
-  "who",
-  "which",
-  "whose",
-  "can",
-  "could",
-  "do",
-  "does",
-  "did",
-  "is",
-  "are",
-  "will",
-  "would",
-  "should",
-  "may",
-  "whats",
-  "hows",
-]);
-
-function isInfoQuestion(input: string): boolean {
-  const t = input.trim().toLowerCase();
-  if (!t) return false;
-  if (t.endsWith("?")) return true;
-  const firstWord = t.split(/[\s'.,]+/)[0];
-  return QUESTION_OPENERS.has(firstWord);
 }

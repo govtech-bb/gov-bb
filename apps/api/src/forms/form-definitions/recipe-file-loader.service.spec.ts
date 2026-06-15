@@ -1,22 +1,22 @@
+import type { MockInstance } from "vitest";
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 
-// node:fs exports are non-configurable (no jest.spyOn), and whether fs.watch
+// node:fs exports are non-configurable (no vi.spyOn), and whether fs.watch
 // throws on a missing dir varies by platform and node version — so route
 // watch through a partial mock the unwatchable-dir test can override.
 let mockWatchOverride: (() => never) | undefined;
-jest.mock("node:fs", () => ({
-  ...jest.requireActual<typeof import("node:fs")>("node:fs"),
-  watch: (...args: unknown[]) =>
-    mockWatchOverride
-      ? mockWatchOverride()
-      : (
-          jest.requireActual<typeof import("node:fs")>("node:fs").watch as (
-            ...a: unknown[]
-          ) => unknown
-        )(...args),
-}));
+vi.mock("node:fs", async () => {
+  const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
+  return {
+    ...actual,
+    watch: (...args: unknown[]) =>
+      mockWatchOverride
+        ? mockWatchOverride()
+        : (actual.watch as (...a: unknown[]) => unknown)(...args),
+  };
+});
 import { Logger } from "@nestjs/common";
 import {
   RecipeFileLoaderService,
@@ -66,12 +66,12 @@ async function waitFor(
 describe("RecipeFileLoaderService", () => {
   let tempRoots: string[];
   let loaders: RecipeFileLoaderService[];
-  let errorSpy: jest.SpyInstance;
+  let errorSpy: MockInstance;
 
   beforeEach(() => {
     tempRoots = [];
     loaders = [];
-    errorSpy = jest.spyOn(Logger.prototype, "error").mockImplementation();
+    errorSpy = vi.spyOn(Logger.prototype, "error").mockImplementation(() => {});
   });
 
   afterEach(async () => {
@@ -411,7 +411,9 @@ describe("RecipeFileLoaderService", () => {
 
     it("warns and does not throw when the recipes dir cannot be watched", async () => {
       process.env.NODE_ENV = "development";
-      const warnSpy = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+      const warnSpy = vi
+        .spyOn(Logger.prototype, "warn")
+        .mockImplementation(() => {});
       mockWatchOverride = () => {
         throw new Error("ENOENT: no such file or directory");
       };
@@ -438,7 +440,7 @@ describe("RecipeFileLoaderService", () => {
     it("ignores non-.json change events", () => {
       const root = "/unused";
       const loader = new RecipeFileLoaderService(root);
-      const scheduleSpy = jest.spyOn(
+      const scheduleSpy = vi.spyOn(
         loader as unknown as { scheduleReload: () => void },
         "scheduleReload",
       );

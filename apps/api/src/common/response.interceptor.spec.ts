@@ -13,7 +13,7 @@ function makeHandler(data: unknown) {
 }
 
 function makeRes() {
-  const res = { statusCode: 0, status: jest.fn() };
+  const res = { statusCode: 0, status: vi.fn() };
   res.status.mockReturnValue(res);
   return res;
 }

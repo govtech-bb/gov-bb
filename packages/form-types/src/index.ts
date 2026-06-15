@@ -67,6 +67,7 @@ export {
   behaviourSchema,
   equalityOperationsSchema,
   durationTransformSchema,
+  conditionalTitleSchema,
 } from "./behavior.type";
 
 export type {
@@ -79,6 +80,7 @@ export type {
   SharedFieldsBehaviour,
   EqualityOperations,
   DurationTransform,
+  ConditionalTitle,
 } from "./behavior.type";
 
 export type { Block } from "./block.type";
@@ -124,6 +126,8 @@ export {
 export type { RecipientKind } from "./recipient-field";
 
 export { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./id-pattern";
+
+export { SEMVER_PATTERN, SEMVER_ERROR, semverSchema } from "./version-pattern";
 
 export { dynamic } from "./dynamic";
 

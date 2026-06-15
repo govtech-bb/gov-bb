@@ -83,7 +83,7 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version-file: ".nvmrc"
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
 
@@ -263,6 +263,8 @@ jobs:
       base_url: ${{ needs.preview-forms.outputs.url }}
       spec: term-leave-application.smoke.spec.ts
       artifact_name: term-leave-preview-smoke-trace
+    secrets:
+      smoke_submission_token: ${{ secrets.SMOKE_SUBMISSION_TOKEN }}
 
   preview-landing:
     name: Preview (landing)

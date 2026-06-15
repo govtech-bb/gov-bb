@@ -37,7 +37,7 @@ import type {
 // Global fetch mock
 // ---------------------------------------------------------------------------
 
-const mockFetch = jest.fn();
+const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 beforeEach(() => {
@@ -397,6 +397,44 @@ describe("postFormSubmission", () => {
     expect(result?.data).toMatchObject({ formId: "test-form" });
   });
 
+  // Regression for #919: payment forms return `status: "pending_payment"` with
+  // `submittedAt: null` (the submission isn't finalised until the citizen pays).
+  // A non-nullable `submittedAt` schema rejected this, making postFormSubmission
+  // throw and rendering the generic "Something went wrong" screen instead of the
+  // EZ Pay redirect. The null `submittedAt` must parse, and the envelope's
+  // `meta.deferred.paymentUrl` must survive so the confirmation can redirect.
+  it("accepts a pending_payment response with null submittedAt and preserves the deferred paymentUrl (#919)", async () => {
+    const pendingPaymentBody = {
+      ...minimalSubmissionBody,
+      status: "pending_payment",
+      submittedAt: null,
+    };
+    const deferred = {
+      paymentUrl: "https://test.ezpay.gov.bb/payment_page?token=abc123",
+      paymentId: "pay-1",
+      amount: 5,
+      description: "Birth certificate copy",
+    };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        status: "success",
+        message: "Payment required",
+        data: pendingPaymentBody,
+        meta: { deferred },
+      }),
+    } as unknown as Response);
+
+    const result = await postFormSubmission(minimalFormMeta as FormMeta, {});
+    expect(result?.data).toMatchObject({
+      formId: "test-form",
+      status: "pending_payment",
+      submittedAt: null,
+    });
+    expect(result?.meta?.deferred).toEqual(deferred);
+  });
+
   it("sends a POST request with the idempotency-key header, correct URL, and {formId, formVersion, values} body", async () => {
     mockFetch.mockResolvedValue(makeOkResponse(minimalSubmissionBody));
     const valuesBySteps = {
@@ -745,6 +783,160 @@ describe("formatDataForSubmission", () => {
       expect(instances).toHaveLength(1);
       expect(instances[0].name).toBe("Alice");
     });
+
+    // ---- 4b. shared-fields fold (#1257) ----------------------------------
+    // When a repeatable step has sharedFields, the base step is a separate
+    // "shared values" page — NOT an instance. The fold must materialise
+    // instances from ~1..~min only, merging sharedData into each, so a min:1
+    // form submits exactly ONE complete instance (per-instance fields + shared
+    // values). Folding the base as instance 0 (the old behaviour) produced an
+    // incomplete instance — the shared-only base — and 422'd on submit.
+
+    it("excludes the base step as an instance for a shared-fields step; min:1 yields ONE complete instance (#1257)", () => {
+      const values: FormValues = {
+        // base = shared-values page (only the shared fields live here)
+        childDetails_childSchool: "all-saints-primary",
+        // ~1 = the single per-instance page
+        "childDetails~1_childFirstName": "Alice",
+        "childDetails~1_childClass": "Class 4",
+      };
+
+      const repeatableSettings: RepeatableStepSettings = {
+        childDetails: {
+          minRepeats: 1,
+          maxRepeats: 5,
+          orderedStepIds: ["childDetails", "childDetails~1"],
+          sharedData: { childSchool: "all-saints-primary" },
+          stepData: {
+            childDetails: { childDetails_childSchool: "all-saints-primary" },
+            "childDetails~1": {
+              "childDetails~1_childFirstName": "Alice",
+              "childDetails~1_childClass": "Class 4",
+            },
+          },
+        },
+      };
+
+      const result = formatDataForSubmission(values, repeatableSettings, []);
+
+      // The base step's flat shared keys must NOT leak as a separate object —
+      // the collapsed array under the same stepId overrides via the final
+      // spread. So childDetails is the array, not { childSchool: ... }.
+      expect(Array.isArray(result.childDetails)).toBe(true);
+      const instances = result.childDetails as FormValues[];
+      expect(instances).toHaveLength(1);
+      // The single instance carries BOTH the per-instance fields and the merged
+      // shared values — a complete instance the server accepts.
+      expect(instances[0]).toEqual({
+        childFirstName: "Alice",
+        childClass: "Class 4",
+        childSchool: "all-saints-primary",
+      });
+    });
+
+    it("shared-fields step with min:2 yields TWO complete instances, each with shared values (#1257)", () => {
+      const values: FormValues = {
+        childDetails_childSchool: "all-saints-primary",
+        "childDetails~1_childFirstName": "Alice",
+        "childDetails~2_childFirstName": "Bob",
+      };
+
+      const repeatableSettings: RepeatableStepSettings = {
+        childDetails: {
+          minRepeats: 2,
+          maxRepeats: 5,
+          orderedStepIds: ["childDetails", "childDetails~1", "childDetails~2"],
+          sharedData: { childSchool: "all-saints-primary" },
+          stepData: {
+            childDetails: { childDetails_childSchool: "all-saints-primary" },
+            "childDetails~1": { "childDetails~1_childFirstName": "Alice" },
+            "childDetails~2": { "childDetails~2_childFirstName": "Bob" },
+          },
+        },
+      };
+
+      const result = formatDataForSubmission(values, repeatableSettings, []);
+
+      const instances = result.childDetails as FormValues[];
+      expect(instances).toHaveLength(2);
+      expect(instances[0]).toEqual({
+        childFirstName: "Alice",
+        childSchool: "all-saints-primary",
+      });
+      expect(instances[1]).toEqual({
+        childFirstName: "Bob",
+        childSchool: "all-saints-primary",
+      });
+    });
+
+    it("does not leak the base step's flat shared key as a sibling scalar when other steps are present (#1257)", () => {
+      // With a non-repeatable step in the mix, the base step's flat shared key
+      // (childDetails_childSchool) is grouped into formValuesByStep["childDetails"]
+      // by the flat loop, but the collapsed array under the same stepId must
+      // override it via the final spread — so the step value is the array, never
+      // the loose { childSchool } object.
+      const values: FormValues = {
+        applicantDetails_name: "Zoe",
+        childDetails_childSchool: "all-saints-primary",
+        "childDetails~1_childFirstName": "Alice",
+      };
+
+      const repeatableSettings: RepeatableStepSettings = {
+        childDetails: {
+          minRepeats: 1,
+          maxRepeats: 5,
+          orderedStepIds: ["childDetails", "childDetails~1"],
+          sharedData: { childSchool: "all-saints-primary" },
+          stepData: {
+            childDetails: { childDetails_childSchool: "all-saints-primary" },
+            "childDetails~1": { "childDetails~1_childFirstName": "Alice" },
+          },
+        },
+      };
+
+      const result = formatDataForSubmission(values, repeatableSettings, []);
+
+      // The non-repeatable step is grouped normally.
+      expect(result.applicantDetails).toEqual({ name: "Zoe" });
+      // The repeatable step value is the array, NOT { childSchool: ... }.
+      expect(Array.isArray(result.childDetails)).toBe(true);
+      expect(result.childDetails).toEqual([
+        { childFirstName: "Alice", childSchool: "all-saints-primary" },
+      ]);
+    });
+
+    it("stops folding at the first empty ~N instance for a shared-fields step, base still excluded (#1257)", () => {
+      // min:2 but the user only completed ~1; ~2 has no values. The fold must
+      // break at ~2 (as in the non-shared case) AND keep the base excluded — so
+      // exactly one complete instance is submitted, not two and not the base.
+      const values: FormValues = {
+        childDetails_childSchool: "all-saints-primary",
+        "childDetails~1_childFirstName": "Alice",
+      };
+
+      const repeatableSettings: RepeatableStepSettings = {
+        childDetails: {
+          minRepeats: 2,
+          maxRepeats: 5,
+          orderedStepIds: ["childDetails", "childDetails~1", "childDetails~2"],
+          sharedData: { childSchool: "all-saints-primary" },
+          stepData: {
+            childDetails: { childDetails_childSchool: "all-saints-primary" },
+            "childDetails~1": { "childDetails~1_childFirstName": "Alice" },
+            "childDetails~2": {},
+          },
+        },
+      };
+
+      const result = formatDataForSubmission(values, repeatableSettings, []);
+
+      const instances = result.childDetails as FormValues[];
+      expect(instances).toHaveLength(1);
+      expect(instances[0]).toEqual({
+        childFirstName: "Alice",
+        childSchool: "all-saints-primary",
+      });
+    });
   });
 
   // ---- 5. addAnother stripped from repeatable instances ------------------
@@ -811,20 +1003,28 @@ describe("formatDataForSubmission", () => {
   // ---- 7. sharedData merged into each instance --------------------------
 
   describe("sharedData merging", () => {
-    it("spreads sharedData into each repeatable instance", () => {
+    it("spreads sharedData into each ~N instance (base excluded, #1257)", () => {
+      // A shared-fields step always has the base as a separate shared-values
+      // page plus ~1..~min instances (setupRepeatSteps never populates
+      // sharedData without generating ~1). The shared values merge into each
+      // materialised instance; the base is not folded as an instance.
       const values: FormValues = {
-        personalInfo_name: "Alice",
+        personalInfo_country: "Barbados",
+        "personalInfo~1_name": "Alice",
+        "personalInfo~2_name": "Bob",
       };
 
       const sharedData: FormValues = { country: "Barbados" };
 
       const repeatableSettings: RepeatableStepSettings = {
         personalInfo: {
-          minRepeats: 1,
+          minRepeats: 2,
           maxRepeats: 5,
-          orderedStepIds: ["personalInfo"],
+          orderedStepIds: ["personalInfo", "personalInfo~1", "personalInfo~2"],
           stepData: {
-            personalInfo: { personalInfo_name: "Alice" },
+            personalInfo: { personalInfo_country: "Barbados" },
+            "personalInfo~1": { "personalInfo~1_name": "Alice" },
+            "personalInfo~2": { "personalInfo~2_name": "Bob" },
           },
           sharedData,
         },
@@ -833,8 +1033,9 @@ describe("formatDataForSubmission", () => {
       const result = formatDataForSubmission(values, repeatableSettings, []);
 
       const instances = result.personalInfo as FormValues[];
-      expect(instances[0].country).toBe("Barbados");
-      expect(instances[0].name).toBe("Alice");
+      expect(instances).toHaveLength(2);
+      expect(instances[0]).toEqual({ name: "Alice", country: "Barbados" });
+      expect(instances[1]).toEqual({ name: "Bob", country: "Barbados" });
     });
   });
 

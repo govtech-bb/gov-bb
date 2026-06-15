@@ -12,6 +12,12 @@ export interface TurnRecord {
   query?: string;
   retrieved: { id: string; score: number; kind?: string }[];
   formSlug?: string;
+  // ADR 0048 stage-4 observability: the code-chosen turn action and the
+  // funnel phase the session ended the turn in. With `retrieved` (candidates
+  // + scores) these are the raw rows for calibrating the routing decision
+  // table from production traffic.
+  action?: string;
+  phase?: string;
   promptTokens?: number;
   completionTokens?: number;
   totalTokens?: number;

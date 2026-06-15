@@ -1,20 +1,23 @@
+import type { Mock } from "vitest";
 /**
- * @jest-environment node
+ * @vitest-environment node
  */
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 
 // Mock the session-cipher module before importing the SUT.
-jest.mock("./session-cipher.server", () => ({
-  getSession: jest.fn(),
+vi.mock("./session-cipher.server", () => ({
+  getSession: vi.fn(),
 }));
-jest.mock("@tanstack/react-start/server", () => ({
+vi.mock("@tanstack/react-start/server", () => ({
   getRequestHeaders: () => new Headers({ cookie: "fb_session=opaque" }),
 }));
 // Mock the API client so the server-side /validate gate is controllable and
 // never touches globalThis.fetch — the GitHub steps below mock fetch directly.
-jest.mock("./api-client", () => ({
-  api: { post: jest.fn(), get: jest.fn(), put: jest.fn(), del: jest.fn() },
-  ApiError: jest.requireActual("./api-client").ApiError,
+vi.mock("./api-client", async () => ({
+  api: { post: vi.fn(), get: vi.fn(), put: vi.fn(), del: vi.fn() },
+  ApiError: (
+    await vi.importActual<typeof import("./api-client")>("./api-client")
+  ).ApiError,
 }));
 
 import { getSession } from "./session-cipher.server";
@@ -49,19 +52,23 @@ function emptyResponse(status: number): Response {
 }
 
 beforeEach(() => {
-  jest.resetAllMocks();
+  vi.resetAllMocks();
+  // Clear here too (not just afterEach): jest reuses a worker process across
+  // files, so the first test must not inherit a value leaked by an earlier
+  // file — the default-branch assertions depend on it being unset.
+  delete process.env.PUBLISH_BASE_BRANCH;
   process.env.SESSION_SECRET = Buffer.alloc(32).toString("base64");
   process.env.GITHUB_ORG = "govtech-bb";
-  (getSession as jest.Mock).mockReturnValue(SESSION);
+  (getSession as Mock).mockReturnValue(SESSION);
   // Default: the server-side /validate gate passes. Tests that exercise a
   // rejection override this.
-  (api.post as jest.Mock).mockResolvedValue({ ok: true, data: RECIPE });
+  (api.post as Mock).mockResolvedValue({ ok: true, data: RECIPE });
   // Freeze "now" so branch names are deterministic.
-  jest.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+  vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
   delete process.env.SESSION_SECRET;
   delete process.env.GITHUB_ORG;
   delete process.env.PUBLISH_BASE_BRANCH;
@@ -69,7 +76,7 @@ afterEach(() => {
 
 describe("publishRecipe", () => {
   it("returns { prUrl, prNumber } on the happy path", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       // listVersions on the base branch (folder absent → gate passes)
       .mockResolvedValueOnce(emptyResponse(404))
@@ -172,7 +179,7 @@ describe("publishRecipe", () => {
   });
 
   it("sanitizes dots out of the branch name but keeps the dotted version in the file path, message, and title (#805)", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(emptyResponse(404))
       .mockResolvedValueOnce(
@@ -213,7 +220,7 @@ describe("publishRecipe", () => {
   });
 
   it("throws version-already-exists and cleans up the branch when step 3 returns 200", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(emptyResponse(404))
       .mockResolvedValueOnce(
@@ -245,7 +252,7 @@ describe("publishRecipe", () => {
   });
 
   it("cleans up the branch when PUT contents (step 4) fails", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(emptyResponse(404))
       .mockResolvedValueOnce(
@@ -269,7 +276,7 @@ describe("publishRecipe", () => {
   });
 
   it("cleans up the branch when PR creation (step 5) fails", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(emptyResponse(404))
       .mockResolvedValueOnce(
@@ -294,7 +301,7 @@ describe("publishRecipe", () => {
   });
 
   it("does not attempt cleanup when step 1 (get dev ref) fails", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(emptyResponse(404)) // listVersions
       .mockResolvedValueOnce(jsonResponse(404, { message: "not found" }));
@@ -313,7 +320,7 @@ describe("publishRecipe", () => {
   });
 
   it("does not attempt cleanup when step 2 (create branch) fails", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(emptyResponse(404)) // listVersions
       .mockResolvedValueOnce(
@@ -334,7 +341,7 @@ describe("publishRecipe", () => {
 
   it("uses PUBLISH_BASE_BRANCH for the base ref and PR base when set", async () => {
     process.env.PUBLISH_BASE_BRANCH = "sandbox";
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(emptyResponse(404)) // listVersions on sandbox
       .mockResolvedValueOnce(
@@ -368,7 +375,7 @@ describe("publishRecipe", () => {
 
   it("reports the configured branch in the version-already-exists error", async () => {
     process.env.PUBLISH_BASE_BRANCH = "sandbox";
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(emptyResponse(404)) // listVersions on sandbox
       .mockResolvedValueOnce(
@@ -385,7 +392,7 @@ describe("publishRecipe", () => {
   });
 
   it("validates against the API before opening a branch/PR", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(emptyResponse(404)) // listVersions
       .mockResolvedValueOnce(jsonResponse(200, { object: { sha: "devsha" } }))
@@ -408,7 +415,7 @@ describe("publishRecipe", () => {
   });
 
   it("throws and opens no branch/PR when the recipe has an unresolvable ref", async () => {
-    (api.post as jest.Mock).mockResolvedValue({
+    (api.post as Mock).mockResolvedValue({
       ok: false,
       issues: [
         {
@@ -417,7 +424,7 @@ describe("publishRecipe", () => {
         },
       ],
     });
-    const fetchMock = jest.fn();
+    const fetchMock = vi.fn();
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     await expect(
@@ -429,7 +436,7 @@ describe("publishRecipe", () => {
   });
 
   it("rethrows the original error even when cleanup itself fails", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(emptyResponse(404)) // listVersions
       .mockResolvedValueOnce(
@@ -462,11 +469,11 @@ function dirListing(versions: string[]) {
 describe("eraseRecipe", () => {
   beforeEach(() => {
     // Default: the form is not in the disabled index, so the gate passes.
-    (api.get as jest.Mock).mockResolvedValue([]);
+    (api.get as Mock).mockResolvedValue([]);
   });
 
   it("opens a single-commit folder-delete PR on the happy path", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       // listVersions: directory listing on the base branch
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.0.0", "1.1.0"])))
@@ -599,8 +606,8 @@ describe("eraseRecipe", () => {
   });
 
   it("refuses (no branch, no PR) when the form is disabled", async () => {
-    (api.get as jest.Mock).mockResolvedValue(["passport-renewal"]);
-    const fetchMock = jest.fn();
+    (api.get as Mock).mockResolvedValue(["passport-renewal"]);
+    const fetchMock = vi.fn();
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     await expect(eraseRecipe({ data: ERASE })).rejects.toThrow(/disabled/i);
@@ -610,7 +617,7 @@ describe("eraseRecipe", () => {
   });
 
   it("refuses (no branch, no PR) when the folder has no versions to erase", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       // listVersions: empty folder (404 -> [])
       .mockResolvedValueOnce(emptyResponse(404));
@@ -625,7 +632,7 @@ describe("eraseRecipe", () => {
   });
 
   it("cleans up the branch when tree creation fails", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.0.0"])))
       .mockResolvedValueOnce(
@@ -653,7 +660,7 @@ describe("eraseRecipe", () => {
   });
 
   it("does not attempt cleanup when branch creation fails", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.0.0"])))
       .mockResolvedValueOnce(
@@ -673,7 +680,7 @@ describe("eraseRecipe", () => {
 
   it("erases on the configured PUBLISH_BASE_BRANCH when set", async () => {
     process.env.PUBLISH_BASE_BRANCH = "sandbox";
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.0.0"])))
       .mockResolvedValueOnce(
@@ -708,7 +715,7 @@ describe("eraseRecipe", () => {
   });
 
   it("cleans up the branch when PR creation (final step) fails", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.0.0"])))
       .mockResolvedValueOnce(
@@ -741,7 +748,7 @@ describe("eraseRecipe", () => {
   });
 
   it("rejects an empty reason without consulting the disabled index or GitHub", async () => {
-    const fetchMock = jest.fn();
+    const fetchMock = vi.fn();
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     // The reason is the audit trail for a permanent delete — the server (not
@@ -757,7 +764,7 @@ describe("eraseRecipe", () => {
 
 describe("getNextDeployVersion", () => {
   it("bumps past the highest of: current version, base-branch files, open deploy PRs", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       // listVersions on the base branch: 1.3.0 is published
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.2.0", "1.3.0"])))
@@ -787,7 +794,7 @@ describe("getNextDeployVersion", () => {
   });
 
   it("falls back to bumping the client version when nothing is published or claimed", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(emptyResponse(404)) // listVersions: folder absent
       .mockResolvedValueOnce(jsonResponse(200, [])); // no open PRs
@@ -800,7 +807,7 @@ describe("getNextDeployVersion", () => {
   });
 
   it("starts at 1.0.0 for a brand-new form", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(emptyResponse(404))
       .mockResolvedValueOnce(jsonResponse(200, []));
@@ -815,8 +822,8 @@ describe("getNextDeployVersion", () => {
 
 describe("publishRecipe — #873 guards", () => {
   it("refuses a version that is not ahead of the base branch", async () => {
-    (api.post as jest.Mock).mockResolvedValueOnce({ ok: true, issues: [] }); // validate
-    const fetchMock = jest
+    (api.post as Mock).mockResolvedValueOnce({ ok: true, issues: [] }); // validate
+    const fetchMock = vi
       .fn()
       // listVersions: 1.2.0 and 1.3.0 already published — RECIPE deploys 1.2.0
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.2.0", "1.3.0"])));
@@ -832,12 +839,12 @@ describe("publishRecipe — #873 guards", () => {
   });
 
   it("surfaces a 409 reservation conflict as a clear claimed-version error", async () => {
-    (api.post as jest.Mock)
+    (api.post as Mock)
       .mockResolvedValueOnce({ ok: true, issues: [] }) // validate
       .mockRejectedValueOnce(
         new ApiError(409, "Recipe passport-renewal v1.2.0 already exists"),
       ); // reserve
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.1.0"]))); // listVersions
     globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -851,10 +858,10 @@ describe("publishRecipe — #873 guards", () => {
   });
 
   it("releases the reservation and deletes the branch when a later step fails", async () => {
-    (api.post as jest.Mock)
+    (api.post as Mock)
       .mockResolvedValueOnce({ ok: true, issues: [] }) // validate
       .mockResolvedValueOnce({ ok: true }); // reserve
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.1.0"]))) // listVersions
       .mockResolvedValueOnce(
@@ -876,10 +883,10 @@ describe("publishRecipe — #873 guards", () => {
   });
 
   it("releases the reservation when the base-ref read rejects (network error)", async () => {
-    (api.post as jest.Mock)
+    (api.post as Mock)
       .mockResolvedValueOnce({ ok: true, issues: [] }) // validate
       .mockResolvedValueOnce({ ok: true }); // reserve
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.1.0"]))) // listVersions
       .mockRejectedValueOnce(new Error("socket hang up")); // base-ref fetch rejects

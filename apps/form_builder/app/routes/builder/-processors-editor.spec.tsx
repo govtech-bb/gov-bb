@@ -1,5 +1,5 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { render, screen, within } from "@testing-library/react";
@@ -69,10 +69,10 @@ async function addProcessor(type: string) {
 }
 
 beforeEach(() => {
-  jest.spyOn(window, "confirm").mockReturnValue(true);
+  vi.spyOn(window, "confirm").mockReturnValue(true);
 });
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 it("adds a processor of each authorable type", async () => {
@@ -87,7 +87,9 @@ it("adds a processor of each authorable type", async () => {
     "spreadsheet",
     "opencrvs",
   ]);
-});
+  // Five sequential render+user-event cycles run slower under Vitest than the
+  // 5s default allows on a loaded CI runner (~1s locally); give it headroom.
+}, 15000);
 
 it("offers payment as an addable type (#716)", () => {
   render(<Harness initial={emptyDraft} />);

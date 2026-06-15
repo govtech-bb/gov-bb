@@ -7,6 +7,27 @@ export interface FormSession {
   slug: string | null;
   handedOffSlug: string | null;
   values: Record<string, string>;
+  // Fields already presented to the user (ask_field served them). Drives the
+  // ask cursor: asked-but-uncollected means the user skipped an optional
+  // field, so the cursor advances instead of re-asking.
+  askedFieldIds: Set<string>;
+  // False whenever a value changes after the last review_form — submit_form
+  // refuses until the user has seen a review of what will actually be sent.
+  reviewedSinceChange: boolean;
+  // A RAG-driven form offer awaiting the user's choice (fill here vs link).
+  // Set by funnel.offerForm, consumed (or lapsed) on the very next turn.
+  offeredForm?: { slug: string; title: string };
+  // "pending" while the feedback disambiguation choices ("About this assistant"
+  // / "About a service or the site") are on the table, awaiting the user's tap.
+  // Set when run-turn emits the choices, consumed (or lapsed) on the next turn
+  // by feedback.consumeFeedbackChoice.
+  feedbackChoice?: "pending";
+  // The forms a broad/ambiguous request matched about equally well, on the
+  // table as disambiguation choices awaiting the user's tap (#1296). Set when
+  // the title matcher ties (routing.offerDisambiguation), resolved on the next
+  // turn by funnel.consumeDisambiguationChoice — the tapped title pins that
+  // exact form, so the tap never re-enters the (still-tied) margin matcher.
+  disambiguationForms?: Array<{ slug: string; title: string }>;
   submissionId: string;
   status: FormSessionStatus;
   referenceNumber?: string;
@@ -15,6 +36,11 @@ export interface FormSession {
   // offer is never made twice. Deliberately NOT cleared by
   // resetSessionForNewForm — it must survive switching to the feedback form.
   feedbackOffered?: boolean;
+  // Consecutive retrieval-miss turns (zero grounded context). We clarify ONCE
+  // on the first miss, then disclose we can't help instead of re-asking turn
+  // over turn (#1176). Incremented on each miss, reset to 0 by any non-miss
+  // turn via funnel.recordMissOutcome.
+  consecutiveMisses?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -49,6 +75,8 @@ export function getOrCreateSession(threadId: string): FormSession {
       slug: null,
       handedOffSlug: null,
       values: {},
+      askedFieldIds: new Set(),
+      reviewedSinceChange: false,
       submissionId: randomUUID(),
       status: "collecting",
       createdAt: now,
@@ -65,10 +93,16 @@ export function resetSessionForNewForm(session: FormSession): void {
   session.slug = null;
   session.handedOffSlug = null;
   session.values = {};
+  session.askedFieldIds = new Set();
+  session.reviewedSinceChange = false;
+  session.offeredForm = undefined;
+  session.feedbackChoice = undefined;
+  session.disambiguationForms = undefined;
   session.submissionId = randomUUID();
   session.status = "collecting";
   session.referenceNumber = undefined;
   session.lastError = undefined;
+  session.consecutiveMisses = 0;
   session.updatedAt = Date.now();
 }
 

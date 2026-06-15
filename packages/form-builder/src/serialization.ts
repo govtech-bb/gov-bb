@@ -55,6 +55,15 @@ export function serializeRecipeDraft(
           : {}),
         elements,
         behaviours: stepDraft.behaviours,
+        // Confirmation-step content (#1292). `!== undefined` keeps "absent"
+        // distinct from an explicit empty string/array. markdownContent is
+        // editable in the builder; nextSteps is carried through untouched.
+        ...(stepDraft.markdownContent !== undefined
+          ? { markdownContent: stepDraft.markdownContent }
+          : {}),
+        ...(stepDraft.nextSteps !== undefined
+          ? { nextSteps: stepDraft.nextSteps }
+          : {}),
       };
 
       return step;
@@ -152,6 +161,14 @@ export function deserializeRecipe(
           : {}),
         fields,
         behaviours: recipeStep.behaviours ?? [],
+        // Symmetric read so confirmation content survives an open → deploy
+        // cycle (#1292) — mirrors the serialize guard above.
+        ...(recipeStep.markdownContent !== undefined
+          ? { markdownContent: recipeStep.markdownContent }
+          : {}),
+        ...(recipeStep.nextSteps !== undefined
+          ? { nextSteps: recipeStep.nextSteps }
+          : {}),
       };
     },
   );

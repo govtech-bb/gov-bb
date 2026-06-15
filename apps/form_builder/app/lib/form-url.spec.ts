@@ -40,7 +40,7 @@ describe("joinFormPreviewUrl", () => {
 
 describe("formPreviewUrl", () => {
   // VITE_FORMS_URL and VITE_RECIPE_PREVIEW_TOKEN are stubbed by
-  // ts-jest-mock-import-meta in jest.config.ts. The empty/unset → default
+  // ts-jest-mock-import-meta in vi.config.ts. The empty/unset → default
   // branches (dev-default origin, "demo" token) are covered by
   // joinFormPreviewUrl above — import.meta replacement is static, so the vars
   // can't be unset per-test.

@@ -7,15 +7,15 @@ import { PaymentWebhookController } from "./payment-webhook.controller";
 
 describe("PaymentWebhookController", () => {
   const service = {
-    handleEzpayCallback: jest.fn().mockResolvedValue({ acknowledged: true }),
+    handleEzpayCallback: vi.fn().mockResolvedValue({ acknowledged: true }),
   };
 
   const makeController = (env: Record<string, string | undefined>) => {
-    const config = { get: jest.fn((k: string) => env[k]) };
+    const config = { get: vi.fn((k: string) => env[k]) };
     return new PaymentWebhookController(service as never, config as never);
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   describe("when verification is disabled (default)", () => {
     it("accepts and forwards regardless of signature", async () => {

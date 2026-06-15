@@ -113,6 +113,11 @@ export async function hydrateStep(
   return {
     stepId: step.stepId,
     title: step.title,
+    // Per-answer title overrides (#871). The live serving path reads
+    // `conditionalTitle` off the resolved step (resolveStepTitle in
+    // form-conditions), so it must survive hydration — without this the
+    // citizen-facing contract loses it and the heading never adapts.
+    conditionalTitle: step.conditionalTitle,
     description: step.description,
     behaviours: step.behaviours,
     elements,

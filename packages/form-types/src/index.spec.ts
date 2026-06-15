@@ -35,6 +35,7 @@ import {
   behaviourSchema,
   equalityOperationsSchema,
   durationTransformSchema,
+  conditionalTitleSchema,
   formStepSchema,
   recipeComponentFieldSchema,
   recipeBlockFieldSchema,
@@ -54,6 +55,9 @@ import {
   contactDetailsSchema,
   KEBAB_ID_PATTERN,
   KEBAB_ID_ERROR,
+  SEMVER_PATTERN,
+  SEMVER_ERROR,
+  semverSchema,
   classifyRecipientField,
   CONTACT_DETAILS_PREFIX,
   CONFIG_RECIPIENT_PREFIX,
@@ -572,6 +576,24 @@ describe("stepConditionalOnBehaviourSchema", () => {
   });
 });
 
+describe("conditionalTitleSchema", () => {
+  const valid = {
+    targetFieldId: "applying-for-yourself",
+    operator: "equal" as const,
+    value: "yes",
+    title: "Provide your birth details",
+  };
+
+  it("accepts a valid conditional title", () => {
+    expect(conditionalTitleSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejects when the title is missing", () => {
+    const { title: _, ...rest } = valid;
+    expect(conditionalTitleSchema.safeParse(rest).success).toBe(false);
+  });
+});
+
 describe("repeatableBehaviourSchema", () => {
   it("accepts a valid repeatable behaviour", () => {
     expect(
@@ -1015,6 +1037,28 @@ describe("KEBAB_ID_PATTERN (re-export)", () => {
 describe("KEBAB_ID_ERROR (re-export)", () => {
   it("is a non-empty string", () => {
     expect(KEBAB_ID_ERROR.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// version-pattern exports
+// ---------------------------------------------------------------------------
+
+describe("SEMVER_PATTERN / semverSchema (re-export)", () => {
+  it("accepts a plain X.Y.Z version", () => {
+    expect(SEMVER_PATTERN.test("1.2.0")).toBe(true);
+    expect(semverSchema.safeParse("1.2.0").success).toBe(true);
+  });
+
+  it("rejects a non-semver version", () => {
+    expect(SEMVER_PATTERN.test("latest")).toBe(false);
+    expect(semverSchema.safeParse("latest").success).toBe(false);
+  });
+});
+
+describe("SEMVER_ERROR (re-export)", () => {
+  it("is a non-empty string", () => {
+    expect(SEMVER_ERROR.length).toBeGreaterThan(0);
   });
 });
 

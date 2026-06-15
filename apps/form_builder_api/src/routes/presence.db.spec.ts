@@ -19,8 +19,8 @@ const FORM_ID = "__presence_integration_test__";
 let dataSource: DataSource;
 
 // Point the handlers' getDataSource at our test DataSource.
-jest.mock("../db.js", () => ({
-  getDataSource: jest.fn(async () => dataSource),
+vi.mock("../db.js", () => ({
+  getDataSource: vi.fn(async () => dataSource),
 }));
 
 import { claimPresenceHandler, getPresenceHandler } from "./presence";

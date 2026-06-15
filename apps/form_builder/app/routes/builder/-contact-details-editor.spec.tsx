@@ -1,5 +1,6 @@
+import type { Mock } from "vitest";
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { render, screen, within } from "@testing-library/react";
@@ -28,13 +29,13 @@ const CONTACTS: MdaContact[] = [
 function Harness({
   initial,
   contacts = CONTACTS,
-  onCreateContact = jest.fn((_input: CreateMdaContactInput) =>
+  onCreateContact = vi.fn((_input: CreateMdaContactInput) =>
     Promise.resolve(CONTACTS[0]),
   ),
 }: {
   initial: RecipeDraft;
   contacts?: MdaContact[] | null;
-  onCreateContact?: jest.Mock<Promise<MdaContact>, [CreateMdaContactInput]>;
+  onCreateContact?: Mock<Promise<MdaContact>, [CreateMdaContactInput]>;
 }) {
   const [draft, dispatch] = useReducer(recipeReducer, initial);
   return (
@@ -218,7 +219,7 @@ it("creating a new contact posts it and selects the created contact", async () =
     address: null,
     mdaEmail: "notify@finance.gov.bb",
   };
-  const onCreateContact = jest.fn((_input: CreateMdaContactInput) =>
+  const onCreateContact = vi.fn((_input: CreateMdaContactInput) =>
     Promise.resolve(created),
   );
   render(<Harness initial={emptyDraft} onCreateContact={onCreateContact} />);

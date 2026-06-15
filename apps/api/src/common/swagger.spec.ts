@@ -1,17 +1,22 @@
+import type { Mock } from "vitest";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFn = (...args: any[]) => any;
 
-const mockApiResponse: AnyFn = jest.fn(() => jest.fn());
-const mockApiExtraModels: AnyFn = jest.fn(() => jest.fn());
-const mockGetSchemaPath: AnyFn = jest.fn(
-  (t: { name?: string }) => `#/ref/${t.name ?? "Unknown"}`,
+const { mockApiResponse, mockApiExtraModels, mockGetSchemaPath } = vi.hoisted(
+  () => ({
+    mockApiResponse: vi.fn(() => vi.fn()) as AnyFn,
+    mockApiExtraModels: vi.fn(() => vi.fn()) as AnyFn,
+    mockGetSchemaPath: vi.fn(
+      (t: { name?: string }) => `#/ref/${t.name ?? "Unknown"}`,
+    ) as AnyFn,
+  }),
 );
 
-jest.mock("@nestjs/common", () => ({
+vi.mock("@nestjs/common", () => ({
   applyDecorators: (...args: unknown[]) => args,
 }));
 
-jest.mock("@nestjs/swagger", () => ({
+vi.mock("@nestjs/swagger", () => ({
   ApiExtraModels: mockApiExtraModels,
   ApiResponse: mockApiResponse,
   getSchemaPath: mockGetSchemaPath,
@@ -23,13 +28,13 @@ class DummyModel {}
 
 describe("ApiWrappedResponse", () => {
   beforeEach(() => {
-    (mockApiResponse as jest.Mock).mockClear();
-    (mockApiExtraModels as jest.Mock).mockClear();
+    (mockApiResponse as Mock).mockClear();
+    (mockApiExtraModels as Mock).mockClear();
   });
 
   it("uses a $ref schema for a single item when isArray is false (default)", () => {
     ApiWrappedResponse({ type: DummyModel });
-    const calls = (mockApiResponse as jest.Mock).mock.calls;
+    const calls = (mockApiResponse as Mock).mock.calls;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const callArg: any = calls[0]?.[0];
     expect(callArg.schema.properties.data).toEqual({
@@ -39,7 +44,7 @@ describe("ApiWrappedResponse", () => {
 
   it("uses an array schema when isArray is true", () => {
     ApiWrappedResponse({ type: DummyModel, isArray: true });
-    const calls = (mockApiResponse as jest.Mock).mock.calls;
+    const calls = (mockApiResponse as Mock).mock.calls;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const callArg: any = calls[0]?.[0];
     expect(callArg.schema.properties.data).toEqual({
@@ -50,7 +55,7 @@ describe("ApiWrappedResponse", () => {
 
   it("uses the provided status code", () => {
     ApiWrappedResponse({ type: DummyModel, status: 201 });
-    const calls = (mockApiResponse as jest.Mock).mock.calls;
+    const calls = (mockApiResponse as Mock).mock.calls;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const callArg: any = calls[0]?.[0];
     expect(callArg.status).toBe(201);
@@ -58,7 +63,7 @@ describe("ApiWrappedResponse", () => {
 
   it("uses the provided description", () => {
     ApiWrappedResponse({ type: DummyModel, description: "Returns a model" });
-    const calls = (mockApiResponse as jest.Mock).mock.calls;
+    const calls = (mockApiResponse as Mock).mock.calls;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const callArg: any = calls[0]?.[0];
     expect(callArg.description).toBe("Returns a model");

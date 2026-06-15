@@ -1,7 +1,4 @@
-import type { UIMessage } from "@tanstack/ai";
-
-type TextPart = Extract<UIMessage["parts"][number], { type: "text" }>;
-type ToolCallPart = Extract<UIMessage["parts"][number], { type: "tool-call" }>;
+import type { TextPart, ToolCallPart, UIMessage } from "@tanstack/ai";
 
 export function extractText(message: UIMessage): string {
   if (Array.isArray(message.parts)) {
@@ -13,30 +10,6 @@ export function extractText(message: UIMessage): string {
   }
   const content = (message as { content?: unknown }).content;
   return typeof content === "string" ? content.trim() : "";
-}
-
-// The model (especially smaller ones like Haiku) sometimes WRITES a tool call
-// into its text reply — e.g. `set_field({ fieldId: "x", value: "y" })` — on top
-// of actually invoking it. The real invocation is a separate `tool-call` part
-// and is handled/hidden by the renderer; this leaked prose must not reach the
-// bubble. Strip any text that is just a known tool call, whether bare or wrapped
-// in a ``` code fence. Tool names mirror chat-tools.ts (set_field /
-// present_choices / submit_form). Defence-in-depth alongside the prompt rule
-// that tells the model not to narrate tool calls in the first place.
-const TOOL_CALL_BODY =
-  "(?:set_field|ask_field|present_choices|review_form|submit_form)\\s*\\((?:\\s*\\{[\\s\\S]*?\\}\\s*|\\s*)\\)";
-const FENCED_TOOL_CALL = new RegExp(
-  "```[a-zA-Z]*\\s*" + TOOL_CALL_BODY + "\\s*```",
-  "g",
-);
-const BARE_TOOL_CALL = new RegExp("\\b" + TOOL_CALL_BODY, "g");
-
-export function stripLeakedToolCalls(text: string): string {
-  return text
-    .replace(FENCED_TOOL_CALL, "")
-    .replace(BARE_TOOL_CALL, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
 }
 
 // Hard cap on how many recent messages reach the LLM (#973). The form session's
@@ -56,6 +29,16 @@ export function capMessageHistory(
 export function lastUserText(messages: UIMessage[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].role === "user") return extractText(messages[i]);
+  }
+  return "";
+}
+
+// Text of the most recent ASSISTANT message. Used to read what we just said —
+// e.g. whether we asked the "anything else?" wrap-up question, which decides
+// whether a terse "no"/"ok" reply is a conversational closer or a mid-task answer.
+export function lastAssistantText(messages: UIMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "assistant") return extractText(messages[i]);
   }
   return "";
 }
@@ -86,4 +69,14 @@ export function hasAnyToolCall(
   return messages.some((m) =>
     m.parts.some((p) => p.type === "tool-call" && names.includes(p.name)),
   );
+}
+
+// True when the conversation is paused on a form question: the latest message
+// is the assistant's and carries an ask_field call. Drives mode-aware UI (the
+// composer placeholder reads "Type your answer…" instead of "Ask a
+// question..." — mid-form, the assistant is the one asking).
+export function awaitingFieldAnswer(messages: UIMessage[]): boolean {
+  const last = messages.at(-1);
+  if (!last || last.role !== "assistant") return false;
+  return !!findToolCall(last, "ask_field");
 }

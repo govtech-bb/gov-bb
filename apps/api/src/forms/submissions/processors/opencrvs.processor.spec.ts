@@ -2,7 +2,7 @@ import { Logger } from "@nestjs/common";
 import { OpencrvsProcessor } from "./opencrvs.processor";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
-const mockFetch = jest.fn();
+const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 function makePayload(
@@ -42,7 +42,7 @@ describe("OpencrvsProcessor", () => {
   let processor: OpencrvsProcessor;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockFetch.mockResolvedValue({ ok: true });
     processor = new OpencrvsProcessor();
   });
@@ -93,7 +93,9 @@ describe("OpencrvsProcessor", () => {
     });
 
     it("skips and warns when no endpoint is configured", async () => {
-      const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+      const warn = vi
+        .spyOn(Logger.prototype, "warn")
+        .mockImplementation(() => {});
       const payload = makePayload();
       payload.processors = [{ type: "opencrvs", config: {} }];
 

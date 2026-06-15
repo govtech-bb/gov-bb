@@ -1,15 +1,13 @@
-import type { InferToolInput, UIMessage } from "@tanstack/ai";
-import { Allow, parse as parsePartialJson } from "partial-json";
-import { memo, useMemo } from "react";
+import { parsePartialJSON, type InferToolInput, type UIMessage } from "@tanstack/ai";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { presentChoicesDef } from "#/lib/chat-tools";
 import { TridentAvatar } from "#/components/trident-avatar";
-import {
-  extractText,
-  findToolCall,
-  stripLeakedToolCalls,
-} from "#/lib/chat/messages";
+import { extractText, findToolCall } from "#/lib/chat/messages";
+import { stripLeakedToolCalls } from "#/lib/chat/leaked-tool-calls";
+import { formatChangeRequest } from "#/lib/chat/change-field";
+import { restoreLinks } from "#/lib/chat/link-tokens";
 import { normalizeMarkdown } from "#/lib/chat/normalize-markdown";
 import type { Citation } from "#/lib/chat/types";
 import {
@@ -24,11 +22,7 @@ type ChoicesArgs = Partial<InferToolInput<typeof presentChoicesDef>>;
 
 function parseChoiceArgs(raw: string | undefined): ChoicesArgs | undefined {
   if (!raw) return undefined;
-  try {
-    return parsePartialJson(raw, Allow.ALL) as ChoicesArgs;
-  } catch {
-    return undefined;
-  }
+  return parsePartialJSON(raw) as ChoicesArgs | undefined;
 }
 
 // The model tends to narrate the question as text AND call present_choices.
@@ -44,12 +38,14 @@ function BubbleImpl({
   onApproval,
   choicesDisabled = false,
   citations,
+  linkTokens,
 }: {
   message: UIMessage;
   onChoice: (choice: string) => void;
   onApproval: (id: string, approved: boolean) => void;
   choicesDisabled?: boolean;
   citations?: Citation[];
+  linkTokens?: Record<string, string>;
 }) {
   const text = useMemo(
     () => stripLeakedToolCalls(extractText(message)),
@@ -82,6 +78,12 @@ function BubbleImpl({
       ? (askFieldPart.output as AskFieldOutput | undefined)
       : undefined;
   const fieldSpec = askFieldOutput?.ok ? askFieldOutput.field : undefined;
+  // ask_field IS the field widget (label + pills); a present_choices in the
+  // same turn is the redundant one. The model sometimes emits both for one
+  // field, which renders the question twice (#1255) — suppress the pills when
+  // the widget is present. (Sibling guard to stripTrailingQuestion above, which
+  // dedupes a text question against the pills.)
+  const showChoices = hasChoices && !fieldSpec;
 
   const reviewPart = findToolCall(message, "review_form");
   const reviewOutput =
@@ -89,6 +91,10 @@ function BubbleImpl({
       ? (reviewPart.output as ReviewOutput | undefined)
       : undefined;
   const reviewItems = reviewOutput?.ok ? (reviewOutput.items ?? []) : [];
+  // The feedback form reads as "feedback", not "application". review_form runs
+  // in the same turn as the submit_form approval below, so its output is the
+  // signal for wording the approval prompt.
+  const isFeedbackForm = reviewOutput?.ok && reviewOutput.isFeedback === true;
 
   // Keep the lead-in text but drop the trailing question when buttons render it.
   const displayText = useMemo(
@@ -96,12 +102,43 @@ function BubbleImpl({
     [text, hasChoices, fieldSpec],
   );
   const renderedMarkdown = useMemo(() => {
-    const normalized = normalizeMarkdown(displayText);
+    // Restore opaque link_N tokens to real URLs before anything else (#1270):
+    // the model only ever saw tokens, so any URL in the rendered output comes
+    // from this map. Unknown tokens (hallucinated) are stripped. Runs on the
+    // full accumulated text each render, so streaming chunk boundaries can't
+    // split a token permanently.
+    const restored = restoreLinks(displayText, linkTokens ?? {});
+    const normalized = normalizeMarkdown(restored);
     return annotateCitations(normalized, citations ?? []);
-  }, [displayText, citations]);
+  }, [displayText, citations, linkTokens]);
   const markdownComponents = useMemo(
     () => buildMarkdownComponents(citations ?? []),
     [citations],
+  );
+
+  // Latch the bubble's interactive controls to fire ONCE. They otherwise gate
+  // re-clicks only on `choicesDisabled`, which flips a network round-trip later
+  // (when the next message lands) — leaving a window where a fast second click
+  // sends a duplicate. A double-picked choice spawns two turns (two review +
+  // submit prompts); a double-clicked Submit sends the approval twice. The ref
+  // blocks synchronously (before React repaints the disabled state); the state
+  // drives the disabled styling.
+  const respondedRef = useRef(false);
+  const [responded, setResponded] = useState(false);
+  const respondOnce = useCallback((fire: () => void) => {
+    if (respondedRef.current) return;
+    respondedRef.current = true;
+    setResponded(true);
+    fire();
+  }, []);
+  const handleChoice = useCallback(
+    (choice: string) => respondOnce(() => onChoice(choice)),
+    [respondOnce, onChoice],
+  );
+  const handleApproval = useCallback(
+    (id: string, approved: boolean) =>
+      respondOnce(() => onApproval(id, approved)),
+    [respondOnce, onApproval],
   );
 
   if (message.role === "user") {
@@ -122,6 +159,10 @@ function BubbleImpl({
   const submitDeclined =
     submitPart?.state === "approval-responded" &&
     submitPart.approval?.approved === false;
+
+  // Once any control in this bubble has fired, lock them all — both the
+  // historical-staleness gate and the just-clicked latch.
+  const controlsDisabled = choicesDisabled || responded;
 
   const showText = displayText.length > 0;
 
@@ -151,13 +192,13 @@ function BubbleImpl({
             </div>
           )}
 
-          {hasChoices && (
+          {showChoices && (
             <ChoicePills
               questionId={`choices-q-${message.id}`}
               question={choicesArgs?.question}
               choices={choices}
-              disabled={choicesDisabled}
-              onPick={onChoice}
+              disabled={controlsDisabled}
+              onPick={handleChoice}
             />
           )}
 
@@ -165,37 +206,37 @@ function BubbleImpl({
             <AskFieldWidget
               spec={fieldSpec}
               messageId={message.id}
-              answered={choicesDisabled}
-              onAnswer={onChoice}
+              answered={controlsDisabled}
+              onAnswer={handleChoice}
             />
           )}
 
           {reviewItems.length > 0 && (
             <ReviewSummary
               items={reviewItems}
-              disabled={choicesDisabled}
-              onChange={(label) => onChoice(`I'd like to change ${label}`)}
+              disabled={controlsDisabled}
+              onChange={(label) => handleChoice(formatChangeRequest(label))}
             />
           )}
 
           {submitApproval && (
             <div className="flex flex-col gap-2.5">
               <p className="text-bubble font-medium text-black-00">
-                Submit your application now?
+                Submit your {isFeedbackForm ? "feedback" : "application"} now?
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
                   className="rounded-full bg-teal-00 px-4 py-1.5 font-medium text-sm text-white-00 transition-colors hover:bg-teal-100 focus-visible:outline-2 focus-visible:outline-teal-00 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:bg-mid-grey-00"
-                  disabled={choicesDisabled}
-                  onClick={() => onApproval(submitApproval.id, true)}
+                  disabled={controlsDisabled}
+                  onClick={() => handleApproval(submitApproval.id, true)}
                   type="button"
                 >
                   Submit
                 </button>
                 <button
                   className="rounded-full border-[1.5px] border-mid-grey-00 bg-transparent px-3.5 py-1.5 font-medium text-sm text-mid-grey-00 transition-colors hover:border-black-00 hover:text-black-00 focus-visible:outline-2 focus-visible:outline-teal-00 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={choicesDisabled}
-                  onClick={() => onApproval(submitApproval.id, false)}
+                  disabled={controlsDisabled}
+                  onClick={() => handleApproval(submitApproval.id, false)}
                   type="button"
                 >
                   Not yet

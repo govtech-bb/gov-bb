@@ -9,11 +9,7 @@ import { extractText, lastUserText } from "./messages";
 const PROMPT = `You do two jobs for a Barbados government-services chatbot: (1) rewrite the user's latest message into a search query, and (2) classify their intent.
 
 JOB 1 — REWRITE. Produce a single self-contained search query. It is embedded and matched against formal, standard-English service pages, so it MUST use standard-English service vocabulary.
-- The user often writes in Bajan / Barbadian Creole. Translate the MEANING into standard English using the words the government service catalogue would use, mapping the everyday need to the likely service. Spelling cues: "de"=the, "muh"=my, "fuh"=for, "wuh"=what, "dey"=they, "cyan"=can't, "ent"/"en"=isn't/don't, "gine"=going to, "pun"=on, "wuk"=work. Examples (TEACHING examples, generalise the pattern):
-  - "muh head hurtin and I ent got money fuh de doctor" -> "financial assistance medical help low income"
-  - "de pipe burst and flood out de whole house" -> "disaster relief assistance flood damage"
-  - "I lookin fuh wuk, nutten ent comin" -> "employment programme finding a job"
-  - "wuh I gotta do fuh get muh chile in big school" -> "secondary school placement BSSEE"
+- Users may sometimes write in pure Bajan dialect. Do your best to understand the intent — focus on keywords — and translate the meaning into the standard-English vocabulary the government service catalogue would use, mapping the everyday need to the likely service.
 - If the message is already a standalone topical question in standard English, return it essentially unchanged.
 - If it's a short follow-up ("how much?", "what documents?", "where do I go?", "is it online?", "yes please"), expand it using the prior turns so the topic is explicit.
 - Drop greetings, filler, and personal data. Keep proper nouns and service names. Under 20 words.
@@ -23,8 +19,6 @@ JOB 2 — INTENT. Classify this turn as "apply" or "info":
 - "info" — the user is ONLY asking for facts or an explanation and has not signalled they want to start now ("what does X cost?", "who is eligible?", "how long does it take?", "what does the Welfare Department do?", and compound fact questions like "how much is X and where do I apply?").
 - When genuinely unsure, choose "apply".
 
-JOB 3 — LEGITIMACY. Set "illegitimate" to true ONLY if the request, explicit or implied, seeks to: falsify an official document; commit benefits or tax fraud; misrepresent identity or facts to obtain something they don't qualify for; or bribe/pay an official for unfair advantage (e.g. "how much do I pay to get my child into a better school", "who do I pay to skip the waitlist"). Otherwise false. When unsure, false.
-
 Conversation:
 {{HISTORY}}
 
@@ -33,7 +27,6 @@ Latest user message: {{LATEST}}`;
 const Schema = z.object({
   rewrittenQuery: z.string(),
   intent: z.enum(["info", "apply"]),
-  illegitimate: z.boolean(),
 });
 
 export interface RewriteResult {
@@ -43,11 +36,6 @@ export interface RewriteResult {
   // in run-turn. Defaults to "apply" (the safe, link-preserving default) when
   // the rewrite is skipped or fails.
   intent: "info" | "apply";
-  // Fraud / bribery / falsification-framed request. run-turn suppresses any form
-  // offer when true so the model declines per the ILLEGITIMATE REQUESTS prompt
-  // rather than helpfully offering to start a (legitimate) matched form.
-  // Defaults to false (never refuse a legitimate request on a failed classify).
-  illegitimate: boolean;
 }
 
 function buildHistory(messages: UIMessage[]): string {
@@ -69,7 +57,7 @@ export async function rewriteRetrievalQuery(
   // nothing, so it needs normalising before the topic is ever established.
   // Greetings/too-short messages never reach here — run-turn skips retrieval
   // (and thus the rewrite) for those via isGreetingOrTooShort.
-  if (!latest) return { query: latest, intent: "apply", illegitimate: false };
+  if (!latest) return { query: latest, intent: "apply" };
 
   const prompt = PROMPT.replace("{{HISTORY}}", buildHistory(messages)).replace(
     "{{LATEST}}",
@@ -93,9 +81,8 @@ export async function rewriteRetrievalQuery(
     return {
       query: out.length > 2 ? out : latest,
       intent: result.intent,
-      illegitimate: result.illegitimate,
     };
   } catch {
-    return { query: latest, intent: "apply", illegitimate: false };
+    return { query: latest, intent: "apply" };
   }
 }

@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { axe } from "jest-axe";
@@ -11,10 +12,10 @@ import { axe } from "jest-axe";
 // (the real Link interpolates `params` into `to`). A simpler stub that
 // only honoured `to` would silently allow a regression that drops
 // `params={{ formId }}` to ship.
-jest.mock("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (routeConfig) => ({
     ...routeConfig,
-    useLoaderData: jest.fn(),
+    useLoaderData: vi.fn(),
   }),
   Link: ({
     children,
@@ -37,8 +38,8 @@ jest.mock("@tanstack/react-router", () => ({
 
 // Stub the loader so we control the data returned by useLoaderData().
 // The real loader fetches from an API server that won't be available in Jest.
-jest.mock("@forms/form-api", () => ({
-  fetchFormDefinitions: jest.fn(),
+vi.mock("@forms/form-api", () => ({
+  fetchFormDefinitions: vi.fn(),
 }));
 
 // After the mocks are in place, import the route module so that
@@ -53,11 +54,11 @@ const MOCK_FORMS = [
 ];
 
 beforeEach(() => {
-  jest.spyOn(Route, "useLoaderData").mockReturnValue(MOCK_FORMS);
+  vi.spyOn(Route, "useLoaderData").mockReturnValue(MOCK_FORMS);
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 describe("Index route", () => {
@@ -95,7 +96,7 @@ describe("Index route", () => {
   });
 
   it("renders an empty list when no forms are returned", () => {
-    jest.spyOn(Route, "useLoaderData").mockReturnValue([]);
+    vi.spyOn(Route, "useLoaderData").mockReturnValue([]);
     render(<Route.component />);
     expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
   });

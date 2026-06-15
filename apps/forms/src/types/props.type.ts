@@ -84,8 +84,18 @@ export interface SubmissionState {
   quantity?: number;
   submissionSuccess: boolean;
   paymentSuccess?: boolean;
+  /**
+   * Set when the submission came back `processing` — an idempotency-key replay
+   * of an in-flight submission (HTTP 202). The confirmation step renders a
+   * neutral "we're processing your submission" panel rather than a finished
+   * receipt (#463). Absent on every other state.
+   */
+  processing?: boolean;
   referenceNumber: string;
-  date: string;
+  // Optional: payment ("gated") submissions are not finalised yet, so the
+  // server returns `submittedAt: null` — there is no submission date to show
+  // until payment completes (#919). formatDate() renders nothing for undefined.
+  date?: string;
   paymentUrl?: string;
   paymentId?: string;
   paymentDescription?: string;
@@ -112,4 +122,11 @@ export interface SubmissionConfirmationProps {
   contactDetails?: ContactDetails;
   onTryAgain?: () => void;
   submissionState?: SubmissionState;
+  /**
+   * Target for the "Give feedback on this service" link. When set, the feedback
+   * section renders an exit-survey link carrying the originating form id as
+   * `?source=`. Omitted (e.g. on the exit survey's own confirmation) hides the
+   * section so the feedback form never links back to itself.
+   */
+  feedbackUrl?: string;
 }

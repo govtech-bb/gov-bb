@@ -67,10 +67,28 @@ const JUDGE_TIMEOUT_MS = 120_000;
 
 interface Case {
   id: string;
-  category: "direct" | "ambiguous" | "refusal" | "miss";
+  category: "direct" | "ambiguous" | "refusal" | "miss" | "feedback";
   dialect: "standard" | "bajan";
-  message: string;
-  expect?: { citationSlug?: string; replyIncludes?: string[] };
+  // A single user message, OR an ordered multi-turn script (each string is the
+  // next user message, replayed on one stateful conversation). The verdict
+  // judges the LAST assistant reply. Multi-turn exists because the live link
+  // failures only showed up after a clarify exchange (greeting -> "personally
+  // or business?" -> "no I want to get started"), never on the first message.
+  message?: string;
+  messages?: string[];
+  expect?: {
+    citationSlug?: string;
+    replyIncludes?: string[];
+    // Phrases the reply must NOT contain, case-insensitive. A hard fail in any
+    // category — for the gate this forbids the bot improvising a paper-form /
+    // "search alpha.gov.bb" fallback instead of handing over the form link.
+    replyExcludes?: string[];
+  };
+}
+
+function caseTurns(c: Case): string[] {
+  if (c.messages?.length) return c.messages;
+  return c.message ? [c.message] : [];
 }
 
 interface Verdict {
@@ -79,11 +97,20 @@ interface Verdict {
   reason: string;
 }
 
+interface TranscriptTurn {
+  role: "user" | "assistant";
+  text: string;
+}
+
 interface CaseResult {
   case: Case;
   reply: string;
   choices: string[];
   citations: Citation[];
+  // The full interleaved conversation (every user turn + the assistant reply
+  // it drew), so a multi-turn case reads as the thread it actually was rather
+  // than a lone final reply with no context.
+  transcript: TranscriptTurn[];
   error?: string;
   durationMs: number;
   verdict?: Verdict;
@@ -123,7 +150,12 @@ async function collectOne(c: Case): Promise<CaseResult> {
   }, CASE_TIMEOUT_MS);
 
   try {
-    await client.sendMessage(c.message);
+    // Replay every user turn on the one stateful client so the server's form
+    // session (keyed by threadId) carries across the conversation. The final
+    // assistant reply is what the verdict judges.
+    for (const turn of caseTurns(c)) {
+      await client.sendMessage(turn);
+    }
   } catch (err) {
     streamError ??= err instanceof Error ? err.message : String(err);
   } finally {
@@ -131,7 +163,14 @@ async function collectOne(c: Case): Promise<CaseResult> {
   }
 
   const assistant = client.getMessages().filter((m) => m.role === "assistant");
-  const reply = assistant.map(extractText).join("\n").trim();
+  // Multi-turn: judge the LAST assistant reply, not the whole transcript, so a
+  // clean handoff isn't masked by an earlier clarifying turn.
+  const lastReply = assistant.length
+    ? extractText(assistant[assistant.length - 1]).trim()
+    : "";
+  const reply = c.messages?.length
+    ? lastReply
+    : assistant.map(extractText).join("\n").trim();
   const choices = assistant
     .map((m) => findToolCall(m, "present_choices"))
     .filter((p) => p !== undefined)
@@ -146,11 +185,21 @@ async function collectOne(c: Case): Promise<CaseResult> {
       }
     });
 
+  const transcript: TranscriptTurn[] = client
+    .getMessages()
+    .filter((m) => m.role === "user" || m.role === "assistant")
+    .map((m) => ({
+      role: m.role as "user" | "assistant",
+      text: extractText(m).trim(),
+    }))
+    .filter((t) => t.text.length > 0);
+
   return {
     case: c,
     reply,
     choices,
     citations,
+    transcript,
     ...(streamError !== undefined && { error: streamError }),
     durationMs: Date.now() - started,
   };
@@ -214,6 +263,20 @@ async function judgeOne(r: CaseResult): Promise<Verdict> {
     return { pass: false, kind: "deterministic", reason: `error: ${r.error}` };
   }
 
+  // Forbidden phrases fail any case before category logic — the gate must
+  // never improvise a paper-form / "search the site" fallback for a service
+  // it can hand a real link to.
+  const banned = (r.case.expect?.replyExcludes ?? []).find((p) =>
+    r.reply.toLowerCase().includes(p.toLowerCase()),
+  );
+  if (banned !== undefined) {
+    return {
+      pass: false,
+      kind: "deterministic",
+      reason: `reply contains forbidden phrase "${banned}"`,
+    };
+  }
+
   if (r.case.category === "direct") {
     // The bot answers a direct ask either by citing the service page or by
     // starting the matching form flow — the latter names the service in the
@@ -236,6 +299,28 @@ async function judgeOne(r: CaseResult): Promise<Verdict> {
               r.case.expect?.replyIncludes ?? [],
             )} (citations: ${r.citations.map((c) => c.url).join(", ") || "none"})`,
     };
+  }
+
+  if (r.case.category === "feedback") {
+    // Feedback is the ONE thing collected in-chat. The right move is to route
+    // it: present the assistant-vs-service disambiguation pills, or acknowledge
+    // and gather it. The disambiguation is deterministic pills with an empty
+    // text body, so the generic ambiguous judge wrongly fails it — accept the
+    // pills deterministically, else judge whether the reply routes feedback
+    // (never to a ministry / dead-end).
+    const offeredScope = r.choices.some((c) =>
+      /about this assistant|about a service/i.test(c),
+    );
+    if (offeredScope) {
+      return {
+        pass: true,
+        kind: "deterministic",
+        reason: "presented the assistant/service feedback disambiguation",
+      };
+    }
+    return claudeJudge(
+      `You are evaluating a Government of Barbados chatbot. A user wants to GIVE feedback:\n"""\n${r.case.message}\n"""\n\n${describeReply(r)}\n\nThe assistant routes feedback ITSELF — the right behaviour is to take it forward: acknowledge it and either ask whether it is about this assistant or about a service/the site, or start gathering the feedback. A FAIL: it tells the user to phone/email/visit a ministry or department, redirects them elsewhere to "the team", or dead-ends without a path. Did the chatbot respond appropriately?${JUDGE_SUFFIX}`,
+    );
   }
 
   if (r.case.category === "ambiguous") {
@@ -283,20 +368,73 @@ function esc(s: string): string {
     .replaceAll(">", "&gt;");
 }
 
+// The thread the case actually produced: user turns and the assistant replies
+// they drew, as chat bubbles. Falls back to the lone reply for older results
+// captured before transcripts were recorded.
+function threadHtml(r: CaseResult): string {
+  const turns =
+    r.transcript?.length > 0
+      ? r.transcript
+      : [{ role: "assistant" as const, text: r.reply }];
+  return `<div class="thread">${turns
+    .map(
+      (t) =>
+        `<div class="turn ${t.role}"><span class="who">${t.role === "user" ? "User" : "Bot"}</span><div class="msg">${esc(t.text || "(empty)")}</div></div>`,
+    )
+    .join("")}</div>`;
+}
+
+// What the case asserted, each line ticked or crossed against the final reply,
+// so the verdict is self-explanatory instead of a bare "cited a source".
+function checksHtml(r: CaseResult): string {
+  const e = r.case.expect;
+  if (!e) return "";
+  const reply = r.reply.toLowerCase();
+  const rows: string[] = [];
+  if (e.citationSlug) {
+    const hit = r.citations.some((c) => c.url.includes(e.citationSlug ?? ""));
+    rows.push(check(hit, `cites a <code>${esc(e.citationSlug)}</code> source`));
+  }
+  for (const kw of e.replyIncludes ?? []) {
+    rows.push(
+      check(reply.includes(kw.toLowerCase()), `reply mentions “${esc(kw)}”`),
+    );
+  }
+  for (const kw of e.replyExcludes ?? []) {
+    rows.push(
+      check(
+        !reply.includes(kw.toLowerCase()),
+        `reply avoids “${esc(kw)}”`,
+        true,
+      ),
+    );
+  }
+  return rows.length ? `<ul class="checks">${rows.join("")}</ul>` : "";
+}
+
+function check(ok: boolean, label: string, forbid = false): string {
+  const mark = ok ? "✓" : "✗";
+  const cls = ok ? "ok" : "bad";
+  const verb = forbid && !ok ? " (forbidden phrase present)" : "";
+  return `<li class="${cls}">${mark} ${label}${verb}</li>`;
+}
+
 function caseHtml(r: CaseResult, open: boolean): string {
   const v = r.verdict;
   const badge = v?.pass
     ? `<span class="badge pass">PASS</span>`
     : `<span class="badge fail">FAIL</span>`;
+  const tag = r.case.messages?.length
+    ? `<span class="tag">${r.case.messages.length}-turn</span>`
+    : "";
   return `<details${open ? " open" : ""}>
-<summary>${badge} <code>${esc(r.case.id)}</code> <em>${esc(r.case.category)}${r.case.dialect === "bajan" ? " · bajan" : ""}</em> — ${esc(r.case.message)}</summary>
-<dl>
-<dt>Verdict (${v?.kind ?? "?"})</dt><dd>${esc(v?.reason ?? "not judged")}</dd>
-<dt>Reply (${r.durationMs}ms)</dt><dd><pre>${esc(r.reply || "(empty)")}</pre></dd>
-${r.choices.length ? `<dt>Choices</dt><dd>${r.choices.map((c) => `<code>${esc(c)}</code>`).join(" ")}</dd>` : ""}
-${r.citations.length ? `<dt>Citations</dt><dd>${r.citations.map((c) => `<a href="${esc(c.url)}">${esc(c.title)}</a>`).join("<br>")}</dd>` : ""}
-${r.error ? `<dt>Error</dt><dd><pre>${esc(r.error)}</pre></dd>` : ""}
-</dl>
+<summary>${badge} <code>${esc(r.case.id)}</code> <span class="cat">${esc(r.case.category)}${r.case.dialect === "bajan" ? " · bajan" : ""}</span>${tag}</summary>
+<p class="verdict ${v?.pass ? "ok" : "bad"}">${v?.pass ? "Passed" : "Failed"} <span class="kind">(${v?.kind ?? "?"}, ${r.durationMs}ms)</span> — ${esc(v?.reason ?? "not judged")}</p>
+${checksHtml(r)}
+${threadHtml(r)}
+${r.choices.length ? `<p class="meta"><strong>Choice buttons:</strong> ${r.choices.map((c) => `<code>${esc(c)}</code>`).join(" ")}</p>` : ""}
+${r.citations.length ? `<p class="meta"><strong>Citations:</strong> ${r.citations.map((c) => `<a href="${esc(c.url)}">${esc(c.title)}</a>`).join(", ")}</p>` : ""}
+${r.error ? `<p class="meta err"><strong>Error:</strong> ${esc(r.error)}</p>` : ""}
 </details>`;
 }
 
@@ -319,16 +457,31 @@ function report(results: CaseResult[]): void {
   const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Chat response evals</title>
 <style>
-body { font: 15px/1.5 system-ui, sans-serif; max-width: 60rem; margin: 2rem auto; padding: 0 1rem; }
-table { border-collapse: collapse; margin-block: 1rem; } td, th { border: 1px solid #ccc; padding: .3rem .8rem; }
-.badge { font-weight: 700; padding: .1rem .5rem; border-radius: .3rem; color: #fff; }
+body { font: 15px/1.55 system-ui, sans-serif; max-width: 60rem; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+h1 { margin-bottom: .2rem; } h2 { margin-top: 2rem; }
+.sub { color: #666; margin-top: 0; }
+table { border-collapse: collapse; margin-block: 1rem; } td, th { border: 1px solid #ddd; padding: .35rem .9rem; text-align: left; }
+th { background: #f6f6f6; }
+.badge { font-weight: 700; padding: .1rem .5rem; border-radius: .3rem; color: #fff; font-size: .8rem; }
 .badge.pass { background: #1a7f37; } .badge.fail { background: #c1121f; }
-details { border: 1px solid #ddd; border-radius: .4rem; padding: .5rem .8rem; margin-block: .5rem; }
-summary { cursor: pointer; } pre { white-space: pre-wrap; background: #f6f6f6; padding: .5rem; }
-dt { font-weight: 600; margin-top: .5rem; }
+details { border: 1px solid #e2e2e2; border-radius: .5rem; padding: .6rem .9rem; margin-block: .6rem; }
+details[open] { border-color: #bbb; }
+summary { cursor: pointer; display: flex; align-items: center; gap: .5rem; }
+summary code { font-size: .9rem; } .cat { color: #666; font-style: italic; font-size: .85rem; }
+.tag { background: #eef; color: #339; border-radius: .3rem; padding: 0 .4rem; font-size: .75rem; font-weight: 600; }
+.verdict { font-weight: 600; margin: .6rem 0 .3rem; } .verdict .kind { font-weight: 400; color: #777; font-size: .85rem; }
+.verdict.ok { color: #1a7f37; } .verdict.bad { color: #c1121f; }
+.checks { list-style: none; padding: 0; margin: .3rem 0 .8rem; }
+.checks li { font-size: .9rem; } .checks .ok { color: #1a7f37; } .checks .bad { color: #c1121f; font-weight: 600; }
+.thread { display: flex; flex-direction: column; gap: .4rem; margin: .5rem 0; }
+.turn { display: flex; gap: .6rem; align-items: flex-start; }
+.turn .who { flex: 0 0 2.5rem; font-size: .7rem; font-weight: 700; text-transform: uppercase; color: #999; padding-top: .35rem; }
+.turn .msg { white-space: pre-wrap; border-radius: .5rem; padding: .45rem .7rem; flex: 1; }
+.turn.user .msg { background: #e7f0ff; } .turn.assistant .msg { background: #f4f4f4; }
+.meta { font-size: .85rem; color: #555; margin: .3rem 0; } .meta.err { color: #c1121f; }
 </style></head><body>
 <h1>Chat response evals</h1>
-<p>${esc(CHAT_URL)} — ${new Date().toISOString()}</p>
+<p class="sub">${esc(CHAT_URL)} — ${new Date().toISOString()}</p>
 <table><tr><th>Category</th><th>Pass</th><th>Rate</th></tr>
 ${statRows}
 <tr><th>total</th><th>${totalPass}/${results.length}</th><th>${Math.round((100 * totalPass) / results.length)}%</th></tr></table>

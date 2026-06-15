@@ -69,6 +69,30 @@ export const optionalIfBehaviourSchema = z.object({
 });
 export type OptionalIfBehaviour = z.infer<typeof optionalIfBehaviourSchema>;
 
+// A conditional step title (#871): when its condition matches the submitted
+// values, the step renders this `title` in place of its static
+// `FormStep.title`. It reuses the same condition vocabulary as the
+// `*ConditionalOn` behaviours (targetFieldId, optional targetStepId, operator,
+// optional transform, value) so the shared `evaluateCondition` engine resolves
+// it identically on the client and the server. Steps carry an ARRAY of these;
+// the first entry whose condition matches wins, and the static title is the
+// fallback when none match.
+export const conditionalTitleSchema = z.object({
+  targetFieldId: kebabIdSchema,
+  targetStepId: kebabIdSchema.optional(),
+  operator: equalityOperationsSchema,
+  transform: durationTransformSchema.optional(),
+  value: z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.string()),
+    z.array(z.number()),
+  ]),
+  title: z.string(),
+});
+export type ConditionalTitle = z.infer<typeof conditionalTitleSchema>;
+
 export const stepConditionalOnBehaviourSchema = z.object({
   type: z.literal("stepConditionalOn"),
   targetFieldId: kebabIdSchema,

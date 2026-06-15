@@ -3,11 +3,18 @@ import type { RecipeDraft } from "@govtech-bb/form-builder";
 import { validate, compare } from "../../lib/version";
 import { formPreviewUrl } from "../../lib/form-url";
 import styles from "../../styles/builder.module.css";
+import { useEscClose } from "./-use-esc-close";
 
 interface SubmitModalProps {
   draft: RecipeDraft;
   version: string;
   currentVersion: string | null;
+  /**
+   * The loaded version is the one in the published index. A published version
+   * can't be overwritten in place, so Save Changes cuts a new draft version
+   * (`version` is already the bumped patch) rather than overwriting it.
+   */
+  currentVersionIsPublished?: boolean;
   loadedFromId: string | null;
   isSubmitting: boolean;
   submitSuccess: boolean;
@@ -23,6 +30,7 @@ export function SubmitModal({
   draft,
   version: versionProp,
   currentVersion,
+  currentVersionIsPublished = false,
   loadedFromId,
   isSubmitting,
   submitSuccess,
@@ -55,10 +63,12 @@ export function SubmitModal({
     onSubmit(versionInput);
   }
 
+  useEscClose(onClose);
+
   return (
     <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+      <div className={styles.modalContent} role="dialog" aria-modal="true" aria-label={mode} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHead}>
           <strong>{mode}</strong>
           <button type="button" onClick={onClose}>Close</button>
         </div>
@@ -98,7 +108,25 @@ export function SubmitModal({
                 type="text"
                 value={versionInput}
                 onChange={(e) => setVersionInput(e.target.value)}
+                // Save Changes overwrites the loaded draft in place at its
+                // current version (#329), so the version is pinned and read-only
+                // on the update path — Deploy is how a new version is cut. A
+                // brand-new form still picks its initial version here.
+                readOnly={isUpdate}
               />
+              {isUpdate && currentVersionIsPublished && (
+                <small className={styles.fieldHint}>
+                  v{currentVersion} is published, so Save Changes saves a new
+                  draft (v{versionInput}) instead of overwriting it. Use Deploy
+                  to publish the new version.
+                </small>
+              )}
+              {isUpdate && !currentVersionIsPublished && (
+                <small className={styles.fieldHint}>
+                  Save Changes overwrites this draft in place at v{versionInput}.
+                  Use Deploy to cut a new version.
+                </small>
+              )}
             </div>
 
             {clientError && (

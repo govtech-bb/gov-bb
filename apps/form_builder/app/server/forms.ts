@@ -28,6 +28,12 @@ export const listForms = createServerFn({ method: "GET" })
     // The loop `continue`s when a draft outranks the published copy, so it can't
     // be the source of truth for membership.
     const publishedIds = new Set(published.map((p) => p.formId));
+    // The exact version each formId is published at — kept separately from the
+    // merged `version` (which may be a higher unpublished draft) so the builder
+    // can tell whether the *loaded* version is the published one.
+    const publishedVersionByFormId = new Map(
+      published.map((p) => [p.formId, p.version] as const),
+    );
 
     const byFormId = new Map<string, FormDefinitionSummary>();
     for (const d of drafts) byFormId.set(d.formId, d);
@@ -54,6 +60,7 @@ export const listForms = createServerFn({ method: "GET" })
       .map((f) => ({
         ...f,
         isPublished: f.isPublished || publishedIds.has(f.formId),
+        publishedVersion: publishedVersionByFormId.get(f.formId),
         isDisabled: disabledIds.has(f.formId),
       }))
       .filter((f) => !f.isDisabled || f.isPublished);

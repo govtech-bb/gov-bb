@@ -1,13 +1,14 @@
+import type { Mock } from "vitest";
 import type { Request, Response } from "express";
 
 // The handlers import MdaContactEntity from @govtech-bb/database. Stub it so
 // loading the module doesn't drag in the full TypeORM entity graph.
-jest.mock("@govtech-bb/database", () => ({
+vi.mock("@govtech-bb/database", () => ({
   MdaContactEntity: class MdaContactEntity {},
   FormConfigEntity: class FormConfigEntity {},
 }));
 
-jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
+vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
 
 import { getDataSource } from "../db.js";
 import {
@@ -15,7 +16,7 @@ import {
   createMdaContactHandler,
 } from "./mda-contacts";
 
-const getDataSourceMock = getDataSource as jest.Mock;
+const getDataSourceMock = getDataSource as Mock;
 
 function mockReq(body: unknown, params: Record<string, string> = {}): Request {
   return { body, params } as unknown as Request;
@@ -28,11 +29,11 @@ interface CapturingResponse extends Response {
 
 function mockRes(): CapturingResponse {
   const res = { statusCode: 200, body: undefined } as CapturingResponse;
-  res.status = jest.fn((code: number) => {
+  res.status = vi.fn((code: number) => {
     res.statusCode = code;
     return res;
   }) as unknown as Response["status"];
-  res.json = jest.fn((payload: unknown) => {
+  res.json = vi.fn((payload: unknown) => {
     res.body = payload;
     return res;
   }) as unknown as Response["json"];
@@ -41,13 +42,13 @@ function mockRes(): CapturingResponse {
 
 function fakeDataSource(rows: { find?: unknown[]; created?: unknown } = {}) {
   const { find = [], created = null } = rows;
-  const save = jest.fn(async (e: unknown) => created ?? e);
+  const save = vi.fn(async (e: unknown) => created ?? e);
   const repo = {
-    find: jest.fn(async () => find),
-    create: jest.fn((e: unknown) => e),
+    find: vi.fn(async () => find),
+    create: vi.fn((e: unknown) => e),
     save,
   };
-  const ds = { getRepository: jest.fn(() => repo) };
+  const ds = { getRepository: vi.fn(() => repo) };
   return { ds, repo, save };
 }
 

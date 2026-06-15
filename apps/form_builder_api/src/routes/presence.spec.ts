@@ -1,6 +1,7 @@
+import type { Mock } from "vitest";
 import type { Request, Response } from "express";
 
-jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
+vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
 
 import { getDataSource } from "../db.js";
 import {
@@ -10,7 +11,7 @@ import {
   holdsFreshClaim,
 } from "./presence";
 
-const getDataSourceMock = getDataSource as jest.Mock;
+const getDataSourceMock = getDataSource as Mock;
 
 function mockReq(body: unknown, params: Record<string, string> = {}): Request {
   return { body, params } as unknown as Request;
@@ -23,11 +24,11 @@ interface CapturingResponse extends Response {
 
 function mockRes(): CapturingResponse {
   const res = { statusCode: 200, body: undefined } as CapturingResponse;
-  res.status = jest.fn((code: number) => {
+  res.status = vi.fn((code: number) => {
     res.statusCode = code;
     return res;
   }) as unknown as Response["status"];
-  res.json = jest.fn((payload: unknown) => {
+  res.json = vi.fn((payload: unknown) => {
     res.body = payload;
     return res;
   }) as unknown as Response["json"];
@@ -47,7 +48,7 @@ const HOLDER = {
 
 describe("claimPresenceHandler", () => {
   it("returns held:true with the holder when the conditional upsert claims the row", async () => {
-    const query = jest.fn().mockResolvedValueOnce([ROW]);
+    const query = vi.fn().mockResolvedValueOnce([ROW]);
     getDataSourceMock.mockResolvedValue({ query });
 
     const res = mockRes();
@@ -65,7 +66,7 @@ describe("claimPresenceHandler", () => {
   it("returns held:false with the current holder when someone else holds a fresh claim", async () => {
     // Upsert returns no row (WHERE filtered the update); the holder lookup then
     // returns the live holder.
-    const query = jest
+    const query = vi
       .fn()
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([ROW]);
@@ -85,7 +86,7 @@ describe("claimPresenceHandler", () => {
   it("retries and takes over when the filtered claim's holder vanished mid-read", async () => {
     // attempt 0: upsert filtered ([]), holder read empty ([]) → holder lapsed;
     // attempt 1: upsert now succeeds ([ROW]) → caller takes it over.
-    const query = jest
+    const query = vi
       .fn()
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
@@ -104,7 +105,7 @@ describe("claimPresenceHandler", () => {
 
   it("returns held:false holder:null when the claim stays unresolved after the retry", async () => {
     // Every query returns empty: filtered upsert + empty holder read, twice.
-    const query = jest.fn().mockResolvedValue([]);
+    const query = vi.fn().mockResolvedValue([]);
     getDataSourceMock.mockResolvedValue({ query });
 
     const res = mockRes();
@@ -119,7 +120,7 @@ describe("claimPresenceHandler", () => {
   });
 
   it("rejects a missing/empty userLogin with 400 and never touches the DB", async () => {
-    const query = jest.fn();
+    const query = vi.fn();
     getDataSourceMock.mockResolvedValue({ query });
 
     for (const body of [{}, { userLogin: "" }, { userLogin: "   " }]) {
@@ -143,7 +144,7 @@ describe("claimPresenceHandler", () => {
 
 describe("getPresenceHandler", () => {
   it("returns the fresh holder when one exists", async () => {
-    const query = jest.fn().mockResolvedValue([ROW]);
+    const query = vi.fn().mockResolvedValue([ROW]);
     getDataSourceMock.mockResolvedValue({ query });
 
     const res = mockRes();
@@ -153,7 +154,7 @@ describe("getPresenceHandler", () => {
   });
 
   it("returns holder:null when no fresh claim exists", async () => {
-    const query = jest.fn().mockResolvedValue([]);
+    const query = vi.fn().mockResolvedValue([]);
     getDataSourceMock.mockResolvedValue({ query });
 
     const res = mockRes();
@@ -172,7 +173,7 @@ describe("getPresenceHandler", () => {
 
 describe("releasePresenceHandler", () => {
   it("deletes only the caller's row and returns released:true", async () => {
-    const query = jest.fn().mockResolvedValue([]);
+    const query = vi.fn().mockResolvedValue([]);
     getDataSourceMock.mockResolvedValue({ query });
 
     const res = mockRes();
@@ -189,7 +190,7 @@ describe("releasePresenceHandler", () => {
   });
 
   it("rejects a missing userLogin with 400 and never touches the DB", async () => {
-    const query = jest.fn();
+    const query = vi.fn();
     getDataSourceMock.mockResolvedValue({ query });
 
     const res = mockRes();
@@ -212,13 +213,13 @@ describe("releasePresenceHandler", () => {
 
 describe("holdsFreshClaim", () => {
   it("short-circuits to false for an empty login without querying", async () => {
-    const query = jest.fn();
+    const query = vi.fn();
     expect(await holdsFreshClaim({ query }, "f1", "")).toBe(false);
     expect(query).not.toHaveBeenCalled();
   });
 
   it("is true when a matching fresh row exists", async () => {
-    const query = jest.fn().mockResolvedValue([{ "?column?": 1 }]);
+    const query = vi.fn().mockResolvedValue([{ "?column?": 1 }]);
     expect(await holdsFreshClaim({ query }, "f1", "alice")).toBe(true);
     expect(query).toHaveBeenCalledWith(expect.stringContaining("SELECT 1"), [
       "f1",
@@ -227,7 +228,7 @@ describe("holdsFreshClaim", () => {
   });
 
   it("is false when no matching fresh row exists", async () => {
-    const query = jest.fn().mockResolvedValue([]);
+    const query = vi.fn().mockResolvedValue([]);
     expect(await holdsFreshClaim({ query }, "f1", "alice")).toBe(false);
   });
 });

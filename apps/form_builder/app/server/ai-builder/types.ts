@@ -7,7 +7,9 @@ export interface ChatMessage {
   content: string;
 }
 
-// Synchronous /builder/ai/edit — text-only AI edits.
+// Async text-only AI edits: POST /builder/ai/edit/start returns a jobId; the
+// client polls GET /builder/ai/edit/status/:jobId. Mirrors the PDF pipeline so
+// no single SSR request approaches the Amplify ~28s timeout (#1129).
 export interface EditRequest {
   message?: string;
   recipeJson?: string;
@@ -24,6 +26,13 @@ export interface ConvertResponse {
 // Polling response from /builder/ai/upload/status/:jobId
 export type UploadStatusResponse =
   | { status: "processing" }
+  | { status: "generating" }
+  | ({ status: "done" } & ConvertResponse)
+  | { status: "failed"; reason: string };
+
+// Polling response from /builder/ai/edit/status/:jobId. Like the upload status
+// minus the Textract "processing" phase — an edit is pure Bedrock generation.
+export type EditStatusResponse =
   | { status: "generating" }
   | ({ status: "done" } & ConvertResponse)
   | { status: "failed"; reason: string };

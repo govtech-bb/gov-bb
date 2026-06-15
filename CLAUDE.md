@@ -33,6 +33,14 @@ would sweep one in), and denies an explicit `git add docs/plans/...`. A bare
 commit other work, stage those files **by path** rather than relying on `git
 add -A` while a plan is dirty.
 
+### Prefix plan filenames with the issue number
+
+When a session plan relates to a GitHub issue, **prefix the plan filename with
+that issue number** — e.g. `docs/plans/1252-drop-processors-for-smoke-submissions.md`,
+not `docs/plans/drop-processors-for-smoke-submissions.md`. This keeps the plan
+trivially traceable back to its issue in the `@`-mention picker. If no issue
+applies, a plain descriptive slug is fine.
+
 ## What "clean up" means at the end of a session
 
 When the human says **"clean up"** (or "wrap up and clean up") after work is
@@ -99,24 +107,20 @@ locally first — don't rely on CI to catch breakage:
 pnpm exec nx run-many -t build   # all packages must compile
 ```
 
-For tests, **only run the suites for the apps or packages you actually
-touched** — don't run the full `nx run-many -t test`. Target the affected
-projects instead:
+Tests run on **Vitest 4** (Jest was removed); the full suite is cheap —
+about 30s wall for every project — so run it freely:
 
 ```bash
-pnpm exec nx run <project>:test             # one project you changed
-pnpm exec nx run-many -t test -p p1,p2      # the specific projects you changed
+pnpm exec nx run-many -t test               # everything (~30s)
+pnpm exec nx run <project>:test             # or just one project
 ```
 
-The reason is **out-of-memory issues**: running the full test suite locally
-spawns too many parallel test processes and crashes the machine. Every Jest
-config now caps its own workers and recycles memory (see below), which removes
-the single-suite crash risk — but scoping still keeps the full run's total
-parallelism, and its wall-clock time, in check. CI still runs the full test
-suite, so anything you didn't touch is covered there. This keeps the local loop
-fast while a green build before push avoids the round-trip of a failed CI run.
-The CI build captures output and fails the job on any error, so a single
-TypeScript error in one package fails the whole "Build all packages" step.
+apps/api transforms its tests with swc (`unplugin-swc` in its
+vitest.config.ts) because Vitest's default esbuild transform can't emit
+the `design:paramtypes` metadata NestJS DI resolves constructors from —
+keep that plugin in place when touching api test config. The CI build
+captures output and fails the job on any error, so a single TypeScript
+error in one package fails the whole "Build all packages" step.
 
 **Local caveat:** `landing`'s prebuild fetches from a live external forms API, so
 a fully offline `build` fails on that package. `cms` is not in a working state
