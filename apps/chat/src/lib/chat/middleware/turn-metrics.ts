@@ -1,9 +1,10 @@
 import type { TurnRecord } from "./turn-log";
 
-// CloudWatch Embedded Metric Format (#1049). A single JSON log line that
-// CloudWatch Logs auto-extracts into metrics — no SDK, no agent config.
-// Dimensioned by Model only: low cardinality, and per-model cost/latency is
-// the split that matters when the Bedrock model changes.
+// CloudWatch Embedded Metric Format. One JSON log line that CloudWatch Logs
+// auto-extracts into metrics — no SDK, no agent config. Built from the same
+// TurnRecord turn-log emits, and dimensioned by Model only: low cardinality,
+// and per-model cost/latency is the split that matters when the Bedrock model
+// changes.
 const NAMESPACE = "GovBB/Chat";
 
 export interface TurnMetricsDoc {
@@ -52,12 +53,13 @@ export function buildTurnMetrics(rec: TurnRecord, now: number): TurnMetricsDoc {
     TurnErrors: rec.error ? 1 : 0,
     TurnsCancelled: rec.cancelled ? 1 : 0,
     RetrieveDegraded: rec.retrieveDegraded ? 1 : 0,
-    ToolFailures: rec.toolCalls?.filter((t) => !t.ok).length ?? 0,
+    ToolFailures: rec.toolFailures ?? 0,
   };
 }
 
+// EMF lines only mean anything in CloudWatch, so skip the console noise outside
+// production (dev runs the same turn path).
 export function emitTurnMetrics(rec: TurnRecord): void {
-  // EMF lines are only useful in CloudWatch; skip the noise in local dev.
-  if (import.meta.env.DEV) return;
+  if (process.env.NODE_ENV !== "production") return;
   console.log(JSON.stringify(buildTurnMetrics(rec, Date.now())));
 }
