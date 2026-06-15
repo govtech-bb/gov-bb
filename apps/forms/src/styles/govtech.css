@@ -117,6 +117,26 @@
   gap: var(--spacing-xs);
 }
 
+/* Single declaration/consent checkbox alignment (#405). The package's
+ * `.govbb-checkbox-item` uses `align-items: center`, which centres the tall
+ * 3rem checkbox against the *whole* multi-line consent paragraph so it no
+ * longer lines up with the first line. For the single-option branch only
+ * (tagged `form-page__single-checkbox` in field-renderer), top-align the row
+ * and nudge the label down so its first line sits optically centred against
+ * the checkbox — half the difference between the checkbox height and one line
+ * box (font-size x line-height). Compound selector keeps specificity above the
+ * package rule regardless of stylesheet order; multi-option groups are
+ * untouched. */
+.govbb-checkbox-item.form-page__single-checkbox {
+  align-items: flex-start;
+}
+
+.govbb-checkbox-item.form-page__single-checkbox .govbb-checkbox-item__label {
+  padding-top: calc(
+    (3rem - var(--font-size-body) * var(--line-height-body)) / 2
+  );
+}
+
 /* ---- Show/hide -----------------------------------------------------------
  * The show-hide toggle now renders as a native <details>/<summary> using the
  * @govtech-bb/styles `.govbb-show-hide*` classes (#341). The revealed content
