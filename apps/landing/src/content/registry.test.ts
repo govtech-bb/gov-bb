@@ -60,6 +60,57 @@ describe('resolveServiceHref', () => {
   })
 })
 
+describe('education pages link their published form (#911 Group A)', () => {
+  // Each of these education pages must carry a working "Start now" button: the
+  // form_id is baked onto a `data-start-link` anchor with NO authored href (an
+  // authored href would win over form_id and point at a non-existent /start
+  // sub-page — see bakeStartLinkFormId / StartLink). All three forms are live
+  // in the forms API, so the button resolves once the page is visible.
+  const expected: Record<string, string> = {
+    'education/apply-to-sit-the-bssee-early':
+      'bssee-form-a-pupil-under-11-request',
+    'education/defer-your-childs-bssee-sitting':
+      'bssee-form-b-defer-examination',
+    'education/apply-for-secondary-school-entry-for-a-non-national-child':
+      'non-nationals-secondary-entry',
+  }
+
+  function findStartLink(node: {
+    type?: string
+    tagName?: string
+    properties?: Record<string, unknown>
+    children?: unknown[]
+  }): { properties?: Record<string, unknown> } | undefined {
+    if (
+      node.type === 'element' &&
+      node.tagName === 'a' &&
+      node.properties?.dataStartLink !== undefined
+    ) {
+      return node
+    }
+    for (const child of (node.children ?? []) as Array<typeof node>) {
+      const hit = findStartLink(child)
+      if (hit) return hit
+    }
+    return undefined
+  }
+
+  for (const [url, formId] of Object.entries(expected)) {
+    it(`${url} → ${formId}`, () => {
+      const page = findPage(url)
+      expect(page, `page not found at ${url}`).toBeDefined()
+      expect(page!.frontmatter.form_id).toBe(formId)
+
+      const startLink = findStartLink(page!.hast as never)
+      expect(startLink, 'no data-start-link anchor on the page').toBeDefined()
+      // No authored href — otherwise the baked form_id is ignored.
+      expect(startLink!.properties?.href).toBeUndefined()
+      // form_id is baked onto the anchor at build time (registry.ts).
+      expect(startLink!.properties?.dataFormId).toBe(formId)
+    })
+  }
+})
+
 describe('isSubPage', () => {
   it('flags a service step page whose parent URL is itself a page', () => {
     const start = findPage(
