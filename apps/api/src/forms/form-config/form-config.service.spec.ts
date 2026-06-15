@@ -146,3 +146,38 @@ describe("FormConfigService.resolveProcessors", () => {
     );
   });
 });
+
+describe("FormConfigService.resolveDepartmentName", () => {
+  it("returns the contact's public title when a form_config row references a contact", async () => {
+    const { service, formConfigRepo, mdaContactRepo } = makeService(
+      { formId: "form-a", mdaContactId: "contact-1" },
+      { id: "contact-1", title: "Registration Department" },
+    );
+
+    await expect(service.resolveDepartmentName("form-a")).resolves.toBe(
+      "Registration Department",
+    );
+    expect(formConfigRepo.findOne).toHaveBeenCalledWith({
+      where: { formId: "form-a" },
+    });
+    expect(mdaContactRepo.findOne).toHaveBeenCalledWith({
+      where: { id: "contact-1" },
+    });
+  });
+
+  it("returns null when the form has no form_config row (e.g. sandbox)", async () => {
+    const { service, mdaContactRepo } = makeService(null);
+
+    await expect(service.resolveDepartmentName("form-a")).resolves.toBeNull();
+    expect(mdaContactRepo.findOne).not.toHaveBeenCalled();
+  });
+
+  it("returns null when the contact is missing or its title is blank", async () => {
+    const { service } = makeService(
+      { formId: "form-a", mdaContactId: "contact-1" },
+      { id: "contact-1", title: "" },
+    );
+
+    await expect(service.resolveDepartmentName("form-a")).resolves.toBeNull();
+  });
+});

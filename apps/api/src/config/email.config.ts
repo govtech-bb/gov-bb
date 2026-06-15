@@ -29,4 +29,11 @@ export default registerAs("email", () => ({
   // directory, so it can never silently fall back to a test inbox the way a
   // missing form_config row does (issue #1139).
   feedbackRecipient: process.env.FEEDBACK_RECIPIENT ?? "feedback@govtech.bb",
+
+  // Public base URL of the forms site, where the citizen confirmation email's
+  // coat-of-arms image is served (`/images/coat-of-arms.png`). Reuses
+  // FORMS_BASE_URL (already set in deployed envs for the EzPay return redirect);
+  // when unset (e.g. local dev) the email omits the image rather than emitting
+  // a broken/relative src.
+  assetBaseUrl: process.env.EMAIL_ASSET_BASE_URL ?? process.env.FORMS_BASE_URL,
 }));
