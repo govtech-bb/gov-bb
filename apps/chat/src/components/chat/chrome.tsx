@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import {
   cn,
   Link as GovLink,
@@ -7,9 +6,7 @@ import {
   Text,
 } from "@govtech-bb/react";
 import { TridentAvatar } from "#/components/trident-avatar";
-
-const LANDING_URL =
-  import.meta.env.VITE_LANDING_URL || "https://landing.sandbox.alpha.gov.bb";
+import { LANDING_URL } from "#/config/landing";
 
 export function SiteHeader() {
   return (
@@ -31,13 +28,13 @@ export function SiteHeader() {
       </div>
       <header className="bg-yellow-100">
         <div className="container py-s md:py-m">
-          <Link to="/" aria-label="Go to the alpha.gov.bb homepage">
+          <a href={LANDING_URL} aria-label="Go to the alpha.gov.bb homepage">
             <Logo
               aria-hidden="true"
               width="auto"
               className="h-7 w-auto md:h-9"
             />
-          </Link>
+          </a>
         </div>
       </header>
     </div>

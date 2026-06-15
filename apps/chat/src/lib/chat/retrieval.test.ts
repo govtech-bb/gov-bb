@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { SCORE_THRESHOLD } from "#/lib/rag/config";
 import {
+  buildCitedContext,
   decideRagFallback,
   isConversationalCloser,
   topHandoffCandidateSlug,
@@ -251,4 +252,45 @@ test("topServiceCandidates caps the list", () => {
     3,
   );
   assert.equal(out.length, 3);
+});
+
+// ---------------------------------------------------------------------------
+// buildCitedContext — citation URLs are environment-aware via LANDING_URL
+// ---------------------------------------------------------------------------
+
+test("citation urls are rewritten to the LANDING_URL host", () => {
+  const SANDBOX = "https://landing.sandbox.alpha.gov.bb";
+  const { citations } = buildCitedContext(
+    [{ title: "Get a passport", text: "Apply online." }],
+    [
+      {
+        id: "service-passport",
+        url: "https://alpha.gov.bb/passport",
+        title: "Get a passport",
+        score: 0.9,
+      },
+    ],
+    "how do I get a passport",
+    SANDBOX,
+  );
+  assert.equal(citations.length, 1);
+  assert.equal(citations[0].url, `${SANDBOX}/passport`);
+});
+
+test("citation url rewrite is the identity when LANDING_URL is canonical (prod)", () => {
+  const PROD = "https://alpha.gov.bb";
+  const { citations } = buildCitedContext(
+    [{ title: "Get a passport", text: "Apply online." }],
+    [
+      {
+        id: "service-passport",
+        url: "https://alpha.gov.bb/passport",
+        title: "Get a passport",
+        score: 0.9,
+      },
+    ],
+    "how do I get a passport",
+    PROD,
+  );
+  assert.equal(citations[0].url, "https://alpha.gov.bb/passport");
 });
