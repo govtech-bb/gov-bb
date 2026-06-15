@@ -84,8 +84,11 @@ describe("__root Route", () => {
         >;
         expect(props).toMatchObject({
           links: [
-            { label: "Home", href: "/" },
-            { label: "Terms & Conditions", href: "/terms-conditions" },
+            { label: "Home", href: "https://alpha.gov.bb/" },
+            {
+              label: "Terms & Conditions",
+              href: "https://alpha.gov.bb/terms-conditions",
+            },
           ],
           logoSrc: "/images/coat-of-arms.png",
           logoAlt: "Barbados Coat of Arms",
