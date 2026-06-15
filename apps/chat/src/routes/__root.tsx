@@ -3,13 +3,13 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { Footer, textVariants } from '@govtech-bb/react'
 
+import { LANDING_URL } from '#/config/landing'
+
 import appCss from '../styles.css?url'
 
-const LANDING_ORIGIN = 'https://alpha.gov.bb'
-
 const FOOTER_LINKS = [
-  { label: 'Home', href: `${LANDING_ORIGIN}/` },
-  { label: 'Terms & Conditions', href: `${LANDING_ORIGIN}/terms-conditions` },
+  { label: 'Home', href: `${LANDING_URL}/` },
+  { label: 'Terms & Conditions', href: `${LANDING_URL}/terms-conditions` },
   {
     label: 'Careers',
     href: 'https://job-boards.greenhouse.io/govtechbarbados',
