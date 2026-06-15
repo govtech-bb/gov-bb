@@ -7,6 +7,7 @@ import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { Footer } from "@govtech-bb/react";
 import { NotFound } from "@forms/components";
 import type { QueryClient } from "@tanstack/react-query";
+import { LANDING_URL } from "../config/landing";
 import { OfficialBanner } from "../components/official-banner";
 import { SiteHeader } from "../components/site-header";
 
@@ -19,9 +20,11 @@ export interface RouterContext {
   queryClient: QueryClient;
 }
 
+// Footer "go home" links point at landing, not at forms' own root — a citizen
+// mid-form needs a way back to the rest of alpha.gov.bb. See #1357.
 const FOOTER_LINKS = [
-  { label: "Home", href: "/" },
-  { label: "Terms & Conditions", href: "/terms-conditions" },
+  { label: "Home", href: `${LANDING_URL}/` },
+  { label: "Terms & Conditions", href: `${LANDING_URL}/terms-conditions` },
 ];
 
 const RootLayout = () => (
