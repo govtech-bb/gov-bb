@@ -3,6 +3,7 @@ title: "Get a copy of a death certificate"
 stage: "alpha"
 publish_date: 2026-01-30
 form_id: get-death-certificate
+visibility: preview
 ---
 
 <!-- # Get a copy of a death certificate -->
