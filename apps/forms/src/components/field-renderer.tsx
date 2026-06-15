@@ -579,7 +579,10 @@ export default function FieldRenderer({
                   )}
                   <ErrorMessage id={errorId} message={errorMessage} />
                   <div className="form-page__options">
-                    <div className="govbb-checkbox-item" key={option.value}>
+                    <div
+                      className="govbb-checkbox-item form-page__single-checkbox"
+                      key={option.value}
+                    >
                       <input
                         {...sharedProps}
                         {...requiredProps}

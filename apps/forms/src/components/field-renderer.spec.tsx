@@ -504,6 +504,14 @@ describe("FieldRenderer", () => {
       expect(inputs).toHaveLength(1);
     });
 
+    it("tags the checkbox item with the single-checkbox alignment class", () => {
+      const { container } = renderField(
+        primitive("checkbox", { options: singleOption }),
+      );
+      const item = container.querySelector(".govbb-checkbox-item");
+      expect(item).toHaveClass("form-page__single-checkbox");
+    });
+
     it("clicking unchecked checkbox calls handleChange with the option value", async () => {
       const user = userEvent.setup();
       mockState = { value: "", meta: { isValid: true, errors: [] } };
@@ -545,6 +553,17 @@ describe("FieldRenderer", () => {
       const inputs = container.querySelectorAll("input");
       await user.click(inputs[0]);
       expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["a"]);
+    });
+
+    it("does not tag multi-option items with the single-checkbox alignment class", () => {
+      const { container } = renderField(
+        primitive("checkbox", { options: multiOptions }),
+      );
+      const items = container.querySelectorAll(".govbb-checkbox-item");
+      expect(items.length).toBeGreaterThan(1);
+      items.forEach((item) =>
+        expect(item).not.toHaveClass("form-page__single-checkbox"),
+      );
     });
 
     it("clicking a checked option removes it from the selection", async () => {
