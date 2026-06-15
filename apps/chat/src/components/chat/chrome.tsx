@@ -8,6 +8,7 @@ import {
 import { TridentAvatar } from "#/components/trident-avatar";
 import { LANDING_URL } from "#/config/landing";
 
+// Official-government banner + brand header. Static; no interactivity yet.
 export function SiteHeader() {
   return (
     <div>
@@ -29,11 +30,7 @@ export function SiteHeader() {
       <header className="bg-yellow-100">
         <div className="container py-s md:py-m">
           <a href={LANDING_URL} aria-label="Go to the alpha.gov.bb homepage">
-            <Logo
-              aria-hidden="true"
-              width="auto"
-              className="h-7 w-auto md:h-9"
-            />
+            <Logo aria-hidden="true" width="auto" className="h-7 w-auto md:h-9" />
           </a>
         </div>
       </header>
@@ -41,6 +38,9 @@ export function SiteHeader() {
   );
 }
 
+// Conversation header: a "Close" link back to the landing site, the bot avatar,
+// and a "Start again" control (with persistence on, the only way to drop
+// restored history and begin fresh). Mirrors the old app's header.
 export function ChatHeader({ onStartAgain }: { onStartAgain: () => void }) {
   return (
     <header className="bg-white-00">
