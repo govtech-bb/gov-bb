@@ -40,7 +40,7 @@ test("applies defaults when optional vars are unset", () => {
   assert.equal(env.BEDROCK_REGION, "ca-central-1");
   assert.equal(env.LLM_MODEL, "claude-haiku-4-5");
   assert.equal(env.REWRITE_MODEL, "claude-haiku-4-5");
-  assert.equal(env.LANDING_URL, "https://landing.sandbox.alpha.gov.bb");
+  assert.equal(env.LANDING_URL, "https://alpha.gov.bb");
   assert.equal(env.BEDROCK_PROMPT_CACHE, false);
 });
 
@@ -50,7 +50,7 @@ test("treats empty-string vars as unset so defaults apply (Vite define bakes '')
   process.env.BEDROCK_REGION = "";
   process.env.LLM_MODEL = "";
   const env = getServerEnv();
-  assert.equal(env.LANDING_URL, "https://landing.sandbox.alpha.gov.bb");
+  assert.equal(env.LANDING_URL, "https://alpha.gov.bb");
   assert.equal(env.BEDROCK_REGION, "ca-central-1");
   assert.equal(env.LLM_MODEL, "claude-haiku-4-5");
 });
