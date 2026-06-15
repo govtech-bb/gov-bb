@@ -490,8 +490,9 @@ export default function FormRenderer({
               const isOpen = showHideValues[group.toggle.id] ?? false;
               return (
                 <React.Fragment key={group.toggle.id}>
-                  {/* Toggle button — hint and controlled fields live outside the
-                    FieldRenderer so we can wrap them all in the content border */}
+                  {/* Toggle (<details>/<summary>) — the hint and controlled
+                    fields live outside the FieldRenderer so we can wrap them all
+                    in the govbb-show-hide content border */}
                   <FieldRenderer
                     form={form}
                     field={group.toggle}
@@ -501,7 +502,7 @@ export default function FormRenderer({
                     previewToken={previewToken}
                   />
                   {isOpen && (
-                    <div className="form-page__show-hide-content">
+                    <div className="govbb-show-hide__content">
                       {group.toggle.hint && (
                         <p className="govbb-hint">{group.toggle.hint}</p>
                       )}
