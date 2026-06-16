@@ -11,31 +11,24 @@ import {
 } from "drizzle-orm/pg-core";
 import { EMBED_DIMS } from "../rag/embed";
 
-// pgvector extension must exist before the table is created. Drizzle-kit
-// doesn't generate extension DDL automatically, so we keep a sentinel SQL
-// the migrator runs before applying migrations.
+// pgvector extension must exist before the tables are created. drizzle-kit
+// doesn't emit extension DDL, so the migrator runs this sentinel first.
 export const ENABLE_PGVECTOR = sql`CREATE EXTENSION IF NOT EXISTS vector`;
 
-// --------------------------------------------------------------------------
-// Schema — documents + chunks + ingest_runs. See docs/plans/rag-pipeline-v2.md.
-// --------------------------------------------------------------------------
+// Content taxonomy, matched to what `@govtech-bb/content` actually produces
+// today. The corpus is a single entity type — `ServiceEntity` — so every
+// document is a "service". (The old app's ministry/department/state-body/form
+// kinds were stale: the /government/organisations corpus was deleted and the
+// chunker only ever emitted these. Kept as single-/two-member unions so the
+// column stays explicit and extensible if other content rejoins later.)
+export type DocumentKind = "service";
 
-export type DocumentKind =
-  | "ministry"
-  | "department"
-  | "state-body"
-  | "service"
-  | "form";
-
-export type ChunkKind =
-  | "name"
-  | "minister"
-  | "head"
-  | "contact"
-  | "body"
-  | "intent"
-  | "section"
-  | "form";
+// Per service the chunker emits one synthetic "intent" chunk (title +
+// description folded into a question, for retrieval matching) and N "section"
+// chunks (body split on heading hierarchy). Service-specific fields
+// (visibility, formId, category, subcategory, serviceType, hasStartPage,
+// publishDate, sourceUrl) ride in documents.metadata, not as columns.
+export type ChunkKind = "intent" | "section";
 
 export const documents = pgTable(
   "documents",

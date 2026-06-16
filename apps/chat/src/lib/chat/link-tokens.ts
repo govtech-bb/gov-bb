@@ -1,17 +1,16 @@
-// Link tokenisation (#1270, GOV.UK Chat's LinkTokenMapper pattern). URLs
-// inside retrieved chunk text are replaced with opaque tokens (link_1,
-// link_2, …) before the model ever sees them, with the token→URL map kept
-// app-side. The model can only ever emit tokens we minted this turn — a
-// fabricated or mangled URL is structurally impossible, not just forbidden
-// by the prompt. The client swaps tokens back to real links at render time
-// (whole-text, every render — no stream-chunk boundary problem) and strips
-// tokens that map to nothing.
+// Link tokenisation (GOV.UK Chat's LinkTokenMapper pattern). URLs inside
+// retrieved chunk text are replaced with opaque tokens (link_1, link_2, …)
+// before the model ever sees them, with the token→URL map kept app-side. The
+// model can only ever emit tokens we minted this turn — a fabricated or mangled
+// URL is structurally impossible, not just forbidden by the prompt. The client
+// swaps tokens back at render time (whole-text, every render — no stream-chunk
+// boundary problem) and strips tokens that map to nothing.
 
 export type LinkTokenMap = Record<string, string>;
 
 // [label](target) — markdown links in chunk text. Targets are absolute
-// (https://…) or site-relative (/travel-id-citizenship/…); landing content
-// uses both. mailto:/tel: and intra-page #anchors are left alone.
+// (https://…) or site-relative (/travel-id-citizenship/…). mailto:/tel: and
+// intra-page #anchors are left alone.
 const MD_LINK_RE = /\[([^\]\n]*)\]\(([^)\s]+)\)/g;
 
 const TOKEN_PREFIX = "link_";
@@ -21,11 +20,9 @@ const TOKEN_RE = /\blink_(\d+)\b/g;
 const MD_TOKEN_LINK_RE = /\[([^\]\n]*)\]\((link_\d+)\)/g;
 
 function isTokenizable(target: string): boolean {
-  if (target.startsWith("http://") || target.startsWith("https://")) {
+  if (target.startsWith("http://") || target.startsWith("https://"))
     return true;
-  }
-  // Site-relative paths; bare anchors and protocol links stay as-is.
-  return target.startsWith("/");
+  return target.startsWith("/"); // site-relative; bare anchors/protocol links stay
 }
 
 export interface TokenizeState {
@@ -37,10 +34,9 @@ export function newTokenizeState(): TokenizeState {
   return { map: {}, byUrl: new Map() };
 }
 
-// Replace every markdown link target in `text` with a token, resolving
-// relative targets against the landing origin so the restored link always
-// works from the chat's own origin. The same URL gets the same token across
-// the whole context block.
+// Replace every markdown link target in `text` with a token, resolving relative
+// targets against the landing origin so the restored link works from the chat's
+// own origin. The same URL gets the same token across the whole context block.
 export function tokenizeLinks(
   text: string,
   state: TokenizeState,
@@ -61,14 +57,14 @@ export function tokenizeLinks(
   });
 }
 
-// Render-side restoration. Known tokens become real links; unknown tokens
-// (the model invented one) are removed — a hallucinated link must never
-// render. Runs on the full accumulated text each render, so a token split
-// across stream chunks simply restores one render later.
+// Render-side restoration. Known tokens become real links; unknown tokens (the
+// model invented one) are removed — a hallucinated link must never render. Runs
+// on the full accumulated text each render, so a token split across stream
+// chunks simply restores one render later.
 export function restoreLinks(text: string, map: LinkTokenMap): string {
   if (!text) return text;
-  // Markdown-shaped first, so the bare-token pass below can't eat the target
-  // out from under its label.
+  // Markdown-shaped first, so the bare-token pass can't eat the target out from
+  // under its label.
   let out = text.replace(
     MD_TOKEN_LINK_RE,
     (_whole, label: string, token: string) => {

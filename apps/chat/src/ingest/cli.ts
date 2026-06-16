@@ -1,18 +1,20 @@
-// Ingest CLI. Run via `pnpm ingest`.
+// Ingest CLI. Run via `pnpm ingest` (env loaded by the pnpm script's
+// --env-file-if-exists flags). Needs DATABASE_URL + AWS creds for Bedrock.
 //
-//   pnpm ingest                     # full reconcile
-//   pnpm ingest --dry-run           # print plan, no writes
-//   pnpm ingest --report            # coverage stats
-//   pnpm ingest --reset-embeddings  # accept embedding-model change
+//   pnpm ingest                     # full reconcile (prune orphans)
+//   pnpm ingest --dry-run           # print the plan, no writes
+//   pnpm ingest --report            # coverage stats by kind
+//   pnpm ingest --limit=10          # diff the first N services (never prunes)
+//   pnpm ingest --reset-embeddings  # accept an embedding-model change (drops all)
 
-// Env loaded by `tsx --env-file-if-exists=.env.local` in the pnpm script.
 import { randomUUID } from "node:crypto";
 import { count, sql } from "drizzle-orm";
 import { loadContent } from "@govtech-bb/content";
 import { getDb, hasDatabase, schema } from "#/lib/db";
+import { MODEL_ID } from "#/lib/rag/embed";
 import { chunkService, type PlannedEntity } from "./chunker";
-import { applyDeletes, buildPlan, summarise } from "./plan";
-import { applyPlan } from "./write";
+import { planIngest, summarise, withoutPruning } from "./plan";
+import { applyDeletes, applyPlan, fetchExistingState } from "./write";
 
 interface Args {
   dryRun: boolean;
@@ -35,16 +37,10 @@ function parseArgs(argv: string[]): Args {
   };
 }
 
-function modelId(): string {
-  const provider = process.env.EMBED_PROVIDER ?? "local";
-  if (provider === "bedrock") {
-    return process.env.BEDROCK_EMBED_MODEL ?? "amazon.titan-embed-text-v2:0";
-  }
-  return "local:sentence-transformers/all-MiniLM-L6-v2";
-}
-
+// A stored embedding from a different model can't be mixed into one index. If
+// the DB holds another model, refuse unless --reset-embeddings (and --force,
+// since the reset drops everything and re-embeds from scratch).
 async function preflight(
-  model: string,
   resetEmbeddings: boolean,
   force: boolean,
 ): Promise<void> {
@@ -52,22 +48,24 @@ async function preflight(
   const rows = await db
     .selectDistinct({ embeddingModel: schema.documents.embeddingModel })
     .from(schema.documents);
-  const others = rows.map((r) => r.embeddingModel).filter((m) => m !== model);
+  const others = rows
+    .map((r) => r.embeddingModel)
+    .filter((m) => m !== MODEL_ID);
   if (others.length === 0) return;
   if (!resetEmbeddings) {
     throw new Error(
-      `Embedding model mismatch: DB has [${others.join(", ")}], CLI is using "${model}". ` +
-        `Re-run with --reset-embeddings to drop and rebuild (will re-embed everything).`,
+      `Embedding model mismatch: DB has [${others.join(", ")}], CLI uses "${MODEL_ID}". ` +
+        `Re-run with --reset-embeddings to drop and rebuild.`,
     );
   }
   if (!force) {
     throw new Error(
-      `--reset-embeddings will DROP all chunks and documents (DB has model(s) ` +
-        `[${others.join(", ")}]). This is irreversible. Re-run with --force to confirm.`,
+      `--reset-embeddings will DROP all chunks and documents (model(s) [${others.join(", ")}]). ` +
+        `Irreversible — re-run with --force to confirm.`,
     );
   }
   console.log(
-    `[ingest] resetting: dropping all chunks/documents with model(s) ${others.join(", ")}`,
+    `[ingest] resetting: dropping all rows (model(s) ${others.join(", ")})`,
   );
   await db.delete(schema.chunks).where(sql`true`);
   await db.delete(schema.documents).where(sql`true`);
@@ -84,30 +82,52 @@ async function printReport(): Promise<void> {
     .from(schema.chunks)
     .groupBy(schema.chunks.kind);
   console.log("\n=== documents by kind ===");
-  for (const r of docs) console.log(`  ${r.kind.padEnd(15)} ${r.count}`);
+  for (const r of docs) console.log(`  ${r.kind.padEnd(12)} ${r.count}`);
   console.log("\n=== chunks by kind ===");
-  for (const r of chunks) console.log(`  ${r.kind.padEnd(15)} ${r.count}`);
+  for (const r of chunks) console.log(`  ${r.kind.padEnd(12)} ${r.count}`);
+}
+
+function logProgress(start: number) {
+  let lastTick = start;
+  const reportEvery = 25;
+  return (e: {
+    phase: string;
+    done: number;
+    total: number;
+    lastId?: string;
+  }) => {
+    const now = Date.now();
+    const isFirst = e.done === 1;
+    const isLast = e.done === e.total;
+    if (!isFirst && !isLast && e.done % reportEvery !== 0) return;
+    const recentMs = now - lastTick;
+    lastTick = now;
+    const pct = ((e.done / e.total) * 100).toFixed(0);
+    const rate = e.done / ((now - start) / 1000);
+    const eta = rate > 0 ? Math.round((e.total - e.done) / rate) : 0;
+    const perItem = !isFirst
+      ? ` (~${(recentMs / reportEvery).toFixed(0)}ms/item)`
+      : "";
+    console.log(
+      `[ingest] ${e.phase}: ${e.done}/${e.total} ${pct}% eta=${eta}s${perItem} last=${e.lastId ?? "?"}`,
+    );
+  };
 }
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  if (!hasDatabase()) throw new Error("DATABASE_URL not set");
 
   if (args.report && !args.dryRun) {
-    if (!hasDatabase()) throw new Error("DATABASE_URL not set");
     await printReport();
     process.exit(0);
   }
 
-  if (!hasDatabase()) throw new Error("DATABASE_URL not set");
-  const model = modelId();
-  console.log(`[ingest] embedding_model=${model}`);
-
-  await preflight(model, args.resetEmbeddings, args.force);
+  console.log(`[ingest] embedding_model=${MODEL_ID}`);
+  await preflight(args.resetEmbeddings, args.force);
 
   const content = await loadContent({ contentDir: args.contentDir });
-  if (content.warnings.length) {
-    for (const w of content.warnings) console.warn(`[content] ${w}`);
-  }
+  for (const w of content.warnings) console.warn(`[content] ${w}`);
   console.log(`[ingest] loaded ${content.services.length} services`);
 
   let planned: PlannedEntity[] = content.services.map(chunkService);
@@ -116,19 +136,18 @@ async function main() {
     console.log(`[ingest] --limit=${args.limit} → ${planned.length} entities`);
   }
 
-  const plan = await buildPlan(planned, model);
-  // --limit / --content-dir diff a SUBSET of content against the whole DB, so
-  // every out-of-scope row looks orphaned. Deleting those would wipe the rest
-  // of the store. Never prune on a scoped run; only a full reconcile deletes.
-  if (args.limit !== undefined || args.contentDir !== undefined) {
+  const existing = await fetchExistingState();
+  const scoped = args.limit !== undefined || args.contentDir !== undefined;
+  let plan = planIngest(planned, existing, MODEL_ID);
+  if (scoped) {
     if (plan.documents.orphans.length || plan.chunks.orphans.length) {
       console.log(
         `[ingest] scoped run: keeping ${plan.documents.orphans.length} doc / ${plan.chunks.orphans.length} chunk(s) that look orphaned (run a full ingest to prune)`,
       );
     }
-    plan.documents.orphans = [];
-    plan.chunks.orphans = [];
+    plan = withoutPruning(plan);
   }
+
   const summary = summarise(plan);
   console.log("[ingest] plan:");
   console.log(
@@ -146,40 +165,13 @@ async function main() {
 
   const db = await getDb();
   const runId = randomUUID();
-  await db.insert(schema.ingestRuns).values({
-    id: runId,
-    status: "running",
-    summary: { ...summary },
-  });
+  await db
+    .insert(schema.ingestRuns)
+    .values({ id: runId, status: "running", summary: { ...summary } });
 
   try {
     await applyDeletes(plan);
-
-    const start = Date.now();
-    let lastTick = start;
-    const reportEvery = 25;
-    await applyPlan(plan, model, (e) => {
-      const now = Date.now();
-      const isFirst = e.done === 1;
-      const isLast = e.done === e.total;
-      const elapsedMs = now - lastTick;
-      if (!isFirst && !isLast && e.done % reportEvery !== 0) return;
-      lastTick = now;
-      const totalElapsedSec = ((now - start) / 1000).toFixed(1);
-      const pct = ((e.done / e.total) * 100).toFixed(0);
-      // ETA from average rate so far
-      const rate = e.done / ((now - start) / 1000); // items/sec
-      const remaining = rate > 0 ? Math.round((e.total - e.done) / rate) : 0;
-      const recent =
-        elapsedMs > 0 && reportEvery > 0
-          ? ` (~${(elapsedMs / reportEvery).toFixed(0)}ms/item)`
-          : "";
-      console.log(
-        `[ingest] ${e.phase}: ${e.done}/${e.total} ${pct}% ` +
-          `elapsed=${totalElapsedSec}s eta=${remaining}s${recent} last=${e.lastId ?? "?"}`,
-      );
-    });
-
+    await applyPlan(plan, MODEL_ID, { onProgress: logProgress(Date.now()) });
     await db
       .update(schema.ingestRuns)
       .set({
@@ -189,7 +181,6 @@ async function main() {
       })
       .where(sql`id = ${runId}`);
     console.log("[ingest] done");
-
     if (args.report) await printReport();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
