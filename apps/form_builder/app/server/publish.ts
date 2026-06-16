@@ -8,6 +8,11 @@ import {
   deployBranchName,
   deployBranchPrefix,
   eraseBranchName,
+  kebabIdSchema,
+  KEBAB_ID_PATTERN,
+  KEBAB_ID_ERROR,
+  SEMVER_PATTERN,
+  SEMVER_ERROR,
   type ServiceContractRecipe,
   type ValidationResult,
 } from "@govtech-bb/form-types";
@@ -108,6 +113,21 @@ export const publishRecipe = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ prUrl: string; prNumber: number }> => {
     const recipe = data.recipe as ServiceContractRecipe;
     const description = data.description ?? "";
+
+    // Security gate: `recipe` enters as `z.unknown()`, so before its
+    // formId/version are interpolated into any GitHub path or branch name,
+    // assert they are a plain kebab-case id / semver. A value like
+    // `../../../.github/workflows/evil` would otherwise escape the recipes
+    // folder. This is a local, independent check — the remote /validate call
+    // below resolves refs, not id format — and the encodeURIComponent at the
+    // path sinks is the second layer.
+    if (!KEBAB_ID_PATTERN.test(recipe?.formId)) {
+      throw new Error(`Invalid form ID. ${KEBAB_ID_ERROR}`);
+    }
+    if (!SEMVER_PATTERN.test(recipe?.version)) {
+      throw new Error(`Invalid version. ${SEMVER_ERROR}`);
+    }
+
     const session = await requireSession();
     const token = session.accessToken;
     const baseBranch = resolveBaseBranch();
@@ -199,7 +219,12 @@ export const publishRecipe = createServerFn({ method: "POST" })
       try {
         // The file must not already exist. (Checking the new branch is
         // equivalent to checking base — the branch was just created from it.)
-        const recipePath = `apps/api/src/forms/form-definitions/recipes/${recipe.formId}/${recipe.version}.json`;
+        // Encode each user-provided segment; structural slashes between
+        // segments are preserved. A no-op for the kebab/semver values the gate
+        // above already enforced — defense-in-depth at the sink.
+        const recipePath = `apps/api/src/forms/form-definitions/recipes/${encodeURIComponent(
+          recipe.formId,
+        )}/${encodeURIComponent(recipe.version)}.json`;
         const checkRes = await getContents(token, recipePath, branch);
         if (checkRes.status === 200) {
           throw new Error(
@@ -282,11 +307,17 @@ async function listOpenDeployClaims(
 export const getNextDeployVersion = createServerFn({ method: "GET" })
   .inputValidator(
     z.object({
-      formId: z.string().min(1),
+      // formId flows into listVersions' GitHub path (#293); pin to kebab-case.
+      formId: kebabIdSchema,
       currentVersion: z.string().nullable(),
     }),
   )
   .handler(async ({ data }): Promise<{ version: string }> => {
+    // formId flows into listVersions' GitHub path; re-check here too since a
+    // direct (in-process) call bypasses the inputValidator (#293).
+    if (!KEBAB_ID_PATTERN.test(data.formId)) {
+      throw new Error(`Invalid form ID. ${KEBAB_ID_ERROR}`);
+    }
     const session = await requireSession();
     const token = session.accessToken;
     const baseBranch = resolveBaseBranch();
@@ -361,7 +392,9 @@ export const eraseRecipe = createServerFn({ method: "POST" })
     // client modal already enforces this, but the client is bypassable and the
     // reason is the audit trail for a permanent deletion.
     z.object({
-      formId: z.string().min(1),
+      // formId is interpolated into a GitHub path + branch name; pin it
+      // to a kebab-case id so a traversal value can't escape the recipes folder.
+      formId: kebabIdSchema,
       title: z.string().default(""),
       reason: z.string().min(1).max(2000),
     }),
@@ -379,6 +412,11 @@ export const eraseRecipe = createServerFn({ method: "POST" })
     }
     if (reason.length > 2000) {
       throw new Error("Erase reason must be 2000 characters or fewer.");
+    }
+    // formId is interpolated into a GitHub path + branch name; re-check format
+    // here too since a direct (in-process) call bypasses the inputValidator.
+    if (!KEBAB_ID_PATTERN.test(formId)) {
+      throw new Error(`Invalid form ID. ${KEBAB_ID_ERROR}`);
     }
 
     const session = await requireSession();
@@ -430,7 +468,11 @@ export const eraseRecipe = createServerFn({ method: "POST" })
         body: JSON.stringify({
           base_tree: baseTreeSha,
           tree: versions.map((v) => ({
-            path: `${RECIPES_BASE}/${formId}/${v}.json`,
+            // Encode each user-provided segment; a no-op for the
+            // kebab/semver values already enforced above.
+            path: `${RECIPES_BASE}/${encodeURIComponent(
+              formId,
+            )}/${encodeURIComponent(v)}.json`,
             mode: "100644",
             type: "blob",
             sha: null,
