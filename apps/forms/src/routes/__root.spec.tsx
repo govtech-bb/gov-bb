@@ -70,6 +70,24 @@ describe("__root Route", () => {
       expect(screen.getByTestId("footer")).toBeInTheDocument();
     });
 
+    // Skip-to-content link (#341/#321): a keyboard user must be able to bypass
+    // the banner/header and jump straight to <main>.
+    it("renders a skip link targeting the main landmark", () => {
+      const { container } = render(<Route.component />);
+      const skipLink = screen.getByRole("link", {
+        name: /skip to main content/i,
+      });
+      expect(skipLink).toHaveAttribute("href", "#main-content");
+
+      const main = container.querySelector("main");
+      expect(main).toHaveAttribute("id", "main-content");
+
+      // The skip link must be the first focusable element so it is reached on
+      // the very first Tab press.
+      const firstLink = container.querySelector("a");
+      expect(firstLink).toBe(skipLink);
+    });
+
     it("wires the Footer with the expected links, logoSrc, and current-year copyright", () => {
       // Pin the clock so the copyrightText assertion is deterministic
       // (the layout reads new Date().getFullYear()).

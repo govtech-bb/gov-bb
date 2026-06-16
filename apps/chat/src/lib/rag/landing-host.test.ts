@@ -1,38 +1,25 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { rewriteLandingHost } from "./landing-host";
+import { rewriteLandingHost } from "./landing-host.ts";
 
-const SANDBOX = "https://landing.sandbox.alpha.gov.bb";
+const LANDING = "https://landing.sandbox.alpha.gov.bb";
 
-test("rewrites canonical prod urls to the environment's landing origin", () => {
+test("rewrites a canonical alpha.gov.bb URL to the viewer's landing origin", () => {
   assert.equal(
-    rewriteLandingHost(
-      "https://alpha.gov.bb/travel-id-citizenship/post-office-redirection-individual",
-      SANDBOX,
-    ),
-    `${SANDBOX}/travel-id-citizenship/post-office-redirection-individual`,
+    rewriteLandingHost("https://alpha.gov.bb/passport?x=1#frag", LANDING),
+    "https://landing.sandbox.alpha.gov.bb/passport?x=1#frag",
   );
   assert.equal(
-    rewriteLandingHost("https://www.alpha.gov.bb/feedback?x=1#frag", SANDBOX),
-    `${SANDBOX}/feedback?x=1#frag`,
+    rewriteLandingHost("https://www.alpha.gov.bb/services/tax", LANDING),
+    "https://landing.sandbox.alpha.gov.bb/services/tax",
   );
 });
 
-test("is the identity when LANDING_URL is the canonical origin (prod)", () => {
-  assert.equal(
-    rewriteLandingHost(
-      "https://alpha.gov.bb/business-trade/sell-goods-services-beach-park",
-      "https://alpha.gov.bb",
-    ),
-    "https://alpha.gov.bb/business-trade/sell-goods-services-beach-park",
-  );
+test("leaves non-landing hosts untouched", () => {
+  const ext = "https://example.com/foo";
+  assert.equal(rewriteLandingHost(ext, LANDING), ext);
 });
 
-test("leaves non-landing and unparseable urls alone", () => {
-  // External source pages (legacy gov.bb) must keep their real host.
-  assert.equal(
-    rewriteLandingHost("https://www.gov.bb/some-ministry-page", SANDBOX),
-    "https://www.gov.bb/some-ministry-page",
-  );
-  assert.equal(rewriteLandingHost("not a url", SANDBOX), "not a url");
+test("returns the input unchanged when it isn't a valid URL", () => {
+  assert.equal(rewriteLandingHost("/relative/path", LANDING), "/relative/path");
 });

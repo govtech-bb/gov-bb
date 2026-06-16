@@ -1,6 +1,9 @@
 import { Button, TextArea } from "@govtech-bb/react";
 import { useEffect, useRef } from "react";
 
+// The message input pinned to the bottom of the chat. Enter sends, Shift+Enter
+// adds a newline; while a reply streams the Send button becomes Stop. Width is
+// capped to match the message bubbles above it.
 export function Composer({
   input,
   onChange,
@@ -14,11 +17,11 @@ export function Composer({
   onSubmit: () => void;
   onStop: () => void;
   streaming: boolean;
-  // Mode-aware: mid-form the assistant is the one asking, so "Ask a
-  // question..." misleads — the page passes "Type your answer…" instead.
   placeholder?: string;
 }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Return focus to the box when a turn finishes (streaming → false), so the
+  // next message can be typed without clicking back in.
   useEffect(() => {
     if (!streaming) inputRef.current?.focus();
   }, [streaming]);
@@ -40,6 +43,7 @@ export function Composer({
             className="composer-field flex-1 text-black-00"
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={(e) => {
+              // Enter sends; Shift+Enter drops to a new line.
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 if (!streaming) onSubmit();

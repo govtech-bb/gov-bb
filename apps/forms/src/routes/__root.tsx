@@ -30,9 +30,16 @@ const FOOTER_LINKS = [
 const RootLayout = () => (
   <div className="flex min-h-dvh flex-col bg-white-00">
     <HeadContent />
+    {/* Skip-to-content link (#341/#321): the first focusable element, hidden
+        until focused, lets keyboard users bypass the banner/header and jump
+        straight to <main>. `.govbb-visually-hidden-focusable` ships with
+        @govtech-bb/styles. */}
+    <a href="#main-content" className="govbb-visually-hidden-focusable">
+      Skip to main content
+    </a>
     <OfficialBanner />
     <SiteHeader />
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       <Outlet />
     </main>
     <Footer

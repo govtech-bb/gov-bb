@@ -5,6 +5,7 @@ stage: "alpha"
 publish_date: 2026-06-02
 category: education
 visibility: draft
+form_id: bssee-form-a-pupil-under-11-request
 ---
 
 If your child is academically ready to take the Barbados Secondary Schools’ Entrance Examination (BSSEE) ahead of their year group, for example at age 10 instead of 11, you can apply for them to sit it early.
@@ -29,7 +30,7 @@ Decisions are made by the Ministry and are at its discretion.
 
 You can complete the online form. It takes about 10 minutes.
 
-<a data-start-link href="/education/apply-to-sit-the-bssee-early/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 
