@@ -25,3 +25,5 @@ About 5 minutes. Your checklist is based on the type of event you are organising
 </div>
 
 <a data-start-link href="/business-trade/crop-over-permits/form">Start now</a>
+
+<!-- fact-check: 2026-06-16 -->
