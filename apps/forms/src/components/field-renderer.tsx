@@ -199,6 +199,26 @@ export default function FieldRenderer({
         // the browser can autofill a saved number (WCAG 2.2 SC 1.3.5).
         const autoComplete = field.htmlType === "tel" ? "tel" : undefined;
 
+        // Per-row input props for the "Add another" array paths. Each repeated
+        // input needs a unique `id` (#1024) — without it the DOM carries
+        // duplicate ids and, for number fields, every stepper's `aria-controls`
+        // points at row 0. The first row keeps `field.id` so the error-summary
+        // anchor (`#field.id`) and the group `<label htmlFor={field.id}>` still
+        // resolve to a real, focusable input; later rows are index-suffixed and
+        // get a numbered `aria-label` (the group label only names row 0).
+        // `index === undefined` is the single-field path: props are unchanged.
+        const rowProps = (index?: number) => {
+          if (index === undefined) return sharedProps;
+          const rowId = index === 0 ? field.id : `${field.id}-${index}`;
+          return {
+            ...sharedProps,
+            id: rowId,
+            ...(index > 0
+              ? { "aria-label": `${field.label} ${index + 1}` }
+              : {}),
+          };
+        };
+
         switch (field.htmlType) {
           case "date": {
             const value = f.state.value as DateValue | undefined;
@@ -320,19 +340,23 @@ export default function FieldRenderer({
               value: string,
               onChange: (next: string) => void,
               withRequired: boolean,
-            ): JSX.Element => (
-              <div className="govbb-input-wrapper">
-                <textarea
-                  key={field.id}
-                  {...sharedProps}
-                  {...(withRequired ? requiredProps : {})}
-                  className="govbb-textarea"
-                  value={value}
-                  aria-invalid={invalid}
-                  onChange={(e) => onChange(e.target.value)}
-                />
-              </div>
-            );
+              index?: number,
+            ): JSX.Element => {
+              const props = rowProps(index);
+              return (
+                <div className="govbb-input-wrapper">
+                  <textarea
+                    key={props.id}
+                    {...props}
+                    {...(withRequired ? requiredProps : {})}
+                    className="govbb-textarea"
+                    value={value}
+                    aria-invalid={invalid}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
+                </div>
+              );
+            };
 
             let textareaElement: JSX.Element;
 
@@ -384,6 +408,7 @@ export default function FieldRenderer({
                         values && values.length > 0 ? values[i] : "",
                         (next) => updateField(values, i, next),
                         false,
+                        i,
                       )}
                       {i === fieldCount - 1 && i != 0 ? (
                         <button
@@ -449,24 +474,24 @@ export default function FieldRenderer({
               value: string,
               onChange: (next: string) => void,
               withRequired: boolean,
-            ): JSX.Element =>
-              isNumber ? (
+              index?: number,
+            ): JSX.Element => {
+              const props = rowProps(index);
+              return isNumber ? (
                 <NumberInput
                   value={value}
                   onChange={onChange}
                   invalid={invalid}
                   inputProps={
-                    withRequired
-                      ? { ...sharedProps, ...requiredProps }
-                      : sharedProps
+                    withRequired ? { ...props, ...requiredProps } : props
                   }
                 />
               ) : (
                 <div className="govbb-input-wrapper">
                   <MaskedInput
-                    key={field.id}
+                    key={props.id}
                     mask={field.mask}
-                    {...sharedProps}
+                    {...props}
                     {...(withRequired ? requiredProps : {})}
                     autoComplete={autoComplete}
                     className="govbb-input"
@@ -476,6 +501,7 @@ export default function FieldRenderer({
                   />
                 </div>
               );
+            };
 
             if (!fieldArray) {
               const value = f.state.value as string | undefined;
@@ -525,6 +551,7 @@ export default function FieldRenderer({
                         values && values.length > 0 ? values[i] : "",
                         (next) => updateField(values, i, next),
                         false,
+                        i,
                       )}
                       {i === fieldCount - 1 && i != 0 ? (
                         <button
