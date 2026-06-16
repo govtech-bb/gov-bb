@@ -16,8 +16,10 @@ About 5 minutes. Your checklist is based on the type of event you are organising
 ## What you will need
 
 - The type of event you are putting on.
+<!-- reviewed by content audit bot at 16 Jun 2026, 14:55 UTC -->
 - Your venue — private, beach, public road, or on the water.
 - How many people you expect.
+<!-- reviewed by content audit bot at 16 Jun 2026, 14:55 UTC -->
 - Whether you plan to serve alcohol, play music, use a stage, or bring overseas performers.
 
 <div class="border-blue-100 border-l-4 bg-blue-10 p-s">
