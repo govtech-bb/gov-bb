@@ -51,8 +51,27 @@ export function resolveSubmissionOutcome(
       };
 
     case "processing":
+      // An idempotency-key replay of an in-flight submission (HTTP 202,
+      // wrapped in ApiResponse.success). The submission is genuinely in hand —
+      // commit a state carrying the `processing` flag so the confirmation step
+      // shows a neutral "we're processing your submission" panel with the
+      // reference number, instead of leaving submissionState undefined and
+      // letting form-renderer bounce the citizen to check-your-answers (#463).
+      // Stay silent on analytics: this is a duplicate of an already-tracked
+      // submit, so there is no new event to fire.
+      return {
+        subState: {
+          ...base,
+          processing: true,
+          submissionSuccess: true,
+          hasPayment: false,
+        },
+      };
+
     case "draft":
-      // Intentionally silent: nothing to confirm yet, nothing to report.
+      // Intentionally silent: a saved draft is effectively unreachable from the
+      // public submit flow (drafts come from a different path), so there is
+      // nothing to confirm yet and nothing to report.
       return {};
 
     case "pending_payment": {
@@ -93,4 +112,24 @@ export function resolveSubmissionOutcome(
         event: { name: "form-submit-error", reason: "server" },
       };
   }
+}
+
+/**
+ * Fold an EzPay return outcome (the `?payment=` search param set by the API's
+ * `/payments/ezpay/redirect` handler) into the submission state rehydrated from
+ * session storage, so the confirmation step reflects the payment result:
+ * - `success` → show the paid receipt (`paymentSuccess: true`).
+ * - `failed`  → clear `paymentUrl` so the payment-failure panel renders instead
+ *   of "Continue to payment".
+ * Returns the state unchanged when there is nothing to apply. Pure — the real
+ * payment outcome is authoritative server-side; this only drives display.
+ */
+export function applyPaymentReturn(
+  state: SubmissionState,
+  payment: "success" | "failed" | undefined,
+): SubmissionState {
+  if (payment === "success") return { ...state, paymentSuccess: true };
+  if (payment === "failed")
+    return { ...state, paymentSuccess: false, paymentUrl: undefined };
+  return state;
 }

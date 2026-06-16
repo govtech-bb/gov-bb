@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { BadRequestException, HttpStatus } from "@nestjs/common";
 import {
   FormSubmissionEntity,
@@ -17,8 +18,8 @@ function makeExpressions(
     cfg,
 ) {
   return {
-    resolveConfig: jest.fn(impl),
-    resolveProcessors: jest.fn(
+    resolveConfig: vi.fn(impl),
+    resolveProcessors: vi.fn(
       (
         processors: Array<{ type: string; config: Record<string, unknown> }>,
         _ctx,
@@ -69,19 +70,19 @@ function makeMocks(options: MakeMocksOptions = {}) {
   const { existingEntity = null, gating = [], nonGating = [] } = options;
 
   const txRepo = {
-    findOne: jest.fn().mockResolvedValue(null),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
-    save: jest.fn().mockResolvedValue(makeEntity()),
+    findOne: vi.fn().mockResolvedValue(null),
+    create: vi.fn().mockImplementation((data) => ({ ...data })),
+    save: vi.fn().mockResolvedValue(makeEntity()),
   };
 
   const submissionRepo = {
-    findOne: jest.fn().mockResolvedValue(existingEntity),
-    tx: jest.fn().mockImplementation((cb) => cb(txRepo)),
-    count: jest.fn().mockResolvedValue(0),
+    findOne: vi.fn().mockResolvedValue(existingEntity),
+    tx: vi.fn().mockImplementation((cb) => cb(txRepo)),
+    count: vi.fn().mockResolvedValue(0),
   } as unknown as FormSubmissionRepository;
 
   const pipeline = {
-    run: jest.fn().mockResolvedValue({
+    run: vi.fn().mockResolvedValue({
       draft: { formVersion: "1.0.0", lastActivePage: 0 },
       contract: { processors: [] },
       auditTrail: AUDIT_TRAIL,
@@ -89,11 +90,11 @@ function makeMocks(options: MakeMocksOptions = {}) {
   } as unknown as SubmissionPipelineService;
 
   const eventEmitter = {
-    emit: jest.fn(),
+    emit: vi.fn(),
   } as unknown as EventEmitter2;
 
   const processorFactory = {
-    resolveSplit: jest.fn().mockReturnValue({ gating, nonGating }),
+    resolveSplit: vi.fn().mockReturnValue({ gating, nonGating }),
   } as unknown as ProcessorFactory;
 
   const service = new SubmissionsService(
@@ -158,7 +159,7 @@ describe("SubmissionsService", () => {
     it("emits submission.created event after successful create", async () => {
       const { service, eventEmitter } = makeMocks();
       await service.submit(BASE_DTO);
-      expect(eventEmitter.emit as jest.Mock).toHaveBeenCalledWith(
+      expect(eventEmitter.emit as Mock).toHaveBeenCalledWith(
         "submission.created",
         expect.objectContaining({
           submissionId: expect.any(String),
@@ -170,7 +171,7 @@ describe("SubmissionsService", () => {
     it("emits the submission event with referenceCode set", async () => {
       const { service, eventEmitter } = makeMocks();
       await service.submit(BASE_DTO);
-      expect(eventEmitter.emit as jest.Mock).toHaveBeenCalledWith(
+      expect(eventEmitter.emit as Mock).toHaveBeenCalledWith(
         "submission.created",
         expect.objectContaining({
           referenceCode: expect.any(String),
@@ -182,7 +183,7 @@ describe("SubmissionsService", () => {
       const customExpressions = makeExpressions(() => ({ resolved: true }));
       const rawProcessors = [{ type: "email", config: { to: "raw@x" } }];
       const customPipeline = {
-        run: jest.fn().mockResolvedValue({
+        run: vi.fn().mockResolvedValue({
           draft: { formVersion: "1.0.0", lastActivePage: 0 },
           contract: { processors: rawProcessors },
           auditTrail: AUDIT_TRAIL,
@@ -190,19 +191,19 @@ describe("SubmissionsService", () => {
       } as unknown as SubmissionPipelineService;
 
       const txRepo = {
-        findOne: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockImplementation((data) => ({ ...data })),
-        save: jest.fn().mockResolvedValue(makeEntity({ id: "uuid-resolved" })),
+        findOne: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockImplementation((data) => ({ ...data })),
+        save: vi.fn().mockResolvedValue(makeEntity({ id: "uuid-resolved" })),
       };
       const submissionRepo = {
-        findOne: jest.fn().mockResolvedValue(null),
-        tx: jest.fn().mockImplementation((cb) => cb(txRepo)),
-        count: jest.fn().mockResolvedValue(0),
+        findOne: vi.fn().mockResolvedValue(null),
+        tx: vi.fn().mockImplementation((cb) => cb(txRepo)),
+        count: vi.fn().mockResolvedValue(0),
       } as unknown as FormSubmissionRepository;
 
-      const eventEmitter = { emit: jest.fn() } as unknown as EventEmitter2;
+      const eventEmitter = { emit: vi.fn() } as unknown as EventEmitter2;
       const processorFactory = {
-        resolveSplit: jest.fn().mockReturnValue({ gating: [], nonGating: [] }),
+        resolveSplit: vi.fn().mockReturnValue({ gating: [], nonGating: [] }),
       } as unknown as ProcessorFactory;
 
       const service = new SubmissionsService(
@@ -216,10 +217,10 @@ describe("SubmissionsService", () => {
       await service.submit(BASE_DTO);
 
       expect(
-        customExpressions.resolveProcessors as jest.Mock,
+        customExpressions.resolveProcessors as Mock,
       ).not.toHaveBeenCalled();
 
-      expect(eventEmitter.emit as jest.Mock).toHaveBeenCalledWith(
+      expect(eventEmitter.emit as Mock).toHaveBeenCalledWith(
         "submission.created",
         expect.objectContaining({ processors: rawProcessors }),
       );
@@ -266,7 +267,7 @@ describe("SubmissionsService", () => {
     it("uses dto.formVersion when draft is null (no draftId path)", async () => {
       // Branch: `draft?.formVersion ?? dto.formVersion` — draft is null
       const { txRepo, pipeline, service } = makeMocks();
-      pipeline.run = jest.fn().mockResolvedValue({
+      pipeline.run = vi.fn().mockResolvedValue({
         draft: null,
         contract: { processors: [] },
         auditTrail: AUDIT_TRAIL,
@@ -285,7 +286,7 @@ describe("SubmissionsService", () => {
     it("uses empty processors array when contract.processors is undefined", async () => {
       // Branch: `contract.processors ?? []`
       const { processorFactory, pipeline, service } = makeMocks();
-      pipeline.run = jest.fn().mockResolvedValue({
+      pipeline.run = vi.fn().mockResolvedValue({
         draft: { formVersion: "1.0.0", lastActivePage: 0 },
         contract: { processors: undefined },
         auditTrail: AUDIT_TRAIL,
@@ -295,9 +296,7 @@ describe("SubmissionsService", () => {
       await service.submit(BASE_DTO);
 
       // resolveSplit called with [] (the ?? fallback)
-      expect(processorFactory.resolveSplit as jest.Mock).toHaveBeenCalledWith(
-        [],
-      );
+      expect(processorFactory.resolveSplit as Mock).toHaveBeenCalledWith([]);
     });
 
     it("returns the existing submission when double-check pessimistic write finds a race duplicate", async () => {
@@ -306,20 +305,127 @@ describe("SubmissionsService", () => {
       const { service, submissionRepo } = makeMocks();
 
       // First findOne returns null (idempotency key not yet present)
-      (submissionRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (submissionRepo.findOne as Mock).mockResolvedValue(null);
 
       // Inside the tx, the pessimistic read finds a duplicate
       const txRepo = {
-        findOne: jest.fn().mockResolvedValue(doubleCheckEntity),
-        create: jest.fn(),
-        save: jest.fn(),
+        findOne: vi.fn().mockResolvedValue(doubleCheckEntity),
+        create: vi.fn(),
+        save: vi.fn(),
       };
-      (submissionRepo.tx as jest.Mock).mockImplementation((cb) => cb(txRepo));
+      (submissionRepo.tx as Mock).mockImplementation((cb) => cb(txRepo));
 
       const result = await service.submit(BASE_DTO);
 
       expect(txRepo.create).not.toHaveBeenCalled();
       expect(result.data).toBe(doubleCheckEntity);
+    });
+  });
+
+  describe("smoke submission (isSmokeSubmission drops processors)", () => {
+    const rawProcessors = [
+      { type: "email", config: { to: "school@mes.gov.bb" } },
+      { type: "webhook", config: { url: "https://hook" } },
+    ];
+
+    function makeSmokeMocks() {
+      const txRepo = {
+        findOne: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockImplementation((data) => ({ ...data })),
+        save: vi.fn().mockResolvedValue(makeEntity()),
+      };
+      const submissionRepo = {
+        findOne: vi.fn().mockResolvedValue(null),
+        tx: vi.fn().mockImplementation((cb) => cb(txRepo)),
+        count: vi.fn().mockResolvedValue(0),
+      } as unknown as FormSubmissionRepository;
+      const pipeline = {
+        run: vi.fn().mockResolvedValue({
+          draft: { formVersion: "1.0.0", lastActivePage: 0 },
+          contract: { processors: rawProcessors },
+          auditTrail: AUDIT_TRAIL,
+          normalizedValues: {},
+        }),
+      } as unknown as SubmissionPipelineService;
+      const eventEmitter = { emit: vi.fn() } as unknown as EventEmitter2;
+      // resolveSplit echoes its argument so we can prove the choke point fed []
+      const processorFactory = {
+        resolveSplit: vi.fn().mockImplementation((procs: unknown[]) => ({
+          gating: [],
+          nonGating: procs,
+        })),
+      } as unknown as ProcessorFactory;
+      const service = new SubmissionsService(
+        submissionRepo,
+        pipeline,
+        eventEmitter,
+        processorFactory,
+        expressions,
+      );
+      return { txRepo, service, eventEmitter, processorFactory };
+    }
+
+    it("feeds an empty processor list to resolveSplit when flag is set", async () => {
+      const { service, processorFactory } = makeSmokeMocks();
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: true });
+
+      expect(processorFactory.resolveSplit as Mock).toHaveBeenCalledWith([]);
+    });
+
+    it("emits submission.created carrying no processors when flag is set", async () => {
+      const { service, eventEmitter } = makeSmokeMocks();
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: true });
+
+      expect(eventEmitter.emit as Mock).toHaveBeenCalledWith(
+        "submission.created",
+        expect.objectContaining({ processors: [] }),
+      );
+    });
+
+    it("emits submission.created with isSmokeSubmission so formId-driven consumers can short-circuit", async () => {
+      const { service, eventEmitter } = makeSmokeMocks();
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: true });
+
+      expect(eventEmitter.emit as Mock).toHaveBeenCalledWith(
+        "submission.created",
+        expect.objectContaining({ isSmokeSubmission: true }),
+      );
+    });
+
+    it("persists status SUBMITTED with submittedAt when flag is set", async () => {
+      const { service, txRepo } = makeSmokeMocks();
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: true });
+
+      expect(txRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: FormSubmissionStatus.SUBMITTED,
+          submittedAt: expect.any(Date),
+        }),
+      );
+    });
+
+    it("does NOT drop processors when the flag is absent (unchanged path)", async () => {
+      const { service, processorFactory } = makeSmokeMocks();
+
+      await service.submit(BASE_DTO);
+
+      expect(processorFactory.resolveSplit as Mock).toHaveBeenCalledWith(
+        rawProcessors,
+      );
+    });
+
+    it("does NOT drop processors when the flag is explicitly false", async () => {
+      const { service, processorFactory } = makeSmokeMocks();
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: false });
+
+      expect(processorFactory.resolveSplit as Mock).toHaveBeenCalledWith(
+        rawProcessors,
+      );
     });
   });
 
@@ -336,7 +442,7 @@ describe("SubmissionsService", () => {
       return {
         type: "payment",
         gatesPipeline: true,
-        process: jest.fn().mockResolvedValue(
+        process: vi.fn().mockResolvedValue(
           kind === "deferred"
             ? {
                 kind: "deferred",
@@ -377,7 +483,7 @@ describe("SubmissionsService", () => {
 
       await service.submit(BASE_DTO);
 
-      expect(eventEmitter.emit as jest.Mock).not.toHaveBeenCalled();
+      expect(eventEmitter.emit as Mock).not.toHaveBeenCalled();
     });
 
     it("returns deferred payload with statusCode 200", async () => {
@@ -403,7 +509,7 @@ describe("SubmissionsService", () => {
       const first = {
         type: "payment",
         gatesPipeline: true,
-        process: jest.fn().mockImplementation(async () => {
+        process: vi.fn().mockImplementation(async () => {
           order.push("first:start");
           await Promise.resolve();
           order.push("first:end");
@@ -421,7 +527,7 @@ describe("SubmissionsService", () => {
       const second = {
         type: "payment",
         gatesPipeline: true,
-        process: jest.fn().mockImplementation(async () => {
+        process: vi.fn().mockImplementation(async () => {
           order.push("second:start");
           await Promise.resolve();
           order.push("second:end");
@@ -469,7 +575,7 @@ describe("SubmissionsService", () => {
       const failing = {
         type: "payment",
         gatesPipeline: true,
-        process: jest.fn().mockRejectedValue(new Error("boom")),
+        process: vi.fn().mockRejectedValue(new Error("boom")),
       } as unknown as ISubmissionProcessor;
       const { service } = makeMocks({ gating: [failing] });
 

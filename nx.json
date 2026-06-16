@@ -1,18 +1,25 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "sandbox",
+  "parallel": 8,
   "namedInputs": {
-    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "default": [
+      "{projectRoot}/**/*",
+      "!{projectRoot}/**/*.md",
+      "sharedGlobals"
+    ],
     "sharedGlobals": [
       "{workspaceRoot}/tsconfig.base.json",
-      "{workspaceRoot}/pnpm-lock.yaml"
+      "{workspaceRoot}/pnpm-lock.yaml",
+      "{workspaceRoot}/.nvmrc"
     ],
     "production": [
       "default",
       "!{projectRoot}/**/*.spec.ts",
+      "!{projectRoot}/**/*.spec.tsx",
       "!{projectRoot}/**/*.test.ts",
-      "!{projectRoot}/tsconfig.spec.json",
-      "!{projectRoot}/vitest.config.ts"
+      "!{projectRoot}/vitest.config.ts",
+      "!{projectRoot}/vitest.setup.ts"
     ]
   },
   "targetDefaults": {
@@ -23,10 +30,11 @@
     },
     "test": {
       "inputs": ["default", "^production"],
+      "outputs": ["{projectRoot}/coverage"],
       "cache": true
     },
     "lint": {
-      "inputs": ["default", "{workspaceRoot}/.eslintrc.json"],
+      "inputs": ["default", "{workspaceRoot}/eslint.config.mts"],
       "cache": true
     }
   },

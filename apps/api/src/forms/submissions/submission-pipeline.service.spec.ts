@@ -1,3 +1,4 @@
+import type { Mocked } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import {
   BadRequestException,
@@ -63,8 +64,8 @@ const baseDto = (): SubmitDto => ({
 
 describe("SubmissionPipelineService", () => {
   let service: SubmissionPipelineService;
-  let draftsService: jest.Mocked<FormDraftsService>;
-  let definitionsService: jest.Mocked<FormDefinitionsService>;
+  let draftsService: Mocked<FormDraftsService>;
+  let definitionsService: Mocked<FormDefinitionsService>;
   let module: TestingModule;
 
   beforeEach(async () => {
@@ -73,26 +74,24 @@ describe("SubmissionPipelineService", () => {
         SubmissionPipelineService,
         {
           provide: FormDraftsService,
-          useValue: { findById: jest.fn() },
+          useValue: { findById: vi.fn() },
         },
         {
           provide: FormDefinitionsService,
-          useValue: { findByFormId: jest.fn(), getRecipe: jest.fn() },
+          useValue: { findByFormId: vi.fn(), getRecipe: vi.fn() },
         },
         {
           provide: FilesService,
-          useValue: { verifySubmissionFiles: jest.fn().mockResolvedValue({}) },
+          useValue: { verifySubmissionFiles: vi.fn().mockResolvedValue({}) },
         },
       ],
     }).compile();
 
     service = module.get(SubmissionPipelineService);
-    draftsService = module.get(
-      FormDraftsService,
-    ) as jest.Mocked<FormDraftsService>;
+    draftsService = module.get(FormDraftsService) as Mocked<FormDraftsService>;
     definitionsService = module.get(
       FormDefinitionsService,
-    ) as jest.Mocked<FormDefinitionsService>;
+    ) as Mocked<FormDefinitionsService>;
   });
 
   afterEach(async () => {

@@ -1,3 +1,4 @@
+import type { Mock, Mocked, MockedClass } from "vitest";
 import { SqsConsumerService } from "./sqs-consumer.service";
 import {
   SQSClient,
@@ -6,14 +7,14 @@ import {
 } from "@aws-sdk/client-sqs";
 import type { Message } from "@aws-sdk/client-sqs";
 
-const MockedDeleteMessageCommand = DeleteMessageCommand as unknown as jest.Mock;
+const MockedDeleteMessageCommand = DeleteMessageCommand as unknown as Mock;
 import type { ProcessorFactory } from "../processors/processor-factory.service";
 import type { ISubmissionProcessor } from "../processors/submission-processor.interface";
 import type { SubmissionSqsMessage } from "./submission-sqs-message.interface";
 
-jest.mock("@aws-sdk/client-sqs");
+vi.mock("@aws-sdk/client-sqs");
 
-const MockedSQSClient = SQSClient as jest.MockedClass<typeof SQSClient>;
+const MockedSQSClient = SQSClient as MockedClass<typeof SQSClient>;
 
 /* Fixtures */
 
@@ -69,7 +70,7 @@ function makeConfig(enabled = true) {
 
 function makeProcessor(
   type = "email",
-  processFn: jest.Mock = jest.fn().mockResolvedValue({ kind: "completed" }),
+  processFn: Mock = vi.fn().mockResolvedValue({ kind: "completed" }),
 ): ISubmissionProcessor {
   return {
     type,
@@ -81,17 +82,17 @@ function makeProcessor(
 /* Tests */
 
 describe("SqsConsumerService", () => {
-  let sendMock: jest.Mock;
+  let sendMock: Mock;
   let service: SqsConsumerService;
-  let factory: jest.Mocked<Pick<ProcessorFactory, "resolveByType">>;
+  let factory: Mocked<Pick<ProcessorFactory, "resolveByType">>;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    sendMock = jest.fn();
+    vi.clearAllMocks();
+    sendMock = vi.fn();
     MockedSQSClient.prototype.send = sendMock;
 
     factory = {
-      resolveByType: jest.fn(),
+      resolveByType: vi.fn(),
     } as any;
 
     service = new SqsConsumerService(makeConfig() as any, factory as any);
@@ -108,7 +109,7 @@ describe("SqsConsumerService", () => {
       await service.processMessage(QUEUE_URL, sqsMessage());
 
       expect(processor.process).toHaveBeenCalledTimes(1);
-      const event = (processor.process as jest.Mock).mock.calls[0][0];
+      const event = (processor.process as Mock).mock.calls[0][0];
       expect(event.submissionId).toBe("sub-001");
       expect(event.formId).toBe("form-1");
     });
@@ -132,9 +133,9 @@ describe("SqsConsumerService", () => {
 
       await service.processMessage(QUEUE_URL, sqsMessage());
 
-      // jest.mock auto-mocks the constructor — read args from mock.calls, not .input
+      // vi.mock auto-mocks the constructor — read args from mock.calls, not .input
       const deleteCallArgs = MockedDeleteMessageCommand.mock.calls.find(
-        ([args]: [{ ReceiptHandle?: string }]) =>
+        ([args]: { ReceiptHandle?: string }[]) =>
           args.ReceiptHandle === "receipt-001",
       );
       expect(deleteCallArgs).toBeDefined();
@@ -143,7 +144,7 @@ describe("SqsConsumerService", () => {
     it("does NOT delete the message when the processor throws (retry path)", async () => {
       const failing = makeProcessor(
         "email",
-        jest.fn().mockRejectedValue(new Error("SES down")),
+        vi.fn().mockRejectedValue(new Error("SES down")),
       );
       factory.resolveByType.mockReturnValue(failing);
 
@@ -170,7 +171,7 @@ describe("SqsConsumerService", () => {
 
       expect(factory.resolveByType).not.toHaveBeenCalled();
       const deleteCallArgs = MockedDeleteMessageCommand.mock.calls.find(
-        ([args]: [{ ReceiptHandle?: string }]) =>
+        ([args]: { ReceiptHandle?: string }[]) =>
           args.ReceiptHandle === "bad-receipt",
       );
       expect(deleteCallArgs).toBeDefined();
@@ -200,7 +201,7 @@ describe("SqsConsumerService", () => {
 
       expect(factory.resolveByType).not.toHaveBeenCalled();
       const deleteCallArgs = MockedDeleteMessageCommand.mock.calls.find(
-        ([args]: [{ ReceiptHandle?: string }]) =>
+        ([args]: { ReceiptHandle?: string }[]) =>
           args.ReceiptHandle === "bad-shape-receipt",
       );
       expect(deleteCallArgs).toBeDefined();
@@ -231,7 +232,7 @@ describe("SqsConsumerService", () => {
 
       expect(factory.resolveByType).not.toHaveBeenCalled();
       const deleteCallArgs = MockedDeleteMessageCommand.mock.calls.find(
-        ([args]: [{ ReceiptHandle?: string }]) =>
+        ([args]: { ReceiptHandle?: string }[]) =>
           args.ReceiptHandle === "null-values-receipt",
       );
       expect(deleteCallArgs).toBeDefined();
@@ -262,7 +263,7 @@ describe("SqsConsumerService", () => {
 
       expect(factory.resolveByType).not.toHaveBeenCalled();
       const deleteCallArgs = MockedDeleteMessageCommand.mock.calls.find(
-        ([args]: [{ ReceiptHandle?: string }]) =>
+        ([args]: { ReceiptHandle?: string }[]) =>
           args.ReceiptHandle === "array-values-receipt",
       );
       expect(deleteCallArgs).toBeDefined();
@@ -307,9 +308,9 @@ describe("SqsConsumerService", () => {
       factory.resolveByType.mockReturnValue(processor);
       sendMock.mockResolvedValue({});
 
-      const warnSpy = jest
+      const warnSpy = vi
         .spyOn((service as any).logger, "warn")
-        .mockImplementation();
+        .mockImplementation(() => {});
 
       await service.processMessage(QUEUE_URL, sqsMessage({}, "3"));
 
@@ -334,7 +335,7 @@ describe("SqsConsumerService", () => {
         }),
       );
 
-      const event = (processor.process as jest.Mock).mock.calls[0][0];
+      const event = (processor.process as Mock).mock.calls[0][0];
       expect(event.processorIndex).toBe(1);
     });
 
@@ -349,7 +350,7 @@ describe("SqsConsumerService", () => {
 
       expect(factory.resolveByType).not.toHaveBeenCalled();
       const deleteCallArgs = MockedDeleteMessageCommand.mock.calls.find(
-        ([args]: [{ ReceiptHandle?: string }]) =>
+        ([args]: { ReceiptHandle?: string }[]) =>
           args.ReceiptHandle === "receipt-001",
       );
       expect(deleteCallArgs).toBeDefined();
@@ -382,7 +383,7 @@ describe("SqsConsumerService", () => {
 
       expect(factory.resolveByType).not.toHaveBeenCalled();
       const deleteCallArgs = MockedDeleteMessageCommand.mock.calls.find(
-        ([args]: [{ ReceiptHandle?: string }]) =>
+        ([args]: { ReceiptHandle?: string }[]) =>
           args.ReceiptHandle === "no-processors-receipt",
       );
       expect(deleteCallArgs).toBeDefined();
@@ -404,7 +405,7 @@ describe("SqsConsumerService", () => {
 
       expect(factory.resolveByType).not.toHaveBeenCalled();
       const deleteCallArgs = MockedDeleteMessageCommand.mock.calls.find(
-        ([args]: [{ ReceiptHandle?: string }]) =>
+        ([args]: { ReceiptHandle?: string }[]) =>
           args.ReceiptHandle === "receipt-001",
       );
       expect(deleteCallArgs).toBeDefined();
@@ -422,7 +423,7 @@ describe("SqsConsumerService", () => {
 
       await service.processMessage(QUEUE_URL, msg);
 
-      const event = (processor.process as jest.Mock).mock.calls[0][0];
+      const event = (processor.process as Mock).mock.calls[0][0];
       expect(event.values).toEqual({ "step-1": { field: "value" } });
       expect(event.formVersion).toBe("2.0.0");
       expect(event.idempotencyKey).toBe("idem-001");
@@ -438,7 +439,7 @@ describe("SqsConsumerService", () => {
         sqsMessage({ referenceCode: "JPP-20260604-130732-9JZRZC" }),
       );
 
-      const event = (processor.process as jest.Mock).mock.calls[0][0];
+      const event = (processor.process as Mock).mock.calls[0][0];
       expect(event.referenceCode).toBe("JPP-20260604-130732-9JZRZC");
     });
 
@@ -484,7 +485,7 @@ describe("SqsConsumerService", () => {
 
       await service.processMessage(QUEUE_URL, legacyMsg);
 
-      const event = (processor.process as jest.Mock).mock.calls[0][0];
+      const event = (processor.process as Mock).mock.calls[0][0];
       expect(event.referenceCode).toBe("sub-legacy-001");
     });
   });
@@ -497,7 +498,7 @@ describe("SqsConsumerService", () => {
         makeConfig(false) as any,
         factory as any,
       );
-      const pollSpy = jest.spyOn(disabledService as any, "pollQueue");
+      const pollSpy = vi.spyOn(disabledService as any, "pollQueue");
 
       disabledService.onApplicationBootstrap();
 
@@ -505,7 +506,7 @@ describe("SqsConsumerService", () => {
     });
 
     it("starts a single polling loop for the shared queue when enabled", () => {
-      const pollSpy = jest
+      const pollSpy = vi
         .spyOn(service as any, "pollQueue")
         .mockResolvedValue(undefined);
 
@@ -563,7 +564,7 @@ describe("SqsConsumerService", () => {
     });
 
     it("backs off with sleep on poll error (catch branch + sleep)", async () => {
-      const sleepSpy = jest
+      const sleepSpy = vi
         .spyOn(service as any, "sleep")
         .mockResolvedValue(undefined);
 
@@ -587,7 +588,7 @@ describe("SqsConsumerService", () => {
     it("sets running to false to stop polling loops", () => {
       // Mock pollQueue so onApplicationBootstrap does not start a real loop
       // (which would create a dangling sleep timer and leak the worker process).
-      jest.spyOn(service as any, "pollQueue").mockResolvedValue(undefined);
+      vi.spyOn(service as any, "pollQueue").mockResolvedValue(undefined);
 
       service.onApplicationBootstrap();
       service.onApplicationShutdown();

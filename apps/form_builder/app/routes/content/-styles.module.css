@@ -1,0 +1,1229 @@
+/*
+ * Content CMS styling. Light-mode equivalent of the blueprint:
+ *   dark #1C1C1C ⇄ light #F7F7F5 app bg / #FFFFFF surfaces,
+ *   text #1C1C1C, subtle #A1A1A1, borders #E5E5E5,
+ *   Inter with -0.15px letter-spacing, radii 6 / 8 / 12, Hugeicons.
+ * All selectors are scoped under `.shell` so nothing leaks into the builder.
+ *
+ * Deliberately does NOT reuse the form builder's stylesheets. A tiny body
+ * reset below replaces what the (no-longer-imported) builder global provided.
+ */
+
+:global(body) {
+  margin: 0;
+}
+
+/* Tokens live on :root (not just .shell) so portaled UI — the form combobox
+   dropdown renders into document.body, outside .shell — still resolves them. */
+:global(:root) {
+  --el-0: #ffffff;
+  --el-50: #fbfbfa;
+  --el-100: #f7f7f5;
+  --el-150: #f0f0ee;
+  --el-200: #e5e5e5;
+  --el-250: #dcdcdc;
+  --el-400: #a1a1a1;
+  --el-500: #8a8a8a;
+  --el-800: #3a3a3a;
+  --el-1000: #1c1c1c;
+  --txt: #1c1c1c;
+  --txt-dim: #a1a1a1;
+  --rad-s: 6px;
+  --rad-m: 8px;
+  --rad-l: 12px;
+  --err-bg: #fdeded;
+  --err-bd: #f3c0bd;
+  --err-tx: #8c1d18;
+  /* Text on top of el-1000 surfaces (primary buttons, active tabs). */
+  --on-inverse: #ffffff;
+}
+
+/* Dark mode — the blueprint palette proper: #1C1C1C background, #E5E5E5
+   text, #A1A1A1 subtle. Same elevation semantics, inverted. */
+:global([data-theme="dark"]) {
+  --el-0: #232323;
+  --el-50: #202020;
+  --el-100: #1c1c1c;
+  --el-150: #2a2a2a;
+  --el-200: #333333;
+  --el-250: #3f3f3f;
+  --el-400: #6e6e6e;
+  --el-500: #9b9b9b;
+  --el-800: #d4d4d4;
+  --el-1000: #e5e5e5;
+  --txt: #e5e5e5;
+  --txt-dim: #a1a1a1;
+  --err-bg: #3a1816;
+  --err-bd: #6e2a25;
+  --err-tx: #f2b8b5;
+  --on-inverse: #1c1c1c;
+}
+
+.shell {
+  box-sizing: border-box;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--el-100);
+  color: var(--txt);
+  font-family:
+    "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  letter-spacing: -0.15px;
+}
+
+.shell *,
+.shell *::before,
+.shell *::after {
+  box-sizing: border-box;
+}
+
+/* ── Document header ─────────────────────────────── */
+.docHeader {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+  background: var(--el-0);
+  border-bottom: 1px solid var(--el-200);
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--txt-dim);
+}
+
+.docTitle {
+  margin: 2px 0 0;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* ── "⋯" overflow menu ───────────────────────────── */
+.menuWrap {
+  position: relative;
+}
+
+.menuPanel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 30;
+  min-width: 190px;
+  padding: 4px;
+  background: var(--el-0);
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-m);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.1);
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--rad-s);
+  background: none;
+  color: var(--txt);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.menuItem:hover {
+  background: var(--el-100);
+}
+
+.menuItemDanger {
+  color: #b3261e;
+}
+.menuItemDanger:hover {
+  background: #fdecea;
+}
+
+:global([data-theme="dark"]) .menuItemDanger {
+  color: #f2b8b5;
+}
+:global([data-theme="dark"]) .menuItemDanger:hover {
+  background: #4a2a28;
+}
+
+.dirtyHint {
+  font-size: 12px;
+  color: #7a4d00;
+  background: #fde8c4;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.primaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border: none;
+  border-radius: var(--rad-m);
+  background: var(--el-1000);
+  color: var(--on-inverse);
+  font-size: 13.5px;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: -0.15px;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    opacity 0.15s;
+}
+.primaryBtn:hover:not(:disabled) {
+  background: var(--el-800);
+}
+.primaryBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.secondaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-m);
+  background: var(--el-0);
+  color: var(--txt);
+  font-size: 13.5px;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: -0.15px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.secondaryBtn:hover {
+  background: var(--el-50);
+  border-color: var(--el-250);
+}
+
+/* Pastel chips/banners tuned for the dark surface. */
+:global([data-theme="dark"]) .dirtyHint {
+  background: #4a3208;
+  color: #f0c674;
+}
+:global([data-theme="dark"]) .badgeDraft {
+  background: #4a3208;
+  color: #f0c674;
+}
+:global([data-theme="dark"]) .badgePreview {
+  background: #1d3461;
+  color: #a7c5ff;
+}
+:global([data-theme="dark"]) .badgePublic {
+  background: #14391e;
+  color: #8fdda4;
+}
+:global([data-theme="dark"]) .toolBtnStart {
+  background: #14391e;
+  color: #8fdda4;
+}
+:global([data-theme="dark"]) .richBody a {
+  color: #7aa7ff;
+}
+:global([data-theme="dark"]) .modalNote a,
+:global([data-theme="dark"]) .successCard a {
+  color: #7aa7ff;
+}
+:global([data-theme="dark"]) .previewHint {
+  background: rgba(28, 28, 28, 0.92);
+}
+:global([data-theme="dark"]) .richBody {
+  background: var(--el-0);
+}
+
+/* ── Open-page picker modal ──────────────────────── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 64px 16px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 72vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--el-0);
+  border-radius: var(--rad-l);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--el-200);
+}
+.modalHead h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.modalBody {
+  padding: 12px 20px 20px;
+  overflow-y: auto;
+}
+.filterInput {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-s);
+  background: var(--el-0);
+  color: var(--txt);
+  font-size: 14px;
+  font-family: inherit;
+  letter-spacing: -0.15px;
+}
+/* ── Badges ──────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+}
+.badgeDraft {
+  background: #fde8c4;
+  color: #7a4d00;
+}
+.badgePreview {
+  background: #dbe7ff;
+  color: #1b3a73;
+}
+.badgePublic {
+  background: #d6f0db;
+  color: #1c5b2c;
+}
+.badgePr {
+  display: inline-flex;
+  align-items: center;
+  background: var(--el-1000);
+  color: var(--on-inverse);
+  text-transform: none;
+}
+.badgeClickable {
+  cursor: pointer;
+}
+.badgeClickable:hover {
+  text-decoration: underline;
+}
+.badgeForm {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--el-150);
+  color: var(--txt-dim);
+}
+
+.dangerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border: none;
+  border-radius: var(--rad-m);
+  background: #b3261e;
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: -0.15px;
+  cursor: pointer;
+}
+.dangerBtn:hover:not(:disabled) {
+  background: #8c1d18;
+}
+.dangerBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.modalNote {
+  color: var(--txt-dim);
+  font-size: 13px;
+  padding: 8px 0;
+}
+.modalActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.subField {
+  margin-top: 8px;
+}
+.mutedText {
+  color: var(--txt-dim);
+}
+.modalNote a {
+  color: #2563eb;
+}
+
+/* Key/value summary inside the deploy confirmation. */
+.deploySummary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+.deploySummary dt {
+  color: var(--txt-dim);
+}
+.deploySummary dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.fileNote {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--txt-dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ── Body split: fields | preview ────────────────── */
+.body {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  min-height: 0;
+}
+
+.fieldsPanel {
+  width: 460px;
+  max-width: 46%;
+  flex-shrink: 0;
+  padding: 24px;
+  background: var(--el-0);
+  border-right: 1px solid var(--el-200);
+  overflow-y: auto;
+}
+
+/* Draggable divider between the fields panel and the preview. */
+.splitter {
+  width: 6px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.12s;
+}
+.splitter:hover,
+.splitter:active {
+  background: var(--el-250);
+}
+
+/* Preview hidden: the fields panel fills the whole page, laid out Payload-
+   style — title + body in a wide main column, settings in a right rail. */
+.fieldsPanelWide {
+  width: 100%;
+  max-width: none;
+  border-right: none;
+}
+.shell .fieldsPanelWide > * {
+  max-width: 1200px;
+  margin-inline: auto;
+}
+
+.wideGrid {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+.wideMain {
+  flex: 1;
+  min-width: 0;
+}
+.wideRail {
+  width: 320px;
+  flex-shrink: 0;
+  padding-left: 32px;
+  border-left: 1px solid var(--el-200);
+  position: sticky;
+  top: 0;
+}
+
+.hint {
+  margin: 0 0 20px;
+  font-size: 13px;
+  color: var(--txt-dim);
+  line-height: 1.5;
+}
+.hint code {
+  background: var(--el-100);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.85em;
+}
+
+/* ── Fields ──────────────────────────────────────── */
+.field {
+  margin-bottom: 18px;
+}
+
+.row {
+  display: flex;
+  gap: 14px;
+}
+.row > .field {
+  flex: 1;
+}
+
+.label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--el-800);
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-s);
+  background: var(--el-0);
+  color: var(--txt);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--el-500);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.06);
+}
+
+.textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+.help {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--txt-dim);
+}
+
+/* ── Body editor (toolbar + markdown) ────────────── */
+.bodyEditor {
+  display: flex;
+  flex-direction: column;
+}
+.bodyToolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  row-gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--el-200);
+  border-bottom: none;
+  border-radius: var(--rad-s) var(--rad-s) 0 0;
+  background: var(--el-50);
+}
+.toolBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--rad-s);
+  background: transparent;
+  color: var(--el-500);
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: -0.15px;
+  cursor: pointer;
+}
+.toolBtn:hover {
+  background: var(--el-150);
+  color: var(--txt);
+}
+.toolSep {
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: var(--el-200);
+}
+
+/* Typography dropdown in the body toolbar. */
+.toolSelect {
+  padding: 5px 8px;
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-s);
+  background: var(--el-0);
+  color: var(--txt);
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: -0.15px;
+  cursor: pointer;
+}
+
+.toolBtnStart {
+  color: #1c5b2c;
+  background: #e7f4ea;
+}
+.toolBtnStart:hover {
+  background: #d6f0db;
+  color: #1c5b2c;
+}
+/* Both body surfaces share one height so the Visual/Markdown toggle never
+   jumps; content scrolls inside. */
+.bodyTextarea {
+  height: 420px;
+  resize: none;
+  overflow-y: auto;
+  border-radius: 0 0 var(--rad-s) var(--rad-s);
+}
+
+.modeToggle {
+  display: inline-flex;
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-s);
+  overflow: hidden;
+  background: var(--el-0);
+  flex-shrink: 0;
+}
+.modeToggleEnd {
+  margin-left: auto;
+}
+.modeBtn {
+  border: none;
+  background: transparent;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: -0.15px;
+  color: var(--txt-dim);
+  cursor: pointer;
+}
+.modeBtn:not(:last-child) {
+  border-right: 1px solid var(--el-200);
+}
+.modeBtnActive {
+  background: var(--el-1000);
+  color: var(--on-inverse);
+}
+
+/* ── Rich (WYSIWYG) body surface ─────────────────── */
+.richBody {
+  height: 420px;
+  overflow-y: auto;
+  padding: 14px 16px;
+  border: 1px solid var(--el-200);
+  border-radius: 0 0 var(--rad-s) var(--rad-s);
+  background: var(--el-0);
+  font-size: 14px;
+  line-height: 1.6;
+  outline: none;
+}
+.richBody:focus {
+  border-color: var(--el-500);
+}
+.richBody h1 {
+  margin: 20px 0 10px;
+  font-size: 21px;
+  font-weight: 600;
+}
+.richBody h2 {
+  margin: 18px 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.richBody h3 {
+  margin: 14px 0 6px;
+  font-size: 15.5px;
+  font-weight: 600;
+}
+.richBody h4 {
+  margin: 12px 0 5px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.richBody h5,
+.richBody h6 {
+  margin: 10px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--el-500);
+}
+.richBody p {
+  margin: 8px 0;
+}
+.richBody ul,
+.richBody ol {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+.richBody li {
+  margin: 3px 0;
+}
+.richBody blockquote {
+  margin: 10px 0;
+  padding: 2px 0 2px 12px;
+  border-left: 3px solid var(--el-250);
+  color: var(--el-500);
+}
+.richBody hr {
+  border: none;
+  border-top: 1px solid var(--el-250);
+  margin: 14px 0;
+}
+.richBody a {
+  color: #2563eb;
+}
+.richBody table {
+  border-collapse: collapse;
+  margin: 10px 0;
+}
+.richBody th,
+.richBody td {
+  border: 1px solid var(--el-200);
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.richBody th {
+  background: var(--el-50);
+  font-weight: 600;
+  text-align: left;
+}
+/* The Start button chip — drag the grip to move it, type in the label. */
+.richBody :global(a[data-start-link]) {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: #1c8a3b;
+  color: #fff !important;
+  font-weight: 600;
+  font-size: 13.5px;
+  text-decoration: none;
+  cursor: default;
+}
+.richBody :global(a[data-start-link] [data-grip]) {
+  cursor: grab;
+  opacity: 0.75;
+  font-size: 11px;
+  user-select: none;
+  letter-spacing: 1px;
+}
+.richBody :global(a[data-start-link] [data-grip]:active) {
+  cursor: grabbing;
+}
+.richBody :global(a[data-start-link] [data-label]) {
+  outline: none;
+  min-width: 2ch;
+  display: inline-block;
+  cursor: text;
+}
+
+.helpError {
+  color: var(--err-tx);
+}
+
+.errorBanner {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--err-bd);
+  border-radius: var(--rad-s);
+  background: var(--err-bg);
+  color: var(--err-tx);
+  font-size: 13px;
+}
+
+/* ── Preview pane ────────────────────────────────── */
+.previewPanel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--el-150);
+}
+
+.previewToolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 50px;
+  padding: 0 16px;
+  background: var(--el-50);
+  border-bottom: 1px solid var(--el-200);
+}
+
+
+
+.previewUrl {
+  margin-left: auto;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--txt-dim);
+}
+
+.previewStage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+  overflow: auto;
+  background: var(--el-150);
+}
+
+.deviceFrame {
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  border-radius: var(--rad-l);
+  overflow: hidden;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.12),
+    0 10px 30px rgba(0, 0, 0, 0.08);
+  transition: width 0.25s ease;
+}
+
+/* Overlay shown when the landing app never answers the preview handshake. */
+.previewHint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--txt-dim);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.previewHint code {
+  background: var(--el-100);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+/* ── Success card ────────────────────────────────── */
+.successWrap {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 48px 24px;
+  background: var(--el-100);
+}
+.successCard {
+  width: 100%;
+  max-width: 620px;
+  padding: 28px;
+  background: var(--el-0);
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-l);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+.successCard h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+.successCard p {
+  margin: 0 0 10px;
+  line-height: 1.55;
+}
+.successCard a {
+  color: #2563eb;
+  word-break: break-all;
+}
+
+/* ── Content home (forms-first list) ─────────────── */
+.homeBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  width: 100%;
+  padding: 24px;
+}
+
+.sectionTitle {
+  margin: 28px 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--txt-dim);
+}
+
+/* ── Unified service rows ────────────────────────── */
+/* One card per category; every service — form-backed or not — is the same
+   row: a human title with its page chips beneath. */
+.groupCard {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--el-0);
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-l);
+  overflow: hidden;
+}
+
+.svcRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 16px;
+}
+.svcRow:not(:last-child) {
+  border-bottom: 1px solid var(--el-150);
+}
+.svcRow:hover {
+  background: var(--el-50);
+}
+
+.svcTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chipRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: var(--rad-m);
+  border: 1px solid var(--el-200);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+}
+.chipFilled {
+  background: var(--el-0);
+  color: var(--txt);
+}
+.chipFilled:hover {
+  border-color: var(--el-400);
+}
+.chipMissing {
+  border-style: dashed;
+  background: transparent;
+  color: var(--txt-dim);
+}
+.chipMissing:hover {
+  border-color: var(--el-400);
+  color: var(--txt);
+}
+
+.chipStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-left: 8px;
+  border-left: 1px solid var(--el-150);
+  color: var(--txt-dim);
+  font-size: 11.5px;
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.dotLive {
+  background: #1c8a3b;
+}
+.dotPreview {
+  background: #2f6feb;
+}
+.dotHidden {
+  background: #d9920a;
+}
+
+/* Skeleton block primitive for the home's loading state. */
+.skel {
+  background: var(--el-150);
+  border-radius: var(--rad-s);
+}
+
+/* ── Home stats (dashboard cards) ────────────────── */
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.statCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--el-0);
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-l);
+}
+.statIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--rad-m);
+  background: var(--el-100);
+  color: var(--el-500);
+}
+.statValue {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.statLabel {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--txt-dim);
+}
+
+/* ── Home filter bar ─────────────────────────────── */
+.filterBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.searchWrap {
+  position: relative;
+  flex: 1 1 220px;
+}
+.searchIcon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--txt-dim);
+  pointer-events: none;
+}
+.searchWrap .filterInput {
+  width: 100%;
+  margin-bottom: 0;
+  padding-left: 34px;
+}
+.filterSelect {
+  flex-shrink: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-s);
+  background: var(--el-0);
+  color: var(--txt);
+  font-size: 13.5px;
+  font-family: inherit;
+}
+.homeCount {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--txt-dim);
+}
+
+/* ── Collapsible category groups ─────────────────── */
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 22px 0 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+.groupChevron {
+  display: inline-flex;
+  align-items: center;
+  color: var(--txt-dim);
+}
+.groupTitle {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--txt);
+}
+.groupCount {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--el-150);
+  color: var(--txt-dim);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── Searchable form combobox ────────────────────── */
+.combo {
+  position: relative;
+}
+.comboInput {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-s);
+  background: var(--el-0);
+  color: var(--txt);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.comboInput:focus {
+  outline: none;
+  border-color: var(--el-500);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.06);
+}
+.comboPlaceholder {
+  color: var(--txt-dim);
+}
+.comboCaret {
+  color: var(--txt-dim);
+  font-size: 11px;
+}
+.comboPanel {
+  /* Positioned inline (fixed) via a portal so the fields panel's overflow
+     can't clip it. */
+  z-index: 50;
+  background: var(--el-0);
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-m);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+}
+.comboSearch {
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  border-bottom: 1px solid var(--el-200);
+  background: var(--el-0);
+  color: var(--txt);
+  font-size: 14px;
+  font-family: inherit;
+  letter-spacing: -0.15px;
+  outline: none;
+}
+.comboList {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.comboOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--rad-s);
+  background: transparent;
+  color: var(--txt);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.comboOptionActive {
+  background: var(--el-100);
+}
+.comboOptionSelected {
+  font-weight: 600;
+}
+.comboOptionLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.comboOptionId {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--txt-dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.comboEmpty {
+  padding: 10px;
+  font-size: 13px;
+  color: var(--txt-dim);
+}

@@ -1,9 +1,9 @@
 import type { Request, Response } from "express";
 
-jest.mock("@govtech-bb/database", () => ({
+vi.mock("@govtech-bb/database", () => ({
   FormDefinitionEntity: class FormDefinitionEntity {},
 }));
-jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
+vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
 
 import { listPublishedHandler } from "./forms";
 
@@ -12,11 +12,11 @@ function mockRes() {
     body: unknown;
     statusCode: number;
   };
-  res.status = jest.fn((code: number) => {
+  res.status = vi.fn((code: number) => {
     res.statusCode = code;
     return res;
   }) as unknown as Response["status"];
-  res.json = jest.fn((payload: unknown) => {
+  res.json = vi.fn((payload: unknown) => {
     res.body = payload;
     return res;
   }) as unknown as Response["json"];
@@ -28,7 +28,7 @@ describe("GET /builder/forms/published", () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env.API_BASE_URL = "http://api.test";
   });
 
@@ -47,10 +47,10 @@ describe("GET /builder/forms/published", () => {
       ],
       message: "Form definitions retrieved",
     };
-    global.fetch = jest.fn().mockResolvedValue({
+    global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: jest.fn().mockResolvedValue(payload),
+      json: vi.fn().mockResolvedValue(payload),
     }) as unknown as typeof fetch;
 
     const res = mockRes();
@@ -65,10 +65,10 @@ describe("GET /builder/forms/published", () => {
   });
 
   it("returns 502 with upstream status + body when apps/api responds non-2xx", async () => {
-    global.fetch = jest.fn().mockResolvedValue({
+    global.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 503,
-      text: jest.fn().mockResolvedValue("Service Unavailable"),
+      text: vi.fn().mockResolvedValue("Service Unavailable"),
     }) as unknown as typeof fetch;
 
     const res = mockRes();
@@ -83,7 +83,7 @@ describe("GET /builder/forms/published", () => {
   });
 
   it("returns 502 when fetch itself throws (network error)", async () => {
-    global.fetch = jest
+    global.fetch = vi
       .fn()
       .mockRejectedValue(new Error("ECONNREFUSED")) as unknown as typeof fetch;
 
@@ -99,10 +99,10 @@ describe("GET /builder/forms/published", () => {
   it("falls back to the sandbox API when API_BASE_URL is unset", async () => {
     delete process.env.API_BASE_URL;
     const payload = { success: true, data: [], message: "" };
-    global.fetch = jest.fn().mockResolvedValue({
+    global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: jest.fn().mockResolvedValue(payload),
+      json: vi.fn().mockResolvedValue(payload),
     }) as unknown as typeof fetch;
 
     const res = mockRes();
@@ -118,10 +118,10 @@ describe("GET /builder/forms/published", () => {
 
   it("strips a trailing slash on API_BASE_URL before appending the path", async () => {
     process.env.API_BASE_URL = "http://api.test/";
-    global.fetch = jest.fn().mockResolvedValue({
+    global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: jest.fn().mockResolvedValue({ data: [] }),
+      json: vi.fn().mockResolvedValue({ data: [] }),
     }) as unknown as typeof fetch;
 
     const res = mockRes();
@@ -135,7 +135,7 @@ describe("GET /builder/forms/published", () => {
 
   it("returns 500 without fetching when API_BASE_URL is not a parseable URL", async () => {
     process.env.API_BASE_URL = "not a url";
-    global.fetch = jest.fn() as unknown as typeof fetch;
+    global.fetch = vi.fn() as unknown as typeof fetch;
 
     const res = mockRes();
     await listPublishedHandler({} as Request, res);
@@ -151,7 +151,7 @@ describe("GET /builder/forms/published", () => {
     "returns 500 without fetching when API_BASE_URL uses non-http(s) protocol (%s)",
     async (badUrl) => {
       process.env.API_BASE_URL = badUrl;
-      global.fetch = jest.fn() as unknown as typeof fetch;
+      global.fetch = vi.fn() as unknown as typeof fetch;
 
       const res = mockRes();
       await listPublishedHandler({} as Request, res);
@@ -166,10 +166,10 @@ describe("GET /builder/forms/published", () => {
 
   it("accepts https URLs", async () => {
     process.env.API_BASE_URL = "https://api.test";
-    global.fetch = jest.fn().mockResolvedValue({
+    global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: jest.fn().mockResolvedValue({ data: [] }),
+      json: vi.fn().mockResolvedValue({ data: [] }),
     }) as unknown as typeof fetch;
 
     const res = mockRes();

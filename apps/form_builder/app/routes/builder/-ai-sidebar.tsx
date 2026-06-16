@@ -1,9 +1,17 @@
 import { useState, useRef, useEffect } from "react";
+import {
+  AiMagicIcon,
+  ArrowRight01Icon,
+  Attachment02Icon,
+  Cancel01Icon,
+} from "hugeicons-react";
 import { serializeRecipeDraft } from "@govtech-bb/form-builder";
+import s from "../../styles/builder.module.css";
 import type { RecipeDraft, UnknownRef } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import {
-  editRecipe,
+  startEditRecipe,
+  getEditStatus,
   presignPdfUpload,
   startPdfConvert,
   getPdfConvertStatus,
@@ -40,6 +48,49 @@ function stripRecipeJson(reply: string): string {
   return prose.length > 0 ? prose : "Generated a form recipe.";
 }
 
+// Shared poll loop for both async jobs (Edit Form + PDF upload). Sleeps
+// `firstPollMs` before the first poll (aggressive-first so a fast edit returns
+// almost synchronously), then `intervalMs` between subsequent polls, giving up
+// after `timeoutMs`. Non-terminal statuses ("processing"/"generating") keep
+// polling; "failed" throws its reason; "done" returns that branch of the union.
+// Throws on abort so the caller's `abort.signal.aborted` check swallows it.
+async function pollUntilDone<T extends { status: string }>(
+  getStatus: () => Promise<T>,
+  abort: AbortController,
+  opts: { firstPollMs: number; intervalMs: number; timeoutMs: number },
+): Promise<Extract<T, { status: "done" }>> {
+  const start = Date.now();
+  let delay = opts.firstPollMs;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    if (abort.signal.aborted) throw new DOMException("Aborted", "AbortError");
+    await new Promise((r) => setTimeout(r, delay));
+    delay = opts.intervalMs;
+    if (abort.signal.aborted) throw new DOMException("Aborted", "AbortError");
+    if (Date.now() - start > opts.timeoutMs) {
+      throw new Error(
+        "This is taking longer than expected. Please try again later.",
+      );
+    }
+
+    const status = await getStatus();
+    if (status.status === "processing" || status.status === "generating") {
+      continue;
+    }
+    if (status.status === "done") {
+      return status as Extract<T, { status: "done" }>;
+    }
+    if (status.status === "failed") {
+      const reason = (status as { reason?: string }).reason;
+      throw new Error(reason ?? "The request failed — please try again.");
+    }
+    // Any other status is unexpected (the server unions are exhaustive, and a
+    // non-200 throws ApiError before reaching here) — surface it rather than
+    // returning a recipe-less "done".
+    throw new Error(`Unexpected status: ${status.status}`);
+  }
+}
+
 interface AiSidebarProps {
   // The live draft + working version, so Edit Form can send the current recipe.
   draft: RecipeDraft;
@@ -64,6 +115,9 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  // Needed to reset the hidden file input when the staged file is removed —
+  // without it, re-picking the same file fires no change event.
+  const fileInputRef = useRef<HTMLInputElement>(null);
   // Abort handle for the in-flight upload + poll loop. Held in a ref so the
   // unmount cleanup and a follow-up upload can both cancel it without
   // re-triggering effects.
@@ -75,29 +129,12 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
     chatEndRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages]);
 
-  // Surface a server-fn failure. The async *upload* flow no longer pushes a
-  // large PDF body through the Amplify Lambda, so the cryptic "Invariant
-  // failed" 413 from #583 isn't reachable on that path — the API returns
-  // user-friendly reasons (password-protected, too many pages, etc.) which we
+  // Surface a server-fn failure. Both AI actions are now async jobs (start →
+  // poll), so neither makes a single long Bedrock call that could hit the
+  // Amplify ~28s SSR timeout and surface as the cryptic "Invariant failed"
+  // (#1129). start/status calls are sub-second; the API returns user-friendly
+  // reasons (a failed generation's reason, an expired-session 404) which we
   // pass through verbatim.
-  //
-  // The synchronous Edit Form path is different: it makes a single long Bedrock
-  // call and can STILL exceed the Amplify/CloudFront origin-response timeout for
-  // large recipes. When that happens the gateway returns a 504 HTML page and
-  // TanStack Start's server-fn client throws Error("Invariant failed"). We now
-  // also fire our own client-side abort (api-client.ts) just under the gateway
-  // timeout, which surfaces as a timed-out message. Either way the raw string
-  // is useless to the user — map both to a clear, true edit-failure message.
-  const EDIT_TIMEOUT_MESSAGE =
-    "The edit request timed out or failed — your form may be too large. Try again, or simplify your request.";
-
-  const isTimeoutOrInvariant = (err: unknown): boolean => {
-    if (!(err instanceof Error)) return false;
-    return (
-      /invariant failed/i.test(err.message) || /timed out/i.test(err.message)
-    );
-  };
-
   const toMessage = (err: unknown): string => {
     return err instanceof Error ? err.message : "Unknown error";
   };
@@ -192,29 +229,16 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
         data: { s3Key, ...(context ? { context } : {}) },
       });
 
-      const start = Date.now();
-      const TIMEOUT_MS = 3 * 60_000;
-      const POLL_MS = 2000;
+      // Textract + Bedrock can take a while, so poll at a steady 2s up to 3 min.
+      const status = await pollUntilDone(
+        () => getPdfConvertStatus({ data: { jobId } }),
+        abort,
+        { firstPollMs: 2000, intervalMs: 2000, timeoutMs: 3 * 60_000 },
+      );
 
-      while (!abort.signal.aborted) {
-        if (Date.now() - start > TIMEOUT_MS) {
-          throw new Error(
-            "This upload is taking longer than expected. Please try a smaller PDF or try again later.",
-          );
-        }
-        await new Promise((r) => setTimeout(r, POLL_MS));
-        if (abort.signal.aborted) return;
-
-        const status = await getPdfConvertStatus({ data: { jobId } });
-        if (status.status === "processing" || status.status === "generating") continue;
-        if (status.status === "failed") throw new Error(status.reason);
-
-        // done
-        setPdfFile(null);
-        setPdfName(null);
-        await handleResponse(status.reply, status.recipe, status.unresolvableRefs);
-        return;
-      }
+      setPdfFile(null);
+      setPdfName(null);
+      await handleResponse(status.reply, status.recipe, status.unresolvableRefs);
     } catch (err) {
       // Swallow errors caused by our own abort — the user (or unmount)
       // requested cancellation, so we don't surface it.
@@ -237,20 +261,45 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
     setLoading(true);
     setError(null);
     setMessages((m) => [...m, { role: "user", content: message }]);
+
+    // Cancel any prior in-flight poll before starting a fresh one, then publish
+    // the new controller so unmount-cleanup and an overlapping submit both see
+    // it (shared with handleUpload).
+    pollAbortRef.current?.abort();
+    const abort = new AbortController();
+    pollAbortRef.current = abort;
+
     try {
       const recipeJson = JSON.stringify(serializeRecipeDraft(draft, { version }));
-      const { recipe, reply, unresolvableRefs } = await editRecipe({
-        data: { message, recipeJson },
-      });
-      await handleResponse(reply, recipe, unresolvableRefs);
+      const { jobId } = await startEditRecipe({ data: { message, recipeJson } });
+
+      // Fast-first cadence: a 2–3s edit returns on the first or second poll and
+      // feels essentially synchronous; the 3-min cap matches the upload path.
+      const status = await pollUntilDone(
+        () => getEditStatus({ data: { jobId } }),
+        abort,
+        { firstPollMs: 400, intervalMs: 2000, timeoutMs: 3 * 60_000 },
+      );
+      await handleResponse(status.reply, status.recipe, status.unresolvableRefs);
     } catch (err) {
-      // A timeout (our client-side abort) or a residual "Invariant failed" (the
-      // gateway 504 winning the race) both mean the synchronous edit didn't
-      // come back in time. Show one clear message rather than the raw string.
-      setError(isTimeoutOrInvariant(err) ? EDIT_TIMEOUT_MESSAGE : toMessage(err));
+      // Swallow errors caused by our own abort (overlapping submit / unmount).
+      // A failed generation surfaces its reason; an expired-session 404 (the
+      // job was lost to a restart) surfaces the API's interrupted message.
+      if (abort.signal.aborted) return;
+      setError(toMessage(err));
     } finally {
+      if (pollAbortRef.current === abort) pollAbortRef.current = null;
       setLoading(false);
     }
+  };
+
+  // User-requested cancel of the in-flight job: the poll loop throws on the
+  // abort and both handlers swallow it (same path as unmount cleanup).
+  const handleStop = () => {
+    pollAbortRef.current?.abort();
+    pollAbortRef.current = null;
+    setLoading(false);
+    pushStatus("Stopped.");
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -272,106 +321,116 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
 
   if (collapsed) {
     return (
-      <div style={styles.collapsedBar}>
+      <div className={s.aiCollapsedBar}>
         <button
           type="button"
+          className={s.iconBtn}
           onClick={() => setCollapsed(false)}
-          style={styles.expandButton}
           title="Open AI assistant"
           aria-label="Open AI assistant"
         >
-          🤖
+          <AiMagicIcon size={16} />
         </button>
       </div>
     );
   }
 
   return (
-    <aside style={styles.sidebar} aria-label="AI assistant">
-      <div style={styles.header}>
-        <h3 style={styles.heading}>AI Assistant</h3>
+    <aside className={s.aiSidebar} aria-label="AI assistant">
+      <div className={s.aiHeader}>
+        <h3 className={s.aiTitle}>
+          <AiMagicIcon size={15} />
+          AI Assistant
+        </h3>
         <button
           type="button"
+          className={s.railIconBtn}
           onClick={() => setCollapsed(true)}
-          style={styles.collapseButton}
           title="Collapse AI assistant"
           aria-label="Collapse AI assistant"
         >
-          ⟩
+          <ArrowRight01Icon size={16} />
         </button>
       </div>
 
-      <div style={styles.transcript}>
+      <div className={s.aiTranscript}>
         {messages.length === 0 && (
-          <p style={styles.placeholder}>
-            Upload a PDF or image to turn it into a form, or describe a change to
-            the current form.
-          </p>
+          <div className={s.aiEmpty}>
+            <AiMagicIcon size={26} />
+            <p>
+              Upload a PDF or image to turn it into a form, or describe a
+              change to the current form.
+            </p>
+          </div>
         )}
         {messages.map((msg, i) =>
           msg.role === "status" ? (
-            <div key={i} style={styles.status}>
+            <div key={i} className={s.aiStatus}>
               {msg.content}
             </div>
           ) : (
             <div
               key={i}
-              style={{
-                ...styles.bubble,
-                ...(msg.role === "user" ? styles.userBubble : styles.aiBubble),
-              }}
+              className={`${s.aiBubble} ${
+                msg.role === "user" ? s.aiBubbleUser : s.aiBubbleAi
+              }`}
             >
-              <strong style={styles.bubbleRole}>
-                {msg.role === "user" ? "You" : "AI Assistant"}
-              </strong>
-              <div style={styles.bubbleText}>{msg.content}</div>
+              {msg.content}
             </div>
           ),
         )}
-        {loading && <div style={styles.thinking}>Thinking…</div>}
+        {loading && (
+          <div className={s.aiThinking}>
+            <span className="t-shimmer" data-text="Thinking…">
+              Thinking…
+            </span>
+            <button
+              type="button"
+              className={s.aiStopBtn}
+              onClick={handleStop}
+            >
+              Stop
+            </button>
+          </div>
+        )}
         {error && (
-          <div style={styles.error} role="alert">
+          <div className={s.aiError} role="alert">
             {error}
           </div>
         )}
         <div ref={chatEndRef} />
       </div>
 
-      <div style={styles.actions}>
-        {/* Upload: PDF/image → recipe, standalone (no message needed). */}
-        <div style={styles.uploadRow}>
-          <label style={styles.fileLabel}>
-            {pdfFile ? `✓ ${pdfName}` : "📎 Attach PDF / image"}
-            <input
-              type="file"
-              accept=".pdf,.png,.jpg,.jpeg"
-              onChange={handleFileSelect}
-              style={{ display: "none" }}
+      <div className={s.aiComposer}>
+        {pdfFile && (
+          <span className={s.aiAttachChip} title={pdfName ?? undefined}>
+            <Attachment02Icon size={13} />
+            <span className={s.aiAttachName}>{pdfName}</span>
+            <button
+              type="button"
+              className={s.aiAttachClear}
+              aria-label="Remove attachment"
+              title="Remove attachment"
               disabled={loading}
-            />
-          </label>
-          <button
-            type="button"
-            onClick={handleUpload}
-            disabled={!pdfFile || loading}
-            style={{
-              ...styles.button,
-              ...(!pdfFile || loading ? styles.buttonDisabled : {}),
-            }}
-          >
-            Upload
-          </button>
-        </div>
-
-        {/* Edit Form: a text tweak applied to the current draft. */}
+              onClick={() => {
+                setPdfFile(null);
+                setPdfName(null);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
+            >
+              <Cancel01Icon size={11} />
+            </button>
+          </span>
+        )}
         <form
-          style={styles.editRow}
+          className={s.aiComposerCard}
           onSubmit={(e) => {
             e.preventDefault();
             handleEditForm();
           }}
         >
           <textarea
+            className={s.aiTextarea}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -383,145 +442,42 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
               }
             }}
             placeholder="e.g. make the email field required"
-            rows={3}
-            style={styles.textInput}
+            rows={2}
             disabled={loading}
           />
-          <button
-            type="submit"
-            disabled={!input.trim() || loading}
-            style={{
-              ...styles.button,
-              ...(!input.trim() || loading ? styles.buttonDisabled : {}),
-            }}
-          >
-            Edit Form
-          </button>
+          <div className={s.aiComposerRow}>
+            {/* Upload: PDF/image → recipe, standalone (no message needed). */}
+            <label className={s.aiAttachBtn}>
+              <Attachment02Icon size={14} />
+              Attach PDF / image
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg"
+                onChange={handleFileSelect}
+                style={{ display: "none" }}
+                disabled={loading}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={!pdfFile || loading}
+            >
+              Upload
+            </button>
+            {/* Edit Form: a text tweak applied to the current draft. */}
+            <button
+              type="submit"
+              className={s.btnPrimary}
+              disabled={!input.trim() || loading}
+            >
+              Edit Form
+            </button>
+          </div>
         </form>
       </div>
     </aside>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  sidebar: {
-    width: 380,
-    flexShrink: 0,
-    display: "flex",
-    flexDirection: "column",
-    height: "100%",
-    borderLeft: "1px solid #e0e0e0",
-    background: "#fafafa",
-    fontFamily: "system-ui",
-  },
-  collapsedBar: {
-    width: 44,
-    flexShrink: 0,
-    display: "flex",
-    justifyContent: "center",
-    paddingTop: 12,
-    borderLeft: "1px solid #e0e0e0",
-    background: "#fafafa",
-  },
-  expandButton: {
-    width: 32,
-    height: 32,
-    border: "1px solid #ddd",
-    borderRadius: 6,
-    background: "#fff",
-    cursor: "pointer",
-    fontSize: 16,
-  },
-  header: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "12px 16px",
-    borderBottom: "1px solid #e0e0e0",
-  },
-  heading: { margin: 0, fontSize: 16 },
-  collapseButton: {
-    border: "none",
-    background: "transparent",
-    cursor: "pointer",
-    fontSize: 18,
-    color: "#666",
-  },
-  transcript: { flex: 1, overflow: "auto", padding: 16 },
-  placeholder: { color: "#999", fontSize: 14, textAlign: "center", marginTop: 24 },
-  bubble: {
-    marginBottom: 12,
-    padding: 10,
-    borderRadius: 8,
-    maxWidth: "90%",
-    whiteSpace: "pre-wrap",
-    fontSize: 14,
-  },
-  userBubble: { background: "#e3f2fd", marginLeft: "auto" },
-  aiBubble: { background: "#f0f0f0" },
-  bubbleRole: { fontSize: 11, color: "#666" },
-  bubbleText: { marginTop: 4 },
-  thinking: { color: "#666", fontStyle: "italic", fontSize: 14 },
-  status: {
-    margin: "4px 0 12px",
-    padding: "6px 10px",
-    borderLeft: "3px solid #90caf9",
-    background: "#f5faff",
-    color: "#37474f",
-    fontSize: 13,
-  },
-  error: {
-    color: "#b71c1c",
-    background: "#ffebee",
-    padding: 8,
-    borderRadius: 6,
-    fontSize: 13,
-    marginTop: 8,
-  },
-  actions: {
-    borderTop: "1px solid #e0e0e0",
-    padding: 12,
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
-  uploadRow: { display: "flex", gap: 8, alignItems: "center" },
-  fileLabel: {
-    flex: 1,
-    cursor: "pointer",
-    padding: "8px 10px",
-    background: "#eef2f7",
-    borderRadius: 6,
-    fontSize: 13,
-    textAlign: "center",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
-  editRow: { display: "flex", gap: 8, alignItems: "flex-start" },
-  textInput: {
-    flex: 1,
-    padding: "8px 10px",
-    border: "1px solid #ddd",
-    borderRadius: 6,
-    fontSize: 14,
-    fontFamily: "inherit",
-    lineHeight: 1.4,
-    resize: "vertical",
-    minHeight: 38,
-    // Wrap long prompts instead of scrolling them off to the right.
-    whiteSpace: "pre-wrap",
-    overflowWrap: "break-word",
-  },
-  button: {
-    padding: "8px 14px",
-    background: "#1976d2",
-    color: "#fff",
-    border: "none",
-    borderRadius: 6,
-    cursor: "pointer",
-    fontSize: 14,
-    whiteSpace: "nowrap",
-  },
-  buttonDisabled: { background: "#cfd8dc", color: "#90a4ae", cursor: "default" },
-};

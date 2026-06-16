@@ -1,9 +1,10 @@
+import type { MockInstance } from "vitest";
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { createElement, type ReactElement } from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 
@@ -11,84 +12,91 @@ import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 // at module-eval. The component only reads `Route.useLoaderData()` /
 // `Route.useSearch()` and `useNavigate`, so a minimal shim is enough to render
 // BuilderPage in jsdom.
-jest.mock("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (config: Record<string, unknown>) => ({
     ...config,
     useLoaderData: () => ({ catalog: CATALOG, baseBranch: "dev" }),
     useSearch: () => ({}),
   }),
-  useNavigate: () => jest.fn(),
+  useNavigate: () => vi.fn(),
 }));
 
 // validateRecipe is the only server fn a Save-draft click reaches (and only on
 // the valid path); the rest are mocked so importing the route doesn't attempt a
 // real RPC. previewRecipe is threaded out the same way so the Preview-modal
 // tests can drive its success/failure paths.
-const validateRecipe = jest.fn();
-const previewRecipe = jest.fn();
-jest.mock("../../server/registry", () => ({
-  getCatalogFn: jest.fn(),
+const validateRecipe = vi.fn();
+const previewRecipe = vi.fn();
+vi.mock("../../server/registry", () => ({
+  getCatalogFn: vi.fn(),
   validateRecipe: (...args: unknown[]) => validateRecipe(...args),
   previewRecipe: (...args: unknown[]) => previewRecipe(...args),
 }));
-const getRecipe = jest.fn();
-const rekeyRecipe = jest.fn();
-const submitRecipe = jest.fn();
-const updateRecipe = jest.fn();
+const getRecipe = vi.fn();
+const rekeyRecipe = vi.fn();
+const submitRecipe = vi.fn();
+const updateRecipe = vi.fn();
 // Always resolve to "no selection" by default so the picker's Promise.all
 // load path works; individual tests can override per case.
-const getFormConfig = jest.fn((..._args: unknown[]) =>
+const getFormConfig = vi.fn((..._args: unknown[]) =>
   Promise.resolve({ mdaContactId: null, processors: null }),
 );
-jest.mock("../../server/forms", () => ({
+vi.mock("../../server/forms", () => ({
   submitRecipe: (...args: unknown[]) => submitRecipe(...args),
   updateRecipe: (...args: unknown[]) => updateRecipe(...args),
   rekeyRecipe: (...args: unknown[]) => rekeyRecipe(...args),
-  deleteForm: jest.fn(),
-  disableForm: jest.fn(),
-  enableForm: jest.fn(),
+  deleteForm: vi.fn(),
+  disableForm: vi.fn(),
+  enableForm: vi.fn(),
   getRecipe: (...args: unknown[]) => getRecipe(...args),
   getFormConfig: (...args: unknown[]) => getFormConfig(...args),
 }));
 // MDA contact directory (issue #607) — stub the server fn and the hook so the
 // contact-details dropdown doesn't pull a real RPC at module-eval.
-jest.mock("../../server/mda-contacts", () => ({
-  listMdaContacts: jest.fn(() => Promise.resolve([])),
-  createMdaContact: jest.fn(),
+vi.mock("../../server/mda-contacts", () => ({
+  listMdaContacts: vi.fn(() => Promise.resolve([])),
+  createMdaContact: vi.fn(),
 }));
-jest.mock("./-use-mda-contacts", () => ({
+vi.mock("./-use-mda-contacts", () => ({
   useMdaContacts: () => ({
     contacts: [],
     loadError: null,
-    refetch: jest.fn(),
-    upsertContact: jest.fn(),
+    refetch: vi.fn(),
+    upsertContact: vi.fn(),
   }),
 }));
-jest.mock("../../server/publish", () => ({
-  publishRecipe: jest.fn(),
-  getPublishBaseBranch: jest.fn(),
+const publishRecipe = vi.fn();
+const getNextDeployVersion = vi.fn();
+vi.mock("../../server/publish", () => ({
+  publishRecipe: (...args: unknown[]) => publishRecipe(...args),
+  getPublishBaseBranch: vi.fn(),
+  getNextDeployVersion: (...args: unknown[]) => getNextDeployVersion(...args),
+  eraseRecipe: vi.fn(),
 }));
 // The AI sidebar's convert server-fns are createServerFn; stub them so
-// importing the editor doesn't pull a real RPC at module-eval. `editRecipe` is
-// the one the Edit Form flow reaches, so route it through a swappable spy.
-const editRecipe = jest.fn();
-jest.mock("../../server/ai-builder/convert", () => ({
-  convertRecipe: jest.fn(),
-  getAiStatus: jest.fn(),
-  editRecipe: (...args: unknown[]) => editRecipe(...args),
-  presignPdfUpload: jest.fn(),
-  startPdfConvert: jest.fn(),
-  getPdfConvertStatus: jest.fn(),
+// importing the editor doesn't pull a real RPC at module-eval. The Edit Form
+// flow is now an async job — startEditRecipe → poll getEditStatus — so route
+// both through swappable spies.
+const startEditRecipe = vi.fn();
+const getEditStatus = vi.fn();
+vi.mock("../../server/ai-builder/convert", () => ({
+  convertRecipe: vi.fn(),
+  getAiStatus: vi.fn(),
+  startEditRecipe: (...args: unknown[]) => startEditRecipe(...args),
+  getEditStatus: (...args: unknown[]) => getEditStatus(...args),
+  presignPdfUpload: vi.fn(),
+  startPdfConvert: vi.fn(),
+  getPdfConvertStatus: vi.fn(),
 }));
 
 // The Open picker's forms list is a slow GitHub-API waterfall; stub it out.
 // `mockForms` is swappable per test so we can drive the uniqueness pre-flight.
 // `refetch`/`upsertForm` are stable spies so the save-flow tests can assert
 // which branch fired (full refetch for a new form, cheap upsert for a re-save).
-let mockForms: { id: string; formId: string; title: string; version: string; isPublished: boolean }[] = [];
-const mockRefetch = jest.fn();
-const mockUpsertForm = jest.fn();
-jest.mock("./-use-forms-list", () => ({
+let mockForms: { id: string; formId: string; title: string; version: string; isPublished: boolean; publishedVersion?: string }[] = [];
+const mockRefetch = vi.fn();
+const mockUpsertForm = vi.fn();
+vi.mock("./-use-forms-list", () => ({
   useFormsList: () => ({
     forms: mockForms,
     loadError: null,
@@ -100,8 +108,8 @@ jest.mock("./-use-forms-list", () => ({
 // Keep the real reducer logic, but make EMPTY_DRAFT (the useReducer seed)
 // swappable per test so we can render an invalid vs a valid starting draft.
 let mockEmptyDraft: RecipeDraft;
-jest.mock("./-recipe-reducer", () => {
-  const actual = jest.requireActual("./-recipe-reducer");
+vi.mock("./-recipe-reducer", async () => {
+  const actual = await vi.importActual("./-recipe-reducer");
   return {
     __esModule: true,
     ...actual,
@@ -122,8 +130,8 @@ jest.mock("./-recipe-reducer", () => {
 let mockCollisions: ReturnType<
   typeof import("@govtech-bb/form-builder").findRecipeIdCollisions
 > = { fieldIdCollisions: [], stepIdCollisions: [] };
-jest.mock("@govtech-bb/form-builder", () => {
-  const actual = jest.requireActual("@govtech-bb/form-builder");
+vi.mock("@govtech-bb/form-builder", async () => {
+  const actual = await vi.importActual("@govtech-bb/form-builder");
   return {
     ...actual,
     findRecipeIdCollisions: () => mockCollisions,
@@ -234,21 +242,21 @@ const DRAFT_WITH_COMPLETE_PAYMENT: RecipeDraft = {
   processors: [{ id: "pay-1", type: "payment", config: COMPLETE_PAYMENT_CONFIG }],
 } as RecipeDraft;
 
+const { Route } = (await import("./index")) as unknown as {
+  Route: { component: () => ReactElement };
+};
+
 function renderBuilder() {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { Route } = require("./index") as {
-    Route: { component: () => ReactElement };
-  };
   return render(createElement(Route.component));
 }
 
 describe("BuilderPage — validate on Save draft click", () => {
-  let confirmSpy: jest.SpyInstance;
+  let confirmSpy: MockInstance;
 
   beforeEach(() => {
     validateRecipe.mockReset();
     mockForms = [];
-    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(false);
+    confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -359,13 +367,13 @@ describe("BuilderPage — validate on Save draft click", () => {
 });
 
 describe("BuilderPage — incomplete payment config blocks save", () => {
-  let confirmSpy: jest.SpyInstance;
+  let confirmSpy: MockInstance;
 
   beforeEach(() => {
     validateRecipe.mockReset();
     submitRecipe.mockReset();
     mockForms = [];
-    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+    confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -486,13 +494,13 @@ describe("BuilderPage — formId/title pre-flight on Validate", () => {
 });
 
 describe("BuilderPage — unsaved changes + Discard", () => {
-  let confirmSpy: jest.SpyInstance;
+  let confirmSpy: MockInstance;
 
   beforeEach(() => {
     mockForms = [];
     validateRecipe.mockReset();
     getRecipe.mockReset();
-    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+    confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -635,6 +643,8 @@ describe("BuilderPage — Open picker freshness after save", () => {
     mockUpsertForm.mockClear();
     submitRecipe.mockReset();
     updateRecipe.mockReset();
+    publishRecipe.mockReset();
+    getNextDeployVersion.mockReset();
   });
 
   it("full-refetches the picker (no upsert) after saving a brand-new form", async () => {
@@ -730,6 +740,220 @@ describe("BuilderPage — Open picker freshness after save", () => {
       // An in-place same-version save leaves the published row winning the
       // version tie, so the badge stays.
       isPublished: true,
+    });
+  });
+
+  it("cuts a new draft version (POST, bumped patch) when the loaded version is the published one — never an in-place overwrite", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    // The form is loaded at its *published* version (publishedVersion ===
+    // version === currentVersion). Overwriting it in place is forbidden by the
+    // API, so Save Changes must auto-bump a patch and create a new draft row.
+    mockForms = [
+      {
+        id: "old",
+        formId: "old-form",
+        title: "Old Form",
+        version: "1.0.0",
+        isPublished: true,
+        publishedVersion: "1.0.0",
+      },
+    ];
+    getRecipe.mockResolvedValue({
+      formId: "old-form",
+      title: "Old Form",
+      version: "1.0.0",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/first-name" }],
+          behaviours: [],
+        },
+        { stepId: "check-your-answers", title: "Check your answers", elements: [], behaviours: [] },
+        { stepId: "declaration", title: "Declaration", elements: [], behaviours: [] },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+    });
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(await screen.findByText("Old Form"));
+    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/title/i), {
+      target: { value: "Old Form (edited)" },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    // The modal auto-bumps the published 1.0.0 to a 1.0.1 draft version.
+    expect(await screen.findByDisplayValue("1.0.1")).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save Changes" }),
+    );
+    await screen.findByText(/recipe submitted successfully/i);
+
+    // Routes through submitRecipe (POST, new version), never updateRecipe (PUT,
+    // overwrite) — so the immutable published 1.0.0 is left intact.
+    expect(submitRecipe).toHaveBeenCalledTimes(1);
+    expect(updateRecipe).not.toHaveBeenCalled();
+    const submitArg = submitRecipe.mock.calls[0][0] as {
+      data: { recipe: { version: string }; isNew: boolean };
+    };
+    expect(submitArg.data.recipe.version).toBe("1.0.1");
+    expect(submitArg.data.isNew).toBe(false);
+
+    // The optimistic picker row keeps the published badge and version, advancing
+    // only the working version to the new draft.
+    expect(mockUpsertForm).toHaveBeenCalledWith({
+      id: "old",
+      formId: "old-form",
+      title: "Old Form (edited)",
+      version: "1.0.1",
+      isPublished: true,
+      publishedVersion: "1.0.0",
+    });
+  });
+
+  it("still overwrites in place (PUT) when a higher unpublished draft sits over a published version", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    // publishedVersion (1.0.0) < the loaded draft version (1.2.0): the loaded
+    // version is an unpublished draft, so Save Changes overwrites it in place
+    // rather than bumping — the published-version exception must NOT fire here.
+    mockForms = [
+      {
+        id: "old",
+        formId: "old-form",
+        title: "Old Form",
+        version: "1.2.0",
+        isPublished: true,
+        publishedVersion: "1.0.0",
+      },
+    ];
+    getRecipe.mockResolvedValue({
+      formId: "old-form",
+      title: "Old Form",
+      version: "1.2.0",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/first-name" }],
+          behaviours: [],
+        },
+        { stepId: "check-your-answers", title: "Check your answers", elements: [], behaviours: [] },
+        { stepId: "declaration", title: "Declaration", elements: [], behaviours: [] },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+    });
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(await screen.findByText("Old Form"));
+    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/title/i), {
+      target: { value: "Old Form (edited)" },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    // The modal pins the loaded draft version (1.2.0) — no bump.
+    expect(await screen.findByDisplayValue("1.2.0")).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save Changes" }),
+    );
+    await screen.findByText(/recipe submitted successfully/i);
+
+    // In-place overwrite of the unpublished draft: PUT, never a new-version POST.
+    expect(updateRecipe).toHaveBeenCalledTimes(1);
+    expect(submitRecipe).not.toHaveBeenCalled();
+  });
+
+  it("preserves publishedVersion in the optimistic picker row after Deploy", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    // A published form, loaded clean (no edits) so Deploy is enabled.
+    mockForms = [
+      {
+        id: "old",
+        formId: "old-form",
+        title: "Old Form",
+        version: "1.0.0",
+        isPublished: true,
+        publishedVersion: "1.0.0",
+      },
+    ];
+    getRecipe.mockResolvedValue({
+      formId: "old-form",
+      title: "Old Form",
+      version: "1.0.0",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/first-name" }],
+          behaviours: [],
+        },
+        { stepId: "check-your-answers", title: "Check your answers", elements: [], behaviours: [] },
+        { stepId: "declaration", title: "Declaration", elements: [], behaviours: [] },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+    });
+    validateRecipe.mockResolvedValue({ ok: true });
+    // Deploy opens a PR at the next minor; the published index is unchanged.
+    getNextDeployVersion.mockResolvedValue({ version: "1.1.0" });
+    publishRecipe.mockResolvedValue({
+      prUrl: "https://github.com/x/y/pull/7",
+      prNumber: 7,
+    });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(await screen.findByText("Old Form"));
+    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
+
+    // Deploy from the toolbar opens the modal and resolves the target version.
+    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+    const publishModal = (
+      screen.getByText("Deploy", { selector: "strong" }).closest("div") as HTMLElement
+    ).parentElement as HTMLElement;
+    await within(publishModal).findByDisplayValue("1.1.0");
+    await userEvent.click(
+      within(publishModal).getByRole("button", { name: /deploy/i }),
+    );
+    await waitFor(() => expect(publishRecipe).toHaveBeenCalledTimes(1));
+
+    // The new version becomes the working version, but the published index is
+    // still at 1.0.0 until the PR merges — so the row must keep publishedVersion
+    // 1.0.0 rather than dropping it (a refetch would still report 1.0.0).
+    expect(mockUpsertForm).toHaveBeenCalledWith({
+      id: "old",
+      formId: "old-form",
+      title: "Old Form",
+      version: "1.1.0",
+      isPublished: false,
+      publishedVersion: "1.0.0",
     });
   });
 
@@ -877,7 +1101,7 @@ describe("BuilderPage — re-key (changing a loaded form's ID)", () => {
     };
   }
 
-  let confirmSpy: jest.SpyInstance;
+  let confirmSpy: MockInstance;
 
   beforeEach(() => {
     mockForms = [];
@@ -887,7 +1111,7 @@ describe("BuilderPage — re-key (changing a loaded form's ID)", () => {
     submitRecipe.mockReset();
     mockRefetch.mockClear();
     mockUpsertForm.mockClear();
-    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+    confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -1050,7 +1274,7 @@ describe("BuilderPage — Preview modal recipe JSON (#744)", () => {
 // validate *request* stay hard errors. These drive the real AiSidebar's Edit
 // Form flow, which routes through the route's internal `applyAiRecipe`.
 describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
-  let confirmSpy: jest.SpyInstance;
+  let confirmSpy: MockInstance;
 
   // A recipe that deserializes to a draft different from VALID_DRAFT, so the
   // no-op guard passes and the apply proceeds. Empty `elements` keeps
@@ -1071,14 +1295,15 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
   };
 
   beforeEach(() => {
-    editRecipe.mockReset();
+    startEditRecipe.mockReset();
+    getEditStatus.mockReset();
     validateRecipe.mockReset();
     mockForms = [];
     mockCollisions = { fieldIdCollisions: [], stepIdCollisions: [] };
     mockEmptyDraft = VALID_DRAFT;
     // VALID_DRAFT seeds a dirty, never-saved draft, so applyAiRecipe prompts the
     // dirty-overwrite confirm; accept it so the changed path proceeds.
-    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+    confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -1093,8 +1318,19 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
     await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
   }
 
+  // The async Edit Form flow: start returns a jobId, then a single status poll
+  // returns the terminal "done" payload the sidebar applies.
+  function mockEditResult(payload: {
+    recipe: Record<string, unknown> | null;
+    reply: string;
+    unresolvableRefs?: unknown[];
+  }) {
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue({ status: "done", ...payload });
+  }
+
   it("loads a contract-invalid recipe and lights up the validation panel", async () => {
-    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "Here you go." });
     validateRecipe.mockResolvedValue({
       ok: false,
       issues: [
@@ -1120,7 +1356,7 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
   }, 30_000);
 
   it("loads a recipe with an id collision and warns instead of rejecting", async () => {
-    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "Here you go." });
     validateRecipe.mockResolvedValue({ ok: true });
     mockCollisions = {
       fieldIdCollisions: [
@@ -1167,7 +1403,7 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
   }, 30_000);
 
   it("still loads with a warning when convert flags unresolvable refs", async () => {
-    editRecipe.mockResolvedValue({
+    mockEditResult({
       recipe: EDITED_RECIPE,
       reply: "Built it.",
       unresolvableRefs: [
@@ -1188,7 +1424,7 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
 
   it("hard-errors and does not load a structurally unreadable recipe", async () => {
     // No `steps` array → deserializeRecipe throws → buildLoadArgs throws.
-    editRecipe.mockResolvedValue({
+    mockEditResult({
       recipe: { formId: "broken", title: "Broken", version: "1.0.1" },
       reply: "Here you go.",
     });
@@ -1204,7 +1440,7 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
   }, 30_000);
 
   it("hard-errors when the validate request itself fails", async () => {
-    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "Here you go." });
     validateRecipe.mockRejectedValue(new Error("Validation service unavailable"));
     renderBuilder();
 
@@ -1219,7 +1455,7 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
 
   it("reports 'unchanged' without validating when the recipe matches the draft", async () => {
     mockEmptyDraft = EDITED_DRAFT;
-    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "No change needed." });
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "No change needed." });
     renderBuilder();
 
     await driveEditForm();
@@ -1233,7 +1469,7 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
   }, 30_000);
 
   it("stays silent and does not load when the dirty-overwrite confirm is declined", async () => {
-    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "Here you go." });
     validateRecipe.mockResolvedValue({ ok: true });
     confirmSpy.mockReturnValue(false);
     renderBuilder();
@@ -1248,7 +1484,7 @@ describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
   }, 30_000);
 
   it("keeps Deploy blocked after a load-with-warning", async () => {
-    editRecipe.mockResolvedValue({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "Here you go." });
     validateRecipe.mockResolvedValue({
       ok: false,
       issues: [

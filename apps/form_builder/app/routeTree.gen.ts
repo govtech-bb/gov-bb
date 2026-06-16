@@ -9,13 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ContentRouteImport } from './routes/content'
 import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ContentIndexRouteImport } from './routes/content/index'
 import { Route as BuilderIndexRouteImport } from './routes/builder/index'
+import { Route as ContentEditRouteImport } from './routes/content/edit'
 import { Route as AuthGithubRouteImport } from './routes/auth/github'
 import { Route as AuthDeniedRouteImport } from './routes/auth/denied'
 import { Route as AuthGithubCallbackRouteImport } from './routes/auth/github_.callback'
 
+const ContentRoute = ContentRouteImport.update({
+  id: '/content',
+  path: '/content',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BuilderRoute = BuilderRouteImport.update({
   id: '/builder',
   path: '/builder',
@@ -26,10 +34,20 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContentIndexRoute = ContentIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ContentRoute,
+} as any)
 const BuilderIndexRoute = BuilderIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => BuilderRoute,
+} as any)
+const ContentEditRoute = ContentEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => ContentRoute,
 } as any)
 const AuthGithubRoute = AuthGithubRouteImport.update({
   id: '/auth/github',
@@ -50,25 +68,33 @@ const AuthGithubCallbackRoute = AuthGithubCallbackRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/builder': typeof BuilderRouteWithChildren
+  '/content': typeof ContentRouteWithChildren
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
+  '/content/edit': typeof ContentEditRoute
   '/builder/': typeof BuilderIndexRoute
+  '/content/': typeof ContentIndexRoute
   '/auth/github/callback': typeof AuthGithubCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
+  '/content/edit': typeof ContentEditRoute
   '/builder': typeof BuilderIndexRoute
+  '/content': typeof ContentIndexRoute
   '/auth/github/callback': typeof AuthGithubCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/builder': typeof BuilderRouteWithChildren
+  '/content': typeof ContentRouteWithChildren
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
+  '/content/edit': typeof ContentEditRoute
   '/builder/': typeof BuilderIndexRoute
+  '/content/': typeof ContentIndexRoute
   '/auth/github_/callback': typeof AuthGithubCallbackRoute
 }
 export interface FileRouteTypes {
@@ -76,30 +102,39 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/builder'
+    | '/content'
     | '/auth/denied'
     | '/auth/github'
+    | '/content/edit'
     | '/builder/'
+    | '/content/'
     | '/auth/github/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth/denied'
     | '/auth/github'
+    | '/content/edit'
     | '/builder'
+    | '/content'
     | '/auth/github/callback'
   id:
     | '__root__'
     | '/'
     | '/builder'
+    | '/content'
     | '/auth/denied'
     | '/auth/github'
+    | '/content/edit'
     | '/builder/'
+    | '/content/'
     | '/auth/github_/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BuilderRoute: typeof BuilderRouteWithChildren
+  ContentRoute: typeof ContentRouteWithChildren
   AuthDeniedRoute: typeof AuthDeniedRoute
   AuthGithubRoute: typeof AuthGithubRoute
   AuthGithubCallbackRoute: typeof AuthGithubCallbackRoute
@@ -107,6 +142,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/content': {
+      id: '/content'
+      path: '/content'
+      fullPath: '/content'
+      preLoaderRoute: typeof ContentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/builder': {
       id: '/builder'
       path: '/builder'
@@ -121,12 +163,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/content/': {
+      id: '/content/'
+      path: '/'
+      fullPath: '/content/'
+      preLoaderRoute: typeof ContentIndexRouteImport
+      parentRoute: typeof ContentRoute
+    }
     '/builder/': {
       id: '/builder/'
       path: '/'
       fullPath: '/builder/'
       preLoaderRoute: typeof BuilderIndexRouteImport
       parentRoute: typeof BuilderRoute
+    }
+    '/content/edit': {
+      id: '/content/edit'
+      path: '/edit'
+      fullPath: '/content/edit'
+      preLoaderRoute: typeof ContentEditRouteImport
+      parentRoute: typeof ContentRoute
     }
     '/auth/github': {
       id: '/auth/github'
@@ -163,9 +219,23 @@ const BuilderRouteChildren: BuilderRouteChildren = {
 const BuilderRouteWithChildren =
   BuilderRoute._addFileChildren(BuilderRouteChildren)
 
+interface ContentRouteChildren {
+  ContentEditRoute: typeof ContentEditRoute
+  ContentIndexRoute: typeof ContentIndexRoute
+}
+
+const ContentRouteChildren: ContentRouteChildren = {
+  ContentEditRoute: ContentEditRoute,
+  ContentIndexRoute: ContentIndexRoute,
+}
+
+const ContentRouteWithChildren =
+  ContentRoute._addFileChildren(ContentRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BuilderRoute: BuilderRouteWithChildren,
+  ContentRoute: ContentRouteWithChildren,
   AuthDeniedRoute: AuthDeniedRoute,
   AuthGithubRoute: AuthGithubRoute,
   AuthGithubCallbackRoute: AuthGithubCallbackRoute,

@@ -51,6 +51,10 @@ export const envValidationSchema = Joi.object({
   // never emails a real MDA.
   SES_DEFAULT_RECIPIENT: Joi.string().default("testing@govtech.bb"),
 
+  // Recipient for the public site feedback form (apps/landing /feedback).
+  // Explicit per-environment address, not routed through form_config (#1139).
+  FEEDBACK_RECIPIENT: Joi.string().default("feedback@govtech.bb"),
+
   // Spreadsheet export (optional — defaults to <cwd>/exports)
   SPREADSHEET_EXPORT_DIR: Joi.string().optional(),
 
@@ -68,6 +72,12 @@ export const envValidationSchema = Joi.object({
       then: Joi.required(),
       otherwise: Joi.optional().allow(""),
     }),
+
+  // Public forms site origin the EzPay return redirect bounces the citizen to
+  // after payment (e.g. https://forms.sandbox.alpha.gov.bb). Empty = fall back
+  // to the first CORS_ORIGIN entry, which is the forms site on every deployed
+  // env, so this only needs setting when the two ever diverge.
+  FORMS_BASE_URL: Joi.string().uri().allow("").default(""),
 
   // EzPay (required only when forms use the payment processor)
   EZPAY_BASE_URL: Joi.string().uri().required(),
@@ -92,6 +102,12 @@ export const envValidationSchema = Joi.object({
 
   // Recipe preview (optional — empty disables the per-request preview escape hatch)
   RECIPE_PREVIEW_TOKEN: Joi.string().allow("").default(""),
+
+  // Smoke submission (optional — empty disables the processor-drop escape hatch).
+  // When set, a POST /submissions carrying a matching X-Smoke-Submission header
+  // persists/validates but fires no processors — lets the post-deploy live
+  // smoke matrix run without real emails/webhooks (#1252).
+  SMOKE_SUBMISSION_TOKEN: Joi.string().allow("").default(""),
 
   // S3 file uploads (optional — required only when a form uses file fields)
   S3_BUCKET: Joi.string().allow("").default(""),

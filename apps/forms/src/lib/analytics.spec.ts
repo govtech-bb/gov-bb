@@ -3,7 +3,7 @@ import { trackEvent, trackPageview } from "./analytics";
 describe("trackEvent", () => {
   afterEach(() => {
     delete (window as { umami?: unknown }).umami;
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("no-ops when window.umami is absent", () => {
@@ -11,7 +11,7 @@ describe("trackEvent", () => {
   });
 
   it("forwards the event name when no data is given", () => {
-    const track = jest.fn();
+    const track = vi.fn();
     window.umami = { track };
     trackEvent("form-open");
     expect(track).toHaveBeenCalledTimes(1);
@@ -19,7 +19,7 @@ describe("trackEvent", () => {
   });
 
   it("forwards both the event name and data when data is given", () => {
-    const track = jest.fn();
+    const track = vi.fn();
     window.umami = { track };
     trackEvent("form-step-view", {
       form_id: "renew-passport",
@@ -40,7 +40,7 @@ describe("trackEvent", () => {
 describe("trackPageview", () => {
   afterEach(() => {
     delete (window as { umami?: unknown }).umami;
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("no-ops when window.umami is absent", () => {
@@ -48,7 +48,7 @@ describe("trackPageview", () => {
   });
 
   it("calls umami.track() with no arguments to fire a pageview", () => {
-    const track = jest.fn();
+    const track = vi.fn();
     window.umami = { track };
     trackPageview();
     expect(track).toHaveBeenCalledTimes(1);

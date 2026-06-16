@@ -34,6 +34,7 @@ export default function SubmissionConfirmation({
   contactDetails,
   onTryAgain,
   submissionState,
+  feedbackUrl,
 }: SubmissionConfirmationProps) {
   // submissionState is rehydrated from session storage, so it survives a
   // refresh on this step. When it is genuinely absent (the step was reached
@@ -53,6 +54,7 @@ export default function SubmissionConfirmation({
     quantity,
     submissionSuccess,
     paymentSuccess,
+    processing,
     referenceNumber,
     date,
     paymentUrl,
@@ -148,19 +150,61 @@ export default function SubmissionConfirmation({
         </div>
       )}
 
-      <div className="form-page__feedback">
-        <h3 className="govbb-text-h3">Help us improve this service</h3>
-        <p>
-          We are always working to improve government services. If you have a
-          moment, you can tell us about your experience today.
-        </p>
-        <button className="govbb-btn--secondary">
-          Give feedback on this service
-        </button>
-        <p>This will take about 30 seconds. Your responses are anonymous.</p>
-      </div>
+      {/* Only invite feedback when a target is provided. The exit survey's own
+          confirmation passes no feedbackUrl, so it never links to itself. */}
+      {feedbackUrl && (
+        <div className="form-page__feedback">
+          <h3 className="govbb-text-h3">Help us improve this service</h3>
+          <p>
+            We are always working to improve government services. If you have a
+            moment, you can tell us about your experience today.
+          </p>
+          {/* Renders as a link (not a button) styled as a secondary action —
+              the same pattern as the "Continue to payment" anchor above. */}
+          <a className="govbb-btn--secondary" href={feedbackUrl}>
+            Give feedback on this service
+          </a>
+          <p>This will take about 30 seconds. Your responses are anonymous.</p>
+        </div>
+      )}
     </>
   );
+
+  // Submission is in flight — an idempotency-key replay returned `processing`
+  // (#463). Show a neutral status panel with the reference number, but none of
+  // the finished-submission furniture: no Try again (nothing failed), no
+  // payment block, and no trailing next-steps/contact/feedback (it isn't a
+  // completed submission yet).
+  if (processing) {
+    return (
+      <>
+        <div className="form-page__panel form-page__panel--success">
+          <div className="container">
+            <div className="form-width form-page__panel-body">
+              <p className="form-page__panel-service-title">{serviceTitle}</p>
+              <h1 className="govbb-text-h1">
+                We're processing your submission
+              </h1>
+              <p className="form-page__panel-subheading">
+                We've received your submission and it's being processed. We'll
+                email you when it's complete.
+              </p>
+            </div>
+          </div>
+        </div>
+        {referenceNumber && (
+          <div className="container pb-8 lg:pb-16">
+            <div className="form-width form-page__confirmation">
+              <dl className="form-page__reference">
+                <dt>Submission ID</dt>
+                <dd>{referenceNumber}</dd>
+              </dl>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
 
   // Submission itself failed — nothing was saved. Show a focused error panel.
   if (!submissionSuccess) {
@@ -228,6 +272,14 @@ export default function SubmissionConfirmation({
           )}
         </div>
 
+        {referenceNumber &&
+          (paymentSuccess || isSafePaymentUrl(paymentUrl)) && (
+            <dl className="form-page__reference">
+              <dt>Submission ID</dt>
+              <dd>{referenceNumber}</dd>
+            </dl>
+          )}
+
         {paymentSuccess ? (
           <section className="govbb-payment govbb-payment--success">
             <div className="govbb-payment__header">
@@ -242,7 +294,6 @@ export default function SubmissionConfirmation({
             <div className="govbb-payment__items">
               {paymentItem("Service:", serviceLabel)}
               {paymentItem("Amount:", formattedAmount)}
-              {paymentItem("Submission ID:", referenceNumber)}
               {paymentItem("Date:", formattedDate)}
             </div>
           </section>

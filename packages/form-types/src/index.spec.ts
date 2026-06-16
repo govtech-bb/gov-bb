@@ -35,6 +35,7 @@ import {
   behaviourSchema,
   equalityOperationsSchema,
   durationTransformSchema,
+  conditionalTitleSchema,
   formStepSchema,
   recipeComponentFieldSchema,
   recipeBlockFieldSchema,
@@ -572,6 +573,24 @@ describe("stepConditionalOnBehaviourSchema", () => {
     expect(stepConditionalOnBehaviourSchema.safeParse(rest).success).toBe(
       false,
     );
+  });
+});
+
+describe("conditionalTitleSchema", () => {
+  const valid = {
+    targetFieldId: "applying-for-yourself",
+    operator: "equal" as const,
+    value: "yes",
+    title: "Provide your birth details",
+  };
+
+  it("accepts a valid conditional title", () => {
+    expect(conditionalTitleSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejects when the title is missing", () => {
+    const { title: _, ...rest } = valid;
+    expect(conditionalTitleSchema.safeParse(rest).success).toBe(false);
   });
 });
 

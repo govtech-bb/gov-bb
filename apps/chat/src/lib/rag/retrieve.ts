@@ -1,53 +1,102 @@
 import { sql } from "drizzle-orm";
-import { SIMILARITY_THRESHOLD, weightForKind } from "./config";
-import type { RetrievedContext, Source } from "#/lib/chat/types";
-import { getDb } from "#/lib/db";
+import { getServerEnv } from "#/config/env";
+import { getDb, type Database } from "#/lib/db";
 import { embed } from "./embed";
+import { rewriteLandingHost } from "./landing-host";
+import { MAX_CHUNKS_PER_DOC, SIMILARITY_THRESHOLD, TOP_K } from "./config";
+import type { RetrievedContext, RetrieveResponse, Source } from "./types";
 
-export interface RetrieveResult {
-  contexts: RetrievedContext[];
-  sources: Source[];
-}
+// RAG retrieval: embed the (rewritten) question, probe the pgvector store for the
+// nearest chunks, and rerank them into grounded sources. Caps chunks per document
+// and drops anything below the similarity threshold so weak matches don't pad the
+// context the model answers from.
 
-interface V2Row extends Record<string, unknown> {
-  chunk_id: string;
+// One reranked chunk row out of the SQL probe.
+export interface RetrieveRow extends Record<string, unknown> {
   document_id: string;
   doc_kind: string;
   title: string;
   url: string;
   source_url: string | null;
+  form_id: string | null;
+  has_start_page: string | null;
   chunk_kind: string;
   chunk_text: string;
   payload: Record<string, unknown> | null;
-  sim: number;
+  sim: number | string;
 }
 
-// Additive boost on top of cosine similarity. Not a true pin — it dominates
-// only because every service-kind weight in DOC_KIND_WEIGHTS is 1.0. If you
-// raise a service kind above (1 + 1.0), pinned chunks lose primacy. Keep
-// PINNED_BOOST > max kind weight if you change weights.
-const PINNED_BOOST = 1.0;
-const PINNED_LIMIT = 2;
+// A human-friendly section label for a chunk. There are two chunk kinds: a
+// "section" carries its markdown heading; an "intent" chunk is the synthetic
+// title+description question and has no section label.
+export function friendlySection(
+  row: Pick<RetrieveRow, "chunk_kind" | "payload">,
+): string | undefined {
+  if (row.chunk_kind === "section") {
+    const p = row.payload as { heading?: string } | null;
+    return p?.heading ?? undefined;
+  }
+  return undefined;
+}
 
-export async function search(
-  query: string,
-  topK: number,
-  boostSlug?: string,
-): Promise<RetrieveResult> {
-  const vector = await embed(query);
-  const db = await getDb();
+// Pure row → response shaping. Exported so it's unit-testable without a DB:
+// coerce sim to a number, sort, cap at topK, map to contexts + sources, and
+// rewrite citation hosts to the viewer's landing origin.
+export function rowsToResult(
+  rows: RetrieveRow[],
+  landingUrl: string,
+  topK = TOP_K,
+): RetrieveResponse {
+  const ranked = rows
+    .map((r) => ({ ...r, sim: Number(r.sim) }))
+    .sort((a, b) => b.sim - a.sim)
+    .slice(0, topK);
 
+  const contexts: RetrievedContext[] = ranked.map((r) => ({
+    title: r.title,
+    section: friendlySection(r),
+    text: r.chunk_text,
+  }));
+
+  const sources: Source[] = ranked.map((r) => ({
+    id: r.document_id,
+    url: rewriteLandingHost(r.url, landingUrl),
+    title: r.title,
+    section: friendlySection(r),
+    score: r.sim,
+    excerpt: r.chunk_text.slice(0, 160),
+    ...(r.form_id ? { formId: r.form_id } : {}),
+    // metadata->>'hasStartPage' comes back as the text "true" (jsonb boolean).
+    ...(r.has_start_page === "true" ? { hasStartPage: true } : {}),
+  }));
+
+  return { contexts, sources };
+}
+
+// Cosine-rank chunks against an already-embedded query vector: keep the best
+// MAX_CHUNKS_PER_DOC per document above the similarity floor, gated to
+// non-draft/preview content, ordered by similarity. Split out from `search` so
+// it's exercisable against a real DB without a live embed call (and with an
+// injected db handle). Form-pinning / boostSlug belongs to the in-chat form
+// features and isn't done here.
+export async function searchByVector(
+  vector: number[],
+  topK = TOP_K,
+  db?: Database,
+): Promise<RetrieveResponse> {
+  const database = db ?? (await getDb());
   const literal = JSON.stringify(vector);
-  const fetchLimit = topK * 3;
-  const rankedQuery = db.execute<V2Row>(sql`
+
+  const res = await database.execute<RetrieveRow>(sql`
     WITH ranked AS (
       SELECT
-        c.id          AS chunk_id,
         d.id          AS document_id,
         d.kind        AS doc_kind,
         d.title       AS title,
         d.url         AS url,
         d.source_url  AS source_url,
+        d.metadata->>'formId' AS form_id,
+        d.metadata->>'hasStartPage' AS has_start_page,
         c.kind        AS chunk_kind,
         c.text        AS chunk_text,
         c.payload     AS payload,
@@ -59,106 +108,23 @@ export async function search(
       FROM chunks c
       JOIN documents d ON c.document_id = d.id
       WHERE d.metadata->>'status' IS DISTINCT FROM 'draft'
+        AND d.metadata->>'status' IS DISTINCT FROM 'preview'
     )
-    SELECT chunk_id, document_id, doc_kind, title, url, source_url,
-           chunk_kind, chunk_text, payload, sim
+    SELECT document_id, doc_kind, title, url, source_url,
+           form_id, has_start_page, chunk_kind, chunk_text, payload, sim
     FROM ranked
-    WHERE rank <= 2 AND sim > ${SIMILARITY_THRESHOLD}
+    WHERE rank <= ${MAX_CHUNKS_PER_DOC} AND sim > ${SIMILARITY_THRESHOLD}
     ORDER BY sim DESC
-    LIMIT ${fetchLimit}
+    LIMIT ${topK}
   `);
 
-  const pinnedQuery = boostSlug
-    ? db.execute<V2Row>(sql`
-        SELECT
-          c.id          AS chunk_id,
-          d.id          AS document_id,
-          d.kind        AS doc_kind,
-          d.title       AS title,
-          d.url         AS url,
-          d.source_url  AS source_url,
-          c.kind        AS chunk_kind,
-          c.text        AS chunk_text,
-          c.payload     AS payload,
-          1 - (c.embedding <=> ${literal}::vector) AS sim
-        FROM chunks c
-        JOIN documents d ON c.document_id = d.id
-        WHERE d.slug = ${boostSlug}
-          AND d.metadata->>'status' IS DISTINCT FROM 'draft'
-        ORDER BY sim DESC
-        LIMIT ${PINNED_LIMIT}
-      `)
-    : Promise.resolve({ rows: [] as V2Row[] });
-
-  const [result, pinnedRes] = await Promise.all([rankedQuery, pinnedQuery]);
-  const pinned: V2Row[] = pinnedRes.rows.map((r) => ({
-    ...r,
-    sim: Number(r.sim) + PINNED_BOOST,
-  }));
-
-  const seen = new Set<string>();
-  const merged: V2Row[] = [];
-  for (const r of [...pinned, ...result.rows]) {
-    if (seen.has(r.chunk_id)) continue;
-    seen.add(r.chunk_id);
-    merged.push(r);
-  }
-
-  const rows = merged
-    .map((r) => ({
-      ...r,
-      sim: Number(r.sim) * weightForKind(r.doc_kind),
-    }))
-    .sort((a, b) => b.sim - a.sim)
-    .slice(0, topK);
-
-  const contexts: RetrievedContext[] = rows.map((r) => ({
-    title: r.title,
-    section: friendlySection(r),
-    text: r.chunk_text,
-  }));
-
-  const sources: Source[] = rows.map((r) => ({
-    id: r.document_id,
-    url: r.url,
-    title: r.title,
-    section: friendlySection(r),
-    score: Number(r.sim),
-    excerpt: r.chunk_text.slice(0, 160),
-  }));
-
-  return { contexts, sources };
+  return rowsToResult(res.rows, getServerEnv().LANDING_URL, topK);
 }
 
-type ChunkKind =
-  | "section"
-  | "contact"
-  | "minister"
-  | "head"
-  | "body"
-  | "intent"
-  | "name";
-
-function friendlySection(r: V2Row): string | undefined {
-  const payload = r.payload as { heading?: string; label?: string } | null;
-  const kind = r.chunk_kind as ChunkKind;
-  switch (kind) {
-    case "section":
-      return payload?.heading ?? undefined;
-    case "contact":
-      return payload?.label ?? "Contact";
-    case "minister":
-      return "Minister";
-    case "head":
-      return "Head";
-    case "body":
-      return "About";
-    case "intent":
-    case "name":
-      return undefined;
-    default: {
-      const _exhaustive: never = kind;
-      return _exhaustive;
-    }
-  }
+// Embed the query, then retrieve. The request path's entry point.
+export async function search(
+  query: string,
+  topK = TOP_K,
+): Promise<RetrieveResponse> {
+  return searchByVector(await embed(query), topK);
 }

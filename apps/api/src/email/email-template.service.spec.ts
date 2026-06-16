@@ -1,4 +1,10 @@
 import * as fs from "fs";
+
+// Spread-clone the real module so its exports become configurable —
+// vi.spyOn cannot redefine properties on a sealed ESM namespace.
+vi.mock("fs", async () => ({
+  ...(await vi.importActual<typeof import("fs")>("fs")),
+}));
 import * as path from "path";
 import { EmailTemplateService } from "./email-template.service";
 import type { EmailTemplateContext } from "./email-body.builder";
@@ -9,7 +15,10 @@ const STUB_CTX: EmailTemplateContext = {
   formTitle: "Test Form",
   submissionId: "sub-test-001",
   submittedAt: "2026-05-12T10:00:00.000Z",
+  submittedDate: "12/05/2026",
+  submittedTime: "06:00",
   processedAt: "2026-05-12T10:00:01.000Z",
+  year: "2026",
   sections: [
     {
       title: "Personal Information",
@@ -51,9 +60,9 @@ describe("EmailTemplateService", () => {
 
   describe("template loading — edge cases", () => {
     it("warns and returns without loading when the templates directory does not exist", () => {
-      const warnSpy = jest
+      const warnSpy = vi
         .spyOn((service as any).logger, "warn")
-        .mockImplementation();
+        .mockImplementation(() => {});
       (service as any).loadTemplates("/nonexistent-path-xyz");
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining("not found"),
@@ -62,17 +71,15 @@ describe("EmailTemplateService", () => {
     });
 
     it("logs an error and skips the template when readFileSync throws", () => {
-      const errorSpy = jest
+      const errorSpy = vi
         .spyOn((service as any).logger, "error")
-        .mockImplementation();
-      const existsSpy = jest
-        .spyOn(require("fs"), "existsSync")
-        .mockReturnValueOnce(true);
-      const readdirSpy = jest
-        .spyOn(require("fs"), "readdirSync")
-        .mockReturnValueOnce(["bad-template.hbs"]);
-      const readFileSpy = jest
-        .spyOn(require("fs"), "readFileSync")
+        .mockImplementation(() => {});
+      const existsSpy = vi.spyOn(fs, "existsSync").mockReturnValueOnce(true);
+      const readdirSpy = vi
+        .spyOn(fs, "readdirSync")
+        .mockReturnValueOnce(["bad-template.hbs"] as never);
+      const readFileSpy = vi
+        .spyOn(fs, "readFileSync")
         .mockImplementationOnce(() => {
           throw new Error("EACCES: permission denied");
         });

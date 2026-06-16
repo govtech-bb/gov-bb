@@ -43,6 +43,24 @@ export class FormConfigService {
   }
 
   /**
+   * Resolves the public human-readable department name for a form via
+   * `form_config → mda_contact.title` — used to address the citizen
+   * confirmation email's "what happens next" and footer. Returns `null` on
+   * every miss (no config row, no contact, blank title), which the caller
+   * treats as a cue to fall back to generic wording rather than an error.
+   */
+  async resolveDepartmentName(formId: string): Promise<string | null> {
+    const config = await this.formConfigRepo.findOne({ where: { formId } });
+    if (!config?.mdaContactId) return null;
+
+    const contact = await this.mdaContactRepo.findOne({
+      where: { id: config.mdaContactId },
+    });
+    const title = contact?.title;
+    return typeof title === "string" && title.length > 0 ? title : null;
+  }
+
+  /**
    * Resolves the per-form, per-environment payment/notification processors from
    * `form_config.config` (#716). Returns `[]` for every *resolved miss* — no
    * config row, a null `config` column, or a blob without a `processors` key —

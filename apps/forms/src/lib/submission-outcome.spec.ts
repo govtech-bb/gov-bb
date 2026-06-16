@@ -1,5 +1,8 @@
-import { resolveSubmissionOutcome } from "./submission-outcome";
-import { FormSubmissionResponse } from "@forms/types";
+import {
+  resolveSubmissionOutcome,
+  applyPaymentReturn,
+} from "./submission-outcome";
+import { FormSubmissionResponse, SubmissionState } from "@forms/types";
 
 // `status` is the SUBMISSION status and belongs on `data.status`. The API
 // envelope `status` is always "success" for a 2xx (ApiResponse.success) —
@@ -46,12 +49,34 @@ describe("resolveSubmissionOutcome", () => {
     },
   );
 
-  it.each(["processing", "draft"])(
-    "maps '%s' to no state and no event",
-    (status) => {
-      expect(resolveSubmissionOutcome(response(status))).toEqual({});
-    },
-  );
+  it("maps 'processing' to a no-payment success state with processing flag and no event", () => {
+    // An idempotency-key replay of an in-flight submission comes back
+    // `data.status: "processing"` (HTTP 202, wrapped in ApiResponse.success).
+    // It must commit a state so the citizen sees a "being processed" panel
+    // with their reference number, not get bounced to check-your-answers.
+    // Stays silent on analytics (no event).
+    expect(resolveSubmissionOutcome(response("processing"))).toEqual({
+      subState: {
+        ...base,
+        processing: true,
+        submissionSuccess: true,
+        hasPayment: false,
+      },
+    });
+  });
+
+  it("carries the referenceCode into the processing state", () => {
+    const outcome = resolveSubmissionOutcome(
+      response("processing", undefined, "JPP-20260604-130732-9JZRZC"),
+    );
+    expect(outcome.subState?.referenceNumber).toBe(
+      "JPP-20260604-130732-9JZRZC",
+    );
+  });
+
+  it("maps 'draft' to no state and no event (unreachable from public submit)", () => {
+    expect(resolveSubmissionOutcome(response("draft"))).toEqual({});
+  });
 
   it("maps 'pending_payment' with deferred meta to a payment state and success event", () => {
     const outcome = resolveSubmissionOutcome(
@@ -143,5 +168,36 @@ describe("resolveSubmissionOutcome", () => {
       },
       event: { name: "form-submit-success" },
     });
+  });
+});
+
+describe("applyPaymentReturn", () => {
+  const pending: SubmissionState = {
+    hasPayment: true,
+    serviceName: "test-form",
+    submissionSuccess: true,
+    paymentSuccess: false,
+    referenceNumber: "REF-9",
+    amount: "5",
+    paymentUrl: "https://pay.example.com",
+  };
+
+  it("flips to paymentSuccess on 'success', preserving the rest of the state", () => {
+    expect(applyPaymentReturn(pending, "success")).toEqual({
+      ...pending,
+      paymentSuccess: true,
+    });
+  });
+
+  it("clears paymentUrl on 'failed' so the failure panel renders", () => {
+    expect(applyPaymentReturn(pending, "failed")).toEqual({
+      ...pending,
+      paymentSuccess: false,
+      paymentUrl: undefined,
+    });
+  });
+
+  it("returns the state unchanged when there is no payment param", () => {
+    expect(applyPaymentReturn(pending, undefined)).toBe(pending);
   });
 });

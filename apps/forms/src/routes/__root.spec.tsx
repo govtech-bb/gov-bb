@@ -11,17 +11,17 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
-jest.mock("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
   createRootRouteWithContext: () => (routeConfig: any) => routeConfig,
   Outlet: () => <div data-testid="outlet" />,
   HeadContent: () => <div data-testid="head-content" />,
 }));
 
-jest.mock("@tanstack/react-router-devtools", () => ({
+vi.mock("@tanstack/react-router-devtools", () => ({
   TanStackRouterDevtools: () => null,
 }));
 
-jest.mock("@forms/components", () => ({
+vi.mock("@forms/components", () => ({
   NotFound: () => <div data-testid="not-found" />,
 }));
 
@@ -30,18 +30,18 @@ jest.mock("@forms/components", () => ({
 // implementation imports `Link` from @tanstack/react-router; mocking it
 // here avoids that import (the historical "Element type invalid in
 // SiteHeader" failure) while still letting us assert it was rendered.
-jest.mock("../components/site-header", () => ({
+vi.mock("../components/site-header", () => ({
   SiteHeader: () => <div data-testid="site-header" />,
 }));
 
-jest.mock("../components/official-banner", () => ({
+vi.mock("../components/official-banner", () => ({
   OfficialBanner: () => <div data-testid="official-banner" />,
 }));
 
 // The Footer mock captures its props so the RootLayout's wiring of links,
 // logoSrc, and copyrightText is asserted — not just "Footer rendered".
-const mockFooterProps = jest.fn();
-jest.mock("@govtech-bb/react", () => ({
+const mockFooterProps = vi.fn();
+vi.mock("@govtech-bb/react", () => ({
   Footer: (props: unknown) => {
     mockFooterProps(props);
     return <div data-testid="footer" />;
@@ -70,11 +70,29 @@ describe("__root Route", () => {
       expect(screen.getByTestId("footer")).toBeInTheDocument();
     });
 
+    // Skip-to-content link (#341/#321): a keyboard user must be able to bypass
+    // the banner/header and jump straight to <main>.
+    it("renders a skip link targeting the main landmark", () => {
+      const { container } = render(<Route.component />);
+      const skipLink = screen.getByRole("link", {
+        name: /skip to main content/i,
+      });
+      expect(skipLink).toHaveAttribute("href", "#main-content");
+
+      const main = container.querySelector("main");
+      expect(main).toHaveAttribute("id", "main-content");
+
+      // The skip link must be the first focusable element so it is reached on
+      // the very first Tab press.
+      const firstLink = container.querySelector("a");
+      expect(firstLink).toBe(skipLink);
+    });
+
     it("wires the Footer with the expected links, logoSrc, and current-year copyright", () => {
       // Pin the clock so the copyrightText assertion is deterministic
       // (the layout reads new Date().getFullYear()).
-      jest.useFakeTimers();
-      jest.setSystemTime(new Date("2026-05-22T12:00:00Z"));
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-05-22T12:00:00Z"));
       try {
         render(<Route.component />);
         expect(mockFooterProps).toHaveBeenCalledTimes(1);
@@ -84,15 +102,18 @@ describe("__root Route", () => {
         >;
         expect(props).toMatchObject({
           links: [
-            { label: "Home", href: "/" },
-            { label: "Terms & Conditions", href: "/terms-conditions" },
+            { label: "Home", href: "https://alpha.gov.bb/" },
+            {
+              label: "Terms & Conditions",
+              href: "https://alpha.gov.bb/terms-conditions",
+            },
           ],
           logoSrc: "/images/coat-of-arms.png",
           logoAlt: "Barbados Coat of Arms",
           copyrightText: "© 2026 Government of Barbados",
         });
       } finally {
-        jest.useRealTimers();
+        vi.useRealTimers();
       }
     });
   });

@@ -68,7 +68,7 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version-file: ".nvmrc"
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
 
@@ -528,6 +528,8 @@ jobs:
       base_url: https://forms.sandbox.alpha.gov.bb
       spec: ${{ matrix.spec }}
       artifact_name: ${{ matrix.artifact_name }}
+    secrets:
+      smoke_submission_token: ${{ secrets.SMOKE_SUBMISSION_TOKEN }}
 
   amplify-landing:
     name: Amplify build (landing)
@@ -750,6 +752,46 @@ jobs:
           cat /tmp/indexer-out.json
           echo
           echo "✅ Ingest task started — follow with: aws logs tail /ecs/chatbot-ingest-sandbox --follow"
+
+      # Fire-and-forget left the deploy green while the chat served stale
+      # content when ingest failed (#1269). The CLI records every run in
+      # ingest_runs and /api/health surfaces the latest one, so poll until a
+      # run STARTED AFTER our trigger finishes — any such run carries the
+      # just-pushed image — and fail the job if it failed. The 15-minute
+      # EventBridge cron also starts runs; one of those completing counts too.
+      - name: Wait for ingest to complete
+        run: |
+          HEALTH_URL="https://chat.sandbox.alpha.gov.bb/api/health"
+          TRIGGER_TS=$(date -u +%s)
+          DEADLINE=$(( TRIGGER_TS + 900 ))  # 15 min, > task cold-start + full re-embed
+
+          while [ "$(date -u +%s)" -lt "$DEADLINE" ]; do
+            sleep 20
+            BODY=$(curl -sf -m 15 "$HEALTH_URL") || { echo "health fetch failed, retrying"; continue; }
+            STATUS=$(echo "$BODY" | jq -r '.lastIngest.status // empty')
+            STARTED=$(echo "$BODY" | jq -r '.lastIngest.startedAt // empty')
+            FINISHED=$(echo "$BODY" | jq -r '.lastIngest.finishedAt // empty')
+            [ -n "$STARTED" ] || { echo "no ingest run visible yet"; continue; }
+            STARTED_TS=$(date -u -d "$STARTED" +%s 2>/dev/null || echo 0)
+            if [ "$STARTED_TS" -lt "$TRIGGER_TS" ]; then
+              echo "latest run predates this trigger (started $STARTED), waiting"
+              continue
+            fi
+            if [ -z "$FINISHED" ] || [ "$STATUS" = "running" ]; then
+              echo "ingest running (started $STARTED)"
+              continue
+            fi
+            if [ "$STATUS" = "success" ]; then
+              echo "✅ Ingest succeeded (started $STARTED, finished $FINISHED)"
+              echo "$BODY" | jq '{docCount, chunkCount, lastUpdatedAt}'
+              exit 0
+            fi
+            echo "❌ Ingest failed: $(echo "$BODY" | jq -r '.lastIngest.error // "no error recorded"')"
+            exit 1
+          done
+          echo "❌ Timed out waiting for an ingest run to complete after the trigger"
+          echo "   Follow: aws logs tail /ecs/chatbot-ingest-sandbox --follow"
+          exit 1
 
   amplify-form-builder:
     name: Amplify build (form-builder)

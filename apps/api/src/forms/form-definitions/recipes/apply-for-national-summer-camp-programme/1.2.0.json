@@ -1,0 +1,1988 @@
+{
+  "formId": "apply-for-national-summer-camp-programme",
+  "title": "Apply for National Summer Camp Programme",
+  "description": "Apply for the National Summer Camp Programme for your child.",
+  "version": "1.2.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your National Summer Camp Programme application has been received",
+        "recipientField": "contact-details.parent-email"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "camp-preferences",
+      "title": "Choose camp preferences",
+      "description": "Choose up to 3 camp preferences for the child.\n\nYou only need to choose one. Choosing more than one may give the child more options.\n\nYou may not get a place in any of these camps. The Ministry will contact you about the next steps.",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "First choice camp type",
+            "fieldId": "first-choice-camp-type",
+            "options": [
+              {
+                "label": "General Summer Camp",
+                "value": "general-summer-camp"
+              },
+              {
+                "label": "Cultural Arts Camp",
+                "value": "cultural-arts-camp"
+              },
+              {
+                "label": "Digital Media Camp",
+                "value": "digital-media-camp"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select a first choice camp type",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "label": "First choice location",
+            "fieldId": "first-choice-general-venue",
+            "options": [
+              {
+                "label": "Bank Hall Church of the Nazarene",
+                "value": "bank-hall-church-of-the-nazarene"
+              },
+              {
+                "label": "Parkinson Secondary School",
+                "value": "parkinson-secondary-school"
+              },
+              {
+                "label": "Grantley Prescod Memorial Primary School",
+                "value": "grantley-prescod-memorial-primary-school"
+              },
+              {
+                "label": "Grazettes Community Centre",
+                "value": "grazettes-community-centre"
+              },
+              {
+                "label": "Aubrey Grant Pavilion",
+                "value": "aubrey-grant-pavilion"
+              },
+              {
+                "label": "Deacon's Resource Centre",
+                "value": "deacons-resource-centre"
+              },
+              {
+                "label": "Montgomery Pavilion",
+                "value": "montgomery-pavilion"
+              },
+              {
+                "label": "St. Stephen's Primary School",
+                "value": "st-stephens-primary-school"
+              },
+              {
+                "label": "Bayville Pavilion",
+                "value": "bayville-pavilion"
+              },
+              {
+                "label": "Fairy Valley Pavilion",
+                "value": "fairy-valley-pavilion"
+              },
+              {
+                "label": "Wotton Pavilion",
+                "value": "wotton-pavilion"
+              },
+              {
+                "label": "St. Christopher Primary School",
+                "value": "st-christopher-primary-school"
+              },
+              {
+                "label": "Shirley Chisholm Primary School",
+                "value": "shirley-chisholm-primary-school"
+              },
+              {
+                "label": "Kendal Resource Centre",
+                "value": "kendal-resource-centre"
+              },
+              {
+                "label": "Unity Wesleyan Holiness Church",
+                "value": "unity-wesleyan-holiness-church"
+              },
+              {
+                "label": "Ellerton Pavilion",
+                "value": "ellerton-pavilion"
+              },
+              {
+                "label": "St. Clair Hall and George Brathwaite Pavilion",
+                "value": "st-clair-hall-and-george-brathwaite-pavilion"
+              },
+              {
+                "label": "Gordon Greenidge Primary School",
+                "value": "gordon-greenidge-primary-school"
+              },
+              {
+                "label": "West Terrace Primary School",
+                "value": "west-terrace-primary-school"
+              },
+              {
+                "label": "Baywoods Community Centre",
+                "value": "baywoods-community-centre"
+              },
+              {
+                "label": "Alexandra School",
+                "value": "alexandra-school"
+              },
+              {
+                "label": "Boscobelle Community Centre",
+                "value": "boscobelle-community-centre"
+              },
+              {
+                "label": "St. Bernard's Primary School",
+                "value": "st-bernards-primary-school"
+              },
+              {
+                "label": "St. Elizabeth Pavilion",
+                "value": "st-elizabeth-pavilion"
+              },
+              {
+                "label": "Half Moon Fort Primary School",
+                "value": "half-moon-fort-primary-school"
+              },
+              {
+                "label": "Content Pavilion",
+                "value": "content-pavilion"
+              },
+              {
+                "label": "Isolation Cavaliers Pavilion",
+                "value": "isolation-cavaliers-pavilion"
+              },
+              {
+                "label": "Hilda Skeene Primary School",
+                "value": "hilda-skeene-primary-school"
+              },
+              {
+                "label": "St. Mark's Primary School",
+                "value": "st-marks-primary-school"
+              },
+              {
+                "label": "Bayley's Primary School",
+                "value": "bayleys-primary-school"
+              },
+              {
+                "label": "Princess Margaret Secondary School",
+                "value": "princess-margaret-secondary-school"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "general-summer-camp",
+                "operator": "equal",
+                "targetFieldId": "first-choice-camp-type"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select a first choice General Summer Camp location",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "label": "First choice location",
+            "fieldId": "first-choice-cultural-venue",
+            "options": [
+              {
+                "label": "Bush Hall Community Centre",
+                "value": "bush-hall-community-centre"
+              },
+              {
+                "label": "Chesterfield Brewster Youth Empowerment Centre",
+                "value": "chesterfield-brewster-youth-empowerment-centre"
+              },
+              {
+                "label": "Desmond Haynes Sports Complex",
+                "value": "desmond-haynes-sports-complex"
+              },
+              {
+                "label": "Ellerton Primary School",
+                "value": "ellerton-primary-school"
+              },
+              {
+                "label": "Grantley Adams Secondary School",
+                "value": "grantley-adams-secondary-school"
+              },
+              {
+                "label": "Reynold Weekes Primary School",
+                "value": "reynold-weekes-primary-school"
+              },
+              {
+                "label": "Golden Rock Resource Centre",
+                "value": "golden-rock-resource-centre"
+              },
+              {
+                "label": "Ivy Community Centre",
+                "value": "ivy-community-centre"
+              },
+              {
+                "label": "St. Ambrose Primary School",
+                "value": "st-ambrose-primary-school"
+              },
+              {
+                "label": "St. Christopher Primary School",
+                "value": "st-christopher-primary-school-cultural"
+              },
+              {
+                "label": "Kendal Resource Centre",
+                "value": "kendal-resource-centre-cultural"
+              },
+              {
+                "label": "St. Marks Primary School",
+                "value": "st-marks-primary-school-cultural"
+              },
+              {
+                "label": "Gordon Greenidge Primary School",
+                "value": "gordon-greenidge-primary-school-cultural"
+              },
+              {
+                "label": "Westbury Primary School",
+                "value": "westbury-primary-school"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "cultural-arts-camp",
+                "operator": "equal",
+                "targetFieldId": "first-choice-camp-type"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select a first choice Cultural Arts Camp location",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "hideLabel": true
+            },
+            "label": "First choice location",
+            "fieldId": "first-choice-digital-text",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "digital-media-camp",
+                "operator": "equal",
+                "targetFieldId": "first-choice-camp-type"
+              }
+            ],
+            "validations": {
+              "pattern": {
+                "error": "",
+                "value": "^$"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Do you want to add a second choice?",
+            "fieldId": "add-second-choice",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an answer",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Second choice camp type",
+            "fieldId": "second-choice-camp-type",
+            "options": [
+              {
+                "label": "General Summer Camp",
+                "value": "general-summer-camp"
+              },
+              {
+                "label": "Cultural Arts Camp",
+                "value": "cultural-arts-camp"
+              },
+              {
+                "label": "Digital Media Camp",
+                "value": "digital-media-camp"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "add-second-choice"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select a second choice camp type",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "label": "Second choice location",
+            "fieldId": "second-choice-general-venue",
+            "options": [
+              {
+                "label": "Bank Hall Church of the Nazarene",
+                "value": "bank-hall-church-of-the-nazarene"
+              },
+              {
+                "label": "Parkinson Secondary School",
+                "value": "parkinson-secondary-school"
+              },
+              {
+                "label": "Grantley Prescod Memorial Primary School",
+                "value": "grantley-prescod-memorial-primary-school"
+              },
+              {
+                "label": "Grazettes Community Centre",
+                "value": "grazettes-community-centre"
+              },
+              {
+                "label": "Aubrey Grant Pavilion",
+                "value": "aubrey-grant-pavilion"
+              },
+              {
+                "label": "Deacon's Resource Centre",
+                "value": "deacons-resource-centre"
+              },
+              {
+                "label": "Montgomery Pavilion",
+                "value": "montgomery-pavilion"
+              },
+              {
+                "label": "St. Stephen's Primary School",
+                "value": "st-stephens-primary-school"
+              },
+              {
+                "label": "Bayville Pavilion",
+                "value": "bayville-pavilion"
+              },
+              {
+                "label": "Fairy Valley Pavilion",
+                "value": "fairy-valley-pavilion"
+              },
+              {
+                "label": "Wotton Pavilion",
+                "value": "wotton-pavilion"
+              },
+              {
+                "label": "St. Christopher Primary School",
+                "value": "st-christopher-primary-school"
+              },
+              {
+                "label": "Shirley Chisholm Primary School",
+                "value": "shirley-chisholm-primary-school"
+              },
+              {
+                "label": "Kendal Resource Centre",
+                "value": "kendal-resource-centre"
+              },
+              {
+                "label": "Unity Wesleyan Holiness Church",
+                "value": "unity-wesleyan-holiness-church"
+              },
+              {
+                "label": "Ellerton Pavilion",
+                "value": "ellerton-pavilion"
+              },
+              {
+                "label": "St. Clair Hall and George Brathwaite Pavilion",
+                "value": "st-clair-hall-and-george-brathwaite-pavilion"
+              },
+              {
+                "label": "Gordon Greenidge Primary School",
+                "value": "gordon-greenidge-primary-school"
+              },
+              {
+                "label": "West Terrace Primary School",
+                "value": "west-terrace-primary-school"
+              },
+              {
+                "label": "Baywoods Community Centre",
+                "value": "baywoods-community-centre"
+              },
+              {
+                "label": "Alexandra School",
+                "value": "alexandra-school"
+              },
+              {
+                "label": "Boscobelle Community Centre",
+                "value": "boscobelle-community-centre"
+              },
+              {
+                "label": "St. Bernard's Primary School",
+                "value": "st-bernards-primary-school"
+              },
+              {
+                "label": "St. Elizabeth Pavilion",
+                "value": "st-elizabeth-pavilion"
+              },
+              {
+                "label": "Half Moon Fort Primary School",
+                "value": "half-moon-fort-primary-school"
+              },
+              {
+                "label": "Content Pavilion",
+                "value": "content-pavilion"
+              },
+              {
+                "label": "Isolation Cavaliers Pavilion",
+                "value": "isolation-cavaliers-pavilion"
+              },
+              {
+                "label": "Hilda Skeene Primary School",
+                "value": "hilda-skeene-primary-school"
+              },
+              {
+                "label": "St. Mark's Primary School",
+                "value": "st-marks-primary-school"
+              },
+              {
+                "label": "Bayley's Primary School",
+                "value": "bayleys-primary-school"
+              },
+              {
+                "label": "Princess Margaret Secondary School",
+                "value": "princess-margaret-secondary-school"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "general-summer-camp",
+                "operator": "equal",
+                "targetFieldId": "second-choice-camp-type"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select a second choice General Summer Camp location",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "label": "Second choice location",
+            "fieldId": "second-choice-cultural-venue",
+            "options": [
+              {
+                "label": "Bush Hall Community Centre",
+                "value": "bush-hall-community-centre"
+              },
+              {
+                "label": "Chesterfield Brewster Youth Empowerment Centre",
+                "value": "chesterfield-brewster-youth-empowerment-centre"
+              },
+              {
+                "label": "Desmond Haynes Sports Complex",
+                "value": "desmond-haynes-sports-complex"
+              },
+              {
+                "label": "Ellerton Primary School",
+                "value": "ellerton-primary-school"
+              },
+              {
+                "label": "Grantley Adams Secondary School",
+                "value": "grantley-adams-secondary-school"
+              },
+              {
+                "label": "Reynold Weekes Primary School",
+                "value": "reynold-weekes-primary-school"
+              },
+              {
+                "label": "Golden Rock Resource Centre",
+                "value": "golden-rock-resource-centre"
+              },
+              {
+                "label": "Ivy Community Centre",
+                "value": "ivy-community-centre"
+              },
+              {
+                "label": "St. Ambrose Primary School",
+                "value": "st-ambrose-primary-school"
+              },
+              {
+                "label": "St. Christopher Primary School",
+                "value": "st-christopher-primary-school-cultural"
+              },
+              {
+                "label": "Kendal Resource Centre",
+                "value": "kendal-resource-centre-cultural"
+              },
+              {
+                "label": "St. Marks Primary School",
+                "value": "st-marks-primary-school-cultural"
+              },
+              {
+                "label": "Gordon Greenidge Primary School",
+                "value": "gordon-greenidge-primary-school-cultural"
+              },
+              {
+                "label": "Westbury Primary School",
+                "value": "westbury-primary-school"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "cultural-arts-camp",
+                "operator": "equal",
+                "targetFieldId": "second-choice-camp-type"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select a second choice Cultural Arts Camp location",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "hideLabel": true
+            },
+            "label": "Second choice location",
+            "fieldId": "second-choice-digital-text",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "digital-media-camp",
+                "operator": "equal",
+                "targetFieldId": "second-choice-camp-type"
+              }
+            ],
+            "validations": {
+              "pattern": {
+                "error": "",
+                "value": "^$"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Do you want to add a third choice?",
+            "fieldId": "add-third-choice",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "add-second-choice"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an answer",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Third choice camp type",
+            "fieldId": "third-choice-camp-type",
+            "options": [
+              {
+                "label": "General Summer Camp",
+                "value": "general-summer-camp"
+              },
+              {
+                "label": "Cultural Arts Camp",
+                "value": "cultural-arts-camp"
+              },
+              {
+                "label": "Digital Media Camp",
+                "value": "digital-media-camp"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "add-third-choice"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select a third choice camp type",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "label": "Third choice location",
+            "fieldId": "third-choice-general-venue",
+            "options": [
+              {
+                "label": "Bank Hall Church of the Nazarene",
+                "value": "bank-hall-church-of-the-nazarene"
+              },
+              {
+                "label": "Parkinson Secondary School",
+                "value": "parkinson-secondary-school"
+              },
+              {
+                "label": "Grantley Prescod Memorial Primary School",
+                "value": "grantley-prescod-memorial-primary-school"
+              },
+              {
+                "label": "Grazettes Community Centre",
+                "value": "grazettes-community-centre"
+              },
+              {
+                "label": "Aubrey Grant Pavilion",
+                "value": "aubrey-grant-pavilion"
+              },
+              {
+                "label": "Deacon's Resource Centre",
+                "value": "deacons-resource-centre"
+              },
+              {
+                "label": "Montgomery Pavilion",
+                "value": "montgomery-pavilion"
+              },
+              {
+                "label": "St. Stephen's Primary School",
+                "value": "st-stephens-primary-school"
+              },
+              {
+                "label": "Bayville Pavilion",
+                "value": "bayville-pavilion"
+              },
+              {
+                "label": "Fairy Valley Pavilion",
+                "value": "fairy-valley-pavilion"
+              },
+              {
+                "label": "Wotton Pavilion",
+                "value": "wotton-pavilion"
+              },
+              {
+                "label": "St. Christopher Primary School",
+                "value": "st-christopher-primary-school"
+              },
+              {
+                "label": "Shirley Chisholm Primary School",
+                "value": "shirley-chisholm-primary-school"
+              },
+              {
+                "label": "Kendal Resource Centre",
+                "value": "kendal-resource-centre"
+              },
+              {
+                "label": "Unity Wesleyan Holiness Church",
+                "value": "unity-wesleyan-holiness-church"
+              },
+              {
+                "label": "Ellerton Pavilion",
+                "value": "ellerton-pavilion"
+              },
+              {
+                "label": "St. Clair Hall and George Brathwaite Pavilion",
+                "value": "st-clair-hall-and-george-brathwaite-pavilion"
+              },
+              {
+                "label": "Gordon Greenidge Primary School",
+                "value": "gordon-greenidge-primary-school"
+              },
+              {
+                "label": "West Terrace Primary School",
+                "value": "west-terrace-primary-school"
+              },
+              {
+                "label": "Baywoods Community Centre",
+                "value": "baywoods-community-centre"
+              },
+              {
+                "label": "Alexandra School",
+                "value": "alexandra-school"
+              },
+              {
+                "label": "Boscobelle Community Centre",
+                "value": "boscobelle-community-centre"
+              },
+              {
+                "label": "St. Bernard's Primary School",
+                "value": "st-bernards-primary-school"
+              },
+              {
+                "label": "St. Elizabeth Pavilion",
+                "value": "st-elizabeth-pavilion"
+              },
+              {
+                "label": "Half Moon Fort Primary School",
+                "value": "half-moon-fort-primary-school"
+              },
+              {
+                "label": "Content Pavilion",
+                "value": "content-pavilion"
+              },
+              {
+                "label": "Isolation Cavaliers Pavilion",
+                "value": "isolation-cavaliers-pavilion"
+              },
+              {
+                "label": "Hilda Skeene Primary School",
+                "value": "hilda-skeene-primary-school"
+              },
+              {
+                "label": "St. Mark's Primary School",
+                "value": "st-marks-primary-school"
+              },
+              {
+                "label": "Bayley's Primary School",
+                "value": "bayleys-primary-school"
+              },
+              {
+                "label": "Princess Margaret Secondary School",
+                "value": "princess-margaret-secondary-school"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "general-summer-camp",
+                "operator": "equal",
+                "targetFieldId": "third-choice-camp-type"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select a third choice General Summer Camp location",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "label": "Third choice location",
+            "fieldId": "third-choice-cultural-venue",
+            "options": [
+              {
+                "label": "Bush Hall Community Centre",
+                "value": "bush-hall-community-centre"
+              },
+              {
+                "label": "Chesterfield Brewster Youth Empowerment Centre",
+                "value": "chesterfield-brewster-youth-empowerment-centre"
+              },
+              {
+                "label": "Desmond Haynes Sports Complex",
+                "value": "desmond-haynes-sports-complex"
+              },
+              {
+                "label": "Ellerton Primary School",
+                "value": "ellerton-primary-school"
+              },
+              {
+                "label": "Grantley Adams Secondary School",
+                "value": "grantley-adams-secondary-school"
+              },
+              {
+                "label": "Reynold Weekes Primary School",
+                "value": "reynold-weekes-primary-school"
+              },
+              {
+                "label": "Golden Rock Resource Centre",
+                "value": "golden-rock-resource-centre"
+              },
+              {
+                "label": "Ivy Community Centre",
+                "value": "ivy-community-centre"
+              },
+              {
+                "label": "St. Ambrose Primary School",
+                "value": "st-ambrose-primary-school"
+              },
+              {
+                "label": "St. Christopher Primary School",
+                "value": "st-christopher-primary-school-cultural"
+              },
+              {
+                "label": "Kendal Resource Centre",
+                "value": "kendal-resource-centre-cultural"
+              },
+              {
+                "label": "St. Marks Primary School",
+                "value": "st-marks-primary-school-cultural"
+              },
+              {
+                "label": "Gordon Greenidge Primary School",
+                "value": "gordon-greenidge-primary-school-cultural"
+              },
+              {
+                "label": "Westbury Primary School",
+                "value": "westbury-primary-school"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "cultural-arts-camp",
+                "operator": "equal",
+                "targetFieldId": "third-choice-camp-type"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select a third choice Cultural Arts Camp location",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "hideLabel": true
+            },
+            "label": "Third choice location",
+            "fieldId": "third-choice-digital-text",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "digital-media-camp",
+                "operator": "equal",
+                "targetFieldId": "third-choice-camp-type"
+              }
+            ],
+            "validations": {
+              "pattern": {
+                "error": "",
+                "value": "^$"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "child-age-check",
+      "title": "What is the child's date of birth?",
+      "elements": [
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "hint": "We use this to check if the child can attend the camps you choose. For example, 27 03 2015.",
+            "label": "Child's date of birth",
+            "fieldId": "child-date-of-birth",
+            "validations": {
+              "max": {
+                "error": "The child must be 15 years old or younger",
+                "value": 15,
+                "transform": "yearsSince"
+              },
+              "min": {
+                "error": "The child must be at least 4 years old",
+                "value": 4,
+                "transform": "yearsSince"
+              },
+              "required": {
+                "error": "Enter the child's date of birth",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "child-details",
+      "title": "Tell us about the child",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "Child's first name",
+            "fieldId": "child-first-name",
+            "validations": {
+              "required": {
+                "error": "Enter the child's first name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "hint": "Enter all middle names in order.",
+            "label": "Child's middle name(s)",
+            "fieldId": "child-middle-names"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Child's last name",
+            "fieldId": "child-last-name",
+            "validations": {
+              "required": {
+                "error": "Enter the child's last name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "label": "Child's Barbados National Identification (ID) number",
+            "fieldId": "child-national-id",
+            "validations": {
+              "required": {
+                "error": "Enter the child's Barbados National Identification (ID) number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/sex",
+          "overrides": {
+            "label": "Child's sex",
+            "fieldId": "child-sex",
+            "validations": {
+              "required": {
+                "error": "Select an answer",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "label": "Address line 1",
+            "fieldId": "child-address-line-1",
+            "validations": {
+              "required": {
+                "error": "Enter address line 1",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "label": "Address line 2",
+            "fieldId": "child-address-line-2"
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "child-parish",
+            "validations": {
+              "required": {
+                "error": "Select a parish",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "your-details",
+      "title": "Tell us about you",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "Your first name",
+            "fieldId": "parent-first-name",
+            "validations": {
+              "required": {
+                "error": "Enter your first name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "hint": "Enter all middle names in order.",
+            "label": "Your middle name(s)",
+            "fieldId": "parent-middle-names"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Your last name",
+            "fieldId": "parent-last-name",
+            "validations": {
+              "required": {
+                "error": "Enter your last name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "What is your relationship to the child?",
+            "fieldId": "relationship-to-child",
+            "options": [
+              {
+                "label": "Mother",
+                "value": "mother"
+              },
+              {
+                "label": "Father",
+                "value": "father"
+              },
+              {
+                "label": "Guardian",
+                "value": "guardian"
+              },
+              {
+                "label": "Grandparent",
+                "value": "grandparent"
+              },
+              {
+                "label": "Other (please describe)",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an answer",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Tell us your relationship to the child",
+            "fieldId": "relationship-other-describe",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "other",
+                "operator": "equal",
+                "targetFieldId": "relationship-to-child"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter your relationship to the child",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "contact-details",
+      "title": "Your contact details",
+      "elements": [
+        {
+          "ref": "components/email",
+          "overrides": {
+            "label": "Your email address",
+            "fieldId": "parent-email",
+            "validations": {
+              "required": {
+                "error": "Enter an email address in the correct format",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/mobile-telephone",
+          "overrides": {
+            "label": "Mobile phone number",
+            "fieldId": "parent-mobile-phone",
+            "validations": {
+              "phone": {
+                "error": "Enter a phone number in the correct format",
+                "value": true
+              },
+              "required": {
+                "error": "Enter a mobile phone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/home-telephone",
+          "overrides": {
+            "label": "Landline number",
+            "fieldId": "parent-landline",
+            "validations": {
+              "phone": {
+                "error": "Enter a phone number in the correct format",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/work-telephone",
+          "overrides": {
+            "label": "Work phone number",
+            "fieldId": "parent-work-phone",
+            "validations": {
+              "phone": {
+                "error": "Enter a phone number in the correct format",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Is your address the same as the child's address?",
+            "fieldId": "address-same-as-child",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an answer",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "label": "Address line 1",
+            "fieldId": "parent-address-line-1",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetFieldId": "address-same-as-child"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter address line 1",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "label": "Address line 2",
+            "fieldId": "parent-address-line-2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetFieldId": "address-same-as-child"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "parent-parish",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetFieldId": "address-same-as-child"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select a parish",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "health-information",
+      "title": "Health and care needs",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Does the child have any health condition camp staff should know about?",
+            "fieldId": "health-condition-question",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an answer",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "What health condition should camp staff know about?",
+            "fieldId": "health-condition",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "health-condition-question"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter details of the health condition",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Does the child have any allergies?",
+            "fieldId": "allergies-question",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an answer",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "What is the child allergic to?",
+            "fieldId": "allergies-details",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "allergies-question"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter details of the allergies",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Does the child take any medicine?",
+            "fieldId": "medicine-question",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an answer",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Name of medicine",
+            "fieldId": "medicine-name",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "medicine-question"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter the name of the medicine",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "hint": "For example, 1 tablet after lunch.",
+            "label": "How much medicine does the child take and when?",
+            "fieldId": "medicine-dosage",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "medicine-question"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter how much medicine the child takes and when",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Will the child need to take medicine during camp?",
+            "fieldId": "medicine-during-camp",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "medicine-question"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an answer",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "support-needs",
+      "title": "Support needs",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "hint": "This could be because of a disability, health condition or another need.",
+            "label": "Does the child need help to take part in camp?",
+            "fieldId": "support-help-question",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an answer",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "What help does the child need?",
+            "fieldId": "support-help-details",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "support-help-question"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter details of the help needed",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "meals-information",
+      "title": "Meals and food",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Is there any food the child cannot eat?",
+            "fieldId": "food-restrictions-question",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an answer",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Which food needs apply?",
+            "fieldId": "food-needs",
+            "options": [
+              {
+                "label": "Food allergy",
+                "value": "food-allergy"
+              },
+              {
+                "label": "Vegetarian",
+                "value": "vegetarian"
+              },
+              {
+                "label": "Vegan",
+                "value": "vegan"
+              },
+              {
+                "label": "Gluten-free",
+                "value": "gluten-free"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "food-restrictions-question"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select at least one option",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "hint": "If camp meals cannot meet the child's needs, you may need to send meals for the child.",
+            "label": "Tell us what food the child cannot eat",
+            "fieldId": "food-needs-details",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "food-restrictions-question"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter details of the food needs",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "emergency-contact",
+      "title": "Who should camp staff contact in an emergency?",
+      "description": "Give details for another adult we can contact if we cannot reach you.",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First name",
+            "fieldId": "emergency-first-name",
+            "validations": {
+              "required": {
+                "error": "Enter the first name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last name",
+            "fieldId": "emergency-last-name",
+            "validations": {
+              "required": {
+                "error": "Enter the last name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Relationship to the child",
+            "fieldId": "emergency-relationship",
+            "validations": {
+              "required": {
+                "error": "Enter the relationship to the child",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "label": "Phone number",
+            "fieldId": "emergency-phone",
+            "validations": {
+              "phone": {
+                "error": "Enter a phone number in the correct format",
+                "value": true
+              },
+              "required": {
+                "error": "Enter a phone number",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "doctor-information",
+      "title": "Does the child have a doctor or polyclinic they usually attend?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "ui": {
+              "hideLabel": true
+            },
+            "label": "Does the child have a doctor or polyclinic they usually attend?",
+            "fieldId": "doctor-question",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              },
+              {
+                "label": "Not sure",
+                "value": "not-sure"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an answer",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Name of doctor or polyclinic",
+            "fieldId": "doctor-name",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "doctor-question"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter the name of the doctor or polyclinic",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-tel",
+          "overrides": {
+            "label": "Phone number for doctor or polyclinic",
+            "fieldId": "doctor-phone",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "doctor-question"
+              }
+            ],
+            "validations": {
+              "phone": {
+                "error": "Enter a phone number in the correct format",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "emergency-medical-care",
+      "title": "Can camp staff get medical help for the child in an emergency?",
+      "description": "In an emergency, camp staff may need to give first aid, call a doctor or take the child for emergency care.",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "ui": {
+              "hideLabel": true
+            },
+            "label": "Can camp staff get medical help for the child in an emergency?",
+            "fieldId": "emergency-medical-care",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an answer",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Tell us what camp staff should do in an emergency",
+            "fieldId": "emergency-no-medical-care-details",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetFieldId": "emergency-medical-care"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter what camp staff should do in an emergency",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "camp-activities",
+      "title": "Can the child take part in all camp activities?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "ui": {
+              "hideLabel": true
+            },
+            "label": "Can the child take part in all camp activities?",
+            "fieldId": "all-activities-question",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No, the child must not take part in some activities",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an answer",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Which activities should the child not take part in?",
+            "fieldId": "excluded-activities",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetFieldId": "all-activities-question"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter which activities the child should not take part in",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "photos-and-videos",
+      "title": "Can the Ministry take photos or videos of the child during camp activities?",
+      "description": "Photos or videos may be used to show National Summer Camp Programme activities.",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "ui": {
+              "hideLabel": true
+            },
+            "label": "Photos and videos permission",
+            "fieldId": "photos-videos-permission",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an answer",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Check your answers before you send your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "ui": {
+              "width": "long",
+              "hideLabel": false
+            },
+            "label": "Camp rules",
+            "fieldId": "camp-rules",
+            "isHidden": true,
+            "validations": {}
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Confirmation",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I declare that:\n\n* the information I gave is correct\n* I am the child's parent or guardian\n* I understand the information may be checked\n* I have read the camp rules\n* I have talked with the child about the camp rules\n* I understand applying does not mean the child has a place at camp\n* I understand the child may have to leave camp if they break the camp rules or put anyone at risk",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm before submitting the application",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-06-12T11:02:19.069Z",
+  "updatedAt": "2026-06-12T11:02:19.069Z"
+}
