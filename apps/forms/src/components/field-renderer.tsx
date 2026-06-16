@@ -200,7 +200,7 @@ export default function FieldRenderer({
         const autoComplete = field.htmlType === "tel" ? "tel" : undefined;
 
         // Per-row input props for the "Add another" array paths. Each repeated
-        // input needs a unique `id` (#1024) — without it the DOM carries
+        // input needs a unique `id` — without it the DOM carries
         // duplicate ids and, for number fields, every stepper's `aria-controls`
         // points at row 0. The first row keeps `field.id` so the error-summary
         // anchor (`#field.id`) and the group `<label htmlFor={field.id}>` still
