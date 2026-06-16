@@ -39,6 +39,7 @@ When editing existing code:
 - When your changes create orphans:
 - Remove imports/variables/functions that YOUR changes made unused.
 - Don't remove pre-existing dead code unless asked.
+- Avoid using long relative imports, and if needed, ask the user for permission to make updates to the paths in the `tsconfig` so you can use `@` imports.
 
 The test: Every changed line should trace directly to the user's request.
 
@@ -62,11 +63,6 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Key Considerations
 
-### Open pull requests against `sandbox` by default
-
-`sandbox` is the default base branch for pull requests — open PRs against it,
-not `dev`, unless the human explicitly asks otherwise.
-
 ### Never put a `.` in a branch name
 
 Branch names must not contain a period. Each PR gets an Amplify preview at
@@ -80,61 +76,13 @@ name" step fails fast in CI, and a local PreToolUse hook
 (`.claude/hooks/block-dotted-branch.sh`) blocks branch-creating git commands
 with a dotted name.
 
-### Session plans live in `docs/plans/` but are never committed
-
-Session plans (`docs/plans/*.md`) are **not version-controlled**, but the
-directory is intentionally **not** gitignored — so plans stay reachable via the
-`@`-mention file picker (which respects `.gitignore`). The "don't commit them"
-rule is instead enforced by a local PreToolUse hook
-(`.claude/hooks/block-commit-plans.sh`): it denies `git commit` when a
-`docs/plans/` file is staged (or when an `add -A`/`add . && commit` one-liner
-would sweep one in), and denies an explicit `git add docs/plans/...`. A bare
-`git add -A` is still allowed — only the commit is blocked. If you need to
-commit other work, stage those files **by path** rather than relying on `git
-add -A` while a plan is dirty.
-
-### What "clean up" means at the end of a session
-
-When the human says **"clean up"** (or "wrap up and clean up") after work is
-committed, run these steps in order:
-
-1. **Push** the current branch to the remote.
-2. **Open a PR against `sandbox`** (the default base). If a GitHub issue was
-   referenced, include its number in the PR body.
-3. **Automatically remove the worktree** once the branch is pushed — no need to
-   ask first.
-4. **Delete the plan file** (e.g. the `docs/plans/*.md` the session worked
-   from) — automatically, no need to ask. A plan exists only to drive the work
-   up to the PR; once the PR is open it has served its purpose, and the
-   end-of-session summary captures anything worth keeping. Plans are **not**
-   version-controlled (see "Session plans live in `docs/plans/`" below), so
-   there's nothing to keep around after the PR is made.
-5. **Offer to watch CI yourself.** Ask the human whether you should watch the
-   PR's CI. If they say yes, run `gh pr checks <n> --watch` and **block until it
-   finishes** — do not hand the build back to the human to follow. Then:
-   - **All checks green** → merge the PR.
-   - **Any check fails** → investigate and fix the failures (push fixes to the
-     same branch and re-watch), rather than just reporting them back.
-
-### When work is finished, close the related GitHub issue
-
-After completing a piece of work, check GitHub (`gh issue list` / `gh issue
-view`) for an issue the work resolves.
-
-- **If the issue was explicitly referenced in the plan**, no confirmation is
-  needed — add a comment summarizing the resolution (link the PR/commit) and
-  close it.
-- **Otherwise**, confirm with the human that it's the right issue before
-  closing. Watch for a plan that cites a stale or duplicate issue number — the
-  live issue may differ from the one named.
-
 ### When creating a GitHub issue, assign it to the author
 
 Whenever you create a GitHub issue (`gh issue create`), always assign it to the
 author — pass `--assignee @me` so the new issue is assigned to the account
 creating it.
 
-### Apply relevant labels to new issues
+#### Apply relevant labels to new issues
 
 Every new issue should carry the labels that describe what it relates to. Run
 `gh label list` to see the available set, then apply (via `gh issue create
