@@ -16,9 +16,9 @@ About 5 minutes. Your checklist is based on the type of event you are organising
 ## What you will need
 
 - The type of event you are putting on.
-- Your venue — private, beach, public road, or on the water.
+- Your venue — private, beach or park, public road or open area, or on the water.
 - How many people you expect.
-- Whether you plan to serve alcohol, play music, use a stage, or bring overseas performers.
+- Whether you plan to serve alcohol, play music, sell food or tickets, use a stage, or set off pyrotechnics.
 
 <div class="border-blue-100 border-l-4 bg-blue-10 p-s">
   <p><strong>Indicative guidance only.</strong> Always confirm requirements directly with each agency before applying.</p>
