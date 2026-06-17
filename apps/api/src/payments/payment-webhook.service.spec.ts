@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { DataSource } from "typeorm";
 import { EventEmitter2 } from "@nestjs/event-emitter";
@@ -192,6 +193,46 @@ describe("PaymentWebhookService", () => {
       { type: "spreadsheet", config: {} },
     ]);
     expect(payload.values).toEqual({ step1: { name: "Jane" } });
+  });
+
+  it("emits submission.created only AFTER the transaction resolves, never inside it (#299)", async () => {
+    const payment = makePayment();
+    const submission = makeSubmission();
+    paymentRepo.findByReference.mockResolvedValue(payment);
+    ezpay.verifyPayment.mockResolvedValue(makeVerified());
+    txRepo.findOne.mockResolvedValue(null);
+    txRepo.save.mockImplementation(async (e) => e);
+    paymentRepo.save.mockImplementation(async (e) => e);
+    submissionRepo.findOne.mockResolvedValue(submission);
+    submissionRepo.save.mockImplementation(async (e) => e);
+    formDefs.findByFormId.mockResolvedValue({
+      processors: [{ type: "email", config: { to: "x@y" } }],
+    });
+
+    // Record the order of the transaction resolving vs the emit firing. With the
+    // pre-#299 code (emit inside the callback) this order is reversed, so this
+    // assertion fails — exactly the regression we're guarding against.
+    const order: string[] = [];
+    (dataSource.transaction as unknown as Mock).mockImplementationOnce(
+      async (cb: (mgr: unknown) => Promise<unknown>) => {
+        const out = await cb({
+          getRepository: (entity: unknown) => {
+            if (entity === FormSubmissionEntity) return submissionRepo;
+            throw new Error(`Unexpected entity inside transaction: ${entity}`);
+          },
+        });
+        order.push("tx-resolved");
+        return out;
+      },
+    );
+    (events.emit as unknown as Mock).mockImplementationOnce(() => {
+      order.push("emit");
+      return true;
+    });
+
+    await service.handleEzpayCallback(callbackBody);
+
+    expect(order).toEqual(["tx-resolved", "emit"]);
   });
 
   it("on amount mismatch: marks payment MISMATCHED, does NOT emit, does NOT touch submission", async () => {
