@@ -252,9 +252,11 @@ export class EmailBodyBuilder {
    */
   async resolveContract(
     formId: string,
-    version: string,
+    // Optional post-#1196: absent → canonical recipe. (PR B keys the cache on
+    // formId alone; until then an absent version keys as `${formId}:`.)
+    version?: string,
   ): Promise<ServiceContract> {
-    const cacheKey = `${formId}:${version}`;
+    const cacheKey = `${formId}:${version ?? ""}`;
     const cached = this.contractCache.get<ServiceContract>(cacheKey);
     if (cached) return cached;
 
