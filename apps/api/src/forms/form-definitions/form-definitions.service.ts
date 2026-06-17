@@ -193,7 +193,9 @@ export class FormDefinitionsService {
     const fileRecipe = this.recipeFileLoader.findByFormId({ formId });
     if (!dbRecipe) return fileRecipe;
     if (!fileRecipe) return dbRecipe;
-    return compareSemver(fileRecipe.version, dbRecipe.version) > 0
+    // `version` is optional on the recipe type post-#1196 (canonical files omit
+    // it); a canonical file with no version sorts below any versioned DB recipe.
+    return compareSemver(fileRecipe.version ?? "", dbRecipe.version ?? "") > 0
       ? fileRecipe
       : dbRecipe;
   }
