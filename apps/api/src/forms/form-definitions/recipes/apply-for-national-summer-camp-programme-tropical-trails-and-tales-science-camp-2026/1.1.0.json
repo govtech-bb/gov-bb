@@ -1,0 +1,1829 @@
+{
+  "formId": "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026",
+  "title": "Apply for National Summer Camp Programme: Tropical Trails and Tales Science Camp 2026",
+  "description": "Apply for Tropical Trails and Tales Science Camp 2026.",
+  "version": "1.1.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your National Summer Camp Programme application has been received",
+        "recipientField": "contact-details.parent-email"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "child-details",
+      "title": "Tell us about the camper",
+      "description": "This camp is for campers ages 12 to 15.",
+      "elements": [
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "fieldId": "child-date-of-birth",
+            "label": "Camper's date of birth",
+            "hint": "For example, 27 03 2012.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the camper's date of birth"
+              },
+              "minYear": {
+                "value": 2010,
+                "error": "Enter a date of birth between 2010 and 2014"
+              },
+              "maxYear": {
+                "value": 2014,
+                "error": "Enter a date of birth between 2010 and 2014"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "child-first-name",
+            "label": "Camper's first name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the camper's first name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "child-middle-names",
+            "label": "Camper's middle name(s)",
+            "hint": "Enter all middle names in order."
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "child-last-name",
+            "label": "Camper's last name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the camper's last name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "fieldId": "child-parish",
+            "label": "Parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select a parish"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "your-details",
+      "title": "Tell us about you",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "parent-first-name",
+            "label": "Your first name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your first name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "parent-middle-names",
+            "label": "Your middle name(s)",
+            "hint": "Enter all middle names in order."
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "parent-last-name",
+            "label": "Your last name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your last name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "relationship-to-child",
+            "label": "What is your relationship to the camper?",
+            "options": [
+              {
+                "label": "Mother",
+                "value": "mother"
+              },
+              {
+                "label": "Father",
+                "value": "father"
+              },
+              {
+                "label": "Guardian",
+                "value": "guardian"
+              },
+              {
+                "label": "Grandparent",
+                "value": "grandparent"
+              },
+              {
+                "label": "Other (please describe)",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an answer"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "relationship-other-describe",
+            "label": "Tell us your relationship to the camper",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your relationship to the camper"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "contact-details",
+      "title": "Your contact details",
+      "elements": [
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "parent-email",
+            "label": "Your email address",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter an email address in the correct format"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/mobile-telephone",
+          "overrides": {
+            "fieldId": "parent-mobile-phone",
+            "label": "Mobile phone number",
+            "hint": "For example, 421-1234 or +1 876 123 4567.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter a mobile phone number"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "parent-mobile-calls",
+            "label": "Can we call this mobile number?",
+            "hint": "Choose 'No, WhatsApp only' if this number cannot receive normal phone calls.",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No, WhatsApp only",
+                "value": "whatsapp-only"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an answer"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/home-telephone",
+          "overrides": {
+            "fieldId": "parent-landline",
+            "label": "Landline number",
+            "hint": "For example, 421-1234 or +1 876 123 4567."
+          }
+        },
+        {
+          "ref": "components/work-telephone",
+          "overrides": {
+            "fieldId": "parent-work-phone",
+            "label": "Work phone number",
+            "hint": "For example, 421-1234 or +1 876 123 4567."
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "your-address",
+      "title": "Your address",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "address-same-as-child",
+            "label": "Is your address the same as the camper's address?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an answer"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "parent-address-line-1",
+            "label": "Address line 1",
+            "ui": {
+              "width": "long"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter address line 1"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "address-same-as-child",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "parent-address-line-2",
+            "label": "Address line 2, optional",
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "address-same-as-child",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "parent-parish",
+            "label": "Parish",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select a parish"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "address-same-as-child",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "health-information",
+      "title": "Health and care needs",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "health-condition-question",
+            "label": "Does the camper have any health condition camp staff should know about?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an answer"
+              }
+            },
+            "ui": {
+              "hideLabel": false
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "health-condition",
+            "label": "What health condition should camp staff know about?",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "health-condition-question",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {}
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "allergies-question",
+            "label": "Does the camper have any allergies?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an answer"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "allergies-details",
+            "label": "What is the camper allergic to?",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "allergies-question",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {}
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "medicine-question",
+            "label": "Does the camper take any medicine?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an answer"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "medicine-name",
+            "label": "Name of medicine",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "medicine-question",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {}
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "medicine-dosage",
+            "label": "How much medicine does the camper take and when?",
+            "hint": "For example, 1 tablet after lunch.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "medicine-question",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {}
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "medicine-during-camp",
+            "label": "Will the camper need to take medicine during camp?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an answer"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "support-needs",
+      "title": "Support needs",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "support-help-question",
+            "label": "Does the camper need help to take part in camp?",
+            "hint": "This could be because of a disability, health condition or another need.",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an answer"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "support-help-details",
+            "label": "What help does the camper need?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter details of the help needed"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "meals-information",
+      "title": "Meals and food",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "food-restrictions-question",
+            "label": "Is there any food the camper cannot eat?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an answer"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "food-needs",
+            "label": "Which food needs apply?",
+            "options": [
+              {
+                "label": "Food allergy",
+                "value": "food-allergy"
+              },
+              {
+                "label": "Vegetarian",
+                "value": "vegetarian"
+              },
+              {
+                "label": "Vegan",
+                "value": "vegan"
+              },
+              {
+                "label": "Gluten-free",
+                "value": "gluten-free"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select at least one option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "food-needs-details",
+            "label": "Tell us what food the camper cannot eat",
+            "hint": "If camp meals cannot meet the camper's needs, you may need to send meals for the camper.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-restrictions-question",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {}
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "emergency-contact",
+      "title": "Who should camp staff contact in an emergency?",
+      "description": "Give details for another adult we can contact if we cannot reach you.",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "emergency-first-name",
+            "label": "First name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the first name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "emergency-last-name",
+            "label": "Last name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the last name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "emergency-relationship",
+            "label": "Relationship to the camper",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the relationship to the camper"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-tel",
+          "overrides": {
+            "fieldId": "emergency-phone-number",
+            "label": "Main phone number",
+            "hint": "For example, 421-1234 or +1 876 123 4567.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter a phone number"
+              },
+              "phone": {
+                "value": true,
+                "error": "Enter a phone number in the correct format"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "emergency-is-mobile",
+            "label": "Is this a mobile number?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an answer"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "emergency-mobile-calls",
+            "label": "Can we call this mobile number?",
+            "hint": "Choose 'No, WhatsApp only' if this number cannot receive normal phone calls.",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No, WhatsApp only",
+                "value": "whatsapp-only"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false,
+                "error": "Select an answer"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "emergency-is-mobile",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-tel",
+          "overrides": {
+            "fieldId": "emergency-other-phone",
+            "label": "Other phone number, optional",
+            "hint": "For example, a landline, work number or another number we can use in an emergency.",
+            "validations": {}
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "doctor-information",
+      "title": "Does the camper have a doctor or polyclinic they usually attend?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "doctor-question",
+            "label": "Does the camper have a doctor or polyclinic they usually attend?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              },
+              {
+                "label": "Not sure",
+                "value": "not-sure"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an answer"
+              }
+            },
+            "ui": {
+              "hideLabel": false
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "doctor-name",
+            "label": "Name of doctor or polyclinic",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "doctor-question",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {}
+          }
+        },
+        {
+          "ref": "components/generic-tel",
+          "overrides": {
+            "fieldId": "doctor-phone",
+            "label": "Phone number for doctor or polyclinic",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "doctor-question",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {}
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "emergency-medical-care",
+      "title": "Can camp staff get medical help for the camper in an emergency?",
+      "description": "In an emergency, camp staff may need to give first aid, call a doctor or take the camper for emergency care.",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "emergency-medical-care-question",
+            "label": "Can camp staff get medical help for the camper in an emergency?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an answer"
+              }
+            },
+            "ui": {
+              "hideLabel": false
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "emergency-no-medical-care-details",
+            "label": "Tell us what camp staff should do in an emergency",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "emergency-medical-care-question",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false,
+                "error": "Enter what camp staff should do in an emergency"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "camp-activities",
+      "title": "Can the camper take part in all camp activities?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "all-activities-question",
+            "label": "Can the camper take part in all camp activities?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No, the camper must not take part in some activities",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an answer"
+              }
+            },
+            "ui": {
+              "hideLabel": false
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "excluded-activities",
+            "label": "Which activities should the camper not take part in?",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "all-activities-question",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false,
+                "error": "Enter which activities the camper should not take part in"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "photos-and-videos",
+      "title": "Can the Ministry take photos or videos of the camper during camp activities?",
+      "description": "Photos or videos may be used to show National Summer Camp Programme activities.",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "photos-videos-permission",
+            "label": "Photos and videos permission",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an answer"
+              }
+            },
+            "ui": {
+              "hideLabel": false
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "leaving-camp",
+      "title": "How will the camper leave camp?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "can-leave-alone",
+            "label": "Can the camper make their own way home?",
+            "hint": "Choose No if an adult must collect the camper.",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an answer"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "collection-persons",
+      "title": "Who can collect the camper?",
+      "description": "Add each person who is allowed to collect the camper.",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "collection-person-first-name",
+            "label": "First name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the first name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "collection-person-last-name",
+            "label": "Last name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the last name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "collection-person-relationship",
+            "label": "Relationship to the camper",
+            "hint": "For example, mother, father, aunt, uncle or family friend.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the relationship to the camper"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-tel",
+          "overrides": {
+            "fieldId": "collection-person-phone",
+            "label": "Phone number",
+            "hint": "For example, 421-1234 or +1 876 123 4567.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter a phone number"
+              },
+              "phone": {
+                "value": true,
+                "error": "Enter a phone number in the correct format"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 10,
+          "addAnotherLabel": "Add another person"
+        },
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "leaving-camp",
+          "targetFieldId": "can-leave-alone",
+          "operator": "equal",
+          "value": "no"
+        }
+      ]
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-camper-details-heading",
+            "label": "Camper details",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-child-date-of-birth",
+            "label": "Date of birth",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-child-first-name",
+            "label": "First name",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-child-middle-names",
+            "label": "Middle name(s)",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-child-last-name",
+            "label": "Last name",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-child-sex",
+            "label": "Sex",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-child-national-id",
+            "label": "Barbados National Identification (ID) number",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-child-parish",
+            "label": "Parish",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-child-address-line-1",
+            "label": "Address line 1",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-child-address-line-2",
+            "label": "Address line 2",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-parent-details-heading",
+            "label": "Parent or guardian details",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-parent-first-name",
+            "label": "First name",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-parent-middle-names",
+            "label": "Middle name(s)",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-parent-last-name",
+            "label": "Last name",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-relationship-to-child",
+            "label": "Relationship to the camper",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-contact-details-heading",
+            "label": "Contact details",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-parent-email",
+            "label": "Email address",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-parent-mobile-phone",
+            "label": "Mobile phone number",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-parent-mobile-calls",
+            "label": "Can we call this mobile number?",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-parent-landline",
+            "label": "Landline number",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-parent-work-phone",
+            "label": "Work phone number",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-address-heading",
+            "label": "Your address",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-address-same-as-child",
+            "label": "Is your address the same as the camper's address?",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-parent-address-line-1",
+            "label": "Address line 1",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-parent-address-line-2",
+            "label": "Address line 2, optional",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-parent-parish",
+            "label": "Parish",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-emergency-contact-heading",
+            "label": "Emergency contact details",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-emergency-first-name",
+            "label": "First name",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-emergency-last-name",
+            "label": "Last name",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-emergency-relationship",
+            "label": "Relationship to the camper",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-emergency-phone-number",
+            "label": "Main phone number",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-emergency-is-mobile",
+            "label": "Is this a mobile number?",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-emergency-mobile-calls",
+            "label": "Can we call this mobile number?",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-emergency-other-phone",
+            "label": "Other phone number",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-health-heading",
+            "label": "Health and support",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-health-condition-question",
+            "label": "Does the camper have any health condition camp staff should know about?",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-health-condition",
+            "label": "Health condition details",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-allergies-question",
+            "label": "Does the camper have any allergies?",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-allergies-details",
+            "label": "Allergies details",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-medicine-question",
+            "label": "Does the camper take any medicine?",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-medicine-name",
+            "label": "Medicine name",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-medicine-dosage",
+            "label": "Medicine dosage and timing",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-medicine-during-camp",
+            "label": "Will the camper need to take medicine during camp?",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-support-help-question",
+            "label": "Does the camper need help to take part in camp?",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-support-help-details",
+            "label": "Support help details",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-meals-heading",
+            "label": "Meals and food",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-food-restrictions-question",
+            "label": "Is there any food the camper cannot eat?",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-food-needs",
+            "label": "Food needs",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-food-needs-details",
+            "label": "Food needs details",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-doctor-heading",
+            "label": "Doctor or polyclinic",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-doctor-question",
+            "label": "Does the camper have a doctor or polyclinic they usually attend?",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-doctor-name",
+            "label": "Doctor or polyclinic name",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-doctor-phone",
+            "label": "Doctor or polyclinic phone",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-medical-consent-heading",
+            "label": "Emergency medical care",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-emergency-medical-care-question",
+            "label": "Can camp staff get medical help for the camper in an emergency?",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-emergency-no-medical-care-details",
+            "label": "What camp staff should do in an emergency",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-activities-heading",
+            "label": "Activities and permissions",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-all-activities-question",
+            "label": "Can the camper take part in all camp activities?",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-excluded-activities",
+            "label": "Activities the camper should not take part in",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-photos-videos-permission",
+            "label": "Photos or videos permission",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-leaving-camp-heading",
+            "label": "Leaving camp",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-can-leave-alone",
+            "label": "Can the camper make their own way home?",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-collection-persons-heading",
+            "label": "People allowed to collect the camper",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "cya-collection-persons",
+            "label": "Collection persons",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "options": [
+              {
+                "label": "I declare that:\n\n* the information I gave is correct\n* I am the camper's parent or guardian\n* I understand the information may be checked\n* I have read the camp rules\n* I have talked with the camper about the camp rules\n* I understand applying does not mean the camper has a place at camp\n* I understand the camper may have to leave camp if they break the camp rules or put anyone at risk",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "You must confirm before submitting the application"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "Your application has been submitted.\n\nThe Ministry will review the application and contact you about the next steps.\n\nApplying does not mean the camper has a place."
+        }
+      ]
+    }
+  ],
+  "createdAt": "2026-06-17T12:52:19.360Z",
+  "updatedAt": "2026-06-17T12:52:19.360Z"
+}
