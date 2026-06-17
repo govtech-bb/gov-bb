@@ -5,6 +5,7 @@ import type {
 } from "./submission-processor.interface";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import { sign } from "./webhook-signature";
+import { assertSafeUrl } from "./url-safety";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_SIGNATURE_HEADER = "X-Webhook-Signature";
@@ -31,6 +32,13 @@ export class WebhookProcessor implements ISubmissionProcessor {
       );
       return { kind: "completed" };
     }
+
+    // SSRF guard (#287): the url comes from the stored recipe, so before we
+    // fetch it, require https and refuse a host that resolves to an internal
+    // address (private/loopback/link-local — notably the cloud-metadata
+    // endpoint 169.254.169.254). Throws on violation: the entry fails loudly
+    // rather than letting a malicious recipe drive an internal request.
+    await assertSafeUrl(url);
 
     const method = (cfg["method"] as string | undefined) ?? "POST";
     const timeoutMs =

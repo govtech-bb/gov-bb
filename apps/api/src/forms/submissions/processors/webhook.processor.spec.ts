@@ -1,10 +1,18 @@
+import type { Mock } from "vitest";
 import { Logger } from "@nestjs/common";
 import { createHmac } from "crypto";
+
+// SSRF guard (#287) resolves the webhook host before fetch; mock DNS so the
+// default test host resolves to a public address and existing tests proceed.
+vi.mock("node:dns/promises", () => ({ lookup: vi.fn() }));
+import { lookup } from "node:dns/promises";
+
 import { WebhookProcessor } from "./webhook.processor";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
+const mockLookup = lookup as unknown as Mock;
 
 function makePayload(
   config: Record<string, unknown> = {},
@@ -48,6 +56,7 @@ describe("WebhookProcessor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetch.mockResolvedValue({ ok: true, status: 200 });
+    mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
     processor = new WebhookProcessor();
   });
 
@@ -157,6 +166,37 @@ describe("WebhookProcessor", () => {
     expect(result).toEqual({ kind: "completed" });
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("No url"));
     warn.mockRestore();
+  });
+
+  it("rejects an internal-IP url and never fetches (SSRF guard, #287)", async () => {
+    const payload = makePayload();
+    payload.processors = [
+      {
+        type: "webhook",
+        config: {
+          url: "https://169.254.169.254/latest/meta-data/iam/security-credentials/role",
+        },
+      },
+    ] as SubmissionCreatedEvent["processors"];
+
+    await expect(processor.process(payload)).rejects.toThrow();
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-https url and never fetches (SSRF guard, #287)", async () => {
+    const payload = makePayload();
+    payload.processors = [
+      { type: "webhook", config: { url: "http://hooks.example.gov.bb/x" } },
+    ] as SubmissionCreatedEvent["processors"];
+
+    await expect(processor.process(payload)).rejects.toThrow();
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects a host that resolves to a private IP and never fetches (#287)", async () => {
+    mockLookup.mockResolvedValue([{ address: "10.0.0.5", family: 4 }]);
+    await expect(processor.process(makePayload())).rejects.toThrow();
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it("throws when the endpoint responds with a non-2xx status", async () => {
