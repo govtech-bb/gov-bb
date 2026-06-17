@@ -98,6 +98,16 @@
       .field-value {
         color: #1a202c;
       }
+      .payment {
+        background-color: #a8e6cf;
+        padding: 14px 24px;
+        margin: 0 0 28px;
+      }
+      .payment p {
+        font-size: 15px;
+        color: #1a202c;
+        margin: 4px 0;
+      }
       .tracking {
         background-color: #e9ecf3;
         padding: 8px 24px;
@@ -174,6 +184,13 @@
             </tr>
           </table>
         </div>
+
+        {{#if payment}}
+          <div class='payment'>
+            <p><strong>Payment amount received:</strong> {{payment.amountReceived}}</p>
+            <p><strong>EzPay transaction ID:</strong> {{payment.transactionId}}</p>
+          </div>
+        {{/if}}
 
         <p class='intro'>Here is the data from this request:</p>
 

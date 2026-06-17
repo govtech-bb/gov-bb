@@ -159,6 +159,25 @@ describe("EmailBodyBuilder", () => {
       expect(typeof ctx.processedAt).toBe("string");
     });
 
+    it("forwards the payment summary onto the context when present", async () => {
+      const ctx = await builder.build(
+        makePayload({
+          payment: { amountReceived: "$50.00", transactionId: "TXN-1" },
+        }),
+      );
+
+      expect(ctx.payment).toEqual({
+        amountReceived: "$50.00",
+        transactionId: "TXN-1",
+      });
+    });
+
+    it("leaves payment undefined when the payload carries none", async () => {
+      const ctx = await builder.build(makePayload());
+
+      expect(ctx.payment).toBeUndefined();
+    });
+
     it("renders the submission-confirmation step's markdownContent to HTML", async () => {
       const base = makeContract();
       const contract = makeContract({

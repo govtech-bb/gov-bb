@@ -25,6 +25,8 @@ import sqsConfig from "../../config/sqs.config";
 import { ExpressionsModule } from "../../expressions/expressions.module";
 import { EmailTemplateService } from "../../email/email-template.service";
 import { EmailBodyBuilder } from "../../email/email-body.builder";
+import { SesMailer } from "../../email/ses-mailer";
+import { PaymentRequiredListener } from "../../email/payment-required.listener";
 
 @Module({
   imports: [
@@ -41,6 +43,8 @@ import { EmailBodyBuilder } from "../../email/email-body.builder";
     SubmissionsService,
     FormSubmissionRepository,
     SubmissionPipelineService,
+    SesMailer,
+    PaymentRequiredListener,
     EmailTemplateService,
     EmailBodyBuilder,
     // Concrete processor implementations — add new processors here only.
