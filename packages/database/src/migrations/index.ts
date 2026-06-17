@@ -10,3 +10,4 @@ export { AddReferenceCodeToFormSubmissions1778841559000 } from "./1778841559000-
 export { CreateFormDisabledOverrides1779466523478 } from "./1779466523478-CreateFormDisabledOverrides";
 export { CreateMdaContactAndFormConfig1780520220084 } from "./1780520220084-CreateMdaContactAndFormConfig";
 export { CreateFormEditingSessions1780924594196 } from "./1780924594196-CreateFormEditingSessions";
+export { MakeFormVersionNullable1781000000000 } from "./1781000000000-MakeFormVersionNullable";
