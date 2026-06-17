@@ -192,6 +192,10 @@ describe("PaymentWebhookService", () => {
       { type: "spreadsheet", config: {} },
     ]);
     expect(payload.values).toEqual({ step1: { name: "Jane" } });
+    expect(payload.payment).toEqual({
+      amountReceived: "$50.00",
+      transactionId: "TXN-1",
+    });
   });
 
   it("on amount mismatch: marks payment MISMATCHED, does NOT emit, does NOT touch submission", async () => {

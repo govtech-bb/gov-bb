@@ -20,6 +20,7 @@ import { FormDefinitionsService } from "../forms/form-definitions/form-definitio
 import type {
   SubmissionAuditTrail,
   SubmissionCreatedEvent,
+  SubmissionPaymentSummary,
 } from "../forms/submissions/submissions.types";
 
 /** TTL for cached form contracts (seconds).
@@ -91,6 +92,10 @@ export interface EmailTemplateContext {
    * image URL. */
   departmentName?: string;
   coatOfArmsUrl?: string;
+  /** Confirmed-payment details, forwarded from the post-payment
+   * `submission.created` event. Rendered on the MDA/reviewer confirmation
+   * email; undefined for non-payment submissions. */
+  payment?: SubmissionPaymentSummary;
 }
 
 /**
@@ -217,6 +222,7 @@ export class EmailBodyBuilder {
       year: processedAt.slice(0, 4),
       sections,
       ...(markdownHtml && { markdownHtml }),
+      ...(payload.payment && { payment: payload.payment }),
     };
   }
 
