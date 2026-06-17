@@ -15,6 +15,7 @@ import {
 } from "./-lib";
 import type { ContentPageSummary } from "./-server";
 import type { FormDefinitionSummary } from "../../types/index";
+import { draftKeyFor, readDraft, writeDraft, clearDraft } from "./-draft-store";
 
 /**
  * All of the page editor's state and derived validation, separated from the
@@ -102,6 +103,7 @@ export function useEditorState(
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<DeploySuccess | null>(null);
   const [loadingPage, setLoadingPage] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
 
   // Edit mode (existing page) vs create-at-fixed-path (new entry/start) vs
   // free create (top-level slug). `baseFrontmatter` preserves unmanaged keys.
@@ -127,6 +129,35 @@ export function useEditorState(
   );
   const dirty = JSON.stringify(state) !== savedSnapshot;
 
+  // The autosave target for the page currently in the editor: its repo path,
+  // or `formId:kind` for a not-yet-created page, or "" (→ ":") for a free new
+  // page. Matches the URL-driven `initKey` used to (re)initialise below.
+  const initKey = search.path ?? `${search.formId ?? ""}:${search.kind ?? ""}`;
+  const draftKey = draftKeyFor(initKey);
+
+  // Overlay any autosaved draft for this target onto the just-loaded baseline,
+  // so reopening the editor restores in-progress edits (and `dirty` lights up).
+  const applyStoredDraft = () => {
+    const draft = readDraft<Partial<FormState>>(draftKey);
+    if (draft) setState((cur) => ({ ...cur, ...draft }));
+  };
+
+  // Autosave: debounce-persist the draft whenever it diverges from the loaded
+  // baseline. Skipped while a page is still loading (no baseline to diff yet).
+  const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (loadingPage || !dirty) return;
+    setDraftSaved(false);
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(() => {
+      writeDraft(draftKey, state);
+      setDraftSaved(true);
+    }, 400);
+    return () => {
+      if (draftTimer.current) clearTimeout(draftTimer.current);
+    };
+  }, [state, dirty, loadingPage, draftKey]);
+
   useEffect(() => {
     if (!dirty) return;
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -143,7 +174,19 @@ export function useEditorState(
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setState((cur) => ({ ...cur, [key]: value }));
 
-  const markSaved = () => setSavedSnapshot(JSON.stringify(state));
+  const markSaved = () => {
+    setSavedSnapshot(JSON.stringify(state));
+    clearDraft(draftKey);
+    setDraftSaved(false);
+  };
+
+  // Drop the autosaved draft and revert the editor to the last loaded/saved
+  // baseline (the live page, or an empty new page).
+  const discardDraft = () => {
+    setState(JSON.parse(savedSnapshot) as FormState);
+    clearDraft(draftKey);
+    setDraftSaved(false);
+  };
 
   const loadPath = async (path: string) => {
     setLoadingPage(true);
@@ -184,6 +227,7 @@ export function useEditorState(
       setCreatingCategory(false);
       setNewCatTitle("");
       setNewCatDesc("");
+      applyStoredDraft();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load page");
     } finally {
@@ -207,6 +251,7 @@ export function useEditorState(
     setEditPath(null);
     setEditSha(null);
     setBaseFrontmatter(null);
+    applyStoredDraft();
   };
 
   const resetNew = () => {
@@ -219,10 +264,10 @@ export function useEditorState(
     setEditSha(null);
     setCreatePath(null);
     setBaseFrontmatter(null);
+    applyStoredDraft();
   };
 
   // Initialise from the URL once per distinct search signature.
-  const initKey = search.path ?? `${search.formId ?? ""}:${search.kind ?? ""}`;
   const initedRef = useRef<string | null>(null);
   useEffect(() => {
     if (initedRef.current === initKey) return;
@@ -333,8 +378,10 @@ export function useEditorState(
     setNewCatDesc,
     newCatSlug,
     dirty,
+    draftSaved,
     confirmDiscard,
     markSaved,
+    discardDraft,
     editing,
     fixedPath,
     slug,
