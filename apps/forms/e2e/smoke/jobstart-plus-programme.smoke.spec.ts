@@ -82,10 +82,14 @@ test.describe("JobStart Plus Programme — Live Smoke", () => {
     );
     await fillField(page, step, "applicant-last-name", faker.person.lastName());
     // `applicant-dob` enforces 16 < age < 34 (recipe `gt:16` / `lt:34`,
-    // transform `yearsSince`). Derive the birth year at runtime so the applicant
-    // is always ~25 — a hardcoded year silently drifts out of that window as
-    // calendar years pass (a fixed 1990 made the applicant 36 and broke this).
-    const dobYear = new Date().getFullYear() - 25;
+    // transform `yearsSince`), and the disability-support step blocks anyone
+    // whose `yearsSince(dob) >= 25` unless they answer "yes" to has-disability.
+    // This run answers "no", so the applicant must be 17–24. Derive the birth
+    // year at runtime so the age stays inside that window as calendar years
+    // pass — a fixed offset of 25 put the applicant exactly on the >= 25 gate
+    // the day their birthday passed and broke this; -21 keeps them ~20–21,
+    // clear of both the gt:16 floor and the >= 25 ceiling year-round.
+    const dobYear = new Date().getFullYear() - 21;
     await fillDate(page, step, "applicant-dob", 15, 6, dobYear);
     await selectRadio(page, step, "applicant-sex", "male");
     await selectDropdown(page, step, "marital-status", "single");
