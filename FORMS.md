@@ -228,7 +228,7 @@ which already follows every rule above.
 - [ ] Named selects/radios reference the component without re-declaring options.
 - [ ] The `declaration` step holds a single `components/confirmation` (one `confirmed` option); no empty declaration step, no handwritten signature/date.
 - [ ] Every element has a unique `fieldId`; no `disabled`/`conditional`/`type` hacks; no hidden+required.
-- [ ] Build still compiles: `pnpm exec nx run-many -t build --exclude=landing,cms`.
+- [ ] Build still compiles: `pnpm exec nx run-many -t build --exclude=landing`.
 - [ ] If the form has a live smoke spec under `apps/forms/e2e/smoke/`, run it
       against a stack that serves the updated recipe
       (`SMOKE_BASE_URL=http://localhost:3000 pnpm --filter @govtech-bb/forms test:smoke <form>`);

@@ -5,6 +5,7 @@ stage: "alpha"
 publish_date: 2026-06-02
 category: education
 visibility: draft
+form_id: non-nationals-secondary-entry
 ---
 
 Use this service to apply for a non-national child — or a child born outside Barbados — to attend a government secondary school.
@@ -31,7 +32,7 @@ You can upload files in PDF, JPG or PNG format, up to 10 MB each. You can also c
 
 It takes about 10 minutes to apply online.
 
-<a data-start-link href="/education/apply-for-secondary-school-entry-for-a-non-national-child/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 
