@@ -1,0 +1,621 @@
+import {
+  captureQuote,
+  getSelector,
+  locateQuote,
+  resolveSelector,
+} from "./anchor";
+import { WIDGET_CSS } from "./styles";
+import { LocalStorageTransport } from "./transport/local-storage";
+import type { CommentTransport, MountOptions, Reply, Thread } from "./types";
+
+/**
+ * Mount the preview commenting widget. Returns a teardown function that removes
+ * all injected UI and event listeners — call it when the host unmounts (e.g.
+ * the reviewer leaves preview mode). Safe to call only in the browser.
+ *
+ * Best-of-both behaviour:
+ *   - "Add comment" enters placement mode: hovering outlines the section under
+ *     the cursor (Figma-like); click an element to pin a comment there, or
+ *     select text first to also store + highlight that exact phrase.
+ *   - Pins float at each anchored element and reposition on scroll/resize.
+ *   - A right sidebar lists every thread; threads support replies + resolve.
+ *   - The commenter names themselves once; the name is remembered locally.
+ */
+export function mountPreviewComments(options: MountOptions = {}): () => void {
+  const rootSelector = options.root ?? "#main";
+  const pageId = options.pageId ?? location.pathname;
+  const transport: CommentTransport =
+    options.transport ?? new LocalStorageTransport();
+  const NAME_KEY = "gtc:preview-comments:author";
+
+  let threads: Thread[] = [];
+  let showResolved = false;
+  let placing = false;
+  let hoverEl: Element | null = null;
+  let targetEl: Element | null = null;
+  let popover: HTMLElement | null = null;
+  let rafPending = false;
+
+  const rootEl = (): Element =>
+    document.querySelector(rootSelector) ?? document.body;
+
+  const uid = (): string =>
+    Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+  function when(ts: number): string {
+    const s = (Date.now() - ts) / 1000;
+    if (s < 60) return "just now";
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    return new Date(ts).toLocaleDateString();
+  }
+
+  function el<K extends keyof HTMLElementTagNameMap>(
+    tag: K,
+    cls?: string,
+    text?: string,
+  ): HTMLElementTagNameMap[K] {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text != null) node.textContent = text;
+    node.setAttribute("data-pc", node.getAttribute("data-pc") ?? "ui");
+    return node;
+  }
+
+  function isOwnUi(node: EventTarget | null): boolean {
+    return node instanceof Element && node.closest("[data-pc]") !== null;
+  }
+
+  function authorName(): string {
+    return localStorage.getItem(NAME_KEY) ?? "";
+  }
+
+  /* ---------- injected UI shell ---------- */
+
+  const style = el("style");
+  style.textContent = WIDGET_CSS;
+  document.head.appendChild(style);
+
+  const pins = el("div", "pc-pins");
+  document.body.appendChild(pins);
+
+  const toolbar = el("div", "pc-toolbar");
+  const addBtn = el("button", "pc-btn", "Add comment");
+  addBtn.setAttribute("aria-pressed", "false");
+  const panelBtn = el("button", "pc-btn");
+  panelBtn.innerHTML = 'Comments <span class="pc-count" data-pc="ui">0</span>';
+  const countEl = panelBtn.querySelector(".pc-count") as HTMLElement;
+  toolbar.appendChild(addBtn);
+  toolbar.appendChild(panelBtn);
+  document.body.appendChild(toolbar);
+
+  const panel = el("aside", "pc-panel");
+  panel.setAttribute("aria-label", "Comments on this page");
+  const head = el("div", "pc-head");
+  const h2 = el("h2", undefined, "Comments");
+  const closeBtn = el("button", undefined, "×");
+  closeBtn.setAttribute("aria-label", "Close comments");
+  head.appendChild(h2);
+  head.appendChild(closeBtn);
+  const sub = el("div", "pc-sub");
+  const resolvedChk = el("input");
+  resolvedChk.type = "checkbox";
+  resolvedChk.id = "pc-showres";
+  const resolvedLbl = el("label", undefined, "Show resolved");
+  resolvedLbl.setAttribute("for", "pc-showres");
+  sub.appendChild(resolvedChk);
+  sub.appendChild(resolvedLbl);
+  const listEl = el("div", "pc-list");
+  panel.appendChild(head);
+  panel.appendChild(sub);
+  panel.appendChild(listEl);
+  document.body.appendChild(panel);
+
+  let hint: HTMLElement | null = null;
+
+  /* ---------- panel open/close ---------- */
+
+  const openPanel = (): void => panel.classList.add("pc-open");
+  const closePanel = (): void => panel.classList.remove("pc-open");
+
+  closeBtn.addEventListener("click", closePanel);
+  panelBtn.addEventListener("click", () => {
+    panel.classList.toggle("pc-open");
+  });
+  resolvedChk.addEventListener("change", () => {
+    showResolved = resolvedChk.checked;
+    render();
+  });
+  addBtn.addEventListener("click", () => setPlacing(!placing));
+
+  /* ---------- inline highlights ---------- */
+
+  function clearHighlights(): void {
+    document.querySelectorAll("mark.pc-hl").forEach((m) => {
+      const parent = m.parentNode;
+      if (!parent) return;
+      while (m.firstChild) parent.insertBefore(m.firstChild, m);
+      parent.removeChild(m);
+      parent.normalize();
+    });
+  }
+
+  function highlightThread(thread: Thread): void {
+    if (!thread.quote) return;
+    const root = rootEl();
+    const loc = locateQuote(thread, root);
+    if (!loc) return;
+
+    // Walk text nodes, accumulating offsets, and wrap the slice [start,end).
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) =>
+        n.parentElement?.closest("[data-pc]")
+          ? NodeFilter.FILTER_REJECT
+          : NodeFilter.FILTER_ACCEPT,
+    });
+    let offset = 0;
+    const node = walker.nextNode();
+    for (let n: Node | null = node; n; n = walker.nextNode()) {
+      const len = n.nodeValue?.length ?? 0;
+      const segStart = offset;
+      const segEnd = offset + len;
+      offset = segEnd;
+      if (segEnd <= loc.start || segStart >= loc.end) continue;
+      const a = Math.max(loc.start, segStart) - segStart;
+      const b = Math.min(loc.end, segEnd) - segStart;
+      const range = document.createRange();
+      try {
+        range.setStart(n, a);
+        range.setEnd(n, b);
+        const mark = el("mark", "pc-hl");
+        mark.dataset.thread = thread.id;
+        if (thread.resolved) mark.dataset.resolved = "1";
+        mark.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openPanel();
+          focusThread(thread.id);
+        });
+        range.surroundContents(mark);
+      } catch {
+        /* selection spans a block boundary — skip this segment */
+      }
+    }
+  }
+
+  /* ---------- pins ---------- */
+
+  function renderPins(): void {
+    pins.innerHTML = "";
+    const seenPerSelector: Record<string, number> = {};
+    visibleThreads().forEach((thread) => {
+      const anchor = resolveSelector(thread.selector);
+      if (!anchor) return;
+      const rect = anchor.getBoundingClientRect();
+      // Stack pins that share an anchor so they don't fully overlap.
+      const stack = seenPerSelector[thread.selector] ?? 0;
+      seenPerSelector[thread.selector] = stack + 1;
+      const pin = el("button", "pc-pin", "💬");
+      if (thread.resolved) pin.dataset.resolved = "1";
+      pin.style.left = `${rect.right + window.scrollX - stack * 6}px`;
+      pin.style.top = `${rect.top + window.scrollY + stack * 6}px`;
+      pin.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openThread(thread.id, pin);
+      });
+      pins.appendChild(pin);
+    });
+  }
+
+  function scheduleReposition(): void {
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(() => {
+      rafPending = false;
+      renderPins();
+    });
+  }
+
+  /* ---------- placement mode ---------- */
+
+  function setPlacing(on: boolean): void {
+    placing = on;
+    addBtn.setAttribute("aria-pressed", String(on));
+    document.body.classList.toggle("pc-placing", on);
+    clearHover();
+    if (on) {
+      showHint("Select text or click any section to comment. Esc to cancel.");
+      document.addEventListener("mousemove", onHoverMove, true);
+      document.addEventListener("click", onPlaceClick, true);
+    } else {
+      hideHint();
+      document.removeEventListener("mousemove", onHoverMove, true);
+      document.removeEventListener("click", onPlaceClick, true);
+    }
+  }
+
+  function onHoverMove(e: MouseEvent): void {
+    const node = e.target;
+    if (
+      !(node instanceof Element) ||
+      isOwnUi(node) ||
+      !rootEl().contains(node)
+    ) {
+      clearHover();
+      return;
+    }
+    if (node === hoverEl) return;
+    clearHover();
+    hoverEl = node;
+    node.classList.add("pc-hover-outline");
+  }
+
+  function clearHover(): void {
+    hoverEl?.classList.remove("pc-hover-outline");
+    hoverEl = null;
+  }
+
+  function onPlaceClick(e: MouseEvent): void {
+    if (isOwnUi(e.target)) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const selection = window.getSelection();
+    let quote = "";
+    let prefix = "";
+    let suffix = "";
+    let element: Element | null;
+
+    if (selection && !selection.isCollapsed && selection.toString().trim()) {
+      const range = selection.getRangeAt(0);
+      element = rangeElement(range);
+      const captured = captureQuote(range, rootEl());
+      quote = captured.quote.trim();
+      prefix = captured.prefix;
+      suffix = captured.suffix;
+    } else {
+      element = e.target instanceof Element ? e.target : null;
+    }
+
+    if (!element || isOwnUi(element)) return;
+    const selector = getSelector(element);
+    if (!selector) return;
+
+    clearHover();
+    setPlacing(false);
+    openComposer({ selector, quote, prefix, suffix }, e.pageX, e.pageY);
+  }
+
+  function rangeElement(range: Range): Element | null {
+    const node = range.commonAncestorContainer;
+    return node.nodeType === 1 ? (node as Element) : node.parentElement;
+  }
+
+  /* ---------- popovers ---------- */
+
+  function closePopover(): void {
+    popover?.remove();
+    popover = null;
+    targetEl?.classList.remove("pc-target-highlight");
+    targetEl = null;
+  }
+
+  function placePopover(pop: HTMLElement, x: number, y: number): void {
+    document.body.appendChild(pop);
+    const w = pop.offsetWidth;
+    const h = pop.offsetHeight;
+    const maxLeft =
+      window.scrollX + document.documentElement.clientWidth - w - 8;
+    let top = y + 12;
+    if (top + h > window.scrollY + document.documentElement.clientHeight) {
+      top = Math.max(window.scrollY + 8, y - h - 12);
+    }
+    pop.style.left = `${Math.max(window.scrollX + 8, Math.min(x, maxLeft))}px`;
+    pop.style.top = `${top}px`;
+  }
+
+  function highlightTarget(selector: string): Element | null {
+    const node = resolveSelector(selector);
+    if (node) {
+      node.classList.add("pc-target-highlight");
+      targetEl = node;
+    }
+    return node;
+  }
+
+  interface DraftAnchor {
+    selector: string;
+    quote: string;
+    prefix: string;
+    suffix: string;
+  }
+
+  function openComposer(draft: DraftAnchor, x?: number, y?: number): void {
+    closePopover();
+    const anchor = highlightTarget(draft.selector);
+    if (anchor && x == null) {
+      const rect = anchor.getBoundingClientRect();
+      x = rect.left + window.scrollX;
+      y = rect.bottom + window.scrollY;
+    }
+
+    const pop = el("div", "pc-popover");
+    const savedName = authorName();
+    const quoteHtml = draft.quote
+      ? `<div class="pc-quote" data-pc="ui">${escapeHtml(draft.quote)}</div>`
+      : "";
+    pop.innerHTML =
+      `<div class="pc-head" data-pc="ui" style="background:#00267f;margin:-10px -10px 10px;border-radius:6px 6px 0 0;padding:8px 12px">` +
+      `<h2 data-pc="ui" style="font-size:15px">Add a comment</h2>` +
+      `<button type="button" class="pc-close" data-pc="ui" aria-label="Close">×</button></div>` +
+      quoteHtml +
+      `<div class="pc-field" data-pc="ui"><label>Your name</label>` +
+      `<input type="text" class="pc-name" data-pc="ui" value="${escapeHtml(savedName)}" placeholder="e.g. Jane"></div>` +
+      `<div class="pc-field" data-pc="ui"><label>Comment</label>` +
+      `<textarea class="pc-text" data-pc="ui" placeholder="Write your comment"></textarea></div>` +
+      `<div class="pc-row" data-pc="ui">` +
+      `<button type="button" class="pc-action pc-action--secondary pc-cancel" data-pc="ui">Cancel</button>` +
+      `<button type="button" class="pc-action pc-action--primary pc-save" data-pc="ui">Save</button></div>`;
+
+    popover = pop;
+    placePopover(pop, x ?? window.scrollX + 40, y ?? window.scrollY + 40);
+
+    const nameInput = pop.querySelector(".pc-name") as HTMLInputElement;
+    const textInput = pop.querySelector(".pc-text") as HTMLTextAreaElement;
+    (savedName ? textInput : nameInput).focus();
+
+    pop.querySelector(".pc-close")?.addEventListener("click", closePopover);
+    pop.querySelector(".pc-cancel")?.addEventListener("click", closePopover);
+    pop.querySelector(".pc-save")?.addEventListener("click", () => {
+      const name = nameInput.value.trim();
+      const text = textInput.value.trim();
+      if (!name) return nameInput.focus();
+      if (!text) return textInput.focus();
+      localStorage.setItem(NAME_KEY, name);
+      const thread: Thread = {
+        id: uid(),
+        pageId,
+        selector: draft.selector,
+        quote: draft.quote,
+        prefix: draft.prefix,
+        suffix: draft.suffix,
+        author: name,
+        text,
+        createdAt: Date.now(),
+        resolved: false,
+        replies: [],
+      };
+      void transport.create(thread).then(() => {
+        closePopover();
+        window.getSelection()?.removeAllRanges();
+        return refresh();
+      });
+    });
+  }
+
+  function openThread(threadId: string, anchorEl: HTMLElement): void {
+    closePopover();
+    const thread = threads.find((t) => t.id === threadId);
+    if (!thread) return;
+    highlightTarget(thread.selector);
+
+    const pop = el("div", "pc-popover");
+    pop.innerHTML =
+      `<div class="pc-head" data-pc="ui" style="background:#00267f;margin:-10px -10px 10px;border-radius:6px 6px 0 0;padding:8px 12px">` +
+      `<h2 data-pc="ui" style="font-size:15px">Comment</h2>` +
+      `<button type="button" class="pc-close" data-pc="ui" aria-label="Close">×</button></div>` +
+      `<div class="pc-thread-body" data-pc="ui"></div>`;
+    popover = pop;
+
+    const body = pop.querySelector(".pc-thread-body") as HTMLElement;
+    renderThreadBody(body, thread);
+
+    const rect = anchorEl.getBoundingClientRect();
+    placePopover(pop, rect.right + window.scrollX, rect.top + window.scrollY);
+    pop.querySelector(".pc-close")?.addEventListener("click", closePopover);
+  }
+
+  function renderThreadBody(body: HTMLElement, thread: Thread): void {
+    body.innerHTML = "";
+    if (thread.quote) {
+      body.appendChild(el("div", "pc-quote", thread.quote));
+    }
+    body.appendChild(messageEl(thread.author, thread.text, thread.createdAt));
+    thread.replies.forEach((r) => {
+      body.appendChild(messageEl(r.author, r.text, r.createdAt));
+    });
+
+    const actions = el("div", "pc-actions");
+    const replyBtn = el("button", undefined, "Reply");
+    replyBtn.addEventListener("click", () => showReply(body, thread.id));
+    const resolveBtn = el(
+      "button",
+      undefined,
+      thread.resolved ? "Reopen" : "Resolve",
+    );
+    resolveBtn.addEventListener("click", () => {
+      void transport.setResolved(thread.id, !thread.resolved).then(refresh);
+    });
+    actions.appendChild(replyBtn);
+    actions.appendChild(resolveBtn);
+    body.appendChild(actions);
+  }
+
+  function showReply(body: HTMLElement, threadId: string): void {
+    if (body.querySelector(".pc-reply")) return;
+    const wrap = el("div", "pc-reply");
+    const textarea = el("textarea");
+    const send = el("button", "pc-action pc-action--primary", "Post");
+    send.addEventListener("click", () => {
+      const text = textarea.value.trim();
+      if (!text) return;
+      const name = authorName() || "Anonymous";
+      const reply: Reply = {
+        id: uid(),
+        author: name,
+        text,
+        createdAt: Date.now(),
+      };
+      void transport.reply(threadId, reply).then(refresh);
+    });
+    wrap.appendChild(textarea);
+    wrap.appendChild(send);
+    body.appendChild(wrap);
+    textarea.focus();
+  }
+
+  function messageEl(author: string, text: string, ts: number): HTMLElement {
+    const wrap = el("div", "pc-msg");
+    wrap.appendChild(el("div", "pc-meta", `${author} · ${when(ts)}`));
+    wrap.appendChild(el("div", "pc-body", text));
+    return wrap;
+  }
+
+  /* ---------- sidebar list ---------- */
+
+  function renderPanel(): void {
+    listEl.innerHTML = "";
+    const visible = visibleThreads();
+    if (!visible.length) {
+      listEl.appendChild(
+        el(
+          "div",
+          "pc-empty",
+          'No comments yet. Click "Add comment", then select text or a section.',
+        ),
+      );
+      return;
+    }
+    visible.forEach((thread) => {
+      const box = el("div", "pc-thread");
+      box.dataset.thread = thread.id;
+      if (thread.resolved) box.dataset.resolved = "1";
+      const orphan = !resolveSelector(thread.selector);
+      if (orphan) box.dataset.orphan = "1";
+
+      if (thread.quote) box.appendChild(el("div", "pc-quote", thread.quote));
+      if (orphan) {
+        box.appendChild(
+          el("div", "pc-orphan-note", "Anchor not found on this page"),
+        );
+      }
+      box.appendChild(messageEl(thread.author, thread.text, thread.createdAt));
+      thread.replies.forEach((r) => {
+        box.appendChild(messageEl(r.author, r.text, r.createdAt));
+      });
+      box.addEventListener("click", () => {
+        if (!orphan) scrollToThread(thread);
+        flash(thread.id);
+      });
+      listEl.appendChild(box);
+    });
+  }
+
+  function scrollToThread(thread: Thread): void {
+    const node = resolveSelector(thread.selector);
+    node?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function focusThread(threadId: string): void {
+    const box = listEl.querySelector(
+      `.pc-thread[data-thread="${threadId}"]`,
+    ) as HTMLElement | null;
+    box?.scrollIntoView({ block: "center" });
+    flash(threadId);
+  }
+
+  function flash(threadId: string): void {
+    const mark = document.querySelector(
+      `mark.pc-hl[data-thread="${threadId}"]`,
+    ) as HTMLElement | null;
+    if (mark) {
+      mark.scrollIntoView({ block: "center", behavior: "smooth" });
+      mark.classList.add("pc-flash");
+      setTimeout(() => mark.classList.remove("pc-flash"), 1200);
+    }
+  }
+
+  /* ---------- shared state + render ---------- */
+
+  const visibleThreads = (): Thread[] =>
+    threads.filter((t) => showResolved || !t.resolved);
+
+  function updateCount(): void {
+    const open = threads.filter((t) => !t.resolved).length;
+    countEl.textContent = String(open);
+  }
+
+  function render(): void {
+    clearHighlights();
+    visibleThreads().forEach(highlightThread);
+    renderPins();
+    renderPanel();
+    updateCount();
+  }
+
+  function refresh(): Promise<void> {
+    return transport.list(pageId).then((list) => {
+      threads = list ?? [];
+      render();
+    });
+  }
+
+  /* ---------- global listeners ---------- */
+
+  function onKeydown(e: KeyboardEvent): void {
+    if (e.key !== "Escape") return;
+    if (popover) closePopover();
+    else if (placing) setPlacing(false);
+  }
+
+  function onDocMousedown(e: MouseEvent): void {
+    if (
+      popover &&
+      !popover.contains(e.target as Node) &&
+      !(e.target instanceof Element && e.target.closest(".pc-pin"))
+    ) {
+      closePopover();
+    }
+  }
+
+  document.addEventListener("keydown", onKeydown);
+  document.addEventListener("mousedown", onDocMousedown);
+  window.addEventListener("scroll", scheduleReposition, true);
+  window.addEventListener("resize", scheduleReposition);
+
+  void refresh();
+
+  /* ---------- teardown ---------- */
+
+  return function teardown(): void {
+    setPlacing(false);
+    closePopover();
+    clearHighlights();
+    document.removeEventListener("keydown", onKeydown);
+    document.removeEventListener("mousedown", onDocMousedown);
+    window.removeEventListener("scroll", scheduleReposition, true);
+    window.removeEventListener("resize", scheduleReposition);
+    style.remove();
+    pins.remove();
+    toolbar.remove();
+    panel.remove();
+    hint?.remove();
+  };
+
+  /* ---------- hint banner ---------- */
+
+  function showHint(message: string): void {
+    hideHint();
+    hint = el("div", "pc-hint", message);
+    document.body.appendChild(hint);
+  }
+  function hideHint(): void {
+    hint?.remove();
+    hint = null;
+  }
+
+  function escapeHtml(value: string): string {
+    const div = document.createElement("div");
+    div.textContent = value;
+    return div.innerHTML;
+  }
+}

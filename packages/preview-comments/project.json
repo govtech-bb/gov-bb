@@ -1,0 +1,35 @@
+{
+  "name": "preview-comments",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/preview-comments/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "outputPath": "dist/packages/preview-comments",
+        "tsConfig": "packages/preview-comments/tsconfig.json",
+        "main": "packages/preview-comments/src/index.ts"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run",
+        "cwd": "packages/preview-comments"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": [
+          "packages/preview-comments/**/*.ts"
+        ]
+      }
+    }
+  },
+  "tags": []
+}
