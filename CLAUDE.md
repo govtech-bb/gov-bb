@@ -123,9 +123,8 @@ captures output and fails the job on any error, so a single TypeScript
 error in one package fails the whole "Build all packages" step.
 
 **Local caveat:** `landing`'s prebuild fetches from a live external forms API, so
-a fully offline `build` fails on that package. `cms` is not in a working state
-currently and has been deprioritized — exclude it too. When verifying locally,
-run `pnpm exec nx run-many -t build --exclude=landing,cms` and let CI build
+a fully offline `build` fails on that package. When verifying locally,
+run `pnpm exec nx run-many -t build --exclude=landing` and let CI build
 everything.
 
 ### Monorepo build gotcha: new packages must be buildable AND referenced

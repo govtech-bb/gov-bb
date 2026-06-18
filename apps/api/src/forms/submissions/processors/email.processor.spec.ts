@@ -6,6 +6,7 @@ import {
   type SendEmailCommandInput,
 } from "@aws-sdk/client-sesv2";
 import { EmailProcessor } from "./email.processor";
+import type { SesMailer } from "../../../email/ses-mailer";
 import type { EmailTemplateService } from "../../../email/email-template.service";
 import type {
   EmailBodyBuilder,
@@ -37,6 +38,21 @@ function makeConfig(overrides: Record<string, unknown> = {}): ConfigService {
     ...overrides,
   };
   return { get: (key: string) => defaults[key] } as unknown as ConfigService;
+}
+
+/** SesMailer stub. Its `client.send` is the shared `mockSend`, so the existing
+ * SendEmailCommand assertions keep working. SES `from`/`configurationSet`/
+ * coat-of-arms now live on the mailer (their own fallbacks are covered in
+ * ses-mailer.spec.ts). */
+function makeMailer(overrides: Partial<SesMailer> = {}): SesMailer {
+  return {
+    client: { send: mockSend },
+    from: "noreply@test.gov",
+    configurationSet: undefined,
+    coatOfArmsUrl: undefined,
+    sendSimple: vi.fn(),
+    ...overrides,
+  } as unknown as SesMailer;
 }
 
 function makePayload(
@@ -162,6 +178,7 @@ describe("EmailProcessor", () => {
     vi.clearAllMocks();
     processor = new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       makeTemplateService(),
       makeBodyBuilder(),
       makeFilesService(),
@@ -265,7 +282,8 @@ describe("EmailProcessor", () => {
 
     it("includes ConfigurationSetName when configured", async () => {
       processor = new EmailProcessor(
-        makeConfig({ "email.configurationSet": "modular-forms-prod" }),
+        makeConfig(),
+        makeMailer({ configurationSet: "modular-forms-prod" }),
         makeTemplateService(),
         makeBodyBuilder(),
         makeFilesService(),
@@ -320,21 +338,6 @@ describe("EmailProcessor", () => {
         /Failed to send email/,
       );
     });
-
-    it("falls back to noreply@gov.bb when email.from is not configured", async () => {
-      // Branch: `config.get<string>("email.from") ?? "noreply@gov.bb"`
-      processor = new EmailProcessor(
-        makeConfig({ "email.from": undefined }),
-        makeTemplateService(),
-        makeBodyBuilder(),
-        makeFilesService(),
-        makeFormConfigService(),
-      );
-
-      await processor.process(makePayload());
-
-      expect(getSentInput().FromEmailAddress).toBe("noreply@gov.bb");
-    });
   });
 
   describe("contactDetails.* recipient resolution", () => {
@@ -348,6 +351,7 @@ describe("EmailProcessor", () => {
       const bodyBuilder = makeBodyBuilder(STUB_CTX, MDA_CONTACT);
       processor = new EmailProcessor(
         makeConfig(),
+        makeMailer(),
         makeTemplateService(),
         bodyBuilder,
         makeFilesService(),
@@ -382,6 +386,7 @@ describe("EmailProcessor", () => {
       const bodyBuilder = makeBodyBuilder(STUB_CTX, MDA_CONTACT);
       processor = new EmailProcessor(
         makeConfig(),
+        makeMailer(),
         makeTemplateService(),
         bodyBuilder,
         makeFilesService(),
@@ -404,6 +409,7 @@ describe("EmailProcessor", () => {
       const bodyBuilder = makeBodyBuilder(STUB_CTX, MDA_CONTACT);
       processor = new EmailProcessor(
         makeConfig(),
+        makeMailer(),
         makeTemplateService(),
         bodyBuilder,
         makeFilesService(),
@@ -430,6 +436,7 @@ describe("EmailProcessor", () => {
       const bodyBuilder = makeBodyBuilder(STUB_CTX, undefined); // no contactDetails
       processor = new EmailProcessor(
         makeConfig(),
+        makeMailer(),
         makeTemplateService(),
         bodyBuilder,
         makeFilesService(),
@@ -459,6 +466,7 @@ describe("EmailProcessor", () => {
       const bodyBuilder = makeBodyBuilder(STUB_CTX, MDA_CONTACT);
       processor = new EmailProcessor(
         makeConfig(),
+        makeMailer(),
         makeTemplateService(),
         bodyBuilder,
         makeFilesService(),
@@ -480,6 +488,7 @@ describe("EmailProcessor", () => {
       });
       processor = new EmailProcessor(
         makeConfig(),
+        makeMailer(),
         makeTemplateService(),
         bodyBuilder,
         makeFilesService(),
@@ -504,6 +513,7 @@ describe("EmailProcessor — config.* recipient resolution", () => {
     const formConfig = makeFormConfigService("mda-notify@gov.bb");
     const processor = new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       makeTemplateService(),
       makeBodyBuilder(),
       makeFilesService(),
@@ -522,6 +532,7 @@ describe("EmailProcessor — config.* recipient resolution", () => {
   it("falls back to the default test inbox when no form_config row resolves (sandbox)", async () => {
     const processor = new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       makeTemplateService(),
       makeBodyBuilder(),
       makeFilesService(),
@@ -539,6 +550,7 @@ describe("EmailProcessor — config.* recipient resolution", () => {
   it("falls back to a configured override default recipient", async () => {
     const processor = new EmailProcessor(
       makeConfig({ "email.defaultRecipient": "ops@gov.bb" }),
+      makeMailer(),
       makeTemplateService(),
       makeBodyBuilder(),
       makeFilesService(),
@@ -554,6 +566,7 @@ describe("EmailProcessor — config.* recipient resolution", () => {
   it("degrades to the default on a resolved miss — the send still happens, no throw", async () => {
     const processor = new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       makeTemplateService(),
       makeBodyBuilder(),
       makeFilesService(),
@@ -578,6 +591,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
   ): EmailProcessor {
     return new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       makeTemplateService(html),
       makeBodyBuilder(),
       makeFilesService(),
@@ -592,6 +606,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
     const templateSvc = makeTemplateService("<h1>Received</h1>");
     const processor = new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       templateSvc,
       makeBodyBuilder(),
       makeFilesService(),
@@ -615,7 +630,10 @@ describe("EmailProcessor — dynamic template rendering", () => {
   it("injects the department name and coat-of-arms URL into the citizen context", async () => {
     const templateSvc = makeTemplateService("<h1>Received</h1>");
     const processor = new EmailProcessor(
-      makeConfig({ "email.assetBaseUrl": "https://forms.example.gov" }),
+      makeConfig(),
+      makeMailer({
+        coatOfArmsUrl: "https://forms.example.gov/images/coat-of-arms.png",
+      }),
       templateSvc,
       makeBodyBuilder(),
       makeFilesService(),
@@ -637,6 +655,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
     const formConfig = makeFormConfigService("mda@dept.gov.bb", "Dept");
     const processor = new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       makeTemplateService(),
       makeBodyBuilder(),
       makeFilesService(),
@@ -652,6 +671,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
     const templateSvc = makeTemplateService("<h1>Confirmation</h1>");
     const processor = new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       templateSvc,
       makeBodyBuilder(),
       makeFilesService(),
@@ -670,6 +690,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
     const bodyBuilder = makeBodyBuilder();
     const processor = new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       makeTemplateService(),
       bodyBuilder,
       makeFilesService(),
@@ -691,6 +712,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
     (bodyBuilder.build as Mock).mockRejectedValue(new Error("DB down"));
     const processor = new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       makeTemplateService(),
       bodyBuilder,
       makeFilesService(),
@@ -722,6 +744,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
     bodyBuilder.build.mockRejectedValue(new Error("DB unavailable"));
     const processor = new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       makeTemplateService(),
       bodyBuilder,
       makeFilesService(),
@@ -750,6 +773,7 @@ describe("EmailProcessor — reference code in plain-text and fallback HTML bodi
     (bodyBuilder.build as Mock).mockRejectedValue(new Error("DB down"));
     const processor = new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       makeTemplateService(),
       bodyBuilder,
       makeFilesService(),
@@ -777,6 +801,7 @@ describe("EmailProcessor — reference code in plain-text and fallback HTML bodi
     (bodyBuilder.build as Mock).mockRejectedValue(new Error("DB down"));
     const processor = new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       makeTemplateService(),
       bodyBuilder,
       makeFilesService(),
@@ -850,6 +875,7 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
     templateService = makeTemplateService();
     processor = new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       templateService,
       makeBodyBuilder(STUB_CTX, undefined, FILE_CONTRACT),
       filesService,
@@ -878,6 +904,7 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
   it("attaches uploaded files for a contactDetails.* (MDA) recipient", async () => {
     processor = new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       templateService,
       makeBodyBuilder(
         STUB_CTX,
@@ -904,6 +931,7 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
   it("attaches uploaded files for a config.* (MDA) recipient", async () => {
     processor = new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       templateService,
       makeBodyBuilder(STUB_CTX, undefined, FILE_CONTRACT),
       filesService,
@@ -931,6 +959,7 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
   it("keeps the Simple path when the form has no file fields", async () => {
     processor = new EmailProcessor(
       makeConfig(),
+      makeMailer(),
       templateService,
       makeBodyBuilder(STUB_CTX, undefined, makeContract()),
       filesService,
