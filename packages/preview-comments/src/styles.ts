@@ -54,8 +54,12 @@ body.pc-placing{cursor:crosshair}
 .pc-head button{background:none;border:0;color:#fff;font-size:22px;cursor:pointer;line-height:1}
 .pc-sub{display:flex;align-items:center;gap:6px;padding:8px 16px;font-size:14px;color:#505a5f;
   border-bottom:1px solid #e0e4e9}
-.pc-list{flex:1;overflow:auto;padding:8px 0}
+.pc-list{flex:1;overflow:auto;padding:0 0 8px}
 .pc-empty{padding:24px 16px;color:#505a5f;font-size:15px}
+.pc-group{border-bottom:4px solid #f3f4f6}
+.pc-group-head{position:sticky;top:0;padding:8px 16px;font-size:12px;font-weight:700;color:#505a5f;
+  background:#f3f4f6;word-break:break-all}
+.pc-group-head[data-current]{color:#00267f}
 .pc-thread{padding:12px 16px;border-bottom:1px solid #e0e4e9;cursor:pointer}
 .pc-thread[data-resolved]{opacity:.6}
 .pc-thread[data-orphan]{border-left:3px solid #d4351c}

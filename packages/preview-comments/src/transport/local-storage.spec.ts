@@ -41,6 +41,14 @@ describe("LocalStorageTransport", () => {
     expect(await store.list("/other")).toHaveLength(1);
   });
 
+  it("listAll returns threads from every page", async () => {
+    await store.create(makeThread());
+    await store.create(makeThread({ id: "t2", pageId: "/other" }));
+    const all = await store.listAll();
+    expect(all).toHaveLength(2);
+    expect(all.map((t) => t.id).sort()).toEqual(["t1", "t2"]);
+  });
+
   it("appends replies to the right thread", async () => {
     await store.create(makeThread());
     await store.reply("t1", {

@@ -23,10 +23,14 @@ import type { CommentTransport, MountOptions, Reply, Thread } from "./types";
  */
 export function mountPreviewComments(options: MountOptions = {}): () => void {
   const rootSelector = options.root ?? "#main";
-  const pageId = options.pageId ?? location.pathname;
+  // Read the page live, not once at mount: in an SPA the widget is mounted a
+  // single time but the route changes underneath it, and each comment must be
+  // tagged with the page it was actually made on.
+  const currentPage = (): string => options.pageId ?? location.pathname;
   const transport: CommentTransport =
     options.transport ?? new LocalStorageTransport();
   const NAME_KEY = "gtc:preview-comments:author";
+  const SCROLL_KEY = "gtc:preview-comments:scrollTo";
 
   let threads: Thread[] = [];
   let showResolved = false;
@@ -199,10 +203,10 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
 
   /* ---------- pins ---------- */
 
-  /** Group visible threads by their anchor selector, preserving order. */
+  /** Group the current page's threads by anchor selector, preserving order. */
   function threadsBySelector(): Map<string, Thread[]> {
     const groups = new Map<string, Thread[]>();
-    visibleThreads().forEach((thread) => {
+    currentThreads().forEach((thread) => {
       const group = groups.get(thread.selector);
       if (group) group.push(thread);
       else groups.set(thread.selector, [thread]);
@@ -400,7 +404,7 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
       localStorage.setItem(NAME_KEY, name);
       const thread: Thread = {
         id: uid(),
-        pageId,
+        pageId: currentPage(),
         selector: draft.selector,
         quote: draft.quote,
         prefix: draft.prefix,
@@ -541,46 +545,127 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
       );
       return;
     }
+
+    // Group by the page each comment was made on; the page being viewed first.
+    const cur = currentPage();
+    const groups = new Map<string, Thread[]>();
     visible.forEach((thread) => {
-      const box = el("div", "pc-thread");
-      box.dataset.thread = thread.id;
-      if (thread.resolved) box.dataset.resolved = "1";
-      const orphan = !resolveSelector(thread.selector);
-      if (orphan) box.dataset.orphan = "1";
+      const list = groups.get(thread.pageId);
+      if (list) list.push(thread);
+      else groups.set(thread.pageId, [thread]);
+    });
+    const entries = Array.from(groups.entries()).sort(([a], [b]) =>
+      a === cur ? -1 : b === cur ? 1 : a.localeCompare(b),
+    );
 
-      if (thread.quote) box.appendChild(el("div", "pc-quote", thread.quote));
-      if (orphan) {
-        box.appendChild(
-          el("div", "pc-orphan-note", "Anchor not found on this page"),
-        );
-      }
-      box.appendChild(commentEl(thread.author, thread.text, thread.createdAt));
-      thread.replies.forEach((r) => {
-        box.appendChild(commentEl(r.author, r.text, r.createdAt, true));
-      });
-
-      const resolveBtn = el(
-        "button",
-        "pc-resolve",
-        thread.resolved ? "Reopen" : "Resolve",
+    entries.forEach(([pageKey, pageThreads]) => {
+      const onCurrent = pageKey === cur;
+      const group = el("div", "pc-group");
+      const groupHead = el(
+        "div",
+        "pc-group-head",
+        onCurrent ? "This page" : pageKey,
       );
-      resolveBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        void transport.setResolved(thread.id, !thread.resolved).then(refresh);
-      });
-      box.appendChild(resolveBtn);
+      if (onCurrent) groupHead.dataset.current = "1";
+      group.appendChild(groupHead);
 
-      box.addEventListener("click", () => {
-        if (!orphan) scrollToThread(thread);
-        flash(thread.id);
+      pageThreads.forEach((thread) => {
+        const box = el("div", "pc-thread");
+        box.dataset.thread = thread.id;
+        if (thread.resolved) box.dataset.resolved = "1";
+        // "Anchor not found" only applies to the page we're actually on; other
+        // pages' anchors aren't expected to resolve here.
+        const orphan = onCurrent && !resolveSelector(thread.selector);
+        if (orphan) box.dataset.orphan = "1";
+
+        if (thread.quote) box.appendChild(el("div", "pc-quote", thread.quote));
+        if (orphan) {
+          box.appendChild(
+            el("div", "pc-orphan-note", "Anchor not found on this page"),
+          );
+        }
+        box.appendChild(
+          commentEl(thread.author, thread.text, thread.createdAt),
+        );
+        thread.replies.forEach((r) => {
+          box.appendChild(commentEl(r.author, r.text, r.createdAt, true));
+        });
+
+        const resolveBtn = el(
+          "button",
+          "pc-resolve",
+          thread.resolved ? "Reopen" : "Resolve",
+        );
+        resolveBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          void transport.setResolved(thread.id, !thread.resolved).then(refresh);
+        });
+        box.appendChild(resolveBtn);
+
+        box.addEventListener("click", () => jumpTo(thread));
+        group.appendChild(box);
       });
-      listEl.appendChild(box);
+
+      listEl.appendChild(group);
     });
   }
 
-  function scrollToThread(thread: Thread): void {
-    const node = resolveSelector(thread.selector);
-    node?.scrollIntoView({ behavior: "smooth", block: "center" });
+  /**
+   * Reveal a thread's anchor. If it's on the current page, scroll to it and
+   * flash. If it's on another page, stash the target and navigate there; the
+   * widget re-reads the target on the next page and finishes the scroll.
+   */
+  function jumpTo(thread: Thread): void {
+    if (thread.pageId === currentPage()) {
+      resolveSelector(thread.selector)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      flash(thread.id);
+      return;
+    }
+    try {
+      sessionStorage.setItem(
+        SCROLL_KEY,
+        JSON.stringify({
+          pageId: thread.pageId,
+          selector: thread.selector,
+          threadId: thread.id,
+        }),
+      );
+    } catch {
+      /* sessionStorage unavailable — navigate without the deferred scroll */
+    }
+    location.assign(thread.pageId);
+  }
+
+  /** After landing on a page, finish a jump that was started elsewhere. */
+  function checkPendingScroll(): void {
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(SCROLL_KEY);
+    } catch {
+      return;
+    }
+    if (!raw) return;
+    let target: { pageId: string; selector: string; threadId: string };
+    try {
+      target = JSON.parse(raw);
+    } catch {
+      sessionStorage.removeItem(SCROLL_KEY);
+      return;
+    }
+    if (target.pageId !== currentPage()) return;
+    const node = resolveSelector(target.selector);
+    if (node) {
+      node.scrollIntoView({ behavior: "smooth", block: "center" });
+      flash(target.threadId);
+    }
+    try {
+      sessionStorage.removeItem(SCROLL_KEY);
+    } catch {
+      /* best effort */
+    }
   }
 
   function flash(threadId: string): void {
@@ -596,8 +681,13 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
 
   /* ---------- shared state + render ---------- */
 
+  /** Threads visible given the show-resolved toggle, across all pages. */
   const visibleThreads = (): Thread[] =>
     threads.filter((t) => showResolved || !t.resolved);
+
+  /** Visible threads anchored on the page currently being viewed. */
+  const currentThreads = (): Thread[] =>
+    visibleThreads().filter((t) => t.pageId === currentPage());
 
   function updateCount(): void {
     const open = threads.filter((t) => !t.resolved).length;
@@ -605,15 +695,18 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
   }
 
   function render(): void {
+    // Pins and inline highlights are positioned against the live DOM, so they
+    // only make sense for comments made on the current page. The sidebar shows
+    // every page (see renderPanel).
     clearHighlights();
-    visibleThreads().forEach(highlightThread);
+    currentThreads().forEach(highlightThread);
     renderPins();
     renderPanel();
     updateCount();
   }
 
   function refresh(): Promise<void> {
-    return transport.list(pageId).then((list) => {
+    return transport.listAll().then((list) => {
       threads = list ?? [];
       render();
       // Keep an open anchor popover in sync after a create/reply/resolve.
@@ -642,12 +735,37 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
     }
   }
 
+  // SPA route changes: history.pushState/replaceState don't emit events, so we
+  // wrap them (and listen for popstate) to re-render for the new page. The new
+  // route's DOM may render a tick later, so re-run shortly after as well.
+  function onRouteChange(): void {
+    closePopover();
+    render();
+    checkPendingScroll();
+    setTimeout(() => {
+      render();
+      checkPendingScroll();
+    }, 120);
+  }
+  const origPushState = history.pushState.bind(history);
+  const origReplaceState = history.replaceState.bind(history);
+  history.pushState = (...args) => {
+    origPushState(...args);
+    window.dispatchEvent(new Event("pc:route"));
+  };
+  history.replaceState = (...args) => {
+    origReplaceState(...args);
+    window.dispatchEvent(new Event("pc:route"));
+  };
+
   document.addEventListener("keydown", onKeydown);
   document.addEventListener("mousedown", onDocMousedown);
   window.addEventListener("scroll", scheduleReposition, true);
   window.addEventListener("resize", scheduleReposition);
+  window.addEventListener("popstate", onRouteChange);
+  window.addEventListener("pc:route", onRouteChange);
 
-  void refresh();
+  void refresh().then(checkPendingScroll);
 
   /* ---------- teardown ---------- */
 
@@ -655,10 +773,14 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
     setPlacing(false);
     closePopover();
     clearHighlights();
+    history.pushState = origPushState;
+    history.replaceState = origReplaceState;
     document.removeEventListener("keydown", onKeydown);
     document.removeEventListener("mousedown", onDocMousedown);
     window.removeEventListener("scroll", scheduleReposition, true);
     window.removeEventListener("resize", scheduleReposition);
+    window.removeEventListener("popstate", onRouteChange);
+    window.removeEventListener("pc:route", onRouteChange);
     style.remove();
     pins.remove();
     toolbar.remove();

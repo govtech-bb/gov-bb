@@ -42,8 +42,10 @@ export interface Thread {
  * is async (Promise-based) so the API-backed transport drops in unchanged.
  */
 export interface CommentTransport {
-  /** All threads for the current page, oldest first. */
+  /** All threads for one page, oldest first. */
   list(pageId: string): Promise<Thread[]>;
+  /** Every thread across all pages — powers the cross-page sidebar. */
+  listAll(): Promise<Thread[]>;
   /** Persist a new thread; resolves with the stored thread. */
   create(thread: Thread): Promise<Thread>;
   /** Append a reply to an existing thread. */

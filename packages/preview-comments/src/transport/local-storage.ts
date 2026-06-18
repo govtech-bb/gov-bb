@@ -28,6 +28,12 @@ export class LocalStorageTransport implements CommentTransport {
     return Promise.resolve(this.read(pageId));
   }
 
+  listAll(): Promise<Thread[]> {
+    const all: Thread[] = [];
+    for (const pageId of this.pageKeys()) all.push(...this.read(pageId));
+    return Promise.resolve(all);
+  }
+
   create(thread: Thread): Promise<Thread> {
     const threads = this.read(thread.pageId);
     threads.push(thread);
@@ -70,7 +76,7 @@ export class LocalStorageTransport implements CommentTransport {
     const out: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && key.startsWith(prefix)) out.push(key.slice(prefix.length));
+      if (key?.startsWith(prefix)) out.push(key.slice(prefix.length));
     }
     return out;
   }
