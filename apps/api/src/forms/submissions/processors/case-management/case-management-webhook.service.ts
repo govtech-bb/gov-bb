@@ -79,10 +79,14 @@ export class CaseManagementWebhookService {
       submitted_at: payload.submittedAt,
     });
 
-    // Log the exact payload before dispatch. `body` is JSON.stringify output, so
-    // control characters in user-supplied values are escaped — it's a single
-    // line, safe from log injection (CWE-117). Note: this includes applicant PII.
-    this.logger.log(`[case-management] POST ${endpoint} payload: ${body}`);
+    // Log the outbound payload before dispatch. The body carries user-supplied
+    // values, so it is passed through sanitizeForLog: strips control characters
+    // (log injection, CWE-117) and bounds the length so an oversized field can't
+    // flood the logs. Note it still contains applicant PII — keep it out of
+    // long-retention log sinks.
+    this.logger.log(
+      `[case-management] POST ${sanitizeForLog(endpoint)} payload: ${sanitizeForLog(body)}`,
+    );
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);

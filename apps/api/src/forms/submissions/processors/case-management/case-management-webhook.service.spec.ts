@@ -3,6 +3,7 @@ import {
   CaseManagementWebhookService,
   type FormSubmittedWebhookPayload,
 } from "./case-management-webhook.service";
+import { sanitizeForLog } from "./log-sanitize";
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -96,7 +97,7 @@ describe("CaseManagementWebhookService", () => {
     await expect(makeService().dispatch(payload)).rejects.toThrow(/HTTP 502/);
   });
 
-  it("logs the exact payload before dispatching", async () => {
+  it("logs the sanitized payload before dispatching", async () => {
     const logSpy = vi.spyOn(Logger.prototype, "log");
     await makeService().dispatch(payload);
 
@@ -105,8 +106,9 @@ describe("CaseManagementWebhookService", () => {
       String(c[0]).includes("payload:"),
     );
     expect(logged).toBeDefined();
-    // the logged payload is the exact serialized body POSTed
-    expect(String(logged?.[0])).toContain(sentBody);
+    // the payload is logged via sanitizeForLog (control chars stripped, length
+    // bounded), not raw — guards against log injection (CWE-117).
+    expect(String(logged?.[0])).toContain(sanitizeForLog(sentBody));
     logSpy.mockRestore();
   });
 });
