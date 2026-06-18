@@ -271,3 +271,82 @@ describe("WebhookProcessor — mapped mode", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 });
+
+describe("WebhookProcessor — endpoint/auth branches", () => {
+  let processor: WebhookProcessor;
+
+  function payloadWith(
+    config: Record<string, unknown>,
+  ): SubmissionCreatedEvent {
+    return {
+      submissionId: "sub-300",
+      referenceCode: "REF-1",
+      formId: "f",
+      formVersion: "1.0.0",
+      idempotencyKey: "idem-300",
+      processors: [
+        { type: "webhook", config },
+      ] as SubmissionCreatedEvent["processors"],
+      values: { s: { a: "1" } },
+      meta: {
+        submittedAt: "2026-06-18T09:00:00.000Z",
+      } as unknown as SubmissionCreatedEvent["meta"],
+    };
+  }
+  const MAPPING = {
+    programmeCode: "X",
+    applicant: { name: "s.a", email: "s.a", phone: "s.a" },
+    excludeSteps: [],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFetch.mockResolvedValue({ ok: true, status: 200 });
+    processor = new WebhookProcessor();
+    process.env.WEBHOOK_URL = "http://cms.local";
+    process.env.WEBHOOK_SECRET = "k";
+  });
+  afterEach(() => {
+    delete process.env.WEBHOOK_URL;
+    delete process.env.WEBHOOK_SECRET;
+  });
+
+  it("resolves endpoint base + path", async () => {
+    await processor.process(
+      payloadWith({
+        endpoint: { env: "WEBHOOK_URL", path: "api/cases" },
+        auth: { scheme: "none" },
+        mapping: MAPPING,
+      }),
+    );
+    expect(mockFetch.mock.calls[0][0]).toBe("http://cms.local/api/cases");
+  });
+
+  it("hmac auth sets the signature header", async () => {
+    await processor.process(
+      payloadWith({
+        url: "https://h.example.gov.bb/x",
+        auth: {
+          scheme: "hmac",
+          secret: "supersecretsupersecret",
+          signatureHeader: "X-Sig",
+        },
+        mapping: MAPPING,
+      }),
+    );
+    expect(mockFetch.mock.calls[0][1].headers["X-Sig"]).toMatch(/^sha256=/);
+  });
+
+  it("none auth sends no auth header", async () => {
+    await processor.process(
+      payloadWith({
+        url: "https://h.example.gov.bb/x",
+        auth: { scheme: "none" },
+        mapping: MAPPING,
+      }),
+    );
+    const h = mockFetch.mock.calls[0][1].headers;
+    expect(h["X-API-Key"]).toBeUndefined();
+    expect(h["X-Webhook-Signature"]).toBeUndefined();
+  });
+});

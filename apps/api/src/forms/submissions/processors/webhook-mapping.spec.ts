@@ -35,6 +35,46 @@ describe("webhook-mapping", () => {
       expect(readPath(VALUES, "contact-details.missing")).toBeNull();
       expect(readPath(VALUES, "no-dot")).toBeNull();
     });
+
+    it("returns null for a missing step or a repeatable (array) step", () => {
+      expect(readPath(VALUES, "no-such-step.field")).toBeNull();
+      expect(readPath({ rep: [{ a: "1" }] } as never, "rep.a")).toBeNull();
+    });
+  });
+
+  describe("buildMappedCasePayload — variants", () => {
+    it("accepts a single-string name path", () => {
+      const p = buildMappedCasePayload({
+        mapping: {
+          programmeCode: "X",
+          applicant: {
+            name: "child-details.child-first-name",
+            email: "contact-details.parent-email",
+            phone: "contact-details.parent-mobile-phone",
+          },
+          excludeSteps: [],
+        },
+        values: VALUES,
+        referenceCode: "X-1",
+        submittedAt: "2026-06-18T09:00:00.000Z",
+      });
+      expect(p.applicant.name).toBe("Ada");
+    });
+
+    it("passes repeatable (array) steps through under their stepId", () => {
+      const p = buildMappedCasePayload({
+        mapping: MAPPING,
+        values: {
+          ...VALUES,
+          "collection-persons": [{ "collection-person-first-name": "Bob" }],
+        },
+        referenceCode: "X-2",
+        submittedAt: "2026-06-18T09:00:00.000Z",
+      });
+      expect(p.form_data["collection-persons"]).toEqual([
+        { "collection-person-first-name": "Bob" },
+      ]);
+    });
   });
 
   describe("buildMappedCasePayload", () => {
