@@ -65,6 +65,25 @@
   outline: 0;
 }
 
+/* The skip-to-content link (#341) is meant to stay hidden until focused, but
+ * @govtech-bb/styles ships an inverted `.govbb-visually-hidden-focusable`
+ * rule: it applies the *visible* styles in the `:not(:focus)` state and never
+ * hides the element, so the link renders on every page. Re-assert the correct
+ * behaviour here (this file loads after the styles package, so it wins at equal
+ * specificity): clip it away when unfocused, leaving the styles package's
+ * focus reveal intact. Matches `.govbb-visually-hidden`. */
+.govbb-visually-hidden-focusable:not(:focus):not(:focus-visible) {
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border-width: 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  position: absolute;
+  overflow: hidden;
+}
+
 /* Page + step layout (replaces the former design-system module classes) */
 .form-page {
   font-family: var(--font-family-base), sans-serif;
