@@ -92,10 +92,14 @@ export class WebhookProcessor implements ISubmissionProcessor {
     }
 
     if (mapping) {
-      // Mapped payloads carry applicant PII; sanitizeForLog strips control chars
-      // (log injection, CWE-117) and bounds length. Keep out of long-retention sinks.
+      // Mapped payloads carry applicant PII (name/email/phone in the body), so
+      // we log only non-PII routing metadata — never the body. sanitizeForLog
+      // strips control chars (log injection, CWE-117) from the env-sourced URL
+      // and the reference code.
       this.logger.log(
-        `[webhook] POST ${sanitizeForLog(url)} payload: ${sanitizeForLog(body)}`,
+        `[webhook] POST ${sanitizeForLog(url)} code=${sanitizeForLog(
+          payload.referenceCode,
+        )} programme=${mapping.programmeCode} bytes=${body.length}`,
       );
     }
 
