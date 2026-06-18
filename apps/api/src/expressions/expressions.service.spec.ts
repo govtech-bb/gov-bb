@@ -60,6 +60,40 @@ describe("ExpressionsService", () => {
     ]);
   });
 
+  it("passes a mapped webhook through resolution unchanged", () => {
+    // The mapping/endpoint/auth fields are literal routing (no dynamic()), so a
+    // mapped webhook must survive resolution and validate against
+    // resolvedProcessorSchema — otherwise the listener skips ALL non-gating
+    // dispatch for the submission.
+    const mapped = {
+      type: "webhook" as const,
+      config: {
+        endpoint: { env: "WEBHOOK_URL" },
+        method: "POST" as const,
+        signatureHeader: "X-Webhook-Signature",
+        timeoutMs: 10_000,
+        auth: {
+          scheme: "apiKey" as const,
+          header: "X-API-Key",
+          secretEnv: "WEBHOOK_SECRET",
+        },
+        mapping: {
+          programmeCode: "SCIENCE2026",
+          applicant: {
+            name: ["child-details.child-first-name"],
+            email: "contact-details.parent-email",
+            phone: "contact-details.parent-mobile-phone",
+          },
+          excludeSteps: ["declaration"],
+        },
+      },
+    };
+    const out = service.resolveProcessors([mapped] as Processor[], {
+      values: {},
+    });
+    expect(out).toEqual([mapped]);
+  });
+
   // Mirrors the get-a-primary-school-textbook-grant 1.7.0 processor batch:
   // an applicant confirmation email plus a school email routed by the shared
   // `child-school` value via the `schoolEmail` op. See issue #1213.
