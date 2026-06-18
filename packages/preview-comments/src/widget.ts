@@ -34,6 +34,7 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
   let hoverEl: Element | null = null;
   let targetEl: Element | null = null;
   let popover: HTMLElement | null = null;
+  let openSelector: string | null = null;
   let rafPending = false;
 
   const rootEl = (): Element =>
@@ -42,12 +43,28 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
   const uid = (): string =>
     Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
-  function when(ts: number): string {
-    const s = (Date.now() - ts) / 1000;
-    if (s < 60) return "just now";
-    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-    return new Date(ts).toLocaleDateString();
+  function formatTime(ts: number): string {
+    return new Date(ts).toLocaleString();
+  }
+
+  /** Up to two initials for an avatar: "Jane Doe" -> "JD", "Shannon" -> "SH". */
+  function initials(name: string): string {
+    const words = name.trim().split(/\s+/).filter(Boolean);
+    const first = words[0] ?? "";
+    if (words.length >= 2) {
+      const last = words[words.length - 1] ?? "";
+      return (first[0] ?? "") + (last[0] ?? "");
+    }
+    return first.slice(0, 2) || "?";
+  }
+
+  /** A stable avatar colour derived from the name, so each person reads distinct. */
+  function avatarColor(name: string): string {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = (hash * 31 + name.charCodeAt(i)) % 360;
+    }
+    return `hsl(${hash}, 42%, 45%)`;
   }
 
   function el<K extends keyof HTMLElementTagNameMap>(
@@ -115,7 +132,6 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
 
   /* ---------- panel open/close ---------- */
 
-  const openPanel = (): void => panel.classList.add("pc-open");
   const closePanel = (): void => panel.classList.remove("pc-open");
 
   closeBtn.addEventListener("click", closePanel);
@@ -172,8 +188,7 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
         if (thread.resolved) mark.dataset.resolved = "1";
         mark.addEventListener("click", (e) => {
           e.stopPropagation();
-          openPanel();
-          focusThread(thread.id);
+          openAnchor(thread.selector, mark);
         });
         range.surroundContents(mark);
       } catch {
@@ -184,23 +199,32 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
 
   /* ---------- pins ---------- */
 
+  /** Group visible threads by their anchor selector, preserving order. */
+  function threadsBySelector(): Map<string, Thread[]> {
+    const groups = new Map<string, Thread[]>();
+    visibleThreads().forEach((thread) => {
+      const group = groups.get(thread.selector);
+      if (group) group.push(thread);
+      else groups.set(thread.selector, [thread]);
+    });
+    return groups;
+  }
+
   function renderPins(): void {
     pins.innerHTML = "";
-    const seenPerSelector: Record<string, number> = {};
-    visibleThreads().forEach((thread) => {
-      const anchor = resolveSelector(thread.selector);
+    // One numbered pin per anchor; the number is how many comments live there.
+    threadsBySelector().forEach((group, selector) => {
+      const anchor = resolveSelector(selector);
       if (!anchor) return;
       const rect = anchor.getBoundingClientRect();
-      // Stack pins that share an anchor so they don't fully overlap.
-      const stack = seenPerSelector[thread.selector] ?? 0;
-      seenPerSelector[thread.selector] = stack + 1;
-      const pin = el("button", "pc-pin", "💬");
-      if (thread.resolved) pin.dataset.resolved = "1";
-      pin.style.left = `${rect.right + window.scrollX - stack * 6}px`;
-      pin.style.top = `${rect.top + window.scrollY + stack * 6}px`;
+      const pin = el("button", "pc-pin", String(group.length));
+      pin.setAttribute("aria-label", `${group.length} comment(s)`);
+      if (group.every((t) => t.resolved)) pin.dataset.resolved = "1";
+      pin.style.left = `${rect.right + window.scrollX}px`;
+      pin.style.top = `${rect.top + window.scrollY}px`;
       pin.addEventListener("click", (e) => {
         e.stopPropagation();
-        openThread(thread.id, pin);
+        openAnchor(selector, pin);
       });
       pins.appendChild(pin);
     });
@@ -295,6 +319,7 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
   function closePopover(): void {
     popover?.remove();
     popover = null;
+    openSelector = null;
     targetEl?.classList.remove("pc-target-highlight");
     targetEl = null;
   }
@@ -344,9 +369,10 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
       ? `<div class="pc-quote" data-pc="ui">${escapeHtml(draft.quote)}</div>`
       : "";
     pop.innerHTML =
-      `<div class="pc-head" data-pc="ui" style="background:#00267f;margin:-10px -10px 10px;border-radius:6px 6px 0 0;padding:8px 12px">` +
-      `<h2 data-pc="ui" style="font-size:15px">Add a comment</h2>` +
+      `<div class="pc-pop-head" data-pc="ui">` +
+      `<h2 data-pc="ui">Add a comment</h2>` +
       `<button type="button" class="pc-close" data-pc="ui" aria-label="Close">×</button></div>` +
+      `<div class="pc-pop-body" data-pc="ui">` +
       quoteHtml +
       `<div class="pc-field" data-pc="ui"><label>Your name</label>` +
       `<input type="text" class="pc-name" data-pc="ui" value="${escapeHtml(savedName)}" placeholder="e.g. Jane"></div>` +
@@ -354,7 +380,8 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
       `<textarea class="pc-text" data-pc="ui" placeholder="Write your comment"></textarea></div>` +
       `<div class="pc-row" data-pc="ui">` +
       `<button type="button" class="pc-action pc-action--secondary pc-cancel" data-pc="ui">Cancel</button>` +
-      `<button type="button" class="pc-action pc-action--primary pc-save" data-pc="ui">Save</button></div>`;
+      `<button type="button" class="pc-action pc-action--primary pc-save" data-pc="ui">Save</button></div>` +
+      `</div>`;
 
     popover = pop;
     placePopover(pop, x ?? window.scrollX + 40, y ?? window.scrollY + 40);
@@ -392,58 +419,70 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
     });
   }
 
-  function openThread(threadId: string, anchorEl: HTMLElement): void {
+  /** Open the popover listing every comment anchored to `selector`. */
+  function openAnchor(selector: string, anchorEl: HTMLElement): void {
     closePopover();
-    const thread = threads.find((t) => t.id === threadId);
-    if (!thread) return;
-    highlightTarget(thread.selector);
+    openSelector = selector;
+    highlightTarget(selector);
 
     const pop = el("div", "pc-popover");
     pop.innerHTML =
-      `<div class="pc-head" data-pc="ui" style="background:#00267f;margin:-10px -10px 10px;border-radius:6px 6px 0 0;padding:8px 12px">` +
-      `<h2 data-pc="ui" style="font-size:15px">Comment</h2>` +
+      `<div class="pc-pop-head" data-pc="ui">` +
+      `<h2 data-pc="ui">Comments</h2>` +
       `<button type="button" class="pc-close" data-pc="ui" aria-label="Close">×</button></div>` +
-      `<div class="pc-thread-body" data-pc="ui"></div>`;
+      `<div class="pc-pop-body" data-pc="ui"></div>`;
     popover = pop;
 
-    const body = pop.querySelector(".pc-thread-body") as HTMLElement;
-    renderThreadBody(body, thread);
+    const body = pop.querySelector(".pc-pop-body") as HTMLElement;
+    renderAnchorBody(body, selector);
 
     const rect = anchorEl.getBoundingClientRect();
     placePopover(pop, rect.right + window.scrollX, rect.top + window.scrollY);
     pop.querySelector(".pc-close")?.addEventListener("click", closePopover);
   }
 
-  function renderThreadBody(body: HTMLElement, thread: Thread): void {
+  function renderAnchorBody(body: HTMLElement, selector: string): void {
     body.innerHTML = "";
-    if (thread.quote) {
-      body.appendChild(el("div", "pc-quote", thread.quote));
+    const group = threads.filter((t) => t.selector === selector);
+    if (!group.length) {
+      body.appendChild(el("p", "pc-empty", "This comment was removed."));
+      return;
     }
-    body.appendChild(messageEl(thread.author, thread.text, thread.createdAt));
-    thread.replies.forEach((r) => {
-      body.appendChild(messageEl(r.author, r.text, r.createdAt));
+
+    group.forEach((thread) => {
+      const block = el("div", "pc-thread-block");
+      block.appendChild(
+        commentEl(thread.author, thread.text, thread.createdAt),
+      );
+      thread.replies.forEach((r) => {
+        block.appendChild(commentEl(r.author, r.text, r.createdAt, true));
+      });
+
+      const replyBtn = el("button", "pc-reply-btn", "↳ Reply");
+      replyBtn.addEventListener("click", () => showReply(block, thread.id));
+      block.appendChild(replyBtn);
+
+      body.appendChild(block);
     });
 
-    const actions = el("div", "pc-actions");
-    const replyBtn = el("button", undefined, "Reply");
-    replyBtn.addEventListener("click", () => showReply(body, thread.id));
-    const resolveBtn = el(
-      "button",
-      undefined,
-      thread.resolved ? "Reopen" : "Resolve",
-    );
-    resolveBtn.addEventListener("click", () => {
-      void transport.setResolved(thread.id, !thread.resolved).then(refresh);
+    const addAnother = el("button", "pc-add-another", "+ Add another comment");
+    addAnother.addEventListener("click", () => {
+      const anchor = resolveSelector(selector);
+      const rect = anchor?.getBoundingClientRect();
+      openComposer(
+        { selector, quote: "", prefix: "", suffix: "" },
+        rect ? rect.left + window.scrollX : undefined,
+        rect ? rect.bottom + window.scrollY : undefined,
+      );
     });
-    actions.appendChild(replyBtn);
-    actions.appendChild(resolveBtn);
-    body.appendChild(actions);
+    body.appendChild(addAnother);
   }
 
-  function showReply(body: HTMLElement, threadId: string): void {
-    if (body.querySelector(".pc-reply")) return;
+  function showReply(block: HTMLElement, threadId: string): void {
+    if (block.querySelector(".pc-reply")) return;
     const wrap = el("div", "pc-reply");
     const textarea = el("textarea");
+    textarea.placeholder = "Write a reply";
     const send = el("button", "pc-action pc-action--primary", "Post");
     send.addEventListener("click", () => {
       const text = textarea.value.trim();
@@ -459,14 +498,31 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
     });
     wrap.appendChild(textarea);
     wrap.appendChild(send);
-    body.appendChild(wrap);
+    block.appendChild(wrap);
     textarea.focus();
   }
 
-  function messageEl(author: string, text: string, ts: number): HTMLElement {
-    const wrap = el("div", "pc-msg");
-    wrap.appendChild(el("div", "pc-meta", `${author} · ${when(ts)}`));
-    wrap.appendChild(el("div", "pc-body", text));
+  /** One comment row: avatar + author/time + body. `reply` indents it. */
+  function commentEl(
+    author: string,
+    text: string,
+    ts: number,
+    reply = false,
+  ): HTMLElement {
+    const wrap = el(
+      "div",
+      reply ? "pc-comment pc-comment--reply" : "pc-comment",
+    );
+    const avatar = el("div", "pc-avatar", initials(author));
+    avatar.style.background = avatarColor(author);
+    const main = el("div", "pc-comment__main");
+    const meta = el("div", "pc-comment__meta");
+    meta.appendChild(el("span", "pc-author", author));
+    meta.appendChild(el("span", "pc-time", formatTime(ts)));
+    main.appendChild(meta);
+    main.appendChild(el("div", "pc-comment__text", text));
+    wrap.appendChild(avatar);
+    wrap.appendChild(main);
     return wrap;
   }
 
@@ -498,10 +554,22 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
           el("div", "pc-orphan-note", "Anchor not found on this page"),
         );
       }
-      box.appendChild(messageEl(thread.author, thread.text, thread.createdAt));
+      box.appendChild(commentEl(thread.author, thread.text, thread.createdAt));
       thread.replies.forEach((r) => {
-        box.appendChild(messageEl(r.author, r.text, r.createdAt));
+        box.appendChild(commentEl(r.author, r.text, r.createdAt, true));
       });
+
+      const resolveBtn = el(
+        "button",
+        "pc-resolve",
+        thread.resolved ? "Reopen" : "Resolve",
+      );
+      resolveBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        void transport.setResolved(thread.id, !thread.resolved).then(refresh);
+      });
+      box.appendChild(resolveBtn);
+
       box.addEventListener("click", () => {
         if (!orphan) scrollToThread(thread);
         flash(thread.id);
@@ -513,14 +581,6 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
   function scrollToThread(thread: Thread): void {
     const node = resolveSelector(thread.selector);
     node?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-
-  function focusThread(threadId: string): void {
-    const box = listEl.querySelector(
-      `.pc-thread[data-thread="${threadId}"]`,
-    ) as HTMLElement | null;
-    box?.scrollIntoView({ block: "center" });
-    flash(threadId);
   }
 
   function flash(threadId: string): void {
@@ -556,6 +616,11 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
     return transport.list(pageId).then((list) => {
       threads = list ?? [];
       render();
+      // Keep an open anchor popover in sync after a create/reply/resolve.
+      if (popover && openSelector) {
+        const body = popover.querySelector(".pc-pop-body");
+        if (body) renderAnchorBody(body as HTMLElement, openSelector);
+      }
     });
   }
 
