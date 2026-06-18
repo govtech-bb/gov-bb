@@ -24,6 +24,8 @@ interface FormPickerProps {
   onRequestErase: (form: FormDefinitionSummary) => void;
   /** Disabled published forms: clear the tombstone and restore the service. */
   onEnable: (form: FormDefinitionSummary) => void;
+  /** Open the chosen form's recipe as a new unsaved "Copy of …" draft. */
+  onDuplicate: (draft: RecipeDraft) => void;
 }
 
 function matches(query: string, ...fields: Array<string | undefined>) {
@@ -32,7 +34,7 @@ function matches(query: string, ...fields: Array<string | undefined>) {
   return fields.some((f) => f !== undefined && f.toLowerCase().includes(q));
 }
 
-export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose, onRequestDelete, onRequestDisable, onRequestErase, onEnable }: FormPickerProps) {
+export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose, onRequestDelete, onRequestDisable, onRequestErase, onEnable, onDuplicate }: FormPickerProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -73,6 +75,34 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
         processors: mergeDbProcessors(draft.processors, config.processors),
       };
       onLoad(draftWithConfig, form.formId, form.version);
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load recipe");
+    } finally {
+      setLoadingId(null);
+    }
+  }
+
+  // Duplicate opens the chosen recipe as a brand-new unsaved draft. Only the
+  // recipe is fetched (not the config sidecar): the form-definition processors
+  // ride in the recipe, while the DB-only siblings (mdaContactId, payment
+  // processors) are env-specific and intentionally start blank on the copy.
+  // deserializeRecipe mints fresh editor ids, so the copy shares nothing
+  // mutable with the source. The "-copy" formId / "Copy of" title seed unique
+  // identifiers; the builder's live uniqueness check flags them if they collide
+  // (e.g. duplicating the same form twice) so the author renames before saving.
+  async function handleDuplicate(form: FormDefinitionSummary) {
+    if (isDirty && !window.confirm("Unsaved changes will be lost. Continue?")) return;
+    setError(null);
+    setLoadingId(form.formId);
+    try {
+      const recipe = (await getRecipe({ data: { formId: form.formId } })) as ServiceContractRecipe;
+      const draft = deserializeRecipe(recipe, catalog);
+      onDuplicate({
+        ...draft,
+        formId: `${draft.formId}-copy`,
+        title: `Copy of ${draft.title}`,
+      });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load recipe");
@@ -157,6 +187,20 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
             </span>
             <span style={{ color: "#888", fontSize: "0.8rem" }}>{form.formId}</span>
             {loadingId === form.formId && <span> Loading…</span>}
+            {/* Duplicate is non-destructive and works on any form (a published
+                form makes a fine template), so it sits ahead of the
+                publish-state danger cluster below. */}
+            <button
+              type="button"
+              style={{ marginLeft: 8 }}
+              disabled={!!loadingId}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDuplicate(form);
+              }}
+            >
+              Duplicate
+            </button>
             {/* Per-row action follows intent: drafts delete (id freed),
                 disabled forms enable, and live published forms get both
                 Disable (reversible 410 tombstone) and Erase (permanent on-disk

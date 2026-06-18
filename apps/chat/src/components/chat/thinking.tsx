@@ -10,7 +10,7 @@ export function ThinkingBubble() {
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="h-1.5 w-1.5 animate-pulse rounded-full bg-mid-grey-00"
+            className="h-1.5 w-1.5 motion-safe:animate-pulse rounded-full bg-mid-grey-00"
             style={{ animationDelay: `${i * 150}ms` }}
           />
         ))}

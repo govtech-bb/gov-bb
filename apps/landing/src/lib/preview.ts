@@ -32,6 +32,9 @@ import type { ViewLevel } from './frontmatter'
  */
 export const COOKIE_NAME = 'preview'
 
+/** Reviewer grant cookie lifetime: 4 hours, in seconds. */
+export const COOKIE_MAX_AGE_SECONDS = 4 * 60 * 60
+
 export interface ViewLevelResolution {
   /** The view level granted to the current request. */
   level: ViewLevel
@@ -139,6 +142,7 @@ export const resolveViewLevel = createServerFn().handler(
         sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === 'production',
+        maxAge: COOKIE_MAX_AGE_SECONDS,
       })
     } else if (decision.cookie === 'clear') {
       deleteCookie(COOKIE_NAME)
