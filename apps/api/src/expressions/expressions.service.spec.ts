@@ -60,6 +60,23 @@ describe("ExpressionsService", () => {
     ]);
   });
 
+  it("passes a case-management processor through resolution unchanged", () => {
+    // case-management config has no dynamic() fields, so it must survive
+    // resolution and validate against resolvedProcessorSchema — otherwise the
+    // listener skips ALL non-gating dispatch for the submission (incl. email).
+    const processors: Processor[] = [
+      { type: "email", config: { recipientField: "applicant.email" } },
+      { type: "case-management", config: { programmeCode: "CAMP" } },
+    ];
+
+    const out = service.resolveProcessors(processors, { values: {} });
+
+    expect(out).toEqual([
+      { type: "email", config: { recipientField: "applicant.email" } },
+      { type: "case-management", config: { programmeCode: "CAMP" } },
+    ]);
+  });
+
   // Mirrors the get-a-primary-school-textbook-grant 1.7.0 processor batch:
   // an applicant confirmation email plus a school email routed by the shared
   // `child-school` value via the `schoolEmail` op. See issue #1213.

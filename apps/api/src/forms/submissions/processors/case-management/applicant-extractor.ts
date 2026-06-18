@@ -1,4 +1,4 @@
-import type { SubmissionValues } from "../forms/submissions/submissions.types";
+import type { SubmissionValues } from "../../submissions.types";
 
 const APPLICANT_STEP = "applicant-details";
 

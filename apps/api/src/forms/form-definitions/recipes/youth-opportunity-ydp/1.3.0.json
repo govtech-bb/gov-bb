@@ -1,0 +1,292 @@
+{
+  "formId": "youth-opportunity-ydp",
+  "title": "Apply for Youth Development Programme",
+  "description": "Register your interest in Youth Development Programme.",
+  "version": "1.3.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "applicant-details.applicant-email",
+        "subject": "Your application for Youth Development Programme has been received"
+      }
+    },
+    {
+      "type": "case-management",
+      "config": {
+        "programmeCode": "YDP"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "applicant-details",
+      "title": "About you",
+      "description": "Tell us who you are so we know how to get in touch.",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "applicant-first-name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "First name is required"
+              },
+              "minLength": {
+                "value": 2,
+                "error": "First name must be at least 2 characters"
+              },
+              "pattern": {
+                "value": "^[a-zA-Z\\-']+$",
+                "error": "First name must contain only letters, hyphens, or apostrophes"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "applicant-last-name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Last name is required"
+              },
+              "minLength": {
+                "value": 2,
+                "error": "Last name must be at least 2 characters"
+              },
+              "pattern": {
+                "value": "^[a-zA-Z\\-']+$",
+                "error": "Last name must contain only letters, hyphens, or apostrophes"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "fieldId": "applicant-dob",
+            "label": "Date of birth",
+            "hint": "Used to confirm you meet the age requirements for this opportunity.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Date of birth is required"
+              },
+              "pastOrToday": {
+                "value": true,
+                "error": "Date of birth must be in the past"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "applicant-email",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Email address is required"
+              },
+              "email": {
+                "value": true,
+                "error": "Enter a valid email address"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "applicant-phone",
+            "label": "Phone number",
+            "hint": "A local Barbados number, for example 246-418-1234.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Phone number is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "applicant-parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select your parish"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "applicant-citizenship",
+            "label": "Citizenship status",
+            "options": [
+              {
+                "label": "Barbadian citizen",
+                "value": "citizen"
+              },
+              {
+                "label": "Permanent resident",
+                "value": "resident"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select your citizenship status"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "your-interest",
+      "title": "About your interest",
+      "description": "A short paragraph about why Youth Development Programme is right for you.",
+      "elements": [
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "interest-motivation",
+            "label": "Why are you applying?",
+            "hint": "Tell us a bit about what you hope to get out of taking part.",
+            "ui": {
+              "width": "long"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us why you're applying"
+              },
+              "minLength": {
+                "value": 20,
+                "error": "Please write at least 20 characters"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "options": [
+              {
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "You must confirm the declaration to continue"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "fieldId": "declaration-date",
+            "label": "Date of declaration",
+            "isHidden": true,
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Date is required"
+              },
+              "pastOrToday": {
+                "value": true,
+                "error": "Date of declaration must not be in the future"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application received",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-06-02T16:04:06.364Z",
+  "updatedAt": "2026-06-05T01:07:49.117Z"
+}

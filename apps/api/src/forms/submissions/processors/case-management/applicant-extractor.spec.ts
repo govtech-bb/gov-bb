@@ -1,5 +1,5 @@
 import { buildWebhookFormData, extractApplicant } from "./applicant-extractor";
-import type { SubmissionValues } from "../forms/submissions/submissions.types";
+import type { SubmissionValues } from "../../submissions.types";
 
 const standardValues: SubmissionValues = {
   "applicant-details": {

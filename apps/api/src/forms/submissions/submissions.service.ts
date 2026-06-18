@@ -51,13 +51,13 @@ export class SubmissionsService {
     const pinnedVersion = draft?.formVersion ?? dto.formVersion;
 
     // Smoke submissions exercise the full persist/validate/reference-code path
-    // but must fire zero processors (no real emails/webhooks/payment gating).
-    // Dropping them here, the single choke point for the `processors[]` array,
-    // makes hasGating false (→ SUBMITTED + submittedAt), emits an event
-    // carrying no processors, and the SubmissionProcessorListener dispatch loop
-    // iterates nothing. NOTE this only covers `processors[]`-driven side-effects
-    // — consumers that fire off `formId` (YouthOpportunityWebhookListener) must
-    // short-circuit on `event.isSmokeSubmission`, set below (#1252).
+    // but must fire zero processors (no real emails/webhooks/payment gating, and
+    // no case-management dispatch). Dropping them here, the single choke point
+    // for the `processors[]` array, makes hasGating false (→ SUBMITTED +
+    // submittedAt), emits an event carrying no processors, and the
+    // SubmissionProcessorListener dispatch loop iterates nothing. Every
+    // submission side-effect is now `processors[]`-driven, so this one drop
+    // covers them all (#1252).
     const rawProcessors = dto.isSmokeSubmission
       ? []
       : (contract.processors ?? []);

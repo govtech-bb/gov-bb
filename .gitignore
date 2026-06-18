@@ -1,6 +1,10 @@
 # macOS
 .DS_Store
 
+# Local-only Docker Compose overrides (per-dev port remaps, webhook targets, etc.)
+docker-compose.override.yml
+docker-compose.override.yaml
+
 # Logs
 logs
 *.log

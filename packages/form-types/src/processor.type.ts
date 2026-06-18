@@ -46,6 +46,15 @@ const webhookConfigAuthorSchema = z.object({
   timeoutMs: z.number().int().positive().max(30_000).default(10_000),
 });
 
+// Dispatches an accepted submission to the external case-management system. The
+// endpoint URL and API key live in api env (WEBHOOK_URL / WEBHOOK_SECRET), so a
+// recipe only declares which programme the submission belongs to. `programmeCode`
+// is a service code (e.g. "BYAC", "CAMP"); the api validates it against its
+// service catalogue at dispatch time.
+const caseManagementConfigAuthorSchema = z.object({
+  programmeCode: z.string().min(1),
+});
+
 const emailProcessorSchema = z.object({
   type: z.literal("email"),
   config: emailConfigAuthorSchema,
@@ -66,6 +75,10 @@ const webhookProcessorSchema = z.object({
   type: z.literal("webhook"),
   config: webhookConfigAuthorSchema,
 });
+const caseManagementProcessorSchema = z.object({
+  type: z.literal("case-management"),
+  config: caseManagementConfigAuthorSchema,
+});
 
 export const processorSchema = z.discriminatedUnion("type", [
   emailProcessorSchema,
@@ -73,6 +86,7 @@ export const processorSchema = z.discriminatedUnion("type", [
   spreadsheetProcessorSchema,
   paymentProcessorSchema,
   webhookProcessorSchema,
+  caseManagementProcessorSchema,
 ]);
 
 export type Processor = z.infer<typeof processorSchema>;
@@ -118,6 +132,11 @@ export const resolvedProcessorSchema = z.discriminatedUnion("type", [
     type: z.literal("webhook"),
     config: webhookConfigResolvedSchema,
   }),
+  // case-management config has no dynamic() fields, so author == resolved.
+  z.object({
+    type: z.literal("case-management"),
+    config: caseManagementConfigAuthorSchema,
+  }),
 ]);
 
 export type ResolvedProcessor = z.infer<typeof resolvedProcessorSchema>;
@@ -125,6 +144,9 @@ export type ResolvedPaymentProcessorConfig = z.infer<
   typeof paymentConfigResolvedSchema
 >;
 export type WebhookProcessorConfig = z.infer<typeof webhookConfigAuthorSchema>;
+export type CaseManagementProcessorConfig = z.infer<
+  typeof caseManagementConfigAuthorSchema
+>;
 export type ResolvedWebhookProcessorConfig = z.infer<
   typeof webhookConfigResolvedSchema
 >;

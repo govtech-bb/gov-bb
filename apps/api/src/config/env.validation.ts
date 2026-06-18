@@ -91,13 +91,14 @@ export const envValidationSchema = Joi.object({
     otherwise: Joi.string().optional().allow(""),
   }),
 
-  // Outbound case-management webhook (youth-opportunity submissions). When a
-  // youth-opportunity form is submitted, the backend posts to
-  // `${WEBHOOK_URL}/api/webhooks/form-submitted` with the WEBHOOK_SECRET as the
-  // X-API-Key header — the dispatch the frontend used to do. An empty WEBHOOK_URL
-  // disables dispatch (logged + skipped), matching the old frontend behavior.
+  // Outbound case-management webhook. When a form carries a `case-management`
+  // processor, the backend posts the submission to `${WEBHOOK_URL}/${WEBHOOK_PATH}`
+  // with WEBHOOK_SECRET as the X-API-Key header. An empty WEBHOOK_URL disables
+  // dispatch (logged + skipped). WEBHOOK_PATH defaults to the legacy
+  // `api/webhooks/form-submitted` endpoint but can be overridden per environment.
   WEBHOOK_URL: Joi.string().uri().allow("").default(""),
   WEBHOOK_SECRET: Joi.string().allow("").default(""),
+  WEBHOOK_PATH: Joi.string().allow("").default("api/webhooks/form-submitted"),
   WEBHOOK_TIMEOUT_MS: Joi.number().integer().min(1000).default(10000),
 
   // Recipe preview (optional — empty disables the per-request preview escape hatch)

@@ -81,12 +81,11 @@ export interface SubmissionCreatedEvent {
   processorIndex?: number;
   /**
    * True when this submission came from the live smoke matrix (see
-   * SubmitDto.isSmokeSubmission). Every `submission.created` consumer that
-   * triggers a real side-effect must short-circuit on it — not just the
-   * `processors[]`-driven dispatch. Carried here because some consumers (e.g.
-   * YouthOpportunityWebhookListener) fire off `formId` and never read
-   * `processors`, so an empty `processors[]` alone does not suppress them
-   * (#1252).
+   * SubmitDto.isSmokeSubmission). Every submission side-effect is now
+   * `processors[]`-driven, and smoke submissions drop `processors[]` at the
+   * choke point in submissions.service.ts, so an empty array fully suppresses
+   * them — no consumer needs to branch on this flag. Carried on the event as
+   * informational metadata (#1252).
    */
   isSmokeSubmission?: boolean;
   /**

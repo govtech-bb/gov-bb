@@ -41,8 +41,15 @@ export type RecipeProcessorDraft = Processor & { id: string };
 // The processor types the builder can author. `payment` is now authorable
 // (#716): its config is editable in the builder and persisted to the DB sibling
 // `form_config.config` (never the recipe), unlike the other types which live in
-// the recipe. So this is just every processor type.
-export type AuthorableProcessorType = Processor["type"];
+// the recipe.
+//
+// `case-management` is excluded: its only config is a `programmeCode` — an
+// operational mapping to the case-management system, set in the recipe JSON
+// rather than authored in the builder UI.
+export type AuthorableProcessorType = Exclude<
+  Processor["type"],
+  "case-management"
+>;
 
 export interface RecipeDraft {
   formId: string;

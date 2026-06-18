@@ -186,6 +186,24 @@ describe("processorSchema (author-time)", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("accepts case-management with a programmeCode", () => {
+    expect(
+      processorSchema.safeParse({
+        type: "case-management",
+        config: { programmeCode: "CAMP" },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects case-management with an empty programmeCode", () => {
+    expect(
+      processorSchema.safeParse({
+        type: "case-management",
+        config: { programmeCode: "" },
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe("resolvedProcessorSchema (post-resolution)", () => {
@@ -251,5 +269,14 @@ describe("resolvedProcessorSchema (post-resolution)", () => {
         config: { url: { var: "values.url" } },
       }).success,
     ).toBe(false);
+  });
+
+  it("accepts a resolved case-management processor (author == resolved)", () => {
+    expect(
+      resolvedProcessorSchema.safeParse({
+        type: "case-management",
+        config: { programmeCode: "BYAC" },
+      }).success,
+    ).toBe(true);
   });
 });
