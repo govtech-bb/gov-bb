@@ -60,20 +60,44 @@ describe("ExpressionsService", () => {
     ]);
   });
 
-  it("passes a case-management processor through resolution unchanged", () => {
-    // case-management config has no dynamic() fields, so it must survive
-    // resolution and validate against resolvedProcessorSchema — otherwise the
-    // listener skips ALL non-gating dispatch for the submission (incl. email).
+  it("passes a mapped webhook processor through resolution unchanged", () => {
+    // The mapping/endpoint/auth fields are literal routing (no dynamic()), so a
+    // mapped webhook must survive resolution and validate against
+    // resolvedProcessorSchema — otherwise the listener skips ALL non-gating
+    // dispatch for the submission (incl. email).
+    const mapped = {
+      type: "webhook" as const,
+      config: {
+        endpoint: { env: "WEBHOOK_URL" },
+        method: "POST" as const,
+        signatureHeader: "X-Webhook-Signature",
+        timeoutMs: 10_000,
+        auth: {
+          scheme: "apiKey" as const,
+          header: "X-API-Key",
+          secretEnv: "WEBHOOK_SECRET",
+        },
+        mapping: {
+          programmeCode: "CAMP",
+          applicant: {
+            name: ["applicant-details.applicant-first-name"],
+            email: "applicant-details.applicant-email",
+            phone: "applicant-details.applicant-phone",
+          },
+          excludeSteps: ["declaration"],
+        },
+      },
+    };
     const processors: Processor[] = [
       { type: "email", config: { recipientField: "applicant.email" } },
-      { type: "case-management", config: { programmeCode: "CAMP" } },
+      mapped,
     ];
 
     const out = service.resolveProcessors(processors, { values: {} });
 
     expect(out).toEqual([
       { type: "email", config: { recipientField: "applicant.email" } },
-      { type: "case-management", config: { programmeCode: "CAMP" } },
+      mapped,
     ]);
   });
 

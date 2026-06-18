@@ -12,9 +12,32 @@
       }
     },
     {
-      "type": "case-management",
+      "type": "webhook",
       "config": {
-        "programmeCode": "YDP"
+        "endpoint": {
+          "env": "WEBHOOK_URL"
+        },
+        "auth": {
+          "scheme": "apiKey",
+          "header": "X-API-Key",
+          "secretEnv": "WEBHOOK_SECRET"
+        },
+        "mapping": {
+          "programmeCode": "YDP",
+          "applicant": {
+            "name": [
+              "applicant-details.applicant-first-name",
+              "applicant-details.applicant-last-name"
+            ],
+            "email": "applicant-details.applicant-email",
+            "phone": "applicant-details.applicant-phone"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ]
+        }
       }
     }
   ],

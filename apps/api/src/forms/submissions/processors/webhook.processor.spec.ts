@@ -175,3 +175,99 @@ describe("WebhookProcessor", () => {
     });
   });
 });
+
+describe("WebhookProcessor — mapped mode", () => {
+  let processor: WebhookProcessor;
+
+  function makeMappedPayload(): SubmissionCreatedEvent {
+    return {
+      submissionId: "sub-200",
+      referenceCode: "SCIENCE2026-2606-Y5RPJEP",
+      formId: "science-camp",
+      formVersion: "1.4.0",
+      idempotencyKey: "idem-mapped-1",
+      processors: [
+        {
+          type: "webhook",
+          config: {
+            endpoint: { env: "WEBHOOK_URL" },
+            auth: {
+              scheme: "apiKey",
+              header: "X-API-Key",
+              secretEnv: "WEBHOOK_SECRET",
+            },
+            mapping: {
+              programmeCode: "SCIENCE2026",
+              applicant: {
+                name: ["child.first", "child.last"],
+                email: "contact.email",
+                phone: "contact.phone",
+              },
+              excludeSteps: ["declaration"],
+            },
+          },
+        },
+      ] as SubmissionCreatedEvent["processors"],
+      values: {
+        child: { first: "Ada", last: "Lovelace" },
+        contact: { email: "p@example.bb", phone: "421-1234" },
+        declaration: { agree: "confirmed" },
+      },
+      meta: {
+        schemaVersion: 2,
+        pinnedFormVersion: "1.4.0",
+        draftId: "d",
+        activeStepIds: [],
+        hiddenStepIds: [],
+        activeFieldIds: {},
+        hiddenFieldIds: {},
+        visitedPages: [0],
+        submittedAt: "2026-06-18T09:00:00.000Z",
+      } as unknown as SubmissionCreatedEvent["meta"],
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFetch.mockResolvedValue({ ok: true, status: 200 });
+    processor = new WebhookProcessor();
+    process.env.WEBHOOK_URL = "http://cms.local/api/cases";
+    process.env.WEBHOOK_SECRET = "dev-key-123";
+  });
+
+  afterEach(() => {
+    delete process.env.WEBHOOK_URL;
+    delete process.env.WEBHOOK_SECRET;
+  });
+
+  it("POSTs the mapped case payload to the env endpoint with the API key", async () => {
+    await processor.process(makeMappedPayload());
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url).toBe("http://cms.local/api/cases");
+    expect(init.headers["X-API-Key"]).toBe("dev-key-123");
+    expect(JSON.parse(init.body)).toEqual({
+      code: "SCIENCE2026-2606-Y5RPJEP",
+      programme_code: "SCIENCE2026",
+      applicant: {
+        name: "Ada Lovelace",
+        email: "p@example.bb",
+        phone: "421-1234",
+      },
+      form_data: {},
+      submitted_at: "2026-06-18T09:00:00.000Z",
+    });
+  });
+
+  it("skips (no fetch) when the endpoint env var is unset", async () => {
+    delete process.env.WEBHOOK_URL;
+    const result = await processor.process(makeMappedPayload());
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(result).toEqual({ kind: "completed" });
+  });
+
+  it("skips when the apiKey secret env var is unset", async () => {
+    delete process.env.WEBHOOK_SECRET;
+    await processor.process(makeMappedPayload());
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+});

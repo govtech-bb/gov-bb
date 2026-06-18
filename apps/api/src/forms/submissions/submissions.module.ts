@@ -11,8 +11,6 @@ import {
   ProcessorFactory,
   SpreadsheetProcessor,
   WebhookProcessor,
-  CaseManagementProcessor,
-  CaseManagementWebhookService,
   SUBMISSION_PROCESSORS,
 } from "./processors";
 import { PaymentProcessor } from "./processors/payment/payment.processor";
@@ -55,8 +53,6 @@ import { PaymentRequiredListener } from "../../email/payment-required.listener";
     SpreadsheetProcessor,
     PaymentProcessor,
     WebhookProcessor,
-    CaseManagementWebhookService,
-    CaseManagementProcessor,
     {
       provide: SUBMISSION_PROCESSORS,
       useFactory: (
@@ -65,15 +61,13 @@ import { PaymentRequiredListener } from "../../email/payment-required.listener";
         spreadsheet: SpreadsheetProcessor,
         payment: PaymentProcessor,
         webhook: WebhookProcessor,
-        caseManagement: CaseManagementProcessor,
-      ) => [email, opencrvs, spreadsheet, payment, webhook, caseManagement],
+      ) => [email, opencrvs, spreadsheet, payment, webhook],
       inject: [
         EmailProcessor,
         OpencrvsProcessor,
         SpreadsheetProcessor,
         PaymentProcessor,
         WebhookProcessor,
-        CaseManagementProcessor,
       ],
     },
     ProcessorFactory,

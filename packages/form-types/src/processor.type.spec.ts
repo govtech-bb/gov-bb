@@ -187,20 +187,36 @@ describe("processorSchema (author-time)", () => {
     ).toBe(false);
   });
 
-  it("accepts case-management with a programmeCode", () => {
+  it("accepts a mapped webhook (env endpoint + apiKey auth + mapping)", () => {
     expect(
       processorSchema.safeParse({
-        type: "case-management",
-        config: { programmeCode: "CAMP" },
+        type: "webhook",
+        config: {
+          endpoint: { env: "WEBHOOK_URL" },
+          auth: {
+            scheme: "apiKey",
+            header: "X-API-Key",
+            secretEnv: "WEBHOOK_SECRET",
+          },
+          mapping: {
+            programmeCode: "CAMP",
+            applicant: {
+              name: ["a.first", "a.last"],
+              email: "a.email",
+              phone: "a.phone",
+            },
+            excludeSteps: ["declaration"],
+          },
+        },
       }).success,
     ).toBe(true);
   });
 
-  it("rejects case-management with an empty programmeCode", () => {
+  it("rejects a webhook with neither url nor endpoint", () => {
     expect(
       processorSchema.safeParse({
-        type: "case-management",
-        config: { programmeCode: "" },
+        type: "webhook",
+        config: { method: "POST" },
       }).success,
     ).toBe(false);
   });
@@ -271,11 +287,22 @@ describe("resolvedProcessorSchema (post-resolution)", () => {
     ).toBe(false);
   });
 
-  it("accepts a resolved case-management processor (author == resolved)", () => {
+  it("accepts a resolved mapped webhook (mapping/auth/endpoint are literal)", () => {
     expect(
       resolvedProcessorSchema.safeParse({
-        type: "case-management",
-        config: { programmeCode: "BYAC" },
+        type: "webhook",
+        config: {
+          endpoint: { env: "WEBHOOK_URL" },
+          auth: {
+            scheme: "apiKey",
+            header: "X-API-Key",
+            secretEnv: "WEBHOOK_SECRET",
+          },
+          mapping: {
+            programmeCode: "BYAC",
+            applicant: { name: "a.name", email: "a.email", phone: "a.phone" },
+          },
+        },
       }).success,
     ).toBe(true);
   });

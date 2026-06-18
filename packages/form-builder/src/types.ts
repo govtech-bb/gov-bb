@@ -43,13 +43,7 @@ export type RecipeProcessorDraft = Processor & { id: string };
 // `form_config.config` (never the recipe), unlike the other types which live in
 // the recipe.
 //
-// `case-management` is excluded: its only config is a `programmeCode` — an
-// operational mapping to the case-management system, set in the recipe JSON
-// rather than authored in the builder UI.
-export type AuthorableProcessorType = Exclude<
-  Processor["type"],
-  "case-management"
->;
+export type AuthorableProcessorType = Processor["type"];
 
 export interface RecipeDraft {
   formId: string;

@@ -116,6 +116,9 @@ export type {
   ResolvedProcessor,
   PaymentProcessorConfig,
   ResolvedPaymentProcessorConfig,
+  WebhookProcessorConfig,
+  ResolvedWebhookProcessorConfig,
+  WebhookMapping,
 } from "./processor.type";
 
 export {
