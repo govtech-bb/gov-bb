@@ -8,6 +8,11 @@ import { sanitizeForLog } from "./log-sanitize";
  * stay byte-compatible with the payload frontend-alpha sent.
  */
 export interface FormSubmittedWebhookPayload {
+  /**
+   * Canonical public reference — the submission's referenceCode (#1458). This
+   * is the single shared identifier between the two systems, so it doubles as
+   * the join key; no separate internal UUID is sent.
+   */
   code: string;
   programmeCode: string;
   applicantName: string;

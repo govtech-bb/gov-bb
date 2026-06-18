@@ -5,10 +5,7 @@ import type {
 } from "../submission-processor.interface";
 import type { SubmissionCreatedEvent } from "../../submissions.types";
 import { buildWebhookFormData, extractApplicant } from "./applicant-extractor";
-import {
-  generateApplicationCodeForService,
-  isServiceCode,
-} from "./application-code";
+import { isServiceCode } from "./application-code";
 import { CaseManagementWebhookService } from "./case-management-webhook.service";
 import { sanitizeForLog } from "./log-sanitize";
 
@@ -51,8 +48,12 @@ export class CaseManagementProcessor implements ISubmissionProcessor {
 
     const applicant = extractApplicant(payload.values);
 
+    // Send the submission's own reference as the case code — the single
+    // canonical reference shown to the citizen and stored on the submission
+    // (#1458) — rather than minting a second one here. It's unique and shared
+    // across both systems, so it also serves as the join key.
     await this.webhook.dispatch({
-      code: generateApplicationCodeForService(programmeCode),
+      code: payload.referenceCode,
       programmeCode,
       applicantName: applicant.name,
       applicantEmail: applicant.email,

@@ -8,7 +8,7 @@ function makePayload(
 ): SubmissionCreatedEvent {
   return {
     submissionId: "sub-1",
-    referenceCode: "CAMP-20260616-000001-ABCDEF",
+    referenceCode: "CAMP-2606-Y5RPJEP",
     formId: "national-summer-camp",
     formVersion: "1.4.0",
     idempotencyKey: "idem-cm-1",
@@ -66,7 +66,16 @@ describe("CaseManagementProcessor", () => {
     expect(payload.programmeCode).toBe("CAMP");
   });
 
-  it("builds the applicant + form_data + tracking code from values", async () => {
+  it("sends the submission's referenceCode as the canonical code", async () => {
+    await processor.process(makePayload());
+    const payload = dispatch.mock.calls[0][0];
+
+    // The case code IS the submission's reference (#1458) — not a freshly
+    // minted second code — so it's the single shared identifier / join key.
+    expect(payload.code).toBe("CAMP-2606-Y5RPJEP");
+  });
+
+  it("builds the applicant + form_data from values", async () => {
     await processor.process(makePayload());
     const payload = dispatch.mock.calls[0][0];
 
@@ -79,8 +88,6 @@ describe("CaseManagementProcessor", () => {
     expect(payload.formData).toMatchObject({ motivation: "Robotics" });
     expect(payload.formData).not.toHaveProperty("applicant-email");
     expect(payload.formData).not.toHaveProperty("agree");
-    // <SERVICE>-<DDMM>-<counter3><random4>
-    expect(payload.code).toMatch(/^CAMP-\d{4}-[A-Z0-9]{7}$/);
   });
 
   it("throws on an unknown programmeCode (visible DLQ, no bogus POST)", async () => {

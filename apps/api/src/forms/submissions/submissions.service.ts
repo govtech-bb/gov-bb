@@ -1,6 +1,11 @@
 import { HttpStatus, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { FormSubmissionStatus } from "../../database/entities/form-submission.entity";
+import type { DeepPartial } from "typeorm";
+import type { Processor } from "@govtech-bb/form-types";
+import {
+  FormSubmissionStatus,
+  FormSubmissionEntity,
+} from "../../database/entities/form-submission.entity";
 import { AppError } from "../../common/errors";
 import { ExpressionsService } from "../../expressions/expressions.service";
 import { FormSubmissionRepository } from "./form-submission.repository";
@@ -64,17 +69,19 @@ export class SubmissionsService {
     const split = this.processorFactory.resolveSplit(rawProcessors);
     const hasGating = split.gating.length > 0;
 
-    const referenceCode = await this.generateUniqueReferenceCode(dto.formId);
+    // Prefix the reference with the CMS programme code when the form is
+    // CMS-connected (read from contract.processors, which survive the smoke
+    // drop above), so the single reference is self-identifying as e.g. BYAC-…
+    // and matches the case the CMS opens. Non-CMS forms fall back to the
+    // formId-initials prefix inside generateReferenceCode.
+    const referencePrefix = programmeCode(contract.processors);
 
-    const saved = await this.submissionRepo.tx(async (repo) => {
-      const doubleCheck = await repo.findOne({
-        where: { idempotencyKey },
-        lock: { mode: "pessimistic_write" },
-      });
-      if (doubleCheck) return doubleCheck;
-      const entity = repo.create({
+    const saved = await this.saveWithUniqueReference(
+      dto.formId,
+      referencePrefix,
+      idempotencyKey,
+      {
         idempotencyKey,
-        referenceCode,
         formId: dto.formId,
         formVersion: pinnedVersion,
         values: normalizedValues,
@@ -83,13 +90,12 @@ export class SubmissionsService {
           ? FormSubmissionStatus.PENDING_PAYMENT
           : FormSubmissionStatus.SUBMITTED,
         ...(hasGating ? {} : { submittedAt: new Date() }),
-      });
-      return repo.save(entity);
-    });
+      },
+    );
 
     const event: SubmissionCreatedEvent = {
       submissionId: saved.id,
-      referenceCode,
+      referenceCode: saved.referenceCode,
       formId: dto.formId,
       formVersion: pinnedVersion,
       idempotencyKey: dto.idempotencyKey,
@@ -146,17 +152,66 @@ export class SubmissionsService {
     };
   }
 
-  private async generateUniqueReferenceCode(formId: string): Promise<string> {
+  /**
+   * Persist a submission with a freshly minted, unique reference code.
+   *
+   * Uniqueness is enforced by the DB unique constraint
+   * (`UQ_form_submissions_reference_code`), not by trusting the randomness: on a
+   * collision the insert fails with a 23505 and we regenerate and retry. The
+   * idempotency double-check inside the tx still short-circuits a genuine
+   * duplicate submission (returning the existing row, with its own reference).
+   */
+  private async saveWithUniqueReference(
+    formId: string,
+    prefix: string | undefined,
+    idempotencyKey: string,
+    entityData: DeepPartial<FormSubmissionEntity>,
+  ): Promise<FormSubmissionEntity> {
     const MAX_ATTEMPTS = 5;
-    for (let i = 0; i < MAX_ATTEMPTS; i++) {
-      const code = generateReferenceCode(formId);
-      const taken = await this.submissionRepo.count({
-        where: { referenceCode: code },
-      });
-      if (taken === 0) return code;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const referenceCode = generateReferenceCode(formId, { prefix });
+      try {
+        return await this.submissionRepo.tx(async (repo) => {
+          const doubleCheck = await repo.findOne({
+            where: { idempotencyKey },
+            lock: { mode: "pessimistic_write" },
+          });
+          if (doubleCheck) return doubleCheck;
+          return repo.save(repo.create({ ...entityData, referenceCode }));
+        });
+      } catch (err) {
+        if (isReferenceCodeConflict(err) && attempt < MAX_ATTEMPTS - 1) {
+          continue;
+        }
+        throw err;
+      }
     }
     throw new Error(
-      `Could not generate unique reference code after ${MAX_ATTEMPTS} attempts`,
+      `Could not generate a unique reference code after ${MAX_ATTEMPTS} attempts`,
     );
   }
+}
+
+/** The CMS programme code for a CMS-connected form, used as the reference
+ * prefix; undefined for forms without a `case-management` processor. */
+function programmeCode(
+  processors: Processor[] | undefined,
+): string | undefined {
+  const entry = processors?.find((p) => p.type === "case-management");
+  const code = (entry?.config as { programmeCode?: unknown } | undefined)
+    ?.programmeCode;
+  return typeof code === "string" && code.trim() ? code : undefined;
+}
+
+/** True when an error is a Postgres unique-violation (23505) on the
+ * reference_code constraint — i.e. a reference collision worth retrying. */
+function isReferenceCodeConflict(err: unknown): boolean {
+  const e = err as {
+    code?: string;
+    constraint?: string;
+    driverError?: { code?: string; constraint?: string };
+  };
+  const code = e?.driverError?.code ?? e?.code;
+  const constraint = e?.driverError?.constraint ?? e?.constraint;
+  return code === "23505" && (constraint?.includes("reference_code") ?? false);
 }

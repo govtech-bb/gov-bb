@@ -30,7 +30,7 @@ function makeService(overrides: Partial<WebhooksConfig> = {}) {
 }
 
 const payload: FormSubmittedWebhookPayload = {
-  code: "CAMP-0616-AAA1234",
+  code: "CAMP-2606-Y5RPJEP",
   programmeCode: "CAMP",
   applicantName: "Ada Lovelace",
   applicantEmail: "ada@example.bb",
@@ -61,7 +61,7 @@ describe("CaseManagementWebhookService", () => {
     expect(init.headers["X-API-Key"]).toBe("dev-secret-key-1234567890");
     expect(init.headers["Content-Type"]).toBe("application/json");
     expect(JSON.parse(init.body)).toEqual({
-      code: "CAMP-0616-AAA1234",
+      code: "CAMP-2606-Y5RPJEP",
       programme_code: "CAMP",
       applicant: {
         name: "Ada Lovelace",
