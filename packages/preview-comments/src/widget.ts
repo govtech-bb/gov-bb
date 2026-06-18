@@ -624,6 +624,11 @@ export function mountPreviewComments(options: MountOptions = {}): () => void {
       flash(thread.id);
       return;
     }
+    // pageId is stored (untrusted) data. Only navigate to a same-origin
+    // relative path — a single leading slash not followed by another. This
+    // rejects javascript:/data: URLs, protocol-relative //host, and absolute
+    // http(s):// targets, so a poisoned record can't redirect or run script.
+    if (!/^\/(?!\/)/.test(thread.pageId)) return;
     try {
       sessionStorage.setItem(
         SCROLL_KEY,
