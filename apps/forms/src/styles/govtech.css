@@ -117,68 +117,32 @@
   gap: var(--spacing-xs);
 }
 
+/* Single declaration/consent checkbox alignment (#405). The package's
+ * `.govbb-checkbox-item` uses `align-items: center`, which centres the tall
+ * 3rem checkbox against the *whole* multi-line consent paragraph so it no
+ * longer lines up with the first line. For the single-option branch only
+ * (tagged `form-page__single-checkbox` in field-renderer), top-align the row
+ * and nudge the label down so its first line sits optically centred against
+ * the checkbox — half the difference between the checkbox height and one line
+ * box (font-size x line-height). Compound selector keeps specificity above the
+ * package rule regardless of stylesheet order; multi-option groups are
+ * untouched. */
+.govbb-checkbox-item.form-page__single-checkbox {
+  align-items: flex-start;
+}
+
+.govbb-checkbox-item.form-page__single-checkbox .govbb-checkbox-item__label {
+  padding-top: calc(
+    (3rem - var(--font-size-body) * var(--line-height-body)) / 2
+  );
+}
+
 /* ---- Show/hide -----------------------------------------------------------
- * The govbb show-hide component is built on native <details>; this app drives
- * a React-controlled toggle that reveals sibling form fields, so the visual is
- * hand-rolled from tokens to match the govbb look. */
-.form-page__show-hide {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.form-page__show-hide-toggle {
-  all: unset;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  cursor: pointer;
-  color: var(--color-teal-00);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-  width: fit-content;
-}
-
-.form-page__show-hide-toggle:hover {
-  color: var(--color-teal-100);
-  text-decoration-thickness: 0.1875rem;
-}
-
-.form-page__show-hide-toggle:focus-visible {
-  outline: 0.25rem solid var(--color-teal-100);
-  outline-offset: 0.125rem;
-  border-radius: 0.125rem;
-}
-
-.form-page__show-hide-arrow {
-  display: inline-block;
-  width: 0;
-  height: 0;
-  border-top: 0.3125rem solid transparent;
-  border-bottom: 0.3125rem solid transparent;
-  border-left: 0.4375rem solid currentColor;
-  flex-shrink: 0;
-  transition: transform 0.2s ease;
-}
-
-.form-page__show-hide-toggle[aria-expanded="true"] .form-page__show-hide-arrow {
-  transform: rotate(90deg);
-}
-
-.form-page__show-hide-content {
-  margin-top: var(--spacing-s);
-  padding: var(--spacing-s) 0 var(--spacing-s) var(--spacing-m);
-  border-left: 0.25rem solid var(--color-grey-00);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-s);
-}
-
-.form-page__show-hide-content .govbb-hint {
-  margin: 0;
-}
+ * The show-hide toggle now renders as a native <details>/<summary> using the
+ * @govtech-bb/styles `.govbb-show-hide*` classes (#341). The revealed content
+ * is a sibling `.govbb-show-hide__content` wrapper in form-renderer; the
+ * vertical spacing between the summary and that wrapper comes from the parent
+ * `.form-page__step` flex gap, so no app-local rules are needed here. */
 
 /* ---- Select conditional reveal (#863) -------------------------------------
  * Inset fields revealed by a select option. @govtech-bb/styles only ships the

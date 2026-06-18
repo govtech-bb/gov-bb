@@ -314,42 +314,125 @@ export default function FieldRenderer({
             );
           }
           case "textarea": {
+            // `withRequired` mirrors the text path: the repeating-array variant
+            // omits requiredProps so a half-filled repeat isn't flagged.
+            const renderTextarea = (
+              value: string,
+              onChange: (next: string) => void,
+              withRequired: boolean,
+            ): JSX.Element => (
+              <div className="govbb-input-wrapper">
+                <textarea
+                  key={field.id}
+                  {...sharedProps}
+                  {...(withRequired ? requiredProps : {})}
+                  className="govbb-textarea"
+                  value={value}
+                  aria-invalid={invalid}
+                  onChange={(e) => onChange(e.target.value)}
+                />
+              </div>
+            );
+
             let textareaElement: JSX.Element;
 
             if (!fieldArray) {
               const value = f.state.value as string | undefined;
-              textareaElement = (
-                <div
-                  className="govbb-form-group"
-                  data-field-width={field.ui?.width}
-                >
-                  <label
-                    className={labelClass("govbb-label")}
-                    htmlFor={field.id}
-                  >
-                    {field.label}
-                  </label>
-                  {field.hint && (
-                    <p className="govbb-hint" id={hintId}>
-                      {field.hint}
-                    </p>
-                  )}
-                  <ErrorMessage id={errorId} message={errorMessage} />
-                  <div className="govbb-input-wrapper">
-                    <textarea
-                      key={field.id}
-                      {...sharedProps}
-                      {...requiredProps}
-                      className="govbb-textarea"
-                      value={value ?? ""}
-                      aria-invalid={invalid}
-                      onChange={(e) => commitChange(e.target.value)}
-                    />
-                  </div>
-                </div>
+              textareaElement = renderTextarea(
+                value ?? "",
+                (next) => commitChange(next),
+                true,
               );
-              return textareaElement;
+            } else {
+              // Immutable updates: TanStack's store dedupes by reference, so a
+              // mutated-in-place array passed back to handleChange can be
+              // dropped as "unchanged". Always commit a fresh array.
+              const addAnotherField = (values: string[]) => {
+                commitChange([...values, ""]);
+              };
+
+              const removeField = (values: string[]) => {
+                commitChange(values.slice(0, -1));
+              };
+
+              const updateField = (
+                values: string[],
+                index: number,
+                value: string,
+              ) => {
+                const next = [...values];
+                next[index] = value;
+                commitChange(next);
+              };
+
+              const values = (f.state.value as string[] | undefined) ?? [
+                (field.defaultValue as string) ?? "",
+              ];
+              const min = fieldArray.min;
+              const max = fieldArray.max;
+
+              const fieldCount =
+                values && values.length > 0
+                  ? Math.min(values.length, max)
+                  : min;
+
+              textareaElement = (
+                <>
+                  {Array.from({ length: fieldCount }).map((_, i) => (
+                    <React.Fragment key={`${field.id}-${i}`}>
+                      {renderTextarea(
+                        values && values.length > 0 ? values[i] : "",
+                        (next) => updateField(values, i, next),
+                        false,
+                      )}
+                      {i === fieldCount - 1 && i != 0 ? (
+                        <button
+                          type="button"
+                          className="govbb-btn--destructive-link"
+                          onClick={() => removeField(values)}
+                        >
+                          Remove{" "}
+                          <span className="govbb-visually-hidden">
+                            {field.label}
+                          </span>
+                        </button>
+                      ) : null}
+                    </React.Fragment>
+                  ))}
+                  {fieldCount < max ? (
+                    <button
+                      type="button"
+                      className="govbb-btn--link"
+                      onClick={() => addAnotherField(values)}
+                    >
+                      Add Another{" "}
+                      <span className="govbb-visually-hidden">
+                        {field.label}
+                      </span>
+                    </button>
+                  ) : null}
+                </>
+              );
             }
+
+            const element: JSX.Element = (
+              <div
+                className="govbb-form-group"
+                data-field-width={field.ui?.width}
+              >
+                <label className={labelClass("govbb-label")} htmlFor={field.id}>
+                  {field.label}
+                </label>
+                {field.hint && (
+                  <p className="govbb-hint" id={hintId}>
+                    {field.hint}
+                  </p>
+                )}
+                <ErrorMessage id={errorId} message={errorMessage} />
+                {textareaElement}
+              </div>
+            );
+            return element;
           }
           case "text":
           case "number":
@@ -579,7 +662,10 @@ export default function FieldRenderer({
                   )}
                   <ErrorMessage id={errorId} message={errorMessage} />
                   <div className="form-page__options">
-                    <div className="govbb-checkbox-item" key={option.value}>
+                    <div
+                      className="govbb-checkbox-item form-page__single-checkbox"
+                      key={option.value}
+                    >
                       <input
                         {...sharedProps}
                         {...requiredProps}
@@ -732,27 +818,26 @@ export default function FieldRenderer({
             );
           case "show-hide": {
             // Value is a boolean: false = collapsed (default), true = expanded.
-            // The toggle itself carries no validation. Hint text and controlled
-            // sibling fields are rendered by form-renderer inside a shared
-            // form-page__show-hide-content wrapper so the left border spans
-            // them all. The govbb show-hide component is <details>-based, so the
-            // controlled-toggle visual is hand-rolled from brand tokens.
+            // The toggle itself carries no validation. Native <details>/<summary>
+            // gives us the disclosure semantics, keyboard behaviour and marker
+            // rotation for free (govbb-show-hide* classes). The controlled
+            // sibling fields and hint are rendered by form-renderer in a
+            // govbb-show-hide__content wrapper that reads this boolean reactively,
+            // so the open state is driven through TanStack-Form via onToggle.
             const isOpen = (f.state.value as boolean | undefined) ?? false;
             return (
-              <div className="form-page__show-hide">
-                <button
-                  type="button"
-                  className="form-page__show-hide-toggle"
-                  aria-expanded={isOpen}
-                  onClick={() => commitChange(!isOpen)}
-                >
-                  <span
-                    className="form-page__show-hide-arrow"
-                    aria-hidden="true"
-                  />
+              <details
+                className="govbb-show-hide"
+                open={isOpen}
+                onToggle={(e) => {
+                  const next = e.currentTarget.open;
+                  if (next !== isOpen) commitChange(next);
+                }}
+              >
+                <summary className="govbb-show-hide__summary">
                   {field.label}
-                </button>
-              </div>
+                </summary>
+              </details>
             );
           }
           default:

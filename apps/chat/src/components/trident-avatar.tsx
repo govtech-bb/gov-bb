@@ -1,5 +1,10 @@
-import { cn } from "#/lib/utils";
+import { cn } from "@govtech-bb/react";
 
+// The bot's trident mark. When filled, it sits on a circular Barbados flag —
+// ultramarine | gold | ultramarine bands with the black trident on the gold
+// centre. Used as the assistant avatar beside replies (sm) and the hero on the
+// welcome screen (lg, with a gentle idle bob). Decorative, so it's aria-hidden —
+// the surrounding bubble carries the meaning.
 export function TridentAvatar({
   size = "sm",
   tone = "plain",
@@ -10,27 +15,41 @@ export function TridentAvatar({
   className?: string;
 }) {
   const dims = size === "lg" ? "h-32 w-32" : "h-8 w-8";
-  const tridentSize = size === "lg" ? "w-24" : "w-4";
   const filled = tone === "filled";
+  // The trident is black and must read against the gold band, so on the flag
+  // avatar it's sized to the gold centre; the bandless plain avatar lets it
+  // fill more of the space.
+  const tridentSize = filled
+    ? size === "lg"
+      ? "w-16"
+      : "w-4"
+    : size === "lg"
+      ? "w-24"
+      : "w-4";
 
   return (
     <div
       aria-hidden="true"
       className={cn(
         "relative flex shrink-0 items-center justify-center",
-        filled && "rounded-full bg-teal-00",
-        size === "lg" &&
-          "motion-safe:animate-[bot-hum_3s_ease-in-out_infinite]",
+        filled && "overflow-hidden rounded-full",
+        size === "lg" && "motion-safe:animate-[bot-hum_3s_ease-in-out_infinite]",
         dims,
         className,
       )}
     >
+      {filled && (
+        // Barbados flag bands clipped to the circle. A wider gold centre (50%)
+        // hosts the trident so the black mark stays legible — over the deep
+        // ultramarine sides it would disappear.
+        <span aria-hidden="true" className="absolute inset-0 flex">
+          <span className="basis-1/4 bg-blue-100" />
+          <span className="basis-1/2 bg-yellow-100" />
+          <span className="basis-1/4 bg-blue-100" />
+        </span>
+      )}
       <svg
-        className={cn(
-          "relative z-[1]",
-          filled ? "fill-white-00" : "fill-black-00",
-          tridentSize,
-        )}
+        className={cn("relative z-1 fill-black-00", tridentSize)}
         viewBox="0 0 26 27"
         xmlns="http://www.w3.org/2000/svg"
       >

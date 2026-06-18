@@ -5,6 +5,7 @@ stage: "alpha"
 publish_date: 2026-06-02
 category: education
 visibility: draft
+form_id: bssee-form-b-defer-examination
 ---
 
 If your 11-year-old child is not yet ready to sit the Barbados Secondary Schools’ Entrance Examination (BSSEE), use this form to request a one-year deferral.
@@ -25,7 +26,7 @@ Approval is at the Ministry’s discretion.
 
 You can complete the online form.
 
-<a data-start-link href="/education/defer-your-childs-bssee-sitting/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 

@@ -1,0 +1,398 @@
+{
+  "formId": "multiple-birth-benefit-application",
+  "title": "Multiple Birth Benefit Application",
+  "description": "Application form for the Multiple Birth Benefit programme administered by the Social Empowerment Agency (SEA)",
+  "version": "1.4.0",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "applicant-contact.email",
+        "subject": "Multiple Birth Benefit application received"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "applicant-information",
+      "title": "Tell us about yourself",
+      "elements": [
+        {
+          "ref": "components/title"
+        },
+        {
+          "ref": "components/first-name"
+        },
+        {
+          "ref": "components/middle-name"
+        },
+        {
+          "ref": "components/last-name"
+        },
+        {
+          "ref": "components/date-of-birth"
+        },
+        {
+          "ref": "components/sex"
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "hint": "Enter your valid National ID Number (for example, 450702-0130)"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "applicant-contact",
+      "title": "Give your contact details",
+      "elements": [
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "address-line-1",
+            "label": "Address line 1"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "address-line-2",
+            "label": "Address line 2",
+            "hint": "Optional",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish"
+        },
+        {
+          "ref": "components/postcode",
+          "overrides": {
+            "hint": "Optional"
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone"
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "children-overview",
+      "title": "Tell us about your children",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "relationship-to-children",
+            "label": "Your relationship to the children",
+            "validations": {
+              "required": {
+                "error": "Select your relationship to the children",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Mother",
+                "value": "mother"
+              },
+              {
+                "label": "Father",
+                "value": "father"
+              },
+              {
+                "label": "Guardian",
+                "value": "guardian"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "number-of-children-born",
+            "label": "Number of children born in the same birth",
+            "validations": {
+              "required": {
+                "error": "Select the number of children born",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Twins",
+                "value": "twins"
+              },
+              {
+                "label": "Triplets",
+                "value": "triplets"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "child-details",
+      "title": "Give us your child's details",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "child-first-name",
+            "label": "Child's first name"
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "child-middle-name",
+            "label": "Child's middle name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "child-last-name",
+            "label": "Child's last name"
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "fieldId": "child-national-id",
+            "label": "Child's National ID Number"
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "fieldId": "child-date-of-birth"
+          }
+        },
+        {
+          "ref": "components/sex",
+          "overrides": {
+            "fieldId": "child-sex",
+            "label": "Child's sex"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "child-school",
+            "label": "Nursery or school attending",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "hint": "Optional"
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 2,
+          "max": 5,
+          "addAnotherLabel": "Do you need to add another child?"
+        }
+      ]
+    },
+    {
+      "stepId": "banking-information",
+      "title": "Give us your bank or credit union details",
+      "elements": [
+        {
+          "ref": "components/bank"
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "bank-address-line-1",
+            "label": "Bank address line 1",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "bank-parish",
+            "label": "Bank parish",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/account-number"
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "supporting-documents",
+      "title": "Give us your supporting documents",
+      "description": "All documents must be certified copies. Uncertified copies will not be accepted.",
+      "elements": [
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "parent-nrc",
+            "label": "Your National Registration Card",
+            "hint": "Please attach a certified copy",
+            "validations": {
+              "required": {
+                "error": "Upload your National Registration Card",
+                "value": true
+              },
+              "fileTypes": {
+                "error": "File must be a PDF or image (JPG, PNG)",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "child-birth-certificates",
+            "label": "Birth certificate for each child",
+            "hint": "Please attach certified copies",
+            "validations": {
+              "required": {
+                "error": "Upload birth certificates for each child",
+                "value": true
+              },
+              "fileTypes": {
+                "error": "File must be a PDF or image (JPG, PNG)",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              }
+            },
+            "multiple": true
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "child-national-cards",
+            "label": "National Registration Card for each child",
+            "hint": "Please attach certified copies",
+            "validations": {
+              "required": {
+                "error": "Upload National Registration Cards for each child",
+                "value": true
+              },
+              "fileTypes": {
+                "error": "File must be a PDF or image (JPG, PNG)",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              }
+            },
+            "multiple": true
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "banking-details-verification",
+            "label": "Banking details verification",
+            "hint": "Upload documents verifying the bank name, branch and account number. Please attach certified copies",
+            "validations": {
+              "required": {
+                "error": "Upload banking details verification",
+                "value": true
+              },
+              "fileTypes": {
+                "error": "File must be a PDF or image (JPG, PNG)",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "I declare that the information provided in this application is true and correct to the best of my knowledge. I understand that providing false or misleading information may result in disqualification from the benefit and possible legal action. Any changes in the children's circumstances should be immediately reported.",
+                "value": "confirmed"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-06-17T10:47:26.515Z",
+  "updatedAt": "2026-06-17T10:47:26.515Z"
+}

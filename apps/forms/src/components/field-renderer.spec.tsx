@@ -2,6 +2,7 @@ import type { Mock, MockedFunction } from "vitest";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { axe } from "jest-axe";
 import FieldRenderer from "./field-renderer";
 import type { ClientPrimitive } from "@forms/types";
 
@@ -171,42 +172,59 @@ describe("FieldRenderer", () => {
   });
 
   // -------------------------------------------------------------------------
-  // show-hide
+  // show-hide — native <details>/<summary> disclosure (#341)
   // -------------------------------------------------------------------------
   describe("show-hide htmlType", () => {
-    it("renders a toggle button with aria-expanded=false by default", () => {
+    const showHideSummary = (container: HTMLElement) =>
+      container.querySelector(
+        "details.govbb-show-hide > summary.govbb-show-hide__summary",
+      ) as HTMLElement | null;
+
+    it("renders a native <details> disclosure, collapsed by default", () => {
       const { container } = renderField(primitive("show-hide"));
-      const button = container.querySelector(".form-page__show-hide-toggle");
-      expect(button).toBeTruthy();
-      expect(button).toHaveAttribute("aria-expanded", "false");
+      const details = container.querySelector("details.govbb-show-hide");
+      expect(details).toBeTruthy();
+      // Collapsed by default — no `open` attribute.
+      expect(details).not.toHaveAttribute("open");
     });
 
-    it("clicking the toggle calls handleChange(!isOpen)", async () => {
+    it("the summary carries the field label", () => {
+      const { container } = renderField(
+        primitive("show-hide", { label: "More details" }),
+      );
+      const summary = showHideSummary(container);
+      expect(summary).toBeTruthy();
+      expect(summary?.textContent).toContain("More details");
+    });
+
+    it("toggling the summary open commits true", async () => {
       const user = userEvent.setup();
       const { container } = renderField(primitive("show-hide"));
-      const button = container.querySelector(
-        ".form-page__show-hide-toggle",
-      ) as HTMLButtonElement;
-      await user.click(button);
+      await user.click(showHideSummary(container)!);
       expect(mockFieldApi.handleChange).toHaveBeenCalledWith(true);
     });
 
-    it("when value is true, aria-expanded is true", () => {
+    it("when value is true, the <details> is open", () => {
       mockState = { value: true, meta: { isValid: true, errors: [] } };
       const { container } = renderField(primitive("show-hide"));
-      const button = container.querySelector(".form-page__show-hide-toggle");
-      expect(button).toHaveAttribute("aria-expanded", "true");
+      expect(
+        container.querySelector("details.govbb-show-hide"),
+      ).toHaveAttribute("open");
     });
 
-    it("clicking toggle when already open calls handleChange(false)", async () => {
+    it("toggling the summary closed (when open) commits false", async () => {
       const user = userEvent.setup();
       mockState = { value: true, meta: { isValid: true, errors: [] } };
       const { container } = renderField(primitive("show-hide"));
-      const button = container.querySelector(
-        ".form-page__show-hide-toggle",
-      ) as HTMLButtonElement;
-      await user.click(button);
+      await user.click(showHideSummary(container)!);
       expect(mockFieldApi.handleChange).toHaveBeenCalledWith(false);
+    });
+
+    it("has no axe-detectable accessibility violations", async () => {
+      const { container } = renderField(
+        primitive("show-hide", { label: "More details" }),
+      );
+      expect(await axe(container)).toHaveNoViolations();
     });
   });
 
@@ -318,6 +336,76 @@ describe("FieldRenderer", () => {
       expect(
         screen.getByRole("button", { name: "Remove Address line" }),
       ).toBeInTheDocument();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // fieldArray behaviour (type=textarea) — #341 regression: a repeatable
+  // textarea used to fall through into `case "text"` and render <input>.
+  // -------------------------------------------------------------------------
+  describe("fieldArray behaviour (type=textarea)", () => {
+    const fieldArrayBehaviour = { type: "fieldArray" as const, min: 1, max: 3 };
+
+    it("renders <textarea> elements, never <input>, in the array path", () => {
+      mockState = { value: ["first"], meta: { isValid: true, errors: [] } };
+      const { container } = renderField(
+        primitive("textarea", { behaviours: [fieldArrayBehaviour] }),
+      );
+      expect(container.querySelector("textarea")).toBeTruthy();
+      // The regression rendered a masked <input>; assert it never reappears.
+      expect(container.querySelector("input")).toBeNull();
+    });
+
+    it("shows 'Add Another' when count < max", () => {
+      mockState = { value: ["first"], meta: { isValid: true, errors: [] } };
+      renderField(primitive("textarea", { behaviours: [fieldArrayBehaviour] }));
+      expect(screen.getByText(/Add Another/i)).toBeTruthy();
+    });
+
+    it("clicking 'Add Another' appends a new empty trailing entry (immutably)", async () => {
+      const user = userEvent.setup();
+      const original = ["first"];
+      mockState = { value: original, meta: { isValid: true, errors: [] } };
+      renderField(primitive("textarea", { behaviours: [fieldArrayBehaviour] }));
+      await user.click(screen.getByText(/Add Another/i));
+      expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["first", ""]);
+      // TanStack dedupes by reference: a mutated-in-place array would be
+      // dropped as "unchanged". Assert a fresh array is committed and the
+      // stored value is left untouched.
+      expect(mockFieldApi.handleChange.mock.calls[0][0]).not.toBe(original);
+      expect(original).toEqual(["first"]);
+    });
+
+    it("clicking 'Remove' drops the trailing entry (immutably)", async () => {
+      const user = userEvent.setup();
+      const original = ["first", "second"];
+      mockState = { value: original, meta: { isValid: true, errors: [] } };
+      renderField(primitive("textarea", { behaviours: [fieldArrayBehaviour] }));
+      await user.click(screen.getByText(/Remove/i));
+      expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["first"]);
+      expect(mockFieldApi.handleChange.mock.calls[0][0]).not.toBe(original);
+      expect(original).toEqual(["first", "second"]);
+    });
+
+    it("when value is undefined, renders exactly min textareas", () => {
+      mockState = { value: undefined, meta: { isValid: true, errors: [] } };
+      const { container } = renderField(
+        primitive("textarea", { behaviours: [fieldArrayBehaviour] }),
+      );
+      expect(container.querySelectorAll("textarea")).toHaveLength(1);
+    });
+
+    it("typing in an array textarea calls handleChange", async () => {
+      const user = userEvent.setup();
+      mockState = { value: [""], meta: { isValid: true, errors: [] } };
+      const { container } = renderField(
+        primitive("textarea", { behaviours: [fieldArrayBehaviour] }),
+      );
+      const textarea = container.querySelector(
+        "textarea",
+      ) as HTMLTextAreaElement;
+      await user.type(textarea, "hello");
+      expect(mockFieldApi.handleChange).toHaveBeenCalled();
     });
   });
 
@@ -504,6 +592,14 @@ describe("FieldRenderer", () => {
       expect(inputs).toHaveLength(1);
     });
 
+    it("tags the checkbox item with the single-checkbox alignment class", () => {
+      const { container } = renderField(
+        primitive("checkbox", { options: singleOption }),
+      );
+      const item = container.querySelector(".govbb-checkbox-item");
+      expect(item).toHaveClass("form-page__single-checkbox");
+    });
+
     it("clicking unchecked checkbox calls handleChange with the option value", async () => {
       const user = userEvent.setup();
       mockState = { value: "", meta: { isValid: true, errors: [] } };
@@ -545,6 +641,17 @@ describe("FieldRenderer", () => {
       const inputs = container.querySelectorAll("input");
       await user.click(inputs[0]);
       expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["a"]);
+    });
+
+    it("does not tag multi-option items with the single-checkbox alignment class", () => {
+      const { container } = renderField(
+        primitive("checkbox", { options: multiOptions }),
+      );
+      const items = container.querySelectorAll(".govbb-checkbox-item");
+      expect(items.length).toBeGreaterThan(1);
+      items.forEach((item) =>
+        expect(item).not.toHaveClass("form-page__single-checkbox"),
+      );
     });
 
     it("clicking a checked option removes it from the selection", async () => {

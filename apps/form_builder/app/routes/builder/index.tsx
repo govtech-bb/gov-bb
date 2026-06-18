@@ -819,6 +819,27 @@ function BuilderPage() {
     setLastSaveStatus("idle");
   };
 
+  // Load a duplicated recipe (from the picker) as a brand-new unsaved form:
+  // no loadedFromId so the next save is a create (formId uniqueness enforced),
+  // no savedDraft baseline so it reads as dirty, version reset to 1.0.0. Mirrors
+  // handleLoad's editor reset but with new-form identity.
+  const handleDuplicate = (dupDraft: RecipeDraft) => {
+    dispatch({ type: "LOAD_DRAFT", draft: dupDraft });
+    setSavedDraft(null);
+    setLoadedFromId(null);
+    setCurrentVersion(null);
+    setVersion("1.0.0");
+    setSelectedStepId(firstStepId(dupDraft));
+    setMainView("step");
+    setValidateResult(null);
+    setSubmitSuccess(false);
+    setSubmitError(null);
+    setPreviewData(null);
+    setPreviewRecipeJson(null);
+    setPreviewError(null);
+    setLastSaveStatus("idle");
+  };
+
   const handleRequestDelete = (form: FormDefinitionSummary) => {
     setDeleteError(null);
     setDeleteTarget(form);
@@ -1146,6 +1167,7 @@ function BuilderPage() {
           onRequestDisable={handleRequestDisable}
           onRequestErase={handleRequestErase}
           onEnable={handleEnable}
+          onDuplicate={handleDuplicate}
         />
       )}
 

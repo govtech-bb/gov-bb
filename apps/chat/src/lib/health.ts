@@ -1,10 +1,11 @@
 import { count, desc, max } from "drizzle-orm";
 import { getDb, hasDatabase, schema } from "#/lib/db";
+import { logger } from "#/lib/observability/logger";
 
 // The most recent ingest run, surfaced so the deploy workflow can gate on
-// ingest completion instead of fire-and-forget (#1269): it polls /api/health
-// until a run STARTED AFTER its trigger finishes, and fails the job when that
-// run failed.
+// ingest completion instead of fire-and-forget: it polls /api/health until a
+// run started AFTER its trigger has finished, and fails the job if that run
+// failed.
 export interface LastIngest {
   status: string; // running | success | failed
   startedAt: string;
@@ -21,6 +22,9 @@ export interface HealthReport {
   lastIngest: LastIngest | null;
 }
 
+// Reports DB connectivity, corpus size, and last-ingest status. `ok` is false
+// when the DB is unconfigured or unreachable, so /api/health can return 503 and
+// a load balancer / deploy gate can act on it.
 export async function checkHealth(): Promise<HealthReport> {
   if (!hasDatabase()) {
     return {
@@ -64,7 +68,9 @@ export async function checkHealth(): Promise<HealthReport> {
         : null,
     };
   } catch (err) {
-    console.error("[health] db check failed:", err);
+    logger.error("health.db_check_failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return {
       ok: false,
       db: "disconnected",
