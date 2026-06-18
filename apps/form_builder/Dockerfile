@@ -5,7 +5,7 @@
 # + AWS Bedrock for the AI-assisted authoring features. Production hosting is
 # separate — there's no production-build validation here (that lives in CI).
 
-FROM node:24-alpine
+FROM node:24-alpine@sha256:21f403ab171f2dc89bad4dd69d7721bfd15f084ccb46cdd225f31f2bc59b5c9a
 
 # Corepack must run as root — it writes to /usr/local/bin.
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
