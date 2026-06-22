@@ -30,9 +30,6 @@
     "zod": "^4.4.3"
   },
   "scripts": {
-    "nextdev": "next dev",
-    "next build": "next build",
-    "next start": "next start",
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "preview": "vite preview",
