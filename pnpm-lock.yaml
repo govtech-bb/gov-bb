@@ -497,6 +497,9 @@ importers:
       '@fontsource/inter':
         specifier: ^5.2.8
         version: 5.2.8
+      '@govtech-bb/content':
+        specifier: workspace:*
+        version: link:../../packages/content
       '@govtech-bb/form-builder':
         specifier: workspace:*
         version: link:../../packages/form-builder
@@ -764,6 +767,9 @@ importers:
       '@govtech-bb/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
+      '@govtech-bb/content':
+        specifier: workspace:*
+        version: link:../../packages/content
       '@govtech-bb/design':
         specifier: ^1.0.0-alpha.16
         version: 1.0.0-alpha.16
