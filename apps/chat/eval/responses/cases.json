@@ -93,6 +93,46 @@
       "message": "this chatbot ain been too helpful, I want to leave some feedback"
     },
     {
+      "id": "direct-hurricane-prep",
+      "category": "direct",
+      "dialect": "standard",
+      "message": "how do I prepare for a hurricane",
+      "expect": {
+        "citationSlug": "stormready",
+        "replyIncludes": ["hurricane season"]
+      }
+    },
+    {
+      "id": "direct-hurricane-prep-bajan",
+      "category": "direct",
+      "dialect": "bajan",
+      "message": "wuh I gotta do to get ready before a hurricane hit?",
+      "expect": {
+        "citationSlug": "stormready",
+        "replyIncludes": ["hurricane season"]
+      }
+    },
+    {
+      "id": "direct-emergency-shelter",
+      "category": "direct",
+      "dialect": "standard",
+      "message": "where is the nearest emergency shelter",
+      "expect": {
+        "citationSlug": "find-an-emergency-shelter",
+        "replyIncludes": ["emergency shelter"]
+      }
+    },
+    {
+      "id": "direct-emergency-shelter-bajan",
+      "category": "direct",
+      "dialect": "bajan",
+      "message": "if a storm come, weh I could go for shelter?",
+      "expect": {
+        "citationSlug": "find-an-emergency-shelter",
+        "replyIncludes": ["emergency shelter"]
+      }
+    },
+    {
       "id": "multi-turn-clarify-to-service",
       "category": "direct",
       "dialect": "standard",
