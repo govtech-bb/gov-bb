@@ -1,7 +1,7 @@
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import pg from "pg";
+import { getCachedSecretString } from "@govtech-bb/aws-secrets";
 import * as schema from "./schema";
-import { getCachedSecret } from "../secrets";
 
 export type Database = NodePgDatabase<typeof schema> & { $client: pg.Pool };
 let dbPromise: Promise<Database> | null = null;
@@ -23,7 +23,7 @@ async function resolveConnectionString(): Promise<string> {
       "Neither DATABASE_URL/CHAT_DATABASE_URL nor CHAT_DATABASE_URL_SECRET_ARN is set",
     );
   }
-  return getCachedSecret(arn);
+  return getCachedSecretString(arn);
 }
 
 export function hasDatabase(): boolean {
