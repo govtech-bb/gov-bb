@@ -13,8 +13,11 @@ import type {
   DatePart,
   DateValidationError,
 } from "@govtech-bb/form-validation";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import FileUpload from "./file-upload";
 import { MaskedInput } from "./masked-input";
+import { markdownComponents } from "./markdown-components";
 
 /** An inset field entry passed from the parent radio/select group. */
 export interface InsetFieldEntry {
@@ -683,7 +686,15 @@ export default function FieldRenderer({
                         className="govbb-checkbox-item__label"
                         htmlFor={`${field.id}-${option.value}`}
                       >
-                        {option.label}
+                        {/* Declaration/consent copy is authored in markdown
+                            (bullets, bold) — render it so the statement reads
+                            as intended rather than as a run-on line. */}
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={markdownComponents}
+                        >
+                          {option.label}
+                        </ReactMarkdown>
                       </label>
                     </div>
                   </div>
