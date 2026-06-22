@@ -11,15 +11,15 @@ import type {
 import type {
   PaymentRequiredEvent,
   SubmissionCreatedEvent,
-} from "../../submissions.types";
+} from "@/forms/submissions/submissions.types";
 import { EzpayClient } from "./ezpay/ezpay.client";
 import { DepartmentKeyResolver } from "./ezpay/department-keys";
-import { PaymentRepository } from "../../../../payments/payment.repository";
-import { generatePaymentReference } from "../../../../payments/payment-reference";
+import { PaymentRepository } from "@/payments/payment.repository";
+import { generatePaymentReference } from "@/payments/payment-reference";
 import {
   PaymentProvider,
   PaymentStatus,
-} from "../../../../database/entities/payment.entity";
+} from "@/database/entities/payment.entity";
 
 @Injectable()
 export class PaymentProcessor implements ISubmissionProcessor {

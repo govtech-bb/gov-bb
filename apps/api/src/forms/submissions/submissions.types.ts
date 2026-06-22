@@ -1,4 +1,4 @@
-import type { FormSubmissionEntity } from "../../database/entities/form-submission.entity";
+import type { FormSubmissionEntity } from "@/database/entities/form-submission.entity";
 import type { Processor, SubmissionValues } from "@govtech-bb/form-types";
 
 // SubmissionValues now lives in @govtech-bb/form-types (the browser↔backend wire

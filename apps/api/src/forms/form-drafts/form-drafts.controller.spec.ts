@@ -1,7 +1,7 @@
 import { NotFoundException } from "@nestjs/common";
 import { FormDraftsController } from "./form-drafts.controller";
 import { CreateFormDraftDto, UpdateFormDraftDto } from "./dto";
-import type { FormDraftEntity } from "../../database/entities/form-draft.entity";
+import type { FormDraftEntity } from "@/database/entities/form-draft.entity";
 
 const mockDraft = (overrides: Partial<FormDraftEntity> = {}): FormDraftEntity =>
   ({

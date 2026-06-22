@@ -2,9 +2,9 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { FormDefinitionRepository } from "./form-definition.repository";
 import { RecipeFileLoaderService } from "./recipe-file-loader.service";
-import { RegistryService } from "../../registry/registry.service";
+import { RegistryService } from "@/registry/registry.service";
 import { FormConfigService } from "../form-config/form-config.service";
-import { AppError } from "../../common/errors";
+import { AppError } from "@/common/errors";
 import { compareSemver } from "@govtech-bb/form-types";
 import type {
   Processor,
