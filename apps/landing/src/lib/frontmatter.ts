@@ -31,7 +31,7 @@ export const FrontmatterSchema = z.object({
   form_id: z.string().optional(),
 })
 
-export type RawFrontmatter = z.infer<typeof FrontmatterSchema>
+type RawFrontmatter = z.infer<typeof FrontmatterSchema>
 
 /**
  * Resolved frontmatter after the registry normalises shape:

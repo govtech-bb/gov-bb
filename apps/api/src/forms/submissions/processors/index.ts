@@ -1,7 +1,4 @@
-export {
-  ISubmissionProcessor,
-  SUBMISSION_PROCESSORS,
-} from "./submission-processor.interface";
+export { SUBMISSION_PROCESSORS } from "./submission-processor.interface";
 export { ProcessorFactory } from "./processor-factory.service";
 export { EmailProcessor } from "./email.processor";
 export { OpencrvsProcessor } from "./opencrvs.processor";

@@ -9,7 +9,7 @@ import type { Root } from 'hast'
 import { collectHeadings, sanitizeUrls } from './plugins'
 import type { MarkdownHeading } from './plugins'
 
-export type ProcessedMarkdown = {
+type ProcessedMarkdown = {
   hast: Root
   headings: Array<MarkdownHeading>
 }
