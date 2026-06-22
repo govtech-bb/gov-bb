@@ -48,13 +48,15 @@ export async function getCachedSecretString(arn: string): Promise<string> {
 }
 
 /**
- * Resolve a secret whose value is a JSON object. Parses on top of the shared
- * string cache, so it never issues a separate Secrets Manager call for an ARN
- * already fetched as a string.
+ * Resolve a secret whose value is JSON (e.g. an RDS-managed master secret
+ * `{ username, password }`, or form_builder's token bundle). Parses on top of
+ * the shared string cache, so it never issues a separate Secrets Manager call
+ * for an ARN already fetched as a string. Pass `T` to type the parsed shape;
+ * defaults to `Record<string, unknown>`.
  */
-export async function getCachedSecretJson(
+export async function getCachedSecretJson<T = Record<string, unknown>>(
   arn: string,
-): Promise<Record<string, unknown>> {
+): Promise<T> {
   const raw = await getCachedSecretString(arn);
-  return JSON.parse(raw) as Record<string, unknown>;
+  return JSON.parse(raw) as T;
 }

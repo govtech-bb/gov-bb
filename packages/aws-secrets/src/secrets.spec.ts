@@ -78,6 +78,18 @@ describe("getCachedSecretJson", () => {
     });
   });
 
+  it("types the parsed result via the generic parameter", async () => {
+    sendMock.mockResolvedValue({
+      SecretString: JSON.stringify({ username: "u", password: "p" }),
+    });
+    const creds = await getCachedSecretJson<{
+      username: string;
+      password: string;
+    }>("arn:json:typed");
+    expect(creds.username).toBe("u");
+    expect(creds.password).toBe("p");
+  });
+
   it("reuses the shared string cache (no extra Secrets Manager call)", async () => {
     sendMock.mockResolvedValue({ SecretString: JSON.stringify({ k: "v" }) });
     await getCachedSecretString("arn:json:shared");
