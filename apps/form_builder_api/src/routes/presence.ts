@@ -9,7 +9,7 @@ export const presenceRouter = Router();
  * it's stale: ignored on read and overwritable by the next claimant. This is
  * the guarantee behind the lock — eager release on leave is only best-effort.
  */
-export const PRESENCE_TTL_MINUTES = 15;
+const PRESENCE_TTL_MINUTES = 15;
 
 // SQL fragment: the row is a *fresh* claim. Used on read and as the inverse of
 // the stale-takeover condition on claim, so both agree on the boundary.
@@ -22,7 +22,7 @@ interface Queryable {
   query(sql: string, params?: unknown[]): Promise<any[]>;
 }
 
-export interface PresenceHolder {
+interface PresenceHolder {
   userLogin: string;
   claimedAt: string;
   lastActivityAt: string;

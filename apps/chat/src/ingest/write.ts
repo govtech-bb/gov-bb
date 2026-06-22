@@ -9,7 +9,7 @@ import { embedWithRetry } from "#/lib/rag/embed";
 import type { PlannedChunk, PlannedDocument } from "./chunker";
 import type { ExistingState, IngestPlan } from "./plan";
 
-export interface ProgressEvent {
+interface ProgressEvent {
   phase: "documents" | "chunks";
   done: number;
   total: number;

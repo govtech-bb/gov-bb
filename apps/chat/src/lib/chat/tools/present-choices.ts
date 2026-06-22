@@ -10,7 +10,7 @@ import { z } from "zod";
 // as a question + ChoicePills; a click sends the chosen label as the user's next
 // message (the same turn-based path as a form pill). The server side is a no-op:
 // the real answer arrives as the user's next turn, so this just acknowledges.
-export const presentChoicesToolDef = toolDefinition({
+const presentChoicesToolDef = toolDefinition({
   name: "presentChoices",
   description:
     'Offer the user a closed-set choice as clickable buttons. Ask the question in your normal reply (e.g. "Would you like me to show you the support options?"), then call presentChoices with ONLY the button labels — e.g. choices: ["Yes, show me the options", "No, I need something else"]. NOT for open answers (names, dates, addresses) and NOT for a form field (use presentField for those). END YOUR TURN after calling — wait for the user to pick.',
