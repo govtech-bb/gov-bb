@@ -1,4 +1,4 @@
-# 0054 — Node10/CJS apps consume shared ESM workspace packages via a narrow subpath
+# 0055 — Node10/CJS apps consume shared ESM workspace packages via a narrow subpath
 
 ## Context
 

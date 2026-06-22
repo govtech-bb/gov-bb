@@ -21,7 +21,7 @@ extractions in `docs/plans/1391-lib-bedrock-secrets-categories.md`).
   `tsconfig.dev.json`, `vitest.config.ts`, and `Dockerfile`.
 - Removed the now-orphaned `@aws-sdk/client-bedrock-runtime` direct dep.
 - Captured the resolution convention in ADR
-  `0054-node10-apps-consume-esm-workspace-packages-via-subpath`.
+  `0055-node10-apps-consume-esm-workspace-packages-via-subpath`.
 
 ## Why we did it that way
 
@@ -42,7 +42,7 @@ resolver + the AWS SDK, exposed via a narrow `./converse` subpath.
 Node10/CJS app run as `node dist/main.js`, resolving workspace deps via Dockerfile
 symlinks + `package.json`, whereas `ai-bedrock` is ESM exporting raw `.ts` source
 (fine for Vite-bundled `chat`, not for a compiled node app). Getting a *subpath*
-to resolve under Node10 took several dead ends (see ADR 0054 and below). Verified
+to resolve under Node10 took several dead ends (see ADR 0055 and below). Verified
 the CJS-requires-ESM interop by replicating the runner layout and `require()`-ing
 the built artifact under Node 24 — not just trusting it.
 
@@ -67,5 +67,5 @@ the built artifact under Node 24 — not just trusting it.
 ## Open questions
 
 None for LIB-03. The sibling extractions LIB-04 (#1392, aws-secrets) and LIB-05
-(#1393, content) remain unstarted — separate PRs; ADR 0054 gives them the wiring
+(#1393, content) remain unstarted — separate PRs; ADR 0055 gives them the wiring
 recipe if a Node10 app consumes them.
