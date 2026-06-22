@@ -37,11 +37,16 @@ export default function Header() {
 
   return (
     <div>
-      <OfficialBanner
-        imageSrc="/images/coat-of-arms.png"
-        imageAlt=""
-        showLearnMore={false}
-      />
+      <div className='bg-blue-100'>
+        <div className="container">
+          <OfficialBanner
+            imageSrc="/images/coat-of-arms.png"
+            className="[&>div]:px-0"
+            imageAlt=""
+            showLearnMore={false}
+          />
+        </div>
+      </div>
       <div className="bg-blue-10">
         <div className="container">
           <StageBanner stage="alpha" />
