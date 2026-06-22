@@ -20,6 +20,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "paths": {
+      "@govtech-bb/analytics": ["packages/analytics/src/index.ts"],
       "@govtech-bb/form-builder": ["packages/form-builder/src/index.ts"],
       "@govtech-bb/form-types": ["packages/form-types/src/index.ts"],
       "@govtech-bb/expressions": ["packages/expressions/src/index.ts"],

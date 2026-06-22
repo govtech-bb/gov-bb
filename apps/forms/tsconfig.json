@@ -20,6 +20,9 @@
   },
   "references": [
     {
+      "path": "../../packages/analytics"
+    },
+    {
       "path": "../../packages/form-types"
     },
     {
