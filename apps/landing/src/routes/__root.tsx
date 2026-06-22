@@ -8,6 +8,7 @@ import {
 import { Footer, textVariants } from '@govtech-bb/react'
 import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
+import { PreviewComments } from '../components/PreviewComments'
 import { trackEvent } from '../lib/analytics'
 import { resolveViewLevel } from '../lib/preview'
 
@@ -134,6 +135,10 @@ function ServerErrorPage() {
 }
 
 function RootLayout() {
+  // `level` is resolved server-side in beforeLoad and rides the router context.
+  // Anything above `public` is a reviewer in preview mode, so show the widget.
+  const { level } = Route.useRouteContext()
+
   return (
     <div
       className={`${textVariants({ size: 'body' })} grid min-h-screen grid-rows-[auto_1fr_auto] font-sans antialiased text-black-00 bg-white-00`}
@@ -148,6 +153,7 @@ function RootLayout() {
         logoAlt="Barbados Coat of Arms"
         copyrightText={`© ${new Date().getFullYear()} Government of Barbados`}
       />
+      <PreviewComments enabled={level !== 'public'} />
     </div>
   )
 }
