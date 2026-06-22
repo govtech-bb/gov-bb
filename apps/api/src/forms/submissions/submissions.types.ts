@@ -23,7 +23,7 @@ export function isRepeatableStepErrors(
 }
 
 /** Legacy audit-trail shape — only emitted by rows persisted before v2. */
-export interface SubmissionAuditTrailV1 {
+interface SubmissionAuditTrailV1 {
   schemaVersion: 1;
   pinnedFormVersion: string;
   draftId: string | null;
@@ -141,7 +141,7 @@ export interface SubmitDto {
   isSmokeSubmission?: boolean;
 }
 
-export type SubmitOutcome = "created" | "duplicate" | "in_progress";
+type SubmitOutcome = "created" | "duplicate" | "in_progress";
 
 export interface SubmitResult {
   outcome: SubmitOutcome;

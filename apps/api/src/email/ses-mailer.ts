@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 
 /** A single SES tag forwarded to the configured event destination. */
-export interface EmailTag {
+interface EmailTag {
   Name: string;
   Value: string;
 }
