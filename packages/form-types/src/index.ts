@@ -85,6 +85,8 @@ export type {
 
 export type { Block } from "./block.type";
 
+export type { SubmissionValues } from "./submission.type";
+
 export {
   formStepSchema,
   recipeComponentFieldSchema,
