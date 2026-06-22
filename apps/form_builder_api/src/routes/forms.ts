@@ -15,13 +15,7 @@ import {
   type FormTitleRow,
 } from "./form-uniqueness.js";
 import { holdsFreshClaim } from "./presence.js";
-
-// Read the optional `userLogin` (the editor's GitHub login, stamped by the SSR
-// session) off a request body, trimmed. Empty when absent.
-function readUserLogin(body: unknown): string {
-  const raw = (body as { userLogin?: unknown } | null)?.userLogin;
-  return typeof raw === "string" ? raw.trim() : "";
-}
+import { readUserLogin } from "../utils/request.js";
 
 // Defense-in-depth presence gate shared by create/update: the caller must send
 // a non-empty userLogin (400) and must hold the current fresh editing claim on
