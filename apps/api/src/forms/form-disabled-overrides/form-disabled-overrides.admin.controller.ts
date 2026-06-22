@@ -10,6 +10,7 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
+import { AdminToken } from "../../common/admin-token.decorator";
 import { FormDisabledOverridesService } from "./form-disabled-overrides.service";
 import { DisableFormDto } from "./dto";
 import { ApiResponse } from "../../common/response";
@@ -26,12 +27,14 @@ interface DisabledStatusResponse {
 /**
  * Admin endpoints for the per-form kill switch.
  *
- * SECURITY: This controller does NOT implement authentication. Until
- * issue #11 lands, access is restricted at the load balancer (network ACL).
- * Do not expose to the public internet.
+ * SECURITY: Stopgap-guarded by @AdminToken() — every endpoint requires a valid
+ * `x-admin-token` header (ADMIN_API_TOKEN). This is the interim control until
+ * real per-user auth (#11) lands; the load-balancer network ACL stays in place
+ * as defence in depth.
  */
 @ApiTags("Admin — Form Disabled Overrides")
 @ApiBearerAuth()
+@AdminToken()
 @Controller("admin/form-definitions")
 @Throttle({
   short: { limit: 5, ttl: 10_000 },

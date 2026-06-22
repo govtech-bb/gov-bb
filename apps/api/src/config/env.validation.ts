@@ -100,6 +100,15 @@ export const envValidationSchema = Joi.object({
   WEBHOOK_SECRET: Joi.string().allow("").default(""),
   WEBHOOK_TIMEOUT_MS: Joi.number().integer().min(1000).default(10000),
 
+  // Admin endpoints stopgap auth (#286): shared secret for the @AdminToken()
+  // guard (x-admin-token header). Required in production so the guard can't
+  // ship un-configured; optional elsewhere (unset → dev passthrough).
+  ADMIN_API_TOKEN: Joi.string().when("NODE_ENV", {
+    is: "production",
+    then: Joi.required(),
+    otherwise: Joi.string().allow("").default(""),
+  }),
+
   // Recipe preview (optional — empty disables the per-request preview escape hatch)
   RECIPE_PREVIEW_TOKEN: Joi.string().allow("").default(""),
 

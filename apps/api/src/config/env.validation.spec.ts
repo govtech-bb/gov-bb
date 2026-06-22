@@ -7,6 +7,7 @@ const baseEnv = {
   DB_NAME: "modular_forms",
   EZPAY_BASE_URL: "https://test.ezpay.gov.bb",
   EZPAY_DEPARTMENT_API_KEYS: "{}",
+  ADMIN_API_TOKEN: "test-admin-token",
 };
 
 describe("envValidationSchema", () => {
@@ -96,6 +97,31 @@ describe("envValidationSchema", () => {
         { allowUnknown: true, abortEarly: false },
       );
       expect(error).toBeUndefined();
+    });
+  });
+
+  describe("ADMIN_API_TOKEN — production guard (#286)", () => {
+    it("requires ADMIN_API_TOKEN to be set in production", () => {
+      const { ADMIN_API_TOKEN: _omit, ...envWithout } = baseEnv;
+      const { error } = envValidationSchema.validate(
+        {
+          ...envWithout,
+          NODE_ENV: "production",
+          CORS_ORIGIN: "https://gov.bb",
+        },
+        { allowUnknown: true, abortEarly: false },
+      );
+      expect(error?.message).toMatch(/ADMIN_API_TOKEN/);
+    });
+
+    it("defaults ADMIN_API_TOKEN to empty outside production", () => {
+      const { ADMIN_API_TOKEN: _omit, ...envWithout } = baseEnv;
+      const { error, value } = envValidationSchema.validate(
+        { ...envWithout, NODE_ENV: "development" },
+        { allowUnknown: true, abortEarly: false },
+      );
+      expect(error).toBeUndefined();
+      expect(value.ADMIN_API_TOKEN).toBe("");
     });
   });
 
