@@ -3,7 +3,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "jest-axe";
-import FieldRenderer from "./field-renderer";
+import FieldRenderer from ".";
 import type { ClientPrimitive } from "@forms/types";
 
 // ---------------------------------------------------------------------------
