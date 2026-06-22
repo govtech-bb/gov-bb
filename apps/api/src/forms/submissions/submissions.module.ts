@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { HttpModule } from "@nestjs/axios";
 import { ConfigModule } from "@nestjs/config";
 import { SubmissionsController } from "./submissions.controller";
 import { SubmissionsService } from "./submissions.service";
@@ -17,19 +18,20 @@ import { PaymentProcessor } from "./processors/payment/payment.processor";
 import { FormDefinitionsModule } from "../form-definitions/form-definitions.module";
 import { FormConfigModule } from "../form-config/form-config.module";
 import { FormDraftsModule } from "../form-drafts/form-drafts.module";
-import { PaymentsModule } from "../../payments/payments.module";
-import { FilesModule } from "../../files/files.module";
+import { PaymentsModule } from "@/payments/payments.module";
+import { FilesModule } from "@/files/files.module";
 import { SqsProducerService } from "./sqs/sqs-producer.service";
 import { SqsConsumerService } from "./sqs/sqs-consumer.service";
-import sqsConfig from "../../config/sqs.config";
-import { ExpressionsModule } from "../../expressions/expressions.module";
-import { EmailTemplateService } from "../../email/email-template.service";
-import { EmailBodyBuilder } from "../../email/email-body.builder";
-import { SesMailer } from "../../email/ses-mailer";
-import { PaymentRequiredListener } from "../../email/payment-required.listener";
+import sqsConfig from "@/config/sqs.config";
+import { ExpressionsModule } from "@/expressions/expressions.module";
+import { EmailTemplateService } from "@/email/email-template.service";
+import { EmailBodyBuilder } from "@/email/email-body.builder";
+import { SesMailer } from "@/email/ses-mailer";
+import { PaymentRequiredListener } from "@/email/payment-required.listener";
 
 @Module({
   imports: [
+    HttpModule,
     FormDefinitionsModule,
     FormConfigModule,
     FormDraftsModule,

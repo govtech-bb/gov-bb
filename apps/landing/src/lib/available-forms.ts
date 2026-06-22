@@ -32,7 +32,7 @@ const DEFAULT_API_URL = 'https://forms.api.sandbox.alpha.gov.bb'
 const FETCH_TIMEOUT_MS = 15_000
 
 /** How long a fetched list is served before the next request refetches it. */
-export const TTL_MS = 60_000
+const TTL_MS = 60_000
 
 /**
  * Extra fetch attempts on a cold start (no cached list yet) before giving up
@@ -55,7 +55,7 @@ const defaultSleep = (ms: number): Promise<void> =>
 /** Canonical form IDs are kebab-case (ADR-0028). */
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/
 
-export interface FormsCache {
+interface FormsCache {
   ids: string[]
   fetchedAt: number
 }
@@ -104,7 +104,7 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
 }
 
 /** Fetch and validate the canonical list of available form IDs. */
-export async function fetchFormIds(): Promise<string[]> {
+async function fetchFormIds(): Promise<string[]> {
   const apiBase = (process.env.VITE_FORMS_API_URL ?? DEFAULT_API_URL).replace(
     /\/+$/,
     '',

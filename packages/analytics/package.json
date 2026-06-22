@@ -1,0 +1,16 @@
+{
+  "name": "@govtech-bb/analytics",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "lint-staged": "^16.4.0"
+  },
+  "lint-staged": {
+    "*.ts": "npx prettier --write"
+  }
+}
