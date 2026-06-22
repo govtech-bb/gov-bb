@@ -20,6 +20,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "paths": {
+      "@govtech-bb/analytics": ["packages/analytics/src/index.ts"],
       "@govtech-bb/form-builder": ["packages/form-builder/src/index.ts"],
       "@govtech-bb/form-types": ["packages/form-types/src/index.ts"],
       "@govtech-bb/expressions": ["packages/expressions/src/index.ts"],
@@ -27,6 +28,7 @@
       "@govtech-bb/form-validation": ["packages/form-validation/src/index.ts"],
       "@govtech-bb/registry": ["packages/registry/src/index.ts"],
       "@govtech-bb/database": ["packages/database/src/index.ts"],
+      "@govtech-bb/git-publish": ["packages/git-publish/src/index.ts"],
       "@forms/types": ["apps/forms/src/types/index.ts"],
       "@forms/lib": ["apps/forms/src/lib/form-builder/index.ts"],
       "@forms/form-api": ["apps/forms/src/lib/api/forms.ts"],

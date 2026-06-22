@@ -28,6 +28,11 @@
  * `string_to_array(version, '.')::int[] DESC` ordering so the highest semver
  * (not the lexically-largest string) wins — lives here once. Callers pass only
  * the columns they need.
+ *
+ * This is the one deliberate DB-side copy of the recipe-version ordering: the
+ * canonical TypeScript comparator is `compareSemver` in `@govtech-bb/form-types`
+ * (issue #1395 / DUP-02). The Postgres `int[]` cast matches its numeric,
+ * segment-wise semantics — keep the two in step if either changes.
  */
 export function latestVersionPerFormSql(columns: string): string {
   return `

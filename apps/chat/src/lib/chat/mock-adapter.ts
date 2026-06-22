@@ -17,6 +17,7 @@ import {
   BaseTextAdapter,
   type StructuredOutputResult,
 } from "@tanstack/ai/adapters";
+import { humanise } from "./labels";
 
 // A scripted stand-in for the Bedrock chat adapter, gated by env.LLM_MOCK. It
 // is NOT a model: it derives the next action purely from the message history —
@@ -351,11 +352,6 @@ function runFinished(
     timestamp: Date.now(),
     finishReason,
   };
-}
-
-function humanise(fieldId: string): string {
-  const s = fieldId.replace(/[-_]+/g, " ").trim();
-  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function summaryLine(collected: Map<string, string>): string {

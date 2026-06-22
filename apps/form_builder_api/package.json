@@ -16,6 +16,7 @@
     "@govtech-bb/database": "workspace:*",
     "@govtech-bb/form-builder": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
+    "@govtech-bb/git-publish": "workspace:*",
     "cors": "^2.8.5",
     "dotenv": "17.4.2",
     "express": "^5.1.0",

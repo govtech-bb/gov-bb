@@ -4,11 +4,10 @@ import {
   Outlet,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { Footer } from "@govtech-bb/react";
+import { Footer, OfficialBanner } from "@govtech-bb/react";
 import { NotFound } from "@forms/components";
 import type { QueryClient } from "@tanstack/react-query";
 import { LANDING_URL } from "../config/landing";
-import { OfficialBanner } from "../components/official-banner";
 import { SiteHeader } from "../components/site-header";
 
 /**
@@ -37,7 +36,11 @@ const RootLayout = () => (
     <a href="#main-content" className="govbb-visually-hidden-focusable">
       Skip to main content
     </a>
-    <OfficialBanner />
+    <OfficialBanner
+      imageSrc="/images/coat-of-arms.png"
+      imageAlt=""
+      showLearnMore={false}
+    />
     <SiteHeader />
     <main id="main-content" className="flex-1">
       <Outlet />
