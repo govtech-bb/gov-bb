@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { HttpModule } from "@nestjs/axios";
 import { ConfigModule } from "@nestjs/config";
 import { SubmissionsController } from "./submissions.controller";
 import { SubmissionsService } from "./submissions.service";
@@ -30,6 +31,7 @@ import { PaymentRequiredListener } from "../../email/payment-required.listener";
 
 @Module({
   imports: [
+    HttpModule,
     FormDefinitionsModule,
     FormConfigModule,
     FormDraftsModule,
