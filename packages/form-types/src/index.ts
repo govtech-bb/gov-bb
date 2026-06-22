@@ -85,6 +85,10 @@ export type {
 
 export type { Block } from "./block.type";
 
+export type { SubmissionValues } from "./submission.type";
+
+export type { ApiResponseShape } from "./api-response.type";
+
 export {
   formStepSchema,
   recipeComponentFieldSchema,

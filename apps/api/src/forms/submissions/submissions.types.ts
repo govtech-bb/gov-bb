@@ -1,14 +1,10 @@
 import type { FormSubmissionEntity } from "../../database/entities/form-submission.entity";
-import type { Processor } from "@govtech-bb/form-types";
+import type { Processor, SubmissionValues } from "@govtech-bb/form-types";
 
-/**
- * Step values keyed by stepId. Repeatable steps are arrays of instance
- * objects; non-repeatable steps are a single instance object.
- */
-export type SubmissionValues = Record<
-  string,
-  Record<string, unknown> | Array<Record<string, unknown>>
->;
+// SubmissionValues now lives in @govtech-bb/form-types (the browser↔backend wire
+// shape, single-sourced — #1399). Re-exported here so the many api consumers
+// that import it from this module keep working.
+export type { SubmissionValues };
 
 export type FieldErrorMap = Record<string, string[]>;
 

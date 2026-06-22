@@ -7,6 +7,7 @@ import {
   HtmlTypes,
   Option,
   PrimitiveUI,
+  SubmissionValues,
   ValidationRule,
 } from "@govtech-bb/form-types";
 import z from "zod";
@@ -61,5 +62,6 @@ const fieldId = z.string();
 export const formValuesSchema = z.record(fieldId, fieldValueSchema);
 export type FormValues = z.infer<typeof formValuesSchema>;
 
-type stepId = string;
-export type FormValuesByStep = Record<stepId, FormValues | Array<FormValues>>;
+// The browser↔backend wire shape, single-sourced in @govtech-bb/form-types
+// (#1399). Kept under this load-bearing local name.
+export type FormValuesByStep = SubmissionValues;
