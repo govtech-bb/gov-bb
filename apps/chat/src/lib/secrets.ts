@@ -47,3 +47,12 @@ export async function getCachedSecret(arn: string): Promise<string> {
   }
   return inflight;
 }
+
+// JSON-shaped Secrets Manager values (e.g. RDS-managed master secrets, which
+// hold `{"username": "...", "password": "..."}`). Wraps getCachedSecret +
+// JSON.parse so the chat can read RDS's secret directly instead of through
+// a TF-derived secret that needs `tofu apply` to stay in sync after rotation.
+export async function getCachedJsonSecret<T>(arn: string): Promise<T> {
+  const raw = await getCachedSecret(arn);
+  return JSON.parse(raw) as T;
+}
