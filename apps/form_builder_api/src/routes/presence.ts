@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { getDataSource } from "../db.js";
+import { readUserLogin } from "../utils/request.js";
 
 export const presenceRouter = Router();
 
@@ -37,11 +38,6 @@ function toHolder(row: {
     claimedAt: row.claimed_at,
     lastActivityAt: row.last_activity_at,
   };
-}
-
-function readUserLogin(body: unknown): string {
-  const raw = (body as { userLogin?: unknown } | null)?.userLogin;
-  return typeof raw === "string" ? raw.trim() : "";
 }
 
 /**
