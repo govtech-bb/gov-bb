@@ -216,8 +216,6 @@ export const deleteFormDraft = async (draftId: string): Promise<number> => {
   return response.status;
 };
 
-export const postEzpay = async () => {};
-
 export const postFormSubmission = async (
   { formId, version: formVersion, idempotencyKey }: FormMeta,
   valuesBySteps: FormValuesByStep,
