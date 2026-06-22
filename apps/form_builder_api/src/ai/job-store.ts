@@ -19,19 +19,29 @@ export type JobState<T> =
 export const ONE_HOUR_MS = 60 * 60 * 1000;
 export const SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 
+// Defence-in-depth cap on entries per store. The TTL sweep is the primary
+// guard, but a sustained burst of jobs in <1 hour could otherwise grow the
+// Map unbounded. At ~5KB per entry, 500 entries ≈ 2.5MB — comfortably below
+// the task's memory budget, but large enough that legitimate bursts don't
+// trip the cap. Eviction is FIFO by insertion order (#291).
+export const DEFAULT_MAX_SIZE = 500;
+
 export interface JobStore<T> {
   get(jobId: string): JobState<T> | undefined;
   set(jobId: string, state: JobState<T>): void;
 }
 
 // Creates an isolated job-store: a private Map plus its own periodic sweep that
-// evicts entries older than ONE_HOUR_MS. `onEvict(key)` fires once per swept
-// entry — ai-upload.ts uses it to drop the orphan context entry in lockstep
-// with its job entry.
+// evicts entries older than ONE_HOUR_MS, with a hard FIFO cap of `maxSize`
+// entries. `onEvict(key)` fires once per evicted entry (TTL sweep OR cap
+// eviction) — ai-upload.ts uses it to drop the orphan context entry in
+// lockstep with its job entry.
 export function createJobStore<T>(opts?: {
   onEvict?: (key: string) => void;
+  maxSize?: number;
 }): JobStore<T> {
   const stateByJobId = new Map<string, JobState<T>>();
+  const maxSize = opts?.maxSize ?? DEFAULT_MAX_SIZE;
 
   setInterval(() => {
     const cutoff = Date.now() - ONE_HOUR_MS;
@@ -47,6 +57,16 @@ export function createJobStore<T>(opts?: {
   return {
     get: (jobId) => stateByJobId.get(jobId),
     set: (jobId, state) => {
+      // Cap only counts NEW keys — updating an existing entry's state (e.g.
+      // running → done) keeps it in place. When adding a new key would exceed
+      // the cap, evict the oldest entry by insertion order (Map preserves it).
+      if (!stateByJobId.has(jobId) && stateByJobId.size >= maxSize) {
+        const oldest = stateByJobId.keys().next().value;
+        if (oldest !== undefined) {
+          stateByJobId.delete(oldest);
+          opts?.onEvict?.(oldest);
+        }
+      }
       stateByJobId.set(jobId, state);
     },
   };
