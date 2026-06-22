@@ -24,6 +24,10 @@ overrides:
   uuid@<11.1.1: ^11.1.1
   js-yaml@>=4.0.0 <4.1.2: ^4.1.2
   "@opentelemetry/core@<2.8.0": ^2.8.0
+  # GHSA-gv7w-rqvm-qjhr — esbuild Deno module skipped binary integrity check.
+  # Only affects the drizzle-kit transitive chain now (vite + tsx already
+  # require >=0.28.1). Dev-only, but ends the daily audit cron's loop.
+  esbuild@<0.28.1: ^0.28.1
 
 # pnpm blocks dependency build scripts by default; allowBuilds is the
 # reviewed decision list. true = must run (fetch/verify native binaries).
