@@ -577,9 +577,6 @@ importers:
 
   apps/form_builder_api:
     dependencies:
-      '@aws-sdk/client-bedrock-runtime':
-        specifier: ^3.1057.0
-        version: 3.1066.0
       '@aws-sdk/client-s3':
         specifier: ^3.1052.0
         version: 3.1066.0
@@ -589,6 +586,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1052.0
         version: 3.1066.0
+      '@govtech-bb/ai-bedrock':
+        specifier: workspace:*
+        version: link:../../packages/ai-bedrock
       '@govtech-bb/database':
         specifier: workspace:*
         version: link:../../packages/database
