@@ -513,6 +513,9 @@ importers:
       '@govtech-bb/form-types':
         specifier: workspace:*
         version: link:../../packages/form-types
+      '@govtech-bb/git-publish':
+        specifier: workspace:*
+        version: link:../../packages/git-publish
       '@govtech-bb/registry':
         specifier: workspace:*
         version: link:../../packages/registry
@@ -598,6 +601,9 @@ importers:
       '@govtech-bb/form-types':
         specifier: workspace:*
         version: link:../../packages/form-types
+      '@govtech-bb/git-publish':
+        specifier: workspace:*
+        version: link:../../packages/git-publish
       cors:
         specifier: ^2.8.5
         version: 2.8.6
@@ -993,6 +999,8 @@ importers:
       lint-staged:
         specifier: ^16.4.0
         version: 16.4.0
+
+  packages/git-publish: {}
 
   packages/registry:
     dependencies:

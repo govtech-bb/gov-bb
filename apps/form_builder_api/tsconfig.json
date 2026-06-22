@@ -16,7 +16,8 @@
     "paths": {
       "@govtech-bb/database": ["../../packages/database/src/index.ts"],
       "@govtech-bb/form-builder": ["../../packages/form-builder/src/index.ts"],
-      "@govtech-bb/form-types": ["../../packages/form-types/src/index.ts"]
+      "@govtech-bb/form-types": ["../../packages/form-types/src/index.ts"],
+      "@govtech-bb/git-publish": ["../../packages/git-publish/src/index.ts"]
     }
   },
   "include": ["src/**/*.ts"],
