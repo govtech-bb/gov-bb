@@ -8,7 +8,7 @@ import {
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
 import { getPublishedRecipe } from "./github-recipes";
-import { compare as compareSemver } from "../lib/version";
+import { compareSemver } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
 import { requireSession } from "./auth/require-session";
 

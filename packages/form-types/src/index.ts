@@ -162,3 +162,5 @@ export {
   deployBranchName,
   eraseBranchName,
 } from "./deploy-branch";
+
+export { compareSemver, validate, bumpMinor, bumpPatch } from "./semver";
