@@ -2,7 +2,7 @@ import { ContactDetails } from "@govtech-bb/form-types";
 import { AnyFormApi } from "@tanstack/react-form";
 import { ClientFormStep, ClientPrimitive } from "./field-mapper.type";
 import { FormMeta } from "./renderer.type";
-import { RepeatableStepSettings } from "./behavior-helper.type";
+import { RepeatableStepSettings } from "./repeatable.type";
 
 export interface FormRendererProps {
   form: AnyFormApi;
