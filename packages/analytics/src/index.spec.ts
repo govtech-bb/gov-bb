@@ -92,4 +92,8 @@ describe("deriveStartEventName", () => {
       "renew-passport-start",
     );
   });
+
+  it("collapses an all-slashes path to the bare suffix", () => {
+    expect(deriveStartEventName("///")).toBe("-start");
+  });
 });

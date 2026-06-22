@@ -22,7 +22,14 @@ export function trackPageview(): void {
 }
 
 export function deriveStartEventName(href: string): string {
-  const trimmed = href.replace(/^\/+|\/+$/g, "");
+  // Trim leading/trailing slashes with index walks rather than a regex —
+  // `/^\/+|\/+$/g` is a polynomial-ReDoS pattern (js/polynomial-redos) on
+  // inputs with many repeated slashes.
+  let start = 0;
+  let end = href.length;
+  while (start < end && href[start] === "/") start++;
+  while (end > start && href[end - 1] === "/") end--;
+  const trimmed = href.slice(start, end);
   const withoutStart = trimmed.replace(/\/start$/, "");
   const slug = withoutStart.replace(/\//g, "-");
   return `${slug}-start`;
