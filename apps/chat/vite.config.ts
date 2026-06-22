@@ -27,7 +27,6 @@ export default defineConfig(({ mode }) => {
         pick("CHAT_DATABASE_URL_SECRET_ARN"),
       ),
       "process.env.FORM_API_URL": JSON.stringify(pick("FORM_API_URL")),
-      "process.env.FORMS_URL": JSON.stringify(pick("FORMS_URL")),
       "process.env.LANDING_URL": JSON.stringify(
         pick("LANDING_URL", "https://alpha.gov.bb"),
       ),
