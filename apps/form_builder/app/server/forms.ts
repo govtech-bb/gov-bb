@@ -8,7 +8,7 @@ import {
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
 import { getPublishedRecipe } from "./github-recipes";
-import { compare as compareSemver } from "../lib/version";
+import { compareSemver } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
 import { requireSession } from "./auth/require-session";
 
@@ -254,21 +254,4 @@ export const enableForm = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }): Promise<void> => {
     await api.del(`/builder/forms/${encodeURIComponent(data.formId)}/disabled`);
-  });
-
-// Delete a single version row of a form. Unlike deleteForm, this leaves no
-// tombstone and only removes the one matching row — for pruning a superseded
-// draft. The API returns 404 if no such row and 400 if it's published.
-export const deleteFormVersion = createServerFn({ method: "POST" })
-  .middleware([requireSession])
-  .inputValidator(
-    z.object({
-      formId: z.string().min(1),
-      version: z.string().min(1),
-    }),
-  )
-  .handler(async ({ data }): Promise<void> => {
-    await api.del(
-      `/builder/forms/${encodeURIComponent(data.formId)}/versions/${encodeURIComponent(data.version)}`,
-    );
   });

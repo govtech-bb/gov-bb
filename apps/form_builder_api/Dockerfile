@@ -13,6 +13,7 @@ USER app
 
 COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml nx.json tsconfig.base.json ./
 COPY --chown=app:app apps/form_builder_api/package.json apps/form_builder_api/
+COPY --chown=app:app packages/ai-bedrock/package.json packages/ai-bedrock/
 COPY --chown=app:app packages/database/package.json packages/database/
 COPY --chown=app:app packages/form-builder/package.json packages/form-builder/
 COPY --chown=app:app packages/form-types/package.json packages/form-types/
@@ -59,6 +60,7 @@ COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
 
 # Workspace package symlinks so require("@govtech-bb/database") resolves
 RUN mkdir -p node_modules/@govtech-bb && \
+    ln -sfn ../../packages/ai-bedrock node_modules/@govtech-bb/ai-bedrock && \
     ln -sfn ../../packages/database node_modules/@govtech-bb/database && \
     ln -sfn ../../packages/form-builder node_modules/@govtech-bb/form-builder && \
     ln -sfn ../../packages/form-types node_modules/@govtech-bb/form-types && \
@@ -68,6 +70,7 @@ RUN mkdir -p node_modules/@govtech-bb && \
     ln -sfn ../../packages/registry node_modules/@govtech-bb/registry
 
 # Package manifests needed for module resolution
+COPY --from=builder --chown=app:app /app/packages/ai-bedrock/package.json ./packages/ai-bedrock/
 COPY --from=builder --chown=app:app /app/packages/database/package.json ./packages/database/
 COPY --from=builder --chown=app:app /app/packages/form-builder/package.json ./packages/form-builder/
 COPY --from=builder --chown=app:app /app/packages/form-types/package.json ./packages/form-types/

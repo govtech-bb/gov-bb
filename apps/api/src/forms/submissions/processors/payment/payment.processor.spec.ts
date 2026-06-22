@@ -1,5 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { PaymentProcessor } from "./payment.processor";
 import { EzpayClient } from "./ezpay/ezpay.client";
 import { DepartmentKeyResolver } from "./ezpay/department-keys";
@@ -24,6 +25,7 @@ describe("PaymentProcessor.process", () => {
     save: vi.fn().mockImplementation(async (e) => e),
   };
   const deptKeys = new DepartmentKeyResolver({ education: "edu-key" });
+  const events = { emit: vi.fn() };
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -40,6 +42,7 @@ describe("PaymentProcessor.process", () => {
         { provide: EzpayClient, useValue: ezpay },
         { provide: DepartmentKeyResolver, useValue: deptKeys },
         { provide: PaymentRepository, useValue: paymentRepo },
+        { provide: EventEmitter2, useValue: events },
       ],
     }).compile();
     processor = module.get(PaymentProcessor);
@@ -115,6 +118,41 @@ describe("PaymentProcessor.process", () => {
         providerToken: "tok-1",
       }),
     );
+  });
+
+  it("emits payment.required with the pre-payment email details on fresh initiation", async () => {
+    ezpay.createPayment.mockResolvedValue({
+      token: "tok-1",
+      url: "https://ezpay/p?token=tok-1",
+    });
+
+    await processor.process(event());
+
+    expect(events.emit).toHaveBeenCalledWith("payment.required", {
+      customerEmail: "p@q.r",
+      formId: "school-fees",
+      formVersion: "1.0.0",
+      referenceCode: "SCH-20260604-130732-000001",
+      submissionId: "sub-1",
+      amount: 50,
+      description: "Term fees",
+      paymentUrl: "https://ezpay/p?token=tok-1",
+    });
+  });
+
+  it("does NOT emit payment.required when returning a cached payment URL (retry)", async () => {
+    paymentRepo.findOrCreate.mockResolvedValue({
+      id: "pay-1",
+      submissionId: "sub-1",
+      status: PaymentStatus.INITIATED,
+      providerUrl: "https://ezpay/p?token=existing",
+      expectedAmount: "50",
+      description: "Term fees",
+    } as PaymentEntity);
+
+    await processor.process(event());
+
+    expect(events.emit).not.toHaveBeenCalled();
   });
 
   it("returns the existing payment URL on retry (idempotent)", async () => {
@@ -204,6 +242,7 @@ describe("PaymentProcessor.process", () => {
           useValue: new DepartmentKeyResolver({}),
         },
         { provide: PaymentRepository, useValue: paymentRepo },
+        { provide: EventEmitter2, useValue: events },
       ],
     }).compile();
     const isolated = moduleRef.get(PaymentProcessor);

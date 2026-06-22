@@ -144,7 +144,7 @@ export class PaymentWebhookService {
     payment.status = PaymentStatus.SUCCESS;
     await this.paymentRepo.save(payment);
 
-    await this.fireDownstream(payment);
+    await this.fireDownstream(payment, verified);
     return { payment, outcome: "success" };
   }
 
@@ -207,7 +207,10 @@ export class PaymentWebhookService {
     return PaymentTransactionStatus.INITIATED;
   }
 
-  private async fireDownstream(payment: PaymentEntity): Promise<void> {
+  private async fireDownstream(
+    payment: PaymentEntity,
+    verified: VerifyPaymentResult,
+  ): Promise<void> {
     // Emit AFTER the transaction commits, never inside it. EventEmitter2
     // fires listeners synchronously and the SubmissionProcessorListener enqueues
     // to SQS; a different API instance could dequeue and read the submission row
@@ -255,6 +258,17 @@ export class PaymentWebhookService {
           processors: downstreamProcessors,
           values: submission.values as SubmissionCreatedEvent["values"],
           meta: submission.meta as unknown as SubmissionCreatedEvent["meta"],
+          // Confirmed-payment details for the MDA/reviewer email. expectedAmount
+          // is the authoritative charged amount (amountsMatch confirmed it equals
+          // what EzPay reported). A transaction number is always present on a
+          // verified Success; guard defensively so a missing one omits the block
+          // rather than rendering "undefined".
+          ...(verified.transactionNumber && {
+            payment: {
+              amountReceived: `$${Number(payment.expectedAmount).toFixed(2)}`,
+              transactionId: verified.transactionNumber,
+            },
+          }),
         };
       },
     );

@@ -193,6 +193,10 @@ describe("PaymentWebhookService", () => {
       { type: "spreadsheet", config: {} },
     ]);
     expect(payload.values).toEqual({ step1: { name: "Jane" } });
+    expect(payload.payment).toEqual({
+      amountReceived: "$50.00",
+      transactionId: "TXN-1",
+    });
   });
 
   it("emits submission.created only AFTER the transaction resolves, never inside it (#299)", async () => {
