@@ -135,6 +135,7 @@ export { SEMVER_PATTERN, SEMVER_ERROR, semverSchema } from "./version-pattern";
 export { dynamic } from "./dynamic";
 
 export { shallowMergeDefined } from "./merge";
+export { applyFieldOverrides } from "./resolution-merge";
 
 export { validateFormContract } from "./validate-form-contract";
 export type {
