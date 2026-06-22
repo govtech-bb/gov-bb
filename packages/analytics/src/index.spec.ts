@@ -1,9 +1,15 @@
-import { trackEvent, trackPageview } from "./analytics";
+import { deriveStartEventName, trackEvent, trackPageview } from "./index";
 
 describe("trackEvent", () => {
   afterEach(() => {
+    vi.unstubAllGlobals();
     delete (window as { umami?: unknown }).umami;
     vi.restoreAllMocks();
+  });
+
+  it("no-ops when window is undefined (SSR)", () => {
+    vi.stubGlobal("window", undefined);
+    expect(() => trackEvent("form-open")).not.toThrow();
   });
 
   it("no-ops when window.umami is absent", () => {
@@ -39,8 +45,14 @@ describe("trackEvent", () => {
 
 describe("trackPageview", () => {
   afterEach(() => {
+    vi.unstubAllGlobals();
     delete (window as { umami?: unknown }).umami;
     vi.restoreAllMocks();
+  });
+
+  it("no-ops when window is undefined (SSR)", () => {
+    vi.stubGlobal("window", undefined);
+    expect(() => trackPageview()).not.toThrow();
   });
 
   it("no-ops when window.umami is absent", () => {
@@ -53,5 +65,35 @@ describe("trackPageview", () => {
     trackPageview();
     expect(track).toHaveBeenCalledTimes(1);
     expect(track).toHaveBeenCalledWith();
+  });
+});
+
+describe("deriveStartEventName", () => {
+  it("derives a single-segment slug", () => {
+    expect(deriveStartEventName("/renew-passport/start")).toBe(
+      "renew-passport-start",
+    );
+  });
+
+  it("joins nested paths with dashes", () => {
+    expect(deriveStartEventName("/travel/renew-passport/start")).toBe(
+      "travel-renew-passport-start",
+    );
+  });
+
+  it("tolerates trailing slashes", () => {
+    expect(deriveStartEventName("/renew-passport/start/")).toBe(
+      "renew-passport-start",
+    );
+  });
+
+  it("tolerates missing leading slash", () => {
+    expect(deriveStartEventName("renew-passport/start")).toBe(
+      "renew-passport-start",
+    );
+  });
+
+  it("collapses an all-slashes path to the bare suffix", () => {
+    expect(deriveStartEventName("///")).toBe("-start");
   });
 });

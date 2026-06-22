@@ -656,6 +656,9 @@ importers:
       '@fontsource/figtree':
         specifier: ^5.2.10
         version: 5.2.10
+      '@govtech-bb/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@govtech-bb/design':
         specifier: ^1.0.0-alpha.16
         version: 1.0.0-alpha.16
@@ -771,6 +774,9 @@ importers:
       '@fontsource/figtree':
         specifier: ^5.2.10
         version: 5.2.10
+      '@govtech-bb/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@govtech-bb/design':
         specifier: ^1.0.0-alpha.16
         version: 1.0.0-alpha.16
@@ -904,6 +910,12 @@ importers:
       '@tanstack/ai':
         specifier: 'catalog:'
         version: 0.28.0(@opentelemetry/api@1.9.1)
+
+  packages/analytics:
+    devDependencies:
+      lint-staged:
+        specifier: ^16.4.0
+        version: 16.4.0
 
   packages/content:
     dependencies:
