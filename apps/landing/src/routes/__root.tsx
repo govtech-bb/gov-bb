@@ -127,7 +127,7 @@ function ServerErrorPage() {
         'Try again in a few minutes',
         'Contact us if the problem continues',
       ]}
-      secondary={{ label: 'Contact us', href: '/contact' }}
+      secondary={{ label: 'Contact us', href: '/feedback' }}
       primary={{ label: 'Return to homepage', href: '/' }}
     />
   )

@@ -6,11 +6,11 @@ import type {
   RepeatableBehaviour,
   Primitive,
 } from "@govtech-bb/form-types";
-import type { FormDraftEntity } from "../../database/entities/form-draft.entity";
+import type { FormDraftEntity } from "@/database/entities/form-draft.entity";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
 import { FormDraftsService } from "../form-drafts/form-drafts.service";
-import { FilesService } from "../../files/files.service";
-import { AppError } from "../../common/errors";
+import { FilesService } from "@/files/files.service";
+import { AppError } from "@/common/errors";
 import { expandSubmission, type StepInstance } from "./submission-expand";
 import {
   foldErrors,

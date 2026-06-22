@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
-import { validate, compare } from "../../lib/version";
+import { validate, compareSemver } from "../../lib/version";
 import { formPreviewUrl } from "../../lib/form-url";
 import styles from "../../styles/builder.module.css";
 import { useEscClose } from "./-use-esc-close";
@@ -54,7 +54,7 @@ export function SubmitModal({
     }
 
     if (isUpdate && currentVersion) {
-      if (compare(versionInput, currentVersion) < 0) {
+      if (compareSemver(versionInput, currentVersion) < 0) {
         setClientError(`Version must be the same as or greater than the current version (${currentVersion})`);
         return;
       }

@@ -12,8 +12,8 @@ import {
   type ValidationResult,
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
-import { listVersions, RECIPES_BASE, compareSemver } from "./github-recipes";
-import { bumpMinor } from "../lib/version";
+import { listVersions, RECIPES_BASE } from "./github-recipes";
+import { bumpMinor, compareSemver } from "../lib/version";
 import {
   repoUrl,
   authHeaders,

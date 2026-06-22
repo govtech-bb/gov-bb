@@ -4,7 +4,7 @@ import { LessThan } from "typeorm";
 import {
   FormDraftEntity,
   DraftStatus,
-} from "../../database/entities/form-draft.entity";
+} from "@/database/entities/form-draft.entity";
 import { FormDraftRepository } from "./form-draft.repository";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
 import { FormDraftsService } from "./form-drafts.service";

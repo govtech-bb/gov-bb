@@ -287,7 +287,11 @@ function BuilderPage() {
         setLastSaveStatus("error");
         return result;
       }
-      const emptyStep = editableSteps.find((s) => s.fields.length === 0);
+      // A content-only step (intro/information page) carries markdownContent
+      // and no fields — that is valid. A step with neither is the empty step.
+      const emptyStep = editableSteps.find(
+        (s) => s.fields.length === 0 && !s.markdownContent,
+      );
       if (emptyStep) {
         const result: RecipeValidateResponse = {
           valid: false,

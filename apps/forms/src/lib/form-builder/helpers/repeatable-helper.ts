@@ -8,7 +8,7 @@ import {
   FormValues,
   FormMeta,
 } from "@forms/types";
-import { getFullFieldId } from "@forms/lib";
+import { getFullFieldId } from "../field-mapper";
 import {
   RepeatableBehaviour,
   SharedFieldsBehaviour,
