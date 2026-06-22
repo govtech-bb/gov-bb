@@ -52,8 +52,6 @@ export default defineConfig({
         // Database infrastructure — requires live database connection
         "**/database/data-source.ts",
         "**/database/seed.ts",
-        // Constant/event definition files — no executable logic
-        "**/payment.events.ts",
         // Registry behavior/validation builders — integration tests pending
         "**/registry/builtins/behaviors/**",
         // Form builder AI module — integration in progress
