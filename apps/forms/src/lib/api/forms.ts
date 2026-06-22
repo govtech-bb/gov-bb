@@ -5,7 +5,7 @@ import {
   serviceContractSchema,
   type StepFieldEntry,
 } from "@govtech-bb/form-types";
-import { stepFieldIdConcactenator } from "@forms/lib";
+import { stepFieldIdConcactenator } from "../form-builder/field-mapper";
 import {
   ApiResponse,
   FormDefinitionResponse,

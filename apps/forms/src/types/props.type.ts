@@ -6,7 +6,7 @@ import {
   ClientServiceContract,
 } from "./field-mapper.type";
 import { FormMeta } from "./renderer.type";
-import { RepeatableStepSettings } from "./behavior-helper.type";
+import { RepeatableStepSettings } from "./repeatable.type";
 
 export interface FormRendererProps {
   form: AnyFormApi;

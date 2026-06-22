@@ -8,7 +8,8 @@ import {
   ClientFormStep,
 } from "@forms/types";
 import { buildValidation } from "./validation-builder";
-import { getStepConditonalTargets, setupRepeatSteps } from "@forms/lib";
+import { getStepConditonalTargets } from "./helpers/behavior-helper";
+import { setupRepeatSteps } from "./helpers/repeatable-helper";
 import { v4 as uuidv4 } from "uuid";
 
 export const buildForm = (contract: ClientServiceContract): FormMeta => {
