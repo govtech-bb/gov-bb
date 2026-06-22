@@ -1,4 +1,5 @@
 import { REPO_NAME, repoOwner } from "./github-repo";
+import { compareSemver } from "../lib/version";
 
 const API_BASE = "https://api.github.com";
 
@@ -25,25 +26,6 @@ function ghHeaders(token: string): Record<string, string> {
     "X-GitHub-Api-Version": "2022-11-28",
     "User-Agent": "gov-bb-form-builder",
   };
-}
-
-function parseSemver(v: string): number[] {
-  return v.split(".").map((seg) => {
-    const n = Number.parseInt(seg, 10);
-    return Number.isFinite(n) ? n : -Infinity;
-  });
-}
-
-export function compareSemver(a: string, b: string): number {
-  const aa = parseSemver(a);
-  const bb = parseSemver(b);
-  const len = Math.max(aa.length, bb.length);
-  for (let i = 0; i < len; i++) {
-    const av = aa[i] ?? 0;
-    const bv = bb[i] ?? 0;
-    if (av !== bv) return av - bv;
-  }
-  return 0;
 }
 
 async function ghGet(
