@@ -176,3 +176,9 @@ export {
 } from "./deploy-branch";
 
 export { compareSemver, validate, bumpMinor, bumpPatch } from "./semver";
+
+export type {
+  MdaContact,
+  MdaContactAddress,
+  CreateMdaContactInput,
+} from "./mda-contact.type";

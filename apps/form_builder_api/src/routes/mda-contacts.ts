@@ -1,21 +1,30 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { MdaContactEntity } from "@govtech-bb/database";
+import type {
+  CreateMdaContactInput,
+  MdaContactAddress,
+} from "@govtech-bb/form-types";
 import { getDataSource } from "../db.js";
 
 export const mdaContactsRouter = Router();
 
-// Public department address. Mirrors the MdaContactAddress shape in
-// @govtech-bb/database and the form-types `contactDetails` address subset.
+// Public department address. `satisfies z.ZodType<MdaContactAddress>` binds this
+// schema to the single-sourced shape in @govtech-bb/form-types (issue #1397 /
+// DUP-04): if the shared type drops, renames, or retypes a field — or this
+// schema stops producing a required one — it fails to compile.
 const addressSchema = z.object({
   line1: z.string().min(1),
   line2: z.string().optional(),
   city: z.string().min(1),
   country: z.string().optional(),
-});
+}) satisfies z.ZodType<MdaContactAddress>;
 
 // Create body — every field required except `address`. `email` and `mdaEmail`
 // are validated as emails so a malformed recipient is caught at the boundary.
+// `satisfies z.ZodType<CreateMdaContactInput>` keeps this request contract in
+// step with the shared type the builder client sends: a field removed, renamed,
+// or retyped on the shared type breaks the build here.
 const createMdaContactSchema = z.object({
   label: z.string().min(1),
   title: z.string().min(1),
@@ -23,7 +32,7 @@ const createMdaContactSchema = z.object({
   email: z.string().email(),
   address: addressSchema.optional(),
   mdaEmail: z.string().email(),
-});
+}) satisfies z.ZodType<CreateMdaContactInput>;
 
 // GET /builder/mda-contacts — the full contact directory (includes the private
 // mdaEmail; this router sits behind the /builder admin-token middleware).
