@@ -211,7 +211,7 @@ export async function applySubmit(
   return { ok: true, reference };
 }
 
-export const submitFormToolDef = toolDefinition({
+const submitFormToolDef = toolDefinition({
   name: "submitForm",
   description:
     "Submit a collected form. Call this once you've collected every required field — the user gets a Check-your-answers card with a Submit/Approve prompt, so do NOT summarise the answers in your text or ask them to confirm first. Pass the formId and a values object mapping each fieldId to the user's answer. Returns ok:true with a reference on success; ok:false with errors if a value is invalid (fix it and call submitForm again). If dryRun:true, this was a test — tell the user it was NOT actually submitted.",
