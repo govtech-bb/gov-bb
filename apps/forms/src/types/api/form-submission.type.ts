@@ -1,13 +1,4 @@
 import z from "zod";
-import { FormValues } from "../field-mapper.type";
-
-type stepId = string;
-
-export interface FormSubmissionBody {
-  formId: string;
-  draftId?: string;
-  values: Record<stepId, FormValues>;
-}
 
 export const formSubmissionResponseBodySchema = z.object({
   id: z.string(),
