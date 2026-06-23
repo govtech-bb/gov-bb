@@ -3,7 +3,7 @@
 # for local-stack parity. Production hosting is Amplify, not this image — so
 # there's no production-build validation here (that lives in CI).
 
-FROM node:24-alpine
+FROM node:24-alpine3.23
 
 # Corepack must run as root — it writes to /usr/local/bin.
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
