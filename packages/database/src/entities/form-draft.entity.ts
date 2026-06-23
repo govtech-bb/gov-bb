@@ -14,8 +14,10 @@ export class FormDraftEntity extends TimestampedEntity {
   @Column({ name: "form_id", type: "varchar", length: 100 })
   formId!: string;
 
-  @Column({ name: "form_version", type: "varchar", length: 20 })
-  formVersion!: string;
+  // Nullable post-#1196: a draft against the canonical recipe has no pinned
+  // version. Retained as an audit breadcrumb (see migration M1).
+  @Column({ name: "form_version", type: "varchar", length: 20, nullable: true })
+  formVersion!: string | null;
 
   @Column({ type: "jsonb", default: {} })
   values!: Record<string, unknown>;
