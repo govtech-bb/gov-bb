@@ -1,120 +1,184 @@
-import * as Joi from "joi";
+import { z } from "zod";
 
-const productionCorsOrigin = Joi.string()
-  .required()
-  .custom((value: string, helpers) => {
-    const origins = value.split(",").map((o: string) => o.trim());
-    for (const origin of origins) {
-      if (origin === "*" || /localhost|127\.0\.0\.1/i.test(origin)) {
-        return helpers.error("cors.unsafe", { value: origin });
+// Env validation for apps/api, migrated from Joi to Zod (#1422 / TECH-05) so all
+// Node services share one validation library. Wired in app.module.ts via
+// ConfigModule's `validate:` hook. This schema is a fail-fast boot gate: the
+// `registerAs` config factories (config/*.config.ts) read `process.env`
+// directly with their own defaults, so the schema's job is to ACCEPT/REJECT at
+// boot exactly as the Joi version did — defaults/coercion here mirror Joi for
+// fidelity, but the factories are the runtime source of truth.
+
+// Joi `.required()` rejects empty strings; z.string() accepts "" — so required
+// vars use .min(1) to keep that parity.
+const requiredStr = () => z.string().min(1);
+
+// Joi.boolean() default: accepts the booleans and the strings "true"/"false"
+// (case-insensitive), rejects anything else. Reproduce that, then coerce to a
+// real boolean with the given default when unset.
+const boolFromEnv = (def: boolean) =>
+  z
+    .preprocess(
+      (v) => (typeof v === "string" ? v.toLowerCase() : v),
+      z.union([z.boolean(), z.enum(["true", "false"])]).default(def),
+    )
+    .transform((v) => (typeof v === "boolean" ? v : v === "true"));
+
+// Joi.string().uri() with `.allow("")` → a valid URL or the empty string.
+const urlOrEmpty = () => z.union([z.url(), z.literal("")]);
+
+// Joi.number() rejects "" / whitespace; a bare z.coerce.number() would turn
+// them into 0. Reject blank strings before coercion so the two unbounded ports
+// keep Joi parity. (The .min()-bounded numeric vars below already reject the
+// coerced 0, so they don't need this.) Coercion otherwise matches Joi.number():
+// 0, negatives and floats stay valid, non-numeric strings are rejected.
+const portFromEnv = (def: number) =>
+  z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? NaN : v),
+    z.coerce.number().default(def),
+  );
+
+// CORS_ORIGIN is unsafe in production if any comma-separated origin is a
+// wildcard or points at localhost / loopback. Returns the offending origin (for
+// the error message) or null.
+const unsafeProdOrigin = (value: string): string | null => {
+  for (const origin of value.split(",").map((o) => o.trim())) {
+    if (origin === "*" || /localhost|127\.0\.0\.1/i.test(origin)) return origin;
+  }
+  return null;
+};
+
+const baseSchema = z
+  .object({
+    // App
+    NODE_ENV: z
+      .enum(["development", "production", "test"])
+      .default("development"),
+    API_PORT: portFromEnv(3001),
+    // Conditional on NODE_ENV — required + safe in prod, defaulted otherwise.
+    // The base field is optional here; the prod guard and the dev default are
+    // applied in superRefine + transform below (Zod can't express a
+    // sibling-conditional default inline the way Joi's alternatives() can).
+    CORS_ORIGIN: z.string().optional(),
+
+    // Database
+    DB_HOST: requiredStr(),
+    DB_PORT: portFromEnv(5432),
+    DB_USERNAME: requiredStr(),
+    DB_PASSWORD: requiredStr(),
+    DB_NAME: requiredStr(),
+    DB_SYNCHRONIZE: boolFromEnv(false),
+    DB_LOGGING: boolFromEnv(false),
+    DB_SSL_CA: z.string().optional(),
+
+    // OpenTelemetry (optional — telemetry is disabled if either is unset)
+    OTEL_SERVICE_NAME: z.string().optional(),
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
+
+    // SES (optional — required only when forms use the email processor)
+    SES_REGION: z.string().optional(),
+    SES_FROM_ADDRESS: z.string().default("noreply@gov.bb"),
+    SES_CONFIGURATION_SET: z.string().optional(),
+    // Fallback recipient for the "config.*" recipient kind when no form_config
+    // row resolves (e.g. sandbox). Defaults to a shared test inbox so sandbox
+    // never emails a real MDA.
+    SES_DEFAULT_RECIPIENT: z.string().default("testing@govtech.bb"),
+
+    // Recipient for the public site feedback form (apps/landing /feedback).
+    FEEDBACK_RECIPIENT: z.string().default("feedback@govtech.bb"),
+
+    // Spreadsheet export (optional — defaults to <cwd>/exports in the factory)
+    SPREADSHEET_EXPORT_DIR: z.string().optional(),
+
+    // SQS (optional — SQS_QUEUE_URL required only when SQS_ENABLED=true)
+    SQS_ENABLED: boolFromEnv(false),
+    SQS_REGION: z.string().optional(),
+    SQS_ENDPOINT: z.url().optional(), // LocalStack / custom endpoint
+    SQS_QUEUE_URL: urlOrEmpty().optional(),
+
+    // Public forms site origin for the EzPay return redirect. Empty = fall back
+    // to the first CORS_ORIGIN entry in the consuming code.
+    FORMS_BASE_URL: urlOrEmpty().default(""),
+
+    // EzPay (EZPAY_WEBHOOK_SECRET required only when verify-signature is on)
+    EZPAY_BASE_URL: z.url(),
+    EZPAY_DEPARTMENT_API_KEYS: requiredStr(),
+    EZPAY_WEBHOOK_VERIFY_SIGNATURE: z.enum(["true", "false"]).default("false"),
+    EZPAY_WEBHOOK_SECRET: z.string().optional(),
+
+    // Outbound case-management webhook (youth-opportunity submissions).
+    WEBHOOK_URL: urlOrEmpty().default(""),
+    WEBHOOK_SECRET: z.string().default(""),
+    WEBHOOK_TIMEOUT_MS: z.coerce.number().int().min(1000).default(10000),
+
+    // Recipe preview (empty disables the per-request preview escape hatch)
+    RECIPE_PREVIEW_TOKEN: z.string().default(""),
+
+    // Smoke submission (empty disables the processor-drop escape hatch, #1252)
+    SMOKE_SUBMISSION_TOKEN: z.string().default(""),
+
+    // S3 file uploads (optional — required only when a form uses file fields)
+    S3_BUCKET: z.string().default(""),
+    S3_REGION: z.string().optional(),
+    S3_ENDPOINT: z.url().optional(),
+    S3_FORCE_PATH_STYLE: boolFromEnv(false),
+    UPLOAD_MAX_SIZE_BYTES: z.coerce.number().int().min(1).default(10485760),
+    UPLOAD_PRESIGN_TTL_SECONDS: z.coerce.number().int().min(60).default(900),
+    UPLOAD_READ_URL_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(60)
+      .default(604800),
+  })
+  // allowUnknown: true — config factories read unknown-but-valid vars straight
+  // from process.env (AWS_REGION, AWS_DEFAULT_REGION, SES_ENDPOINT,
+  // EMAIL_ASSET_BASE_URL, …); they must survive validation.
+  .passthrough();
+
+export const envValidationSchema = baseSchema
+  .superRefine((env, ctx) => {
+    // CORS_ORIGIN production guard (mirrors Joi's productionCorsOrigin).
+    if (env.NODE_ENV === "production") {
+      if (!env.CORS_ORIGIN) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["CORS_ORIGIN"],
+          message: '"CORS_ORIGIN" is required when NODE_ENV=production',
+        });
+      } else {
+        const bad = unsafeProdOrigin(env.CORS_ORIGIN);
+        if (bad) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["CORS_ORIGIN"],
+            message: `"CORS_ORIGIN" must not contain ${bad} when NODE_ENV=production`,
+          });
+        }
       }
     }
-    return value;
+    // SQS_QUEUE_URL required when SQS_ENABLED=true (Joi `.when`).
+    if (env.SQS_ENABLED && !env.SQS_QUEUE_URL) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["SQS_QUEUE_URL"],
+        message: '"SQS_QUEUE_URL" is required when SQS_ENABLED=true',
+      });
+    }
+    // EZPAY_WEBHOOK_SECRET required when signature verification is on (Joi `.when`).
+    if (
+      env.EZPAY_WEBHOOK_VERIFY_SIGNATURE === "true" &&
+      !env.EZPAY_WEBHOOK_SECRET
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["EZPAY_WEBHOOK_SECRET"],
+        message:
+          '"EZPAY_WEBHOOK_SECRET" is required when EZPAY_WEBHOOK_VERIFY_SIGNATURE=true',
+      });
+    }
   })
-  .messages({
-    "cors.unsafe":
-      '"CORS_ORIGIN" must not contain {{#value}} when NODE_ENV=production',
-  });
-
-export const envValidationSchema = Joi.object({
-  // App
-  NODE_ENV: Joi.string()
-    .valid("development", "production", "test")
-    .default("development"),
-  API_PORT: Joi.number().default(3001),
-  CORS_ORIGIN: Joi.alternatives().conditional("NODE_ENV", {
-    is: "production",
-    then: productionCorsOrigin,
-    otherwise: Joi.string().default("http://localhost:3000"),
-  }),
-
-  // Database
-  DB_HOST: Joi.string().required(),
-  DB_PORT: Joi.number().default(5432),
-  DB_USERNAME: Joi.string().required(),
-  DB_PASSWORD: Joi.string().required(),
-  DB_NAME: Joi.string().required(),
-  DB_SYNCHRONIZE: Joi.boolean().default(false),
-  DB_LOGGING: Joi.boolean().default(false),
-  DB_SSL_CA: Joi.string().optional(),
-
-  // OpenTelemetry (optional — telemetry is disabled if either is unset)
-  OTEL_SERVICE_NAME: Joi.string().optional(),
-  OTEL_EXPORTER_OTLP_ENDPOINT: Joi.string().optional(),
-
-  // SES (optional — required only when forms use the email processor)
-  SES_REGION: Joi.string().optional(),
-  SES_FROM_ADDRESS: Joi.string().default("noreply@gov.bb"),
-  SES_CONFIGURATION_SET: Joi.string().optional(),
-  // Fallback recipient for the "config.*" recipient kind when no form_config
-  // row resolves (e.g. sandbox). Defaults to a shared test inbox so sandbox
-  // never emails a real MDA.
-  SES_DEFAULT_RECIPIENT: Joi.string().default("testing@govtech.bb"),
-
-  // Recipient for the public site feedback form (apps/landing /feedback).
-  // Explicit per-environment address, not routed through form_config (#1139).
-  FEEDBACK_RECIPIENT: Joi.string().default("feedback@govtech.bb"),
-
-  // Spreadsheet export (optional — defaults to <cwd>/exports)
-  SPREADSHEET_EXPORT_DIR: Joi.string().optional(),
-
-  // SQS (optional — required only when SQS_ENABLED=true)
-  // Single shared queue; processor type is carried inside each message body.
-  //   Main: modular-forms-submissions-sandbox
-  //   DLQ:  modular-forms-submissions-dlq-sandbox  (auto-routed after 3 failures)
-  SQS_ENABLED: Joi.boolean().default(false),
-  SQS_REGION: Joi.string().optional(),
-  SQS_ENDPOINT: Joi.string().uri().optional(), // LocalStack / custom endpoint
-  SQS_QUEUE_URL: Joi.string()
-    .uri()
-    .when("SQS_ENABLED", {
-      is: true,
-      then: Joi.required(),
-      otherwise: Joi.optional().allow(""),
-    }),
-
-  // Public forms site origin the EzPay return redirect bounces the citizen to
-  // after payment (e.g. https://forms.sandbox.alpha.gov.bb). Empty = fall back
-  // to the first CORS_ORIGIN entry, which is the forms site on every deployed
-  // env, so this only needs setting when the two ever diverge.
-  FORMS_BASE_URL: Joi.string().uri().allow("").default(""),
-
-  // EzPay (required only when forms use the payment processor)
-  EZPAY_BASE_URL: Joi.string().uri().required(),
-  EZPAY_DEPARTMENT_API_KEYS: Joi.string().required(),
-  EZPAY_WEBHOOK_VERIFY_SIGNATURE: Joi.string()
-    .valid("true", "false")
-    .default("false"),
-  EZPAY_WEBHOOK_SECRET: Joi.string().when("EZPAY_WEBHOOK_VERIFY_SIGNATURE", {
-    is: "true",
-    then: Joi.required(),
-    otherwise: Joi.string().optional().allow(""),
-  }),
-
-  // Outbound case-management webhook (youth-opportunity submissions). When a
-  // youth-opportunity form is submitted, the backend posts to
-  // `${WEBHOOK_URL}/api/webhooks/form-submitted` with the WEBHOOK_SECRET as the
-  // X-API-Key header — the dispatch the frontend used to do. An empty WEBHOOK_URL
-  // disables dispatch (logged + skipped), matching the old frontend behavior.
-  WEBHOOK_URL: Joi.string().uri().allow("").default(""),
-  WEBHOOK_SECRET: Joi.string().allow("").default(""),
-  WEBHOOK_TIMEOUT_MS: Joi.number().integer().min(1000).default(10000),
-
-  // Recipe preview (optional — empty disables the per-request preview escape hatch)
-  RECIPE_PREVIEW_TOKEN: Joi.string().allow("").default(""),
-
-  // Smoke submission (optional — empty disables the processor-drop escape hatch).
-  // When set, a POST /submissions carrying a matching X-Smoke-Submission header
-  // persists/validates but fires no processors — lets the post-deploy live
-  // smoke matrix run without real emails/webhooks (#1252).
-  SMOKE_SUBMISSION_TOKEN: Joi.string().allow("").default(""),
-
-  // S3 file uploads (optional — required only when a form uses file fields)
-  S3_BUCKET: Joi.string().allow("").default(""),
-  S3_REGION: Joi.string().optional(),
-  S3_ENDPOINT: Joi.string().uri().optional(),
-  S3_FORCE_PATH_STYLE: Joi.boolean().default(false),
-  UPLOAD_MAX_SIZE_BYTES: Joi.number().integer().min(1).default(10485760),
-  UPLOAD_PRESIGN_TTL_SECONDS: Joi.number().integer().min(60).default(900),
-  UPLOAD_READ_URL_TTL_SECONDS: Joi.number().integer().min(60).default(604800),
-});
+  .transform((env) =>
+    // Joi defaulted CORS_ORIGIN to localhost outside production.
+    env.NODE_ENV !== "production" && !env.CORS_ORIGIN
+      ? { ...env, CORS_ORIGIN: "http://localhost:3000" }
+      : env,
+  );
