@@ -18,15 +18,16 @@ function dotless(segment: string): string {
 }
 
 /** Prefix shared by every Deploy branch for a form — `deployBranchName` minus
- * the version + timestamp. Exported so the publish flow can recognise open
- * deploy PRs for a form (#873) without duplicating the naming scheme. */
+ * the timestamp. Exported so the publish flow can recognise open deploy PRs for
+ * a form without duplicating the naming scheme. */
 export function deployBranchPrefix(formId: string): string {
   return `form-builder/${dotless(formId)}-`;
 }
 
-/** Branch for a Deploy PR, e.g. `form-builder/passport-renewal-1-2-0-<ts>`. */
-export function deployBranchName(formId: string, version: string): string {
-  return `${deployBranchPrefix(formId)}${dotless(version)}-${Date.now()}`;
+/** Branch for a Deploy PR, e.g. `form-builder/passport-renewal-<ts>`. Recipe
+ * versioning is retired (#1196), so the branch no longer carries a version. */
+export function deployBranchName(formId: string): string {
+  return `${deployBranchPrefix(formId)}${Date.now()}`;
 }
 
 /** Branch for an Erase PR, e.g. `form-builder/erase-passport-renewal-<ts>`. */
