@@ -1,20 +1,28 @@
 # Form Recipes — How They Ship and How the API Serves Them
 
-**Status:** Active (current model on `feat/api-serve-recipes-from-files` /
-to-be-merged to `sandbox`)
+**Status:** Active
 **Owners:** `apps/api` (runtime serving), `apps/form_builder` (publish flow),
 `packages/database/scripts` (dev sync)
 **Related:**
 [Issue #145](https://github.com/govtech-bb/gov-bb/issues/145),
+[Issue #1196](https://github.com/govtech-bb/gov-bb/issues/1196) (versioning removed),
 [Decision 0007](decisions/0007-runtime-recipes-load-from-files-not-form_definitions-table.md),
-[Plan](plans/api-serve-published-recipes-from-files.md)
+[Decision 0057](decisions/0057-recipe-versioning-removed-one-flat-file-per-form.md)
+
+> **Recipe versioning was removed (#1196).** Each form is now a single mutable
+> file `recipes/{formId}.json`; publishing overwrites it and the PR diff *is* the
+> record of change (git is the version history). Legacy versioned
+> `recipes/{formId}/{version}.json` directories are retained read-only as a
+> runtime fallback for in-flight pinned submissions/drafts until the Phase 2
+> decommission; they are frozen and never the served artifact.
 
 ---
 
 ## TL;DR
 
 - Recipes ship as JSON files committed to the repo at
-  `apps/api/src/forms/form-definitions/recipes/{formId}/{version}.json`.
+  `apps/api/src/forms/form-definitions/recipes/{formId}.json` (one flat file per
+  form).
 - The API serves them from disk. No DB. The `form_definitions` table is
   builder scratch space — not a runtime source.
 - Authors publish via `apps/form_builder` → it opens a PR that adds the
@@ -29,21 +37,23 @@ to-be-merged to `sandbox`)
 
 ```
 apps/api/src/forms/form-definitions/recipes/
-  ├── vehicle-colour-change-request/
+  ├── vehicle-colour-change-request.json   ← canonical (served)
+  ├── passport-renewal.json                ← canonical (served)
+  ├── vehicle-colour-change-request/       ← legacy fallback (frozen, read-only)
   │   ├── 1.0.0.json
   │   └── 1.1.0.json
-  ├── passport-renewal/
-  │   └── 2.0.0.json
   └── …
 ```
 
-- One directory per `formId`. One JSON file per `version`. Filename must
-  match `recipe.version` (the loader validates this on startup).
+- One flat file per `formId`, named `{formId}.json`. The filename must match
+  `recipe.formId` (`validate-recipes` checks this). The file carries no
+  `version` field.
 - The recipe JSON conforms to `serviceContractRecipeSchema` from
-  `@govtech-bb/form-types`.
-- Multiple versions of the same form coexist. `findAll()` returns one entry
-  per `formId` using the latest version's title; `findByFormId({ formId })`
-  without an explicit version resolves to latest.
+  `@govtech-bb/form-types` (where `version` is now optional).
+- `findAll()` returns one entry per `formId` from the flat file; `findByFormId({
+  formId })` resolves the flat file. `findByFormId({ formId, version })` is the
+  legacy fallback path — it resolves a frozen `{formId}/{version}.json` for an
+  in-flight submission/draft that still pins a version.
 
 In the runner container these files end up at
 `/app/dist/src/forms/form-definitions/recipes/`, copied by the Dockerfile
@@ -58,18 +68,20 @@ alongside the compiled API. (The pattern mirrors how `apps/api/src/email/templat
    `form_definitions` table — this is intentional scratch space, and is
    *not* served to end users at any point.
 2. **Author clicks Publish.** `apps/form_builder/app/server/publish.ts`:
-   1. Reads the dev-branch tip SHA via the GitHub API.
-   2. Creates a namespaced branch `form-builder/{formId}-{version}-{ts}`.
-   3. Writes the recipe JSON to
-      `apps/api/src/forms/form-definitions/recipes/{formId}/{version}.json`
-      via the GitHub Contents API.
-   4. Opens a PR against `dev` with the form's metadata in the body.
+   1. Reads the base-branch tip SHA via the GitHub API.
+   2. Creates a namespaced branch `form-builder/{formId}-{ts}`.
+   3. Overwrites the flat recipe JSON at
+      `apps/api/src/forms/form-definitions/recipes/{formId}.json` via the GitHub
+      Contents API (fetch the existing SHA, then update in place).
+   4. Opens a PR against the base branch with the form's metadata in the body.
+      The PR diff shows only the fields that changed.
 3. **Reviewer approves and merges the PR.** The recipe file is now on the
    integration branch.
 4. **API picks it up on next boot.** `RecipeFileLoaderService.onModuleInit`
-   walks the recipes tree and loads every valid `{formId}/{version}.json`
-   into an in-memory map. **There is no hot reload** — file changes require a
-   server restart to take effect.
+   walks the recipes tree, loading each flat `{formId}.json` as the canonical
+   recipe and each `{formId}/{version}.json` into the legacy fallback map.
+   **There is no hot reload** — file changes require a server restart to take
+   effect.
 5. **End-user requests `GET /form-definitions` or
    `GET /form-definitions/{formId}`** and the API returns the hydrated
    contract from that in-memory map.
@@ -213,28 +225,22 @@ After deploying — or after first build of the runner image — walk through:
 
 ## Common operations
 
-### Publish a new form
+### Publish a form (new or existing)
 
 Use the builder's Publish button. It handles branch creation, file write,
-and PR open. After merge: restart the API.
+and PR open. Publishing an existing form **overwrites** its flat
+`{formId}.json` in place — there is no version to bump. After merge: restart
+the API.
 
-### Publish a new version of an existing form
+### Retire a form
 
-Same flow. The publish endpoint refuses to overwrite an existing
-`{formId}/{version}.json` — bump the `version` in your recipe and retry.
+Remove the flat `apps/api/src/forms/form-definitions/recipes/{formId}.json`
+in a PR. After merge and restart, the loader won't surface it.
 
-### Retire a recipe version
+### Edit a recipe directly
 
-Remove the JSON file from `apps/api/src/forms/form-definitions/recipes/{formId}/{version}.json`
-in a PR. After merge and restart, the loader won't surface it. If you remove
-*every* version of a `formId`, the parent directory becomes empty — the
-loader treats that as "no such form."
-
-### Edit a recipe in-place (not recommended)
-
-The publish flow assumes new files, not edits. If you need to fix a
-mistake, prefer cutting a new version. If you really must edit in place, do
-it via PR and restart the API on merge.
+Editing the flat file by hand (via PR) is fine — the file *is* the canonical
+recipe and the PR diff is the audit trail. Restart the API on merge.
 
 ### Recover from a malformed recipe at boot
 
@@ -244,10 +250,9 @@ boot. Fix the JSON or revert the bad commit.
 
 ### Force a recipe path mismatch error
 
-The loader validates that `recipe.formId` matches the directory name and
-that `recipe.version` matches the filename. Either mismatch throws a clear
-error at boot. Treat these as build-time issues; they should never reach
-production.
+`validate-recipes` checks that `recipe.formId` matches the flat filename. A
+mismatch fails the CI gate. Treat it as a build-time issue; it should never
+reach production.
 
 ---
 

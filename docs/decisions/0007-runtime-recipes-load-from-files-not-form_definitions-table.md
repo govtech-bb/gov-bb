@@ -1,7 +1,14 @@
 # 0007 — Runtime recipes load from files, not the `form_definitions` table
 
 **Date:** 2026-05-26
-**Status:** Accepted
+**Status:** Accepted (amended by [0057](0057-recipe-versioning-removed-one-flat-file-per-form.md), #1196)
+
+> **Amendment (2026-06-23, #1196).** This decision stands — files are the runtime
+> source of truth and `form_definitions` is builder scratch. Two details changed
+> with the removal of recipe versioning: the served path is now the flat
+> `recipes/{formId}.json` (legacy `{formId}/{version}.json` retained read-only as
+> a fallback until Phase 2), and the scratch table is now **one row per form**
+> (`UNIQUE(formId)`) rather than one per `(formId, version)`. See 0057.
 
 ## Context
 

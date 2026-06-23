@@ -8,19 +8,11 @@ export class DraftArchiveService {
 
   constructor(private readonly formDefRepo: FormDefinitionRepository) {}
 
-  async archive({
-    formId,
-    version,
-  }: {
-    formId: string;
-    version: string;
-  }): Promise<void> {
-    const result = await this.formDefRepo.delete({ formId, version });
+  async archive({ formId }: { formId: string }): Promise<void> {
+    const result = await this.formDefRepo.delete({ formId });
     if (!result.affected || result.affected === 0) {
-      throw AppError.notFound("Draft form definition", { formId, version });
+      throw AppError.notFound("Draft form definition", { formId });
     }
-    this.logger.log(
-      `Archived draft form definition (formId=${formId}, version=${version})`,
-    );
+    this.logger.log(`Archived draft form definition (formId=${formId})`);
   }
 }
