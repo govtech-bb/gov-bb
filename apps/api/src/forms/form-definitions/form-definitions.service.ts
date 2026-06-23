@@ -5,7 +5,6 @@ import { RecipeFileLoaderService } from "./recipe-file-loader.service";
 import { RegistryService } from "@/registry/registry.service";
 import { FormConfigService } from "../form-config/form-config.service";
 import { AppError } from "@/common/errors";
-import { compareSemver } from "@govtech-bb/form-types";
 import type {
   Processor,
   ServiceContract,
@@ -180,24 +179,12 @@ export class FormDefinitionsService {
       return this.getRecipeFromDb({ formId, version });
     }
 
-    // effectiveSource === "both": DB wins on collision. With a version supplied,
-    // try DB first and fall through to files on miss. Without a version, pick
-    // the candidate with the higher semver across sources (DB wins on tie).
-    if (version) {
-      const dbRecipe = await this.getRecipeFromDb({ formId, version });
-      if (dbRecipe) return dbRecipe;
-      return this.recipeFileLoader.findByFormId({ formId, version });
-    }
-
+    // effectiveSource === "both" — the preview path (#1196). The DB scratch row
+    // is the in-progress authoring draft: prefer it, else fall back to the
+    // canonical flat file. No version dimension — a form is one draft + one
+    // canonical recipe.
     const dbRecipe = await this.getRecipeFromDb({ formId });
-    const fileRecipe = this.recipeFileLoader.findByFormId({ formId });
-    if (!dbRecipe) return fileRecipe;
-    if (!fileRecipe) return dbRecipe;
-    // `version` is optional on the recipe type post-#1196 (canonical files omit
-    // it); a canonical file with no version sorts below any versioned DB recipe.
-    return compareSemver(fileRecipe.version ?? "", dbRecipe.version ?? "") > 0
-      ? fileRecipe
-      : dbRecipe;
+    return dbRecipe ?? this.recipeFileLoader.findByFormId({ formId });
   }
 
   private async getRecipeFromDb({
