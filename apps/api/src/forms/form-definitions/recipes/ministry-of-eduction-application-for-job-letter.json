@@ -1,0 +1,762 @@
+{
+  "formId": "ministry-of-eduction-application-for-job-letter",
+  "title": "Ministry of Education Application for Job Letter",
+  "description": "Government of Barbados Job Letter Application Form",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "address-contact.email-address",
+        "subject": "Application for Job Letter - Received"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "personal-details",
+      "title": "Personal Details",
+      "elements": [
+        {
+          "ref": "components/title",
+          "overrides": {
+            "fieldId": "applicant-title",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please select a title"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "applicant-first-name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "First name is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "applicant-middle-name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "applicant-last-name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Last name is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/sex",
+          "overrides": {
+            "fieldId": "applicant-gender",
+            "label": "Gender",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please select a gender"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "employment-details",
+      "title": "Employment Details",
+      "elements": [
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "fieldId": "school-department",
+            "label": "School/Department",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please select a school or department"
+              }
+            },
+            "options": [
+              {
+                "label": "The Ministry of Education",
+                "value": "ministry-education"
+              },
+              {
+                "label": "All Saints' Nursery",
+                "value": "all-saints-nursery"
+              },
+              {
+                "label": "Eden Lodge Nursery",
+                "value": "eden-lodge-nursery"
+              },
+              {
+                "label": "Erdiston Nursery",
+                "value": "erdiston-nursery"
+              },
+              {
+                "label": "Government Hill Nursery",
+                "value": "govt-hill-nursery"
+              },
+              {
+                "label": "Maria Holder Nursery Gall Hill",
+                "value": "mh-nursery-gall-hill"
+              },
+              {
+                "label": "Maria Holder Nursery Oldbury",
+                "value": "mh-nursery-oldbury"
+              },
+              {
+                "label": "Maria Holder Nursery Sharon",
+                "value": "mh-nursery-sharon"
+              },
+              {
+                "label": "Olga Millar Nursery",
+                "value": "olga-millar-nursery"
+              },
+              {
+                "label": "St. Boniface Nursery",
+                "value": "st-boniface-nursery"
+              },
+              {
+                "label": "St. Giles Nursery",
+                "value": "st-giles-nursery"
+              },
+              {
+                "label": "St. Stephen's Nursery",
+                "value": "st-stephens-nursery"
+              },
+              {
+                "label": "Thelma Berry Nursery",
+                "value": "thelma-berry-nursery"
+              },
+              {
+                "label": "A. DaCosta Edwards Primary",
+                "value": "dacosta-edwards-primary"
+              },
+              {
+                "label": "All Saints Primary",
+                "value": "all-saints-primary"
+              },
+              {
+                "label": "Arthur Smith Primary",
+                "value": "arthur-smith-primary"
+              },
+              {
+                "label": "Bay Primary",
+                "value": "bay-primary"
+              },
+              {
+                "label": "Bayleys Primary",
+                "value": "bayleys-primary"
+              },
+              {
+                "label": "Belmont Primary",
+                "value": "belmont-primary"
+              },
+              {
+                "label": "Blackman and Gollop Primary",
+                "value": "blackman-gollop-primary"
+              },
+              {
+                "label": "Charles F. Broome Mem Primary",
+                "value": "broome-memorial-primary"
+              },
+              {
+                "label": "Christ Church Girls",
+                "value": "christ-church-girls"
+              },
+              {
+                "label": "Cuthbert Moore Primary",
+                "value": "cuthbert-moore-primary"
+              },
+              {
+                "label": "Deacons Primary",
+                "value": "deacons-primary"
+              },
+              {
+                "label": "Eagle Hall Primary",
+                "value": "eagle-hall-primary"
+              },
+              {
+                "label": "Eden Lodge Primary",
+                "value": "eden-lodge-primary"
+              },
+              {
+                "label": "Ellerton Primary",
+                "value": "ellerton-primary"
+              },
+              {
+                "label": "Elliott Belgrave Primary",
+                "value": "elliott-belgrave-primary"
+              },
+              {
+                "label": "George Lamming Primary",
+                "value": "george-lamming-primary"
+              },
+              {
+                "label": "Good Shepherd Primary",
+                "value": "good-shepherd-primary"
+              },
+              {
+                "label": "Gordon Greenidge Primary",
+                "value": "gordon-greenidge-primary"
+              },
+              {
+                "label": "Gordon Walters Primary",
+                "value": "gordon-walters-primary"
+              },
+              {
+                "label": "Grantley Prescod Memorial",
+                "value": "grantley-prescod-memorial"
+              },
+              {
+                "label": "Grazettes Primary",
+                "value": "grazettes-primary"
+              },
+              {
+                "label": "Half Moon Fort Primary",
+                "value": "half-moon-fort-primary"
+              },
+              {
+                "label": "Hilda Skeene Primary",
+                "value": "hilda-skeene-primary"
+              },
+              {
+                "label": "Hillaby/Turners Hall Primary",
+                "value": "hillaby-turners-hall-primary"
+              },
+              {
+                "label": "Hindsbury Primary",
+                "value": "hindsbury-primary"
+              },
+              {
+                "label": "Holy Innocents Primary",
+                "value": "holy-innocents-primary"
+              },
+              {
+                "label": "Ignatius Byer Primary",
+                "value": "ignatius-byer-primary"
+              },
+              {
+                "label": "Lawrence T. Gay Primary",
+                "value": "lawrence-gay-primary"
+              },
+              {
+                "label": "Luther Thorne Memorial",
+                "value": "luther-thorne-memorial"
+              },
+              {
+                "label": "Milton Lynch Primary",
+                "value": "milton-lynch-primary"
+              },
+              {
+                "label": "Mount Tabor Primary",
+                "value": "mount-tabor-primary"
+              },
+              {
+                "label": "Reynold Weekes Primary",
+                "value": "reynold-weekes-primary"
+              },
+              {
+                "label": "Roland Edwards Primary",
+                "value": "roland-edwards-primary"
+              },
+              {
+                "label": "Selah Primary",
+                "value": "selah-primary"
+              },
+              {
+                "label": "Sharon Primary",
+                "value": "sharon-primary"
+              },
+              {
+                "label": "St. Albans Primary",
+                "value": "st-albans-primary"
+              },
+              {
+                "label": "St. Ambrose Primary",
+                "value": "st-ambrose-primary"
+              },
+              {
+                "label": "St. Bartholomew Primary",
+                "value": "st-bartholomew-primary"
+              },
+              {
+                "label": "St. Bernard Primary",
+                "value": "st-bernard-primary"
+              },
+              {
+                "label": "St. Catherine Primary",
+                "value": "st-catherine-primary"
+              },
+              {
+                "label": "St. Christopher Primary",
+                "value": "st-christopher-primary"
+              },
+              {
+                "label": "St. Elizabeth Primary",
+                "value": "st-elizabeth-primary"
+              },
+              {
+                "label": "St. George Primary",
+                "value": "st-george-primary"
+              },
+              {
+                "label": "St. Giles Primary",
+                "value": "st-giles-primary"
+              },
+              {
+                "label": "St. James Primary",
+                "value": "st-james-primary"
+              },
+              {
+                "label": "St. John Primary",
+                "value": "st-john-primary"
+              },
+              {
+                "label": "St. Joseph Primary",
+                "value": "st-joseph-primary"
+              },
+              {
+                "label": "St. Jude Primary",
+                "value": "st-jude-primary"
+              },
+              {
+                "label": "St. Lawrence Primary",
+                "value": "st-lawrence-primary"
+              },
+              {
+                "label": "St. Lucy Primary",
+                "value": "st-lucy-primary"
+              },
+              {
+                "label": "St. Luke's Brighton",
+                "value": "st-lukes-brighton"
+              },
+              {
+                "label": "St. Margaret's Primary",
+                "value": "st-margarets-primary"
+              },
+              {
+                "label": "St. Marks Primary",
+                "value": "st-marks-primary"
+              },
+              {
+                "label": "St. Martin Mangrove Primary",
+                "value": "st-martin-mangrove-primary"
+              },
+              {
+                "label": "St. Mary Primary",
+                "value": "st-mary-primary"
+              },
+              {
+                "label": "St. Matthew Primary",
+                "value": "st-matthew-primary"
+              },
+              {
+                "label": "St. Pauls Primary",
+                "value": "st-pauls-primary"
+              },
+              {
+                "label": "St. Philip Primary",
+                "value": "st-philip-primary"
+              },
+              {
+                "label": "St. Silas Primary",
+                "value": "st-silas-primary"
+              },
+              {
+                "label": "St. Stephen's Primary",
+                "value": "st-stephens-primary"
+              },
+              {
+                "label": "Vauxhall Primary",
+                "value": "vauxhall-primary"
+              },
+              {
+                "label": "Welches Primary",
+                "value": "welches-primary"
+              },
+              {
+                "label": "Wesley Hall Infant",
+                "value": "wesley-hall-infant"
+              },
+              {
+                "label": "Wesley Hall Junior",
+                "value": "wesley-hall-junior"
+              },
+              {
+                "label": "West Terrace Primary",
+                "value": "west-terrace-primary"
+              },
+              {
+                "label": "Westbury Primary",
+                "value": "westbury-primary"
+              },
+              {
+                "label": "Wilkie Cumberbatch Primary",
+                "value": "wilkie-cumberbatch-primary"
+              },
+              {
+                "label": "Workmans Primary",
+                "value": "workmans-primary"
+              },
+              {
+                "label": "Christ Church Foundation",
+                "value": "christ-church-foundation"
+              },
+              {
+                "label": "Coleridge & Parry",
+                "value": "coleridge-parry"
+              },
+              {
+                "label": "Combermere",
+                "value": "combermere"
+              },
+              {
+                "label": "Daryll Jordan Secondary",
+                "value": "daryll-jordan-secondary"
+              },
+              {
+                "label": "Deighton Griffith School",
+                "value": "deighton-griffith-school"
+              },
+              {
+                "label": "Frederick Smith Secondary",
+                "value": "frederick-smith-secondary"
+              },
+              {
+                "label": "Grantley Adams Memorial",
+                "value": "grantley-adams-memorial"
+              },
+              {
+                "label": "Graydon Sealy Secondary",
+                "value": "graydon-sealy-secondary"
+              },
+              {
+                "label": "Harrison College",
+                "value": "harrison-college"
+              },
+              {
+                "label": "Lester Vaughan School",
+                "value": "lester-vaughan-school"
+              },
+              {
+                "label": "Parkinson Memorial",
+                "value": "parkinson-memorial"
+              },
+              {
+                "label": "Princess Margaret Secondary",
+                "value": "princess-margaret-secondary"
+              },
+              {
+                "label": "Queen's College",
+                "value": "queens-college"
+              },
+              {
+                "label": "Springer Memorial Secondary",
+                "value": "springer-memorial-secondary"
+              },
+              {
+                "label": "St. George Secondary",
+                "value": "st-george-secondary"
+              },
+              {
+                "label": "St. Leonard's Boys' Secondary",
+                "value": "st-leonards-boys-secondary"
+              },
+              {
+                "label": "The Alexandra School",
+                "value": "the-alexandra-school"
+              },
+              {
+                "label": "The Alleyne School",
+                "value": "the-alleyne-school"
+              },
+              {
+                "label": "The Ellerslie School",
+                "value": "the-ellerslie-school"
+              },
+              {
+                "label": "The Lodge School",
+                "value": "the-lodge-school"
+              },
+              {
+                "label": "The St. Michael School",
+                "value": "the-st-michael-school"
+              },
+              {
+                "label": "Edna Nicholls Centre",
+                "value": "edna-nicholls-centre"
+              },
+              {
+                "label": "Ellerton Special Unit",
+                "value": "ellerton-special-unit"
+              },
+              {
+                "label": "Erdiston Special School",
+                "value": "erdiston-special-school"
+              },
+              {
+                "label": "New Horizons Academy",
+                "value": "new-horizons-academy"
+              },
+              {
+                "label": "The Ann Hill School",
+                "value": "the-ann-hill-school"
+              },
+              {
+                "label": "The Irving Wilson School",
+                "value": "the-irving-wilson-school"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "fieldId": "service-start-date",
+            "label": "What is the start date of your continuous service?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Service start date is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "appointment-status",
+            "label": "Appointment Status",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Please select an appointment status"
+              }
+            },
+            "options": [
+              {
+                "label": "Appointed",
+                "value": "appointed"
+              },
+              {
+                "label": "Temporary",
+                "value": "temporary"
+              },
+              {
+                "label": "Part-Time",
+                "value": "part-time"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "substantive-post",
+            "label": "Substantive Post",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Substantive post is required"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "salary-details",
+      "title": "Salary Information",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "payment-frequency",
+            "label": "Are you paid monthly/bimonthly?",
+            "options": [
+              {
+                "label": "Monthly",
+                "value": "monthly"
+              },
+              {
+                "label": "Bimonthly",
+                "value": "bimonthly"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "current-salary",
+            "label": "Current Salary"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "address-contact",
+      "title": "Address and Contact Information",
+      "elements": [
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "home-address",
+            "label": "Home Address",
+            "hint": "House, Street Address, District",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Home address is required"
+              }
+            },
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "residence-parish",
+            "label": "Parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/home-telephone",
+          "overrides": {
+            "fieldId": "tel-home",
+            "label": "Tel Home"
+          }
+        },
+        {
+          "ref": "components/mobile-telephone",
+          "overrides": {
+            "fieldId": "mobile-number",
+            "label": "Mobile Number"
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "email-address",
+            "label": "Email Address Job Letter will be sent to",
+            "hint": "example@domain.com",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Email address is required"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Certification",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "certification-confirmed",
+            "label": "Certification",
+            "options": [
+              {
+                "label": "I hereby certify that the above statements are true and correct to the best of my knowledge. I understand that a false statement may disqualify me from receiving my requested document. I confirm that all information provided is accurate.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "You must confirm the certification to continue"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-06-03T12:37:00.496Z",
+  "updatedAt": "2026-06-03T12:37:00.496Z"
+}
