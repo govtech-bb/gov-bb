@@ -292,14 +292,14 @@ export const eraseRecipe = createServerFn({ method: "POST" })
       );
     }
 
-    // Gate 2: there must be something on disk to erase. Post-#1196 a form is
-    // the canonical flat file `recipes/{formId}.json`; legacy versioned files
-    // (retained through Phase 1) are erased too when present.
+    // Gate 2: there must be something on disk to erase. List the folder's
+    // version files on the base branch (reuses the publish read path).
+    // NOTE (#1196): erase still targets the legacy versioned dir; removing the
+    // flat `recipes/{formId}.json` is deferred to the Phase-2 decommission when
+    // the legacy dirs go away. Erase is rare and the dirs are retained through
+    // Phase 1, so this stays correct in the interim.
     const versions = await listVersions(token, formId, baseBranch);
-    const flatPath = `${RECIPES_BASE}/${formId}.json`;
-    const flatRes = await getContents(token, flatPath, baseBranch);
-    const hasFlat = flatRes.status === 200;
-    if (!hasFlat && versions.length === 0) {
+    if (versions.length === 0) {
       throw new Error(
         `No published recipe found for "${formId}" on ${baseBranch} — nothing to erase.`,
       );
@@ -330,17 +330,12 @@ export const eraseRecipe = createServerFn({ method: "POST" })
         headers: { ...authHeaders(token), "Content-Type": "application/json" },
         body: JSON.stringify({
           base_tree: baseTreeSha,
-          tree: [
-            ...(hasFlat
-              ? [{ path: flatPath, mode: "100644", type: "blob", sha: null }]
-              : []),
-            ...versions.map((v) => ({
-              path: `${RECIPES_BASE}/${formId}/${v}.json`,
-              mode: "100644",
-              type: "blob",
-              sha: null,
-            })),
-          ],
+          tree: versions.map((v) => ({
+            path: `${RECIPES_BASE}/${formId}/${v}.json`,
+            mode: "100644",
+            type: "blob",
+            sha: null,
+          })),
         }),
       });
       if (!treeRes.ok) {
