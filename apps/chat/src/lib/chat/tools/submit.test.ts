@@ -144,7 +144,6 @@ test("live POSTs the by-step body and returns the reference", async () => {
   assert.deepEqual(r, { ok: true, reference: "PPM-123" });
   assert.deepEqual(body, {
     formId: "f",
-    formVersion: "1.2.0",
     values: { applicant: { "first-name": "Jane", "last-name": "Doe" } },
   });
 });

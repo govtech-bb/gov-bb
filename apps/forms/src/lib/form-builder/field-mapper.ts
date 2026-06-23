@@ -12,11 +12,6 @@ export const mapContractToLocale = (
 ): ClientServiceContract => {
   return {
     ...contract,
-    // `version` is optional on the source contract post-#1196 (canonical
-    // recipes omit it). In Phase 1 every served contract still carries one, so
-    // this coalesce is never hit at runtime; it keeps the client type a plain
-    // string until PR B removes version plumbing from the forms app entirely.
-    version: contract.version ?? "",
     steps: contract.steps.map((step) => mapStepToLocale(step)),
   };
 };

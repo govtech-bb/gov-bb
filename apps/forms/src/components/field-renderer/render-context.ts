@@ -26,7 +26,6 @@ export function buildFieldRenderContext(args: {
   fieldArray?: FieldArrayBehaviour;
   insetFieldsByOption?: Map<string, InsetFieldEntry[]>;
   formId?: string;
-  formVersion?: string;
   previewToken?: string;
 }) {
   const {
@@ -36,7 +35,6 @@ export function buildFieldRenderContext(args: {
     fieldArray,
     insetFieldsByOption,
     formId,
-    formVersion,
     previewToken,
   } = args;
 
@@ -115,7 +113,6 @@ export function buildFieldRenderContext(args: {
     autoComplete,
     insetFieldsByOption,
     formId,
-    formVersion,
     previewToken,
   };
 }

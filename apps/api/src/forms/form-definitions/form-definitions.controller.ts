@@ -5,7 +5,6 @@ import {
   HttpException,
   HttpStatus,
   Param,
-  Query,
   Res,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
@@ -59,7 +58,6 @@ export class FormDefinitionsController {
   @GetFormDefinitionDocs()
   async get(
     @Param("formId") formId: string,
-    @Query("version") version?: string,
     @Headers("x-recipe-preview") previewToken?: string,
     @Res({ passthrough: true }) res?: Response,
   ): Promise<ApiResponseShape<ServiceContract>> {
@@ -86,7 +84,6 @@ export class FormDefinitionsController {
 
     const data = await this.formDefinitionsService.findByFormId({
       formId,
-      version,
       preview,
     });
     return AppApiResponse.success(data, {

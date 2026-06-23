@@ -23,7 +23,6 @@ export default function FileUpload({
   errorMessage,
   errorId,
   formId,
-  formVersion,
   previewToken,
 }: FileUploadProps) {
   const files = value ?? [];
@@ -104,7 +103,6 @@ export default function FileUpload({
           const confirmed = await uploadFile({
             file,
             formId: formId ?? "",
-            formVersion: formVersion ?? "",
             stepId: presignStepId,
             fieldId: field.fieldId,
             previewToken,

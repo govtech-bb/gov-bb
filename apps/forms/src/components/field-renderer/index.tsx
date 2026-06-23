@@ -24,7 +24,6 @@ export default function FieldRenderer({
   validationProperties,
   insetFieldsByOption,
   formId,
-  formVersion,
   previewToken,
 }: {
   form: any;
@@ -34,8 +33,6 @@ export default function FieldRenderer({
   insetFieldsByOption?: Map<string, InsetFieldEntry[]>;
   /** Form ID, forwarded to FileUpload for analytics + presigned uploads. */
   formId?: string;
-  /** Form version, forwarded to FileUpload for presigned uploads. */
-  formVersion?: string;
   /** Preview token, forwarded to FileUpload so draft uploads resolve. */
   previewToken?: string;
 }) {
@@ -80,7 +77,6 @@ export default function FieldRenderer({
           fieldArray,
           insetFieldsByOption,
           formId,
-          formVersion,
           previewToken,
         });
 
@@ -110,7 +106,6 @@ export default function FieldRenderer({
                 errorMessage={ctx.errorMessage}
                 errorId={ctx.errorId}
                 formId={formId}
-                formVersion={formVersion}
                 previewToken={previewToken}
               />
             );

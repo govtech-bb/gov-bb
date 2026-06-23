@@ -523,7 +523,6 @@ export default function FormRenderer({
                     field={group.toggle}
                     validationProperties={resolveValidators(group.toggle)}
                     formId={formMeta.formId}
-                    formVersion={formMeta.version}
                     previewToken={previewToken}
                   />
                   {isOpen && (
@@ -538,7 +537,6 @@ export default function FormRenderer({
                           field={field}
                           validationProperties={resolveValidators(field)}
                           formId={formMeta.formId}
-                          formVersion={formMeta.version}
                           previewToken={previewToken}
                         />
                       ))}
@@ -572,7 +570,6 @@ export default function FormRenderer({
                   validationProperties={resolveValidators(group.field)}
                   insetFieldsByOption={insetFieldsByOption}
                   formId={formMeta.formId}
-                  formVersion={formMeta.version}
                   previewToken={previewToken}
                 />
               );
@@ -585,7 +582,6 @@ export default function FormRenderer({
                 field={group.field}
                 validationProperties={resolveValidators(group.field)}
                 formId={formMeta.formId}
-                formVersion={formMeta.version}
                 previewToken={previewToken}
               />
             );

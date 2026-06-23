@@ -126,7 +126,7 @@ export const fetchFormDefinitions = async (): Promise<
 };
 
 export const createFormDraft = async (
-  { formId, version }: FormMeta,
+  { formId }: FormMeta,
   draftId: string,
   values: FormValues,
   lastActiveStep: string,
@@ -135,7 +135,6 @@ export const createFormDraft = async (
   const formDraft: FormDraft = {
     draftId,
     formId,
-    version,
     values,
     lastActiveStep,
   };
@@ -217,7 +216,7 @@ export const deleteFormDraft = async (draftId: string): Promise<number> => {
 };
 
 export const postFormSubmission = async (
-  { formId, version: formVersion, idempotencyKey }: FormMeta,
+  { formId, idempotencyKey }: FormMeta,
   valuesBySteps: FormValuesByStep,
 ) => {
   const endpoint = `/submissions`;
@@ -230,7 +229,6 @@ export const postFormSubmission = async (
     },
     body: JSON.stringify({
       formId,
-      formVersion,
       values: valuesBySteps,
     }),
   } as const;
