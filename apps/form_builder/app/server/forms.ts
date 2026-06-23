@@ -8,7 +8,6 @@ import {
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
 import { getPublishedRecipe } from "./github-recipes";
-import { compareSemver } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
 import { requireSession } from "./auth/require-session";
 
@@ -38,8 +37,9 @@ export const listForms = createServerFn({ method: "GET" })
     const byFormId = new Map<string, FormDefinitionSummary>();
     for (const d of drafts) byFormId.set(d.formId, d);
     for (const p of published) {
-      const existing = byFormId.get(p.formId);
-      if (existing && compareSemver(existing.version, p.version) > 0) continue;
+      // #1196: a draft row is the current working copy — always prefer it over
+      // the published entry. `isPublished` is OR'd back in by the map below.
+      if (byFormId.has(p.formId)) continue;
       byFormId.set(p.formId, {
         id: p.formId,
         formId: p.formId,
@@ -72,6 +72,7 @@ export const getRecipe = createServerFn({ method: "GET", strict: false })
   .handler(async ({ data, context }): Promise<ServiceContractRecipe> => {
     const token = context.session.accessToken;
 
+    // #1196: the DB scratch row is the current working draft — prefer it.
     let draft: ServiceContractRecipe | null = null;
     try {
       draft = await api.get<ServiceContractRecipe>(
@@ -80,29 +81,16 @@ export const getRecipe = createServerFn({ method: "GET", strict: false })
     } catch (err) {
       if (!(err instanceof ApiError) || err.status !== 404) throw err;
     }
+    if (draft) return draft;
 
-    let published: { version: string; recipe: unknown } | null = null;
+    // No draft row (e.g. just after the post-merge archive) — seed the editor
+    // from the published canonical flat file.
     try {
       const recipe = await getPublishedRecipe(token, { formId: data.formId });
-      const version =
-        typeof (recipe as { version?: unknown }).version === "string"
-          ? (recipe as { version: string }).version
-          : null;
-      if (version) published = { version, recipe };
+      return serviceContractRecipeSchema.parse(recipe);
     } catch {
-      // No published copy — fall back to draft (or fail below).
+      throw new Error(`No recipe found for formId: ${data.formId}`);
     }
-
-    if (
-      draft &&
-      (!published || compareSemver(draft.version, published.version) >= 0)
-    ) {
-      return draft;
-    }
-    if (published) {
-      return serviceContractRecipeSchema.parse(published.recipe);
-    }
-    throw new Error(`No recipe found for formId: ${data.formId}`);
   });
 
 // `mdaContactId` (issue #607) is a DB-only sibling of the recipe: the API
