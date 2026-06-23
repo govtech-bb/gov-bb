@@ -42,51 +42,41 @@ function makeClientContract(
 // ---------------------------------------------------------------------------
 
 describe("formSchemaCacheKey", () => {
-  it("returns a tuple of [FORM_SCHEMA_CACHE_KEY, formId, version, null] when no preview", () => {
-    const key = formSchemaCacheKey("my-form", "2.1.0");
-    expect(key).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", "2.1.0", null]);
+  it("returns a tuple of [FORM_SCHEMA_CACHE_KEY, formId, null] when no preview", () => {
+    const key = formSchemaCacheKey("my-form");
+    expect(key).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", null]);
   });
 
   it("two calls with the same args produce deeply-equal keys", () => {
-    const a = formSchemaCacheKey("passport", "1.0.0");
-    const b = formSchemaCacheKey("passport", "1.0.0");
+    const a = formSchemaCacheKey("passport");
+    const b = formSchemaCacheKey("passport");
     expect(a).toEqual(b);
   });
 
-  it("different versions produce different keys", () => {
-    const a = formSchemaCacheKey("passport", "1.0.0");
-    const b = formSchemaCacheKey("passport", "1.1.0");
+  it("different formIds produce different keys", () => {
+    const a = formSchemaCacheKey("passport");
+    const b = formSchemaCacheKey("birth-cert");
     expect(a).not.toEqual(b);
   });
 
-  it("includes the preview token in the 4th slot when provided", () => {
-    const key = formSchemaCacheKey("my-form", "2.1.0", "tok");
-    expect(key).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", "2.1.0", "tok"]);
+  it("includes the preview token in the 3rd slot when provided", () => {
+    const key = formSchemaCacheKey("my-form", "tok");
+    expect(key).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", "tok"]);
   });
 
   it("blank/whitespace token normalizes to null (same as no preview)", () => {
-    const withBlank = formSchemaCacheKey("my-form", "2.1.0", "   ");
-    const withEmpty = formSchemaCacheKey("my-form", "2.1.0", "");
-    const withNone = formSchemaCacheKey("my-form", "2.1.0");
-    expect(withBlank).toEqual([
-      FORM_SCHEMA_CACHE_KEY,
-      "my-form",
-      "2.1.0",
-      null,
-    ]);
-    expect(withEmpty).toEqual([
-      FORM_SCHEMA_CACHE_KEY,
-      "my-form",
-      "2.1.0",
-      null,
-    ]);
+    const withBlank = formSchemaCacheKey("my-form", "   ");
+    const withEmpty = formSchemaCacheKey("my-form", "");
+    const withNone = formSchemaCacheKey("my-form");
+    expect(withBlank).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", null]);
+    expect(withEmpty).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", null]);
     expect(withBlank).toEqual(withNone);
     expect(withEmpty).toEqual(withNone);
   });
 
-  it("token and no-token keys for the same formId+version are NOT equal", () => {
-    const withToken = formSchemaCacheKey("my-form", "2.1.0", "tok");
-    const withoutToken = formSchemaCacheKey("my-form", "2.1.0");
+  it("token and no-token keys for the same formId are NOT equal", () => {
+    const withToken = formSchemaCacheKey("my-form", "tok");
+    const withoutToken = formSchemaCacheKey("my-form");
     expect(withToken).not.toEqual(withoutToken);
   });
 });
@@ -180,13 +170,12 @@ describe("contractQueryOptions", () => {
 // ---------------------------------------------------------------------------
 
 describe("formMetaQueryOptions", () => {
-  it("queryKey includes FORM_SCHEMA_CACHE_KEY, formId, contract version, and null when no preview", () => {
+  it("queryKey is [FORM_SCHEMA_CACHE_KEY, formId, null] when no preview", () => {
     const contract = makeClientContract("benefit-claim", "3.0.0");
     const opts = formMetaQueryOptions("benefit-claim", contract);
     expect(opts.queryKey).toEqual([
       FORM_SCHEMA_CACHE_KEY,
       "benefit-claim",
-      "3.0.0",
       null,
     ]);
   });
@@ -197,21 +186,12 @@ describe("formMetaQueryOptions", () => {
     expect(opts.staleTime).toBe(Infinity);
   });
 
-  it("different versions on the same formId produce different queryKeys", () => {
-    const v1 = makeClientContract("benefit-claim", "1.0.0");
-    const v2 = makeClientContract("benefit-claim", "2.0.0");
-    const optsV1 = formMetaQueryOptions("benefit-claim", v1);
-    const optsV2 = formMetaQueryOptions("benefit-claim", v2);
-    expect(optsV1.queryKey).not.toEqual(optsV2.queryKey);
-  });
-
-  it("preview token lands in the 4th slot of the queryKey", () => {
+  it("preview token lands in the 3rd slot of the queryKey", () => {
     const contract = makeClientContract("benefit-claim", "3.0.0");
     const opts = formMetaQueryOptions("benefit-claim", contract, "tok");
     expect(opts.queryKey).toEqual([
       FORM_SCHEMA_CACHE_KEY,
       "benefit-claim",
-      "3.0.0",
       "tok",
     ]);
   });
@@ -222,15 +202,14 @@ describe("formMetaQueryOptions", () => {
     expect(withBlank.queryKey).toEqual([
       FORM_SCHEMA_CACHE_KEY,
       "benefit-claim",
-      "3.0.0",
       null,
     ]);
   });
 
-  it("preview and no-preview builds at the SAME version produce DIFFERENT queryKeys (regression guard)", () => {
-    const contractV1 = makeClientContract("f", "1.0.0");
-    const withToken = formMetaQueryOptions("f", contractV1, "tok");
-    const withoutToken = formMetaQueryOptions("f", contractV1);
+  it("preview and no-preview builds produce DIFFERENT queryKeys (regression guard)", () => {
+    const contract = makeClientContract("f", "1.0.0");
+    const withToken = formMetaQueryOptions("f", contract, "tok");
+    const withoutToken = formMetaQueryOptions("f", contract);
     expect(withToken.queryKey).not.toEqual(withoutToken.queryKey);
   });
 });
@@ -252,16 +231,13 @@ describe("QueryClient form caching", () => {
     qc.clear();
   });
 
-  it("stores and retrieves FormMeta by (formId, version) key", async () => {
+  it("stores and retrieves FormMeta by formId key", async () => {
     const contract = makeClientContract("passport-renewal", "1.0.0");
 
-    const fakeFormMeta = { formId: "passport-renewal", version: "1.0.0" };
+    const fakeFormMeta = { formId: "passport-renewal" };
 
     // Seed the cache directly (simulates a completed loader run)
-    qc.setQueryData(
-      formSchemaCacheKey("passport-renewal", "1.0.0"),
-      fakeFormMeta,
-    );
+    qc.setQueryData(formSchemaCacheKey("passport-renewal"), fakeFormMeta);
 
     // Reading with ensureQueryData should return the cached value without
     // calling the queryFn.
@@ -287,32 +263,6 @@ describe("QueryClient form caching", () => {
 
     expect(buildFormSpy).toHaveBeenCalledTimes(1);
     expect(result).toEqual(builtMeta);
-  });
-
-  it("does NOT return v1 cache when version bumps to v2", async () => {
-    const v1Meta = { formId: "birth-cert", version: "1.0.0" } as FormMeta;
-
-    // Seed v1 in the cache
-    qc.setQueryData(formSchemaCacheKey("birth-cert", "1.0.0"), v1Meta);
-
-    const v2Contract = makeClientContract("birth-cert", "2.0.0");
-    const v2Meta = { formId: "birth-cert", version: "2.0.0" } as FormMeta;
-    const buildSpy = vi.fn().mockResolvedValue(v2Meta);
-
-    const result = await qc.ensureQueryData({
-      ...formMetaQueryOptions("birth-cert", v2Contract),
-      queryFn: buildSpy,
-    });
-
-    // v2 cache key is different — buildForm must have run
-    expect(buildSpy).toHaveBeenCalledTimes(1);
-    expect(result.version).toBe("2.0.0");
-
-    // v1 entry remains untouched in the cache
-    const cachedV1 = qc.getQueryData<FormMeta>(
-      formSchemaCacheKey("birth-cert", "1.0.0"),
-    );
-    expect(cachedV1?.version).toBe("1.0.0");
   });
 
   it("second ensureQueryData call with same key skips queryFn (cache hit)", async () => {

@@ -51,9 +51,10 @@ export const normalizePreviewToken = (preview?: string): string | undefined =>
 
 /**
  * Prefix for built FormMeta cache entries.
- * Full key shape: ["form-schema", formId, version, preview | null]
+ * Full key shape: ["form-schema", formId, preview | null]
  *
- * Matches the task-specified format  `form-schema:${schemaId}:${version}`.
+ * #1196: recipe versioning is retired — a form resolves to one canonical
+ * recipe, so the key no longer carries a version.
  */
 export const FORM_SCHEMA_CACHE_KEY = "form-schema" as const;
 
@@ -62,18 +63,16 @@ export const FORM_SCHEMA_CACHE_KEY = "form-schema" as const;
  * Useful when manually invalidating or reading from the query cache.
  *
  * @example
- *   queryClient.invalidateQueries({ queryKey: formSchemaCacheKey("my-form", "1.2.0") });
- *   queryClient.invalidateQueries({ queryKey: formSchemaCacheKey("my-form", "1.2.0", "tok") });
+ *   queryClient.invalidateQueries({ queryKey: formSchemaCacheKey("my-form") });
+ *   queryClient.invalidateQueries({ queryKey: formSchemaCacheKey("my-form", "tok") });
  */
 export const formSchemaCacheKey = (
   formId: string,
-  version: string,
   preview?: string,
-): readonly [string, string, string, string | null] =>
+): readonly [string, string, string | null] =>
   [
     FORM_SCHEMA_CACHE_KEY,
     formId,
-    version,
     normalizePreviewToken(preview) ?? null,
   ] as const;
 
@@ -149,7 +148,7 @@ export const formMetaQueryOptions = (
   preview?: string,
 ) =>
   queryOptions<FormMeta>({
-    queryKey: formSchemaCacheKey(formId, clientContract.version, preview),
+    queryKey: formSchemaCacheKey(formId, preview),
     queryFn: () => buildForm(clientContract),
     staleTime: Infinity,
     gcTime: 30 * 60_000,

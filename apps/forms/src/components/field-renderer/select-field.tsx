@@ -18,7 +18,6 @@ export function renderSelectField(ctx: FieldRenderContext): JSX.Element {
     commitChange,
     insetFieldsByOption,
     formId,
-    formVersion,
     previewToken,
   } = ctx;
 
@@ -76,7 +75,6 @@ export function renderSelectField(ctx: FieldRenderContext): JSX.Element {
                 field={insetField}
                 validationProperties={insetValidation}
                 formId={formId}
-                formVersion={formVersion}
                 previewToken={previewToken}
               />
             ),
