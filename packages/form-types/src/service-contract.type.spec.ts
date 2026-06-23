@@ -171,6 +171,18 @@ describe("serviceContractSchema with contactDetails", () => {
   it("accepts a valid kebab formId with a non-empty title", () => {
     expect(serviceContractSchema.safeParse(baseContract).success).toBe(true);
   });
+
+  it("accepts a contract without a version (now optional, #1196)", () => {
+    const { version: _v, ...noVersion } = baseContract;
+    expect(serviceContractSchema.safeParse(noVersion).success).toBe(true);
+  });
+
+  it("still rejects a present-but-malformed version", () => {
+    expect(
+      serviceContractSchema.safeParse({ ...baseContract, version: "1.0" })
+        .success,
+    ).toBe(false);
+  });
 });
 
 describe("serviceContractRecipeSchema", () => {
@@ -260,6 +272,18 @@ describe("serviceContractRecipeSchema", () => {
         ...baseRecipe,
         createdAt: "2026-01-01",
       }).success,
+    ).toBe(false);
+  });
+
+  it("accepts a recipe without a version (now optional, #1196)", () => {
+    const { version: _v, ...noVersion } = baseRecipe;
+    expect(serviceContractRecipeSchema.safeParse(noVersion).success).toBe(true);
+  });
+
+  it("still rejects a present-but-malformed version", () => {
+    expect(
+      serviceContractRecipeSchema.safeParse({ ...baseRecipe, version: "1.0" })
+        .success,
     ).toBe(false);
   });
 });

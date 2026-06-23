@@ -2,7 +2,7 @@
  * post-office-redirection-business.smoke.spec.ts
  *
  * Live, on-demand smoke test for the "Post Office Redirection - Business" form
- * (formId `post-office-redirection-business`, version 1.2.0).
+ * (formId `post-office-redirection-business`, version 1.7.0).
  *
  * Drives the REAL deployed form (default: sandbox), fills every visible/required
  * field with valid data, SUBMITS FOR REAL, and asserts the confirmation screen.
@@ -89,11 +89,10 @@ test.describe("Post Office Redirection (Business) — Live Smoke", () => {
 
     // ─── Business Name ───────────────────────────────────────────────────────
     step = expectStep(page, "business-name", { exact: true });
-    // Use a deterministic, validator-safe name: business-name only accepts
-    // letters, spaces, hyphens and apostrophes, but faker.company.name() can
-    // emit commas / periods / "&" (e.g. "Oberbrunner, Nicolas and Rau"), which
-    // randomly trips "Name must contain only letters, hyphens, or apostrophes".
-    await fillField(page, step, "business-name", "Bridgetown Trading Company");
+    // business-name is generic-text with a business-friendly pattern as of
+    // 1.7.0 (letters, digits, spaces and & . , - ' / ( )), so a realistic name
+    // with symbols and digits is accepted — exercise that here.
+    await fillField(page, step, "business-name", "J&B Co. (Bridgetown) No. 1");
     await fillField(page, step, "registration-number", faker.string.numeric(8));
     await advance(page, step);
 
@@ -117,7 +116,7 @@ test.describe("Post Office Redirection (Business) — Live Smoke", () => {
 
     // ─── Position in the Business ────────────────────────────────────────────
     step = expectStep(page, "position-details", { exact: true });
-    await fillField(page, step, "position-details", "Managing Director");
+    await fillField(page, step, "position-details", "Director (HR & Admin)");
     await advance(page, step);
 
     // ─── New Address (redirect to) + redirection dates ───────────────────────

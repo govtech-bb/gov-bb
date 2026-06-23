@@ -86,11 +86,6 @@ describe("buildForm", () => {
     expect(result.formId).toBe("my-form");
   });
 
-  it("returns the correct version from the contract", () => {
-    const result = buildForm(makeContract({ version: "2.5.0" }));
-    expect(result.version).toBe("2.5.0");
-  });
-
   it("maps contract.title to formTitle", () => {
     const result = buildForm(makeContract({ title: "Passport Application" }));
     expect(result.formTitle).toBe("Passport Application");

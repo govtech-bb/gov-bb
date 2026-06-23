@@ -8,7 +8,7 @@
 #   environments/sandbox/modular-forms-sandbox/lambda-rag-indexer.tf
 #   SANDBOX-CHATBOT-INGEST.md
 
-FROM node:24-alpine@sha256:21f403ab171f2dc89bad4dd69d7721bfd15f084ccb46cdd225f31f2bc59b5c9a
+FROM node:24-alpine3.23@sha256:7c70d1235c0b4c2bc9eeed5393d19f1bbdde6885ba0d58ba62bb385d7b0f3ff1
 
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
@@ -19,6 +19,7 @@ USER app
 
 COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml nx.json tsconfig.base.json ./
 COPY --chown=app:app apps/chat/package.json apps/chat/
+COPY --chown=app:app packages/aws-secrets/package.json packages/aws-secrets/
 COPY --chown=app:app packages/content/package.json packages/content/
 COPY --chown=app:app packages/expressions/package.json packages/expressions/
 COPY --chown=app:app packages/form-conditions/package.json packages/form-conditions/
@@ -32,6 +33,12 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
       --filter @govtech-bb/chat... --filter @govtech-bb/content...
 
 COPY --chown=app:app apps/chat/ apps/chat/
+# aws-secrets is a source-only ESM package (exports "./src/index.ts", no build),
+# imported by src/lib/db/index.ts on the ingest path — tsx resolves it from
+# source, so the source tree must be present like content's below. Without it
+# the ingest task crash-loops on ERR_MODULE_NOT_FOUND and the deploy's
+# "Wait for ingest to complete" step times out (#1392 added the import).
+COPY --chown=app:app packages/aws-secrets/ packages/aws-secrets/
 COPY --chown=app:app packages/content/ packages/content/
 
 # Source data the loader actually reads. `@govtech-bb/content`'s loadContent()

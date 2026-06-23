@@ -104,36 +104,11 @@ describe("FormDefinitionsController", () => {
       const result = await controller.get(
         "passport-renewal",
         undefined,
-        undefined,
         res as never,
       );
 
       expect(mockService.findByFormId).toHaveBeenCalledWith({
         formId: "passport-renewal",
-        version: undefined,
-        preview: false,
-      });
-      expect(res.setHeader).not.toHaveBeenCalled();
-      expect(result).toMatchObject({ status: "success", data: contract });
-    });
-
-    it("calls service.findByFormId with version when provided", async () => {
-      const contract = {
-        formId: "passport-renewal",
-        title: "Passport Renewal",
-      };
-      mockService.findByFormId.mockResolvedValue(contract);
-
-      const result = await controller.get(
-        "passport-renewal",
-        "2.0.0",
-        undefined,
-        res as never,
-      );
-
-      expect(mockService.findByFormId).toHaveBeenCalledWith({
-        formId: "passport-renewal",
-        version: "2.0.0",
         preview: false,
       });
       expect(res.setHeader).not.toHaveBeenCalled();
@@ -144,7 +119,7 @@ describe("FormDefinitionsController", () => {
       mockService.findByFormId.mockRejectedValue(new Error("Not found"));
 
       await expect(
-        controller.get("missing-form", undefined, undefined, res as never),
+        controller.get("missing-form", undefined, res as never),
       ).rejects.toThrow("Not found");
     });
 
@@ -157,16 +132,10 @@ describe("FormDefinitionsController", () => {
         };
         mockService.findByFormId.mockResolvedValue(contract);
 
-        await controller.get(
-          "passport-renewal",
-          undefined,
-          "s3cret",
-          res as never,
-        );
+        await controller.get("passport-renewal", "s3cret", res as never);
 
         expect(mockService.findByFormId).toHaveBeenCalledWith({
           formId: "passport-renewal",
-          version: undefined,
           preview: true,
         });
         expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
@@ -180,16 +149,10 @@ describe("FormDefinitionsController", () => {
         };
         mockService.findByFormId.mockResolvedValue(contract);
 
-        await controller.get(
-          "passport-renewal",
-          undefined,
-          "nope",
-          res as never,
-        );
+        await controller.get("passport-renewal", "nope", res as never);
 
         expect(mockService.findByFormId).toHaveBeenCalledWith({
           formId: "passport-renewal",
-          version: undefined,
           preview: false,
         });
         expect(res.setHeader).not.toHaveBeenCalled();
@@ -203,16 +166,10 @@ describe("FormDefinitionsController", () => {
         };
         mockService.findByFormId.mockResolvedValue(contract);
 
-        await controller.get(
-          "passport-renewal",
-          undefined,
-          undefined,
-          res as never,
-        );
+        await controller.get("passport-renewal", undefined, res as never);
 
         expect(mockService.findByFormId).toHaveBeenCalledWith({
           formId: "passport-renewal",
-          version: undefined,
           preview: false,
         });
         expect(res.setHeader).not.toHaveBeenCalled();
@@ -227,11 +184,10 @@ describe("FormDefinitionsController", () => {
         };
         mockService.findByFormId.mockResolvedValue(contract);
 
-        await controller.get("passport-renewal", undefined, "", res as never);
+        await controller.get("passport-renewal", "", res as never);
 
         expect(mockService.findByFormId).toHaveBeenCalledWith({
           formId: "passport-renewal",
-          version: undefined,
           preview: false,
         });
         expect(res.setHeader).not.toHaveBeenCalled();
@@ -245,16 +201,10 @@ describe("FormDefinitionsController", () => {
         };
         mockService.findByFormId.mockResolvedValue(contract);
 
-        await controller.get(
-          "passport-renewal",
-          undefined,
-          "anything",
-          res as never,
-        );
+        await controller.get("passport-renewal", "anything", res as never);
 
         expect(mockService.findByFormId).toHaveBeenCalledWith({
           formId: "passport-renewal",
-          version: undefined,
           preview: false,
         });
         expect(res.setHeader).not.toHaveBeenCalled();
@@ -270,7 +220,7 @@ describe("FormDefinitionsController", () => {
         });
 
         await expect(
-          controller.get("passport-renewal", undefined, "s3cret", res as never),
+          controller.get("passport-renewal", "s3cret", res as never),
         ).rejects.toMatchObject({
           status: 410,
           response: { disabled: true, reason: "Step 3 is broken" },

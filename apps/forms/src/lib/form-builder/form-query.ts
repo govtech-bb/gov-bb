@@ -51,9 +51,10 @@ export const normalizePreviewToken = (preview?: string): string | undefined =>
 
 /**
  * Prefix for built FormMeta cache entries.
- * Full key shape: ["form-schema", formId, version, preview | null]
+ * Full key shape: ["form-schema", formId, preview | null]
  *
- * Matches the task-specified format  `form-schema:${schemaId}:${version}`.
+ * #1196: recipe versioning is retired — a form resolves to one canonical
+ * recipe, so the key no longer carries a version.
  */
 export const FORM_SCHEMA_CACHE_KEY = "form-schema" as const;
 
@@ -62,18 +63,16 @@ export const FORM_SCHEMA_CACHE_KEY = "form-schema" as const;
  * Useful when manually invalidating or reading from the query cache.
  *
  * @example
- *   queryClient.invalidateQueries({ queryKey: formSchemaCacheKey("my-form", "1.2.0") });
- *   queryClient.invalidateQueries({ queryKey: formSchemaCacheKey("my-form", "1.2.0", "tok") });
+ *   queryClient.invalidateQueries({ queryKey: formSchemaCacheKey("my-form") });
+ *   queryClient.invalidateQueries({ queryKey: formSchemaCacheKey("my-form", "tok") });
  */
 export const formSchemaCacheKey = (
   formId: string,
-  version: string,
   preview?: string,
-): readonly [string, string, string, string | null] =>
+): readonly [string, string, string | null] =>
   [
     FORM_SCHEMA_CACHE_KEY,
     formId,
-    version,
     normalizePreviewToken(preview) ?? null,
   ] as const;
 
@@ -119,28 +118,30 @@ export const contractQueryOptions = (formId: string, preview?: string) => {
 /**
  * TanStack Query options for building and caching a FormMeta.
  *
- * The cache key includes the contract version so that a version bump produces
- * a completely new cache entry — the old entry is kept until it is GC'd.
- * This means:
+ * #1196: recipe versioning is retired, so the cache key is `(formId, preview)`
+ * with no version. Version used to be the cache-busting signal — a publish bumped
+ * it, producing a new key. Without it, the FormMeta must instead expire so a
+ * republished recipe is picked up:
  *
- *   version 1.0.0 cached → admin publishes 1.1.0 → contractQueryOptions
- *   becomes stale → re-fetches → new version → new formMetaQueryOptions key
- *   → cache miss → buildForm() runs → new FormMeta cached under 1.1.0 key.
+ *   recipe cached → admin republishes → contractQueryOptions goes stale after
+ *   60 s → re-fetches the new contract → this query's staleTime elapses →
+ *   buildForm() re-runs against the new contract under the same (formId, preview)
+ *   key.
  *
- * staleTime: Infinity — a given (formId, version, preview) combination is
- * deterministic. The same contract always produces the same FormMeta; there is
- * no reason to rebuild it unless the version or preview token changes.
+ * staleTime matches the contract tier (60 s) so the built FormMeta can never be
+ * served fresher than the contract it was built from. (It is still deterministic
+ * for a given contract; the bound just lets a republish propagate.)
  *
  * gcTime: 30 minutes — keeps recently-visited forms readily available without
  * holding memory indefinitely.
  *
  * @param formId          The form identifier.
- * @param clientContract  The already-fetched and locale-mapped contract.
- *                        Its `.version` field becomes part of the cache key.
+ * @param clientContract  The already-fetched and locale-mapped contract that
+ *                        buildForm() runs against.
  * @param preview         Optional operator preview token. When present it is
  *                        included in the cache key so a preview-built FormMeta
- *                        can never be served to an untokened request at the same
- *                        version. Normalization follows the same rules as
+ *                        can never be served to an untokened request.
+ *                        Normalization follows the same rules as
  *                        `normalizePreviewToken` (blank → treated as no preview).
  */
 export const formMetaQueryOptions = (
@@ -149,8 +150,8 @@ export const formMetaQueryOptions = (
   preview?: string,
 ) =>
   queryOptions<FormMeta>({
-    queryKey: formSchemaCacheKey(formId, clientContract.version, preview),
+    queryKey: formSchemaCacheKey(formId, preview),
     queryFn: () => buildForm(clientContract),
-    staleTime: Infinity,
+    staleTime: 60_000,
     gcTime: 30 * 60_000,
   });

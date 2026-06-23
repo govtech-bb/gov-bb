@@ -8,12 +8,12 @@
 // out of client bundles.
 
 export const SESSION_COOKIE_NAME = "fb_session";
-export const OAUTH_STATE_COOKIE_NAME = "fb_oauth_state";
+const OAUTH_STATE_COOKIE_NAME = "fb_oauth_state";
 
 /** 8 hours in seconds. */
 export const SESSION_TTL_SECONDS = 8 * 60 * 60;
 /** 10 minutes in seconds — covers the longest plausible OAuth round-trip. */
-export const OAUTH_STATE_TTL_SECONDS = 10 * 60;
+const OAUTH_STATE_TTL_SECONDS = 10 * 60;
 
 export interface SessionPayload {
   /** GitHub login (username). */

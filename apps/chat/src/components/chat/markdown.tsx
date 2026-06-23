@@ -89,7 +89,7 @@ function CitationChip({ citations }: { citations: Citation[] }) {
 // Replace `[N]` markers with anchor links the `a` renderer turns into citation
 // chips. A RUN of consecutive markers (`[1][2]`, `[1] [2]`) collapses into ONE
 // grouped chip — claude.ai style — instead of a chip per marker.
-export function annotateCitations(text: string, citations: Citation[]): string {
+function annotateCitations(text: string, citations: Citation[]): string {
   if (!citations.length) return text;
   const valid = new Set(citations.map((c) => c.number));
   return text.replace(/\[(\d+)\](?:\s*\[(?:\d+)\])*/g, (run) => {

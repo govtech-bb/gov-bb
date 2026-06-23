@@ -7,17 +7,9 @@ export interface ChatMessage {
   content: string;
 }
 
-// Async text-only AI edits: POST /builder/ai/edit/start returns a jobId; the
-// client polls GET /builder/ai/edit/status/:jobId. Mirrors the PDF pipeline so
-// no single SSR request approaches the Amplify ~28s timeout (#1129).
-export interface EditRequest {
-  message?: string;
-  recipeJson?: string;
-}
-
 // Response from edit AND from the terminal upload/status poll. `recipe` is null
 // when the model replied conversationally without emitting a recipe. (#504)
-export interface ConvertResponse {
+interface ConvertResponse {
   recipe: Record<string, unknown> | null;
   reply: string;
   unresolvableRefs: UnknownRef[];

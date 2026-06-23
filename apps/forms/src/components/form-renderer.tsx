@@ -6,6 +6,9 @@ import {
 } from "@forms/types";
 import FieldRenderer from "./field-renderer";
 import React from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { markdownComponents } from "./markdown-components";
 import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { isDateValidationError } from "@govtech-bb/form-validation";
@@ -407,6 +410,12 @@ export default function FormRenderer({
     ),
   );
 
+  // A content-only step carries `markdownContent` and no fields (e.g. an intro
+  // page). Its markdown supplies its own headings, so we suppress the default
+  // step `<h1>` to avoid a duplicate heading.
+  const isContentStep =
+    !!currentStep.markdownContent && currentStep.fields.length === 0;
+
   // The submission confirmation owns its own full-width layout (a full-bleed
   // banner plus inner containers), so it renders outside the page container.
   if (isSubmissionConfirmation) {
@@ -447,22 +456,24 @@ export default function FormRenderer({
         )}
         <div className="form-page__header">
           <p className="form-page__service-title"> {formMeta.formTitle} </p>
-          <h1 className="govbb-text-h1">
-            {/* GOV.UK caption-in-heading pattern: the caption sits inside the
+          {!isContentStep && (
+            <h1 className="govbb-text-h1">
+              {/* GOV.UK caption-in-heading pattern: the caption sits inside the
                 h1 so the accessible name distinguishes repeat instances for
                 screen-reader heading navigation. */}
-            {instanceMarker?.hasLabel && (
-              <span
-                data-testid="repeat-instance-marker"
-                className="block text-caption text-mid-grey-00"
-              >
-                {instanceMarker.text}
-              </span>
-            )}
-            {instanceMarker && !instanceMarker.hasLabel
-              ? `${resolvedStepTitle} — ${instanceMarker.text}`
-              : resolvedStepTitle}
-          </h1>
+              {instanceMarker?.hasLabel && (
+                <span
+                  data-testid="repeat-instance-marker"
+                  className="block text-caption text-mid-grey-00"
+                >
+                  {instanceMarker.text}
+                </span>
+              )}
+              {instanceMarker && !instanceMarker.hasLabel
+                ? `${resolvedStepTitle} — ${instanceMarker.text}`
+                : resolvedStepTitle}
+            </h1>
+          )}
           {currentStep.description && (
             <p className="form-page__step-description">
               {currentStep.description}
@@ -472,6 +483,20 @@ export default function FormRenderer({
         <ErrorSummary errors={errors} />
 
         <div className="form-page__step">
+          {currentStep.markdownContent && (
+            <div className="form-page__markdown-content">
+              {/* Recipe-authored step copy (e.g. an intro page). react-markdown
+                  escapes raw HTML by default and we omit rehype-raw, so recipe
+                  content cannot inject markup. */}
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={markdownComponents}
+              >
+                {currentStep.markdownContent}
+              </ReactMarkdown>
+            </div>
+          )}
+
           {currentStep.stepId === "check-your-answers" && (
             <Review
               key={"review-step"}
@@ -498,7 +523,6 @@ export default function FormRenderer({
                     field={group.toggle}
                     validationProperties={resolveValidators(group.toggle)}
                     formId={formMeta.formId}
-                    formVersion={formMeta.version}
                     previewToken={previewToken}
                   />
                   {isOpen && (
@@ -513,7 +537,6 @@ export default function FormRenderer({
                           field={field}
                           validationProperties={resolveValidators(field)}
                           formId={formMeta.formId}
-                          formVersion={formMeta.version}
                           previewToken={previewToken}
                         />
                       ))}
@@ -547,7 +570,6 @@ export default function FormRenderer({
                   validationProperties={resolveValidators(group.field)}
                   insetFieldsByOption={insetFieldsByOption}
                   formId={formMeta.formId}
-                  formVersion={formMeta.version}
                   previewToken={previewToken}
                 />
               );
@@ -560,7 +582,6 @@ export default function FormRenderer({
                 field={group.field}
                 validationProperties={resolveValidators(group.field)}
                 formId={formMeta.formId}
-                formVersion={formMeta.version}
                 previewToken={previewToken}
               />
             );

@@ -4,13 +4,13 @@ import { SendEmailCommand } from "@aws-sdk/client-sesv2";
 import MailComposer from "nodemailer/lib/mail-composer";
 import type Mail from "nodemailer/lib/mailer";
 import Handlebars from "handlebars";
-import { SesMailer } from "../../../email/ses-mailer";
-import { EmailTemplateService } from "../../../email/email-template.service";
+import { SesMailer } from "@/email/ses-mailer";
+import { EmailTemplateService } from "@/email/email-template.service";
 import {
   EmailBodyBuilder,
   type EmailFileLink,
-} from "../../../email/email-body.builder";
-import { FilesService } from "../../../files/files.service";
+} from "@/email/email-body.builder";
+import { FilesService } from "@/files/files.service";
 import {
   classifyRecipientField,
   CONTACT_DETAILS_PREFIX,
@@ -20,7 +20,8 @@ import type {
   ProcessorOutput,
 } from "./submission-processor.interface";
 import type { SubmissionCreatedEvent } from "../submissions.types";
-import { FormConfigService } from "../../form-config/form-config.service";
+import { FormConfigService } from "@/forms/form-config/form-config.service";
+import { NonRetryableError } from "./non-retryable-error";
 
 // The detailed reviewer/MDA email: full field-by-field summary of the
 // submission. Used for every recipient kind except the citizen.
@@ -96,7 +97,9 @@ export class EmailProcessor implements ISubmissionProcessor {
   ): Promise<void> {
     const recipientField = cfg["recipientField"] as string | undefined;
     if (!recipientField) {
-      throw new Error(
+      // Config error: a recipe with no recipientField will never succeed on
+      // retry, so fail non-retryably.
+      throw new NonRetryableError(
         `No recipientField configured for submission ${payload.submissionId}`,
       );
     }
@@ -120,7 +123,14 @@ export class EmailProcessor implements ISubmissionProcessor {
               : this.resolveSubmittedRecipient(payload, recipientField);
 
       if (!recipient) {
-        throw new Error(`Could not resolve recipient at "${recipientField}"`);
+        // Config error: the recipient resolved to nothing (e.g. a misconfigured
+        // path or an empty contactDetails value). This won't fix itself on
+        // retry, so fail non-retryably. NOTE: a resolver that *throws* (DB/infra
+        // down) is a transient failure — it propagates to the catch below and is
+        // re-wrapped as a normal, retryable error.
+        throw new NonRetryableError(
+          `Could not resolve recipient at "${recipientField}"`,
+        );
       }
 
       // A recipe can set its own subject; otherwise the default depends on the
@@ -203,6 +213,11 @@ export class EmailProcessor implements ISubmissionProcessor {
         `[email] Confirmation sent to ${recipient} for submission ${payload.submissionId}`,
       );
     } catch (err) {
+      // A config error (unresolved recipient) is non-retryable — rethrow it
+      // untouched so the consumer drops the message instead of retrying. Any
+      // other failure (SES delivery, resolver/DB exception) is transient: wrap
+      // it as a normal error so SQS retries → DLQ.
+      if (err instanceof NonRetryableError) throw err;
       const reason = err instanceof Error ? err.message : String(err);
       throw new Error(
         `Failed to send email for recipientField "${recipientField}" on submission ${payload.submissionId}: ${reason}`,
