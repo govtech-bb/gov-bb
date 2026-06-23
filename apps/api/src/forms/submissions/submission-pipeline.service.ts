@@ -50,7 +50,7 @@ export class SubmissionPipelineService {
   ) {}
 
   async run(dto: SubmitDto): Promise<PipelineResult> {
-    const { draft, contract } = await this.pinVersion(dto);
+    const { draft, contract } = await this.resolveDraftAndContract(dto);
 
     const expanded = expandSubmission(contract, dto.values, {
       draftId: dto.draftId,
@@ -102,52 +102,34 @@ export class SubmissionPipelineService {
     return { draft, contract, auditTrail, normalizedValues };
   }
 
-  private async pinVersion(
+  private async resolveDraftAndContract(
     dto: SubmitDto,
   ): Promise<{ draft: FormDraftEntity | null; contract: ServiceContract }> {
-    if (!dto.draftId) {
-      const contract = await this.resolveSubmittableContract({
-        formId: dto.formId,
-        version: dto.formVersion,
-      });
-      return { draft: null, contract };
-    }
-
-    const draft = await this.formDraftsService.findById(dto.draftId);
-    const contract = await this.resolveSubmittableContract({
-      formId: dto.formId,
-      // null (canonical-pinned draft, #1196) → resolve the canonical recipe.
-      version: draft.formVersion ?? undefined,
-    });
-
+    const draft = dto.draftId
+      ? await this.formDraftsService.findById(dto.draftId)
+      : null;
+    const contract = await this.resolveSubmittableContract(dto.formId);
     return { draft, contract };
   }
 
   /**
    * Resolve the recipe to submit against. `findByFormId` (with
    * `includeProcessors`) resolves from published FILE recipes only (outside
-   * dev) and throws a NotFoundException when the version isn't a published
-   * file — including for a DB-only draft version previewed via `?preview=`.
+   * dev) and throws a NotFoundException when the form isn't a published file —
+   * including for a DB-only draft previewed via `?preview=`.
    *
    * To avoid an opaque 404 for that case, on a NotFoundException we probe the
-   * DB-consulting preview path (`getRecipe({ preview: true })`): if the version
+   * DB-consulting preview path (`getRecipe({ preview: true })`): if the recipe
    * exists as an unpublished draft, surface a clear 400; if it's genuinely
    * unknown, re-throw the original 404. Any non-NotFound error is re-thrown
    * unchanged.
    */
-  private async resolveSubmittableContract({
-    formId,
-    version,
-  }: {
-    formId: string;
-    // Optional post-#1196: absent → the canonical recipe; present → the legacy
-    // versioned file (still sent by pre-cutover clients).
-    version?: string;
-  }): Promise<ServiceContract> {
+  private async resolveSubmittableContract(
+    formId: string,
+  ): Promise<ServiceContract> {
     try {
       return await this.formDefinitionsService.findByFormId({
         formId,
-        version,
         includeProcessors: true,
       });
     } catch (err) {
@@ -155,12 +137,11 @@ export class SubmissionPipelineService {
 
       const previewRecipe = await this.formDefinitionsService.getRecipe({
         formId,
-        version,
         preview: true,
       });
       if (previewRecipe) {
         throw AppError.badRequest(
-          "This version is an unpublished preview and cannot be submitted. Publish the form before submitting.",
+          "This recipe is an unpublished preview and cannot be submitted. Publish the form before submitting.",
         );
       }
 

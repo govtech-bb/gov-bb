@@ -102,18 +102,16 @@ export class FormDefinitionsService {
 
   async findByFormId({
     formId,
-    version,
     includeProcessors = false,
     preview = false,
   }: {
     formId: string;
-    version?: string;
     includeProcessors?: boolean;
     preview?: boolean;
   }): Promise<ServiceContract> {
-    const recipe = await this.getRecipe({ formId, version, preview });
+    const recipe = await this.getRecipe({ formId, preview });
     if (!recipe) {
-      throw AppError.notFound("Form definition", { formId, version });
+      throw AppError.notFound("Form definition", { formId });
     }
 
     const contract = await this.registryService.hydrateForm(recipe);
@@ -151,21 +149,19 @@ export class FormDefinitionsService {
   }
 
   /**
-   * Resolve a raw recipe by formId (and optional version) from the configured
-   * source. Public so other services (e.g. FormDraftsService) can pin draft
-   * `formVersion` without reaching into the `form_definitions` table directly
-   * — which would expose unpublished builder scratch space (issue #145).
+   * Resolve a raw recipe by formId from the configured source. Public so other
+   * services (e.g. FormDraftsService) can read a recipe without reaching into
+   * the `form_definitions` table directly — which would expose unpublished
+   * builder scratch space (issue #145).
    *
    * When `preview` is `true`, resolution always uses the "both" path regardless
    * of the configured source or NODE_ENV — enabling per-request DB preview.
    */
   async getRecipe({
     formId,
-    version,
     preview = false,
   }: {
     formId: string;
-    version?: string;
     preview?: boolean;
   }): Promise<ServiceContractRecipe | null> {
     // When preview is true, force "both" so the DB is consulted regardless of
@@ -174,30 +170,27 @@ export class FormDefinitionsService {
     const effectiveSource: RecipeSource = preview ? "both" : this.source();
 
     if (effectiveSource === "files") {
-      return this.recipeFileLoader.findByFormId({ formId, version });
+      return this.recipeFileLoader.findByFormId({ formId });
     }
 
     if (effectiveSource === "db") {
-      return this.getRecipeFromDb({ formId, version });
+      return this.getRecipeFromDb({ formId });
     }
 
     // effectiveSource === "both" — the preview path (#1196). The DB scratch row
     // is the in-progress authoring draft: prefer it, else fall back to the
-    // canonical flat file. No version dimension — a form is one draft + one
-    // canonical recipe.
+    // canonical flat file. A form is one draft + one canonical recipe.
     const dbRecipe = await this.getRecipeFromDb({ formId });
     return dbRecipe ?? this.recipeFileLoader.findByFormId({ formId });
   }
 
   private async getRecipeFromDb({
     formId,
-    version,
   }: {
     formId: string;
-    version?: string;
   }): Promise<ServiceContractRecipe | null> {
     const entity = await this.formDefRepo.findOne({
-      where: { formId, ...(version && { version }) },
+      where: { formId },
       order: { createdAt: "DESC" },
     });
     return entity ? entity.schema : null;

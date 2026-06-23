@@ -79,7 +79,6 @@ export class FilesService {
     this.assertConfigured();
     const field = await this.resolveFileField(
       dto.formId,
-      dto.formVersion,
       dto.stepId,
       dto.fieldId,
       this.isPreview(previewToken),
@@ -117,7 +116,6 @@ export class FilesService {
     // (or sign a token at presign and require it here).
     const field = await this.resolveFileField(
       dto.formId,
-      dto.formVersion,
       dto.stepId,
       dto.fieldId,
       this.isPreview(previewToken),
@@ -367,8 +365,6 @@ export class FilesService {
 
   private async resolveFileField(
     formId: string,
-    // Optional post-#1196: absent → canonical recipe, present → legacy file.
-    formVersion: string | undefined,
     stepId: string,
     fieldId: string,
     preview = false,
@@ -377,13 +373,10 @@ export class FilesService {
     try {
       contract = await this.formDefs.findByFormId({
         formId,
-        version: formVersion,
         preview,
       });
     } catch {
-      throw new BadRequestException(
-        `Form not found: ${formId}${formVersion ? `@${formVersion}` : ""}`,
-      );
+      throw new BadRequestException(`Form not found: ${formId}`);
     }
     const step = contract.steps.find((s) => s.stepId === stepId);
     if (!step) {

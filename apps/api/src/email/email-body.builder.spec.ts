@@ -226,12 +226,11 @@ describe("EmailBodyBuilder", () => {
       expect(ctx.submissionId).toBe("JPP-20260604-130732-9JZRZC");
     });
 
-    it("fetches the contract using formId and formVersion from the payload", async () => {
+    it("fetches the contract by formId from the payload (#1196: no version)", async () => {
       await builder.build(makePayload());
 
       expect(formSvc.findByFormId).toHaveBeenCalledWith({
         formId: "test-form",
-        version: "1.0.0",
       });
     });
 
@@ -896,7 +895,7 @@ describe("EmailBodyBuilder", () => {
   });
 
   describe("contract caching", () => {
-    it("fetches the contract only once for the same formId + version", async () => {
+    it("fetches the contract only once for the same formId", async () => {
       const payload = makePayload();
 
       await builder.build(payload);

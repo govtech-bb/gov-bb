@@ -11,10 +11,10 @@
 
 > **Recipe versioning was removed (#1196).** Each form is now a single mutable
 > file `recipes/{formId}.json`; publishing overwrites it and the PR diff *is* the
-> record of change (git is the version history). Legacy versioned
-> `recipes/{formId}/{version}.json` directories are retained read-only as a
-> runtime fallback for in-flight pinned submissions/drafts until the Phase 2
-> decommission; they are frozen and never the served artifact.
+> record of change (git is the version history). The Phase 2 decommission (PR C)
+> deleted the legacy versioned `recipes/{formId}/{version}.json` directories and
+> the version-resolution fallback entirely — a form resolves to its one canonical
+> recipe, with no version dimension anywhere in the runtime.
 
 ---
 
@@ -39,9 +39,6 @@
 apps/api/src/forms/form-definitions/recipes/
   ├── vehicle-colour-change-request.json   ← canonical (served)
   ├── passport-renewal.json                ← canonical (served)
-  ├── vehicle-colour-change-request/       ← legacy fallback (frozen, read-only)
-  │   ├── 1.0.0.json
-  │   └── 1.1.0.json
   └── …
 ```
 
@@ -51,9 +48,7 @@ apps/api/src/forms/form-definitions/recipes/
 - The recipe JSON conforms to `serviceContractRecipeSchema` from
   `@govtech-bb/form-types` (where `version` is now optional).
 - `findAll()` returns one entry per `formId` from the flat file; `findByFormId({
-  formId })` resolves the flat file. `findByFormId({ formId, version })` is the
-  legacy fallback path — it resolves a frozen `{formId}/{version}.json` for an
-  in-flight submission/draft that still pins a version.
+  formId })` resolves it. There is no version parameter and no fallback.
 
 In the runner container these files end up at
 `/app/dist/src/forms/form-definitions/recipes/`, copied by the Dockerfile
@@ -78,10 +73,8 @@ alongside the compiled API. (The pattern mirrors how `apps/api/src/email/templat
 3. **Reviewer approves and merges the PR.** The recipe file is now on the
    integration branch.
 4. **API picks it up on next boot.** `RecipeFileLoaderService.onModuleInit`
-   walks the recipes tree, loading each flat `{formId}.json` as the canonical
-   recipe and each `{formId}/{version}.json` into the legacy fallback map.
-   **There is no hot reload** — file changes require a server restart to take
-   effect.
+   loads each flat `{formId}.json` into the in-memory recipe map. **There is no
+   hot reload** — file changes require a server restart to take effect.
 5. **End-user requests `GET /form-definitions` or
    `GET /form-definitions/{formId}`** and the API returns the hydrated
    contract from that in-memory map.
