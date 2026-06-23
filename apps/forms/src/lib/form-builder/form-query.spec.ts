@@ -180,10 +180,10 @@ describe("formMetaQueryOptions", () => {
     ]);
   });
 
-  it("staleTime is Infinity", () => {
+  it("staleTime is 60 seconds so a republished recipe propagates (#1196)", () => {
     const contract = makeClientContract("benefit-claim", "3.0.0");
     const opts = formMetaQueryOptions("benefit-claim", contract);
-    expect(opts.staleTime).toBe(Infinity);
+    expect(opts.staleTime).toBe(60_000);
   });
 
   it("preview token lands in the 3rd slot of the queryKey", () => {
