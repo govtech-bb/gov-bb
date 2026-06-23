@@ -34,7 +34,6 @@ export type {
   FormSubmissionResponseBody,
   FormDraftResponse,
   FormSubmissionResponse,
-  FormSubmissionBody,
   FormDefinitionResponse,
   FormDefinitionsListResponse,
   FormDefinitionSummary,

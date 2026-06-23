@@ -1,11 +1,11 @@
 const DEFAULT_ALLOWED_ORIGINS = ["ezpay.gov.bb"];
 
 function getAllowedHosts(): string[] {
-  // Vite inlines `process.env.VITE_*` into the browser bundle via the
-  // `define` block in vite.config.ts. Guarding with `typeof process` here
-  // would short-circuit the lookup at runtime because `process` is not a
-  // global in the browser, defeating the inlined replacement.
-  const raw = process.env?.VITE_PAYMENT_ALLOWED_ORIGINS;
+  // Vite statically replaces `import.meta.env.VITE_*` with the build-time
+  // value when bundling the browser app, so this resolves to the configured
+  // allowlist in production. Read lazily here so tests can drive it per-case
+  // with `vi.stubEnv`.
+  const raw = import.meta.env.VITE_PAYMENT_ALLOWED_ORIGINS;
   if (typeof raw !== "string" || raw.trim() === "") {
     return DEFAULT_ALLOWED_ORIGINS;
   }
