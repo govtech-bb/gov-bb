@@ -117,7 +117,8 @@ export interface PaymentRequiredEvent {
   /** The citizen's email, resolved from the payment processor config. */
   customerEmail: string;
   formId: string;
-  formVersion: string;
+  /** Optional post-#1196 (version retired): absent → canonical recipe. */
+  formVersion?: string;
   referenceCode: string;
   submissionId: string;
   /** Amount due, in dollars. */
