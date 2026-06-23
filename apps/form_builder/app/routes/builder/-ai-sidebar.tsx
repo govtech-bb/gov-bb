@@ -92,9 +92,8 @@ async function pollUntilDone<T extends { status: string }>(
 }
 
 interface AiSidebarProps {
-  // The live draft + working version, so Edit Form can send the current recipe.
+  // The live draft, so Edit Form can send the current recipe.
   draft: RecipeDraft;
-  version: string;
   onApplyRecipe: (
     recipe: ServiceContractRecipe,
     unresolvableRefs: UnknownRef[],
@@ -106,7 +105,7 @@ interface AiSidebarProps {
 // be the same ceiling the API enforces on its presign side — 20 MB.
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
 
-export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
+export function AiSidebar({ draft, onApplyRecipe }: AiSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -270,7 +269,7 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
     pollAbortRef.current = abort;
 
     try {
-      const recipeJson = JSON.stringify(serializeRecipeDraft(draft, { version }));
+      const recipeJson = JSON.stringify(serializeRecipeDraft(draft));
       const { jobId } = await startEditRecipe({ data: { message, recipeJson } });
 
       // Fast-first cadence: a 2–3s edit returns on the first or second poll and
