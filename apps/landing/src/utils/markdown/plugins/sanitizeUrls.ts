@@ -4,7 +4,7 @@ const SAFE_PROTOCOL = /^(https?|ircs?|mailto|xmpp)$/i
 
 // Verbatim copy of react-markdown@9's defaultUrlTransform: blanks URLs whose
 // protocol isn't on the safe list (e.g. javascript:). Note: `tel:` isn't listed.
-function defaultUrlTransform(value: string): string {
+export function defaultUrlTransform(value: string): string {
   const colon = value.indexOf(':')
   const questionMark = value.indexOf('?')
   const numberSign = value.indexOf('#')

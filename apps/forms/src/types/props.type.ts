@@ -1,8 +1,12 @@
 import { ContactDetails } from "@govtech-bb/form-types";
 import { AnyFormApi } from "@tanstack/react-form";
-import { ClientFormStep, ClientPrimitive } from "./field-mapper.type";
+import {
+  ClientFormStep,
+  ClientPrimitive,
+  ClientServiceContract,
+} from "./field-mapper.type";
 import { FormMeta } from "./renderer.type";
-import { RepeatableStepSettings } from "./repeatable.type";
+import { RepeatableStepSettings } from "./behavior-helper.type";
 
 export interface FormRendererProps {
   form: AnyFormApi;
@@ -18,6 +22,11 @@ export interface FormRendererProps {
    */
   previewToken?: string;
 }
+
+export type FormRouteProps = {
+  contract: ClientServiceContract;
+  stepId?: string;
+};
 
 export type UseStepGuardProps = {
   formId: string;

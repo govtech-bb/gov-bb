@@ -1,17 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "useDefineForClassFields": false,
-    "paths": {
-      // dev (tsx) resolves the subpath to source; the build tsconfig points at
-      // the emitted .d.ts (a built declaration can't be loaded at runtime).
-      "@govtech-bb/ai-bedrock/converse": [
-        "packages/ai-bedrock/src/converse.ts"
-      ],
-      "@govtech-bb/database": ["../../packages/database/src/index.ts"],
-      "@govtech-bb/form-builder": ["../../packages/form-builder/src/index.ts"],
-      "@govtech-bb/form-types": ["../../packages/form-types/src/index.ts"]
-    }
+    "useDefineForClassFields": false
   },
   "include": ["src/**/*.ts", "../../packages/*/src/**/*.ts"]
 }

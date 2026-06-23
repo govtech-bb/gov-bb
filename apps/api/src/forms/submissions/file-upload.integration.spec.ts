@@ -12,7 +12,7 @@ import { INestApplication, ValidationPipe } from "@nestjs/common";
 import request from "supertest";
 import { mockClient } from "aws-sdk-client-mock";
 import { S3Client, HeadObjectCommand } from "@aws-sdk/client-s3";
-import { AppModule } from "@/app.module";
+import { AppModule } from "../../app.module";
 
 const s3Mock = mockClient(S3Client);
 

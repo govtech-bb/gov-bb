@@ -6,7 +6,7 @@ import { logger } from "#/lib/observability/logger";
 // ingest completion instead of fire-and-forget: it polls /api/health until a
 // run started AFTER its trigger has finished, and fails the job if that run
 // failed.
-interface LastIngest {
+export interface LastIngest {
   status: string; // running | success | failed
   startedAt: string;
   finishedAt: string | null;

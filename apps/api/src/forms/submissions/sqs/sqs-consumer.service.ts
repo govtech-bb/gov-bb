@@ -13,9 +13,8 @@ import {
   Message,
   MessageSystemAttributeName,
 } from "@aws-sdk/client-sqs";
-import sqsConfig from "@/config/sqs.config";
+import sqsConfig from "../../../config/sqs.config";
 import { ProcessorFactory } from "../processors/processor-factory.service";
-import { NonRetryableError } from "../processors/non-retryable-error";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import type { SubmissionSqsMessage } from "./submission-sqs-message.interface";
 
@@ -186,19 +185,6 @@ export class SqsConsumerService
         `Completed processor="${processorType}" index=${processorIndex} submissionId="${submissionId}"`,
       );
     } catch (err) {
-      // A NonRetryableError is a permanent config error: retrying it
-      // would only churn into the DLQ. Surface it loudly, then delete the
-      // message so it doesn't retry. Every other error is treated as transient.
-      if (err instanceof NonRetryableError) {
-        this.logger.error(
-          `Processor="${processorType}" non-retryable config error for ` +
-            `submissionId="${submissionId}" index=${processorIndex} — ` +
-            `dropping message (no retry)`,
-          err,
-        );
-        await this.deleteMessage(queueUrl, message.ReceiptHandle!);
-        return;
-      }
       this.logger.error(
         `Processor="${processorType}" failed for submissionId="${submissionId}" ` +
           `(attempt ${receiveCount}) — message will be retried by SQS`,

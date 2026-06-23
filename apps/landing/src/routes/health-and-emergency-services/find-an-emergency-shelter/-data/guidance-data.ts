@@ -241,7 +241,7 @@ export const HURRICANE_TERMS: HurricaneTerm[] = [
   },
 ]
 
-interface PhoneContact {
+export interface PhoneContact {
   display: string
   tel: string
   /** e.g. "in an emergency", "(direct)", "(mobile)". */

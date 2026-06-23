@@ -1,10 +1,10 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
 import { ConfigType } from "@nestjs/config";
-import { ExpressionsService } from "@/expressions/expressions.service";
+import { ExpressionsService } from "../../expressions/expressions.service";
 import { ProcessorFactory } from "./processors/processor-factory.service";
 import { SqsProducerService } from "./sqs/sqs-producer.service";
-import sqsConfig from "@/config/sqs.config";
+import sqsConfig from "../../config/sqs.config";
 import type { SubmissionCreatedEvent } from "./submissions.types";
 
 @Injectable()

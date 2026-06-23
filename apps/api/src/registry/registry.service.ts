@@ -17,7 +17,7 @@ import type {
 const CACHE_TTL_SECONDS = 60;
 const CACHE_LOADED_KEY = "__loaded__";
 
-interface IRegistryService {
+export interface IRegistryService {
   resolve(ref: string): Promise<RegistryEntry | null>;
   hydrateForm(recipe: ServiceContractRecipe): Promise<ServiceContract>;
 }

@@ -63,20 +63,13 @@ function validRecipe() {
 }
 
 describe("POST /builder/publish — validation backstop", () => {
-  const originalGithubOrg = process.env.GITHUB_ORG;
-
   beforeEach(() => {
     vi.clearAllMocks();
     getFullCatalogMock.mockResolvedValue(getCatalog());
-    // Repo owner is now env-driven (#1400) — the GitHub-flow tests below assert
-    // URLs against this org.
-    process.env.GITHUB_ORG = "govtech-bb";
   });
 
   afterEach(() => {
     delete (global as { fetch?: unknown }).fetch;
-    if (originalGithubOrg === undefined) delete process.env.GITHUB_ORG;
-    else process.env.GITHUB_ORG = originalGithubOrg;
   });
 
   it("returns 400 with issues and makes no GitHub call for a contract-invalid recipe", async () => {

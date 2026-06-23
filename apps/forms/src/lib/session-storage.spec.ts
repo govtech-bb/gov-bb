@@ -12,6 +12,7 @@
  *  - markStepCompleted: adds step; does not add duplicate
  *  - isStepCompleted: true for completed, false for incomplete
  *  - getLastCompletedStep: returns last completed; null if none completed
+ *  - getFirstIncompleteStepIndex: 0 when nothing done; steps.length when all done; correct mid-index
  *  - getFirstIncompleteActiveStep: first incomplete step object; null when all done
  *  - isStepAccessible: first step always accessible; true when all preceding completed;
  *                      false when preceding incomplete; false when stepId not in list
@@ -25,6 +26,7 @@ import {
   markStepCompleted,
   isStepCompleted,
   getLastCompletedStep,
+  getFirstIncompleteStepIndex,
   getFirstIncompleteActiveStep,
   isStepAccessible,
   storeSubmissionState,
@@ -215,6 +217,35 @@ describe("getLastCompletedStep", () => {
     markStepCompleted(FORM_ID, "step2");
     markStepCompleted(FORM_ID, "step3");
     expect(getLastCompletedStep(FORM_ID, steps)).toBe("step3");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getFirstIncompleteStepIndex
+// ---------------------------------------------------------------------------
+
+describe("getFirstIncompleteStepIndex", () => {
+  const steps = [{ stepId: "step1" }, { stepId: "step2" }, { stepId: "step3" }];
+
+  it("returns 0 when no steps are completed", () => {
+    expect(getFirstIncompleteStepIndex(FORM_ID, steps)).toBe(0);
+  });
+
+  it("returns steps.length when all steps are completed", () => {
+    markStepCompleted(FORM_ID, "step1");
+    markStepCompleted(FORM_ID, "step2");
+    markStepCompleted(FORM_ID, "step3");
+    expect(getFirstIncompleteStepIndex(FORM_ID, steps)).toBe(steps.length);
+  });
+
+  it("returns the correct index of the first incomplete step", () => {
+    markStepCompleted(FORM_ID, "step1");
+    // step2 is not complete → index 1
+    expect(getFirstIncompleteStepIndex(FORM_ID, steps)).toBe(1);
+  });
+
+  it("returns 0 for an empty steps array", () => {
+    expect(getFirstIncompleteStepIndex(FORM_ID, [])).toBe(0);
   });
 });
 

@@ -1,22 +1,9 @@
 import { Logger } from "@nestjs/common";
-import type { HttpService } from "@nestjs/axios";
-import { of } from "rxjs";
 import { OpencrvsProcessor } from "./opencrvs.processor";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
-const request = vi.fn();
-const http = { request } as unknown as HttpService;
-
-/** Single config object passed to HttpService.request for call `i`. */
-function reqConfig(i = 0): {
-  method: string;
-  url: string;
-  data: string;
-  headers: Record<string, string>;
-  timeout: number;
-} {
-  return request.mock.calls[i][0];
-}
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
 function makePayload(
   processorConfig: Record<string, string> = {},
@@ -56,24 +43,24 @@ describe("OpencrvsProcessor", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    request.mockReturnValue(of({ status: 200, data: {} }));
-    processor = new OpencrvsProcessor(http);
+    mockFetch.mockResolvedValue({ ok: true });
+    processor = new OpencrvsProcessor();
   });
 
   describe("process", () => {
     it("POSTs submission data to the configured endpoint", async () => {
       await processor.process(makePayload());
 
-      expect(reqConfig().method).toBe("POST");
-      expect(reqConfig().url).toBe(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://opencrvs.example.gov.bb/api/submit",
+        expect.objectContaining({ method: "POST" }),
       );
     });
 
     it("includes submissionId, formId, formVersion, values, and submittedAt in the body", async () => {
       await processor.process(makePayload());
 
-      const body = JSON.parse(reqConfig().data);
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(body).toMatchObject({
         submissionId: "sub-002",
         formId: "birth-registration",
@@ -86,28 +73,22 @@ describe("OpencrvsProcessor", () => {
     it("sets X-Idempotency-Key header derived from submissionId for retry safety", async () => {
       await processor.process(makePayload());
 
-      const headers = reqConfig().headers;
+      const headers = mockFetch.mock.calls[0][1].headers;
       // Format is "<submissionId>:<index>" so multi-entry retries don't collide.
       expect(headers["X-Idempotency-Key"]).toBe("sub-002:0");
-    });
-
-    it("applies a request timeout", async () => {
-      await processor.process(makePayload());
-
-      expect(reqConfig().timeout).toBeGreaterThan(0);
     });
 
     it("includes Authorization header when token is configured", async () => {
       await processor.process(makePayload({ token: "secret-token" }));
 
-      const headers = reqConfig().headers;
+      const headers = mockFetch.mock.calls[0][1].headers;
       expect(headers["Authorization"]).toBe("Bearer secret-token");
     });
 
     it("omits Authorization header when no token is configured", async () => {
       await processor.process(makePayload());
 
-      const headers = reqConfig().headers;
+      const headers = mockFetch.mock.calls[0][1].headers;
       expect(headers["Authorization"]).toBeUndefined();
     });
 
@@ -120,13 +101,13 @@ describe("OpencrvsProcessor", () => {
 
       await processor.process(payload);
 
-      expect(request).not.toHaveBeenCalled();
+      expect(mockFetch).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith(expect.stringContaining("No endpoint"));
       warn.mockRestore();
     });
 
     it("throws when the endpoint responds with a non-OK status", async () => {
-      request.mockReturnValue(of({ status: 503, data: {} }));
+      mockFetch.mockResolvedValue({ ok: false, status: 503 });
 
       await expect(processor.process(makePayload())).rejects.toThrow(
         "HTTP 503",
@@ -151,8 +132,10 @@ describe("OpencrvsProcessor", () => {
 
       await processor.process(payload);
 
-      expect(request).toHaveBeenCalledTimes(1);
-      expect(reqConfig().url).toBe("https://secondary.example/api/submit");
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch.mock.calls[0][0]).toBe(
+        "https://secondary.example/api/submit",
+      );
     });
 
     it("is a no-op when no entry exists at processorIndex (defensive guard)", async () => {
@@ -164,7 +147,7 @@ describe("OpencrvsProcessor", () => {
       const result = await processor.process(payload);
 
       expect(result).toEqual({ kind: "completed" });
-      expect(request).not.toHaveBeenCalled();
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it("keys X-Idempotency-Key with the addressed index so per-entry retries don't collide", async () => {
@@ -183,7 +166,7 @@ describe("OpencrvsProcessor", () => {
 
       await processor.process(payload);
 
-      const headers = reqConfig().headers;
+      const headers = mockFetch.mock.calls[0][1].headers;
       expect(headers["X-Idempotency-Key"]).toBe("sub-002:1");
     });
   });

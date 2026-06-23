@@ -18,7 +18,40 @@
 // `process.env.X` fallbacks remain so local dev / `.env.local` keeps working
 // — if the plaintext value is already in the environment we never call SM.
 
-import { getCachedSecretJson } from "@govtech-bb/aws-secrets";
+import {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} from "@aws-sdk/client-secrets-manager";
+
+let client: SecretsManagerClient | undefined;
+const cache = new Map<string, Promise<Record<string, unknown>>>();
+
+function getClient(): SecretsManagerClient {
+  if (!client) client = new SecretsManagerClient({});
+  return client;
+}
+
+async function getCachedSecretJson(
+  arn: string,
+): Promise<Record<string, unknown>> {
+  let p = cache.get(arn);
+  if (!p) {
+    p = getClient()
+      .send(new GetSecretValueCommand({ SecretId: arn }))
+      .then((r) => {
+        if (!r.SecretString) {
+          throw new Error(`Secret ${arn} has no SecretString`);
+        }
+        return JSON.parse(r.SecretString) as Record<string, unknown>;
+      })
+      .catch((err) => {
+        cache.delete(arn);
+        throw err;
+      });
+    cache.set(arn, p);
+  }
+  return p;
+}
 
 function readStringField(
   json: Record<string, unknown>,

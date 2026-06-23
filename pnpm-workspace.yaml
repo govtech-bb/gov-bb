@@ -20,10 +20,14 @@ confirmModulesPurge: false
 # Security overrides, mostly for transitive deps flagged by dependabot.
 # Lived in package.json "pnpm.overrides" until pnpm 11 stopped reading it.
 overrides:
-  multer@<2.2.0: ^2.2.0
-  uuid@<11.1.1: ^11.1.1
-  js-yaml@>=4.0.0 <4.1.2: ^4.1.2
-  "@opentelemetry/core@<2.8.0": ^2.8.0
+  "tmp@<0.2.6": ">=0.2.6"
+  "yaml@>=2.0.0 <2.8.3": ">=2.8.3"
+  "brace-expansion@>=5.0.0 <5.0.6": ">=5.0.6"
+  "uuid@<11.1.1": ">=11.1.1"
+  "esbuild@<0.25.0": ">=0.25.0"
+  "shell-quote@<1.8.4": ">=1.8.4"
+  "dompurify@<3.4.0": ">=3.4.0"
+  "postcss@<8.5.10": ">=8.5.10"
 
 # pnpm blocks dependency build scripts by default; allowBuilds is the
 # reviewed decision list. true = must run (fetch/verify native binaries).
@@ -61,13 +65,3 @@ catalog:
   react-dom: "^19.2.6"
   typescript: "^5.9.3"
   vite: "^8.0.14"
-
-minimumReleaseAgeExclude:
-  - esbuild@0.28.1
-  - tmp@0.2.7
-  - form-data@4.0.6
-  - js-yaml@4.1.2
-  - '@opentelemetry/core@2.8.0'
-  - multer@2.2.0
-  - undici@7.28.0
-  - nodemailer@9.0.1

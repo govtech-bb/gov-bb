@@ -4,7 +4,7 @@ import type {
 } from "@govtech-bb/form-types";
 import type { SubmissionValues } from "./submissions.types";
 
-const MAX_INSTANCES_HARD = 500;
+export const MAX_INSTANCES_HARD = 500;
 
 export interface StepInstance {
   stepId: string;
@@ -13,7 +13,7 @@ export interface StepInstance {
   values: Record<string, unknown>;
 }
 
-type ShapeErrorReason =
+export type ShapeErrorReason =
   | "unknown_step"
   | "expected_object_got_array"
   | "expected_array_got_object"
@@ -22,7 +22,7 @@ type ShapeErrorReason =
   | "too_many_instances"
   | "non_object_instance";
 
-interface ShapeError {
+export interface ShapeError {
   stepId: string;
   index?: number;
   reason: ShapeErrorReason;

@@ -9,7 +9,7 @@
  * 2026 guidance and the Barbados Water Authority's storm advice.
  */
 
-interface ChecklistItem {
+export interface ChecklistItem {
   /** Stable id — used as the localStorage key for this item's state. */
   id: string
   label: string

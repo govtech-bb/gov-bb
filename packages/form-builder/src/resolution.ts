@@ -4,11 +4,49 @@ import type {
   Primitive,
   FieldOverrides,
 } from "@govtech-bb/form-types";
-import { applyFieldOverrides } from "@govtech-bb/form-types";
+import { shallowMergeDefined } from "@govtech-bb/form-types";
 import type { RegistryCatalog } from "./catalog";
 import type { ComponentDefinition, BlockDefinition } from "./definition-types";
 import { getRegistryItem } from "./catalog";
 import { UnknownRefError, type UnknownRef } from "./errors";
+
+/**
+ * Merge FieldOverrides onto a Primitive (shallow merge, deep merge for
+ * validations and ui).
+ */
+function applyOverrides(
+  primitive: Primitive,
+  overrides: FieldOverrides,
+): Primitive {
+  const {
+    validations: baseValidations,
+    ui: baseUi,
+    ...restPrimitive
+  } = primitive;
+  const {
+    validations: overrideValidations,
+    ui: overrideUi,
+    ...restOverrides
+  } = overrides;
+
+  // `validations` and `ui` are deep-merged, not replaced: an override that
+  // restates one key must not drop the registry default's other keys (a
+  // wholesale spread regressed `validations` in #371 and `ui` in #789). The
+  // served form merges identically in apps/api/src/registry/resolution.ts.
+  const mergedValidations = shallowMergeDefined(
+    baseValidations,
+    overrideValidations,
+  );
+  const mergedUi = shallowMergeDefined(baseUi, overrideUi);
+  return {
+    ...restPrimitive,
+    ...restOverrides,
+    ...(mergedValidations !== undefined
+      ? { validations: mergedValidations }
+      : {}),
+    ...(mergedUi !== undefined ? { ui: mergedUi } : {}),
+  } as Primitive;
+}
 
 /**
  * Collect every component/block ref in `recipe` that does not resolve against
@@ -67,7 +105,7 @@ export function hydrateForm(
         const overrides =
           (field as { ref: string; overrides?: FieldOverrides }).overrides ??
           {};
-        elements.push(applyFieldOverrides(componentDef.primitive, overrides));
+        elements.push(applyOverrides(componentDef.primitive, overrides));
       } else if (field.ref.startsWith("blocks/")) {
         const blockDef = item as BlockDefinition;
         const childOverrides =
@@ -76,7 +114,7 @@ export function hydrateForm(
 
         for (const element of blockDef.block.elements) {
           const childOverride = childOverrides[element.fieldId] ?? {};
-          elements.push(applyFieldOverrides(element, childOverride));
+          elements.push(applyOverrides(element, childOverride));
         }
       }
     });

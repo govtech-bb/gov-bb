@@ -3,7 +3,7 @@ import {
   Link as GovLink,
   linkVariants,
   Logo,
-  OfficialBanner,
+  Text,
 } from "@govtech-bb/react";
 import { TridentAvatar } from "#/components/trident-avatar";
 import { LANDING_URL } from "#/config/landing";
@@ -12,11 +12,21 @@ import { LANDING_URL } from "#/config/landing";
 export function SiteHeader() {
   return (
     <div>
-      <OfficialBanner
-        imageSrc="/images/coat-of-arms.png"
-        imageAlt=""
-        showLearnMore={false}
-      />
+      <div className="bg-blue-100 text-white-00">
+        <div className="container flex items-center gap-xs py-xs">
+          <img
+            alt=""
+            aria-hidden="true"
+            className="block"
+            height={16}
+            src="/coat-of-arms.png"
+            width={17}
+          />
+          <Text as="span" className="text-white-00" size="caption">
+            Official government website
+          </Text>
+        </div>
+      </div>
       <header className="bg-yellow-100">
         <div className="container py-s md:py-m">
           <a href={LANDING_URL} aria-label="Go to the alpha.gov.bb homepage">

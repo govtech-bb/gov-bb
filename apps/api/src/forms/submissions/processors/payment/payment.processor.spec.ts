@@ -4,12 +4,12 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { PaymentProcessor } from "./payment.processor";
 import { EzpayClient } from "./ezpay/ezpay.client";
 import { DepartmentKeyResolver } from "./ezpay/department-keys";
-import { PaymentRepository } from "@/payments/payment.repository";
+import { PaymentRepository } from "../../../../payments/payment.repository";
 import {
   PaymentEntity,
   PaymentStatus,
-} from "@/database/entities/payment.entity";
-import type { SubmissionCreatedEvent } from "@/forms/submissions/submissions.types";
+} from "../../../../database/entities/payment.entity";
+import type { SubmissionCreatedEvent } from "../../submissions.types";
 
 describe("PaymentProcessor.process", () => {
   let processor: PaymentProcessor;

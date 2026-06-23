@@ -4,11 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./converse": {
-      "types": "./src/converse.ts",
-      "default": "./src/converse.js"
-    }
+    ".": "./src/index.ts"
   },
   "scripts": {
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.ts"

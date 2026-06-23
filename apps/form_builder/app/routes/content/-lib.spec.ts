@@ -6,7 +6,6 @@ import {
   applyStartLink,
   placeStartLinkAt,
   insertCategoryEntry,
-  isKnownCategory,
   startPageContentPath,
   startPageUrl,
   LANDING_CATEGORIES,
@@ -181,13 +180,6 @@ describe("renderStartPageMarkdown", () => {
     expect(LANDING_CATEGORIES.every((c) => c.slug && c.title)).toBe(true);
   });
 
-  it("recognises the categories that the old hard-coded copy had drifted from", () => {
-    // These three existed only in landing before the taxonomy was shared (#1393).
-    expect(isKnownCategory("social-empowerment")).toBe(true);
-    expect(isKnownCategory("ministry-of-youth")).toBe(true);
-    expect(isKnownCategory("housing")).toBe(true);
-  });
-
   it("writes an internal-slug start link with an href and no form_id", () => {
     const { frontmatter, body } = parseContentMarkdown(
       renderStartPageMarkdown({
@@ -311,18 +303,16 @@ describe("parseStartLink / applyStartLink", () => {
 });
 
 describe("insertCategoryEntry", () => {
-  // Mirrors the canonical packages/content/src/categories.ts shape: a
-  // CATEGORY_TAXONOMY array of double-quoted entries closed with `];`.
-  const SOURCE = `export const CATEGORY_TAXONOMY: Array<Category> = [
+  const SOURCE = `export const CATEGORIES: Array<Category> = [
   {
-    slug: "education",
-    title: "Education",
+    slug: 'education',
+    title: 'Education',
   },
-];
+]
 
 export const CATEGORY_BY_SLUG: Record<string, Category> = Object.fromEntries(
-  CATEGORY_TAXONOMY.map((c) => [c.slug, c]),
-);
+  CATEGORIES.map((c) => [c.slug, c]),
+)
 `;
 
   it("inserts a new entry before the array close", () => {
@@ -331,9 +321,9 @@ export const CATEGORY_BY_SLUG: Record<string, Category> = Object.fromEntries(
       title: "Housing and land",
       description: "Find housing support",
     });
-    expect(next).toContain('slug: "housing-and-land",');
-    expect(next).toContain('title: "Housing and land",');
-    expect(next).toContain('description: "Find housing support",');
+    expect(next).toContain("slug: 'housing-and-land',");
+    expect(next).toContain("title: 'Housing and land',");
+    expect(next).toContain("description: 'Find housing support',");
     // still inside the array, before the export below
     expect(next!.indexOf("housing-and-land")).toBeLessThan(
       next!.indexOf("CATEGORY_BY_SLUG"),
@@ -357,9 +347,9 @@ export const CATEGORY_BY_SLUG: Record<string, Category> = Object.fromEntries(
   it("escapes quotes in titles", () => {
     const next = insertCategoryEntry(SOURCE, {
       slug: "x",
-      title: 'The "new" one',
+      title: "It's new",
     });
-    expect(next).toContain('title: "The \\"new\\" one",');
+    expect(next).toContain("title: 'It\\'s new',");
   });
 });
 

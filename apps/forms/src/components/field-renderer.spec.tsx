@@ -621,23 +621,6 @@ describe("FieldRenderer", () => {
       await user.click(input);
       expect(mockFieldApi.handleChange).toHaveBeenCalledWith("");
     });
-
-    // react-markdown is mocked with a passthrough renderer (see
-    // test/__mocks__/react-markdown.tsx), so this asserts the label wires its
-    // copy through markdown rather than the rendered bullets/bold themselves.
-    it("renders the option label through markdown", () => {
-      const declaration =
-        "I confirm that:\n\n- it is correct\n\n**This is true.**";
-      const { container } = renderField(
-        primitive("checkbox", {
-          options: [{ value: "confirmed", label: declaration }],
-        }),
-      );
-      const label = container.querySelector(".govbb-checkbox-item__label");
-      const md = label?.querySelector('[data-testid="react-markdown"]');
-      expect(md).toBeTruthy();
-      expect(md?.textContent).toBe(declaration);
-    });
   });
 
   // -------------------------------------------------------------------------

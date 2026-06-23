@@ -5,10 +5,10 @@ import { DateTime } from "luxon";
 import {
   DraftStatus,
   FormDraftEntity,
-} from "@/database/entities/form-draft.entity";
+} from "../../database/entities/form-draft.entity";
 import { FormDraftRepository } from "./form-draft.repository";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
-import { AppError } from "@/common/errors";
+import { AppError } from "../../common/errors";
 
 const DRAFT_EXPIRY_DAYS = 7;
 

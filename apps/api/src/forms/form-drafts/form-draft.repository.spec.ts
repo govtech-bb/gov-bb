@@ -1,7 +1,7 @@
 import type { Mock, Mocked } from "vitest";
 import { DataSource, EntityManager } from "typeorm";
 import { FormDraftRepository } from "./form-draft.repository";
-import { FormDraftEntity } from "@/database/entities/form-draft.entity";
+import { FormDraftEntity } from "../../database/entities/form-draft.entity";
 
 function makeDataSource(): Mocked<DataSource> {
   const fakeManager = {

@@ -8,22 +8,20 @@ interface ApplicantNameDisplayProps {
 /**
  * Field-id suffixes that identify the applicant's name parts, normalized to
  * lowercase with separators stripped. Recipes name these fields differently —
- * most use the `applicant-details` block (`applicant-first-name`, …), some use
- * camelCase ids (`firstName`, `otherNames`, … e.g. the temp-teacher form), and
- * forms filled in on a child's behalf name the applicant the parent/guardian
- * (`parent-first-name`, … e.g. the summer-camp form). Matching by normalized
- * field id lets one component resolve the name across all of them.
+ * most use the `applicant-details` block (`applicant-first-name`, …) while
+ * others use camelCase ids (`firstName`, `otherNames`, … e.g. the
+ * temp-teacher form). Matching by normalized field id lets one component
+ * resolve the name across all of them.
  */
 const NAME_PART_IDS = {
-  first: new Set(["firstname", "applicantfirstname", "parentfirstname"]),
+  first: new Set(["firstname", "applicantfirstname"]),
   middle: new Set([
     "middlename",
     "applicantmiddlename",
     "othernames",
     "applicantothernames",
-    "parentmiddlenames",
   ]),
-  last: new Set(["lastname", "applicantlastname", "parentlastname"]),
+  last: new Set(["lastname", "applicantlastname"]),
 };
 
 const normalize = (value: string) => value.toLowerCase().replace(/[-_]/g, "");

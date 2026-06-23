@@ -13,11 +13,7 @@
     "module": "ESNext",
     "paths": {
       "#/*": ["./src/*"],
-      "@/*": ["./src/*"],
-      "@govtech-bb/analytics": ["../../packages/analytics/src/index.ts"],
-      "@govtech-bb/content/categories": [
-        "../../packages/content/src/categories.ts"
-      ]
+      "@/*": ["./src/*"]
     },
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],

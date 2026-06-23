@@ -19,9 +19,9 @@ import {
   GetDraftDocs,
   UpdateDraftDocs,
 } from "./form-drafts.docs";
-import { ApiResponse } from "@/common/response";
-import type { ApiResponseShape } from "@/common/response";
-import type { FormDraftEntity } from "@/database/entities/form-draft.entity";
+import { ApiResponse } from "../../common/response";
+import type { ApiResponseShape } from "../../common/response";
+import type { FormDraftEntity } from "../../database/entities/form-draft.entity";
 
 @ApiTags("Form Drafts")
 @ApiBearerAuth()

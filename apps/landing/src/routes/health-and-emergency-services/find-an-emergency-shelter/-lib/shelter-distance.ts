@@ -24,7 +24,7 @@ const MAX_PLAUSIBLE_DISTANCE_KM = 50
 const toRadians = (degrees: number): number => (degrees * Math.PI) / 180
 
 /** Great-circle distance between two points in kilometres. */
-function haversineKm(a: LatLon, b: LatLon): number {
+export function haversineKm(a: LatLon, b: LatLon): number {
   const dLat = toRadians(b.lat - a.lat)
   const dLon = toRadians(b.lon - a.lon)
   const lat1 = toRadians(a.lat)

@@ -5,8 +5,8 @@ import { ConfigService } from "@nestjs/config";
 import { SubmissionsController } from "./submissions.controller";
 import { SubmissionsService } from "./submissions.service";
 import { SubmissionPayloadSizePipe } from "./submission-payload-size.pipe";
-import type { FormSubmissionEntity } from "@/database/entities/form-submission.entity";
-import { FormSubmissionStatus } from "@/database/entities/form-submission.entity";
+import type { FormSubmissionEntity } from "../../database/entities/form-submission.entity";
+import { FormSubmissionStatus } from "../../database/entities/form-submission.entity";
 import type { CreateSubmissionDto } from "./dto";
 
 function makeEntity(

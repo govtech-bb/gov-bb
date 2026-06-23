@@ -23,9 +23,9 @@
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1057.0",
+    "@aws-sdk/client-secrets-manager": "^3.1057.0",
     "@fontsource/figtree": "^5.2.10",
     "@govtech-bb/ai-bedrock": "workspace:*",
-    "@govtech-bb/aws-secrets": "workspace:*",
     "@govtech-bb/content": "workspace:*",
     "@govtech-bb/design": "^1.0.0-alpha.16",
     "@govtech-bb/form-conditions": "workspace:*",

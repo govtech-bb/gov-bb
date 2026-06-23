@@ -1,5 +1,5 @@
 import type { Mock, Mocked } from "vitest";
-import type { FormDisabledOverrideEntity } from "@/database/entities/form-disabled-override.entity";
+import type { FormDisabledOverrideEntity } from "../../database/entities/form-disabled-override.entity";
 import { FormDisabledOverrideRepository } from "./form-disabled-override.repository";
 import { FormDisabledOverridesService } from "./form-disabled-overrides.service";
 

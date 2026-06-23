@@ -332,13 +332,9 @@ function branchSlugFromPath(path: string): string {
   );
 }
 
-const CATEGORIES_TS = "packages/content/src/categories.ts";
+const CATEGORIES_TS = "apps/landing/src/content/categories.ts";
 
-/**
- * Add a category entry to the canonical taxonomy
- * (`packages/content/src/categories.ts`) on `branch` (same PR). Landing
- * re-exports this file, so the new category appears in both apps from one edit.
- */
+/** Add a category entry to landing's categories.ts on `branch` (same PR). */
 async function addCategoryOnBranch(
   token: string,
   branch: string,
@@ -352,7 +348,7 @@ async function addCategoryOnBranch(
   if (next === null) {
     throw new Error(
       "Couldn't add the category automatically — categories.ts has an " +
-        "unexpected shape. Add it by hand in packages/content/src/categories.ts.",
+        "unexpected shape. Add it by hand in apps/landing/src/content/categories.ts.",
     );
   }
   if (next === source) return; // already present on this branch

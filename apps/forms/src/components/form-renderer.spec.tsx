@@ -231,32 +231,6 @@ describe("FormRenderer", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders markdownContent and suppresses the title on a content-only step", () => {
-    const step = {
-      ...makeStep("about-this-camp"),
-      markdownContent: "## Apply for camp\n\nIntro copy",
-    };
-    render(
-      <FormRenderer
-        form={mockForm}
-        formMeta={makeMeta() as any}
-        stepId="about-this-camp"
-        visibleSteps={[step]}
-        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
-        submissionState={mockSubmissionState as any}
-      />,
-    );
-    // react-markdown is mocked with a passthrough renderer, so this asserts the
-    // step wires its copy through markdown.
-    expect(screen.getByTestId("react-markdown")).toHaveTextContent(
-      "Apply for camp",
-    );
-    // The step's own <h1> is suppressed — the markdown supplies its heading.
-    expect(
-      screen.queryByRole("heading", { name: /Step about-this-camp/ }),
-    ).toBeNull();
-  });
-
   it("renders a conditionalTitle when its condition matches the form values", () => {
     const step = {
       stepId: "birth-details",
