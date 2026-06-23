@@ -5,7 +5,6 @@ import { useEscClose } from "./-use-esc-close";
 
 interface PublishModalProps {
   draft: RecipeDraft;
-  version: string | null;
   baseBranch: string;
   isPublishing: boolean;
   publishSuccess: { prUrl: string; prNumber: number } | null;
@@ -19,7 +18,6 @@ interface PublishModalProps {
 
 export function PublishModal({
   draft,
-  version,
   baseBranch,
   isPublishing,
   publishSuccess,
@@ -72,11 +70,9 @@ export function PublishModal({
             )}
             <p style={{ color: "#444", marginTop: 0 }}>
               This opens a pull request against <code>{baseBranch}</code> that
-              adds{" "}
-              <code>
-                recipes/{draft.formId}/{version ?? "resolving…"}.json
-              </code>
-              . The PR is authored by your GitHub account.
+              overwrites{" "}
+              <code>recipes/{draft.formId}.json</code>. The PR is authored by
+              your GitHub account.
             </p>
 
             <div className={styles.formGroup}>
@@ -86,10 +82,6 @@ export function PublishModal({
             <div className={styles.formGroup}>
               <label>Form ID</label>
               <input type="text" value={draft.formId} readOnly />
-            </div>
-            <div className={styles.formGroup}>
-              <label>Version</label>
-              <input type="text" value={version ?? "resolving…"} readOnly />
             </div>
             <div className={styles.formGroup}>
               <label htmlFor="publish-description">
@@ -118,7 +110,7 @@ export function PublishModal({
                 type="button"
                 className={styles.btnPrimary}
                 onClick={() => onPublish(description)}
-                disabled={isPublishing || version === null || isReadOnly}
+                disabled={isPublishing || isReadOnly}
               >
                 {isPublishing ? "Opening PR…" : "Deploy"}
               </button>

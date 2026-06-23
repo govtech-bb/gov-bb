@@ -85,8 +85,10 @@ export class FormDefinitionsService {
         seen.add(entity.formId);
         result.push({
           formId: entity.formId,
+          // #1196: version is retired on the DB scratch row (nullable); the
+          // list keeps the field as a frozen breadcrumb ("" when absent).
+          version: entity.version ?? "",
           title: entity.schema.title,
-          version: entity.version,
           // See RecipeFileLoaderService.findAll: category mirrors the
           // contact-details title and is omitted when absent.
           ...(entity.schema.contactDetails?.title && {
