@@ -18,7 +18,7 @@ function JavaScriptRequired() {
         'Try a different browser. Most up-to-date browsers (Chrome, Safari, Firefox, Edge) support JavaScript by default.',
         "Update your browser. If you're using an older version, updating may resolve the issue.",
       ]}
-      secondary={{ label: 'Contact us', href: '/feedback' }}
+      secondary={{ label: 'Contact us', href: '/contact' }}
       primary={{ label: 'Return to homepage', href: '/' }}
     />
   )

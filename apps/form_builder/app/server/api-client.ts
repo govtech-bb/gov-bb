@@ -51,7 +51,7 @@ export class ApiError extends Error {
 // timeout/abort, or the fetch itself rejecting). Distinct from a real HTTP
 // status so callers/UI can tell "the gateway timed us out" from "the API said
 // no".
-class ApiTimeoutError extends ApiError {
+export class ApiTimeoutError extends ApiError {
   constructor(
     message = "The AI request timed out. Try a smaller form or a simpler edit.",
   ) {

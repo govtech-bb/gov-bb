@@ -23,7 +23,6 @@ COPY --chown=app:app apps/api/package.json apps/api/
 COPY --chown=app:app apps/landing/package.json apps/landing/
 COPY --chown=app:app apps/forms/package.json apps/forms/
 COPY --chown=app:app apps/chat/package.json apps/chat/
-COPY --chown=app:app packages/aws-secrets/package.json packages/aws-secrets/
 COPY --chown=app:app packages/content/package.json packages/content/
 COPY --chown=app:app packages/expressions/package.json packages/expressions/
 COPY --chown=app:app packages/form-conditions/package.json packages/form-conditions/
@@ -38,11 +37,6 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
 
 # chat depends on @govtech-bb/content (workspace) at ingest time.
 COPY --chown=app:app apps/chat/ apps/chat/
-# aws-secrets is a source-only ESM package (exports "./src/index.ts", no build),
-# imported by src/lib/db/index.ts. The boot CMD runs `tsx src/lib/db/migrate.ts`
-# which loads it from source, so the source tree must be present or the
-# container crash-loops on ERR_MODULE_NOT_FOUND (#1392 added the import).
-COPY --chown=app:app packages/aws-secrets/ packages/aws-secrets/
 COPY --chown=app:app packages/content/ packages/content/
 
 ENV NODE_ENV=development

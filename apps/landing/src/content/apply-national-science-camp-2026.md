@@ -4,11 +4,10 @@ description: >-
   Apply for a child to attend Tropical Trails and Tales Science Camp 2026 (13
   July to 21 August 2026).
 stage: alpha
-publish_date: '2026-06-22'
-visibility: preview
+publish_date: '2026-06-17'
+visibility: draft
 form_id: >-
   apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026
-category: education
 ---
 Use this service to apply for a child to attend Tropical Trails and Tales Science Camp 2026.
 

@@ -14,16 +14,61 @@
  */
 
 import { KEBAB_ID_PATTERN } from "@govtech-bb/form-types";
-import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
 
 /**
- * Top-level landing categories — the canonical taxonomy owned by
- * `@govtech-bb/content` and shared with landing (which renders it). A category
- * created in this CMS is appended back into that source by
- * {@link insertCategoryEntry}, so the offered list and the rendered list can
- * never drift.
+ * Top-level landing categories, mirrored from
+ * `apps/landing/src/content/categories.ts`. Kept as a small static list rather
+ * than imported across the app boundary (landing is not a shared package). It
+ * is low-churn, and landing's content registry throws at build time on an
+ * unknown `category`, so a stale entry surfaces in the deploy PR's CI rather
+ * than shipping silently.
  */
-export const LANDING_CATEGORIES = CATEGORY_TAXONOMY;
+export interface LandingCategory {
+  slug: string;
+  title: string;
+  subcategories?: ReadonlyArray<{ slug: string; title: string }>;
+}
+
+export const LANDING_CATEGORIES: ReadonlyArray<LandingCategory> = [
+  {
+    slug: "family-birth-relationships",
+    title: "Family, birth and relationships",
+  },
+  { slug: "work-employment", title: "Work and employment" },
+  { slug: "money-financial-support", title: "Money and financial support" },
+  { slug: "pensions-and-gratuities", title: "Pensions and Gratuities" },
+  {
+    slug: "youth-and-community",
+    title: "Youth and Community Programmes",
+    subcategories: [
+      {
+        slug: "youth-development-leadership",
+        title: "Youth development and leadership",
+      },
+      {
+        slug: "skills-trades-vocational-training",
+        title: "Skills, trades and vocational training",
+      },
+      {
+        slug: "entrepreneurship-business",
+        title: "Entrepreneurship and business",
+      },
+      { slug: "arts-culture", title: "Arts and culture" },
+      {
+        slug: "children-families-community",
+        title: "Children, families and the wider community",
+      },
+    ],
+  },
+  { slug: "travel-id-citizenship", title: "Travel, ID and citizenship" },
+  { slug: "business-trade", title: "Business and trade" },
+  { slug: "public-safety", title: "Public safety" },
+  { slug: "education", title: "Education" },
+  {
+    slug: "health-and-emergency-services",
+    title: "Health and emergency services",
+  },
+];
 
 const LANDING_CATEGORY_SLUGS: ReadonlySet<string> = new Set(
   LANDING_CATEGORIES.map((c) => c.slug),
@@ -147,23 +192,23 @@ export interface NewCategory {
 }
 
 function tsString(value: string): string {
-  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  return `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
 }
 
 /**
- * Insert a category entry into the canonical `packages/content/src/categories.ts`
- * source (the `CATEGORY_TAXONOMY` array landing re-exports). Pure string surgery
- * anchored on the array's closing bracket; returns null when the anchor (or a
- * duplicate check) says it can't be done safely — the caller surfaces that
- * instead of pushing a corrupted file. A broken edit would also fail the build
- * in the PR's CI, so production is never at risk.
+ * Insert a category entry into landing's `src/content/categories.ts` source.
+ * Pure string surgery anchored on the array's closing bracket; returns null
+ * when the anchor (or a duplicate check) says it can't be done safely — the
+ * caller surfaces that instead of pushing a corrupted file. A broken edit
+ * would also fail the landing build in the PR's CI, so production is never
+ * at risk.
  */
 export function insertCategoryEntry(
   source: string,
   cat: NewCategory,
 ): string | null {
-  if (source.includes(`slug: "${cat.slug}"`)) return source; // already there
-  const anchor = "];\n\nexport const CATEGORY_BY_SLUG";
+  if (source.includes(`slug: '${cat.slug}'`)) return source; // already there
+  const anchor = "]\n\nexport const CATEGORY_BY_SLUG";
   const idx = source.indexOf(anchor);
   if (idx === -1) return null;
   const desc = cat.description?.trim();

@@ -5,13 +5,13 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from "@nestjs/common";
-import { AppError } from "@/common/errors";
+import { AppError } from "../../common/errors";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
 import { FormDraftsService } from "../form-drafts/form-drafts.service";
-import { FilesService } from "@/files/files.service";
+import { FilesService } from "../../files/files.service";
 import type { ServiceContract } from "@govtech-bb/form-types";
-import type { FormDraftEntity } from "@/database/entities/form-draft.entity";
+import type { FormDraftEntity } from "../../database/entities/form-draft.entity";
 import type { SubmitDto } from "./submissions.types";
 
 const mockDraft = (overrides: Partial<FormDraftEntity> = {}): FormDraftEntity =>

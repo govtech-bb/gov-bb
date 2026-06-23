@@ -18,7 +18,7 @@ function ServiceUnavailable() {
         'Return to the homepage to access other services',
         'Contact us for urgent enquiries',
       ]}
-      secondary={{ label: 'Contact us', href: '/feedback' }}
+      secondary={{ label: 'Contact us', href: '/contact' }}
       primary={{ label: 'Return to homepage', href: '/' }}
     />
   )

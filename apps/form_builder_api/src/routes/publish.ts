@@ -4,24 +4,27 @@ import {
   deployBranchName,
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
-import { createPublishClient, type GitHubRepo } from "@govtech-bb/git-publish";
 import { getDataSource } from "../db.js";
 import { holdsFreshClaim } from "./presence.js";
 import { validateRecipeFully } from "./validate-recipe.js";
 
 export const publishRouter = Router();
 
-/**
- * Repo identity for the publish flow. The repo *name* is fixed; the *owner* is
- * env-driven via `GITHUB_ORG` — the same single source of truth form_builder
- * uses (see its `github-repo.ts`). Throws when unset rather than silently
- * publishing to a wrong, hardcoded org, which is exactly the drift this once
- * had (#1400).
- */
-function repoIdentity(): GitHubRepo {
-  const owner = process.env.GITHUB_ORG;
-  if (!owner) throw new Error("GITHUB_ORG is not set");
-  return { owner, repo: "gov-bb" };
+const REPO_OWNER = "govtech-bb";
+const REPO_NAME = "gov-bb";
+const BASE_BRANCH = "dev";
+const GH_API = "https://api.github.com";
+
+function repoUrl(suffix: string): string {
+  return `${GH_API}/repos/${REPO_OWNER}/${REPO_NAME}${suffix}`;
+}
+
+function authHeaders(token: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
 }
 
 // POST /builder/publish — create a GitHub PR with the recipe
@@ -67,15 +70,32 @@ export async function publishHandler(req: Request, res: Response) {
       return;
     }
 
-    // Base branch from env (`PUBLISH_BASE_BRANCH`, default `dev`) — the same
-    // override form_builder honours, so both publish surfaces retarget together
-    // instead of this one being pinned to a hardcoded `dev`.
-    const baseBranch = process.env.PUBLISH_BASE_BRANCH ?? "dev";
-    const gh = createPublishClient(repoIdentity());
+    // Get dev tip SHA
+    const refRes = await fetch(repoUrl(`/git/ref/heads/${BASE_BRANCH}`), {
+      headers: authHeaders(token),
+    });
+    if (!refRes.ok) {
+      res
+        .status(502)
+        .json({ error: `Failed to read dev branch: ${refRes.status}` });
+      return;
+    }
+    const refJson = (await refRes.json()) as { object: { sha: string } };
+    const baseSha = refJson.object.sha;
 
-    // Read the base tip and create the deploy branch off it.
+    // Create branch
     const branch = deployBranchName(typedRecipe.formId, typedRecipe.version);
-    await gh.createBranchFrom(token, baseBranch, branch);
+    const createRefRes = await fetch(repoUrl("/git/refs"), {
+      method: "POST",
+      headers: { ...authHeaders(token), "Content-Type": "application/json" },
+      body: JSON.stringify({ ref: `refs/heads/${branch}`, sha: baseSha }),
+    });
+    if (!createRefRes.ok) {
+      res
+        .status(502)
+        .json({ error: `Failed to create branch: ${createRefRes.status}` });
+      return;
+    }
 
     try {
       // Write recipe file. formId/version are user-provided, so encode each
@@ -84,24 +104,40 @@ export async function publishHandler(req: Request, res: Response) {
       // CodeQL js/request-forgery alert and neutralises any injected path
       // characters. Backstopped by the kebab `formId` / semver `version`
       // validation in validateRecipeFully; for valid input this is a no-op (#935).
-      const contentsPath = `recipes/${encodeURIComponent(typedRecipe.formId)}/${encodeURIComponent(typedRecipe.version)}.json`;
-      const putRes = await gh.putFile(token, {
-        path: contentsPath,
-        message: `Publish ${typedRecipe.formId} v${typedRecipe.version}`,
-        content: JSON.stringify(typedRecipe, null, 2) + "\n",
-        branch,
+      const contentsPath = `/contents/recipes/${encodeURIComponent(typedRecipe.formId)}/${encodeURIComponent(typedRecipe.version)}.json`;
+      const fileContent = JSON.stringify(typedRecipe, null, 2) + "\n";
+      const putRes = await fetch(repoUrl(contentsPath), {
+        method: "PUT",
+        headers: { ...authHeaders(token), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: `Publish ${typedRecipe.formId} v${typedRecipe.version}`,
+          content: Buffer.from(fileContent, "utf8").toString("base64"),
+          branch,
+        }),
       });
       if (!putRes.ok) {
         throw new Error(`Failed to write recipe: ${putRes.status}`);
       }
 
-      const { prUrl, prNumber } = await gh.openPullRequest(token, {
-        base: baseBranch,
-        head: branch,
-        title: `Publish form: ${typedRecipe.title ?? typedRecipe.formId} v${typedRecipe.version}`,
-        body: description ?? "",
+      // Open PR
+      const prRes = await fetch(repoUrl("/pulls"), {
+        method: "POST",
+        headers: { ...authHeaders(token), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          base: BASE_BRANCH,
+          head: branch,
+          title: `Publish form: ${typedRecipe.title ?? typedRecipe.formId} v${typedRecipe.version}`,
+          body: description ?? "",
+        }),
       });
-      res.json({ prUrl, prNumber });
+      if (!prRes.ok) {
+        throw new Error(`Failed to open PR: ${prRes.status}`);
+      }
+      const prJson = (await prRes.json()) as {
+        number: number;
+        html_url: string;
+      };
+      res.json({ prUrl: prJson.html_url, prNumber: prJson.number });
     } catch (err: any) {
       // Cleanup branch on failure. `branch` derives from user-provided
       // formId/version (via deployBranchName), so sanitize it at the
@@ -114,7 +150,10 @@ export async function publishHandler(req: Request, res: Response) {
         .split("/")
         .map(encodeURIComponent)
         .join("/");
-      await gh.deleteBranch(token, encodedBranchPath);
+      await fetch(repoUrl(`/git/refs/heads/${encodedBranchPath}`), {
+        method: "DELETE",
+        headers: authHeaders(token),
+      }).catch(() => {});
       res.status(500).json({ error: err.message });
     }
   } catch (err: any) {

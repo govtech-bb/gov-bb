@@ -34,20 +34,17 @@ vi.mock("../components/site-header", () => ({
   SiteHeader: () => <div data-testid="site-header" />,
 }));
 
-// The Footer and OfficialBanner mocks capture their props so the RootLayout's
-// wiring is asserted — not just "rendered". OfficialBanner now comes from the
-// shared @govtech-bb/react package (#1389), so it is mocked here rather than
-// from a local module.
+vi.mock("../components/official-banner", () => ({
+  OfficialBanner: () => <div data-testid="official-banner" />,
+}));
+
+// The Footer mock captures its props so the RootLayout's wiring of links,
+// logoSrc, and copyrightText is asserted — not just "Footer rendered".
 const mockFooterProps = vi.fn();
-const mockBannerProps = vi.fn();
 vi.mock("@govtech-bb/react", () => ({
   Footer: (props: unknown) => {
     mockFooterProps(props);
     return <div data-testid="footer" />;
-  },
-  OfficialBanner: (props: unknown) => {
-    mockBannerProps(props);
-    return <div data-testid="official-banner" />;
   },
 }));
 
@@ -56,7 +53,6 @@ import { Route } from "./__root";
 describe("__root Route", () => {
   beforeEach(() => {
     mockFooterProps.mockClear();
-    mockBannerProps.mockClear();
   });
 
   describe("Route.component (RootLayout)", () => {
@@ -72,20 +68,6 @@ describe("__root Route", () => {
       expect(screen.getByTestId("site-header")).toBeInTheDocument();
       expect(screen.getByTestId("outlet")).toBeInTheDocument();
       expect(screen.getByTestId("footer")).toBeInTheDocument();
-    });
-
-    // The shared OfficialBanner defaults showLearnMore to true and imageAlt to
-    // a non-empty string; forms wants neither (decorative image, no dead
-    // "Learn more" link), so assert the wiring that preserves the prior look.
-    it("wires the shared OfficialBanner with the coat-of-arms src, decorative alt, and no learn-more link", () => {
-      render(<Route.component />);
-      expect(mockBannerProps).toHaveBeenCalledTimes(1);
-      const props = mockBannerProps.mock.calls[0][0] as Record<string, unknown>;
-      expect(props).toMatchObject({
-        imageSrc: "/images/coat-of-arms.png",
-        imageAlt: "",
-        showLearnMore: false,
-      });
     });
 
     // Skip-to-content link (#341/#321): a keyboard user must be able to bypass

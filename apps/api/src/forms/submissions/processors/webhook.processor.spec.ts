@@ -1,23 +1,10 @@
 import { Logger } from "@nestjs/common";
-import type { HttpService } from "@nestjs/axios";
-import { of } from "rxjs";
 import { createHmac } from "crypto";
 import { WebhookProcessor } from "./webhook.processor";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
-const request = vi.fn();
-const http = { request } as unknown as HttpService;
-
-/** Single config object passed to HttpService.request for call `i`. */
-function reqConfig(i = 0): {
-  method: string;
-  url: string;
-  data: string;
-  headers: Record<string, string>;
-  timeout: number;
-} {
-  return request.mock.calls[i][0];
-}
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
 function makePayload(
   config: Record<string, unknown> = {},
@@ -60,19 +47,21 @@ describe("WebhookProcessor", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    request.mockReturnValue(of({ status: 200, data: {} }));
-    processor = new WebhookProcessor(http);
+    mockFetch.mockResolvedValue({ ok: true, status: 200 });
+    processor = new WebhookProcessor();
   });
 
   it("POSTs to the configured url with the configured method", async () => {
     await processor.process(makePayload({ method: "PUT" }));
-    expect(reqConfig().method).toBe("PUT");
-    expect(reqConfig().url).toBe("https://hooks.example.gov.bb/submissions");
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://hooks.example.gov.bb/submissions",
+      expect.objectContaining({ method: "PUT" }),
+    );
   });
 
   it("sends a versioned event envelope wrapping the submission data", async () => {
     await processor.process(makePayload());
-    const body = JSON.parse(reqConfig().data);
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body).toMatchObject({
       event: "submission.created",
       version: "1",
@@ -90,8 +79,8 @@ describe("WebhookProcessor", () => {
   it("signs the exact body string when a secret is configured", async () => {
     const secret = "a-sufficiently-long-secret";
     await processor.process(makePayload({ secret }));
-    const sentBody = reqConfig().data;
-    const headers = reqConfig().headers;
+    const sentBody = mockFetch.mock.calls[0][1].body;
+    const headers = mockFetch.mock.calls[0][1].headers;
     const expected =
       "sha256=" + createHmac("sha256", secret).update(sentBody).digest("hex");
     expect(headers["X-Webhook-Signature"]).toBe(expected);
@@ -99,7 +88,7 @@ describe("WebhookProcessor", () => {
 
   it("omits the signature header when no secret is configured", async () => {
     await processor.process(makePayload());
-    const headers = reqConfig().headers;
+    const headers = mockFetch.mock.calls[0][1].headers;
     expect(headers["X-Webhook-Signature"]).toBeUndefined();
   });
 
@@ -110,12 +99,14 @@ describe("WebhookProcessor", () => {
         signatureHeader: "X-Sig",
       }),
     );
-    expect(reqConfig().headers["X-Sig"]).toBeDefined();
+    expect(mockFetch.mock.calls[0][1].headers["X-Sig"]).toBeDefined();
   });
 
   it("sends X-Idempotency-Key keyed by submissionId and processorIndex", async () => {
     await processor.process(makePayload());
-    expect(reqConfig().headers["X-Idempotency-Key"]).toBe("sub-100:0");
+    expect(mockFetch.mock.calls[0][1].headers["X-Idempotency-Key"]).toBe(
+      "sub-100:0",
+    );
   });
 
   it("acts only on the entry at processorIndex, keyed with that index", async () => {
@@ -128,23 +119,27 @@ describe("WebhookProcessor", () => {
 
     await processor.process(payload);
 
-    expect(request).toHaveBeenCalledTimes(1);
-    expect(reqConfig().url).toBe("https://second.example/hook");
-    expect(reqConfig().headers["X-Idempotency-Key"]).toBe("sub-100:1");
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch.mock.calls[0][0]).toBe("https://second.example/hook");
+    expect(mockFetch.mock.calls[0][1].headers["X-Idempotency-Key"]).toBe(
+      "sub-100:1",
+    );
   });
 
   it("merges author-configured custom headers", async () => {
     await processor.process(
       makePayload({ headers: { "X-Tenant": "barbados" } }),
     );
-    expect(reqConfig().headers["X-Tenant"]).toBe("barbados");
+    expect(mockFetch.mock.calls[0][1].headers["X-Tenant"]).toBe("barbados");
   });
 
   it("does not let custom headers override reserved headers", async () => {
     await processor.process(
       makePayload({ headers: { "X-Idempotency-Key": "spoofed" } }),
     );
-    expect(reqConfig().headers["X-Idempotency-Key"]).toBe("sub-100:0");
+    expect(mockFetch.mock.calls[0][1].headers["X-Idempotency-Key"]).toBe(
+      "sub-100:0",
+    );
   });
 
   it("skips and warns when no url is configured", async () => {
@@ -158,20 +153,20 @@ describe("WebhookProcessor", () => {
 
     const result = await processor.process(payload);
 
-    expect(request).not.toHaveBeenCalled();
+    expect(mockFetch).not.toHaveBeenCalled();
     expect(result).toEqual({ kind: "completed" });
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("No url"));
     warn.mockRestore();
   });
 
   it("throws when the endpoint responds with a non-2xx status", async () => {
-    request.mockReturnValue(of({ status: 502, data: {} }));
+    mockFetch.mockResolvedValue({ ok: false, status: 502 });
     await expect(processor.process(makePayload())).rejects.toThrow("HTTP 502");
   });
 
-  it("applies the configured timeout so the request can time out", async () => {
-    await processor.process(makePayload({ timeoutMs: 5_000 }));
-    expect(reqConfig().timeout).toBe(5_000);
+  it("passes an AbortSignal so the request can time out", async () => {
+    await processor.process(makePayload());
+    expect(mockFetch.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
   });
 
   it("returns { kind: 'completed' } on success", async () => {
@@ -234,8 +229,8 @@ describe("WebhookProcessor — mapped mode", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    request.mockReturnValue(of({ status: 200, data: {} }));
-    processor = new WebhookProcessor(http);
+    mockFetch.mockResolvedValue({ ok: true, status: 200 });
+    processor = new WebhookProcessor();
     process.env.WEBHOOK_URL = "http://cms.local/api/cases";
     process.env.WEBHOOK_SECRET = "dev-key-123";
   });
@@ -247,9 +242,10 @@ describe("WebhookProcessor — mapped mode", () => {
 
   it("POSTs the mapped case payload to the env endpoint with the API key", async () => {
     await processor.process(makeMappedPayload());
-    expect(reqConfig().url).toBe("http://cms.local/api/cases");
-    expect(reqConfig().headers["X-API-Key"]).toBe("dev-key-123");
-    expect(JSON.parse(reqConfig().data)).toEqual({
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url).toBe("http://cms.local/api/cases");
+    expect(init.headers["X-API-Key"]).toBe("dev-key-123");
+    expect(JSON.parse(init.body)).toEqual({
       code: "SCIENCE2026-2606-Y5RPJEP",
       programme_code: "SCIENCE2026",
       applicant: {
@@ -262,17 +258,17 @@ describe("WebhookProcessor — mapped mode", () => {
     });
   });
 
-  it("skips (no request) when the endpoint env var is unset", async () => {
+  it("skips (no fetch) when the endpoint env var is unset", async () => {
     delete process.env.WEBHOOK_URL;
     const result = await processor.process(makeMappedPayload());
-    expect(request).not.toHaveBeenCalled();
+    expect(mockFetch).not.toHaveBeenCalled();
     expect(result).toEqual({ kind: "completed" });
   });
 
   it("skips when the apiKey secret env var is unset", async () => {
     delete process.env.WEBHOOK_SECRET;
     await processor.process(makeMappedPayload());
-    expect(request).not.toHaveBeenCalled();
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 });
 
@@ -305,8 +301,8 @@ describe("WebhookProcessor — endpoint/auth branches", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    request.mockReturnValue(of({ status: 200, data: {} }));
-    processor = new WebhookProcessor(http);
+    mockFetch.mockResolvedValue({ ok: true, status: 200 });
+    processor = new WebhookProcessor();
     process.env.WEBHOOK_URL = "http://cms.local";
     process.env.WEBHOOK_SECRET = "k";
   });
@@ -323,7 +319,7 @@ describe("WebhookProcessor — endpoint/auth branches", () => {
         mapping: MAPPING,
       }),
     );
-    expect(reqConfig().url).toBe("http://cms.local/api/cases");
+    expect(mockFetch.mock.calls[0][0]).toBe("http://cms.local/api/cases");
   });
 
   it("hmac auth sets the signature header", async () => {
@@ -338,7 +334,7 @@ describe("WebhookProcessor — endpoint/auth branches", () => {
         mapping: MAPPING,
       }),
     );
-    expect(reqConfig().headers["X-Sig"]).toMatch(/^sha256=/);
+    expect(mockFetch.mock.calls[0][1].headers["X-Sig"]).toMatch(/^sha256=/);
   });
 
   it("none auth sends no auth header", async () => {
@@ -349,7 +345,7 @@ describe("WebhookProcessor — endpoint/auth branches", () => {
         mapping: MAPPING,
       }),
     );
-    const h = reqConfig().headers;
+    const h = mockFetch.mock.calls[0][1].headers;
     expect(h["X-API-Key"]).toBeUndefined();
     expect(h["X-Webhook-Signature"]).toBeUndefined();
   });

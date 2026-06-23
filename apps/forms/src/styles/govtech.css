@@ -156,24 +156,6 @@
   );
 }
 
-/* The consent/declaration copy is rendered from markdown (react-markdown emits
- * bare <p>/<ul>, which Tailwind's preflight resets to zero margin — collapsing
- * the intro line, bullet list and confirming statement together). Restore the
- * vertical rhythm between them, matching .form-page__markdown-content. */
-.govbb-checkbox-item__label > :first-child {
-  margin-top: 0;
-}
-
-.govbb-checkbox-item__label p,
-.govbb-checkbox-item__label ul,
-.govbb-checkbox-item__label ol {
-  margin: 0 0 var(--spacing-s);
-}
-
-.govbb-checkbox-item__label > :last-child {
-  margin-bottom: 0;
-}
-
 /* ---- Show/hide -----------------------------------------------------------
  * The show-hide toggle now renders as a native <details>/<summary> using the
  * @govtech-bb/styles `.govbb-show-hide*` classes (#341). The revealed content

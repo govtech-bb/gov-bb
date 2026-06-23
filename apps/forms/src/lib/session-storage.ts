@@ -111,6 +111,21 @@ export function getLastCompletedStep(
   return null;
 }
 
+// Find the index of the first incomplete step
+// @deprecated — prefer getFirstIncompleteActiveStep for condition-aware navigation
+export function getFirstIncompleteStepIndex(
+  formId: string,
+  steps: { stepId: string }[],
+): number {
+  const completedSteps = getCompletedSteps(formId);
+  for (let i = 0; i < steps.length; i++) {
+    if (!completedSteps.includes(steps[i].stepId)) {
+      return i;
+    }
+  }
+  return steps.length; // all steps completed
+}
+
 /**
  * Returns the first step in `activeSteps` that has not yet been completed.
  *

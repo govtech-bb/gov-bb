@@ -1,12 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { toolDefinition } from "@tanstack/ai";
 import { z } from "zod";
-import {
-  assembleStepKeyedValues,
-  type ServiceContract,
-  type StepFieldEntry,
-  type SubmissionValues,
-} from "@govtech-bb/form-types";
+import type { ServiceContract } from "@govtech-bb/form-types";
 import { getServerEnv } from "#/config/env";
 import { getFormDefinition } from "#/lib/forms/defs";
 import { findField } from "#/lib/forms/fields";
@@ -41,28 +36,22 @@ type Values = Record<string, string>;
 // checkbox→bool, option→value) — the shape the forms API's /submissions endpoint
 // expects ({ stepId: { fieldId: typedValue } }). Skips ids not in the contract;
 // a value that fails coercion (it would already have failed validateAll) falls
-// back to its raw string. The flat→step-keyed bucketing (+ empty/false-keep
-// filtering) is the shared core the browser form also builds POST /submissions
-// with, so both channels produce an identical payload (#1398).
+// back to its raw string.
 export function reshapeByStep(
   contract: ServiceContract,
   values: Values,
-): SubmissionValues {
-  const entries: StepFieldEntry[] = [];
+): Record<string, Record<string, unknown>> {
+  const out: Record<string, Record<string, unknown>> = {};
   for (const step of contract.steps) {
     for (const el of step.elements) {
       if (Object.prototype.hasOwnProperty.call(values, el.fieldId)) {
         const raw = values[el.fieldId];
         const c = coerceValue(el, raw);
-        entries.push({
-          stepId: step.stepId,
-          fieldId: el.fieldId,
-          value: "error" in c ? raw : c.value,
-        });
+        (out[step.stepId] ??= {})[el.fieldId] = "error" in c ? raw : c.value;
       }
     }
   }
-  return assembleStepKeyedValues(entries);
+  return out;
 }
 
 // Re-validate every collected value against the contract (single-field rules;
@@ -211,7 +200,7 @@ export async function applySubmit(
   return { ok: true, reference };
 }
 
-const submitFormToolDef = toolDefinition({
+export const submitFormToolDef = toolDefinition({
   name: "submitForm",
   description:
     "Submit a collected form. Call this once you've collected every required field — the user gets a Check-your-answers card with a Submit/Approve prompt, so do NOT summarise the answers in your text or ask them to confirm first. Pass the formId and a values object mapping each fieldId to the user's answer. Returns ok:true with a reference on success; ok:false with errors if a value is invalid (fix it and call submitForm again). If dryRun:true, this was a test — tell the user it was NOT actually submitted.",

@@ -21,7 +21,7 @@ export interface FormLookup {
   fields?: AskableField[];
 }
 
-const getFormDefinitionToolDef = toolDefinition({
+export const getFormDefinitionToolDef = toolDefinition({
   name: "getFormDefinition",
   description:
     "Look up a Government of Barbados form by its formId (found on a retrieved source) before offering to help with it. Returns whether the assistant can act on the form and how: mode 'collect' (can be filled in chat) or 'handoff' (only a link), plus the form title. found:false means the form isn't available to the assistant — answer from general guidance and don't offer it.",

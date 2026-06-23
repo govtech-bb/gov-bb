@@ -5,7 +5,7 @@ import type { ISubmissionProcessor } from "./processors/submission-processor.int
 import type { SqsProducerService } from "./sqs/sqs-producer.service";
 import type { SubmissionCreatedEvent } from "./submissions.types";
 import type { Processor } from "@govtech-bb/form-types";
-import type { ExpressionsService } from "@/expressions/expressions.service";
+import type { ExpressionsService } from "../../expressions/expressions.service";
 
 /* Default expressions stub — resolveProcessors is a pass-through */
 const expressions = {

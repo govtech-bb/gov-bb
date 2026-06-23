@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { FormDisabledOverrideRepository } from "./form-disabled-override.repository";
-import type { FormDisabledOverrideEntity } from "@/database/entities/form-disabled-override.entity";
+import type { FormDisabledOverrideEntity } from "../../database/entities/form-disabled-override.entity";
 
 @Injectable()
 export class FormDisabledOverridesService {

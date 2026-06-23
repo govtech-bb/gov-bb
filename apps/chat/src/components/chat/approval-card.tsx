@@ -1,5 +1,3 @@
-import { humanise } from "#/lib/chat/labels";
-
 // "Check your answers" + Submit/Cancel, rendered from a submitForm tool-call
 // that's awaiting approval (the framework pauses the run until the user
 // responds). The values come from the tool ARGUMENTS, so the user confirms
@@ -8,6 +6,10 @@ import { humanise } from "#/lib/chat/labels";
 // Each row has a Change link that cancels the pending submit and re-asks that
 // field. Submit → approve (the server then validates + submits, dry-run unless
 // SUBMIT_LIVE); Cancel → deny. Mirrors the forms app's check-your-answers step.
+function humanise(fieldId: string): string {
+  const s = fieldId.replace(/[-_]+/g, " ").trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 // Map a submit value to its option label for display — the args carry option
 // VALUES, the card should read like the form. Handles comma-joined multi-select

@@ -118,15 +118,6 @@ RUN mkdir -p node_modules/@govtech-bb && \
       ln -sfn "../../packages/$pkg_name" "node_modules/@govtech-bb/$pkg_name"; \
       echo "  symlinked @govtech-bb/$pkg_name"; \
     done
-
-# The in-app `@/*` alias (tsconfig: "@/*" -> "./src/*") is left as a literal
-# `require("@/...")` in the compiled output — the runtime CMD is plain
-# `node dist/src/main.js` with no path resolver. Expose dist/src under the `@`
-# scope so those requires resolve (e.g. `@/database/base.repository` ->
-# dist/src/database/base.repository.js), the same symlink approach used for the
-# workspace packages above. Without it the container crash-loops on
-# MODULE_NOT_FOUND and ECS's circuit breaker silently rolls back (#1385).
-RUN ln -sfn ../dist/src node_modules/@
 COPY --from=builder --chown=app:app /app/package.json ./
 COPY --from=builder --chown=app:app /app/pnpm-lock.yaml ./
 COPY --from=builder --chown=app:app /app/pnpm-workspace.yaml ./

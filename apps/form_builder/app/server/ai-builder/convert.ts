@@ -4,6 +4,12 @@ import { api } from "../api-client";
 import type { EditStatusResponse, UploadStatusResponse } from "./types";
 import { requireSession } from "../auth/require-session";
 
+export const getAiStatus = createServerFn({ method: "GET" })
+  .middleware([requireSession])
+  .handler(async (): Promise<{ available: boolean; message: string }> => {
+    return api.get("/builder/ai/status");
+  });
+
 // Text-only edits — async job, mirroring the PDF pipeline so no single SSR
 // request approaches the Amplify ~28s timeout (#1129). startEditRecipe returns
 // a jobId immediately; the sidebar polls getEditStatus until generation

@@ -88,9 +88,9 @@ packages and a few external libraries for everything else.
 | `zod` | Runtime validation (env, tool inputs, `/api/retrieve` body) | `config/env.ts`, `chat-tools.ts`, `api.retrieve.ts` |
 | `react-markdown` + `remark-gfm` | Assistant markdown rendering | `bubble.tsx` |
 
-The upstream **forms API** (`FORM_API_URL`) is an external service, not a package: the form flow
-fetches definitions and submits to it. Browser-handoff links are derived from the retrieved source's
-own URL (`<source url>/start`, see `handoff.ts`), not from a separately configured forms frontend.
+The upstream **forms API** (`FORM_API_URL`) and **forms frontend** (`FORMS_URL`) are external
+services, not packages: the form flow fetches definitions and submits to the former and links users
+to the latter for browser handoff.
 
 ---
 
@@ -190,7 +190,7 @@ active form resolves to one of three states (`resolveActiveForm`):
 - **`collect`** — a fillable form is active. The model is given the form's **active field schema**
   and the per-turn tools, and walks the user through the fields.
 - **`handoff`** — the form exists but cannot be safely filled in chat. The assistant hands the user
-  a link to the form's start page (`<source url>/start`, from the retrieved source) instead of collecting.
+  a link to the full form on the forms frontend (`${FORMS_URL}/forms/<slug>`) instead of collecting.
 
 **Form matching.** `detect.ts` tokenises the user's text and scores it against an indexed catalogue
 of form titles fetched and cached from the upstream forms API (`defs.ts`). Matching runs over a
@@ -354,6 +354,7 @@ server-side.
 |---|---|---|
 | `RAG_URL` | yes | Base URL of the retrieval service (the chat handler calls `${RAG_URL}/retrieve`). |
 | `FORM_API_URL` | yes | Upstream forms API (definitions + submission). |
+| `FORMS_URL` | yes | Forms frontend, used for browser handoff links. |
 | `BEDROCK_REGION` | no | AWS region for Bedrock; bundle default `ca-central-1` (baked at build time). |
 | `LLM_MODEL` | no | Chat model alias (default `claude-haiku-4-5`). |
 | `REWRITE_MODEL` | no | Query-rewrite model alias (default `claude-haiku-4-5`). |
@@ -368,7 +369,7 @@ Dockerfile. The Vite build runs the Nitro `aws_amplify` preset (`vite.config.ts`
 `.amplify-hosting/` artifact: static assets are served directly and all other paths fall back to a
 **`server.js` Compute function (the SSR Lambda) on `nodejs24.x`**. Because Amplify Compute does not
 pass Console env vars into the SSR Lambda at runtime, selected vars are **baked into the bundle at
-build time** via Vite `define` (`RAG_URL`, `FORM_API_URL`, `BEDROCK_REGION` — bundle
+build time** via Vite `define` (`RAG_URL`, `FORM_API_URL`, `FORMS_URL`, `BEDROCK_REGION` — bundle
 default `ca-central-1`, `LLM_MODEL`, `REWRITE_MODEL`, and `CHAT_DATABASE_URL_SECRET_ARN`), which is
 why each `process.env.X` in `env.ts` is referenced as a literal. The database connection string is
 deliberately **not** baked — only the Secrets Manager ARN is, and `db/index.ts` fetches the actual

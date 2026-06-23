@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { FormDefinitionRepository } from "./form-definition.repository";
-import { AppError } from "@/common/errors";
+import { AppError } from "../../common/errors";
 
 @Injectable()
 export class DraftArchiveService {

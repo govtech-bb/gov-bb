@@ -1,4 +1,0 @@
-# Compiled output — resolved via tsconfig path aliases, never committed
-src/**/*.js
-src/**/*.js.map
-src/**/*.d.ts

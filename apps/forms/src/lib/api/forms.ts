@@ -1,11 +1,5 @@
-import {
-  assembleStepKeyedValues,
-  isSubmittableValue,
-  ServiceContract,
-  serviceContractSchema,
-  type StepFieldEntry,
-} from "@govtech-bb/form-types";
-import { stepFieldIdConcactenator } from "../form-builder/field-mapper";
+import { ServiceContract, serviceContractSchema } from "@govtech-bb/form-types";
+import { stepFieldIdConcactenator } from "@forms/lib";
 import {
   ApiResponse,
   FormDefinitionResponse,
@@ -23,6 +17,7 @@ import {
   RepeatableStepSettings,
   ClientPrimitive,
 } from "@forms/types";
+import { valueIsEmpty } from "../form-builder/validation-methods";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
@@ -216,6 +211,8 @@ export const deleteFormDraft = async (draftId: string): Promise<number> => {
   return response.status;
 };
 
+export const postEzpay = async () => {};
+
 export const postFormSubmission = async (
   { formId, version: formVersion, idempotencyKey }: FormMeta,
   valuesBySteps: FormValuesByStep,
@@ -258,15 +255,21 @@ export const formatDataForSubmission = (
   repeatableSettings: RepeatableStepSettings,
   hiddenFields: ClientPrimitive[],
 ): FormValuesByStep => {
+  const formValuesByStep: FormValuesByStep = {};
+
   //  The values of any fields that are conditionally invisible, should be removed
   for (const field of hiddenFields) delete values[field.id];
 
   // Any field values that are undefined or empty, should be stripped out.
-  // `isSubmittableValue` keeps an explicit `false` (an unchecked optional
-  // checkbox is a real answer) while dropping empties — the same policy the
-  // shared reshaper applies (#1398).
+  // `false` is a real user-provided answer (unchecked optional checkbox) and
+  // must survive submission — valueIsEmpty treats it as empty for required-
+  // field validation, so whitelist it explicitly here.
   values = Object.fromEntries(
-    Object.entries(values).filter(([, value]) => isSubmittableValue(value)),
+    Object.entries(values).filter(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ([_key, value]) =>
+        value !== undefined && (value === false || !valueIsEmpty(value)),
+    ),
   );
 
   // The values for repeatable steps should be collapsed under the step id of the source step, becoming an array.
@@ -342,16 +345,17 @@ export const formatDataForSubmission = (
 
   // The structure of values should be changed from Record <stepAndFieldID, fieldValue> to Record<stepId, Record<fieldId, fieldValue>>,
   // where stepAndFieldID is the identifier of the form stepId_fieldId.
-  // The flat→step-keyed bucketing (+ empty/false-keep filtering) is the shared
-  // core both this form and the chat assistant build POST /submissions with
-  // (#1398); repeatable instances are handled above and merged in below.
-  const entries: StepFieldEntry[] = [];
+
   for (const [stepFieldId, value] of Object.entries(values)) {
     const [stepId, fieldId] = stepFieldId.split(stepFieldIdConcactenator);
     if (toDelete.includes(stepId)) continue;
-    entries.push({ stepId, fieldId, value });
+
+    formValuesByStep[stepId] = {
+      ...(formValuesByStep[stepId] ?? {}),
+      [fieldId]: value,
+    };
   }
 
   // Apply the collapsedRepeatables
-  return { ...assembleStepKeyedValues(entries), ...collapsedRepeatables };
+  return { ...formValuesByStep, ...collapsedRepeatables };
 };

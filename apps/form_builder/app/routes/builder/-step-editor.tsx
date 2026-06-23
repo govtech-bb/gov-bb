@@ -81,13 +81,10 @@ export function StepEditor({
   const noFields = isNoFieldsStep(step.stepId);
 
   // The submission-confirmation step renders recipe-authored markdown ("What
-  // happens next") below the receipt, and any editable step may carry intro
-  // markdown (e.g. a content-only first page rendered above its fields) — so
-  // expose the markdown editor on the confirmation step and all editable steps.
-  // The platform-managed review/confirmation steps are excluded except the
-  // confirmation step itself.
-  const isConfirmation = isConfirmationStep(step.stepId);
-  const showMarkdownEditor = isConfirmation || !isRequiredStep(step.stepId);
+  // happens next") below the receipt — expose an editor for it here so the
+  // copy can be set in the builder instead of being dropped on republish
+  // (#1292).
+  const showMarkdownEditor = isConfirmationStep(step.stepId);
 
   function handleStepIdChange(newId: string) {
     setLocalStepId(newId);
@@ -278,9 +275,7 @@ export function StepEditor({
           hides its Start-button tool, which has no meaning here. */}
       {showMarkdownEditor && (
         <section className={styles.card}>
-          <div className={styles.sectionTitle}>
-            {isConfirmation ? "Confirmation page content" : "Step content"}
-          </div>
+          <div className={styles.sectionTitle}>Confirmation page content</div>
           <div className={styles.formGroup}>
             <BodyEditor
               value={step.markdownContent ?? ""}
@@ -294,9 +289,8 @@ export function StepEditor({
               linkType="none"
             />
             <span className={styles.fieldHint}>
-              {isConfirmation
-                ? "Shown on the confirmation page after the applicant submits, below the submission receipt."
-                : "Shown at the top of this step, above any fields. A step with content and no fields renders as an information page."}
+              Shown on the confirmation page after the applicant submits, below
+              the submission receipt.
             </span>
           </div>
         </section>

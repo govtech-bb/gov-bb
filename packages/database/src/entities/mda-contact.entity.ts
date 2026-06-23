@@ -1,11 +1,17 @@
 import { Column, Entity } from "typeorm";
 import { TimestampedEntity } from "./entity-base";
-import type { MdaContactAddress } from "@govtech-bb/form-types";
 
-// The address shape is single-sourced in @govtech-bb/form-types (issue #1397 /
-// DUP-04). Re-exported so `@govtech-bb/database`'s existing
-// `MdaContactAddress` public export keeps resolving.
-export type { MdaContactAddress };
+/**
+ * Public department address stored on a contact. Mirrors the `address` shape in
+ * the form-types `contactDetails` schema so the public subset can be copied
+ * verbatim into a recipe.
+ */
+export interface MdaContactAddress {
+  line1: string;
+  line2?: string;
+  city: string;
+  country?: string;
+}
 
 /**
  * A reusable directory of MDA/department contacts an author can pick from in

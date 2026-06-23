@@ -50,7 +50,6 @@ it("renders Step Behaviours directly above the Add field picker", () => {
   const { container } = renderEditor(makeStep());
   expect(sectionOrder(container)).toEqual([
     "Step Metadata",
-    "Step content",
     "Fields (0)",
     "Step Behaviours",
     "Add field",
@@ -87,13 +86,6 @@ it("shows the Confirmation page content editor on the submission-confirmation st
 it("does not show the Confirmation page content editor on a normal step", () => {
   const { container } = renderEditor(makeStep());
   expect(sectionOrder(container)).not.toContain("Confirmation page content");
-});
-
-// A content-only step (intro/information page) is authored on a regular step
-// via the same markdown editor, labelled "Step content".
-it("shows the Step content markdown editor on a normal step", () => {
-  const { container } = renderEditor(makeStep());
-  expect(sectionOrder(container)).toContain("Step content");
 });
 
 // The confirmation copy is edited through the content CMS's BodyEditor

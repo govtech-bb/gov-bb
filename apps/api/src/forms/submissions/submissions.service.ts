@@ -1,8 +1,8 @@
 import { HttpStatus, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { FormSubmissionStatus } from "@/database/entities/form-submission.entity";
-import { AppError } from "@/common/errors";
-import { ExpressionsService } from "@/expressions/expressions.service";
+import { FormSubmissionStatus } from "../../database/entities/form-submission.entity";
+import { AppError } from "../../common/errors";
+import { ExpressionsService } from "../../expressions/expressions.service";
 import { FormSubmissionRepository } from "./form-submission.repository";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { ProcessorFactory } from "./processors/processor-factory.service";

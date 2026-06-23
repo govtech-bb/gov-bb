@@ -19,7 +19,6 @@ USER app
 
 COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml nx.json tsconfig.base.json ./
 COPY --chown=app:app apps/chat/package.json apps/chat/
-COPY --chown=app:app packages/aws-secrets/package.json packages/aws-secrets/
 COPY --chown=app:app packages/content/package.json packages/content/
 COPY --chown=app:app packages/expressions/package.json packages/expressions/
 COPY --chown=app:app packages/form-conditions/package.json packages/form-conditions/
@@ -33,12 +32,6 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
       --filter @govtech-bb/chat... --filter @govtech-bb/content...
 
 COPY --chown=app:app apps/chat/ apps/chat/
-# aws-secrets is a source-only ESM package (exports "./src/index.ts", no build),
-# imported by src/lib/db/index.ts on the ingest path — tsx resolves it from
-# source, so the source tree must be present like content's below. Without it
-# the ingest task crash-loops on ERR_MODULE_NOT_FOUND and the deploy's
-# "Wait for ingest to complete" step times out (#1392 added the import).
-COPY --chown=app:app packages/aws-secrets/ packages/aws-secrets/
 COPY --chown=app:app packages/content/ packages/content/
 
 # Source data the loader actually reads. `@govtech-bb/content`'s loadContent()

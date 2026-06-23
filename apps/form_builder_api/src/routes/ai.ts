@@ -10,7 +10,6 @@ import {
   type RecipeResponse,
 } from "../ai/recipe-generation.js";
 import { createJobStore, toStatusResponse } from "../ai/job-store.js";
-import { extractFirstJsonBlock } from "../ai/recipe-extractor.js";
 import { presignHandler, processHandler, statusHandler } from "./ai-upload.js";
 
 export const aiRouter = Router();
@@ -163,10 +162,17 @@ aiRouter.get("/edit/status/:jobId", statusEditHandler);
 export function extractContentPage(
   text: string,
 ): Record<string, unknown> | null {
-  return extractFirstJsonBlock<Record<string, unknown>>(
-    text,
-    (parsed) => parsed && typeof parsed === "object" && !Array.isArray(parsed),
-  );
+  const codeBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  if (!codeBlockMatch) return null;
+  try {
+    const parsed = JSON.parse(codeBlockMatch[1]);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    // Not valid JSON in code block
+  }
+  return null;
 }
 
 // POST /builder/ai/content — synchronous AI generation for the content CMS

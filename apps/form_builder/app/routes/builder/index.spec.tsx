@@ -81,6 +81,7 @@ const startEditRecipe = vi.fn();
 const getEditStatus = vi.fn();
 vi.mock("../../server/ai-builder/convert", () => ({
   convertRecipe: vi.fn(),
+  getAiStatus: vi.fn(),
   startEditRecipe: (...args: unknown[]) => startEditRecipe(...args),
   getEditStatus: (...args: unknown[]) => getEditStatus(...args),
   presignPdfUpload: vi.fn(),

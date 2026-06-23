@@ -6,17 +6,16 @@ import {
   type SendEmailCommandInput,
 } from "@aws-sdk/client-sesv2";
 import { EmailProcessor } from "./email.processor";
-import type { SesMailer } from "@/email/ses-mailer";
-import type { EmailTemplateService } from "@/email/email-template.service";
+import type { SesMailer } from "../../../email/ses-mailer";
+import type { EmailTemplateService } from "../../../email/email-template.service";
 import type {
   EmailBodyBuilder,
   EmailTemplateContext,
-} from "@/email/email-body.builder";
-import type { FilesService } from "@/files/files.service";
-import type { FormConfigService } from "@/forms/form-config/form-config.service";
+} from "../../../email/email-body.builder";
+import type { FilesService } from "../../../files/files.service";
+import type { FormConfigService } from "../../form-config/form-config.service";
 import type { ContactDetails, ServiceContract } from "@govtech-bb/form-types";
 import type { SubmissionCreatedEvent } from "../submissions.types";
-import { NonRetryableError } from "./non-retryable-error";
 
 const { mockSend } = vi.hoisted(() => ({
   mockSend: vi.fn().mockResolvedValue({ MessageId: "ses-msg-001" }),
@@ -301,68 +300,43 @@ describe("EmailProcessor", () => {
       expect(getSentInput().ConfigurationSetName).toBeUndefined();
     });
 
-    it("throws a NonRetryableError when recipientField is missing (config error)", async () => {
+    it("throws when recipientField is missing from processor config", async () => {
       const payload = makePayload();
       payload.processors = [{ type: "email", config: {} as never }];
 
-      const err = await processor.process(payload).catch((e) => e);
-      expect(err).toBeInstanceOf(NonRetryableError);
-      expect(err.message).toMatch(/No recipientField/);
+      await expect(processor.process(payload)).rejects.toThrow(
+        /No recipientField/,
+      );
       expect(mockSend).not.toHaveBeenCalled();
     });
 
-    it("throws a NonRetryableError when the field value cannot be resolved (config error)", async () => {
+    it("throws when the field value cannot be resolved from submission values", async () => {
       const payload = makePayload({}, { personal: {} }); // email field missing
 
-      const err = await processor.process(payload).catch((e) => e);
-      expect(err).toBeInstanceOf(NonRetryableError);
-      expect(err.message).toMatch(/Could not resolve recipient/);
+      await expect(processor.process(payload)).rejects.toThrow(
+        /Could not resolve recipient/,
+      );
       expect(mockSend).not.toHaveBeenCalled();
     });
 
-    it("throws a NonRetryableError when recipientField resolves to a repeatable (array) step — unsupported", async () => {
+    it("throws when recipientField resolves to a repeatable (array) step — unsupported", async () => {
       // Branch: `stepValues && !Array.isArray(stepValues)` — the Array.isArray arm
       const payload = makePayload({ recipientField: "jobs.email" }, {
         jobs: [{ email: "jane@example.com" }],
       } as unknown as Record<string, Record<string, unknown>>);
 
-      const err = await processor.process(payload).catch((e) => e);
-      expect(err).toBeInstanceOf(NonRetryableError);
-      expect(err.message).toMatch(/Could not resolve recipient/);
+      await expect(processor.process(payload)).rejects.toThrow(
+        /Could not resolve recipient/,
+      );
       expect(mockSend).not.toHaveBeenCalled();
     });
 
-    it("rethrows a RETRYABLE error (not NonRetryableError) when the SES send fails", async () => {
+    it("throws when the SES send fails so the failure is not silently swallowed", async () => {
       mockSend.mockRejectedValueOnce(new Error("SES throttled"));
 
-      const err = await processor.process(makePayload()).catch((e) => e);
-      // A transient delivery failure must stay retryable so SQS retries → DLQ.
-      expect(err).toBeInstanceOf(Error);
-      expect(err).not.toBeInstanceOf(NonRetryableError);
-      expect(err.message).toMatch(/Failed to send email/);
-    });
-
-    it("rethrows a RETRYABLE error when recipient resolution itself throws (e.g. DB down)", async () => {
-      // The correctness line: a resolver *exception* is infra/transient,
-      // NOT a config error — it must stay retryable, never NonRetryableError.
-      const bodyBuilder = makeBodyBuilder();
-      (bodyBuilder.resolveContactDetails as Mock).mockRejectedValue(
-        new Error("db unreachable"),
+      await expect(processor.process(makePayload())).rejects.toThrow(
+        /Failed to send email/,
       );
-      const proc = new EmailProcessor(
-        makeConfig(),
-        makeMailer(),
-        makeTemplateService(),
-        bodyBuilder,
-        makeFilesService(),
-        makeFormConfigService(),
-      );
-      const payload = makePayload({ recipientField: "contactDetails.email" });
-
-      const err = await proc.process(payload).catch((e) => e);
-      expect(err).not.toBeInstanceOf(NonRetryableError);
-      expect(err.message).toMatch(/Failed to send email/);
-      expect(mockSend).not.toHaveBeenCalled();
     });
   });
 

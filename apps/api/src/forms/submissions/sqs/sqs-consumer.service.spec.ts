@@ -10,7 +10,6 @@ import type { Message } from "@aws-sdk/client-sqs";
 const MockedDeleteMessageCommand = DeleteMessageCommand as unknown as Mock;
 import type { ProcessorFactory } from "../processors/processor-factory.service";
 import type { ISubmissionProcessor } from "../processors/submission-processor.interface";
-import { NonRetryableError } from "../processors/non-retryable-error";
 import type { SubmissionSqsMessage } from "./submission-sqs-message.interface";
 
 vi.mock("@aws-sdk/client-sqs");
@@ -155,24 +154,6 @@ describe("SqsConsumerService", () => {
         ([cmd]) => cmd instanceof DeleteMessageCommand,
       );
       expect(deleteCalls).toHaveLength(0);
-    });
-
-    it("DELETES the message when the processor throws a NonRetryableError (no retry)", async () => {
-      const failing = makeProcessor(
-        "email",
-        vi
-          .fn()
-          .mockRejectedValue(new NonRetryableError("bad recipient config")),
-      );
-      factory.resolveByType.mockReturnValue(failing);
-      sendMock.mockResolvedValue({});
-
-      await service.processMessage(QUEUE_URL, sqsMessage());
-
-      const deleteCalls = sendMock.mock.calls.filter(
-        ([cmd]) => cmd instanceof DeleteMessageCommand,
-      );
-      expect(deleteCalls).toHaveLength(1);
     });
 
     it("deletes malformed JSON messages immediately without calling the processor", async () => {

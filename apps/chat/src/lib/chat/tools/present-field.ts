@@ -54,7 +54,7 @@ export async function presentField(
   };
 }
 
-const presentFieldToolDef = toolDefinition({
+export const presentFieldToolDef = toolDefinition({
   name: "presentField",
   description:
     "Show the user the input for ONE form field — its label, hint, and (for choices) clickable option pills. Call this to ASK a field; the widget shows the question, so do not also type it out. Pass the formId and fieldId. After the user answers, call setField to validate and record it. Ask one field at a time, in order.",

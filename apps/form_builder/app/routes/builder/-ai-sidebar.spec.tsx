@@ -19,6 +19,7 @@ vi.mock("../../server/ai-builder/convert", () => ({
   presignPdfUpload: (...args: unknown[]) => presignPdfUpload(...args),
   startPdfConvert: (...args: unknown[]) => startPdfConvert(...args),
   getPdfConvertStatus: (...args: unknown[]) => getPdfConvertStatus(...args),
+  getAiStatus: vi.fn(),
 }));
 
 // Stub global fetch for the direct browser → S3 PUT. jsdom (the test env) ships

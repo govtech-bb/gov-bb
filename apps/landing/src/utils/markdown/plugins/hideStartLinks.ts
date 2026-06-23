@@ -1,6 +1,6 @@
 import type { Element, ElementContent, Root } from 'hast'
 
-type RehypeHideStartLinksOptions = {
+export type RehypeHideStartLinksOptions = {
   /**
    * When true, remove the page's online-application method — the element (or
    * enclosing `<li>`) containing a `data-start-link` CTA — and rewrite the

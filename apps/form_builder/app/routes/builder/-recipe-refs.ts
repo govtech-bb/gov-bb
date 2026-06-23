@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { resolveFieldIds } from "@govtech-bb/form-builder";
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 
@@ -37,4 +38,16 @@ export function getFieldRefs(
 
 export function getStepRefs(draft: RecipeDraft): StepRef[] {
   return draft.steps.map((s) => ({ stepId: s.stepId, title: s.title }));
+}
+
+// React hook wrappers — kept for any consumers that prefer the hook form.
+export function useFieldRefs(
+  draft: RecipeDraft,
+  catalog: RegistryCatalog,
+): FieldRef[] {
+  return useMemo(() => getFieldRefs(draft, catalog), [draft, catalog]);
+}
+
+export function useStepRefs(draft: RecipeDraft): StepRef[] {
+  return useMemo(() => getStepRefs(draft), [draft.steps]);
 }

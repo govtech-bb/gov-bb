@@ -3,7 +3,7 @@ import { BadRequestException, HttpStatus } from "@nestjs/common";
 import {
   FormSubmissionEntity,
   FormSubmissionStatus,
-} from "@/database/entities/form-submission.entity";
+} from "../../database/entities/form-submission.entity";
 import { FormSubmissionRepository } from "./form-submission.repository";
 import { SubmissionsService } from "./submissions.service";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
@@ -11,7 +11,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { ProcessorFactory } from "./processors/processor-factory.service";
 import type { ISubmissionProcessor } from "./processors/submission-processor.interface";
 import type { SubmitDto } from "./submissions.types";
-import type { ExpressionsService } from "@/expressions/expressions.service";
+import type { ExpressionsService } from "../../expressions/expressions.service";
 
 function makeExpressions(
   impl: (cfg: Record<string, unknown>) => Record<string, unknown> = (cfg) =>

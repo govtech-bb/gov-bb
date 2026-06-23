@@ -1,10 +1,12 @@
 import { HttpStatus } from "@nestjs/common";
-import type { ApiResponseShape } from "@govtech-bb/form-types";
 
-// ApiResponseShape now lives in @govtech-bb/form-types (the browser↔backend
-// response envelope, single-sourced — #1399). Re-exported here so the api
-// controllers/interceptor that import it from this module keep working.
-export type { ApiResponseShape };
+export interface ApiResponseShape<T> {
+  status: "success" | "failed";
+  message: string;
+  data: T;
+  statusCode: number;
+  meta?: Record<string, unknown>;
+}
 
 export interface ApiResponseOptions {
   message?: string;
