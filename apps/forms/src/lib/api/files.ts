@@ -6,7 +6,6 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
 export interface PresignUploadRequest {
   formId: string;
-  formVersion: string;
   stepId: string;
   fieldId: string;
   fileName: string;
@@ -24,7 +23,6 @@ export interface PresignUploadResponse {
 export interface ConfirmUploadRequest {
   key: string;
   formId: string;
-  formVersion: string;
   stepId: string;
   fieldId: string;
 }
@@ -125,7 +123,6 @@ export const putFileToS3 = async (
 export interface UploadFileParams {
   file: File;
   formId: string;
-  formVersion: string;
   stepId: string;
   fieldId: string;
   /**
@@ -144,7 +141,6 @@ export interface UploadFileParams {
 export const uploadFile = async ({
   file,
   formId,
-  formVersion,
   stepId,
   fieldId,
   previewToken,
@@ -152,7 +148,6 @@ export const uploadFile = async ({
   const presign = await presignUpload(
     {
       formId,
-      formVersion,
       stepId,
       fieldId,
       fileName: file.name,
@@ -168,7 +163,6 @@ export const uploadFile = async ({
     {
       key: presign.key,
       formId,
-      formVersion,
       stepId,
       fieldId,
     },

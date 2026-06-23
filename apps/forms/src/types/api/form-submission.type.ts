@@ -5,7 +5,6 @@ type stepId = string;
 
 export interface FormSubmissionBody {
   formId: string;
-  formVersion: string;
   draftId?: string;
   values: Record<stepId, FormValues>;
 }
@@ -16,7 +15,9 @@ export const formSubmissionResponseBodySchema = z.object({
   updatedAt: z.string(),
   idempotencyKey: z.string(),
   formId: z.string(),
-  formVersion: z.string(),
+  // #1196: versionless submissions return null; older rows a semver string.
+  // The client doesn't read it — tolerate any/absent shape.
+  formVersion: z.string().nullable().optional(),
   status: z.string(),
   // `values` is the server's echo of the submitted answers. The client does
   // not read it back here (the confirmation screen needs only id / submittedAt

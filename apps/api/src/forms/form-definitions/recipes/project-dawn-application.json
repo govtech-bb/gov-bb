@@ -1,0 +1,1084 @@
+{
+  "steps": [
+    {
+      "title": "Personal Information",
+      "stepId": "personal-information",
+      "elements": [
+        {
+          "ref": "blocks/personal-information",
+          "overrides": {
+            "sex": {
+              "label": "Sex",
+              "validations": {
+                "required": {
+                  "error": "Please select your sex",
+                  "value": true
+                }
+              }
+            },
+            "title": {
+              "isHidden": true
+            },
+            "last-name": {
+              "hint": "Print in capital letters",
+              "label": "Last Name",
+              "validations": {
+                "required": {
+                  "error": "Please enter your last name",
+                  "value": true
+                }
+              }
+            },
+            "first-name": {
+              "hint": "Print in capital letters",
+              "label": "First Name",
+              "validations": {
+                "required": {
+                  "error": "Please enter your first name",
+                  "value": true
+                }
+              }
+            },
+            "middle-name": {
+              "isHidden": true
+            },
+            "date-of-birth": {
+              "label": "Date of Birth",
+              "validations": {
+                "required": {
+                  "error": "Please enter your date of birth",
+                  "value": true
+                },
+                "pastOrToday": {
+                  "error": "Date of birth must be in the past",
+                  "value": true
+                }
+              }
+            },
+            "national-id-number": {
+              "label": "National ID Number",
+              "validations": {
+                "required": {
+                  "error": "Please enter your National ID number",
+                  "value": true
+                }
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "label": "Age",
+            "fieldId": "applicant-age",
+            "validations": {
+              "required": {
+                "error": "Please enter your age",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/country",
+          "overrides": {
+            "fieldId": "country-of-birth",
+            "label": "Country of Birth"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Contact Information",
+      "stepId": "contact-information",
+      "elements": [
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "home-address",
+            "validations": {
+              "required": {
+                "error": "Please enter your address",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "label": "Telephone (Home)",
+            "fieldId": "telephone-home",
+            "validations": {
+              "required": {
+                "error": "Please enter your telephone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/mobile-telephone",
+          "overrides": {
+            "label": "Cell Phone Number",
+            "fieldId": "telephone-cell",
+            "validations": {
+              "required": {
+                "error": "Please enter your cell phone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "label": "Email Address",
+            "fieldId": "applicant-email",
+            "validations": {
+              "email": {
+                "error": "Please enter a valid email address",
+                "value": true
+              },
+              "required": {
+                "error": "Please enter your email address",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Employment & Education",
+      "stepId": "employment-education",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "Select your current employment status",
+            "label": "Employment Status",
+            "fieldId": "employment-status"
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "Select your current employment status",
+            "label": "Employment Status",
+            "fieldId": "employment-status-select"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Employment & Education",
+      "stepId": "employment-status",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "hint": "Select the option that best describes your current status",
+            "label": "Employment Status",
+            "fieldId": "current-employment-status",
+            "options": [
+              {
+                "label": "Employed (Full-time)",
+                "value": "employed-full-time"
+              },
+              {
+                "label": "Employed (Part-time)",
+                "value": "employed-part-time"
+              },
+              {
+                "label": "Self-employed",
+                "value": "self-employed"
+              },
+              {
+                "label": "Unemployed",
+                "value": "unemployed"
+              },
+              {
+                "label": "In School (Full-time)",
+                "value": "in-school-full-time"
+              },
+              {
+                "label": "In School (Part-time)",
+                "value": "in-school-part-time"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please select your employment status",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "e.g. CXC/CSEC, A-Levels, Associate Degree, Bachelor's Degree",
+            "label": "Highest Level of Qualification Attained",
+            "fieldId": "highest-qualification",
+            "validations": {
+              "required": {
+                "error": "Please enter your highest qualification",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Programmes – Samuel Jackman Prescod Institute",
+      "stepId": "programmes-sjpi",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Samuel Jackman Prescod Institute",
+            "fieldId": "sjpi-massage-therapy",
+            "options": [
+              {
+                "label": "Massage Therapy",
+                "value": "massage-therapy"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-masonry",
+            "options": [
+              {
+                "label": "Masonry",
+                "value": "masonry"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-electrical-vehicles",
+            "options": [
+              {
+                "label": "Electrical Vehicles Maintenance Fundamentals",
+                "value": "electrical-vehicles-maintenance-fundamentals"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-autobody-repairs",
+            "options": [
+              {
+                "label": "Autobody Repairs 1",
+                "value": "autobody-repairs-1"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-carpentry-joinery",
+            "options": [
+              {
+                "label": "Carpentry/Joinery",
+                "value": "carpentry-joinery"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-motor-vehicle-engineering",
+            "options": [
+              {
+                "label": "Motor Vehicle Engineering/Auto-mechanics",
+                "value": "motor-vehicle-engineering"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-beauty-therapy",
+            "options": [
+              {
+                "label": "Beauty Therapy",
+                "value": "beauty-therapy"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-plumbing",
+            "options": [
+              {
+                "label": "Plumbing",
+                "value": "plumbing"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-refrigeration-ac",
+            "options": [
+              {
+                "label": "Refrigeration & Air Conditioning",
+                "value": "refrigeration-ac"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-facials-makeup",
+            "options": [
+              {
+                "label": "Facials & Makeup",
+                "value": "facials-makeup"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "title": "Programmes – Samuel Jackman Prescod Institute (continued)",
+      "stepId": "programmes-sjpi-2",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Samuel Jackman Prescod Institute (continued)",
+            "fieldId": "sjpi-electrical-installation",
+            "options": [
+              {
+                "label": "Electrical Installation",
+                "value": "electrical-installation"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-ac-automotive",
+            "options": [
+              {
+                "label": "Air Conditioning for Automotive Technicians",
+                "value": "ac-automotive"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-nail-care",
+            "options": [
+              {
+                "label": "Nail Care Design 1",
+                "value": "nail-care-design-1"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-small-business",
+            "options": [
+              {
+                "label": "Small Business Training",
+                "value": "small-business-training"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-photovoltaic",
+            "options": [
+              {
+                "label": "Photovoltaic Installation Level 1",
+                "value": "photovoltaic-installation-level-1"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-landscaping",
+            "options": [
+              {
+                "label": "Landscaping & Gardening",
+                "value": "landscaping-gardening"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-auxiliary-nursing",
+            "options": [
+              {
+                "label": "Auxiliary Nursing",
+                "value": "auxiliary-nursing"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-child-care",
+            "options": [
+              {
+                "label": "Child Care & Nursery Management",
+                "value": "child-care-nursery-management"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-customer-service",
+            "options": [
+              {
+                "label": "Customer Service",
+                "value": "customer-service"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-cake-pastry",
+            "options": [
+              {
+                "label": "Cake & Pastry Making",
+                "value": "cake-pastry-making"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-sound-technology",
+            "options": [
+              {
+                "label": "Sound Technology for Events",
+                "value": "sound-technology-events"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "sjpi-computer-repairs",
+            "options": [
+              {
+                "label": "Computer Repairs & Servicing Technology 1",
+                "value": "computer-repairs-servicing-tech-1"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "title": "Programmes – Barbados Vocational Training Board",
+      "stepId": "programmes-bvtb",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Barbados Vocational Training Board",
+            "fieldId": "bvtb-hair-braiding",
+            "options": [
+              {
+                "label": "Hair Braiding & Weaving",
+                "value": "hair-braiding-weaving"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "bvtb-welding",
+            "options": [
+              {
+                "label": "Welding",
+                "value": "welding"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "bvtb-bobcat-operation",
+            "options": [
+              {
+                "label": "Bobcat Operation",
+                "value": "bobcat-operation"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "bvtb-nail-technology",
+            "options": [
+              {
+                "label": "Nail Technology",
+                "value": "nail-technology"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "hint": "Please select whether you are applying as a Beginner or Advanced student",
+            "label": "Nail Technology – Level",
+            "fieldId": "bvtb-nail-technology-level",
+            "options": [
+              {
+                "label": "Beginner",
+                "value": "beginner"
+              },
+              {
+                "label": "Advance",
+                "value": "advance"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "nail-technology",
+                "operator": "equal",
+                "targetFieldId": "bvtb-nail-technology"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "bvtb-tiling-decorative",
+            "options": [
+              {
+                "label": "Tiling and Decorative Finishes",
+                "value": "tiling-decorative-finishes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "bvtb-heavy-duty-truck",
+            "options": [
+              {
+                "label": "Heavy Duty Truck Driving (Licence Required)",
+                "value": "heavy-duty-truck-driving"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "bvtb-barbering",
+            "options": [
+              {
+                "label": "Barbering",
+                "value": "barbering"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "bvtb-excavator-operations",
+            "options": [
+              {
+                "label": "Excavator Operations (Licence Required)",
+                "value": "excavator-operations"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "bvtb-backhoe-operations",
+            "options": [
+              {
+                "label": "Backhoe Operations (Licence Required)",
+                "value": "backhoe-operations"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "title": "Programmes – Barbados Community College (Hospitality Institute)",
+      "stepId": "programmes-bcc",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Barbados Community College – Hospitality Institute",
+            "fieldId": "bcc-professional-housekeeping",
+            "options": [
+              {
+                "label": "Professional Housekeeping",
+                "value": "professional-housekeeping"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "bcc-basic-trade-cookery",
+            "options": [
+              {
+                "label": "Basic Trade Cookery",
+                "value": "basic-trade-cookery"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "bcc-hotel-reception",
+            "options": [
+              {
+                "label": "Hotel Reception & Sales Procedures",
+                "value": "hotel-reception-sales"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "bcc-food-beverage",
+            "options": [
+              {
+                "label": "Food & Beverage Services",
+                "value": "food-beverage-services"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "bcc-bar-operations",
+            "options": [
+              {
+                "label": "Bar Operations (age 18+)",
+                "value": "bar-operations"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "bcc-baking-technology",
+            "options": [
+              {
+                "label": "Baking Technology",
+                "value": "baking-technology"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "bcc-international-cuisine",
+            "options": [
+              {
+                "label": "International Cuisine",
+                "value": "international-cuisine"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "bcc-homemakers",
+            "options": [
+              {
+                "label": "Homemakers",
+                "value": "homemakers"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "title": "Medical History",
+      "stepId": "medical-history",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "hint": "Please tick all that apply",
+            "label": "Medical Conditions",
+            "fieldId": "medical-asthma",
+            "options": [
+              {
+                "label": "Asthma",
+                "value": "asthma"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "medical-epilepsy",
+            "options": [
+              {
+                "label": "Epilepsy",
+                "value": "epilepsy"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "medical-diabetes",
+            "options": [
+              {
+                "label": "Diabetes",
+                "value": "diabetes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "medical-allergies",
+            "options": [
+              {
+                "label": "Allergies",
+                "value": "allergies"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "medical-hypertension",
+            "options": [
+              {
+                "label": "Hypertension",
+                "value": "hypertension"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "medical-physical-disability",
+            "options": [
+              {
+                "label": "Physical Disability",
+                "value": "physical-disability"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "medical-learning-disability",
+            "options": [
+              {
+                "label": "Learning Disability",
+                "value": "learning-disability"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "medical-behavioural-challenge",
+            "options": [
+              {
+                "label": "Behavioural Challenge",
+                "value": "behavioural-challenge"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "medical-mental-health",
+            "options": [
+              {
+                "label": "Mental Health Challenge",
+                "value": "mental-health-challenge"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": " ",
+            "fieldId": "medical-none",
+            "options": [
+              {
+                "label": "None",
+                "value": "none"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "hint": "If you selected 'Other', please describe your condition here",
+            "label": "Other Medical Condition(s)",
+            "fieldId": "medical-other"
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "hint": "What medication(s) do you take, if any? Leave blank if none.",
+            "label": "Medication(s)",
+            "fieldId": "medications"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Emergency Contact",
+      "stepId": "emergency-contact",
+      "elements": [
+        {
+          "ref": "blocks/emergency-contact-details",
+          "overrides": {
+            "town": {
+              "isHidden": true
+            },
+            "email": {
+              "isHidden": true
+            },
+            "parish": {
+              "isHidden": true
+            },
+            "address": {
+              "label": "Emergency Contact Address",
+              "validations": {
+                "required": {
+                  "error": "Please enter the emergency contact's address",
+                  "value": true
+                }
+              }
+            },
+            "country": {
+              "isHidden": true
+            },
+            "postcode": {
+              "isHidden": true
+            },
+            "last-name": {
+              "label": "Emergency Contact Last Name",
+              "validations": {
+                "required": {
+                  "error": "Please enter the emergency contact's last name",
+                  "value": true
+                }
+              }
+            },
+            "telephone": {
+              "label": "Emergency Contact Cell Phone"
+            },
+            "first-name": {
+              "label": "Emergency Contact First Name",
+              "validations": {
+                "required": {
+                  "error": "Please enter the emergency contact's first name",
+                  "value": true
+                }
+              }
+            },
+            "home-telephone": {
+              "label": "Emergency Contact Home Telephone",
+              "validations": {
+                "required": {
+                  "error": "Please enter the emergency contact's home telephone",
+                  "value": true
+                }
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "e.g. Parent, Guardian, Sibling, Friend",
+            "label": "Relationship to Applicant",
+            "fieldId": "emergency-contact-relationship",
+            "validations": {
+              "required": {
+                "error": "Please enter the relationship to the applicant",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Declaration",
+      "stepId": "declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I declare that the information provided in this application is true, accurate and complete to the best of my knowledge. I understand that providing false or misleading information may result in my application being rejected or cancelled.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to submit your application",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Application Submitted",
+      "stepId": "submission-confirmation",
+      "elements": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "Thank you for applying to Project Dawn. We have received your application and you will receive a confirmation email at the address you provided. A member of the Block Transformation Unit team will be in touch with further information about your selected programme(s)."
+        }
+      ]
+    }
+  ],
+  "title": "Project Dawn – Block Transformation Unit Application",
+  "formId": "project-dawn-application",
+  "createdAt": "2026-01-01T00:00:00Z",
+  "updatedAt": "2026-06-05T00:00:00Z",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Project Dawn Application Has Been Received",
+        "recipientField": "contact-information.applicant-email"
+      }
+    }
+  ],
+  "description": "Ministry of Youth, Sports & Community Empowerment – Project Dawn training programme application form."
+}

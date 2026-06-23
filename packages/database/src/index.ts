@@ -26,6 +26,7 @@ import { AddReferenceCodeToFormSubmissions1778841559000 } from "./migrations/177
 import { CreateFormDisabledOverrides1779466523478 } from "./migrations/1779466523478-CreateFormDisabledOverrides";
 import { CreateMdaContactAndFormConfig1780520220084 } from "./migrations/1780520220084-CreateMdaContactAndFormConfig";
 import { CreateFormEditingSessions1780924594196 } from "./migrations/1780924594196-CreateFormEditingSessions";
+import { MakeFormVersionNullable1781000000000 } from "./migrations/1781000000000-MakeFormVersionNullable";
 
 export const entities = [
   FormComponentEntity,
@@ -54,6 +55,7 @@ export const migrations = [
   CreateFormDisabledOverrides1779466523478,
   CreateMdaContactAndFormConfig1780520220084,
   CreateFormEditingSessions1780924594196,
+  MakeFormVersionNullable1781000000000,
 ];
 
 /**

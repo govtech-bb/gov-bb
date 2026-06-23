@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   Logger,
   Optional,
@@ -9,6 +10,7 @@ import * as fs from "node:fs/promises";
 import { watch, type FSWatcher } from "node:fs";
 import * as path from "node:path";
 import {
+  SEMVER_PATTERN,
   serviceContractRecipeSchema,
   compareSemver,
   type ServiceContractRecipe,
@@ -42,8 +44,15 @@ const WATCH_DEBOUNCE_MS = 250;
 export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RecipeFileLoaderService.name);
   private readonly recipesRoot: string;
-  // formId → version → recipe
+  // Legacy fallback (#1196): formId → version → recipe, built from versioned
+  // `recipes/{formId}/{v}.json` dirs. Retained read-only through Phase 1 so an
+  // in-flight submission/draft still carrying a pinned version resolves.
   private store = new Map<string, Map<string, ServiceContractRecipe>>();
+  // Canonical (#1196): formId → recipe, built from flat `recipes/{formId}.json`
+  // files. The primary store once the flat files are committed (PR B); empty
+  // until then, so the loader serves the highest versioned recipe exactly as
+  // before.
+  private canonical = new Map<string, ServiceContractRecipe>();
 
   // Dev-only hot-reload watcher (see startWatching). Undefined outside
   // development or if the watch fails to attach.
@@ -126,20 +135,52 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
 
   async loadAll(): Promise<void> {
     const next = new Map<string, Map<string, ServiceContractRecipe>>();
+    const nextCanonical = new Map<string, ServiceContractRecipe>();
 
-    let formDirs: string[];
+    let entries: import("node:fs").Dirent[];
     try {
-      const entries = await fs.readdir(this.recipesRoot, {
-        withFileTypes: true,
-      });
-      formDirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+      entries = await fs.readdir(this.recipesRoot, { withFileTypes: true });
     } catch (err) {
       // Missing root: treat as no recipes. Other errors propagate.
       if ((err as NodeJS.ErrnoException).code === "ENOENT") {
         this.store = next;
+        this.canonical = nextCanonical;
         return;
       }
       throw err;
+    }
+
+    const formDirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+    const flatFiles = entries
+      .filter((e) => e.isFile() && e.name.endsWith(".json"))
+      .map((e) => e.name);
+
+    // Flat canonical files: `recipes/{formId}.json`, keyed by the recipe's own
+    // formId. The flat filename (minus .json) must equal formId — same
+    // self-consistency guard the versioned branch applies.
+    for (const file of flatFiles) {
+      if (!isLeafName(file)) {
+        this.logger.error(
+          `Refusing recipe file entry "${file}" under ${this.recipesRoot} — not a leaf name`,
+        );
+        continue;
+      }
+      const filePath = path.join(this.recipesRoot, file);
+      try {
+        const recipe = await this.parseRecipeFile(filePath);
+        const filenameFormId = file.replace(/\.json$/, "");
+        if (recipe.formId !== filenameFormId) {
+          throw new Error(
+            `Recipe ${filePath}: filename "${filenameFormId}" does not match recipe.formId "${recipe.formId}"`,
+          );
+        }
+        nextCanonical.set(recipe.formId, recipe);
+      } catch (err) {
+        const e = err as Error;
+        this.logger.error(
+          `Failed to load canonical recipe ${filePath}: ${e.name}: ${e.message}`,
+        );
+      }
     }
 
     for (const formId of formDirs) {
@@ -162,23 +203,15 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
         }
         const filePath = path.join(dir, file);
         try {
-          const raw = await fs.readFile(filePath, "utf8");
-          let parsed: unknown;
-          try {
-            parsed = JSON.parse(raw);
-          } catch (err) {
-            throw new Error(
-              `Failed to parse recipe ${filePath}: ${(err as Error).message}`,
-            );
-          }
-          const result = serviceContractRecipeSchema.safeParse(parsed);
-          if (!result.success) {
-            throw new Error(
-              `Recipe ${filePath} (formId=${formId}) failed validation: ${result.error.message}`,
-            );
-          }
-          const recipe = result.data;
+          const recipe = await this.parseRecipeFile(filePath);
 
+          // Versioned legacy files carry a version, and the filename, the
+          // recipe.version and the dir name must all agree.
+          if (!recipe.version) {
+            throw new Error(
+              `Recipe ${filePath}: versioned recipe is missing a version`,
+            );
+          }
           const filenameVersion = file.replace(/\.json$/, "");
           if (filenameVersion !== recipe.version) {
             throw new Error(
@@ -206,12 +239,41 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.store = next;
-    this.logger.log(
-      `Loaded ${next.size} forms (${Array.from(next.values()).reduce(
-        (sum, m) => sum + m.size,
-        0,
-      )} recipe files) from ${this.recipesRoot}`,
+    this.canonical = nextCanonical;
+    const versionedCount = Array.from(next.values()).reduce(
+      (sum, m) => sum + m.size,
+      0,
     );
+    this.logger.log(
+      `Loaded ${nextCanonical.size} canonical + ${next.size} versioned forms ` +
+        `(${versionedCount} versioned files) from ${this.recipesRoot}`,
+    );
+  }
+
+  /**
+   * Read, JSON-parse and zod-validate a recipe file. Throws with a descriptive
+   * message on any failure. Shared by the canonical (flat) and versioned
+   * (dir) load paths.
+   */
+  private async parseRecipeFile(
+    filePath: string,
+  ): Promise<ServiceContractRecipe> {
+    const raw = await fs.readFile(filePath, "utf8");
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (err) {
+      throw new Error(
+        `Failed to parse recipe ${filePath}: ${(err as Error).message}`,
+      );
+    }
+    const result = serviceContractRecipeSchema.safeParse(parsed);
+    if (!result.success) {
+      throw new Error(
+        `Recipe ${filePath} failed validation: ${result.error.message}`,
+      );
+    }
+    return result.data;
   }
 
   findAll(): {
@@ -226,20 +288,27 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
       version: string;
       category?: string;
     }[] = [];
-    for (const [formId, versions] of this.store) {
-      const latest = this.latestVersion(versions);
-      if (latest)
-        out.push({
-          formId,
-          title: latest.title,
-          version: latest.version,
-          // Category is the contact-details title (e.g. the owning
-          // ministry/department). Omitted when the recipe has no
-          // contactDetails so the landing page can fall back to "Unknown".
-          ...(latest.contactDetails?.title && {
-            category: latest.contactDetails.title,
-          }),
-        });
+    // Union of canonical and versioned forms; the canonical recipe wins when a
+    // form has both (the steady state during Phase 1). A canonical recipe has
+    // no version, so the listed version falls back to the highest versioned
+    // file's number when one exists, else "".
+    const formIds = new Set([...this.canonical.keys(), ...this.store.keys()]);
+    for (const formId of formIds) {
+      const versions = this.store.get(formId);
+      const latestVersioned = versions ? this.latestVersion(versions) : null;
+      const recipe = this.canonical.get(formId) ?? latestVersioned;
+      if (!recipe) continue;
+      out.push({
+        formId,
+        title: recipe.title,
+        version: recipe.version ?? latestVersioned?.version ?? "",
+        // Category is the contact-details title (e.g. the owning
+        // ministry/department). Omitted when the recipe has no
+        // contactDetails so the landing page can fall back to "Unknown".
+        ...(recipe.contactDetails?.title && {
+          category: recipe.contactDetails.title,
+        }),
+      });
     }
     return out;
   }
@@ -251,19 +320,46 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
     formId: string;
     version?: string;
   }): ServiceContractRecipe | null {
+    // A pinned version resolves the legacy versioned file first; if it has
+    // aged out (Phase 2 deletes them), fall through to the canonical recipe —
+    // but NOT to the latest versioned file, so an unknown version stays null
+    // when no canonical recipe exists (unchanged pre-#1196 behaviour).
+    if (version) {
+      const legacy = this.loadLegacyVersion(formId, version);
+      if (legacy) return legacy;
+      return this.canonical.get(formId) ?? null;
+    }
+    const canonical = this.canonical.get(formId);
+    if (canonical) return canonical;
     const versions = this.store.get(formId);
-    if (!versions) return null;
-    if (version) return versions.get(version) ?? null;
-    return this.latestVersion(versions);
+    return versions ? this.latestVersion(versions) : null;
+  }
+
+  /**
+   * Resolve a specific legacy versioned recipe from `recipes/{formId}/{v}.json`.
+   * The version is validated against SEMVER_PATTERN before lookup —
+   * defence-in-depth, since a stored pin flows toward a file path on cold load.
+   * Returns null when the form/version pair is not present.
+   */
+  loadLegacyVersion(
+    formId: string,
+    version: string,
+  ): ServiceContractRecipe | null {
+    if (!SEMVER_PATTERN.test(version)) {
+      throw new BadRequestException(`Invalid recipe version: ${version}`);
+    }
+    return this.store.get(formId)?.get(version) ?? null;
   }
 
   private latestVersion(
     versions: Map<string, ServiceContractRecipe>,
   ): ServiceContractRecipe | null {
     let best: ServiceContractRecipe | null = null;
-    for (const recipe of versions.values()) {
-      if (!best || compareSemver(recipe.version, best.version) > 0) {
+    let bestVersion = "";
+    for (const [version, recipe] of versions) {
+      if (!best || compareSemver(version, bestVersion) > 0) {
         best = recipe;
+        bestVersion = version;
       }
     }
     return best;

@@ -49,6 +49,16 @@ export async function publishHandler(req: Request, res: Response) {
     const typedRecipe = recipe as ServiceContractRecipe;
     const token = githubToken as string;
 
+    // Recipe `version` is optional on the type during the #1196 two-phase
+    // retire, but this (Phase 1) publish path still writes versioned files, so
+    // a version is required here. The builder UI always sends one; reject
+    // otherwise rather than fabricate a path segment.
+    const recipeVersion = typedRecipe.version;
+    if (!recipeVersion) {
+      res.status(400).json({ error: "recipe.version is required" });
+      return;
+    }
+
     // Read-only lock (#874): deploying is a write, so only the current fresh
     // claim holder may publish. Require the SSR-stamped login (400) and verify
     // the claim (409) before touching GitHub.
@@ -74,7 +84,7 @@ export async function publishHandler(req: Request, res: Response) {
     const gh = createPublishClient(repoIdentity());
 
     // Read the base tip and create the deploy branch off it.
-    const branch = deployBranchName(typedRecipe.formId, typedRecipe.version);
+    const branch = deployBranchName(typedRecipe.formId, recipeVersion);
     await gh.createBranchFrom(token, baseBranch, branch);
 
     try {
@@ -84,10 +94,10 @@ export async function publishHandler(req: Request, res: Response) {
       // CodeQL js/request-forgery alert and neutralises any injected path
       // characters. Backstopped by the kebab `formId` / semver `version`
       // validation in validateRecipeFully; for valid input this is a no-op (#935).
-      const contentsPath = `recipes/${encodeURIComponent(typedRecipe.formId)}/${encodeURIComponent(typedRecipe.version)}.json`;
+      const contentsPath = `recipes/${encodeURIComponent(typedRecipe.formId)}/${encodeURIComponent(recipeVersion)}.json`;
       const putRes = await gh.putFile(token, {
         path: contentsPath,
-        message: `Publish ${typedRecipe.formId} v${typedRecipe.version}`,
+        message: `Publish ${typedRecipe.formId} v${recipeVersion}`,
         content: JSON.stringify(typedRecipe, null, 2) + "\n",
         branch,
       });
@@ -98,7 +108,7 @@ export async function publishHandler(req: Request, res: Response) {
       const { prUrl, prNumber } = await gh.openPullRequest(token, {
         base: baseBranch,
         head: branch,
-        title: `Publish form: ${typedRecipe.title ?? typedRecipe.formId} v${typedRecipe.version}`,
+        title: `Publish form: ${typedRecipe.title ?? typedRecipe.formId} v${recipeVersion}`,
         body: description ?? "",
       });
       res.json({ prUrl, prNumber });
