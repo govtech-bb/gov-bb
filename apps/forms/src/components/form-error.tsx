@@ -1,4 +1,5 @@
 import { FormFetchError } from "@forms/form-api";
+import { LANDING_URL } from "../config/landing";
 
 interface FormErrorProps {
   error: Error;
@@ -34,7 +35,7 @@ export default function FormError({ error, reset }: FormErrorProps) {
         <button type="button" className="govbb-btn" onClick={reset}>
           Try again
         </button>
-        <a className="govbb-link" href="/">
+        <a className="govbb-link" href={LANDING_URL}>
           Go to Homepage
         </a>
       </div>
