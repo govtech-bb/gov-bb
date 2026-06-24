@@ -20,6 +20,7 @@ import { FormDefinitionsService } from "../forms/form-definitions/form-definitio
 import type {
   SubmissionAuditTrail,
   SubmissionCreatedEvent,
+  SubmissionPaymentSummary,
 } from "../forms/submissions/submissions.types";
 
 /** TTL for cached form contracts (seconds).
@@ -91,6 +92,10 @@ export interface EmailTemplateContext {
    * image URL. */
   departmentName?: string;
   coatOfArmsUrl?: string;
+  /** Confirmed-payment details, forwarded from the post-payment
+   * `submission.created` event. Rendered on the MDA/reviewer confirmation
+   * email; undefined for non-payment submissions. */
+  payment?: SubmissionPaymentSummary;
 }
 
 /**
@@ -217,6 +222,7 @@ export class EmailBodyBuilder {
       year: processedAt.slice(0, 4),
       sections,
       ...(markdownHtml && { markdownHtml }),
+      ...(payload.payment && { payment: payload.payment }),
     };
   }
 
@@ -240,15 +246,18 @@ export class EmailBodyBuilder {
   }
 
   /**
-   * Fetches the form's service contract through the same per-`formId:version`
-   * cache as `build`. Public so the email processor can walk the contract's
-   * file fields when gathering upload attachments.
+   * Fetches the form's service contract through the same per-`formId` cache as
+   * `build`. Public so the email processor can walk the contract's file fields
+   * when gathering upload attachments.
    */
   async resolveContract(
     formId: string,
-    version: string,
+    // Optional post-#1196: absent → canonical recipe; present → legacy file for
+    // an in-flight pinned submission. The cache keys on formId alone — the
+    // canonical recipe is the single contract a form resolves to.
+    version?: string,
   ): Promise<ServiceContract> {
-    const cacheKey = `${formId}:${version}`;
+    const cacheKey = formId;
     const cached = this.contractCache.get<ServiceContract>(cacheKey);
     if (cached) return cached;
 

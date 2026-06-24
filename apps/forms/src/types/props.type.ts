@@ -1,12 +1,8 @@
 import { ContactDetails } from "@govtech-bb/form-types";
 import { AnyFormApi } from "@tanstack/react-form";
-import {
-  ClientFormStep,
-  ClientPrimitive,
-  ClientServiceContract,
-} from "./field-mapper.type";
+import { ClientFormStep, ClientPrimitive } from "./field-mapper.type";
 import { FormMeta } from "./renderer.type";
-import { RepeatableStepSettings } from "./behavior-helper.type";
+import { RepeatableStepSettings } from "./repeatable.type";
 
 export interface FormRendererProps {
   form: AnyFormApi;
@@ -22,11 +18,6 @@ export interface FormRendererProps {
    */
   previewToken?: string;
 }
-
-export type FormRouteProps = {
-  contract: ClientServiceContract;
-  stepId?: string;
-};
 
 export type UseStepGuardProps = {
   formId: string;
@@ -67,8 +58,6 @@ export type FileUploadProps = {
   /** id for the error element, so the input's aria-describedby resolves. */
   errorId?: string;
   formId?: string;
-  /** Form version, required for the presigned-upload requests. */
-  formVersion?: string;
   /**
    * The `?preview=` token, present only when previewing an unpublished draft.
    * Forwarded on presign + confirm so uploads resolve the DB-only draft.

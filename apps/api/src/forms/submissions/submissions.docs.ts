@@ -1,6 +1,6 @@
 import { applyDecorators } from "@nestjs/common";
 import { ApiBody, ApiHeader, ApiOperation, ApiResponse } from "@nestjs/swagger";
-import { ApiWrappedResponse } from "../../common/swagger";
+import { ApiWrappedResponse } from "@/common/swagger";
 import { CreateSubmissionDto, FormSubmissionResponseDto } from "./dto";
 
 export function CreateSubmissionDocs() {

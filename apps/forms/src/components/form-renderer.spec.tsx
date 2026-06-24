@@ -231,6 +231,32 @@ describe("FormRenderer", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders markdownContent and suppresses the title on a content-only step", () => {
+    const step = {
+      ...makeStep("about-this-camp"),
+      markdownContent: "## Apply for camp\n\nIntro copy",
+    };
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="about-this-camp"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    // react-markdown is mocked with a passthrough renderer, so this asserts the
+    // step wires its copy through markdown.
+    expect(screen.getByTestId("react-markdown")).toHaveTextContent(
+      "Apply for camp",
+    );
+    // The step's own <h1> is suppressed — the markdown supplies its heading.
+    expect(
+      screen.queryByRole("heading", { name: /Step about-this-camp/ }),
+    ).toBeNull();
+  });
+
   it("renders a conditionalTitle when its condition matches the form values", () => {
     const step = {
       stepId: "birth-details",
@@ -532,25 +558,6 @@ describe("FormRenderer", () => {
     );
     const renderers = screen.getAllByTestId("field-renderer");
     expect(renderers).toHaveLength(2);
-  });
-
-  it("threads formVersion to plain field renderers (needed for file presign, #438)", () => {
-    const fields = [makePlainField("step-1_doc", "doc", "step-1")];
-    const step = makeStep("step-1", fields);
-    render(
-      <FormRenderer
-        form={mockForm}
-        formMeta={makeMeta({ steps: [step], version: "1.1.0" }) as any}
-        stepId="step-1"
-        visibleSteps={[step]}
-        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
-        submissionState={mockSubmissionState as any}
-      />,
-    );
-    expect(screen.getByTestId("field-renderer")).toHaveAttribute(
-      "data-form-version",
-      "1.1.0",
-    );
   });
 
   it("builds validators from the field when it is missing from validationProperties (repeat instances, #432)", () => {

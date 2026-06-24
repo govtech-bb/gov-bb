@@ -3,7 +3,7 @@ import { isSubPage, isUrlVisible, PAGES } from '../content/registry'
 import { CATEGORY_BY_SLUG } from '../content/categories'
 import type { ViewLevel } from './frontmatter'
 
-export type SearchKind = 'service'
+type SearchKind = 'service'
 
 export interface SearchHit {
   id: string

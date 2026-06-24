@@ -435,7 +435,7 @@ describe("postFormSubmission", () => {
     expect(result?.meta?.deferred).toEqual(deferred);
   });
 
-  it("sends a POST request with the idempotency-key header, correct URL, and {formId, formVersion, values} body", async () => {
+  it("sends a POST request with the idempotency-key header, correct URL, and {formId, values} body", async () => {
     mockFetch.mockResolvedValue(makeOkResponse(minimalSubmissionBody));
     const valuesBySteps = {
       step1: { firstName: "Alice" },
@@ -451,7 +451,6 @@ describe("postFormSubmission", () => {
     ).toBe("unique-key-abc");
     expect(JSON.parse(fetchArgs.body as string)).toEqual({
       formId: "test-form",
-      formVersion: "1.0.0",
       values: valuesBySteps,
     });
   });

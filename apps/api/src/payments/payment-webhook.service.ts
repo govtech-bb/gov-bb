@@ -144,7 +144,7 @@ export class PaymentWebhookService {
     payment.status = PaymentStatus.SUCCESS;
     await this.paymentRepo.save(payment);
 
-    await this.fireDownstream(payment);
+    await this.fireDownstream(payment, verified);
     return { payment, outcome: "success" };
   }
 
@@ -207,7 +207,10 @@ export class PaymentWebhookService {
     return PaymentTransactionStatus.INITIATED;
   }
 
-  private async fireDownstream(payment: PaymentEntity): Promise<void> {
+  private async fireDownstream(
+    payment: PaymentEntity,
+    verified: VerifyPaymentResult,
+  ): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
       const submissionRepo = manager.getRepository(FormSubmissionEntity);
       const submission = await submissionRepo.findOne({
@@ -227,7 +230,8 @@ export class PaymentWebhookService {
 
       const contract = await this.formDefs.findByFormId({
         formId: payment.formId,
-        version: submission.formVersion,
+        // null (canonical, #1196) → resolve the canonical recipe.
+        version: submission.formVersion ?? undefined,
         includeProcessors: true,
       });
       const downstreamProcessors = (contract.processors ?? []).filter(
@@ -242,11 +246,22 @@ export class PaymentWebhookService {
         submissionId: submission.id,
         referenceCode: submission.referenceCode,
         formId: submission.formId,
-        formVersion: submission.formVersion,
+        formVersion: submission.formVersion ?? undefined,
         idempotencyKey: submission.idempotencyKey,
         processors: downstreamProcessors,
         values: submission.values as SubmissionCreatedEvent["values"],
         meta: submission.meta as unknown as SubmissionCreatedEvent["meta"],
+        // Confirmed-payment details for the MDA/reviewer email. expectedAmount
+        // is the authoritative charged amount (amountsMatch confirmed it equals
+        // what EzPay reported). A transaction number is always present on a
+        // verified Success; guard defensively so a missing one omits the block
+        // rather than rendering "undefined".
+        ...(verified.transactionNumber && {
+          payment: {
+            amountReceived: `$${Number(payment.expectedAmount).toFixed(2)}`,
+            transactionId: verified.transactionNumber,
+          },
+        }),
       };
       this.events.emit("submission.created", event);
     });

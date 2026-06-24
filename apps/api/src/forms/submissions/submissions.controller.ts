@@ -5,10 +5,10 @@ import { ConfigService } from "@nestjs/config";
 import { SubmissionsService } from "./submissions.service";
 import { CreateSubmissionDto } from "./dto";
 import { CreateSubmissionDocs } from "./submissions.docs";
-import { ApiResponse } from "../../common/response";
-import { isValidSecretToken } from "../../common/secret-token";
-import type { ApiResponseShape } from "../../common/response";
-import type { FormSubmissionEntity } from "../../database/entities/form-submission.entity";
+import { ApiResponse } from "@/common/response";
+import { isValidSecretToken } from "@/common/secret-token";
+import type { ApiResponseShape } from "@/common/response";
+import type { FormSubmissionEntity } from "@/database/entities/form-submission.entity";
 import { SubmissionPayloadSizePipe } from "./submission-payload-size.pipe";
 
 @ApiTags("Submissions")

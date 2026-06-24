@@ -12,7 +12,6 @@ import type { RegistryCatalog } from "./catalog";
  */
 export function serializeRecipeDraft(
   draft: RecipeDraft,
-  opts: { version: string },
 ): ServiceContractRecipe {
   const now = new Date().toISOString();
 
@@ -81,7 +80,6 @@ export function serializeRecipeDraft(
     ...(draft.contactDetails !== undefined
       ? { contactDetails: draft.contactDetails }
       : {}),
-    version: opts.version,
     // Carry processors through, stripping the editor-only id (never persisted,
     // per ADR 0009) AND every `payment` processor: payment config is now a
     // per-environment DB sibling living in `form_config.config` (#716, ADR

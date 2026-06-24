@@ -2,6 +2,7 @@ import {
   IsInt,
   IsMimeType,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
@@ -20,11 +21,14 @@ export class PresignUploadDto {
   @Matches(FORM_ID_PATTERN)
   formId!: string;
 
-  @ApiProperty({ example: "1.0.0" })
+  // Optional post-#1196 (version retired): present → legacy file lookup,
+  // absent → canonical recipe. Pre-cutover clients still send it.
+  @ApiProperty({ example: "1.0.0", required: false })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(20)
-  formVersion!: string;
+  formVersion?: string;
 
   @ApiProperty({ example: "documents" })
   @IsString()

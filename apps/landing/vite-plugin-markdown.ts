@@ -11,14 +11,13 @@ export function markdown(): Plugin {
     async transform(code, id) {
       if (!id.endsWith('.md') || id.includes('/node_modules/')) return null
       const { data, content } = matter(code)
-      const { hast, headings } = await processMarkdown(content)
+      const { hast } = await processMarkdown(content)
       const json = (value: unknown) => JSON.stringify(value)
       return {
         code: [
           `export const frontmatter = ${json(data)}`,
           `export const body = ${json(content)}`,
           `export const hast = ${json(hast)}`,
-          `export const headings = ${json(headings)}`,
         ].join('\n'),
         map: null,
       }

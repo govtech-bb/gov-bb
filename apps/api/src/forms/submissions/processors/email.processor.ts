@@ -1,15 +1,16 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
+import { SendEmailCommand } from "@aws-sdk/client-sesv2";
 import MailComposer from "nodemailer/lib/mail-composer";
 import type Mail from "nodemailer/lib/mailer";
 import Handlebars from "handlebars";
-import { EmailTemplateService } from "../../../email/email-template.service";
+import { SesMailer } from "@/email/ses-mailer";
+import { EmailTemplateService } from "@/email/email-template.service";
 import {
   EmailBodyBuilder,
   type EmailFileLink,
-} from "../../../email/email-body.builder";
-import { FilesService } from "../../../files/files.service";
+} from "@/email/email-body.builder";
+import { FilesService } from "@/files/files.service";
 import {
   classifyRecipientField,
   CONTACT_DETAILS_PREFIX,
@@ -19,7 +20,8 @@ import type {
   ProcessorOutput,
 } from "./submission-processor.interface";
 import type { SubmissionCreatedEvent } from "../submissions.types";
-import { FormConfigService } from "../../form-config/form-config.service";
+import { FormConfigService } from "@/forms/form-config/form-config.service";
+import { NonRetryableError } from "./non-retryable-error";
 
 // The detailed reviewer/MDA email: full field-by-field summary of the
 // submission. Used for every recipient kind except the citizen.
@@ -50,48 +52,18 @@ const EMAIL_LINK_TTL_SECONDS = 72 * 60 * 60;
 export class EmailProcessor implements ISubmissionProcessor {
   readonly type = "email" as const;
   private readonly logger = new Logger(EmailProcessor.name);
-  private readonly client: SESv2Client;
-  private readonly from: string;
-  private readonly configurationSet: string | undefined;
   private readonly defaultRecipient: string;
-  // Absolute URL of the coat-of-arms image for the citizen email's branding,
-  // derived from the public forms-site base (email.assetBaseUrl). Undefined
-  // when unset (e.g. local dev) — the template then omits the image.
-  private readonly coatOfArmsUrl: string | undefined;
 
   constructor(
     config: ConfigService,
+    private readonly mailer: SesMailer,
     private readonly templateService: EmailTemplateService,
     private readonly emailBodyBuilder: EmailBodyBuilder,
     private readonly filesService: FilesService,
     private readonly formConfigService: FormConfigService,
   ) {
-    this.from = config.get<string>("email.from") ?? "noreply@gov.bb";
-    this.configurationSet = config.get<string>("email.configurationSet");
     this.defaultRecipient =
       config.get<string>("email.defaultRecipient") ?? "testing@govtech.bb";
-    const assetBaseUrl = config.get<string>("email.assetBaseUrl");
-    this.coatOfArmsUrl = assetBaseUrl
-      ? `${assetBaseUrl.replace(/\/+$/, "")}/images/coat-of-arms.png`
-      : undefined;
-    // endpoint is set only in local dev (SES_ENDPOINT → aws-ses-v2-local); in
-    // every deployed environment it is undefined, so the SDK resolves the real
-    // AWS SES endpoint exactly as before.
-    const endpoint = config.get<string>("email.endpoint");
-    this.client = new SESv2Client({
-      region: config.get<string>("email.region") ?? "us-east-1",
-      // When pointing at the local mock, pin static dummy credentials. The
-      // mock ignores them, but the SDK signer needs *some* — and pinning them
-      // here keeps the local path deterministic regardless of any ambient
-      // AWS_PROFILE/SSO a developer has set for real-AWS work (apps/api/.env
-      // ships AWS_PROFILE=sandbox, which the SDK would otherwise prefer over
-      // env creds and then fail to resolve inside the container). Deployed
-      // envs leave endpoint unset → default credential chain (IAM task role).
-      ...(endpoint && {
-        endpoint,
-        credentials: { accessKeyId: "local", secretAccessKey: "local" },
-      }),
-    });
   }
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
@@ -125,7 +97,9 @@ export class EmailProcessor implements ISubmissionProcessor {
   ): Promise<void> {
     const recipientField = cfg["recipientField"] as string | undefined;
     if (!recipientField) {
-      throw new Error(
+      // Config error: a recipe with no recipientField will never succeed on
+      // retry, so fail non-retryably.
+      throw new NonRetryableError(
         `No recipientField configured for submission ${payload.submissionId}`,
       );
     }
@@ -149,7 +123,14 @@ export class EmailProcessor implements ISubmissionProcessor {
               : this.resolveSubmittedRecipient(payload, recipientField);
 
       if (!recipient) {
-        throw new Error(`Could not resolve recipient at "${recipientField}"`);
+        // Config error: the recipient resolved to nothing (e.g. a misconfigured
+        // path or an empty contactDetails value). This won't fix itself on
+        // retry, so fail non-retryably. NOTE: a resolver that *throws* (DB/infra
+        // down) is a transient failure — it propagates to the catch below and is
+        // re-wrapped as a normal, retryable error.
+        throw new NonRetryableError(
+          `Could not resolve recipient at "${recipientField}"`,
+        );
       }
 
       // A recipe can set its own subject; otherwise the default depends on the
@@ -215,15 +196,15 @@ export class EmailProcessor implements ISubmissionProcessor {
               },
             };
 
-      await this.client.send(
+      await this.mailer.client.send(
         new SendEmailCommand({
-          FromEmailAddress: this.from,
+          FromEmailAddress: this.mailer.from,
           Destination: { ToAddresses: [recipient] },
           Content: content,
           // EmailTags are forwarded to the SES event destination (SNS/EventBridge).
           EmailTags: [{ Name: "submissionId", Value: payload.submissionId }],
-          ...(this.configurationSet && {
-            ConfigurationSetName: this.configurationSet,
+          ...(this.mailer.configurationSet && {
+            ConfigurationSetName: this.mailer.configurationSet,
           }),
         }),
       );
@@ -232,6 +213,11 @@ export class EmailProcessor implements ISubmissionProcessor {
         `[email] Confirmation sent to ${recipient} for submission ${payload.submissionId}`,
       );
     } catch (err) {
+      // A config error (unresolved recipient) is non-retryable — rethrow it
+      // untouched so the consumer drops the message instead of retrying. Any
+      // other failure (SES delivery, resolver/DB exception) is transient: wrap
+      // it as a normal error so SQS retries → DLQ.
+      if (err instanceof NonRetryableError) throw err;
       const reason = err instanceof Error ? err.message : String(err);
       throw new Error(
         `Failed to send email for recipientField "${recipientField}" on submission ${payload.submissionId}: ${reason}`,
@@ -377,7 +363,7 @@ export class EmailProcessor implements ISubmissionProcessor {
     attachments: Mail.Attachment[],
   ): Promise<Uint8Array> {
     const composer = new MailComposer({
-      from: this.from,
+      from: this.mailer.from,
       to,
       subject,
       text,
@@ -407,7 +393,7 @@ export class EmailProcessor implements ISubmissionProcessor {
       // Both templates carry the coat-of-arms branding. The department name is
       // only used by the citizen acknowledgement, so resolve that directory
       // lookup only for that template.
-      ctx.coatOfArmsUrl = this.coatOfArmsUrl;
+      ctx.coatOfArmsUrl = this.mailer.coatOfArmsUrl;
       if (templateId === RECEIVED_TEMPLATE) {
         ctx.departmentName =
           (await this.formConfigService.resolveDepartmentName(
