@@ -340,6 +340,98 @@ describe("FieldRenderer", () => {
   });
 
   // -------------------------------------------------------------------------
+  // fieldArray unique ids + per-row labels (#1024) — every repeated row used
+  // to render with the same `id` (duplicate DOM ids); for number fields that
+  // made every stepper's `aria-controls` point at row 0. The first row keeps
+  // `field.id` (error-summary anchor + group label); later rows are suffixed.
+  // -------------------------------------------------------------------------
+  describe("fieldArray unique ids + per-row labels (#1024)", () => {
+    const fieldArrayBehaviour = { type: "fieldArray" as const, min: 1, max: 3 };
+
+    it("text array → each row input has a unique id; first row keeps field.id", () => {
+      mockState = {
+        value: ["a", "b", "c"],
+        meta: { isValid: true, errors: [] },
+      };
+      const { container } = renderField(
+        primitive("text", { behaviours: [fieldArrayBehaviour] }),
+      );
+      const ids = Array.from(container.querySelectorAll("input")).map(
+        (el) => el.id,
+      );
+      expect(ids).toEqual([
+        "step-1.text-field",
+        "step-1.text-field-1",
+        "step-1.text-field-2",
+      ]);
+      // No duplicates — the original bug.
+      expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it("text array → rows after the first carry a numbered aria-label", () => {
+      mockState = { value: ["a", "b"], meta: { isValid: true, errors: [] } };
+      renderField(
+        primitive("text", {
+          label: "Address line",
+          behaviours: [fieldArrayBehaviour],
+        }),
+      );
+      // Row 0 is named by the group <label>; row 1 by its own aria-label.
+      expect(screen.getByLabelText("Address line 2")).toBeInTheDocument();
+    });
+
+    it("textarea array → each row has a unique id", () => {
+      mockState = { value: ["a", "b"], meta: { isValid: true, errors: [] } };
+      const { container } = renderField(
+        primitive("textarea", { behaviours: [fieldArrayBehaviour] }),
+      );
+      const ids = Array.from(container.querySelectorAll("textarea")).map(
+        (el) => el.id,
+      );
+      expect(ids).toEqual(["step-1.textarea-field", "step-1.textarea-field-1"]);
+    });
+
+    it("number array → each stepper's aria-controls targets its own row input", () => {
+      mockState = { value: ["1", "2"], meta: { isValid: true, errors: [] } };
+      const { container } = renderField(
+        primitive("number", { behaviours: [fieldArrayBehaviour] }),
+      );
+      const ids = Array.from(container.querySelectorAll("input")).map(
+        (el) => el.id,
+      );
+      expect(ids).toEqual(["step-1.number-field", "step-1.number-field-1"]);
+      // Steppers, in DOM (row) order, point at the matching row id — the #1024
+      // regression had every aria-controls equal to row 0.
+      const incs = screen.getAllByRole("button", { name: "Increment" });
+      expect(incs.map((b) => b.getAttribute("aria-controls"))).toEqual(ids);
+      const decs = screen.getAllByRole("button", { name: "Decrement" });
+      expect(decs.map((b) => b.getAttribute("aria-controls"))).toEqual(ids);
+    });
+
+    it("single (non-array) field keeps id = field.id and no aria-label", () => {
+      mockState = { value: "x", meta: { isValid: true, errors: [] } };
+      const { container } = renderField(primitive("text"));
+      const input = container.querySelector("input") as HTMLInputElement;
+      expect(input.id).toBe("step-1.text-field");
+      expect(input.getAttribute("aria-label")).toBeNull();
+    });
+
+    it("multi-row number array has no axe-detectable accessibility violations", async () => {
+      mockState = {
+        value: ["1", "2", "3"],
+        meta: { isValid: true, errors: [] },
+      };
+      const { container } = renderField(
+        primitive("number", {
+          label: "Quantity",
+          behaviours: [fieldArrayBehaviour],
+        }),
+      );
+      expect(await axe(container)).toHaveNoViolations();
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // fieldArray behaviour (type=textarea) — #341 regression: a repeatable
   // textarea used to fall through into `case "text"` and render <input>.
   // -------------------------------------------------------------------------
