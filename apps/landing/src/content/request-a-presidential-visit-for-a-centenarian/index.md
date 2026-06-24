@@ -5,6 +5,7 @@ stage: "alpha"
 visibility: preview
 publish_date: 2026-05-14
 category: family-birth-relationships
+form_id: request-a-presidential-visit-for-a-centenarian
 ---
 
 Use this service to ask the President, Lieutenant Colonel Jeffrey Bostic, to visit a Barbadian who is turning 100 years old.
@@ -31,7 +32,7 @@ If there is a discrepancy in the documents, an affidavit may also be required.
 
 Most people finish this in about 10 minutes.
 
-<a data-start-link href="/family-birth-relationships/request-a-presidential-visit-for-a-centenarian/form">Start now</a>
+<a data-start-link>Start now</a>
 
 ### Apply by post
 
