@@ -48,11 +48,18 @@ applications:
       phases:
         preBuild:
           commands:
+            # DIAGNOSTIC — confirms which chat env vars are visible to the build
+            # subprocess. Investigating why chat staging health returns "db:
+            # unconfigured" despite Amplify Console having CHAT_DATABASE_URL_SECRET_ARN
+            # set at app level. Prints key names only (no values). Remove after
+            # diagnosing.
+            - echo "=== chat preBuild env keys ==="; env | grep -E "^(CHAT_|DATABASE_URL|LANDING_URL|RAG_URL|BEDROCK_REGION|LLM_MODEL|REWRITE_MODEL|FEATURE_|FORMS_URL|FORM_API_URL|VITE_)" | cut -d= -f1 | sort
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
             - npm install -g pnpm@11.6.0
             - pnpm install --frozen-lockfile
         build:
           commands:
+            - echo "=== chat build env keys ==="; env | grep -E "^(CHAT_|DATABASE_URL|LANDING_URL|RAG_URL|BEDROCK_REGION|LLM_MODEL|REWRITE_MODEL|FEATURE_|FORMS_URL|FORM_API_URL|VITE_)" | cut -d= -f1 | sort
             - pnpm exec nx run chat:build
       artifacts:
         baseDirectory: apps/chat/.amplify-hosting
