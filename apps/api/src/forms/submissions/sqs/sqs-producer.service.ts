@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
-import sqsConfig from "../../../config/sqs.config";
+import sqsConfig from "@/config/sqs.config";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import type { SubmissionSqsMessage } from "./submission-sqs-message.interface";
 

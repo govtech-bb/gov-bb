@@ -100,6 +100,61 @@ describe("modelMessagesToBedrock", () => {
     );
   });
 
+  it("drops tool blocks and merges the orphaned turns when includeToolBlocks is false", () => {
+    // A turn that binds no tools (handoff after an abandoned form) must not
+    // replay the form's tool exchange — Bedrock 400s on toolUse/toolResult
+    // without a toolConfig. Dropping the tool-call-only assistant turn would
+    // leave two adjacent user turns, so they must merge. (#1202 follow-up)
+    const messages: Array<ModelMessage> = [
+      { role: "user", content: "I would like to give feedback" },
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [
+          {
+            id: "t1",
+            type: "function",
+            function: { name: "ask_field", arguments: "{}" },
+          },
+        ],
+      },
+      { role: "tool", toolCallId: "t1", content: "field definition" },
+      { role: "user", content: "conductor license" },
+    ];
+
+    const out = modelMessagesToBedrock(messages, { includeToolBlocks: false });
+    const json = JSON.stringify(out);
+    expect(json).not.toContain("toolUse");
+    expect(json).not.toContain("toolResult");
+    // Both user texts survive, merged into a single alternating user turn.
+    expect(out.map((m) => m.role)).toEqual(["user"]);
+    expect(json).toContain("give feedback");
+    expect(json).toContain("conductor license");
+  });
+
+  it("keeps assistant text but drops its tool calls when includeToolBlocks is false", () => {
+    const messages: Array<ModelMessage> = [
+      { role: "user", content: "q" },
+      {
+        role: "assistant",
+        content: "let me check",
+        toolCalls: [
+          {
+            id: "t1",
+            type: "function",
+            function: { name: "f", arguments: "{}" },
+          },
+        ],
+      },
+      { role: "tool", toolCallId: "t1", content: "r" },
+      { role: "user", content: "q2" },
+    ];
+
+    const out = modelMessagesToBedrock(messages, { includeToolBlocks: false });
+    expect(out.map((m) => m.role)).toEqual(["user", "assistant", "user"]);
+    expect(JSON.stringify(out)).not.toContain("toolUse");
+  });
+
   it("falls back to { value } when tool arguments are not valid JSON", () => {
     const messages: Array<ModelMessage> = [
       {

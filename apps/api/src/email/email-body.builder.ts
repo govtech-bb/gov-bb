@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import NodeCache from "node-cache";
+import MarkdownIt from "markdown-it";
+import { DateTime } from "luxon";
 import type {
   ContactDetails,
   FormStep,
@@ -10,10 +12,15 @@ import {
   isCompleteDateValue,
   formatDateValue,
 } from "@govtech-bb/form-validation";
+import {
+  resolveStepTitle,
+  type StepScopedValues,
+} from "@govtech-bb/form-conditions";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import type {
   SubmissionAuditTrail,
   SubmissionCreatedEvent,
+  SubmissionPaymentSummary,
 } from "../forms/submissions/submissions.types";
 
 /** TTL for cached form contracts (seconds).
@@ -24,6 +31,24 @@ import type {
  * versions are processed over a long server lifetime.
  */
 const CONTRACT_CACHE_TTL_SECONDS = 600; // 10 minutes
+
+// Renders the form's authored confirmation markdown to HTML for the citizen
+// email. Default options escape raw HTML in the source (html: false) — the
+// content is trusted (recipe-authored) but there's no reason to allow inline
+// markup, and it keeps the output to the headings/lists/emphasis authors use.
+const markdownRenderer = new MarkdownIt();
+
+// Steps suppressed from the notification email, per form. The in-chat
+// `chat-feedback` form's declaration is auto-confirmed by the chat on the
+// user's behalf — the recipe requires it (and the form-builder regenerates it
+// on every republish), but the user never sees or confirms it (ADR 0049).
+// Surfacing a "Declaration: I confirm" row the user never actually agreed to
+// would be misleading, so it's dropped from the feedback email. Scoped per
+// formId: a real application keeps its declaration in the MDA email as an
+// audit record that the applicant did confirm it.
+const SUPPRESSED_STEPS: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+  ["chat-feedback", new Set(["declaration"])],
+]);
 
 export interface EmailField {
   label: string;
@@ -46,11 +71,31 @@ export interface EmailTemplateContext {
   formTitle: string;
   submissionId: string;
   submittedAt: string;
+  /** submittedAt split into Barbados-local date (dd/MM/yyyy) and time (HH:mm)
+   * for the reviewer/MDA summary table. */
+  submittedDate: string;
+  submittedTime: string;
   processedAt: string;
+  /** Four-digit year of `processedAt`, for the footer copyright line. */
+  year: string;
   sections: EmailSection[];
+  /** The form's authored confirmation guidance (`markdownContent` on the
+   * submission-confirmation step) rendered to HTML — the same copy shown on
+   * the live confirmation page. Undefined when the form authors none. Emitted
+   * with a triple-stache: the source is trusted, recipe-authored content. */
+  markdownHtml?: string;
   /** Set by the email processor, not by `build` — link delivery is a
    * per-recipient decision the builder has no visibility into. */
   fileLinks?: EmailFileLink[];
+  /** Set by the email processor (config-derived), not by `build`: the public
+   * department name (citizen acknowledgement) and the absolute coat-of-arms
+   * image URL. */
+  departmentName?: string;
+  coatOfArmsUrl?: string;
+  /** Confirmed-payment details, forwarded from the post-payment
+   * `submission.created` event. Rendered on the MDA/reviewer confirmation
+   * email; undefined for non-payment submissions. */
+  payment?: SubmissionPaymentSummary;
 }
 
 /**
@@ -104,11 +149,20 @@ export class EmailBodyBuilder {
 
     const { meta, values, submissionId, referenceCode } = payload;
 
+    const suppressedSteps = SUPPRESSED_STEPS.get(contract.formId);
+
     const sections = contract.steps
       .filter((step) => meta.activeStepIds.includes(step.stepId))
       .filter((step) => !meta.hiddenStepIds.includes(step.stepId))
+      .filter((step) => !suppressedSteps?.has(step.stepId))
       .flatMap((step) => {
         const rawVal = values[step.stepId];
+
+        // Resolve any per-answer title override (#871) against the submitted
+        // values, so the email section header matches the heading the
+        // applicant saw while filling in the form. Falls back to the static
+        // title for steps without a `conditionalTitle`.
+        const stepTitle = resolveStepTitle(step, values as StepScopedValues);
 
         if (Array.isArray(rawVal)) {
           // Repeatable step (V2 submission values) — one section per instance.
@@ -121,7 +175,7 @@ export class EmailBodyBuilder {
                 step,
                 instance as Record<string, unknown>,
                 meta,
-                needsIndex ? `${step.title} (${i + 1})` : step.title,
+                needsIndex ? `${stepTitle} (${i + 1})` : stepTitle,
               ),
             )
             .filter((s) => s.fields.length > 0);
@@ -131,17 +185,44 @@ export class EmailBodyBuilder {
           step,
           (rawVal as Record<string, unknown>) ?? {},
           meta,
+          stepTitle,
         );
         return section.fields.length > 0 ? [section] : [];
       });
+
+    // Authored confirmation guidance lives on the submission-confirmation step
+    // regardless of step visibility, so read it straight off the contract
+    // rather than the filtered `sections` (which only carry answered fields).
+    // It's the same markdown the live confirmation page renders; parsing it
+    // synchronously (marked.parse returns a string when async isn't enabled)
+    // keeps the email copy in step with the page.
+    const markdownContent = contract.steps.find(
+      (s) => s.stepId === "submission-confirmation",
+    )?.markdownContent;
+    const markdownHtml = markdownContent
+      ? markdownRenderer.render(markdownContent)
+      : undefined;
+
+    const processedAt = new Date().toISOString();
+
+    // Reviewer/MDA summary shows the submission moment in Barbados local time
+    // (AST, UTC-4, no DST) split into date + time.
+    const submitted = DateTime.fromISO(meta.submittedAt, {
+      zone: "utc",
+    }).setZone("America/Barbados");
 
     return {
       formTitle: contract.title,
       // referenceCode is required on the event; ?? is defensive for payloads predating the field.
       submissionId: referenceCode ?? submissionId,
       submittedAt: meta.submittedAt,
-      processedAt: new Date().toISOString(),
+      submittedDate: submitted.toFormat("dd/MM/yyyy"),
+      submittedTime: submitted.toFormat("HH:mm"),
+      processedAt,
+      year: processedAt.slice(0, 4),
       sections,
+      ...(markdownHtml && { markdownHtml }),
+      ...(payload.payment && { payment: payload.payment }),
     };
   }
 
@@ -165,15 +246,18 @@ export class EmailBodyBuilder {
   }
 
   /**
-   * Fetches the form's service contract through the same per-`formId:version`
-   * cache as `build`. Public so the email processor can walk the contract's
-   * file fields when gathering upload attachments.
+   * Fetches the form's service contract through the same per-`formId` cache as
+   * `build`. Public so the email processor can walk the contract's file fields
+   * when gathering upload attachments.
    */
   async resolveContract(
     formId: string,
-    version: string,
+    // Optional post-#1196: absent → canonical recipe; present → legacy file for
+    // an in-flight pinned submission. The cache keys on formId alone — the
+    // canonical recipe is the single contract a form resolves to.
+    version?: string,
   ): Promise<ServiceContract> {
-    const cacheKey = `${formId}:${version}`;
+    const cacheKey = formId;
     const cached = this.contractCache.get<ServiceContract>(cacheKey);
     if (cached) return cached;
 

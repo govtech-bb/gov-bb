@@ -1,10 +1,10 @@
 import { useState } from "react";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 import styles from "../../styles/builder.module.css";
+import { useEscClose } from "./-use-esc-close";
 
 interface PublishModalProps {
   draft: RecipeDraft;
-  version: string | null;
   baseBranch: string;
   isPublishing: boolean;
   publishSuccess: { prUrl: string; prNumber: number } | null;
@@ -18,7 +18,6 @@ interface PublishModalProps {
 
 export function PublishModal({
   draft,
-  version,
   baseBranch,
   isPublishing,
   publishSuccess,
@@ -29,16 +28,12 @@ export function PublishModal({
 }: PublishModalProps) {
   const [description, setDescription] = useState("");
 
+  useEscClose(onClose);
+
   return (
     <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginBottom: 12,
-          }}
-        >
+      <div className={styles.modalContent} role="dialog" aria-modal="true" aria-label="Deploy" onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHead}>
           <strong>Deploy</strong>
           <button type="button" onClick={onClose}>
             Close
@@ -75,11 +70,9 @@ export function PublishModal({
             )}
             <p style={{ color: "#444", marginTop: 0 }}>
               This opens a pull request against <code>{baseBranch}</code> that
-              adds{" "}
-              <code>
-                recipes/{draft.formId}/{version ?? "resolving…"}.json
-              </code>
-              . The PR is authored by your GitHub account.
+              overwrites{" "}
+              <code>recipes/{draft.formId}.json</code>. The PR is authored by
+              your GitHub account.
             </p>
 
             <div className={styles.formGroup}>
@@ -89,10 +82,6 @@ export function PublishModal({
             <div className={styles.formGroup}>
               <label>Form ID</label>
               <input type="text" value={draft.formId} readOnly />
-            </div>
-            <div className={styles.formGroup}>
-              <label>Version</label>
-              <input type="text" value={version ?? "resolving…"} readOnly />
             </div>
             <div className={styles.formGroup}>
               <label htmlFor="publish-description">
@@ -121,7 +110,7 @@ export function PublishModal({
                 type="button"
                 className={styles.btnPrimary}
                 onClick={() => onPublish(description)}
-                disabled={isPublishing || version === null || isReadOnly}
+                disabled={isPublishing || isReadOnly}
               >
                 {isPublishing ? "Opening PR…" : "Deploy"}
               </button>

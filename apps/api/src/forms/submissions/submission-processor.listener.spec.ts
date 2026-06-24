@@ -1,15 +1,16 @@
+import type { Mock, Mocked } from "vitest";
 import { SubmissionProcessorListener } from "./submission-processor.listener";
 import type { ProcessorFactory } from "./processors/processor-factory.service";
 import type { ISubmissionProcessor } from "./processors/submission-processor.interface";
 import type { SqsProducerService } from "./sqs/sqs-producer.service";
 import type { SubmissionCreatedEvent } from "./submissions.types";
 import type { Processor } from "@govtech-bb/form-types";
-import type { ExpressionsService } from "../../expressions/expressions.service";
+import type { ExpressionsService } from "@/expressions/expressions.service";
 
 /* Default expressions stub — resolveProcessors is a pass-through */
 const expressions = {
-  resolveConfig: jest.fn((cfg: Record<string, unknown>) => cfg),
-  resolveProcessors: jest.fn(
+  resolveConfig: vi.fn((cfg: Record<string, unknown>) => cfg),
+  resolveProcessors: vi.fn(
     (processors: Array<{ type: string; config: Record<string, unknown> }>) =>
       processors,
   ),
@@ -52,7 +53,7 @@ function entry(type: string): Processor {
 function makeProcessor(
   type: string,
   gates = false,
-  process: jest.Mock = jest.fn().mockResolvedValue({ kind: "completed" }),
+  process: Mock = vi.fn().mockResolvedValue({ kind: "completed" }),
 ): ISubmissionProcessor {
   return {
     type,
@@ -67,12 +68,12 @@ function makeFactory(handlers: ISubmissionProcessor[]): ProcessorFactory {
     handlers.map((h) => [h.type, h]),
   );
   return {
-    resolveByType: jest.fn((type: string) => registry.get(type)),
+    resolveByType: vi.fn((type: string) => registry.get(type)),
   } as unknown as ProcessorFactory;
 }
 
-function makeProducer(): jest.Mocked<SqsProducerService> {
-  return { enqueue: jest.fn().mockResolvedValue(undefined) } as any;
+function makeProducer(): Mocked<SqsProducerService> {
+  return { enqueue: vi.fn().mockResolvedValue(undefined) } as any;
 }
 
 function makeSqsConfig(enabled: boolean) {
@@ -81,7 +82,7 @@ function makeSqsConfig(enabled: boolean) {
 
 function makeListener(
   factory: ProcessorFactory,
-  producer: jest.Mocked<SqsProducerService>,
+  producer: Mocked<SqsProducerService>,
   sqsEnabled: boolean,
   exprs: ExpressionsService = expressions,
 ): SubmissionProcessorListener {
@@ -117,7 +118,7 @@ describe("SubmissionProcessorListener — SQS disabled", () => {
     );
 
     expect(email.process).toHaveBeenCalledTimes(2);
-    const indices = (email.process as jest.Mock).mock.calls.map(
+    const indices = (email.process as Mock).mock.calls.map(
       ([e]) => e.processorIndex,
     );
     expect(indices).toEqual([0, 1]);
@@ -155,7 +156,7 @@ describe("SubmissionProcessorListener — SQS disabled", () => {
     const failing = makeProcessor(
       "email",
       false,
-      jest.fn().mockRejectedValue(new Error("smtp down")),
+      vi.fn().mockRejectedValue(new Error("smtp down")),
     );
     const succeeding = makeProcessor("spreadsheet");
     const listener = makeListener(
@@ -304,7 +305,7 @@ describe("SubmissionProcessorListener — SQS enabled", () => {
 describe("SubmissionProcessorListener — expressions resolution", () => {
   it("resolves processor configs and dispatches the resolved, indexed payload", async () => {
     const transformingExpressions = {
-      resolveProcessors: jest.fn((processors: Array<{ type: string }>) =>
+      resolveProcessors: vi.fn((processors: Array<{ type: string }>) =>
         processors.map((p) => ({ ...p, config: { resolved: true } })),
       ),
     } as unknown as ExpressionsService;
@@ -326,7 +327,7 @@ describe("SubmissionProcessorListener — expressions resolution", () => {
     });
 
     expect(
-      transformingExpressions.resolveProcessors as jest.Mock,
+      transformingExpressions.resolveProcessors as Mock,
     ).toHaveBeenCalledWith(
       [{ type: "email", config: { recipientField: "personal.email" } }],
       expect.objectContaining({
@@ -344,7 +345,7 @@ describe("SubmissionProcessorListener — expressions resolution", () => {
 
   it("short-circuits dispatch when resolveProcessors throws", async () => {
     const failingExpressions = {
-      resolveProcessors: jest.fn().mockImplementation(() => {
+      resolveProcessors: vi.fn().mockImplementation(() => {
         throw new Error("bad expression");
       }),
     } as unknown as ExpressionsService;

@@ -1,5 +1,5 @@
 /**
- * @jest-environment node
+ * @vitest-environment node
  */
 import { REPO_NAME, repoOwner, repoDisplay } from "./github-repo";
 

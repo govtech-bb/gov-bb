@@ -1,4 +1,4 @@
-# results.json is committed as the canonical behavioral-eval scorecard (#974)
-# so the real pass/fail signal lives in the repo. report.html is generated
-# from it on each run — keep that out.
+# results.json is committed as the canonical behavioural-eval scorecard, so the
+# real pass/fail signal lives in the repo. report.html is regenerated from it on
+# each run — keep that out.
 report.html

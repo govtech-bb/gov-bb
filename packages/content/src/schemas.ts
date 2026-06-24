@@ -31,6 +31,20 @@ export const serviceFrontmatterSchema = z.object({
   categories: z.array(z.string()).optional(),
   subcategory: z.string().optional(),
   service_type: z.enum(["digital", "information"]).optional(),
+  // The forms-API recipe id this service starts (landing's StartLink target).
+  // Zod's default object() silently dropped this before, severing the RAG →
+  // forms-API linkage entirely (#1265). Landing uses "" for "no form yet" —
+  // normalise that to undefined so consumers get a real id or nothing.
+  form_id: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : undefined)),
+  // Rollout gate, mirroring apps/landing/src/lib/frontmatter.ts VIEW_LEVELS.
+  // Non-public content must be excludable from chat retrieval (#1267).
+  visibility: z
+    .enum(["public", "preview", "draft"])
+    .optional()
+    .default("public"),
   forms: z.array(onlineServiceLinkSchema).optional().default([]),
 });
 export type ServiceFrontmatter = z.infer<typeof serviceFrontmatterSchema>;

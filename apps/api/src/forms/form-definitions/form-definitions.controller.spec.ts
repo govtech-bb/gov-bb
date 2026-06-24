@@ -1,34 +1,35 @@
+import type { Mock } from "vitest";
 import { FormDefinitionsController } from "./form-definitions.controller";
 
 const mockService = {
-  findAll: jest.fn(),
-  findByFormId: jest.fn(),
+  findAll: vi.fn(),
+  findByFormId: vi.fn(),
 };
 
 const mockOverridesService = {
   // Default: no override → short-circuit never fires.
-  find: jest.fn().mockResolvedValue(null),
+  find: vi.fn().mockResolvedValue(null),
   // Default: nothing disabled → getAll filters nothing out.
-  findAllFormIds: jest.fn().mockResolvedValue([]),
-  disable: jest.fn(),
-  enable: jest.fn(),
+  findAllFormIds: vi.fn().mockResolvedValue([]),
+  disable: vi.fn(),
+  enable: vi.fn(),
 };
 
 const mockConfigService = {
-  get: jest.fn(),
+  get: vi.fn(),
 };
 
 describe("FormDefinitionsController", () => {
   let controller: FormDefinitionsController;
-  let res: { setHeader: jest.Mock };
+  let res: { setHeader: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockOverridesService.find.mockResolvedValue(null);
     mockOverridesService.findAllFormIds.mockResolvedValue([]);
     // Default: feature disabled (empty token) so existing tests exercise non-preview path.
     mockConfigService.get.mockReturnValue("");
-    res = { setHeader: jest.fn() };
+    res = { setHeader: vi.fn() };
     controller = new FormDefinitionsController(
       mockService as never,
       mockOverridesService as never,
@@ -103,36 +104,11 @@ describe("FormDefinitionsController", () => {
       const result = await controller.get(
         "passport-renewal",
         undefined,
-        undefined,
         res as never,
       );
 
       expect(mockService.findByFormId).toHaveBeenCalledWith({
         formId: "passport-renewal",
-        version: undefined,
-        preview: false,
-      });
-      expect(res.setHeader).not.toHaveBeenCalled();
-      expect(result).toMatchObject({ status: "success", data: contract });
-    });
-
-    it("calls service.findByFormId with version when provided", async () => {
-      const contract = {
-        formId: "passport-renewal",
-        title: "Passport Renewal",
-      };
-      mockService.findByFormId.mockResolvedValue(contract);
-
-      const result = await controller.get(
-        "passport-renewal",
-        "2.0.0",
-        undefined,
-        res as never,
-      );
-
-      expect(mockService.findByFormId).toHaveBeenCalledWith({
-        formId: "passport-renewal",
-        version: "2.0.0",
         preview: false,
       });
       expect(res.setHeader).not.toHaveBeenCalled();
@@ -143,7 +119,7 @@ describe("FormDefinitionsController", () => {
       mockService.findByFormId.mockRejectedValue(new Error("Not found"));
 
       await expect(
-        controller.get("missing-form", undefined, undefined, res as never),
+        controller.get("missing-form", undefined, res as never),
       ).rejects.toThrow("Not found");
     });
 
@@ -156,16 +132,10 @@ describe("FormDefinitionsController", () => {
         };
         mockService.findByFormId.mockResolvedValue(contract);
 
-        await controller.get(
-          "passport-renewal",
-          undefined,
-          "s3cret",
-          res as never,
-        );
+        await controller.get("passport-renewal", "s3cret", res as never);
 
         expect(mockService.findByFormId).toHaveBeenCalledWith({
           formId: "passport-renewal",
-          version: undefined,
           preview: true,
         });
         expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
@@ -179,16 +149,10 @@ describe("FormDefinitionsController", () => {
         };
         mockService.findByFormId.mockResolvedValue(contract);
 
-        await controller.get(
-          "passport-renewal",
-          undefined,
-          "nope",
-          res as never,
-        );
+        await controller.get("passport-renewal", "nope", res as never);
 
         expect(mockService.findByFormId).toHaveBeenCalledWith({
           formId: "passport-renewal",
-          version: undefined,
           preview: false,
         });
         expect(res.setHeader).not.toHaveBeenCalled();
@@ -202,16 +166,10 @@ describe("FormDefinitionsController", () => {
         };
         mockService.findByFormId.mockResolvedValue(contract);
 
-        await controller.get(
-          "passport-renewal",
-          undefined,
-          undefined,
-          res as never,
-        );
+        await controller.get("passport-renewal", undefined, res as never);
 
         expect(mockService.findByFormId).toHaveBeenCalledWith({
           formId: "passport-renewal",
-          version: undefined,
           preview: false,
         });
         expect(res.setHeader).not.toHaveBeenCalled();
@@ -226,11 +184,10 @@ describe("FormDefinitionsController", () => {
         };
         mockService.findByFormId.mockResolvedValue(contract);
 
-        await controller.get("passport-renewal", undefined, "", res as never);
+        await controller.get("passport-renewal", "", res as never);
 
         expect(mockService.findByFormId).toHaveBeenCalledWith({
           formId: "passport-renewal",
-          version: undefined,
           preview: false,
         });
         expect(res.setHeader).not.toHaveBeenCalled();
@@ -244,16 +201,10 @@ describe("FormDefinitionsController", () => {
         };
         mockService.findByFormId.mockResolvedValue(contract);
 
-        await controller.get(
-          "passport-renewal",
-          undefined,
-          "anything",
-          res as never,
-        );
+        await controller.get("passport-renewal", "anything", res as never);
 
         expect(mockService.findByFormId).toHaveBeenCalledWith({
           formId: "passport-renewal",
-          version: undefined,
           preview: false,
         });
         expect(res.setHeader).not.toHaveBeenCalled();
@@ -269,7 +220,7 @@ describe("FormDefinitionsController", () => {
         });
 
         await expect(
-          controller.get("passport-renewal", undefined, "s3cret", res as never),
+          controller.get("passport-renewal", "s3cret", res as never),
         ).rejects.toMatchObject({
           status: 410,
           response: { disabled: true, reason: "Step 3 is broken" },

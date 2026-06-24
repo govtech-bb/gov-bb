@@ -186,6 +186,40 @@ describe("processorSchema (author-time)", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("accepts a mapped webhook (env endpoint + apiKey auth + mapping)", () => {
+    expect(
+      processorSchema.safeParse({
+        type: "webhook",
+        config: {
+          endpoint: { env: "WEBHOOK_URL" },
+          auth: {
+            scheme: "apiKey",
+            header: "X-API-Key",
+            secretEnv: "WEBHOOK_SECRET",
+          },
+          mapping: {
+            programmeCode: "CAMP",
+            applicant: {
+              name: ["a.first", "a.last"],
+              email: "a.email",
+              phone: "a.phone",
+            },
+            excludeSteps: ["declaration"],
+          },
+        },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a webhook with neither url nor endpoint", () => {
+    expect(
+      processorSchema.safeParse({
+        type: "webhook",
+        config: { method: "POST" },
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe("resolvedProcessorSchema (post-resolution)", () => {
@@ -251,5 +285,25 @@ describe("resolvedProcessorSchema (post-resolution)", () => {
         config: { url: { var: "values.url" } },
       }).success,
     ).toBe(false);
+  });
+
+  it("accepts a resolved mapped webhook (mapping/auth/endpoint are literal)", () => {
+    expect(
+      resolvedProcessorSchema.safeParse({
+        type: "webhook",
+        config: {
+          endpoint: { env: "WEBHOOK_URL" },
+          auth: {
+            scheme: "apiKey",
+            header: "X-API-Key",
+            secretEnv: "WEBHOOK_SECRET",
+          },
+          mapping: {
+            programmeCode: "BYAC",
+            applicant: { name: "a.name", email: "a.email", phone: "a.phone" },
+          },
+        },
+      }).success,
+    ).toBe(true);
   });
 });

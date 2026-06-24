@@ -1,17 +1,30 @@
 import "../../styles/builder.global.css";
 import { createFileRoute } from "@tanstack/react-router";
-import { useReducer, useState, useMemo, useRef } from "react";
+import { useReducer, useState, useMemo, useEffect } from "react";
 import { getCatalogFn } from "../../server/registry";
 import { submitRecipe, updateRecipe, rekeyRecipe, deleteForm, disableForm, enableForm } from "../../server/forms";
 import { createMdaContact } from "../../server/mda-contacts";
-import { publishRecipe, getPublishBaseBranch, getNextDeployVersion, eraseRecipe } from "../../server/publish";
+import { publishRecipe, getPublishBaseBranch, eraseRecipe } from "../../server/publish";
 import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds, extractDbProcessors, firstIncompletePaymentProcessor } from "@govtech-bb/form-builder";
-import { bumpMinor, bumpPatch } from "../../lib/version";
 import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
 import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "@govtech-bb/form-types";
 import type { RecipeDraft, ValidationResult, RecipeValidateResponse, ValidationIssue, UnknownRef } from "@govtech-bb/form-builder";
 
+import { Layers01Icon, Moon02Icon, Sun03Icon } from "hugeicons-react";
+
+/** Collapse repeated identical locations ("Declaration › Name; Declaration ›
+ *  Name; …") into one entry with a count ("Declaration › Name ×4"). */
+function formatCollisionLocations(items: string[]): string {
+  const counts = new Map<string, number>();
+  for (const item of items) counts.set(item, (counts.get(item) ?? 0) + 1);
+  return [...counts]
+    .map(([text, n]) => (n > 1 ? `${text} ×${n}` : text))
+    .join(", ");
+}
+import { SectionSwitch } from "../../components/section-switch";
+import { Tip } from "../content/-sliding-tabs";
+import { useTheme } from "../content/-use-theme";
 import { buildLoadArgs, draftsEqual } from "./-apply-recipe";
 import { AiSidebar, type ApplyRecipeResult } from "./-ai-sidebar";
 import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS, isRequiredStep, firstStepId } from "./-recipe-reducer";
@@ -71,6 +84,9 @@ function BuilderPage() {
     loadError: mdaContactsLoadError,
     upsertContact: upsertMdaContact,
   } = useMdaContacts();
+  // Shares the content CMS's persisted light/dark choice, so the theme
+  // follows the user across the section switch.
+  const { theme, toggleTheme } = useTheme();
   const [draft, dispatch] = useReducer(recipeReducer, EMPTY_DRAFT);
   // Snapshot of the last saved/loaded draft — the baseline that "unsaved
   // changes" is measured against. null for a brand-new form (no save/load yet);
@@ -85,8 +101,6 @@ function BuilderPage() {
   const [mainView, setMainView] = useState<
     "step" | "processors" | "contactDetails"
   >("step");
-  const [version, setVersion] = useState("1.0.0");
-  const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [loadedFromId, setLoadedFromId] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [validateResult, setValidateResult] = useState<RecipeValidateResponse | null>(null);
@@ -109,12 +123,6 @@ function BuilderPage() {
     { prUrl: string; prNumber: number } | null
   >(null);
   const [publishError, setPublishError] = useState<string | null>(null);
-  // Server-resolved Deploy target (#873): bumps past base-branch versions and
-  // open deploy PRs, not just the DB draft. Null while resolving; falls back
-  // to the client bump on error (publishRecipe re-checks server-side).
-  const [deployTarget, setDeployTarget] = useState<string | null>(null);
-  // Guards handleOpenPublish against a stale resolution overwriting a fresher one (open→close→reopen).
-  const publishResolveSeq = useRef(0);
   const [lastSaveStatus, setLastSaveStatus] = useState<"idle" | "success" | "error" | "submitted">("idle");
   const [deleteTarget, setDeleteTarget] = useState<FormDefinitionSummary | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -147,6 +155,25 @@ function BuilderPage() {
       : !draftsEqual(draft, savedDraft, { comparePayments: true });
   const editableSteps = draft.steps.filter((s) => !isRequiredStep(s.stepId));
   const hasEditableSteps = editableSteps.length > 0;
+
+  // Any draft edit invalidates the last validate/save verdict in the header —
+  // otherwise "✓ Valid" sits beside "● Unsaved changes" and lies. Validation
+  // and saving never mutate `draft`, so the verdict survives until a real
+  // edit. (Same-value setState bails out, so per-keystroke runs are free.)
+  useEffect(() => {
+    setLastSaveStatus("idle");
+  }, [draft]);
+
+  // Cheap insurance against losing an unsaved draft to a closed/refreshed
+  // tab. The in-app section switch has its own confirm guard.
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [hasUnsavedChanges]);
   // Live recipe-wide uniqueness check over resolved field ids + step ids. Drives
   // the red duplicate-ID banner below the body; the collision pre-flight inside
   // runValidation re-checks it on every Save draft / Deploy click.
@@ -183,14 +210,6 @@ function BuilderPage() {
     [forms, draft, loadedFromId],
   );
 
-  // Versioning is deterministic and client-side — no async round-trip on the
-  // load path (that fetch was the source of the version flicker). The loaded /
-  // working version (`version`, set by handleLoad / handleNew / handleSubmit) is
-  // the single source of truth. Save draft cuts a patch; Deploy cuts a minor; a
-  // brand-new form (no current version) starts at 1.0.0.
-  const saveDraftVersion = currentVersion ? bumpPatch(currentVersion) : "1.0.0";
-  const deployVersion = currentVersion ? bumpMinor(currentVersion) : "1.0.0";
-
   // Editing presence / read-only lock (#874). Claim the open form's single
   // editing session, keyed on the loaded form's id. A brand-new, unsaved form
   // has no concurrent editor (and the API exempts brand-new creation), so we
@@ -224,7 +243,11 @@ function BuilderPage() {
         setLastSaveStatus("error");
         return result;
       }
-      const emptyStep = editableSteps.find((s) => s.fields.length === 0);
+      // A content-only step (intro/information page) carries markdownContent
+      // and no fields — that is valid. A step with neither is the empty step.
+      const emptyStep = editableSteps.find(
+        (s) => s.fields.length === 0 && !s.markdownContent,
+      );
       if (emptyStep) {
         const result: RecipeValidateResponse = {
           valid: false,
@@ -280,7 +303,7 @@ function BuilderPage() {
         return result;
       }
 
-      const recipe = serializeRecipeDraft(draft, { version });
+      const recipe = serializeRecipeDraft(draft);
       const raw = (await validateRecipe({ data: { recipe } })) as ValidationResult;
       const result: RecipeValidateResponse = {
         valid: raw.ok,
@@ -391,7 +414,7 @@ function BuilderPage() {
     setIsPreviewing(true);
     setPreviewError(null);
     try {
-      const recipe = serializeRecipeDraft(draft, { version });
+      const recipe = serializeRecipeDraft(draft);
       // Captured before the request so the JSON is inspectable even when the
       // preview request fails — failure is exactly when you want to see it.
       setPreviewRecipeJson(recipe);
@@ -404,11 +427,11 @@ function BuilderPage() {
     }
   };
 
-  const handleSubmit = async (submitVersion: string) => {
+  const handleSubmit = async () => {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const recipe = serializeRecipeDraft(draft, { version: submitVersion });
+      const recipe = serializeRecipeDraft(draft);
       // Three save shapes, branching on the loaded id (captured before
       // setLoadedFromId below overwrites loadedFromId — the picker refresh
       // branches on these too):
@@ -416,7 +439,7 @@ function BuilderPage() {
       //  - re-key (#674): a loaded form whose id was changed — an atomic
       //    identity move, not a create (which would self-collide on title and
       //    leave a stale old-id row).
-      //  - in-place / new version: the loaded id is unchanged.
+      //  - in-place update: the loaded id is unchanged.
       const oldFormId = loadedFromId;
       const isCreate = oldFormId === null;
       // An empty id is never a re-key — it's left to the "Form ID is required"
@@ -424,14 +447,9 @@ function BuilderPage() {
       // cleared id on a save-anyway doesn't round-trip to the rekey endpoint.
       const isRekey =
         oldFormId !== null && draft.formId !== "" && draft.formId !== oldFormId;
-      // A same-version save of the same form overwrites its row in place
-      // (updateRecipe); any higher version creates a new draft row
-      // (submitRecipe). This split also decides the picker row's isPublished.
-      const isInPlaceUpdate =
-        !!oldFormId &&
-        draft.formId === oldFormId &&
-        !!currentVersion &&
-        submitVersion === currentVersion;
+      // #1196: one scratch row per form — saving a loaded form (same id) always
+      // overwrites that row in place; there is no new-version fork.
+      const isInPlaceUpdate = !!oldFormId && draft.formId === oldFormId;
       // The selected per-environment MDA contact (issue #607). DB-only: it
       // rides alongside the recipe as a sibling field on create/update so the
       // API upserts it into form_config. Only sent when the draft carries a
@@ -478,20 +496,15 @@ function BuilderPage() {
           id: existing?.id ?? draft.formId,
           formId: draft.formId,
           title: draft.title,
-          version: submitVersion,
-          // A version bump makes this draft the highest version, which the merge
-          // marks isPublished: false (per-row action becomes Delete). A
-          // same-version in-place update leaves the published row winning the
-          // version tie, so the existing published state must be preserved.
-          isPublished: isInPlaceUpdate ? (existing?.isPublished ?? false) : false,
+          // #1196: version is a frozen breadcrumb from the API list; preserve it.
+          version: existing?.version ?? "",
+          // Saving a draft never changes published-index membership, so preserve
+          // it: a never-published draft stays unpublished, a published form keeps
+          // its badge.
+          isPublished: existing?.isPublished ?? false,
+          publishedVersion: existing?.publishedVersion,
         });
       }
-
-      // The just-saved version becomes the new working/current version, so the
-      // toolbar reflects it and the next Save-draft patch / Deploy minor bumps
-      // off it. No server round-trip — the bump is computed client-side.
-      setCurrentVersion(submitVersion);
-      setVersion(submitVersion);
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Submission failed");
     } finally {
@@ -499,20 +512,12 @@ function BuilderPage() {
     }
   };
 
-  const handleOpenPublish = async () => {
-    const seq = ++publishResolveSeq.current;
+  const handleOpenPublish = () => {
+    // #1196: publishing overwrites the canonical flat file — there is no
+    // deploy-version to resolve, so just open the modal.
     setPublishSuccess(null);
     setPublishError(null);
-    setDeployTarget(null);
     setIsPublishOpen(true);
-    try {
-      const next = await getNextDeployVersion({
-        data: { formId: draft.formId, currentVersion },
-      });
-      if (seq === publishResolveSeq.current) setDeployTarget(next.version);
-    } catch {
-      if (seq === publishResolveSeq.current) setDeployTarget(deployVersion);
-    }
   };
 
   const handlePublish = async (description: string) => {
@@ -525,25 +530,22 @@ function BuilderPage() {
       setPublishError("Save draft before deploying.");
       return;
     }
-    if (!deployTarget) return; // still resolving — button is disabled anyway
     setIsPublishing(true);
     setPublishError(null);
     try {
-      const recipe = serializeRecipeDraft(draft, { version: deployTarget });
+      const recipe = serializeRecipeDraft(draft);
       const result = await publishRecipe({ data: { recipe, description } });
       setPublishSuccess(result);
-      // The deploy reserved a draft row at deployTarget (#873) — make it the
-      // working version so a follow-up Save/Deploy bumps off it, and patch the
-      // picker row the same way handleSubmit does.
-      setCurrentVersion(deployTarget);
-      setVersion(deployTarget);
+      // Deploy opens a review PR; the published index is unchanged until it
+      // merges — preserve the existing picker row.
       const existing = forms?.find((f) => f.formId === draft.formId);
       upsertForm({
         id: existing?.id ?? draft.formId,
         formId: draft.formId,
         title: draft.title,
-        version: deployTarget,
+        version: existing?.version ?? "",
         isPublished: false,
+        publishedVersion: existing?.publishedVersion,
       });
     } catch (e) {
       setPublishError(e instanceof Error ? e.message : "Publish failed");
@@ -558,7 +560,7 @@ function BuilderPage() {
     setPublishError(null);
   };
 
-  const handleLoad = (loadedDraft: RecipeDraft, formId: string, ver: string) => {
+  const handleLoad = (loadedDraft: RecipeDraft, formId: string) => {
     const loadAction = { type: "LOAD_DRAFT" as const, draft: loadedDraft };
     dispatch(loadAction);
     // Snapshot the *normalized* draft the reducer produces — LOAD_DRAFT
@@ -569,8 +571,6 @@ function BuilderPage() {
     // the reducer's required first arg.
     setSavedDraft(recipeReducer(draft, loadAction));
     setLoadedFromId(formId);
-    setCurrentVersion(ver);
-    setVersion(ver);
     // Open the first step straight away so the author lands in an editable
     // state. firstStepId mirrors LOAD_DRAFT's [...editable, ...required]
     // ordering, so it picks the step the reducer puts first (not loadedDraft[0]).
@@ -586,15 +586,22 @@ function BuilderPage() {
   };
 
   // Apply a recipe the AI sidebar produced, in place, against the live draft:
-  // deserialize → uniqueness pre-flight → server validate → (no-op guard) →
-  // confirm-if-dirty → LOAD_DRAFT → bump patch. Returns a result the sidebar
-  // surfaces. The draft is only ever replaced on the changed, confirmed path —
-  // an unchanged recipe or a structurally-broken one never clobbers good work.
+  // deserialize → (no-op guard) → collect non-blocking defects → confirm-if-dirty
+  // → LOAD_DRAFT → bump patch. Returns a result the sidebar surfaces. The draft
+  // is only ever replaced on the changed, confirmed path — an unchanged recipe
+  // or a structurally-unreadable one never clobbers good work.
   //
-  // `unresolvableRefs` (flagged by the convert endpoint against the full
-  // catalog) is the one tolerated defect: rather than reject, we load the draft
-  // and light up the validation panel so the author can fix the bad fields in
-  // place. Deploy stays the hard gate (#504).
+  // Recipe-level defects — unresolvable refs (flagged by convert against the
+  // full catalog), id collisions, and server contract-validation failures — are
+  // loaded-with-a-warning rather than rejected: the draft loads and the defects
+  // are surfaced (contract issues + unresolvable refs in the validation panel;
+  // id collisions in the always-on collision panel) so the author can fix the
+  // bad fields in place or steer with a follow-up prompt (#1051). Deploy/Save
+  // re-run their own hard checks, so an invalid form can never publish (#504).
+  //
+  // Only two cases stay hard errors (nothing to load): a structurally-unreadable
+  // recipe where buildLoadArgs throws, and the validate *request* itself failing
+  // (an infrastructure error, not a recipe defect — there's no issue to show).
   const applyAiRecipe = async (
     recipe: ServiceContractRecipe,
     unresolvableRefs: UnknownRef[] = [],
@@ -616,38 +623,34 @@ function BuilderPage() {
       return { applied: false, reason: "unchanged" };
     }
 
-    // Uniqueness pre-flight — the same resolved-id check Save draft / Deploy
-    // run. The server contract validator can't resolve catalog defaults.
-    const collisions = findRecipeIdCollisions(incoming, catalog);
-    if (
-      collisions.fieldIdCollisions.length > 0 ||
-      collisions.stepIdCollisions.length > 0
-    ) {
-      return {
-        applied: false,
-        error: formatCollisionIssues(collisions)
-          .map((i) => i.message)
-          .join(" "),
-      };
-    }
+    // Collect non-blocking defects to surface in the validation panel instead of
+    // rejecting. unresolvableRefs (from convert) map to the same issue shape.
+    const warnings: ValidationIssue[] = unresolvableRefs.map((r) => ({
+      path: r.path,
+      message: `Unknown component/block ref "${r.ref}" — fix this field before deploying.`,
+    }));
 
-    // Server validate; a recipe that fails the contract must not overwrite.
-    // The exception is unresolvable refs (already flagged by convert): those
-    // are loaded-with-a-warning below rather than rejected, so skip the gate —
-    // it would only fail on the very refs we're choosing to tolerate.
+    // Note: id collisions are *not* re-checked or collected here. Loading the
+    // draft is enough — the always-on collision panel (hasIdCollisions, computed
+    // from the live draft) surfaces them automatically, and Deploy/Save re-run
+    // findRecipeIdCollisions as their own hard gate, so a duplicate id can never
+    // be published. Collecting them into `warnings` too would render the same
+    // collision twice. (Was a hard reject before #1051.)
+
+    // Server validate → warn-and-load on contract failure. Skip when
+    // unresolvableRefs are already flagged: the gate would only fail on the very
+    // refs we're choosing to tolerate. The request *itself* throwing is an
+    // infrastructure error, not a recipe defect, so it stays a hard error.
     if (unresolvableRefs.length === 0) {
       try {
-        const serialized = serializeRecipeDraft(incoming, { version });
+        const serialized = serializeRecipeDraft(incoming);
         const raw = (await validateRecipe({
           data: { recipe: serialized },
         })) as ValidationResult;
         if (!raw.ok) {
-          return {
-            applied: false,
-            error: raw.issues
-              .map((i) => (i.path ? `${i.path}: ${i.message}` : i.message))
-              .join("; "),
-          };
+          warnings.push(
+            ...raw.issues.map((i) => ({ path: i.path ?? "", message: i.message })),
+          );
         }
       } catch (e) {
         return {
@@ -675,16 +678,10 @@ function BuilderPage() {
     // Mirror handleLoad: open the first step of the freshly applied recipe.
     setSelectedStepId(firstStepId(incoming));
     setMainView("step");
-    // Surface unresolvable refs as a non-blocking warning in the existing
+    // Surface any collected defects as non-blocking warnings in the existing
     // validation panel; otherwise clear it.
-    if (unresolvableRefs.length > 0) {
-      setValidateResult({
-        valid: false,
-        issues: unresolvableRefs.map((r) => ({
-          path: r.path,
-          message: `Unknown component/block ref "${r.ref}" — fix this field before deploying.`,
-        })),
-      });
+    if (warnings.length > 0) {
+      setValidateResult({ valid: false, issues: warnings });
       setLastSaveStatus("error");
     } else {
       setValidateResult(null);
@@ -692,8 +689,6 @@ function BuilderPage() {
     }
     setSubmitSuccess(false);
     setSubmitError(null);
-    // The recipe changed, so cut a fresh patch off the working version.
-    setVersion((v) => bumpPatch(v));
     return { applied: true };
   };
 
@@ -704,8 +699,6 @@ function BuilderPage() {
     setSavedDraft(null);
     setSelectedStepId(null);
     setMainView("step");
-    setVersion("1.0.0");
-    setCurrentVersion(null);
     setLoadedFromId(null);
     setValidateResult(null);
     setSubmitSuccess(false);
@@ -738,7 +731,25 @@ function BuilderPage() {
     dispatch({ type: "LOAD_DRAFT", draft: savedDraft });
     setSelectedStepId(firstStepId(savedDraft));
     setMainView("step");
-    setVersion(currentVersion ?? "1.0.0");
+    setValidateResult(null);
+    setSubmitSuccess(false);
+    setSubmitError(null);
+    setPreviewData(null);
+    setPreviewRecipeJson(null);
+    setPreviewError(null);
+    setLastSaveStatus("idle");
+  };
+
+  // Load a duplicated recipe (from the picker) as a brand-new unsaved form:
+  // no loadedFromId so the next save is a create (formId uniqueness enforced),
+  // no savedDraft baseline so it reads as dirty, version reset to 1.0.0. Mirrors
+  // handleLoad's editor reset but with new-form identity.
+  const handleDuplicate = (dupDraft: RecipeDraft) => {
+    dispatch({ type: "LOAD_DRAFT", draft: dupDraft });
+    setSavedDraft(null);
+    setLoadedFromId(null);
+    setSelectedStepId(firstStepId(dupDraft));
+    setMainView("step");
     setValidateResult(null);
     setSubmitSuccess(false);
     setSubmitError(null);
@@ -921,14 +932,42 @@ function BuilderPage() {
 
   return (
     <div className={styles.builderShell}>
-      <div className={styles.builderRoot}>
       {isReadOnly && presenceHolder && (
         <PresenceBanner holder={presenceHolder} />
       )}
+      {/* The header spans the full app width, above both the editor and the
+          AI sidebar, so toggling the sidebar never reflows it. */}
       <Toolbar
+        leading={
+          <>
+            <SectionSwitch
+              current="builder"
+              onBeforeNavigate={() =>
+                !hasUnsavedChanges ||
+                window.confirm("Unsaved changes will be lost. Continue?")
+              }
+            />
+            <Tip
+              label={theme === "light" ? "Dark mode" : "Light mode"}
+              placement="bottom"
+            >
+              <button
+                type="button"
+                className={styles.iconBtn}
+                aria-label={theme === "light" ? "Dark mode" : "Light mode"}
+                onClick={toggleTheme}
+              >
+                {theme === "light" ? (
+                  <Moon02Icon size={15} />
+                ) : (
+                  <Sun03Icon size={15} />
+                )}
+              </button>
+            </Tip>
+          </>
+        }
         formId={draft.formId}
         title={draft.title}
-        version={version}
         idError={uniqueness.idError}
         isDirty={isDirty}
         hasUnsavedChanges={hasUnsavedChanges}
@@ -949,6 +988,8 @@ function BuilderPage() {
         onDiscard={handleDiscard}
       />
 
+      <div className={styles.builderMain}>
+      <div className={styles.builderRoot}>
       <div className={styles.builderBody}>
         <StepList
           steps={draft.steps}
@@ -989,28 +1030,40 @@ function BuilderPage() {
             onStepIdChange={handleStepIdChange}
           />
         ) : (
-          <div className={styles.noStepSelected}>Select or add a step to begin</div>
+          <div className={styles.noStepSelected}>
+            <div className={styles.emptyState}>
+              <Layers01Icon size={28} />
+              <p>Select or add a step to begin</p>
+            </div>
+          </div>
         )}
       </div>
 
+      {/* Floating over the canvas (not in-flow) so appearing/dismissing never
+          reflows the editor underneath. */}
+      <div className={styles.bannerStack}>
       {hasIdCollisions && (
-        <div className={styles.validationErrors} role="alert">
+        <div className={styles.errorBanner} role="alert">
           <strong>Duplicate IDs must be fixed before saving or deploying</strong>
-          <ul>
+          <ul className={styles.bannerList}>
             {idCollisions.fieldIdCollisions.map((c) => (
               <li key={`field-${c.id}`}>
                 Field ID <code>{c.id}</code> is used by {c.locations.length}{" "}
                 fields:{" "}
-                {c.locations
-                  .map((l) => `${l.stepTitle || l.stepId} › ${l.display}`)
-                  .join("; ")}
+                {formatCollisionLocations(
+                  c.locations.map(
+                    (l) => `${l.stepTitle || l.stepId} › ${l.display}`,
+                  ),
+                )}
               </li>
             ))}
             {idCollisions.stepIdCollisions.map((c) => (
               <li key={`step-${c.stepId}`}>
                 Step ID <code>{c.stepId}</code> is used by {c.locations.length}{" "}
                 steps:{" "}
-                {c.locations.map((l) => l.stepTitle || l.stepId).join("; ")}
+                {formatCollisionLocations(
+                  c.locations.map((l) => l.stepTitle || l.stepId),
+                )}
               </li>
             ))}
           </ul>
@@ -1018,6 +1071,7 @@ function BuilderPage() {
       )}
 
       <ValidationPanel result={validateResult} onDismiss={handleDismissValidation} />
+      </div>
 
       {isPickerOpen && (
         <FormPicker
@@ -1031,6 +1085,7 @@ function BuilderPage() {
           onRequestDisable={handleRequestDisable}
           onRequestErase={handleRequestErase}
           onEnable={handleEnable}
+          onDuplicate={handleDuplicate}
         />
       )}
 
@@ -1048,8 +1103,6 @@ function BuilderPage() {
       {isSubmitOpen && (
         <SubmitModal
           draft={draft}
-          version={saveDraftVersion}
-          currentVersion={currentVersion}
           loadedFromId={loadedFromId}
           isSubmitting={isSubmitting}
           submitSuccess={submitSuccess}
@@ -1063,7 +1116,6 @@ function BuilderPage() {
       {isPublishOpen && (
         <PublishModal
           draft={draft}
-          version={deployTarget}
           baseBranch={baseBranch}
           isPublishing={isPublishing}
           publishSuccess={publishSuccess}
@@ -1111,9 +1163,9 @@ function BuilderPage() {
 
       <AiSidebar
         draft={draft}
-        version={version}
         onApplyRecipe={applyAiRecipe}
       />
+      </div>
     </div>
   );
 }

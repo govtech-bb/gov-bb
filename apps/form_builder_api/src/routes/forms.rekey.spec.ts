@@ -1,27 +1,28 @@
+import type { Mock } from "vitest";
 import type { Request, Response } from "express";
 
 // routes/forms.ts imports FormDefinitionEntity (used by the create + rekey
 // insert path). Stub it so loading the module doesn't drag in the full TypeORM
 // entity graph.
-jest.mock("@govtech-bb/database", () => ({
+vi.mock("@govtech-bb/database", () => ({
   FormDefinitionEntity: class FormDefinitionEntity {},
 }));
 
 // The DataSource is the unit under control: mock the accessor so each test
 // drives a fake transactional manager.
-jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
+vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
 
 // Presence (read-only lock, #874) is exercised in presence.spec.ts; here it's
 // out of scope, so treat every caller as the holder and let mockReq stamp a
 // userLogin so the rekey presence gate is satisfied transparently.
-jest.mock("./presence.js", () => ({
-  holdsFreshClaim: jest.fn().mockResolvedValue(true),
+vi.mock("./presence.js", () => ({
+  holdsFreshClaim: vi.fn().mockResolvedValue(true),
 }));
 
 import { getDataSource } from "../db.js";
 import { rekeyFormHandler } from "./forms";
 
-const getDataSourceMock = getDataSource as jest.Mock;
+const getDataSourceMock = getDataSource as Mock;
 
 function mockReq(params: Record<string, string>, body?: unknown): Request {
   const withLogin =
@@ -38,11 +39,11 @@ interface CapturingResponse extends Response {
 
 function mockRes(): CapturingResponse {
   const res = { statusCode: 200, body: undefined } as CapturingResponse;
-  res.status = jest.fn((code: number) => {
+  res.status = vi.fn((code: number) => {
     res.statusCode = code;
     return res;
   }) as unknown as Response["status"];
-  res.json = jest.fn((payload: unknown) => {
+  res.json = vi.fn((payload: unknown) => {
     res.body = payload;
     return res;
   }) as unknown as Response["json"];
@@ -80,10 +81,10 @@ function fakeDataSource(rows: FakeRows = {}) {
     titleRows = [],
     existingNewVersion = [],
   } = rows;
-  const save = jest.fn(async (e: unknown) => e);
-  const create = jest.fn((e: unknown) => e);
+  const save = vi.fn(async (e: unknown) => e);
+  const create = vi.fn((e: unknown) => e);
   const repo = { create, save };
-  const query = jest.fn(async (sql: string) => {
+  const query = vi.fn(async (sql: string) => {
     if (/DISTINCT ON \(form_id\)/i.test(sql)) return titleRows;
     if (/published_at, schema FROM form_definitions/i.test(sql)) return oldRows;
     if (/SELECT 1 FROM form_definitions/i.test(sql))
@@ -97,11 +98,11 @@ function fakeDataSource(rows: FakeRows = {}) {
     if (/UPDATE form_definitions/i.test(sql)) return [];
     return [];
   });
-  const manager = { query, getRepository: jest.fn(() => repo) };
+  const manager = { query, getRepository: vi.fn(() => repo) };
   const ds = {
     query,
-    getRepository: jest.fn(() => repo),
-    transaction: jest.fn(async (cb: (m: typeof manager) => Promise<unknown>) =>
+    getRepository: vi.fn(() => repo),
+    transaction: vi.fn(async (cb: (m: typeof manager) => Promise<unknown>) =>
       cb(manager),
     ),
   };
@@ -117,7 +118,7 @@ function recipe(over: Record<string, unknown> = {}) {
   };
 }
 
-function sqlsOf(query: jest.Mock): string[] {
+function sqlsOf(query: Mock): string[] {
   return query.mock.calls.map((call) => call[0] as string);
 }
 
@@ -128,12 +129,12 @@ const originalFetch = global.fetch;
 const originalApiBaseUrl = process.env.API_BASE_URL;
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   process.env.API_BASE_URL = "http://api.test";
-  global.fetch = jest.fn().mockResolvedValue({
+  global.fetch = vi.fn().mockResolvedValue({
     ok: true,
     status: 200,
-    json: jest.fn().mockResolvedValue({ data: [] }),
+    json: vi.fn().mockResolvedValue({ data: [] }),
   }) as unknown as typeof fetch;
 });
 
@@ -146,10 +147,10 @@ afterEach(() => {
 function mockPublishedForms(
   forms: { formId: string; title: string; version?: string }[],
 ): void {
-  global.fetch = jest.fn().mockResolvedValue({
+  global.fetch = vi.fn().mockResolvedValue({
     ok: true,
     status: 200,
-    json: jest.fn().mockResolvedValue({
+    json: vi.fn().mockResolvedValue({
       data: forms.map((f) => ({ version: "1.0.0", ...f })),
     }),
   }) as unknown as typeof fetch;
@@ -252,37 +253,6 @@ describe("rekeyFormHandler — POST /builder/forms/:formId/rekey", () => {
     );
 
     expect(res.statusCode).toBe(200);
-  });
-
-  it("inserts a new row when the re-key also bumps the version", async () => {
-    const { ds, query, save, create } = fakeDataSource({
-      oldRows: [{ id: "row1", version: "1.0.0", published_at: null }],
-      titleRows: [{ form_id: "birth-reg-old", title: "Birth Registration" }],
-      // No (newId, 1.1.0) row exists after the move => INSERT path.
-      existingNewVersion: [],
-    });
-    getDataSourceMock.mockResolvedValue(ds);
-    const res = mockRes();
-
-    await rekeyFormHandler(
-      mockReq(
-        { formId: "birth-reg-old" },
-        { recipe: recipe({ version: "1.1.0" }) },
-      ),
-      res,
-    );
-
-    expect(res.statusCode).toBe(200);
-    expect(
-      sqlsOf(query).some((s) => /UPDATE form_definitions SET form_id/i.test(s)),
-    ).toBe(true);
-    expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        formId: "birth-registration",
-        version: "1.1.0",
-      }),
-    );
-    expect(save).toHaveBeenCalled();
   });
 
   it("returns 404 when no form exists under the old ID", async () => {

@@ -22,14 +22,14 @@
 import { expect, type Page, type Response } from "@playwright/test";
 
 export const STEP_TIMEOUT = 15_000;
-export const UPLOAD_TIMEOUT = 30_000;
+const UPLOAD_TIMEOUT = 30_000;
 
 /**
  * The primary action button advances every step ("Continue", "Submit" on the
  * declaration). Matched by role + accessible name so it stays robust to
  * design-system styling changes, and so "Previous" is never matched.
  */
-export const primaryButton = (page: Page) =>
+const primaryButton = (page: Page) =>
   page.getByRole("button", { name: /^(Continue|Submit)$/ });
 
 /** Read the current `?step=` param. */

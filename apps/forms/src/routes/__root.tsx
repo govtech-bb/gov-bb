@@ -4,10 +4,10 @@ import {
   Outlet,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { Footer } from "@govtech-bb/react";
+import { Footer, OfficialBanner } from "@govtech-bb/react";
 import { NotFound } from "@forms/components";
 import type { QueryClient } from "@tanstack/react-query";
-import { OfficialBanner } from "../components/official-banner";
+import { LANDING_URL } from "../config/landing";
 import { SiteHeader } from "../components/site-header";
 
 /**
@@ -19,17 +19,30 @@ export interface RouterContext {
   queryClient: QueryClient;
 }
 
+// Footer "go home" links point at landing, not at forms' own root — a citizen
+// mid-form needs a way back to the rest of alpha.gov.bb. See #1357.
 const FOOTER_LINKS = [
-  { label: "Home", href: "/" },
-  { label: "Terms & Conditions", href: "/terms-conditions" },
+  { label: "Home", href: `${LANDING_URL}/` },
+  { label: "Terms & Conditions", href: `${LANDING_URL}/terms-conditions` },
 ];
 
 const RootLayout = () => (
   <div className="flex min-h-dvh flex-col bg-white-00">
     <HeadContent />
-    <OfficialBanner />
+    {/* Skip-to-content link (#341/#321): the first focusable element, hidden
+        until focused, lets keyboard users bypass the banner/header and jump
+        straight to <main>. `.govbb-visually-hidden-focusable` ships with
+        @govtech-bb/styles. */}
+    <a href="#main-content" className="govbb-visually-hidden-focusable">
+      Skip to main content
+    </a>
+    <OfficialBanner
+      imageSrc="/images/coat-of-arms.png"
+      imageAlt=""
+      showLearnMore={false}
+    />
     <SiteHeader />
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       <Outlet />
     </main>
     <Footer

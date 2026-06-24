@@ -1,16 +1,17 @@
+import type { Mocked } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import {
   BadRequestException,
   NotFoundException,
   UnprocessableEntityException,
 } from "@nestjs/common";
-import { AppError } from "../../common/errors";
+import { AppError } from "@/common/errors";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
 import { FormDraftsService } from "../form-drafts/form-drafts.service";
-import { FilesService } from "../../files/files.service";
+import { FilesService } from "@/files/files.service";
 import type { ServiceContract } from "@govtech-bb/form-types";
-import type { FormDraftEntity } from "../../database/entities/form-draft.entity";
+import type { FormDraftEntity } from "@/database/entities/form-draft.entity";
 import type { SubmitDto } from "./submissions.types";
 
 const mockDraft = (overrides: Partial<FormDraftEntity> = {}): FormDraftEntity =>
@@ -63,8 +64,8 @@ const baseDto = (): SubmitDto => ({
 
 describe("SubmissionPipelineService", () => {
   let service: SubmissionPipelineService;
-  let draftsService: jest.Mocked<FormDraftsService>;
-  let definitionsService: jest.Mocked<FormDefinitionsService>;
+  let draftsService: Mocked<FormDraftsService>;
+  let definitionsService: Mocked<FormDefinitionsService>;
   let module: TestingModule;
 
   beforeEach(async () => {
@@ -73,26 +74,24 @@ describe("SubmissionPipelineService", () => {
         SubmissionPipelineService,
         {
           provide: FormDraftsService,
-          useValue: { findById: jest.fn() },
+          useValue: { findById: vi.fn() },
         },
         {
           provide: FormDefinitionsService,
-          useValue: { findByFormId: jest.fn(), getRecipe: jest.fn() },
+          useValue: { findByFormId: vi.fn(), getRecipe: vi.fn() },
         },
         {
           provide: FilesService,
-          useValue: { verifySubmissionFiles: jest.fn().mockResolvedValue({}) },
+          useValue: { verifySubmissionFiles: vi.fn().mockResolvedValue({}) },
         },
       ],
     }).compile();
 
     service = module.get(SubmissionPipelineService);
-    draftsService = module.get(
-      FormDraftsService,
-    ) as jest.Mocked<FormDraftsService>;
+    draftsService = module.get(FormDraftsService) as Mocked<FormDraftsService>;
     definitionsService = module.get(
       FormDefinitionsService,
-    ) as jest.Mocked<FormDefinitionsService>;
+    ) as Mocked<FormDefinitionsService>;
   });
 
   afterEach(async () => {

@@ -7,15 +7,9 @@ export interface ChatMessage {
   content: string;
 }
 
-// Synchronous /builder/ai/edit — text-only AI edits.
-export interface EditRequest {
-  message?: string;
-  recipeJson?: string;
-}
-
 // Response from edit AND from the terminal upload/status poll. `recipe` is null
 // when the model replied conversationally without emitting a recipe. (#504)
-export interface ConvertResponse {
+interface ConvertResponse {
   recipe: Record<string, unknown> | null;
   reply: string;
   unresolvableRefs: UnknownRef[];
@@ -24,6 +18,13 @@ export interface ConvertResponse {
 // Polling response from /builder/ai/upload/status/:jobId
 export type UploadStatusResponse =
   | { status: "processing" }
+  | { status: "generating" }
+  | ({ status: "done" } & ConvertResponse)
+  | { status: "failed"; reason: string };
+
+// Polling response from /builder/ai/edit/status/:jobId. Like the upload status
+// minus the Textract "processing" phase — an edit is pure Bedrock generation.
+export type EditStatusResponse =
   | { status: "generating" }
   | ({ status: "done" } & ConvertResponse)
   | { status: "failed"; reason: string };

@@ -4,6 +4,8 @@ import { AnyFormApi } from "@tanstack/react-form";
 import { ClientFormStep, ClientPrimitive, FormMeta } from "@forms/types";
 import { getInstanceMarker, getVisibleFields } from "@forms/lib";
 import { DateValue } from "@govtech-bb/form-types";
+import { resolveStepTitle } from "@govtech-bb/form-conditions";
+import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
 
 export default function Review({
   formMeta,
@@ -17,6 +19,7 @@ export default function Review({
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
   const excludeStepIds = [
+    "intro",
     "check-your-answers",
     "declaration",
     "submission-confirmation",
@@ -119,11 +122,18 @@ export default function Review({
     }
   };
 
+  // Step titles may carry per-answer overrides (#871); resolve each against the
+  // current values so the review heading matches what the applicant saw.
+  const stepScopedValues = buildStepScopedValues(
+    form.state.values as Record<string, unknown>,
+  );
+
   return (
     <div className="form-page__review">
       {visibleSteps
         .filter((step) => !excludeStepIds.includes(step.stepId))
         .map((step) => {
+          const stepTitle = resolveStepTitle(step, stepScopedValues);
           // Compute each visible field's display value once, then drop the
           // rows that have no answer so blank fields are omitted entirely.
           // Visibility is evaluated from current form values (#737) — the
@@ -147,7 +157,7 @@ export default function Review({
           return (
             <section key={step.stepId} className="govbb-summary-section">
               <h2 className="govbb-summary-section__title">
-                {marker ? `${step.title} — ${marker.text}` : step.title}
+                {marker ? `${stepTitle} — ${marker.text}` : stepTitle}
               </h2>
               <div className="govbb-summary-section__action">
                 <a
@@ -156,7 +166,7 @@ export default function Review({
                   onClick={handleChangeClick(step.stepId)}
                 >
                   Change{" "}
-                  <span className="govbb-visually-hidden">{step.title}</span>
+                  <span className="govbb-visually-hidden">{stepTitle}</span>
                 </a>
               </div>
               {rows.length === 0 ? (

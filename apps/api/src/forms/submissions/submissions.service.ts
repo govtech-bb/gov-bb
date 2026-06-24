@@ -1,8 +1,8 @@
 import { HttpStatus, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { FormSubmissionStatus } from "../../database/entities/form-submission.entity";
-import { AppError } from "../../common/errors";
-import { ExpressionsService } from "../../expressions/expressions.service";
+import { FormSubmissionStatus } from "@/database/entities/form-submission.entity";
+import { AppError } from "@/common/errors";
+import { ExpressionsService } from "@/expressions/expressions.service";
 import { FormSubmissionRepository } from "./form-submission.repository";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { ProcessorFactory } from "./processors/processor-factory.service";
@@ -48,9 +48,22 @@ export class SubmissionsService {
 
     const { draft, contract, auditTrail, normalizedValues } =
       await this.pipeline.run(dto);
-    const pinnedVersion = draft?.formVersion ?? dto.formVersion;
+    // #1196: versionless submissions persist form_version = NULL (the recipe
+    // resolves to the canonical flat file). A draft-sourced submission carries
+    // its draft's pin (may itself be null) for the legacy fallback window.
+    const pinnedVersion = draft?.formVersion ?? dto.formVersion ?? null;
 
-    const rawProcessors = contract.processors ?? [];
+    // Smoke submissions exercise the full persist/validate/reference-code path
+    // but must fire zero processors (no real emails/webhooks/payment gating).
+    // Dropping them here, the single choke point for the `processors[]` array,
+    // makes hasGating false (→ SUBMITTED + submittedAt), emits an event
+    // carrying no processors, and the SubmissionProcessorListener dispatch loop
+    // iterates nothing. NOTE this only covers `processors[]`-driven side-effects
+    // — consumers that fire off `formId` (YouthOpportunityWebhookListener) must
+    // short-circuit on `event.isSmokeSubmission`, set below (#1252).
+    const rawProcessors = dto.isSmokeSubmission
+      ? []
+      : (contract.processors ?? []);
     const split = this.processorFactory.resolveSplit(rawProcessors);
     const hasGating = split.gating.length > 0;
 
@@ -81,11 +94,12 @@ export class SubmissionsService {
       submissionId: saved.id,
       referenceCode,
       formId: dto.formId,
-      formVersion: pinnedVersion,
+      formVersion: pinnedVersion ?? undefined,
       idempotencyKey: dto.idempotencyKey,
       processors: rawProcessors,
       values: normalizedValues,
       meta: auditTrail,
+      isSmokeSubmission: dto.isSmokeSubmission,
     };
 
     if (hasGating) {

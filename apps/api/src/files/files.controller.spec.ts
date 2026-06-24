@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import { FilesController } from "./files.controller";
@@ -5,10 +6,10 @@ import { FilesService } from "./files.service";
 
 describe("FilesController", () => {
   let controller: FilesController;
-  let svc: { presignUpload: jest.Mock; confirmUpload: jest.Mock };
+  let svc: { presignUpload: Mock; confirmUpload: Mock };
 
   beforeEach(async () => {
-    svc = { presignUpload: jest.fn(), confirmUpload: jest.fn() };
+    svc = { presignUpload: vi.fn(), confirmUpload: vi.fn() };
     const mod: TestingModule = await Test.createTestingModule({
       controllers: [FilesController],
       providers: [{ provide: FilesService, useValue: svc }],

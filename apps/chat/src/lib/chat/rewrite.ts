@@ -1,101 +1,56 @@
 import { chat } from "@tanstack/ai";
-import type { UIMessage } from "@tanstack/ai";
 import { bedrockText } from "@govtech-bb/ai-bedrock";
 import { z } from "zod";
-import { childController } from "#/lib/abort";
 import { getServerEnv } from "#/config/env";
-import { extractText, lastUserText } from "./messages";
+import { childController } from "./abort";
+import { lastUserText, recentHistory, type ChatMessage } from "./messages";
 
-const PROMPT = `You do two jobs for a Barbados government-services chatbot: (1) rewrite the user's latest message into a search query, and (2) classify their intent.
-
-JOB 1 — REWRITE. Produce a single self-contained search query. It is embedded and matched against formal, standard-English service pages, so it MUST use standard-English service vocabulary.
-- The user often writes in Bajan / Barbadian Creole. Translate the MEANING into standard English using the words the government service catalogue would use, mapping the everyday need to the likely service. Spelling cues: "de"=the, "muh"=my, "fuh"=for, "wuh"=what, "dey"=they, "cyan"=can't, "ent"/"en"=isn't/don't, "gine"=going to, "pun"=on, "wuk"=work. Examples (TEACHING examples, generalise the pattern):
-  - "muh head hurtin and I ent got money fuh de doctor" -> "financial assistance medical help low income"
-  - "de pipe burst and flood out de whole house" -> "disaster relief assistance flood damage"
-  - "I lookin fuh wuk, nutten ent comin" -> "employment programme finding a job"
-  - "wuh I gotta do fuh get muh chile in big school" -> "secondary school placement BSSEE"
+// Fold the conversation into ONE standalone search query. The question-answering
+// path only needs the query — there's no apply/info intent classification here.
+// The query is embedded against formal, standard-English service pages, so
+// dialect is normalised to service vocabulary.
+const PROMPT = `Rewrite the user's latest message into a single self-contained search query for the Government of Barbados service catalogue. It is embedded against formal, standard-English service pages, so use standard-English service vocabulary.
+- Users may write in Bajan dialect — infer the intent from keywords and translate it to the standard-English service the catalogue would use.
 - If the message is already a standalone topical question in standard English, return it essentially unchanged.
-- If it's a short follow-up ("how much?", "what documents?", "where do I go?", "is it online?", "yes please"), expand it using the prior turns so the topic is explicit.
+- If it's a short follow-up ("how much?", "what documents?", "is it online?"), expand it using the prior turns so the topic is explicit.
 - Drop greetings, filler, and personal data. Keep proper nouns and service names. Under 20 words.
-
-JOB 2 — INTENT. Classify this turn as "apply" or "info":
-- "apply" — the user wants to obtain, apply for, register for, or START a service, OR describes a personal situation/need a service addresses ("I need a death certificate", "my baby was born last week", "I want to sit CAPE", "how do I apply for terms leave", "yes, send the link"). An expressed desire or need is "apply" EVEN IF the sentence also asks a question.
-- "info" — the user is ONLY asking for facts or an explanation and has not signalled they want to start now ("what does X cost?", "who is eligible?", "how long does it take?", "what does the Welfare Department do?", and compound fact questions like "how much is X and where do I apply?").
-- When genuinely unsure, choose "apply".
-
-JOB 3 — LEGITIMACY. Set "illegitimate" to true ONLY if the request, explicit or implied, seeks to: falsify an official document; commit benefits or tax fraud; misrepresent identity or facts to obtain something they don't qualify for; or bribe/pay an official for unfair advantage (e.g. "how much do I pay to get my child into a better school", "who do I pay to skip the waitlist"). Otherwise false. When unsure, false.
 
 Conversation:
 {{HISTORY}}
 
 Latest user message: {{LATEST}}`;
 
-const Schema = z.object({
-  rewrittenQuery: z.string(),
-  intent: z.enum(["info", "apply"]),
-  illegitimate: z.boolean(),
-});
+const Schema = z.object({ query: z.string() });
 
-export interface RewriteResult {
-  query: string;
-  // "apply" => the user wants the service (offer the form/link). "info" => a
-  // fact question (answer it; don't push a form). Drives the handoff link gate
-  // in run-turn. Defaults to "apply" (the safe, link-preserving default) when
-  // the rewrite is skipped or fails.
-  intent: "info" | "apply";
-  // Fraud / bribery / falsification-framed request. run-turn suppresses any form
-  // offer when true so the model declines per the ILLEGITIMATE REQUESTS prompt
-  // rather than helpfully offering to start a (legitimate) matched form.
-  // Defaults to false (never refuse a legitimate request on a failed classify).
-  illegitimate: boolean;
-}
-
-function buildHistory(messages: UIMessage[]): string {
-  const trail = messages.slice(-6, -1);
-  if (!trail.length) return "(no prior turns)";
-  return trail
-    .map((m) => `${m.role}: ${extractText(m).slice(0, 300)}`)
-    .filter((line) => !line.endsWith(": "))
-    .join("\n");
-}
-
+// Standalone-question rewrite via the cheaper REWRITE_MODEL. Never blocks a
+// turn: a failure / timeout falls back to the raw latest message. Greetings and
+// too-short messages never reach here (the caller skips retrieval for those).
 export async function rewriteRetrievalQuery(
-  messages: UIMessage[],
-  signal: AbortSignal,
-): Promise<RewriteResult> {
+  messages: ChatMessage[],
+  signal?: AbortSignal,
+): Promise<string> {
   const latest = lastUserText(messages);
-  // Run on the FIRST turn too (not just follow-ups): a first message in Bajan
-  // dialect embeds poorly against the formal service pages and retrieves
-  // nothing, so it needs normalising before the topic is ever established.
-  // Greetings/too-short messages never reach here — run-turn skips retrieval
-  // (and thus the rewrite) for those via isGreetingOrTooShort.
-  if (!latest) return { query: latest, intent: "apply", illegitimate: false };
+  if (!latest) return latest;
 
-  const prompt = PROMPT.replace("{{HISTORY}}", buildHistory(messages)).replace(
+  const prompt = PROMPT.replace("{{HISTORY}}", recentHistory(messages)).replace(
     "{{LATEST}}",
     latest,
   );
 
   const env = getServerEnv();
-  // Fall back to raw input + the link-preserving "apply" intent if the rewrite
-  // call fails — never block a turn, and never silently suppress a form link.
+  // Abort on the parent signal (client disconnect) OR a 3s timeout — never block
+  // the turn on the rewrite. AbortSignal.timeout self-clears, so no bookkeeping.
   try {
     const result = await chat({
-      adapter: bedrockText(env.REWRITE_MODEL, {
-        region: env.BEDROCK_REGION,
-      }),
+      adapter: bedrockText(env.REWRITE_MODEL, { region: env.BEDROCK_REGION }),
       messages: [{ role: "user", content: prompt }],
       outputSchema: Schema,
       modelOptions: { maxTokens: 100, temperature: 0 },
       abortController: childController(signal, 3000),
     });
-    const out = result.rewrittenQuery.trim();
-    return {
-      query: out.length > 2 ? out : latest,
-      intent: result.intent,
-      illegitimate: result.illegitimate,
-    };
+    const out = result.query?.trim() ?? "";
+    return out.length > 2 ? out : latest;
   } catch {
-    return { query: latest, intent: "apply", illegitimate: false };
+    return latest;
   }
 }

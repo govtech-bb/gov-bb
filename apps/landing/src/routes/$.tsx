@@ -174,7 +174,6 @@ function PageView({
       {level !== 'public' ? <ReviewBanner level={level} /> : null}
       <MarkdownContent
         hast={page.hast}
-        headings={page.headings}
         frontmatter={page.frontmatter}
         availableForms={new Set(availableForms)}
         hideStartLink={hideStartLink}

@@ -22,6 +22,7 @@ import { BehavioursEditor } from "./-behaviours-editor";
 import { OptionsEditor } from "./-options-editor";
 import { KEBAB_ID_PATTERN, kebabize } from "./-id-validation";
 import styles from "../../styles/builder.module.css";
+import { useEscClose } from "./-use-esc-close";
 
 const FIELD_ID_ERROR =
   "Use lowercase letters, digits, and hyphens only. Must start with a letter (e.g. applicant-first-name).";
@@ -495,16 +496,12 @@ export function FieldEditPanel({
   const isBlock = field.kind === "block" && item && "block" in item;
   const blockDef = isBlock ? (item as BlockDefinition) : null;
 
+  useEscClose(onClose);
+
   return (
     <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginBottom: 12,
-          }}
-        >
+      <div className={`${styles.modalContent} ${styles.modalContentWide}`} role="dialog" aria-modal="true" aria-label="Edit Field" onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHead}>
           <strong>Edit Field: {item?.displayName ?? ref}</strong>
           <button type="button" onClick={onClose}>Close</button>
         </div>

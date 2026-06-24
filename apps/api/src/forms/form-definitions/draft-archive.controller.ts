@@ -20,12 +20,9 @@ import { DraftArchiveService } from "./draft-archive.service";
 export class DraftArchiveController {
   constructor(private readonly draftArchive: DraftArchiveService) {}
 
-  @Post(":formId/:version/archive")
+  @Post(":formId/archive")
   @HttpCode(HttpStatus.NO_CONTENT)
-  async archive(
-    @Param("formId") formId: string,
-    @Param("version") version: string,
-  ): Promise<void> {
-    await this.draftArchive.archive({ formId, version });
+  async archive(@Param("formId") formId: string): Promise<void> {
+    await this.draftArchive.archive({ formId });
   }
 }

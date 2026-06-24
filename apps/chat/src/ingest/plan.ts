@@ -1,23 +1,37 @@
-// Diff-based planner. Compares the planned set (from chunker) against the
-// rows currently in the DB and classifies each into one of five buckets.
-// The CLI then materialises only the work that needs doing.
+// Diff-based planner — PURE. Classifies the planned set (from the chunker)
+// against the rows currently stored, into five buckets per table. No DB access:
+// the caller fetches `existing` (write.ts#fetchExistingState) and materialises
+// the result. Keeping it pure makes the diff fully unit-testable offline.
 
-import { inArray } from "drizzle-orm";
-import { getDb, schema } from "#/lib/db";
 import type { PlannedChunk, PlannedDocument, PlannedEntity } from "./chunker";
+
+interface ExistingDocument {
+  id: string;
+  payloadHash: string;
+  embeddingModel: string;
+}
+interface ExistingChunk {
+  id: string;
+  documentId: string;
+  embedHash: string;
+}
+export interface ExistingState {
+  documents: ExistingDocument[];
+  chunks: ExistingChunk[];
+}
 
 export interface IngestPlan {
   documents: {
     new: PlannedDocument[];
-    changed: PlannedDocument[]; // payload_hash differs
+    changed: PlannedDocument[]; // payload_hash or embedding_model differs
     unchanged: PlannedDocument[];
-    orphans: string[]; // doc ids in DB that aren't in plan
+    orphans: string[]; // doc ids stored but absent from the plan
   };
   chunks: {
     new: PlannedChunk[];
-    reEmbed: PlannedChunk[]; // embed_hash differs
+    reEmbed: PlannedChunk[]; // embed_hash differs → needs a fresh embedding
     unchanged: PlannedChunk[];
-    orphans: string[]; // chunk ids in DB that aren't in plan
+    orphans: string[]; // chunk ids stored but absent from the plan
   };
 }
 
@@ -31,6 +45,62 @@ export interface PlanSummary {
   chunksUnchanged: number;
   chunksOrphan: number;
   bedrockCalls: number;
+}
+
+export function planIngest(
+  planned: PlannedEntity[],
+  existing: ExistingState,
+  embeddingModel: string,
+): IngestPlan {
+  const plannedDocs = planned.map((p) => p.document);
+  const plannedChunks = planned.flatMap((p) => p.chunks);
+  const plannedDocIds = new Set(plannedDocs.map((d) => d.id));
+  const plannedChunkIds = new Set(plannedChunks.map((c) => c.id));
+  const docMap = new Map(existing.documents.map((d) => [d.id, d]));
+  const chunkMap = new Map(existing.chunks.map((c) => [c.id, c]));
+
+  const documents: IngestPlan["documents"] = {
+    new: [],
+    changed: [],
+    unchanged: [],
+    orphans: [],
+  };
+  for (const d of plannedDocs) {
+    const ex = docMap.get(d.id);
+    if (!ex) documents.new.push(d);
+    else if (
+      ex.payloadHash !== d.payloadHash ||
+      ex.embeddingModel !== embeddingModel
+    )
+      documents.changed.push(d);
+    else documents.unchanged.push(d);
+  }
+  documents.orphans = existing.documents
+    .filter((d) => !plannedDocIds.has(d.id))
+    .map((d) => d.id);
+
+  const chunks: IngestPlan["chunks"] = {
+    new: [],
+    reEmbed: [],
+    unchanged: [],
+    orphans: [],
+  };
+  for (const c of plannedChunks) {
+    const ex = chunkMap.get(c.id);
+    if (!ex) chunks.new.push(c);
+    else if (ex.embedHash !== c.embedHash) chunks.reEmbed.push(c);
+    else chunks.unchanged.push(c);
+  }
+  // Only list orphan chunks whose parent doc is *staying*: an orphan document
+  // CASCADE-deletes its own chunks, so re-listing those would be redundant.
+  const orphanDocIds = new Set(documents.orphans);
+  chunks.orphans = existing.chunks
+    .filter(
+      (c) => !plannedChunkIds.has(c.id) && !orphanDocIds.has(c.documentId),
+    )
+    .map((c) => c.id);
+
+  return { documents, chunks };
 }
 
 export function summarise(plan: IngestPlan): PlanSummary {
@@ -47,93 +117,13 @@ export function summarise(plan: IngestPlan): PlanSummary {
   };
 }
 
-export async function buildPlan(
-  planned: PlannedEntity[],
-  embeddingModel: string,
-): Promise<IngestPlan> {
-  const db = await getDb();
-
-  const plannedDocs = planned.map((p) => p.document);
-  const plannedChunks = planned.flatMap((p) => p.chunks);
-  const plannedDocIds = new Set(plannedDocs.map((d) => d.id));
-  const plannedChunkIds = new Set(plannedChunks.map((c) => c.id));
-
-  const existingDocs = await db
-    .select({
-      id: schema.documents.id,
-      payloadHash: schema.documents.payloadHash,
-      embeddingModel: schema.documents.embeddingModel,
-    })
-    .from(schema.documents);
-  const existingDocMap = new Map(existingDocs.map((d) => [d.id, d]));
-
-  const existingChunks = await db
-    .select({
-      id: schema.chunks.id,
-      embedHash: schema.chunks.embedHash,
-    })
-    .from(schema.chunks);
-  const existingChunkMap = new Map(existingChunks.map((c) => [c.id, c]));
-
-  const docs: IngestPlan["documents"] = {
-    new: [],
-    changed: [],
-    unchanged: [],
-    orphans: [],
+// A scoped run (--limit / --content-dir) diffs a SUBSET of content against the
+// whole store, so every out-of-scope row looks orphaned. Pruning then would
+// wipe the rest of the catalogue — so a scoped run never prunes. Returns a new
+// plan with the orphan lists cleared (pure).
+export function withoutPruning(plan: IngestPlan): IngestPlan {
+  return {
+    documents: { ...plan.documents, orphans: [] },
+    chunks: { ...plan.chunks, orphans: [] },
   };
-  for (const d of plannedDocs) {
-    const ex = existingDocMap.get(d.id);
-    if (!ex) docs.new.push(d);
-    else if (
-      ex.payloadHash !== d.payloadHash ||
-      ex.embeddingModel !== embeddingModel
-    ) {
-      docs.changed.push(d);
-    } else docs.unchanged.push(d);
-  }
-  docs.orphans = existingDocs
-    .filter((d) => !plannedDocIds.has(d.id))
-    .map((d) => d.id);
-
-  const chunks: IngestPlan["chunks"] = {
-    new: [],
-    reEmbed: [],
-    unchanged: [],
-    orphans: [],
-  };
-  for (const c of plannedChunks) {
-    const ex = existingChunkMap.get(c.id);
-    if (!ex) chunks.new.push(c);
-    else if (ex.embedHash !== c.embedHash) chunks.reEmbed.push(c);
-    else chunks.unchanged.push(c);
-  }
-  // Chunk orphans that aren't already covered by an orphan document. The
-  // doc orphans CASCADE-delete their chunks, so we only list chunks whose
-  // parent doc is staying. Joining via a fresh SELECT keeps this honest
-  // instead of guessing from id prefixes.
-  const orphanDocIds = new Set(docs.orphans);
-  const orphanChunkRows = await db
-    .select({ id: schema.chunks.id, documentId: schema.chunks.documentId })
-    .from(schema.chunks);
-  chunks.orphans = orphanChunkRows
-    .filter(
-      (c) => !plannedChunkIds.has(c.id) && !orphanDocIds.has(c.documentId),
-    )
-    .map((c) => c.id);
-
-  return { documents: docs, chunks };
-}
-
-export async function applyDeletes(plan: IngestPlan): Promise<void> {
-  const db = await getDb();
-  if (plan.documents.orphans.length) {
-    await db
-      .delete(schema.documents)
-      .where(inArray(schema.documents.id, plan.documents.orphans));
-  }
-  if (plan.chunks.orphans.length) {
-    await db
-      .delete(schema.chunks)
-      .where(inArray(schema.chunks.id, plan.chunks.orphans));
-  }
 }

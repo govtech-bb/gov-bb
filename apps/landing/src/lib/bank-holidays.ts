@@ -28,7 +28,7 @@ export function easterSunday(year: number): Date {
   return new Date(Date.UTC(year, month - 1, day))
 }
 
-export function addDays(date: Date, days: number): Date {
+function addDays(date: Date, days: number): Date {
   const next = new Date(date.getTime())
   next.setUTCDate(next.getUTCDate() + days)
   return next

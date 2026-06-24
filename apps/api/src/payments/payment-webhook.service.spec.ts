@@ -73,25 +73,25 @@ describe("PaymentWebhookService", () => {
   let service: PaymentWebhookService;
   let module: TestingModule;
 
-  const ezpay = { verifyPayment: jest.fn() };
-  const paymentRepo = { findByReference: jest.fn(), save: jest.fn() };
-  const deptKeys = { get: jest.fn().mockReturnValue("api-key") };
-  const formDefs = { findByFormId: jest.fn() };
-  const events = { emit: jest.fn() };
+  const ezpay = { verifyPayment: vi.fn() };
+  const paymentRepo = { findByReference: vi.fn(), save: vi.fn() };
+  const deptKeys = { get: vi.fn().mockReturnValue("api-key") };
+  const formDefs = { findByFormId: vi.fn() };
+  const events = { emit: vi.fn() };
 
-  const submissionRepo = { findOne: jest.fn(), save: jest.fn() };
+  const submissionRepo = { findOne: vi.fn(), save: vi.fn() };
   const txRepo = {
-    findOne: jest.fn(),
-    save: jest.fn(),
-    create: jest.fn().mockImplementation((d) => d),
+    findOne: vi.fn(),
+    save: vi.fn(),
+    create: vi.fn().mockImplementation((d) => d),
   };
   const dataSource = {
-    getRepository: jest.fn((entity: unknown) => {
+    getRepository: vi.fn((entity: unknown) => {
       if (entity === PaymentTransactionEntity) return txRepo;
       if (entity === FormSubmissionEntity) return submissionRepo;
       throw new Error(`Unexpected entity in test: ${String(entity)}`);
     }),
-    transaction: jest.fn(async (cb: (mgr: unknown) => Promise<unknown>) => {
+    transaction: vi.fn(async (cb: (mgr: unknown) => Promise<unknown>) => {
       return cb({
         getRepository: (entity: unknown) => {
           if (entity === FormSubmissionEntity) return submissionRepo;
@@ -104,7 +104,7 @@ describe("PaymentWebhookService", () => {
   } as unknown as DataSource;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     txRepo.create.mockImplementation((d) => d);
     deptKeys.get.mockReturnValue("api-key");
 
@@ -192,6 +192,10 @@ describe("PaymentWebhookService", () => {
       { type: "spreadsheet", config: {} },
     ]);
     expect(payload.values).toEqual({ step1: { name: "Jane" } });
+    expect(payload.payment).toEqual({
+      amountReceived: "$50.00",
+      transactionId: "TXN-1",
+    });
   });
 
   it("on amount mismatch: marks payment MISMATCHED, does NOT emit, does NOT touch submission", async () => {
@@ -390,5 +394,97 @@ describe("PaymentWebhookService", () => {
     expect(txRepo.save).toHaveBeenCalledWith(existingTx);
     expect(existingTx.status).toBe(PaymentTransactionStatus.SUCCESS);
     expect(existingTx.dateSettled).toBeInstanceOf(Date);
+  });
+
+  describe("confirmReturn (browser return redirect)", () => {
+    it("on Success: finalises the submission and returns success + formId", async () => {
+      const payment = makePayment();
+      const submission = makeSubmission();
+      paymentRepo.findByReference.mockResolvedValue(payment);
+      ezpay.verifyPayment.mockResolvedValue(makeVerified());
+      txRepo.findOne.mockResolvedValue(null);
+      txRepo.save.mockImplementation(async (e) => e);
+      paymentRepo.save.mockImplementation(async (e) => e);
+      submissionRepo.findOne.mockResolvedValue(submission);
+      submissionRepo.save.mockImplementation(async (e) => e);
+      formDefs.findByFormId.mockResolvedValue({ processors: [] });
+
+      const result = await service.confirmReturn({
+        reference: "ref-1",
+        transactionNumber: "TXN-1",
+      });
+
+      expect(result).toEqual({
+        outcome: "success",
+        formId: "passport-renewal",
+      });
+      expect(ezpay.verifyPayment).toHaveBeenCalledWith(
+        { transactionNumber: "TXN-1", reference: "ref-1" },
+        "api-key",
+      );
+      expect(payment.status).toBe(PaymentStatus.SUCCESS);
+      expect(events.emit).toHaveBeenCalledTimes(1);
+    });
+
+    it("on EzPay Failed: returns failed + formId, does not emit", async () => {
+      const payment = makePayment();
+      paymentRepo.findByReference.mockResolvedValue(payment);
+      ezpay.verifyPayment.mockResolvedValue(makeVerified({ status: "Failed" }));
+      txRepo.findOne.mockResolvedValue(null);
+      txRepo.save.mockImplementation(async (e) => e);
+      paymentRepo.save.mockImplementation(async (e) => e);
+
+      const result = await service.confirmReturn({
+        reference: "ref-1",
+        transactionNumber: "TXN-1",
+      });
+
+      expect(result).toEqual({ outcome: "failed", formId: "passport-renewal" });
+      expect(payment.status).toBe(PaymentStatus.FAILED);
+      expect(events.emit).not.toHaveBeenCalled();
+    });
+
+    it("on amount mismatch: returns failed (treated as failure to the citizen)", async () => {
+      const payment = makePayment({ expectedAmount: "75.00" });
+      paymentRepo.findByReference.mockResolvedValue(payment);
+      ezpay.verifyPayment.mockResolvedValue(makeVerified({ amount: 50.0 }));
+      txRepo.findOne.mockResolvedValue(null);
+      txRepo.save.mockImplementation(async (e) => e);
+      paymentRepo.save.mockImplementation(async (e) => e);
+
+      const result = await service.confirmReturn({ reference: "ref-1" });
+
+      expect(result.outcome).toBe("failed");
+      expect(payment.status).toBe(PaymentStatus.MISMATCHED);
+      expect(events.emit).not.toHaveBeenCalled();
+    });
+
+    it("on Initiated: returns pending, leaves payment non-terminal", async () => {
+      const payment = makePayment();
+      paymentRepo.findByReference.mockResolvedValue(payment);
+      ezpay.verifyPayment.mockResolvedValue(
+        makeVerified({ status: "Initiated", amount: 50.0 }),
+      );
+      txRepo.findOne.mockResolvedValue(null);
+      txRepo.save.mockImplementation(async (e) => e);
+
+      const result = await service.confirmReturn({ reference: "ref-1" });
+
+      expect(result).toEqual({
+        outcome: "pending",
+        formId: "passport-renewal",
+      });
+      expect(paymentRepo.save).not.toHaveBeenCalled();
+      expect(events.emit).not.toHaveBeenCalled();
+    });
+
+    it("when the reference doesn't resolve: returns not_found with no formId", async () => {
+      paymentRepo.findByReference.mockResolvedValue(null);
+
+      const result = await service.confirmReturn({ reference: "missing" });
+
+      expect(result).toEqual({ outcome: "not_found", formId: undefined });
+      expect(ezpay.verifyPayment).not.toHaveBeenCalled();
+    });
   });
 });

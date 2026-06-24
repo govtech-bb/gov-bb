@@ -1,74 +1,89 @@
 import type { ChatMiddleware } from "@tanstack/ai";
-import { isAbortError } from "#/lib/abort";
+import { logger } from "#/lib/observability/logger";
 import { emitTurnMetrics } from "./turn-metrics";
 
-export interface TurnRecord {
-  ts: string;
+// Per-turn telemetry. One structured `chat.turn` record per `chat()` run,
+// emitted through the structured logger (JSON line + redaction in prod) and, in
+// prod, as a CloudWatch EMF metric line (see turn-metrics).
+//
+// PII discipline: log the user message LENGTH always, but the message TEXT only
+// in dev (the caller gates `query`). Tokens accumulate in onUsage. Exactly one
+// terminal hook fires per run: onFinish (normal), onAbort (cancel/timeout), or
+// onError (an unhandled throw) — all three route to `finish`, so every turn
+// produces exactly one record. The Bedrock adapter also yields a RUN_ERROR
+// chunk on failure, caught in onChunk to enrich that record. Observability hooks
+// only — onAfterToolCall records outcomes but never gates; no onBeforeToolCall
+// (rate limits / gating live at the WAF/HTTP edge).
+
+export interface TurnMeta {
   threadId?: string;
   runId?: string;
   model: string;
   userChars: number;
-  // Omitted on collection turns — those messages are field answers (PII).
+  /** Which capability set served the turn — "rag" (strict question-answering) or "assist" (in-chat forms enabled). */
+  mode?: string;
+  /** Retrieval was attempted but failed, so the turn ran on thin/no context. */
+  retrieveDegraded?: boolean;
+  /** Dev-only; never set in prod (PII). */
   query?: string;
-  retrieved: { id: string; score: number; kind?: string }[];
-  formSlug?: string;
+}
+
+export interface TurnRecord extends TurnMeta {
   promptTokens?: number;
   completionTokens?: number;
   totalTokens?: number;
   durationMs?: number;
   finishReason?: string;
-  retrieveDegraded?: boolean;
   cancelled?: boolean;
   error?: string;
-  // Names only, never args (PII).
-  toolCalls?: { tool: string; ok: boolean; ms: number }[];
+  toolFailures?: number;
 }
 
-function logTurn(rec: TurnRecord): void {
-  console.log(`[turn] ${JSON.stringify(rec)}`);
-}
+// Default sink: the structured log line (level + ts stamped, secrets redacted)
+// plus the EMF metric line for CloudWatch. Tests inject their own sink and so
+// bypass both.
+const defaultSink = (rec: TurnRecord) => {
+  logger.info("chat.turn", { ...rec });
+  emitTurnMetrics(rec);
+};
 
-// One [turn] record per chat() run. Tokens accumulate in onUsage —
-// FinishInfo.usage only carries the last agent-loop iteration. durationMs
-// runs from `startedAt` so the rewrite + retrieval work before chat() is
-// included. The Bedrock adapter yields RUN_ERROR chunks instead of throwing,
-// and the engine then ends the run via onFinish — so failures must be caught
-// in onChunk or they'd log as normal finishes; onError/onAbort cover paths
-// that do throw.
 export function turnLogMiddleware(
-  partial: TurnRecord,
+  meta: TurnMeta,
   startedAt: number,
+  sink: (rec: TurnRecord) => void = defaultSink,
 ): ChatMiddleware {
   let promptTokens = 0;
   let completionTokens = 0;
   let totalTokens = 0;
   let sawUsage = false;
   let runError: string | undefined;
-  let aborted = false;
-  const toolCalls: { tool: string; ok: boolean; ms: number }[] = [];
+  let cancelled = false;
+  let toolFailures = 0;
+  let done = false;
 
   const finish = (rest: Partial<TurnRecord>) => {
-    const rec: TurnRecord = {
-      ...partial,
+    if (done) return; // one record per run, whichever terminal hook fires first
+    done = true;
+    sink({
+      ...meta,
       durationMs: Date.now() - startedAt,
       promptTokens: sawUsage ? promptTokens : undefined,
       completionTokens: sawUsage ? completionTokens : undefined,
       totalTokens: sawUsage ? totalTokens : undefined,
-      toolCalls: toolCalls.length ? toolCalls : undefined,
-      cancelled: aborted || undefined,
+      cancelled: cancelled || undefined,
       error: runError,
+      toolFailures: toolFailures || undefined,
       ...rest,
-    };
-    logTurn(rec);
-    emitTurnMetrics(rec);
+    });
   };
 
   return {
     name: "turn-log",
     onChunk: (_ctx, chunk) => {
       if (chunk.type === "RUN_ERROR") {
-        if (chunk.code === "aborted") aborted = true;
-        else runError = chunk.message;
+        const c = chunk as { code?: string; message?: string };
+        if (c.code === "aborted") cancelled = true;
+        else runError = c.message ?? "unknown error";
       }
     },
     onUsage: (_ctx, usage) => {
@@ -78,27 +93,25 @@ export function turnLogMiddleware(
       totalTokens += usage.totalTokens;
     },
     onAfterToolCall: (_ctx, info) => {
-      toolCalls.push({
-        tool: info.toolName,
-        ok: info.ok,
-        ms: Math.round(info.duration),
-      });
+      if (!info.ok) toolFailures += 1;
     },
     onFinish: (_ctx, info) => {
       finish({ finishReason: info.finishReason ?? undefined });
     },
-    onAbort: () => {
-      finish({ cancelled: true });
+    // The engine routes a cancelled run (client disconnect, or our stream
+    // timeout calling abortController.abort()) to onAbort — NOT onError — and
+    // exactly one terminal hook fires per run. Without this, a timed-out turn
+    // would be logged nowhere, which is exactly the turn you most want recorded.
+    onAbort: (_ctx, info) => {
+      finish({ cancelled: true, durationMs: info.duration });
     },
     onError: (_ctx, info) => {
-      if (isAbortError(info.error)) {
+      const err = info.error;
+      if (err instanceof Error && err.name === "AbortError") {
         finish({ cancelled: true });
         return;
       }
-      finish({
-        error:
-          info.error instanceof Error ? info.error.message : String(info.error),
-      });
+      finish({ error: err instanceof Error ? err.message : String(err) });
     },
   };
 }

@@ -31,7 +31,6 @@ const fakePage: ContentPage = {
   frontmatter: { title: 'Secret', categories: [], visibility: 'draft' },
   body: '',
   hast: { type: 'root', children: [] },
-  headings: [],
 }
 
 function caught(fn: () => unknown): unknown {
@@ -157,7 +156,7 @@ describe('form route beforeLoad gating', () => {
   it('throws notFound when the viewer cannot see the owning service', async () => {
     mocks.isUrlVisible.mockReturnValue(false)
     const { Route } =
-      await import('./money-financial-support.calculate-severance-pay.form')
+      await import('./money-financial-support/calculate-severance-pay/form')
     const err = caught(() =>
       (Route.options.beforeLoad as (a: unknown) => unknown)({
         context: { level: 'public' },
@@ -169,7 +168,7 @@ describe('form route beforeLoad gating', () => {
   it('allows access when the viewer level can see the service', async () => {
     mocks.isUrlVisible.mockReturnValue(true)
     const { Route } =
-      await import('./money-financial-support.calculate-severance-pay.form')
+      await import('./money-financial-support/calculate-severance-pay/form')
     const err = caught(() =>
       (Route.options.beforeLoad as (a: unknown) => unknown)({
         context: { level: 'preview' },
@@ -181,7 +180,7 @@ describe('form route beforeLoad gating', () => {
   it('allows public access when the owning service is public', async () => {
     mocks.isUrlVisible.mockReturnValue(true)
     const { Route } =
-      await import('./money-financial-support.calculate-severance-pay.form')
+      await import('./money-financial-support/calculate-severance-pay/form')
     const err = caught(() =>
       (Route.options.beforeLoad as (a: unknown) => unknown)({
         context: { level: 'public' },

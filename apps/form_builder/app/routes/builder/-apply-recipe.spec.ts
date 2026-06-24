@@ -22,15 +22,9 @@ describe("buildLoadArgs", () => {
     version: "2.3.0",
   } as unknown as ServiceContractRecipe;
 
-  it("takes the version from the recipe", () => {
-    const draft = { steps: [] } as unknown as RecipeDraft;
-    const { version } = buildLoadArgs(recipe, catalog, () => draft);
-    expect(version).toBe("2.3.0");
-  });
-
   it("deserializes the recipe with the given catalog", () => {
     const draft = { steps: [] } as unknown as RecipeDraft;
-    const deserialize = jest.fn(() => draft);
+    const deserialize = vi.fn(() => draft);
     const result = buildLoadArgs(recipe, catalog, deserialize);
     expect(deserialize).toHaveBeenCalledWith(recipe, catalog);
     expect(result.draft).toBe(draft);

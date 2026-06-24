@@ -1,15 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { getCatalog } from "@govtech-bb/form-builder";
 import type {
   RegistryCatalog,
-  CustomComponentEntry,
   ValidationResult,
-  ValidationRuleDescriptor,
 } from "@govtech-bb/form-builder";
 import type { ServiceContract } from "@govtech-bb/form-types";
 
-// BEHAVIOUR_TYPE_DESCRIPTORS has no exported type; consumers use the JSON shape.
-type BehaviourTypeDescriptor = Record<string, unknown>;
 import { api } from "./api-client";
 import { requireSession } from "./auth/require-session";
 
@@ -27,30 +24,19 @@ export const getCatalogFn = createServerFn({
     if (_catalogCache && _catalogCache.expiresAt > now) {
       return _catalogCache.data;
     }
-    const catalog = await api.get<RegistryCatalog>("/builder/registry/catalog");
+    let catalog: RegistryCatalog;
+    try {
+      catalog = await api.get<RegistryCatalog>("/builder/registry/catalog");
+    } catch (err) {
+      // Local dev fallback: no BUILDER_API_URL/ADMIN_API_TOKEN configured —
+      // serve the package's built-in registry catalog (no `custom` entries)
+      // so /builder renders without a running API. Prod still throws.
+      if (!import.meta.env.DEV) throw err;
+      catalog = getCatalog();
+    }
     _catalogCache = { data: catalog, expiresAt: now + 60_000 };
     return catalog;
   });
-
-export const getRegistryItemFn = createServerFn({ method: "GET" })
-  .middleware([requireSession])
-  .inputValidator(z.object({ ref: z.string() }))
-  .handler(async ({ data }): Promise<CustomComponentEntry> => {
-    return api.get<CustomComponentEntry>(
-      `/builder/registry/item?ref=${encodeURIComponent(data.ref)}`,
-    );
-  });
-
-export const getBuilderMetadata = createServerFn({ method: "GET" })
-  .middleware([requireSession])
-  .handler(
-    async (): Promise<{
-      behaviourDescriptors: readonly BehaviourTypeDescriptor[];
-      validationDescriptors: readonly ValidationRuleDescriptor[];
-    }> => {
-      return api.get("/builder/registry/metadata");
-    },
-  );
 
 export const validateRecipe = createServerFn({ method: "POST", strict: false })
   .middleware([requireSession])

@@ -6,7 +6,9 @@
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/packages/form-conditions",
         "tsConfig": "packages/form-conditions/tsconfig.json",
@@ -14,15 +16,18 @@
       }
     },
     "test": {
-      "executor": "@nx/jest:jest",
+      "executor": "nx:run-commands",
       "options": {
-        "jestConfig": "packages/form-conditions/jest.config.ts"
+        "command": "vitest run",
+        "cwd": "packages/form-conditions"
       }
     },
     "lint": {
       "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": ["packages/form-conditions/**/*.ts"]
+        "lintFilePatterns": [
+          "packages/form-conditions/**/*.ts"
+        ]
       }
     }
   },

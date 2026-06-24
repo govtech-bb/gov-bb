@@ -1,15 +1,16 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
+import { SendEmailCommand } from "@aws-sdk/client-sesv2";
 import MailComposer from "nodemailer/lib/mail-composer";
 import type Mail from "nodemailer/lib/mailer";
 import Handlebars from "handlebars";
-import { EmailTemplateService } from "../../../email/email-template.service";
+import { SesMailer } from "@/email/ses-mailer";
+import { EmailTemplateService } from "@/email/email-template.service";
 import {
   EmailBodyBuilder,
   type EmailFileLink,
-} from "../../../email/email-body.builder";
-import { FilesService } from "../../../files/files.service";
+} from "@/email/email-body.builder";
+import { FilesService } from "@/files/files.service";
 import {
   classifyRecipientField,
   CONTACT_DETAILS_PREFIX,
@@ -19,9 +20,19 @@ import type {
   ProcessorOutput,
 } from "./submission-processor.interface";
 import type { SubmissionCreatedEvent } from "../submissions.types";
-import { FormConfigService } from "../../form-config/form-config.service";
+import { FormConfigService } from "@/forms/form-config/form-config.service";
+import { NonRetryableError } from "./non-retryable-error";
 
+// The detailed reviewer/MDA email: full field-by-field summary of the
+// submission. Used for every recipient kind except the citizen.
 const CONFIRMATION_TEMPLATE = "submission-confirmation";
+
+// The citizen acknowledgement (the "submitted" recipient): a lightweight
+// "we received your submission" with the reference and a short what-happens-next
+// note, deliberately omitting the field-by-field dump that the reviewer copy
+// carries — email is forwardable and retained, so the applicant's own answers
+// don't need to ride along.
+const RECEIVED_TEMPLATE = "submission-received";
 
 // SESv2 SendEmail accepts messages up to 40 MB (after base64), but messages
 // over 10 MB are bandwidth-throttled. Base64 inflates attachment bytes by
@@ -41,25 +52,18 @@ const EMAIL_LINK_TTL_SECONDS = 72 * 60 * 60;
 export class EmailProcessor implements ISubmissionProcessor {
   readonly type = "email" as const;
   private readonly logger = new Logger(EmailProcessor.name);
-  private readonly client: SESv2Client;
-  private readonly from: string;
-  private readonly configurationSet: string | undefined;
   private readonly defaultRecipient: string;
 
   constructor(
     config: ConfigService,
+    private readonly mailer: SesMailer,
     private readonly templateService: EmailTemplateService,
     private readonly emailBodyBuilder: EmailBodyBuilder,
     private readonly filesService: FilesService,
     private readonly formConfigService: FormConfigService,
   ) {
-    this.from = config.get<string>("email.from") ?? "noreply@gov.bb";
-    this.configurationSet = config.get<string>("email.configurationSet");
     this.defaultRecipient =
       config.get<string>("email.defaultRecipient") ?? "testing@govtech.bb";
-    this.client = new SESv2Client({
-      region: config.get<string>("email.region") ?? "us-east-1",
-    });
   }
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
@@ -93,7 +97,9 @@ export class EmailProcessor implements ISubmissionProcessor {
   ): Promise<void> {
     const recipientField = cfg["recipientField"] as string | undefined;
     if (!recipientField) {
-      throw new Error(
+      // Config error: a recipe with no recipientField will never succeed on
+      // retry, so fail non-retryably.
+      throw new NonRetryableError(
         `No recipientField configured for submission ${payload.submissionId}`,
       );
     }
@@ -117,12 +123,33 @@ export class EmailProcessor implements ISubmissionProcessor {
               : this.resolveSubmittedRecipient(payload, recipientField);
 
       if (!recipient) {
-        throw new Error(`Could not resolve recipient at "${recipientField}"`);
+        // Config error: the recipient resolved to nothing (e.g. a misconfigured
+        // path or an empty contactDetails value). This won't fix itself on
+        // retry, so fail non-retryably. NOTE: a resolver that *throws* (DB/infra
+        // down) is a transient failure — it propagates to the catch below and is
+        // re-wrapped as a normal, retryable error.
+        throw new NonRetryableError(
+          `Could not resolve recipient at "${recipientField}"`,
+        );
       }
 
-      const subject =
-        (cfg["subject"] as string | undefined) ??
-        "Your form submission has been received";
+      // A recipe can set its own subject; otherwise the default depends on the
+      // audience. The citizen ("submitted") gets a generic acknowledgement; the
+      // MDA/reviewer gets a notification naming the form (matching the detailed
+      // template's heading). resolveContract is cached, so naming the form here
+      // costs no extra fetch on the MDA path (uploads/body already resolve it).
+      let subject = cfg["subject"] as string | undefined;
+      if (!subject) {
+        if (kind === "submitted") {
+          subject = "Your form submission has been received";
+        } else {
+          const contract = await this.emailBodyBuilder.resolveContract(
+            payload.formId,
+            payload.formVersion,
+          );
+          subject = `A new submission has been received for ${contract.title}`;
+        }
+      }
 
       // Uploaded files travel only on MDA/reviewer emails. The citizen
       // confirmation ("submitted" recipient) stays lightweight: the citizen
@@ -132,7 +159,15 @@ export class EmailProcessor implements ISubmissionProcessor {
           ? await this.collectUploads(payload)
           : { attachments: [], fileLinks: [] };
 
-      const htmlBody = await this.resolveHtmlBody(payload, fileLinks);
+      // Citizen ("submitted") gets the lightweight acknowledgement; every
+      // other recipient (MDA/reviewer) gets the detailed summary.
+      const templateId =
+        kind === "submitted" ? RECEIVED_TEMPLATE : CONFIRMATION_TEMPLATE;
+      const htmlBody = await this.resolveHtmlBody(
+        payload,
+        templateId,
+        fileLinks,
+      );
       const textBody = this.buildTextBody(payload, fileLinks);
 
       // Content.Simple cannot carry attachments, so sends with attachments
@@ -161,15 +196,15 @@ export class EmailProcessor implements ISubmissionProcessor {
               },
             };
 
-      await this.client.send(
+      await this.mailer.client.send(
         new SendEmailCommand({
-          FromEmailAddress: this.from,
+          FromEmailAddress: this.mailer.from,
           Destination: { ToAddresses: [recipient] },
           Content: content,
           // EmailTags are forwarded to the SES event destination (SNS/EventBridge).
           EmailTags: [{ Name: "submissionId", Value: payload.submissionId }],
-          ...(this.configurationSet && {
-            ConfigurationSetName: this.configurationSet,
+          ...(this.mailer.configurationSet && {
+            ConfigurationSetName: this.mailer.configurationSet,
           }),
         }),
       );
@@ -178,6 +213,11 @@ export class EmailProcessor implements ISubmissionProcessor {
         `[email] Confirmation sent to ${recipient} for submission ${payload.submissionId}`,
       );
     } catch (err) {
+      // A config error (unresolved recipient) is non-retryable — rethrow it
+      // untouched so the consumer drops the message instead of retrying. Any
+      // other failure (SES delivery, resolver/DB exception) is transient: wrap
+      // it as a normal error so SQS retries → DLQ.
+      if (err instanceof NonRetryableError) throw err;
       const reason = err instanceof Error ? err.message : String(err);
       throw new Error(
         `Failed to send email for recipientField "${recipientField}" on submission ${payload.submissionId}: ${reason}`,
@@ -323,7 +363,7 @@ export class EmailProcessor implements ISubmissionProcessor {
     attachments: Mail.Attachment[],
   ): Promise<Uint8Array> {
     const composer = new MailComposer({
-      from: this.from,
+      from: this.mailer.from,
       to,
       subject,
       text,
@@ -337,24 +377,36 @@ export class EmailProcessor implements ISubmissionProcessor {
    * Builds the HTML body for the confirmation email.
    *
    * Delegates to EmailBodyBuilder (which handles form contract fetching and
-   * caching) then renders the shared `submission-confirmation` template.
+   * caching) then renders the given template (`templateId` — the citizen
+   * acknowledgement or the detailed reviewer summary, chosen by recipient kind).
    * Falls back to a minimal inline table if either dependency is unavailable
    * or an error is thrown — ensuring the email is always sent.
    */
   private async resolveHtmlBody(
     payload: SubmissionCreatedEvent,
+    templateId: string,
     fileLinks: EmailFileLink[] = [],
   ): Promise<string> {
     try {
       const ctx = await this.emailBodyBuilder.build(payload);
       if (fileLinks.length > 0) ctx.fileLinks = fileLinks;
+      // Both templates carry the coat-of-arms branding. The department name is
+      // only used by the citizen acknowledgement, so resolve that directory
+      // lookup only for that template.
+      ctx.coatOfArmsUrl = this.mailer.coatOfArmsUrl;
+      if (templateId === RECEIVED_TEMPLATE) {
+        ctx.departmentName =
+          (await this.formConfigService.resolveDepartmentName(
+            payload.formId,
+          )) ?? undefined;
+      }
       const rendered = this.templateService.render(
-        CONFIRMATION_TEMPLATE,
+        templateId,
         ctx as unknown as Record<string, unknown>,
       );
       if (rendered !== null) return rendered;
       this.logger.warn(
-        `[email] Template render returned null for "${CONFIRMATION_TEMPLATE}"`,
+        `[email] Template render returned null for "${templateId}"`,
       );
     } catch (err) {
       this.logger.warn(

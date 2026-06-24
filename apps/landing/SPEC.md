@@ -274,7 +274,7 @@ The landing app expects the following environment variables (documented in `.env
 
 | Variable | When used | Purpose |
 |---|---|---|
-| `VITE_FORMS_API_URL` | build time | Source of the forms manifest fetched in `predev`/`prebuild`. |
+| `VITE_FORMS_API_URL` | server (build-baked) | Forms API base — resolves form availability and receives the `/feedback` POST. Snapshotted into the Nitro runtime config at build. |
 | `VITE_FORMS_URL` | render time | Base URL used in Start now button hrefs. |
 | `VITE_UMAMI_WEBSITE_ID` | render time | Enables Umami analytics. Unset = no events. |
 | `VITE_UMAMI_SRC` | render time | Optional override for the Umami script source. |

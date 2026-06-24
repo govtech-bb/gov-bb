@@ -40,13 +40,22 @@ export function firstStepId(draft: RecipeDraft): string | null {
 // pure review screen and `submission-confirmation` renders only its nextSteps
 // copy — neither should expose the FieldPicker. `declaration` is intentionally
 // absent: it bears the confirmation checkbox and stays field-editable.
-export const NO_FIELDS_STEP_IDS = [
+const NO_FIELDS_STEP_IDS = [
   "check-your-answers",
   "submission-confirmation",
 ] as const;
 
 export function isNoFieldsStep(stepId: string): boolean {
   return (NO_FIELDS_STEP_IDS as readonly string[]).includes(stepId);
+}
+
+// The final, platform-managed step. It alone renders recipe-authored
+// `markdownContent` (the editable "What happens next" copy — #1292), so the
+// markdown editor in StepEditor is shown for this step only.
+const SUBMISSION_CONFIRMATION_STEP_ID = "submission-confirmation";
+
+export function isConfirmationStep(stepId: string): boolean {
+  return stepId === SUBMISSION_CONFIRMATION_STEP_ID;
 }
 
 // Default title/description seeded for each required step when one is missing
@@ -145,7 +154,12 @@ export type RecipeAction =
   | {
       type: "UPDATE_STEP_META";
       stepId: string;
-      meta: Partial<Pick<RecipeStepDraft, "stepId" | "title" | "description">>;
+      meta: Partial<
+        Pick<
+          RecipeStepDraft,
+          "stepId" | "title" | "description" | "markdownContent"
+        >
+      >;
     }
   | { type: "SET_STEP_BEHAVIOURS"; stepId: string; behaviours: Behaviour[] }
   | {

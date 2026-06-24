@@ -37,14 +37,66 @@ export const paymentConfigAuthorSchema = z.object({
   customerNamePath: z.string().min(1),
 });
 
-const webhookConfigAuthorSchema = z.object({
-  url: dynamic(z.string().url()),
-  method: z.enum(["POST", "PUT", "PATCH"]).default("POST"),
-  headers: z.record(z.string(), dynamic(z.string())).optional(),
-  secret: z.string().min(16).optional(),
-  signatureHeader: z.string().min(1).default("X-Webhook-Signature"),
-  timeoutMs: z.number().int().positive().max(30_000).default(10_000),
+// ---------- Webhook: endpoint / auth / mapping building blocks ----------
+// These describe routing, not values, so they are plain literals (no dynamic()):
+// author == resolved.
+
+// Resolve the endpoint from an env var (base URL) plus an optional path, instead
+// of hard-coding a URL in the recipe. Keeps deploy-specific URLs out of git.
+const webhookEndpointSchema = z.object({
+  env: z.string().min(1),
+  path: z.string().optional(),
 });
+
+const webhookAuthSchema = z.discriminatedUnion("scheme", [
+  z.object({
+    scheme: z.literal("hmac"),
+    secret: z.string().min(16),
+    signatureHeader: z.string().min(1).default("X-Webhook-Signature"),
+  }),
+  // Reads the key from an env var (not the recipe) — secrets stay out of git.
+  z.object({
+    scheme: z.literal("apiKey"),
+    header: z.string().min(1),
+    secretEnv: z.string().min(1),
+  }),
+  z.object({ scheme: z.literal("none") }),
+]);
+
+// Generic submission → external payload mapping. Field paths are "stepId.fieldId"
+// into the submission values, so any form can be mapped from its recipe without
+// hard-coding step/field conventions in the API. `name` may be a single path or
+// an ordered list joined with spaces (e.g. first + last name).
+const webhookMappingSchema = z.object({
+  programmeCode: z.string().min(1),
+  applicant: z.object({
+    name: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
+    email: z.string().min(1),
+    phone: z.string().min(1),
+  }),
+  // Steps dropped from form_data (process steps that aren't application content).
+  excludeSteps: z.array(z.string()).default([]),
+});
+
+const webhookConfigAuthorSchema = z
+  .object({
+    // Either a literal url, or an env-sourced endpoint — exactly one is required.
+    url: dynamic(z.string().url()).optional(),
+    endpoint: webhookEndpointSchema.optional(),
+    method: z.enum(["POST", "PUT", "PATCH"]).default("POST"),
+    headers: z.record(z.string(), dynamic(z.string())).optional(),
+    // Legacy inline HMAC secret (use `auth` for new configs).
+    secret: z.string().min(16).optional(),
+    signatureHeader: z.string().min(1).default("X-Webhook-Signature"),
+    auth: webhookAuthSchema.optional(),
+    // When present, the processor builds this mapped payload instead of the
+    // default generic envelope.
+    mapping: webhookMappingSchema.optional(),
+    timeoutMs: z.number().int().positive().max(30_000).default(10_000),
+  })
+  .refine((c) => Boolean(c.url) || Boolean(c.endpoint), {
+    message: "webhook config requires either `url` or `endpoint`",
+  });
 
 const emailProcessorSchema = z.object({
   type: z.literal("email"),
@@ -97,14 +149,21 @@ const paymentConfigResolvedSchema = z.object({
   customerNamePath: z.string().min(1),
 });
 
-const webhookConfigResolvedSchema = z.object({
-  url: z.string().url(),
-  method: z.enum(["POST", "PUT", "PATCH"]).default("POST"),
-  headers: z.record(z.string(), z.string()).optional(),
-  secret: z.string().min(16).optional(),
-  signatureHeader: z.string().min(1).default("X-Webhook-Signature"),
-  timeoutMs: z.number().int().positive().max(30_000).default(10_000),
-});
+const webhookConfigResolvedSchema = z
+  .object({
+    url: z.string().url().optional(),
+    endpoint: webhookEndpointSchema.optional(),
+    method: z.enum(["POST", "PUT", "PATCH"]).default("POST"),
+    headers: z.record(z.string(), z.string()).optional(),
+    secret: z.string().min(16).optional(),
+    signatureHeader: z.string().min(1).default("X-Webhook-Signature"),
+    auth: webhookAuthSchema.optional(),
+    mapping: webhookMappingSchema.optional(),
+    timeoutMs: z.number().int().positive().max(30_000).default(10_000),
+  })
+  .refine((c) => Boolean(c.url) || Boolean(c.endpoint), {
+    message: "webhook config requires either `url` or `endpoint`",
+  });
 
 export const resolvedProcessorSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("email"), config: emailConfigResolvedSchema }),
@@ -125,6 +184,7 @@ export type ResolvedPaymentProcessorConfig = z.infer<
   typeof paymentConfigResolvedSchema
 >;
 export type WebhookProcessorConfig = z.infer<typeof webhookConfigAuthorSchema>;
+export type WebhookMapping = z.infer<typeof webhookMappingSchema>;
 export type ResolvedWebhookProcessorConfig = z.infer<
   typeof webhookConfigResolvedSchema
 >;

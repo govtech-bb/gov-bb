@@ -13,7 +13,7 @@
  *  - stepConditionalTargets is populated for steps with stepConditionalOn behaviours
  */
 
-jest.mock("uuid", () => ({ v4: () => "test-uuid-123" }));
+vi.mock("uuid", () => ({ v4: () => "test-uuid-123" }));
 
 import { buildForm } from "./build-form";
 import type { ClientServiceContract, ClientPrimitive } from "@forms/types";
@@ -84,11 +84,6 @@ describe("buildForm", () => {
   it("returns the correct formId from the contract", () => {
     const result = buildForm(makeContract({ formId: "my-form" }));
     expect(result.formId).toBe("my-form");
-  });
-
-  it("returns the correct version from the contract", () => {
-    const result = buildForm(makeContract({ version: "2.5.0" }));
-    expect(result.version).toBe("2.5.0");
   });
 
   it("maps contract.title to formTitle", () => {

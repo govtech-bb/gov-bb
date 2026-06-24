@@ -5,116 +5,194 @@
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
           "Helvetica Neue", Arial, sans-serif;
-        line-height: 1.6;
+        line-height: 1.55;
         color: #1a202c;
         margin: 0;
         padding: 0;
-        background-color: #f7fafc;
+        background-color: #ffffff;
       }
       .wrapper {
-        max-width: 680px;
-        margin: 32px auto;
+        max-width: 720px;
+        margin: 0 auto;
         background: #ffffff;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
       }
       .header {
-        background-color: #00267f;
-        color: #ffffff;
-        padding: 28px 32px;
+        background-color: #ffc726;
+        padding: 18px 40px;
       }
-      .header h1 {
-        margin: 0 0 6px;
-        font-size: 22px;
+      .header-brand img {
+        height: 28px;
+        width: auto;
+        margin-right: 10px;
+        vertical-align: middle;
+      }
+      .header-brand span {
+        font-size: 18px;
         font-weight: 700;
-        line-height: 1.3;
-      }
-      .header p {
-        margin: 0;
-        font-size: 14px;
-        opacity: 0.85;
+        color: #1a202c;
+        vertical-align: middle;
       }
       .body {
-        padding: 28px 32px;
+        padding: 8px 40px 32px;
       }
-      .intro {
-        font-size: 15px;
-        color: #2d3748;
-        margin: 0 0 24px;
+      .title {
+        font-size: 34px;
+        font-weight: 800;
+        color: #1a202c;
+        margin: 28px 0 24px;
+        line-height: 1.15;
       }
-      .section {
-        margin-bottom: 28px;
+      .summary {
+        background-color: #e9ecf3;
+        padding: 6px 24px;
+        margin: 0 0 28px;
       }
-      .section-title {
-        font-size: 13px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: #718096;
-        margin: 0 0 10px;
-        padding-bottom: 6px;
-        border-bottom: 1px solid #e2e8f0;
-      }
-      table {
+      .summary table {
         width: 100%;
         border-collapse: collapse;
       }
-      td {
-        padding: 9px 0;
-        font-size: 14px;
+      .summary td {
+        padding: 11px 0;
+        font-size: 15px;
         vertical-align: top;
-        border-bottom: 1px solid #edf2f7;
       }
-      td:last-child {
-        border-bottom: none;
+      .summary .s-label {
+        font-weight: 700;
+        color: #1a202c;
+        width: 42%;
+        padding-right: 16px;
       }
-      tr:last-child td {
+      .intro {
+        font-size: 15px;
+        color: #1a202c;
+        margin: 0 0 24px;
+      }
+      .section {
+        margin-bottom: 32px;
+      }
+      .section-title {
+        font-size: 22px;
+        font-weight: 800;
+        color: #1a202c;
+        margin: 0 0 4px;
+      }
+      .section table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .section td {
+        padding: 10px 0;
+        font-size: 15px;
+        vertical-align: top;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .section tr:last-child td {
         border-bottom: none;
       }
       .field-label {
-        color: #718096;
+        color: #1a202c;
+        font-weight: 700;
         width: 42%;
         padding-right: 16px;
-        font-weight: 500;
       }
       .field-value {
         color: #1a202c;
       }
-      .footer {
-        background-color: #edf2f7;
-        padding: 20px 32px;
-        font-size: 12px;
-        color: #718096;
+      .payment {
+        background-color: #a8e6cf;
+        padding: 14px 24px;
+        margin: 0 0 28px;
       }
-      .footer table {
+      .payment p {
+        font-size: 15px;
+        color: #1a202c;
+        margin: 4px 0;
+      }
+      .tracking {
+        background-color: #e9ecf3;
+        padding: 8px 24px;
+        margin: 8px 0 0;
+      }
+      .tracking table {
         width: auto;
+        border-collapse: collapse;
       }
-      .footer td {
-        padding: 3px 0;
-        font-size: 12px;
-        color: #718096;
-        border: none;
+      .tracking td {
+        padding: 8px 0;
+        font-size: 15px;
       }
-      .footer .footer-label {
-        font-weight: 600;
-        padding-right: 12px;
-        color: #4a5568;
+      .tracking .t-label {
+        font-weight: 700;
+        color: #1a202c;
+        padding-right: 16px;
+      }
+      .footer {
+        background-color: #00267f;
+        color: #ffffff;
+        padding: 32px 40px;
+      }
+      .footer p {
+        font-size: 14px;
+        color: #ffffff;
+        margin: 0 0 16px;
+        max-width: 75%;
+      }
+      .footer .copyright {
+        font-size: 14px;
+        margin: 0;
+        opacity: 0.9;
+      }
+      .footer-crest {
+        float: right;
+        height: 76px;
+        width: auto;
+        margin-left: 24px;
       }
     </style>
   </head>
   <body>
     <div class='wrapper'>
       <div class='header'>
-        <h1>{{formTitle}}</h1>
-        <p>Submission Confirmation</p>
+        <div class='header-brand'>
+          {{#if coatOfArmsUrl}}
+            <img src='{{coatOfArmsUrl}}' alt='' />
+          {{/if}}
+          <span>Government of Barbados</span>
+        </div>
       </div>
 
       <div class='body'>
-        <p class='intro'>
-          Your submission has been received. Please keep this email for your
-          records. A summary of your submission is shown below.
-        </p>
+        <h1 class='title'>You have received a request for {{formTitle}}</h1>
+
+        <div class='summary'>
+          <table>
+            <tr>
+              <td class='s-label'>Service:</td>
+              <td>{{formTitle}}</td>
+            </tr>
+            <tr>
+              <td class='s-label'>Submission ID:</td>
+              <td>{{submissionId}}</td>
+            </tr>
+            <tr>
+              <td class='s-label'>Submission date:</td>
+              <td>{{submittedDate}}</td>
+            </tr>
+            <tr>
+              <td class='s-label'>Submission time:</td>
+              <td>{{submittedTime}}</td>
+            </tr>
+          </table>
+        </div>
+
+        {{#if payment}}
+          <div class='payment'>
+            <p><strong>Payment amount received:</strong> {{payment.amountReceived}}</p>
+            <p><strong>EzPay transaction ID:</strong> {{payment.transactionId}}</p>
+          </div>
+        {{/if}}
+
+        <p class='intro'>Here is the data from this request:</p>
 
         {{#each sections}}
           <div class='section'>
@@ -133,10 +211,6 @@
         {{#if fileLinks}}
           <div class='section'>
             <div class='section-title'>Uploaded Documents</div>
-            <p class='intro'>
-              The following uploaded files were too large to attach and are
-              available through temporary download links.
-            </p>
             <table>
               {{#each fileLinks}}
                 <tr>
@@ -147,19 +221,24 @@
             </table>
           </div>
         {{/if}}
+
+        <div class='tracking'>
+          <table>
+            <tr>
+              <td class='t-label'>Reference:</td>
+              <td>{{submissionId}}</td>
+            </tr>
+          </table>
+        </div>
       </div>
 
       <div class='footer'>
-        <table>
-          <tr>
-            <td class='footer-label'>Reference</td>
-            <td>{{submissionId}}</td>
-          </tr>
-          <tr>
-            <td class='footer-label'>Submitted</td>
-            <td>{{submittedAt}}</td>
-          </tr>
-        </table>
+        {{#if coatOfArmsUrl}}
+          <img class='footer-crest' src='{{coatOfArmsUrl}}' alt='' />
+        {{/if}}
+        <p>This is an automated confirmation email from the Government of Barbados.</p>
+        <p>Please do not reply to this email.</p>
+        <p class='copyright'>&copy; {{year}} Government of Barbados</p>
       </div>
     </div>
   </body>

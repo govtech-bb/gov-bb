@@ -1,33 +1,34 @@
+import type { Mocked } from "vitest";
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { LessThan } from "typeorm";
 import {
   FormDraftEntity,
   DraftStatus,
-} from "../../database/entities/form-draft.entity";
+} from "@/database/entities/form-draft.entity";
 import { FormDraftRepository } from "./form-draft.repository";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
 import { FormDraftsService } from "./form-drafts.service";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 
 function makeDraftRepo(
-  overrides: Partial<jest.Mocked<FormDraftRepository>> = {},
-): jest.Mocked<FormDraftRepository> {
+  overrides: Partial<Mocked<FormDraftRepository>> = {},
+): Mocked<FormDraftRepository> {
   return {
-    findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
-    delete: jest.fn(),
+    findOne: vi.fn(),
+    create: vi.fn(),
+    save: vi.fn(),
+    delete: vi.fn(),
     ...overrides,
-  } as unknown as jest.Mocked<FormDraftRepository>;
+  } as unknown as Mocked<FormDraftRepository>;
 }
 
 function makeFormDefinitionsService(
-  overrides: Partial<jest.Mocked<FormDefinitionsService>> = {},
-): jest.Mocked<FormDefinitionsService> {
+  overrides: Partial<Mocked<FormDefinitionsService>> = {},
+): Mocked<FormDefinitionsService> {
   return {
-    getRecipe: jest.fn(),
+    getRecipe: vi.fn(),
     ...overrides,
-  } as unknown as jest.Mocked<FormDefinitionsService>;
+  } as unknown as Mocked<FormDefinitionsService>;
 }
 
 function makeDraft(overrides: Partial<FormDraftEntity> = {}): FormDraftEntity {

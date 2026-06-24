@@ -3,7 +3,9 @@
 useDefault = true
 
 [allowlist]
-description = "Test fixtures with dummy form field values"
+description = "Test fixtures with dummy values, not real secrets"
 paths = [
   '''packages/form-validation/src/index\.spec\.ts''',
+  # Dummy AWS-key-shaped string asserting the log redactor masks it.
+  '''apps/chat/src/lib/observability/logger\.test\.ts''',
 ]

@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { axe } from "jest-axe";
@@ -11,14 +12,14 @@ import { axe } from "jest-axe";
 // (the real Link interpolates `params` into `to`). A simpler stub that
 // only honoured `to` would silently allow a regression that drops
 // `params={{ formId }}` to ship.
-jest.mock("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (routeConfig) => ({
     ...routeConfig,
-    useLoaderData: jest.fn(),
+    useLoaderData: vi.fn(),
   }),
   // Mirror redirect()'s throw-shape: a tagged object carrying the options, so
   // beforeLoad tests can `throw`/catch it and assert the external href.
-  redirect: jest.fn((opts) => ({ isRedirect: true, options: opts })),
+  redirect: vi.fn((opts) => ({ isRedirect: true, options: opts })),
   Link: ({
     children,
     to,
@@ -40,16 +41,16 @@ jest.mock("@tanstack/react-router", () => ({
 
 // getHomeUrl is the single env read for the index redirect. Mock it so each
 // test controls whether a home URL is configured (staging/prod) or not (local).
-jest.mock("../lib/env", () => ({
-  getHomeUrl: jest.fn(),
+vi.mock("../lib/env", () => ({
+  getHomeUrl: vi.fn(),
 }));
 import { getHomeUrl } from "../lib/env";
-const mockGetHomeUrl = getHomeUrl as jest.MockedFunction<typeof getHomeUrl>;
+const mockGetHomeUrl = getHomeUrl as Mock;
 
 // Stub the loader so we control the data returned by useLoaderData().
 // The real loader fetches from an API server that won't be available in Jest.
-jest.mock("@forms/form-api", () => ({
-  fetchFormDefinitions: jest.fn(),
+vi.mock("@forms/form-api", () => ({
+  fetchFormDefinitions: vi.fn(),
 }));
 
 // After the mocks are in place, import the route module so that
@@ -64,13 +65,13 @@ const MOCK_FORMS = [
 ];
 
 beforeEach(() => {
-  jest.spyOn(Route, "useLoaderData").mockReturnValue(MOCK_FORMS);
+  vi.spyOn(Route, "useLoaderData").mockReturnValue(MOCK_FORMS);
   // Default: no home URL configured (local dev) → index renders, no redirect.
   mockGetHomeUrl.mockReturnValue(undefined);
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 describe("Index route", () => {
@@ -108,7 +109,7 @@ describe("Index route", () => {
   });
 
   it("renders an empty list when no forms are returned", () => {
-    jest.spyOn(Route, "useLoaderData").mockReturnValue([]);
+    vi.spyOn(Route, "useLoaderData").mockReturnValue([]);
     render(<Route.component />);
     expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
   });

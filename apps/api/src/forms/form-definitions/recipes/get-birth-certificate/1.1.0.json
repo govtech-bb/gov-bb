@@ -649,20 +649,6 @@
   "updatedAt": "2026-05-07T00:00:00Z",
   "processors": [
     {
-      "type": "payment",
-      "config": {
-        "amount": 5,
-        "provider": "ezpay",
-        "allowDebit": true,
-        "department": "oag-registration",
-        "allowCredit": true,
-        "description": "Birth certificate copy",
-        "paymentCode": "awR2Da5z7K",
-        "customerNamePath": "applicant-details.applicant-first-name",
-        "customerEmailPath": "applicant-details.applicant-email"
-      }
-    },
-    {
       "type": "email",
       "config": {
         "subject": "Your birth certificate request has been received",

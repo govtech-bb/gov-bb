@@ -67,6 +67,7 @@ export {
   behaviourSchema,
   equalityOperationsSchema,
   durationTransformSchema,
+  conditionalTitleSchema,
 } from "./behavior.type";
 
 export type {
@@ -79,9 +80,22 @@ export type {
   SharedFieldsBehaviour,
   EqualityOperations,
   DurationTransform,
+  ConditionalTitle,
 } from "./behavior.type";
 
 export type { Block } from "./block.type";
+
+export type { SubmissionValues } from "./submission.type";
+
+export type { ApiResponseShape } from "./api-response.type";
+
+export { valueIsEmpty, isDateComplete } from "./value-empty";
+
+export {
+  assembleStepKeyedValues,
+  isSubmittableValue,
+} from "./reshape-submission";
+export type { StepFieldEntry } from "./reshape-submission";
 
 export {
   formStepSchema,
@@ -114,6 +128,9 @@ export type {
   ResolvedProcessor,
   PaymentProcessorConfig,
   ResolvedPaymentProcessorConfig,
+  WebhookProcessorConfig,
+  ResolvedWebhookProcessorConfig,
+  WebhookMapping,
 } from "./processor.type";
 
 export {
@@ -125,9 +142,12 @@ export type { RecipientKind } from "./recipient-field";
 
 export { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./id-pattern";
 
+export { SEMVER_PATTERN, SEMVER_ERROR, semverSchema } from "./version-pattern";
+
 export { dynamic } from "./dynamic";
 
 export { shallowMergeDefined } from "./merge";
+export { applyFieldOverrides } from "./resolution-merge";
 
 export { validateFormContract } from "./validate-form-contract";
 export type {
@@ -154,3 +174,11 @@ export {
   deployBranchName,
   eraseBranchName,
 } from "./deploy-branch";
+
+export { compareSemver, validate, bumpMinor, bumpPatch } from "./semver";
+
+export type {
+  MdaContact,
+  MdaContactAddress,
+  CreateMdaContactInput,
+} from "./mda-contact.type";

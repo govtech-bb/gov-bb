@@ -1,3 +1,4 @@
+import type { Mocked } from "vitest";
 /**
  * Integration test — JSONLogic resolution through the full submission pipeline.
  *
@@ -18,8 +19,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import type { Processor, ResolvedProcessor } from "@govtech-bb/form-types";
 import { processorSchema } from "@govtech-bb/form-types";
-import { ExpressionsModule } from "../../expressions/expressions.module";
-import { ExpressionsService } from "../../expressions/expressions.service";
+import { ExpressionsModule } from "@/expressions/expressions.module";
+import { ExpressionsService } from "@/expressions/expressions.service";
 
 describe("Expressions pipeline integration", () => {
   let expressions: ExpressionsService;

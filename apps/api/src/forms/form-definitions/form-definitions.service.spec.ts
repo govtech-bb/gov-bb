@@ -1,9 +1,10 @@
+import type { Mock, Mocked } from "vitest";
 import { Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
-import type { FormDefinitionEntity } from "../../database/entities/form-definition.entity";
+import type { FormDefinitionEntity } from "@/database/entities/form-definition.entity";
 import { FormDefinitionRepository } from "./form-definition.repository";
-import { RegistryService } from "../../registry/registry.service";
+import { RegistryService } from "@/registry/registry.service";
 import { RecipeFileLoaderService } from "./recipe-file-loader.service";
 import { FormConfigService } from "../form-config/form-config.service";
 import { FormDefinitionsService } from "./form-definitions.service";
@@ -31,32 +32,32 @@ function makeEntityWithTitle(
 
 function makeFindAllMocks(entities: FormDefinitionEntity[]) {
   const repo = {
-    find: jest.fn().mockResolvedValue(entities),
-    findOne: jest.fn(),
-  } as unknown as jest.Mocked<FormDefinitionRepository>;
+    find: vi.fn().mockResolvedValue(entities),
+    findOne: vi.fn(),
+  } as unknown as Mocked<FormDefinitionRepository>;
 
   const registry = {
-    hydrateForm: jest.fn().mockResolvedValue({}),
-  } as unknown as jest.Mocked<RegistryService>;
+    hydrateForm: vi.fn().mockResolvedValue({}),
+  } as unknown as Mocked<RegistryService>;
 
   const fileLoader = {
-    findAll: jest.fn(),
-    findByFormId: jest.fn(),
-  } as unknown as jest.Mocked<RecipeFileLoaderService>;
+    findAll: vi.fn(),
+    findByFormId: vi.fn(),
+  } as unknown as Mocked<RecipeFileLoaderService>;
 
   // Force "db" mode (NODE_ENV=development) so these tests, which target the
   // DB findAll path, route through the repo.
   const config = {
-    get: jest.fn((key: string, def?: string) => {
+    get: vi.fn((key: string, def?: string) => {
       if (key === "RECIPE_SOURCE") return "db";
       if (key === "NODE_ENV") return "development";
       return def;
     }),
-  } as unknown as jest.Mocked<ConfigService>;
+  } as unknown as Mocked<ConfigService>;
 
   const formConfig = {
-    resolveProcessors: jest.fn().mockResolvedValue([]),
-  } as unknown as jest.Mocked<FormConfigService>;
+    resolveProcessors: vi.fn().mockResolvedValue([]),
+  } as unknown as Mocked<FormConfigService>;
 
   const service = new FormDefinitionsService(
     repo,
@@ -120,30 +121,30 @@ function makeMocks(
   },
 ) {
   const repo = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-  } as unknown as jest.Mocked<FormDefinitionRepository>;
+    find: vi.fn(),
+    findOne: vi.fn(),
+  } as unknown as Mocked<FormDefinitionRepository>;
 
   const registry = {
-    hydrateForm: jest.fn().mockResolvedValue(MOCK_HYDRATED),
-  } as unknown as jest.Mocked<RegistryService>;
+    hydrateForm: vi.fn().mockResolvedValue(MOCK_HYDRATED),
+  } as unknown as Mocked<RegistryService>;
 
   const fileLoader = {
-    findAll: jest.fn(),
-    findByFormId: jest.fn(),
-  } as unknown as jest.Mocked<RecipeFileLoaderService>;
+    findAll: vi.fn(),
+    findByFormId: vi.fn(),
+  } as unknown as Mocked<RecipeFileLoaderService>;
 
   const config = {
-    get: jest.fn((key: string, def?: string) => {
+    get: vi.fn((key: string, def?: string) => {
       if (key === "RECIPE_SOURCE") return source ?? def;
       if (key === "NODE_ENV") return nodeEnv;
       return def;
     }),
-  } as unknown as jest.Mocked<ConfigService>;
+  } as unknown as Mocked<ConfigService>;
 
   const formConfig = {
-    resolveProcessors: jest.fn().mockResolvedValue([]),
-  } as unknown as jest.Mocked<FormConfigService>;
+    resolveProcessors: vi.fn().mockResolvedValue([]),
+  } as unknown as Mocked<FormConfigService>;
 
   const service = new FormDefinitionsService(
     repo,
@@ -162,7 +163,7 @@ describe("FormDefinitionsService", () => {
         source: undefined,
         nodeEnv: "development",
       });
-      (fileLoader.findByFormId as jest.Mock).mockReturnValue(MOCK_RECIPE);
+      (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
 
       await service.findByFormId({ formId: "passport-renewal" });
 
@@ -174,7 +175,7 @@ describe("FormDefinitionsService", () => {
         source: "db",
         nodeEnv: "development",
       });
-      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+      (repo.findOne as Mock).mockResolvedValue(makeEntity());
 
       await service.findByFormId({ formId: "passport-renewal" });
 
@@ -186,10 +187,10 @@ describe("FormDefinitionsService", () => {
         source: "db",
         nodeEnv: "production",
       });
-      const warnSpy = jest
+      const warnSpy = vi
         .spyOn(Logger.prototype, "warn")
         .mockImplementation(() => undefined);
-      (fileLoader.findByFormId as jest.Mock).mockReturnValue(MOCK_RECIPE);
+      (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
 
       await service.findByFormId({ formId: "passport-renewal" });
 
@@ -207,10 +208,10 @@ describe("FormDefinitionsService", () => {
         source: "db",
         nodeEnv: "test",
       });
-      const warnSpy = jest
+      const warnSpy = vi
         .spyOn(Logger.prototype, "warn")
         .mockImplementation(() => undefined);
-      (fileLoader.findByFormId as jest.Mock).mockReturnValue(MOCK_RECIPE);
+      (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
 
       await service.findByFormId({ formId: "passport-renewal" });
 
@@ -226,8 +227,8 @@ describe("FormDefinitionsService", () => {
         source: "both",
         nodeEnv: "development",
       });
-      (fileLoader.findAll as jest.Mock).mockReturnValue([]);
-      (repo.find as jest.Mock).mockResolvedValue([]);
+      (fileLoader.findAll as Mock).mockReturnValue([]);
+      (repo.find as Mock).mockResolvedValue([]);
 
       await service.findAll();
 
@@ -240,10 +241,10 @@ describe("FormDefinitionsService", () => {
         source: "both",
         nodeEnv: "production",
       });
-      const warnSpy = jest
+      const warnSpy = vi
         .spyOn(Logger.prototype, "warn")
         .mockImplementation(() => undefined);
-      (fileLoader.findAll as jest.Mock).mockReturnValue([]);
+      (fileLoader.findAll as Mock).mockReturnValue([]);
 
       await service.findAll();
 
@@ -264,7 +265,7 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+        (repo.findOne as Mock).mockResolvedValue(makeEntity());
 
         const result = await service.findByFormId({
           formId: "passport-renewal",
@@ -283,7 +284,7 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+        (repo.findOne as Mock).mockResolvedValue(makeEntity());
 
         const result = await service.findByFormId({
           formId: "passport-renewal",
@@ -303,7 +304,7 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(null);
+        (repo.findOne as Mock).mockResolvedValue(null);
 
         await expect(service.findByFormId({ formId: "ghost" })).rejects.toThrow(
           NotFoundException,
@@ -315,7 +316,7 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(null);
+        (repo.findOne as Mock).mockResolvedValue(null);
 
         await expect(
           service.findByFormId({ formId: "ghost", version: "9.9.9" }),
@@ -334,8 +335,8 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
-        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+        (repo.findOne as Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as Mock).mockResolvedValue(
           HYDRATED_WITH_PROCESSORS,
         );
 
@@ -349,8 +350,8 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
-        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+        (repo.findOne as Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as Mock).mockResolvedValue(
           HYDRATED_WITH_PROCESSORS,
         );
 
@@ -367,8 +368,8 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
-        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+        (repo.findOne as Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as Mock).mockResolvedValue(
           HYDRATED_WITH_PROCESSORS,
         );
 
@@ -402,8 +403,8 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
-        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+        (repo.findOne as Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as Mock).mockResolvedValue(
           hydratedWith([PAYMENT]),
         );
 
@@ -418,13 +419,9 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
-        (registry.hydrateForm as jest.Mock).mockResolvedValue(
-          hydratedWith([EMAIL]),
-        );
-        (formConfig.resolveProcessors as jest.Mock).mockResolvedValue([
-          PAYMENT,
-        ]);
+        (repo.findOne as Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as Mock).mockResolvedValue(hydratedWith([EMAIL]));
+        (formConfig.resolveProcessors as Mock).mockResolvedValue([PAYMENT]);
 
         const result = await service.findByFormId({ formId: "f" });
 
@@ -436,10 +433,8 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
-        (registry.hydrateForm as jest.Mock).mockResolvedValue(
-          hydratedWith([EMAIL]),
-        );
+        (repo.findOne as Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as Mock).mockResolvedValue(hydratedWith([EMAIL]));
 
         const result = await service.findByFormId({ formId: "f" });
 
@@ -451,8 +446,8 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
-        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+        (repo.findOne as Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as Mock).mockResolvedValue(
           hydratedWith([PAYMENT]),
         );
 
@@ -486,13 +481,11 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
-        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+        (repo.findOne as Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as Mock).mockResolvedValue(
           hydratedWith([RECIPE_EMAIL]),
         );
-        (formConfig.resolveProcessors as jest.Mock).mockResolvedValue([
-          DB_PAYMENT,
-        ]);
+        (formConfig.resolveProcessors as Mock).mockResolvedValue([DB_PAYMENT]);
 
         const result = await service.findByFormId({
           formId: "passport-renewal",
@@ -510,13 +503,11 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
-        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+        (repo.findOne as Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as Mock).mockResolvedValue(
           hydratedWith([RECIPE_EMAIL, RECIPE_PAYMENT]),
         );
-        (formConfig.resolveProcessors as jest.Mock).mockResolvedValue([
-          DB_PAYMENT,
-        ]);
+        (formConfig.resolveProcessors as Mock).mockResolvedValue([DB_PAYMENT]);
 
         const result = await service.findByFormId({
           formId: "passport-renewal",
@@ -532,11 +523,11 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
-        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+        (repo.findOne as Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as Mock).mockResolvedValue(
           hydratedWith([RECIPE_EMAIL, RECIPE_PAYMENT]),
         );
-        (formConfig.resolveProcessors as jest.Mock).mockResolvedValue([]);
+        (formConfig.resolveProcessors as Mock).mockResolvedValue([]);
 
         const result = await service.findByFormId({
           formId: "passport-renewal",
@@ -551,14 +542,12 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
-        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+        (repo.findOne as Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as Mock).mockResolvedValue(
           hydratedWith([RECIPE_PAYMENT]),
         );
         const dbEmail = { type: "email", config: { to: "db@example.com" } };
-        (formConfig.resolveProcessors as jest.Mock).mockResolvedValue([
-          dbEmail,
-        ]);
+        (formConfig.resolveProcessors as Mock).mockResolvedValue([dbEmail]);
 
         const result = await service.findByFormId({
           formId: "passport-renewal",
@@ -573,11 +562,11 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
-        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+        (repo.findOne as Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as Mock).mockResolvedValue(
           hydratedWith([RECIPE_EMAIL]),
         );
-        (formConfig.resolveProcessors as jest.Mock).mockRejectedValue(
+        (formConfig.resolveProcessors as Mock).mockRejectedValue(
           new Error("invalid blob"),
         );
 
@@ -594,8 +583,8 @@ describe("FormDefinitionsService", () => {
           source: "db",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
-        (registry.hydrateForm as jest.Mock).mockResolvedValue(
+        (repo.findOne as Mock).mockResolvedValue(makeEntity());
+        (registry.hydrateForm as Mock).mockResolvedValue(
           hydratedWith([RECIPE_EMAIL]),
         );
 
@@ -616,7 +605,7 @@ describe("FormDefinitionsService", () => {
       const { fileLoader, registry, repo, service } = makeMocks({
         source: "files",
       });
-      (fileLoader.findByFormId as jest.Mock).mockReturnValue(MOCK_RECIPE);
+      (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
 
       const result = await service.findByFormId({ formId: "passport-renewal" });
 
@@ -631,7 +620,7 @@ describe("FormDefinitionsService", () => {
 
     it("findByFormId delegates to the file loader with a specific version", async () => {
       const { fileLoader, service } = makeMocks({ source: "files" });
-      (fileLoader.findByFormId as jest.Mock).mockReturnValue(MOCK_RECIPE);
+      (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
 
       await service.findByFormId({
         formId: "passport-renewal",
@@ -646,7 +635,7 @@ describe("FormDefinitionsService", () => {
 
     it("throws NotFoundException when the file loader returns null", async () => {
       const { fileLoader, service } = makeMocks({ source: "files" });
-      (fileLoader.findByFormId as jest.Mock).mockReturnValue(null);
+      (fileLoader.findByFormId as Mock).mockReturnValue(null);
 
       await expect(service.findByFormId({ formId: "ghost" })).rejects.toThrow(
         NotFoundException,
@@ -655,7 +644,7 @@ describe("FormDefinitionsService", () => {
 
     it("findAll delegates to the file loader (passes version through)", async () => {
       const { fileLoader, service } = makeMocks({ source: "files" });
-      (fileLoader.findAll as jest.Mock).mockReturnValue([
+      (fileLoader.findAll as Mock).mockReturnValue([
         {
           formId: "passport-renewal",
           title: "Passport Renewal",
@@ -683,10 +672,10 @@ describe("FormDefinitionsService", () => {
           source: "both",
           nodeEnv: "development",
         });
-        (fileLoader.findAll as jest.Mock).mockReturnValue([
+        (fileLoader.findAll as Mock).mockReturnValue([
           { formId: "file-only", title: "File Only", version: "1.0.0" },
         ]);
-        (repo.find as jest.Mock).mockResolvedValue([
+        (repo.find as Mock).mockResolvedValue([
           makeEntityWithTitle("db-only", "DB Only", { version: "2.0.0" }),
         ]);
 
@@ -706,14 +695,14 @@ describe("FormDefinitionsService", () => {
           source: "both",
           nodeEnv: "development",
         });
-        (fileLoader.findAll as jest.Mock).mockReturnValue([
+        (fileLoader.findAll as Mock).mockReturnValue([
           {
             formId: "passport-renewal",
             title: "Passport Renewal (file)",
             version: "1.0.0",
           },
         ]);
-        (repo.find as jest.Mock).mockResolvedValue([
+        (repo.find as Mock).mockResolvedValue([
           makeEntityWithTitle("passport-renewal", "Passport Renewal (db)", {
             version: "1.1.0",
           }),
@@ -731,18 +720,23 @@ describe("FormDefinitionsService", () => {
       });
     });
 
-    describe("getRecipe with version supplied", () => {
-      it("returns the DB schema when DB has the formId+version (even if files also has it)", async () => {
+    // #1196: the both path is the preview resolver — DB scratch draft (keyed by
+    // formId, no version) wins when present, else the canonical flat file. No
+    // version dimension, no semver comparison.
+    describe("getRecipe (both / preview path)", () => {
+      it("returns the DB draft when present, ignoring any version and not touching files", async () => {
         const { fileLoader, repo, service } = makeMocks({
           source: "both",
           nodeEnv: "development",
         });
         const dbRecipe = { ...MOCK_RECIPE, title: "DB" };
-        const fileRecipe = { ...MOCK_RECIPE, title: "File" };
-        (repo.findOne as jest.Mock).mockResolvedValue(
+        (repo.findOne as Mock).mockResolvedValue(
           makeEntity({ schema: dbRecipe as unknown as ServiceContractRecipe }),
         );
-        (fileLoader.findByFormId as jest.Mock).mockReturnValue(fileRecipe);
+        (fileLoader.findByFormId as Mock).mockReturnValue({
+          ...MOCK_RECIPE,
+          title: "File",
+        });
 
         const result = await service.getRecipe({
           formId: "passport-renewal",
@@ -750,128 +744,36 @@ describe("FormDefinitionsService", () => {
         });
 
         expect(result).toEqual(dbRecipe);
+        // Keyed by formId only — the version is ignored.
+        expect(repo.findOne).toHaveBeenCalledWith(
+          expect.objectContaining({ where: { formId: "passport-renewal" } }),
+        );
         expect(fileLoader.findByFormId).not.toHaveBeenCalled();
       });
 
-      it("falls through to the file loader when DB has no matching row", async () => {
+      it("falls back to the canonical file when no DB draft exists", async () => {
         const { fileLoader, repo, service } = makeMocks({
           source: "both",
           nodeEnv: "development",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(null);
-        (fileLoader.findByFormId as jest.Mock).mockReturnValue(MOCK_RECIPE);
+        (repo.findOne as Mock).mockResolvedValue(null);
+        (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
 
-        const result = await service.getRecipe({
-          formId: "passport-renewal",
-          version: "1.0.0",
-        });
+        const result = await service.getRecipe({ formId: "passport-renewal" });
 
         expect(fileLoader.findByFormId).toHaveBeenCalledWith({
           formId: "passport-renewal",
-          version: "1.0.0",
         });
         expect(result).toBe(MOCK_RECIPE);
       });
-    });
 
-    describe("getRecipe without version", () => {
-      it("returns the file recipe when files have the higher semver", async () => {
+      it("returns null when neither the DB draft nor the canonical file exists", async () => {
         const { fileLoader, repo, service } = makeMocks({
           source: "both",
           nodeEnv: "development",
         });
-        const dbRecipe = { ...MOCK_RECIPE, version: "1.1.0", title: "DB" };
-        const fileRecipe = { ...MOCK_RECIPE, version: "1.2.0", title: "File" };
-        (repo.findOne as jest.Mock).mockResolvedValue(
-          makeEntity({
-            version: "1.1.0",
-            schema: dbRecipe as unknown as ServiceContractRecipe,
-          }),
-        );
-        (fileLoader.findByFormId as jest.Mock).mockReturnValue(fileRecipe);
-
-        const result = await service.getRecipe({ formId: "passport-renewal" });
-
-        expect(result).toEqual(fileRecipe);
-      });
-
-      it("returns the DB recipe when DB has the higher semver", async () => {
-        const { fileLoader, repo, service } = makeMocks({
-          source: "both",
-          nodeEnv: "development",
-        });
-        const dbRecipe = { ...MOCK_RECIPE, version: "1.2.0", title: "DB" };
-        const fileRecipe = { ...MOCK_RECIPE, version: "1.0.0", title: "File" };
-        (repo.findOne as jest.Mock).mockResolvedValue(
-          makeEntity({
-            version: "1.2.0",
-            schema: dbRecipe as unknown as ServiceContractRecipe,
-          }),
-        );
-        (fileLoader.findByFormId as jest.Mock).mockReturnValue(fileRecipe);
-
-        const result = await service.getRecipe({ formId: "passport-renewal" });
-
-        expect(result).toEqual(dbRecipe);
-      });
-
-      it("DB wins when DB and file versions tie", async () => {
-        const { fileLoader, repo, service } = makeMocks({
-          source: "both",
-          nodeEnv: "development",
-        });
-        const dbRecipe = { ...MOCK_RECIPE, version: "1.0.0", title: "DB" };
-        const fileRecipe = { ...MOCK_RECIPE, version: "1.0.0", title: "File" };
-        (repo.findOne as jest.Mock).mockResolvedValue(
-          makeEntity({
-            version: "1.0.0",
-            schema: dbRecipe as unknown as ServiceContractRecipe,
-          }),
-        );
-        (fileLoader.findByFormId as jest.Mock).mockReturnValue(fileRecipe);
-
-        const result = await service.getRecipe({ formId: "passport-renewal" });
-
-        expect(result).toEqual(dbRecipe);
-      });
-
-      it("returns the DB recipe when only DB has it", async () => {
-        const { fileLoader, repo, service } = makeMocks({
-          source: "both",
-          nodeEnv: "development",
-        });
-        const dbRecipe = { ...MOCK_RECIPE, title: "DB-only" };
-        (repo.findOne as jest.Mock).mockResolvedValue(
-          makeEntity({ schema: dbRecipe as unknown as ServiceContractRecipe }),
-        );
-        (fileLoader.findByFormId as jest.Mock).mockReturnValue(null);
-
-        const result = await service.getRecipe({ formId: "db-only" });
-
-        expect(result).toEqual(dbRecipe);
-      });
-
-      it("returns the file recipe when only files has it", async () => {
-        const { fileLoader, repo, service } = makeMocks({
-          source: "both",
-          nodeEnv: "development",
-        });
-        const fileRecipe = { ...MOCK_RECIPE, title: "File-only" };
-        (repo.findOne as jest.Mock).mockResolvedValue(null);
-        (fileLoader.findByFormId as jest.Mock).mockReturnValue(fileRecipe);
-
-        const result = await service.getRecipe({ formId: "file-only" });
-
-        expect(result).toBe(fileRecipe);
-      });
-
-      it("returns null when neither source has a recipe", async () => {
-        const { fileLoader, repo, service } = makeMocks({
-          source: "both",
-          nodeEnv: "development",
-        });
-        (repo.findOne as jest.Mock).mockResolvedValue(null);
-        (fileLoader.findByFormId as jest.Mock).mockReturnValue(null);
+        (repo.findOne as Mock).mockResolvedValue(null);
+        (fileLoader.findByFormId as Mock).mockReturnValue(null);
 
         const result = await service.getRecipe({ formId: "ghost" });
 
@@ -888,7 +790,7 @@ describe("FormDefinitionsService", () => {
 
     it("returns the raw recipe from the file loader in files mode", async () => {
       const { fileLoader, registry, service } = makeMocks({ source: "files" });
-      (fileLoader.findByFormId as jest.Mock).mockReturnValue(MOCK_RECIPE);
+      (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
 
       const result = await service.getRecipe({
         formId: "passport-renewal",
@@ -906,7 +808,7 @@ describe("FormDefinitionsService", () => {
 
     it("returns null when the file loader has no matching recipe", async () => {
       const { fileLoader, service } = makeMocks({ source: "files" });
-      (fileLoader.findByFormId as jest.Mock).mockReturnValue(null);
+      (fileLoader.findByFormId as Mock).mockReturnValue(null);
 
       const result = await service.getRecipe({ formId: "ghost" });
 
@@ -918,7 +820,7 @@ describe("FormDefinitionsService", () => {
         source: "db",
         nodeEnv: "development",
       });
-      (repo.findOne as jest.Mock).mockResolvedValue(makeEntity());
+      (repo.findOne as Mock).mockResolvedValue(makeEntity());
 
       const result = await service.getRecipe({ formId: "passport-renewal" });
 
@@ -935,7 +837,7 @@ describe("FormDefinitionsService", () => {
         source: "db",
         nodeEnv: "development",
       });
-      (repo.findOne as jest.Mock).mockResolvedValue(null);
+      (repo.findOne as Mock).mockResolvedValue(null);
 
       const result = await service.getRecipe({ formId: "ghost" });
 
@@ -957,8 +859,8 @@ describe("FormDefinitionsService", () => {
           } as unknown as ServiceContractRecipe,
         });
         const fileRecipe = { ...MOCK_RECIPE, title: "File" };
-        (repo.findOne as jest.Mock).mockResolvedValue(dbRecipe);
-        (fileLoader.findByFormId as jest.Mock).mockReturnValue(fileRecipe);
+        (repo.findOne as Mock).mockResolvedValue(dbRecipe);
+        (fileLoader.findByFormId as Mock).mockReturnValue(fileRecipe);
 
         const result = await service.getRecipe({
           formId: "passport-renewal",
@@ -983,8 +885,8 @@ describe("FormDefinitionsService", () => {
           } as unknown as ServiceContractRecipe,
         });
         const fileRecipe = { ...MOCK_RECIPE, title: "File" };
-        (repo.findOne as jest.Mock).mockResolvedValue(dbRecipe);
-        (fileLoader.findByFormId as jest.Mock).mockReturnValue(fileRecipe);
+        (repo.findOne as Mock).mockResolvedValue(dbRecipe);
+        (fileLoader.findByFormId as Mock).mockReturnValue(fileRecipe);
 
         await service.findByFormId({
           formId: "passport-renewal",
@@ -1006,7 +908,7 @@ describe("FormDefinitionsService", () => {
           source: "files",
           nodeEnv: "production",
         });
-        (fileLoader.findByFormId as jest.Mock).mockReturnValue(MOCK_RECIPE);
+        (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
 
         await service.getRecipe({ formId: "passport-renewal", preview: false });
 
@@ -1019,7 +921,7 @@ describe("FormDefinitionsService", () => {
           source: "files",
           nodeEnv: "production",
         });
-        (fileLoader.findByFormId as jest.Mock).mockReturnValue(MOCK_RECIPE);
+        (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
 
         await service.getRecipe({ formId: "passport-renewal" });
 
@@ -1028,17 +930,17 @@ describe("FormDefinitionsService", () => {
       });
     });
 
-    describe("preview takes the version-aware both path when version supplied", () => {
-      it("DB is tried first and result returned when DB has a match", async () => {
+    describe("preview resolves the draft, ignoring version (#1196)", () => {
+      it("returns the DB draft (keyed by formId) even when a version is supplied", async () => {
         const { repo, fileLoader, service } = makeMocks({
           source: "files",
           nodeEnv: "production",
         });
         const dbRecipe = { ...MOCK_RECIPE, title: "DB" };
-        (repo.findOne as jest.Mock).mockResolvedValue(
+        (repo.findOne as Mock).mockResolvedValue(
           makeEntity({ schema: dbRecipe as unknown as ServiceContractRecipe }),
         );
-        (fileLoader.findByFormId as jest.Mock).mockReturnValue(MOCK_RECIPE);
+        (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
 
         const result = await service.getRecipe({
           formId: "passport-renewal",
@@ -1047,87 +949,29 @@ describe("FormDefinitionsService", () => {
         });
 
         expect(repo.findOne).toHaveBeenCalledWith(
-          expect.objectContaining({
-            where: expect.objectContaining({ version: "1.0.0" }),
-          }),
+          expect.objectContaining({ where: { formId: "passport-renewal" } }),
         );
         expect(result).toEqual(dbRecipe);
-        // DB returned a result, so files should not have been consulted
         expect(fileLoader.findByFormId).not.toHaveBeenCalled();
       });
 
-      it("falls through to files when DB misses on the version", async () => {
+      it("falls back to the canonical file when there is no DB draft", async () => {
         const { repo, fileLoader, service } = makeMocks({
           source: "files",
           nodeEnv: "production",
         });
-        (repo.findOne as jest.Mock).mockResolvedValue(null);
-        (fileLoader.findByFormId as jest.Mock).mockReturnValue(MOCK_RECIPE);
+        (repo.findOne as Mock).mockResolvedValue(null);
+        (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
 
         const result = await service.getRecipe({
           formId: "passport-renewal",
-          version: "1.0.0",
           preview: true,
         });
 
-        expect(repo.findOne).toHaveBeenCalledWith(
-          expect.objectContaining({
-            where: expect.objectContaining({ version: "1.0.0" }),
-          }),
-        );
         expect(fileLoader.findByFormId).toHaveBeenCalledWith({
           formId: "passport-renewal",
-          version: "1.0.0",
         });
         expect(result).toBe(MOCK_RECIPE);
-      });
-    });
-
-    describe("preview no-version path uses semver comparison (source=files, prod)", () => {
-      it("DB wins when DB and file versions tie (1.0.0 vs 1.0.0)", async () => {
-        const { repo, fileLoader, service } = makeMocks({
-          source: "files",
-          nodeEnv: "production",
-        });
-        const dbRecipe = { ...MOCK_RECIPE, version: "1.0.0", title: "DB" };
-        const fileRecipe = { ...MOCK_RECIPE, version: "1.0.0", title: "File" };
-        (repo.findOne as jest.Mock).mockResolvedValue(
-          makeEntity({
-            version: "1.0.0",
-            schema: dbRecipe as unknown as ServiceContractRecipe,
-          }),
-        );
-        (fileLoader.findByFormId as jest.Mock).mockReturnValue(fileRecipe);
-
-        const result = await service.getRecipe({
-          formId: "passport-renewal",
-          preview: true,
-        });
-
-        expect(result).toMatchObject({ title: "DB" });
-      });
-
-      it("file wins when file semver is higher than DB (1.0.0 vs 1.1.0)", async () => {
-        const { repo, fileLoader, service } = makeMocks({
-          source: "files",
-          nodeEnv: "production",
-        });
-        const dbRecipe = { ...MOCK_RECIPE, version: "1.0.0", title: "DB" };
-        const fileRecipe = { ...MOCK_RECIPE, version: "1.1.0", title: "File" };
-        (repo.findOne as jest.Mock).mockResolvedValue(
-          makeEntity({
-            version: "1.0.0",
-            schema: dbRecipe as unknown as ServiceContractRecipe,
-          }),
-        );
-        (fileLoader.findByFormId as jest.Mock).mockReturnValue(fileRecipe);
-
-        const result = await service.getRecipe({
-          formId: "passport-renewal",
-          preview: true,
-        });
-
-        expect(result).toMatchObject({ title: "File" });
       });
     });
   });

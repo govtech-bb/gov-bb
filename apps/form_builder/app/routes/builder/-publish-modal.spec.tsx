@@ -1,5 +1,5 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -19,13 +19,12 @@ function renderModal(
   return render(
     <PublishModal
       draft={draft}
-      version="1.1.0"
       baseBranch="dev"
       isPublishing={false}
       publishSuccess={null}
       publishError={null}
-      onPublish={jest.fn()}
-      onClose={jest.fn()}
+      onPublish={vi.fn()}
+      onClose={vi.fn()}
       {...props}
     />,
   );
@@ -52,16 +51,16 @@ describe("PublishModal base branch", () => {
   });
 });
 
-describe("PublishModal resolving state", () => {
-  it("shows 'resolving…' and disables Deploy while the version is null", () => {
-    renderModal({ version: null });
-    // The version input renders the placeholder text while unresolved.
-    expect(screen.getByText(/resolving…/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Deploy" })).toBeDisabled();
+describe("PublishModal deploy button", () => {
+  it("enables Deploy when not publishing or read-only (#1196: no version gate)", () => {
+    renderModal({ isPublishing: false });
+    expect(screen.getByRole("button", { name: "Deploy" })).toBeEnabled();
   });
 
-  it("enables Deploy once a string version is resolved (and not publishing)", () => {
-    renderModal({ version: "1.1.0", isPublishing: false });
-    expect(screen.getByRole("button", { name: "Deploy" })).toBeEnabled();
+  it("disables Deploy while publishing", () => {
+    renderModal({ isPublishing: true });
+    expect(
+      screen.getByRole("button", { name: /Opening PR…|Deploy/ }),
+    ).toBeDisabled();
   });
 });

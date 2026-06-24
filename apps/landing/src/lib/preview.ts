@@ -30,7 +30,10 @@ import type { ViewLevel } from './frontmatter'
  * httpOnly means client JS cannot forge the grant — a level can only be granted
  * by presenting the matching token to the server.
  */
-export const COOKIE_NAME = 'preview'
+const COOKIE_NAME = 'preview'
+
+/** Reviewer grant cookie lifetime: 4 hours, in seconds. */
+const COOKIE_MAX_AGE_SECONDS = 4 * 60 * 60
 
 export interface ViewLevelResolution {
   /** The view level granted to the current request. */
@@ -139,6 +142,7 @@ export const resolveViewLevel = createServerFn().handler(
         sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === 'production',
+        maxAge: COOKIE_MAX_AGE_SECONDS,
       })
     } else if (decision.cookie === 'clear') {
       deleteCookie(COOKIE_NAME)

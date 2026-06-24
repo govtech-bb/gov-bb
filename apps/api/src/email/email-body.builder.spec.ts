@@ -1,3 +1,4 @@
+import type { Mocked } from "vitest";
 import { EmailBodyBuilder, type EmailField } from "./email-body.builder";
 import type { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import type { ServiceContract } from "@govtech-bb/form-types";
@@ -130,16 +131,16 @@ function makePayload(
 
 function makeFormDefinitionsService(
   contract: ServiceContract = makeContract(),
-): jest.Mocked<FormDefinitionsService> {
+): Mocked<FormDefinitionsService> {
   return {
-    findByFormId: jest.fn().mockResolvedValue(contract),
-  } as unknown as jest.Mocked<FormDefinitionsService>;
+    findByFormId: vi.fn().mockResolvedValue(contract),
+  } as unknown as Mocked<FormDefinitionsService>;
 }
 
 /* ── tests ───────────────────────────────────────────────────────────────── */
 
 describe("EmailBodyBuilder", () => {
-  let formSvc: jest.Mocked<FormDefinitionsService>;
+  let formSvc: Mocked<FormDefinitionsService>;
   let builder: EmailBodyBuilder;
 
   beforeEach(() => {
@@ -156,6 +157,66 @@ describe("EmailBodyBuilder", () => {
       expect(ctx.submissionId).toBe("TST-20260604-130732-ABCDEF");
       expect(ctx.submittedAt).toBe("2026-05-12T10:00:00.000Z");
       expect(typeof ctx.processedAt).toBe("string");
+    });
+
+    it("forwards the payment summary onto the context when present", async () => {
+      const ctx = await builder.build(
+        makePayload({
+          payment: { amountReceived: "$50.00", transactionId: "TXN-1" },
+        }),
+      );
+
+      expect(ctx.payment).toEqual({
+        amountReceived: "$50.00",
+        transactionId: "TXN-1",
+      });
+    });
+
+    it("leaves payment undefined when the payload carries none", async () => {
+      const ctx = await builder.build(makePayload());
+
+      expect(ctx.payment).toBeUndefined();
+    });
+
+    it("renders the submission-confirmation step's markdownContent to HTML", async () => {
+      const base = makeContract();
+      const contract = makeContract({
+        steps: [
+          ...base.steps,
+          {
+            stepId: "submission-confirmation",
+            title: "Application submitted",
+            elements: [],
+            markdownContent:
+              "## What happens next\n\nWe will review your request.",
+          },
+        ] as unknown as ServiceContract["steps"],
+      });
+      builder = new EmailBodyBuilder(makeFormDefinitionsService(contract));
+
+      const ctx = await builder.build(makePayload());
+
+      expect(ctx.markdownHtml).toContain("<h2");
+      expect(ctx.markdownHtml).toContain("What happens next");
+      expect(ctx.markdownHtml).toContain("We will review your request.");
+    });
+
+    it("leaves markdownHtml undefined when the form authors none", async () => {
+      const ctx = await builder.build(makePayload());
+      expect(ctx.markdownHtml).toBeUndefined();
+    });
+
+    it("exposes the processed year (for the footer copyright)", async () => {
+      const ctx = await builder.build(makePayload());
+      expect(ctx.year).toMatch(/^\d{4}$/);
+      expect(ctx.year).toBe(ctx.processedAt.slice(0, 4));
+    });
+
+    it("splits submittedAt into Barbados-local date and time for the reviewer summary", async () => {
+      // submittedAt is "2026-05-12T10:00:00.000Z" → 06:00 in America/Barbados (UTC-4, no DST)
+      const ctx = await builder.build(makePayload());
+      expect(ctx.submittedDate).toBe("12/05/2026");
+      expect(ctx.submittedTime).toBe("06:00");
     });
 
     it("uses referenceCode as the template submissionId when present", async () => {
@@ -180,6 +241,144 @@ describe("EmailBodyBuilder", () => {
       expect(ctx.sections).toHaveLength(2);
       expect(ctx.sections[0].title).toBe("Personal Information");
       expect(ctx.sections[1].title).toBe("Contact Details");
+    });
+
+    describe("conditionalTitle (#871)", () => {
+      // A "personal" step whose heading flips to "Your details" when the
+      // contact step's `applyingFor` answer is "self", else "Their details".
+      const contractWithConditionalTitle = makeContract({
+        steps: [
+          {
+            stepId: "personal",
+            title: "Their details",
+            conditionalTitle: [
+              {
+                targetStepId: "contact",
+                targetFieldId: "applyingFor",
+                operator: "equal",
+                value: "self",
+                title: "Your details",
+              },
+            ],
+            elements: [
+              { fieldId: "firstName", label: "First Name", htmlType: "text" },
+            ],
+          },
+          {
+            stepId: "contact",
+            title: "Contact Details",
+            elements: [{ fieldId: "email", label: "Email", htmlType: "email" }],
+          },
+        ],
+      } as Partial<ServiceContract>);
+
+      const payloadFor = (applyingFor: string) =>
+        makePayload({
+          values: {
+            personal: { firstName: "Alice" },
+            contact: { email: "a@example.com", applyingFor },
+          },
+          meta: {
+            ...makePayload().meta,
+            activeStepIds: ["personal", "contact"],
+            activeFieldIds: {
+              personal: ["firstName"],
+              contact: ["email"],
+            },
+          },
+        });
+
+      it("uses the conditional title when its condition matches", async () => {
+        builder = new EmailBodyBuilder(
+          makeFormDefinitionsService(contractWithConditionalTitle),
+        );
+        const ctx = await builder.build(payloadFor("self"));
+        expect(ctx.sections[0].title).toBe("Your details");
+      });
+
+      it("falls back to the static title when no condition matches", async () => {
+        builder = new EmailBodyBuilder(
+          makeFormDefinitionsService(contractWithConditionalTitle),
+        );
+        const ctx = await builder.build(payloadFor("someone-else"));
+        expect(ctx.sections[0].title).toBe("Their details");
+      });
+    });
+
+    describe("suppressed ceremony steps (feedback declaration)", () => {
+      // A rating step + the form-builder's required declaration step, whose
+      // confirmation checkbox the chat auto-confirms on the user's behalf.
+      const withDeclaration = (formId: string): ServiceContract =>
+        ({
+          formId,
+          title: "Give feedback on the assistant",
+          version: "1.5.0",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+          steps: [
+            {
+              stepId: "your-feedback",
+              title: "Your feedback",
+              elements: [
+                {
+                  fieldId: "experience-rating",
+                  label: "Rating",
+                  htmlType: "text",
+                },
+              ],
+            },
+            {
+              stepId: "declaration",
+              title: "Declaration",
+              elements: [
+                {
+                  fieldId: "declaration-confirmed",
+                  label: "Declaration",
+                  htmlType: "checkbox",
+                  options: [{ label: "I confirm", value: "confirmed" }],
+                },
+              ],
+            },
+          ],
+        }) as ServiceContract;
+
+      const declarationPayload = (formId: string) =>
+        makePayload({
+          formId,
+          values: {
+            "your-feedback": { "experience-rating": "Good" },
+            declaration: { "declaration-confirmed": ["confirmed"] },
+          },
+          meta: {
+            ...makePayload().meta,
+            activeStepIds: ["your-feedback", "declaration"],
+            activeFieldIds: {
+              "your-feedback": ["experience-rating"],
+              declaration: ["declaration-confirmed"],
+            },
+          },
+        });
+
+      it("omits the declaration section from the feedback email", async () => {
+        builder = new EmailBodyBuilder(
+          makeFormDefinitionsService(withDeclaration("chat-feedback")),
+        );
+        const ctx = await builder.build(declarationPayload("chat-feedback"));
+
+        expect(ctx.sections.map((s) => s.title)).toEqual(["Your feedback"]);
+        expect(ctx.sections.some((s) => s.title === "Declaration")).toBe(false);
+      });
+
+      it("keeps the declaration section for a real form (audit record)", async () => {
+        builder = new EmailBodyBuilder(
+          makeFormDefinitionsService(withDeclaration("get-birth-certificate")),
+        );
+        const ctx = await builder.build(
+          declarationPayload("get-birth-certificate"),
+        );
+
+        expect(ctx.sections.some((s) => s.title === "Declaration")).toBe(true);
+      });
     });
 
     it("renders plain text field values as strings", async () => {
@@ -707,7 +906,9 @@ describe("EmailBodyBuilder", () => {
       expect(formSvc.findByFormId).toHaveBeenCalledTimes(1);
     });
 
-    it("fetches separately for different form versions", async () => {
+    it("caches per formId regardless of version (#1196)", async () => {
+      // The cache keys on formId alone now — a form resolves to one canonical
+      // recipe, so a differing legacy pin reuses the cached contract.
       const payloadV1 = makePayload();
       const payloadV2 = makePayload();
       payloadV2.formVersion = "2.0.0";
@@ -715,13 +916,7 @@ describe("EmailBodyBuilder", () => {
       await builder.build(payloadV1);
       await builder.build(payloadV2);
 
-      expect(formSvc.findByFormId).toHaveBeenCalledTimes(2);
-      expect(formSvc.findByFormId).toHaveBeenCalledWith(
-        expect.objectContaining({ version: "1.0.0" }),
-      );
-      expect(formSvc.findByFormId).toHaveBeenCalledWith(
-        expect.objectContaining({ version: "2.0.0" }),
-      );
+      expect(formSvc.findByFormId).toHaveBeenCalledTimes(1);
     });
   });
 

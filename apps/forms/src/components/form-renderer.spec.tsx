@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 /**
  * form-renderer.spec.tsx
  *
@@ -25,19 +26,19 @@ import userEvent from "@testing-library/user-event";
 import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
 
-jest.mock("@tanstack/react-form", () => ({
-  useStore: jest.fn(),
+vi.mock("@tanstack/react-form", () => ({
+  useStore: vi.fn(),
 }));
 
-jest.mock("../hooks/use-step-guard", () => ({
-  useStepGuard: jest.fn(),
+vi.mock("../hooks/use-step-guard", () => ({
+  useStepGuard: vi.fn(),
 }));
 
 // The mock surfaces enough of the props passed to FieldRenderer that wiring
 // tests can verify the toggle/insetFieldsByOption arguments — without this
 // extra metadata the spec could only assert which field IDs were rendered,
 // not whether the right props were threaded through.
-jest.mock("./field-renderer", () => ({
+vi.mock("./field-renderer", () => ({
   __esModule: true,
   default: (props: {
     field: { id: string };
@@ -61,47 +62,49 @@ jest.mock("./field-renderer", () => ({
   ),
 }));
 
-jest.mock("./error-summary", () => ({
+vi.mock("./error-summary", () => ({
   __esModule: true,
   default: () => null,
 }));
 
-jest.mock("./review", () => ({
+vi.mock("./review", () => ({
   __esModule: true,
   default: () => <div data-testid="review" />,
 }));
 
-jest.mock("./submission-confirmation", () => ({
+vi.mock("./submission-confirmation", () => ({
   __esModule: true,
   default: () => <div data-testid="submission-confirmation" />,
 }));
 
-jest.mock("./applicant-name-display", () => ({
+vi.mock("./applicant-name-display", () => ({
   __esModule: true,
   default: () => <div data-testid="applicant-name-display" />,
 }));
 
-jest.mock("@forms/lib", () => ({
+import * as formsLibMock from "@forms/lib";
+
+vi.mock("@forms/lib", () => ({
   getFullFieldId: (step: string, field: string) => `${step}_${field}`,
-  addRepeatableStep: jest.fn(() => []),
-  removeRepeatableStep: jest.fn(() => []),
+  addRepeatableStep: vi.fn(() => []),
+  removeRepeatableStep: vi.fn(() => []),
   stepFieldIdConcactenator: "_",
   repeatStepConcactenator: "~",
-  getRepeatStepCount: jest.fn(() => undefined),
-  getInstanceMarker: jest.fn(() => undefined),
-  buildFieldValidationProperties: jest.fn(() => ({
-    onDynamic: jest.fn(),
-    onBlur: jest.fn(),
+  getRepeatStepCount: vi.fn(() => undefined),
+  getInstanceMarker: vi.fn(() => undefined),
+  buildFieldValidationProperties: vi.fn(() => ({
+    onDynamic: vi.fn(),
+    onBlur: vi.fn(),
   })),
 }));
 
 import FormRenderer from "./form-renderer";
 
-const mockUseStore = useStore as jest.Mock;
-const mockUseStepGuard = useStepGuard as jest.Mock;
+const mockUseStore = useStore as Mock;
+const mockUseStepGuard = useStepGuard as Mock;
 
-const mockNavigateToStep = jest.fn();
-const mockCompleteAndContinue = jest.fn();
+const mockNavigateToStep = vi.fn();
+const mockCompleteAndContinue = vi.fn();
 
 function makeMeta(overrides: Record<string, unknown> = {}) {
   return {
@@ -139,10 +142,10 @@ function makePlainField(id: string, fieldId: string, stepId: string) {
 const mockForm = {
   store: {},
   state: { isValid: true, isSubmitting: false, values: {} },
-  getFieldValue: jest.fn(),
-  validateField: jest.fn().mockResolvedValue([]),
-  handleSubmit: jest.fn(),
-  deleteField: jest.fn(),
+  getFieldValue: vi.fn(),
+  validateField: vi.fn().mockResolvedValue([]),
+  handleSubmit: vi.fn(),
+  deleteField: vi.fn(),
 };
 
 const mockRepeatableStepSettingsRef = { current: {} };
@@ -160,7 +163,7 @@ beforeEach(() => {
   // values set via mockReturnValue/mockResolvedValue. Without this, e.g.
   // `mockForm.getFieldValue.mockReturnValue("yes")` set in one test would
   // silently leak into subsequent tests under `clearAllMocks`.
-  jest.resetAllMocks();
+  vi.resetAllMocks();
   // resetAllMocks doesn't touch plain object fields, so reset form.state too.
   mockForm.state = { isValid: true, isSubmitting: false, values: {} };
   mockForm.validateField.mockResolvedValue([]);
@@ -225,6 +228,111 @@ describe("FormRenderer", () => {
     );
     expect(
       screen.getByRole("heading", { name: /Step step-1/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders markdownContent and suppresses the title on a content-only step", () => {
+    const step = {
+      ...makeStep("about-this-camp"),
+      markdownContent: "## Apply for camp\n\nIntro copy",
+    };
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="about-this-camp"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    // react-markdown is mocked with a passthrough renderer, so this asserts the
+    // step wires its copy through markdown.
+    expect(screen.getByTestId("react-markdown")).toHaveTextContent(
+      "Apply for camp",
+    );
+    // The step's own <h1> is suppressed — the markdown supplies its heading.
+    expect(
+      screen.queryByRole("heading", { name: /Step about-this-camp/ }),
+    ).toBeNull();
+  });
+
+  it("renders a conditionalTitle when its condition matches the form values", () => {
+    const step = {
+      stepId: "birth-details",
+      title: "Provide the person's birth details",
+      conditionalTitle: [
+        {
+          targetStepId: "applying-for-yourself",
+          targetFieldId: "applying-for-yourself",
+          operator: "equal" as const,
+          value: "yes",
+          title: "Provide your birth details",
+        },
+      ],
+      fields: [],
+      behaviours: [],
+    };
+    // The watched answer ("yes") lives under its composite `stepId_fieldId` key.
+    mockUseStore.mockImplementation(
+      (_store: unknown, selector: (state: any) => any) =>
+        selector({
+          values: { "applying-for-yourself_applying-for-yourself": "yes" },
+          fieldMeta: {},
+        }),
+    );
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="birth-details"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: /Provide your birth details/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back to the static title when no conditionalTitle matches", () => {
+    const step = {
+      stepId: "birth-details",
+      title: "Provide the person's birth details",
+      conditionalTitle: [
+        {
+          targetStepId: "applying-for-yourself",
+          targetFieldId: "applying-for-yourself",
+          operator: "equal" as const,
+          value: "yes",
+          title: "Provide your birth details",
+        },
+      ],
+      fields: [],
+      behaviours: [],
+    };
+    mockUseStore.mockImplementation(
+      (_store: unknown, selector: (state: any) => any) =>
+        selector({
+          values: { "applying-for-yourself_applying-for-yourself": "no" },
+          fieldMeta: {},
+        }),
+    );
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="birth-details"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: /Provide the person's birth details/,
+      }),
     ).toBeInTheDocument();
   });
 
@@ -298,6 +406,29 @@ describe("FormRenderer", () => {
         formMeta={makeMeta() as any}
         stepId="declaration"
         visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /submit/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /continue/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows 'Submit' on the step before submission-confirmation even without a declaration step", () => {
+    // Surveys like the exit survey carry no `declaration` step; build-form
+    // injects check-your-answers immediately before submission-confirmation, so
+    // that becomes the submit step. Without this the survey could never be
+    // submitted (its Continue button would skip the submission entirely).
+    const cya = makeStep("check-your-answers");
+    const confirmation = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="check-your-answers"
+        visibleSteps={[cya, confirmation]}
         repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
         submissionState={mockSubmissionState as any}
       />,
@@ -429,27 +560,8 @@ describe("FormRenderer", () => {
     expect(renderers).toHaveLength(2);
   });
 
-  it("threads formVersion to plain field renderers (needed for file presign, #438)", () => {
-    const fields = [makePlainField("step-1_doc", "doc", "step-1")];
-    const step = makeStep("step-1", fields);
-    render(
-      <FormRenderer
-        form={mockForm}
-        formMeta={makeMeta({ steps: [step], version: "1.1.0" }) as any}
-        stepId="step-1"
-        visibleSteps={[step]}
-        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
-        submissionState={mockSubmissionState as any}
-      />,
-    );
-    expect(screen.getByTestId("field-renderer")).toHaveAttribute(
-      "data-form-version",
-      "1.1.0",
-    );
-  });
-
   it("builds validators from the field when it is missing from validationProperties (repeat instances, #432)", () => {
-    const { buildFieldValidationProperties } = jest.requireMock("@forms/lib");
+    const { buildFieldValidationProperties } = vi.mocked(formsLibMock);
     // A repeat-instance field (step~N_*) that buildValidation never saw, so it
     // has no entry in formMeta.validationProperties. Before the fix it would be
     // rendered with no validators and silently bypass validation.
@@ -465,7 +577,7 @@ describe("FormRenderer", () => {
             steps: [step],
             // Only `age` has a pre-built validator entry; `name` does not.
             validationProperties: {
-              "step-1~1_age": { onDynamic: jest.fn(), onBlur: jest.fn() },
+              "step-1~1_age": { onDynamic: vi.fn(), onBlur: vi.fn() },
             },
           }) as any
         }
@@ -873,10 +985,32 @@ describe("FormRenderer", () => {
     expect(mockCompleteAndContinue).not.toHaveBeenCalled();
   });
 
+  it("clicking Submit on the pre-confirmation step (no declaration) submits and advances", async () => {
+    // The exit-survey path: the submit handler must fire from whichever step
+    // precedes submission-confirmation, not only from a `declaration` step.
+    const user = userEvent.setup();
+    mockForm.state = { isValid: true, isSubmitting: false, values: {} };
+    const cya = makeStep("check-your-answers");
+    const confirmation = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="check-your-answers"
+        visibleSteps={[cya, confirmation]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /submit/i }));
+    expect(mockForm.handleSubmit).toHaveBeenCalled();
+    expect(mockCompleteAndContinue).toHaveBeenCalledWith("check-your-answers");
+  });
+
   it("clicking Continue with validation errors does NOT call completeAndContinue", async () => {
     const user = userEvent.setup();
     Object.defineProperty(window, "scrollTo", {
-      value: jest.fn(),
+      value: vi.fn(),
       writable: true,
     });
     const field = makePlainField("step-1_name", "name", "step-1");
@@ -898,8 +1032,8 @@ describe("FormRenderer", () => {
 
   it("clicking Continue on a repeatable step with addAnother=yes calls addRepeatableStep", async () => {
     const user = userEvent.setup();
-    const { addRepeatableStep } = jest.requireMock("@forms/lib");
-    (addRepeatableStep as jest.Mock).mockReturnValue([]);
+    const { addRepeatableStep } = vi.mocked(formsLibMock);
+    (addRepeatableStep as Mock).mockReturnValue([]);
     const repeatableBehaviour = { type: "repeatable", min: 1, max: 3 };
     const step = makeStep("step-1", [], [repeatableBehaviour]);
     mockForm.validateField.mockResolvedValue([]);
@@ -921,8 +1055,8 @@ describe("FormRenderer", () => {
 
   it("clicking Continue on a repeatable step with addAnother=no calls removeRepeatableStep", async () => {
     const user = userEvent.setup();
-    const { removeRepeatableStep } = jest.requireMock("@forms/lib");
-    (removeRepeatableStep as jest.Mock).mockReturnValue([]);
+    const { removeRepeatableStep } = vi.mocked(formsLibMock);
+    (removeRepeatableStep as Mock).mockReturnValue([]);
     const repeatableBehaviour = { type: "repeatable", min: 1, max: 3 };
     const step = makeStep("step-1", [], [repeatableBehaviour]);
     mockForm.validateField.mockResolvedValue([]);
@@ -944,7 +1078,7 @@ describe("FormRenderer", () => {
 
   it("purges removed instances' field values from the form store on 'No' (#432)", async () => {
     const user = userEvent.setup();
-    const { removeRepeatableStep } = jest.requireMock("@forms/lib");
+    const { removeRepeatableStep } = vi.mocked(formsLibMock);
     const repeatableBehaviour = { type: "repeatable", min: 1, max: 3 };
     const baseStep = makeStep("step-1", [], [repeatableBehaviour]);
     const removedField = makePlainField("step-1~1_name", "name", "step-1~1");
@@ -954,7 +1088,7 @@ describe("FormRenderer", () => {
       [repeatableBehaviour],
     );
     // removeRepeatableStep prunes ~1, returning only the surviving base step.
-    (removeRepeatableStep as jest.Mock).mockReturnValue([baseStep]);
+    (removeRepeatableStep as Mock).mockReturnValue([baseStep]);
     mockForm.validateField.mockResolvedValue([]);
     mockForm.getFieldValue.mockReturnValue("no");
 
@@ -991,8 +1125,8 @@ describe("FormRenderer", () => {
   });
 
   it("useEffect: assigns repeatableStepValues to stepData when settings are present", async () => {
-    const { getRepeatStepCount } = jest.requireMock("@forms/lib");
-    (getRepeatStepCount as jest.Mock).mockReturnValue(0);
+    const { getRepeatStepCount } = vi.mocked(formsLibMock);
+    (getRepeatStepCount as Mock).mockReturnValue(0);
 
     // Start stepData EMPTY so the assertion can only pass if the useEffect
     // actually populates it. A pre-populated `{ "step-1": {} }` would make
@@ -1040,8 +1174,8 @@ describe("FormRenderer", () => {
 
   // #801: distinguish repeatable-step instances beyond the first.
   it("repeat instance marker: a non-repeat step renders the plain title with no caption", () => {
-    const { getInstanceMarker } = jest.requireMock("@forms/lib");
-    (getInstanceMarker as jest.Mock).mockReturnValue(undefined);
+    const { getInstanceMarker } = vi.mocked(formsLibMock);
+    (getInstanceMarker as Mock).mockReturnValue(undefined);
     const step = makeStep("step-1");
     render(
       <FormRenderer
@@ -1062,8 +1196,8 @@ describe("FormRenderer", () => {
   });
 
   it("repeat instance marker: an auto-numbered instance suffixes the title with ' — N' and renders no caption", () => {
-    const { getInstanceMarker } = jest.requireMock("@forms/lib");
-    (getInstanceMarker as jest.Mock).mockReturnValue({
+    const { getInstanceMarker } = vi.mocked(formsLibMock);
+    (getInstanceMarker as Mock).mockReturnValue({
       text: "2",
       hasLabel: false,
     });
@@ -1174,8 +1308,8 @@ describe("FormRenderer", () => {
   });
 
   it("repeat instance marker: a labelled instance renders the caption inside the h1 (GOV.UK pattern)", () => {
-    const { getInstanceMarker } = jest.requireMock("@forms/lib");
-    (getInstanceMarker as jest.Mock).mockReturnValue({
+    const { getInstanceMarker } = vi.mocked(formsLibMock);
+    (getInstanceMarker as Mock).mockReturnValue({
       text: "Dependent 2",
       hasLabel: true,
     });
@@ -1201,7 +1335,9 @@ describe("FormRenderer", () => {
     // instances for screen-reader heading navigation ("Dependent 2 Step …"),
     // matching the GOV.UK caption-in-heading pattern.
     const heading = screen.getByRole("heading", {
-      name: "Dependent 2 Step step-1~1",
+      // jsdom computes the name without the space the span's `block` class
+      // produces in real browsers — match with or without it.
+      name: /Dependent 2 ?Step step-1~1/,
     });
     expect(heading).toContainElement(caption);
     // No em-dash suffix in the labelled case — the caption carries the marker.

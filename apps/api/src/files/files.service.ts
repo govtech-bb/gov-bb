@@ -14,7 +14,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuid } from "uuid";
 import type { Primitive, ServiceContract } from "@govtech-bb/form-types";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
-import { isValidPreviewToken } from "../forms/form-definitions/recipe-preview-token";
+import { isValidSecretToken } from "../common/secret-token";
 import type {
   SubmissionValues,
   ValidationErrorBundle,
@@ -359,7 +359,7 @@ export class FilesService {
    * invalid token leaves behaviour exactly as before (published recipes only).
    */
   private isPreview(previewToken?: string): boolean {
-    return isValidPreviewToken(
+    return isValidSecretToken(
       this.config.get<string>("RECIPE_PREVIEW_TOKEN", ""),
       previewToken,
     );
@@ -367,7 +367,8 @@ export class FilesService {
 
   private async resolveFileField(
     formId: string,
-    formVersion: string,
+    // Optional post-#1196: absent → canonical recipe, present → legacy file.
+    formVersion: string | undefined,
     stepId: string,
     fieldId: string,
     preview = false,
@@ -380,7 +381,9 @@ export class FilesService {
         preview,
       });
     } catch {
-      throw new BadRequestException(`Form not found: ${formId}@${formVersion}`);
+      throw new BadRequestException(
+        `Form not found: ${formId}${formVersion ? `@${formVersion}` : ""}`,
+      );
     }
     const step = contract.steps.find((s) => s.stepId === stepId);
     if (!step) {
