@@ -16,6 +16,39 @@ test("hasDatabase reflects DATABASE_URL presence", () => {
   }
 });
 
+// Regression test for the chat-staging-unconfigured bug. The Vite `define`
+// block in vite.config.ts substitutes references to `process.env.X` at build
+// time, and `pick()` falls back to `""` for any env var not present in the
+// build environment. When a deploy env (e.g. chat-staging) sets only
+// CHAT_DATABASE_URL_SECRET_ARN but NOT the credentials-path vars, Vite bakes
+// the missing ones as literal empty strings — and `??` (nullish coalescing)
+// does NOT skip empty strings, so the fallback chain in `hasDatabase()`
+// short-circuits at the first empty bake and returns false, even though the
+// URL_SECRET_ARN is set.
+test("hasDatabase: empty-baked CREDENTIALS_SECRET_ARN does not block URL_SECRET_ARN", () => {
+  const saved = {
+    DATABASE_URL: process.env.DATABASE_URL,
+    CHAT_DATABASE_URL: process.env.CHAT_DATABASE_URL,
+    CHAT_DATABASE_CREDENTIALS_SECRET_ARN:
+      process.env.CHAT_DATABASE_CREDENTIALS_SECRET_ARN,
+    CHAT_DATABASE_URL_SECRET_ARN: process.env.CHAT_DATABASE_URL_SECRET_ARN,
+  };
+  try {
+    delete process.env.DATABASE_URL;
+    delete process.env.CHAT_DATABASE_URL;
+    // Simulate Vite baking a missing env var as a literal empty string.
+    process.env.CHAT_DATABASE_CREDENTIALS_SECRET_ARN = "";
+    process.env.CHAT_DATABASE_URL_SECRET_ARN =
+      "arn:aws:secretsmanager:ca-central-1:000000000000:secret:test/db-url";
+    assert.equal(hasDatabase(), true);
+  } finally {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+});
+
 // Live connectivity — only runs when a DATABASE_URL is configured. Skips
 // cleanly offline / in CI so the suite stays green without infra.
 test("connects to pgvector and the vector extension is available", async (t) => {

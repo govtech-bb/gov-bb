@@ -47,11 +47,18 @@ async function resolveConnectionString(): Promise<string> {
   return getCachedSecretString(arn);
 }
 
+// `||` not `??` — Vite's `define` block in apps/chat/vite.config.ts bakes a
+// literal empty string for any env var that's missing in the build
+// environment (its `pick()` returns `""` as the fallback). Empty string is
+// NOT nullish, so `??` short-circuits at the first empty-baked var and
+// silently skips the rest of the chain — which broke chat in any deploy env
+// that set only the legacy URL_SECRET_ARN without also setting the
+// credentials-path vars (see #1631 revert; regression test below).
 export function hasDatabase(): boolean {
   return Boolean(
-    process.env.DATABASE_URL ??
-    process.env.CHAT_DATABASE_URL ??
-    process.env.CHAT_DATABASE_CREDENTIALS_SECRET_ARN ??
+    process.env.DATABASE_URL ||
+    process.env.CHAT_DATABASE_URL ||
+    process.env.CHAT_DATABASE_CREDENTIALS_SECRET_ARN ||
     process.env.CHAT_DATABASE_URL_SECRET_ARN,
   );
 }
