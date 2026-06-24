@@ -56,3 +56,25 @@ Forms suite: 708 passed / 1 skipped; `forms:build` clean.
   staging/production Amplify build environment for the redirect to take effect
   (`https://staging.alpha.gov.bb` / `https://alpha.gov.bb`). Confirm the exact
   production host before setting it.
+
+## Update (2026-06-24) — reconciled with `LANDING_URL`
+
+After merging `sandbox`, #1357 had landed a single landing-site origin —
+`LANDING_URL` in `apps/forms/src/config/landing.ts`, sourced from
+`VITE_LANDING_URL` with a `https://alpha.gov.bb` prod fallback — used by every
+"go home" affordance (header logo, footer Home/Terms). Introducing a second var
+(`VITE_HOME_URL`) for the same destination was duplicate source-of-truth, so the
+redirect was reconciled onto `LANDING_URL`:
+
+- **Destination** is now `LANDING_URL`; **`VITE_HOME_URL` and `getHomeUrl()` are
+  removed** (`.env.example` entry dropped — `VITE_LANDING_URL` already documents
+  the origin).
+- **Gate changed.** `LANDING_URL` always resolves (prod default), so "redirect
+  only when a var is set" no longer applies. `beforeLoad` now redirects whenever
+  **not** in dev mode (`isDevMode()` — the existing `import.meta.env.DEV`
+  wrapper). Net effect: local dev still keeps the index; every deployed env
+  (preview/sandbox/staging/prod) redirects `/` to the landing site. The live
+  smoke gate is unaffected — all smoke specs drive deep links (`/forms/$formId`),
+  never the index.
+- **Tests** ported to Vitest (`vi.*`) and rewritten to mock `isDevMode` +
+  `LANDING_URL` instead of `getHomeUrl`.

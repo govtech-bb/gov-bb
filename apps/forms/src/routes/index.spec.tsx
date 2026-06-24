@@ -39,13 +39,20 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
-// getHomeUrl is the single env read for the index redirect. Mock it so each
-// test controls whether a home URL is configured (staging/prod) or not (local).
+// isDevMode gates the index redirect: in dev the index renders, otherwise
+// visitors are bounced to the landing site. Mock it so each test controls the
+// environment.
 vi.mock("../lib/env", () => ({
-  getHomeUrl: vi.fn(),
+  isDevMode: vi.fn(),
 }));
-import { getHomeUrl } from "../lib/env";
-const mockGetHomeUrl = getHomeUrl as Mock;
+import { isDevMode } from "../lib/env";
+const mockIsDevMode = isDevMode as Mock;
+
+// LANDING_URL reads import.meta.env at module load; mock the module so the
+// redirect destination is a fixed, asserted value.
+vi.mock("../config/landing", () => ({
+  LANDING_URL: "https://alpha.gov.bb",
+}));
 
 // Stub the loader so we control the data returned by useLoaderData().
 // The real loader fetches from an API server that won't be available in Jest.
@@ -66,8 +73,8 @@ const MOCK_FORMS = [
 
 beforeEach(() => {
   vi.spyOn(Route, "useLoaderData").mockReturnValue(MOCK_FORMS);
-  // Default: no home URL configured (local dev) → index renders, no redirect.
-  mockGetHomeUrl.mockReturnValue(undefined);
+  // Default: dev mode → index renders, no redirect.
+  mockIsDevMode.mockReturnValue(true);
 });
 
 afterEach(() => {
@@ -147,8 +154,8 @@ describe("Index route", () => {
 });
 
 describe("Index route redirect (beforeLoad)", () => {
-  it("redirects to the configured home URL when one is set", () => {
-    mockGetHomeUrl.mockReturnValue("https://staging.alpha.gov.bb");
+  it("redirects to the landing site when not in dev mode", () => {
+    mockIsDevMode.mockReturnValue(false);
 
     // beforeLoad throws the redirect; catch it and assert the external href.
     let thrown: unknown;
@@ -160,12 +167,12 @@ describe("Index route redirect (beforeLoad)", () => {
 
     expect(thrown).toMatchObject({
       isRedirect: true,
-      options: { href: "https://staging.alpha.gov.bb", replace: true },
+      options: { href: "https://alpha.gov.bb", replace: true },
     });
   });
 
-  it("does not redirect (renders the index) when no home URL is set", () => {
-    mockGetHomeUrl.mockReturnValue(undefined);
+  it("does not redirect (renders the index) in dev mode", () => {
+    mockIsDevMode.mockReturnValue(true);
     expect(() => Route.beforeLoad?.({} as never)).not.toThrow();
   });
 });
