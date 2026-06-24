@@ -53,3 +53,23 @@ Worked from `docs/plans/1024-field-array-unique-ids.md`.
   a number field on `get-birth-certificate`; ran the local stack and confirmed
   unique ids, per-row stepper `aria-controls`, and numbered `aria-label` in the
   running app. The throwaway recipe was deleted afterward.
+
+## Update (2026-06-24) — ported onto the decomposed field-renderer
+
+After merging `sandbox`, the monolithic `field-renderer.tsx` had been split into
+the `field-renderer/` module directory (a10a2365). The same fix was re-applied to
+the new layout, identically in behaviour:
+
+- The `index?: number` row index is threaded through `renderRepeatableOrSingle`
+  in `field-renderer/repeatable-field.tsx` (passed at the array map, `undefined`
+  on the single path) and into the `renderControl` signature.
+- The `rowProps(index?)` closure became a small exported helper `rowInputProps`
+  in `repeatable-field.tsx`, consumed by both `text-field.tsx` and
+  `textarea-field.tsx`. Because the two array blocks now live in separate
+  modules, sharing the per-row id/`aria-label` logic via one helper avoids
+  duplicating it (the earlier "did not de-duplicate" note applied to the two
+  blocks inside the old single function).
+- Per-row `key` and `NumberInput` self-targeting are unchanged in substance;
+  `number-input.tsx` still needs no change.
+- The 6 `#1024` tests moved into `field-renderer/field-renderer.spec.tsx`. Full
+  `forms` suite green (739 passed); `forms:build` compiles.
