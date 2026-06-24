@@ -6,14 +6,14 @@ import {
   type SendEmailCommandInput,
 } from "@aws-sdk/client-sesv2";
 import { EmailProcessor } from "./email.processor";
-import type { SesMailer } from "../../../email/ses-mailer";
-import type { EmailTemplateService } from "../../../email/email-template.service";
+import type { SesMailer } from "@/email/ses-mailer";
+import type { EmailTemplateService } from "@/email/email-template.service";
 import type {
   EmailBodyBuilder,
   EmailTemplateContext,
-} from "../../../email/email-body.builder";
-import type { FilesService } from "../../../files/files.service";
-import type { FormConfigService } from "../../form-config/form-config.service";
+} from "@/email/email-body.builder";
+import type { FilesService } from "@/files/files.service";
+import type { FormConfigService } from "@/forms/form-config/form-config.service";
 import type { ContactDetails, ServiceContract } from "@govtech-bb/form-types";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import { NonRetryableError } from "./non-retryable-error";

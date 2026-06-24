@@ -10,6 +10,7 @@ import { watch, type FSWatcher } from "node:fs";
 import * as path from "node:path";
 import {
   serviceContractRecipeSchema,
+  compareSemver,
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
 
@@ -21,17 +22,6 @@ import {
 const DEFAULT_RECIPES_ROOT = path.resolve(__dirname, "recipes");
 
 /**
- * Parse a semver string ("1.10.2") into a tuple of integers. Falls back to
- * [-Infinity] for non-numeric tokens so they sort below valid versions.
- */
-function parseVersion(v: string): number[] {
-  return v.split(".").map((segment) => {
-    const n = Number.parseInt(segment, 10);
-    return Number.isFinite(n) ? n : -Infinity;
-  });
-}
-
-/**
  * CWE-22 guard. `fs.readdir` already returns leaf names on POSIX, but every
  * directory or file entry the loader consumes is run through this before
  * being fed to `path.join`, so a future input source (env-configured root,
@@ -41,19 +31,6 @@ function parseVersion(v: string): number[] {
 export function isLeafName(name: string): boolean {
   if (name === "" || name === "." || name === "..") return false;
   return path.basename(name) === name;
-}
-
-/** Returns positive if a > b, negative if a < b, 0 if equal. */
-export function compareSemver(a: string, b: string): number {
-  const aa = parseVersion(a);
-  const bb = parseVersion(b);
-  const len = Math.max(aa.length, bb.length);
-  for (let i = 0; i < len; i++) {
-    const av = aa[i] ?? 0;
-    const bv = bb[i] ?? 0;
-    if (av !== bv) return av - bv;
-  }
-  return 0;
 }
 
 // Debounce window for coalescing the burst of fs events a single recipe

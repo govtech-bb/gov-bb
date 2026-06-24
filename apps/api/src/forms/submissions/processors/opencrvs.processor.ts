@@ -1,14 +1,20 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { HttpService } from "@nestjs/axios";
 import type {
   ISubmissionProcessor,
   ProcessorOutput,
 } from "./submission-processor.interface";
 import type { SubmissionCreatedEvent } from "../submissions.types";
+import { idempotencyKey, timedPost } from "./http-post";
+
+const DEFAULT_TIMEOUT_MS = 10_000;
 
 @Injectable()
 export class OpencrvsProcessor implements ISubmissionProcessor {
   readonly type = "opencrvs" as const;
   private readonly logger = new Logger(OpencrvsProcessor.name);
+
+  constructor(private readonly http: HttpService) {}
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
     // Per-entry dispatch (issue #95): act on exactly the entry addressed by
@@ -46,7 +52,7 @@ export class OpencrvsProcessor implements ISubmissionProcessor {
       // X-Idempotency-Key lets the OpenCRVS server deduplicate retried POSTs.
       // The index suffix distinguishes multiple opencrvs entries on the same
       // submission so each entry can retry without colliding with the others.
-      "X-Idempotency-Key": `${payload.submissionId}:${index}`,
+      "X-Idempotency-Key": idempotencyKey(payload.submissionId, index),
     };
 
     const token = cfg["token"] as string | undefined;
@@ -54,23 +60,18 @@ export class OpencrvsProcessor implements ISubmissionProcessor {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        submissionId: payload.submissionId,
-        formId: payload.formId,
-        formVersion: payload.formVersion,
-        values: payload.values,
-        submittedAt: payload.meta.submittedAt,
-      }),
+    const body = JSON.stringify({
+      submissionId: payload.submissionId,
+      formId: payload.formId,
+      formVersion: payload.formVersion,
+      values: payload.values,
+      submittedAt: payload.meta.submittedAt,
     });
 
-    if (!response.ok) {
-      throw new Error(
-        `[opencrvs] Endpoint ${endpoint} responded with HTTP ${response.status}`,
-      );
-    }
+    await timedPost(this.http, endpoint, body, {
+      headers,
+      timeoutMs: DEFAULT_TIMEOUT_MS,
+    });
 
     this.logger.log(
       `[opencrvs] Forwarded submission ${payload.submissionId} to ${endpoint}`,

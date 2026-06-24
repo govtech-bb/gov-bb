@@ -6,7 +6,7 @@ import {
   ApiParam,
 } from "@nestjs/swagger";
 import { FormDraftResponseDto } from "./dto";
-import { ApiWrappedResponse } from "../../common/swagger";
+import { ApiWrappedResponse } from "@/common/swagger";
 
 const draftIdParam = ApiParam({
   name: "draftId",

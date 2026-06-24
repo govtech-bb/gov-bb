@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { HttpService } from "@nestjs/axios";
 import type { WebhookMapping } from "@govtech-bb/form-types";
 import type {
   ISubmissionProcessor,
@@ -8,6 +9,7 @@ import type { SubmissionCreatedEvent } from "../submissions.types";
 import { sign } from "./webhook-signature";
 import { sanitizeForLog } from "./log-sanitize";
 import { buildMappedCasePayload } from "./webhook-mapping";
+import { idempotencyKey, timedPost } from "./http-post";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_SIGNATURE_HEADER = "X-Webhook-Signature";
@@ -36,6 +38,8 @@ type WebhookAuth =
 export class WebhookProcessor implements ISubmissionProcessor {
   readonly type = "webhook" as const;
   private readonly logger = new Logger(WebhookProcessor.name);
+
+  constructor(private readonly http: HttpService) {}
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
     // Per-entry dispatch (issue #95): act on exactly the entry addressed by
@@ -85,7 +89,7 @@ export class WebhookProcessor implements ISubmissionProcessor {
     const headers: Record<string, string> = {
       ...customHeaders,
       "Content-Type": "application/json",
-      "X-Idempotency-Key": `${payload.submissionId}:${index}`,
+      "X-Idempotency-Key": idempotencyKey(payload.submissionId, index),
     };
     if (!this.applyAuth(cfg, headers, body, payload.submissionId)) {
       return { kind: "completed" }; // auth configured to use env that isn't set
@@ -103,26 +107,7 @@ export class WebhookProcessor implements ISubmissionProcessor {
       );
     }
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        method,
-        headers,
-        body,
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timer);
-    }
-
-    if (!response.ok) {
-      throw new Error(
-        `[webhook] Endpoint ${url} responded with HTTP ${response.status}`,
-      );
-    }
+    await timedPost(this.http, url, body, { headers, timeoutMs, method });
 
     this.logger.log(
       `[webhook] Delivered submission ${payload.submissionId} to ${url}`,

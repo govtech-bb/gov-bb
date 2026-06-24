@@ -2,8 +2,8 @@ import type { Mocked } from "vitest";
 import { FormConfigService } from "./form-config.service";
 import type { FormConfigRepository } from "./form-config.repository";
 import type { MdaContactRepository } from "./mda-contact.repository";
-import type { FormConfigEntity } from "../../database/entities/form-config.entity";
-import type { MdaContactEntity } from "../../database/entities/mda-contact.entity";
+import type { FormConfigEntity } from "@/database/entities/form-config.entity";
+import type { MdaContactEntity } from "@/database/entities/mda-contact.entity";
 
 function makeService(
   formConfigRow: Partial<FormConfigEntity> | null,

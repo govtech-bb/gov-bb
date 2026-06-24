@@ -4,13 +4,13 @@ import { SendEmailCommand } from "@aws-sdk/client-sesv2";
 import MailComposer from "nodemailer/lib/mail-composer";
 import type Mail from "nodemailer/lib/mailer";
 import Handlebars from "handlebars";
-import { SesMailer } from "../../../email/ses-mailer";
-import { EmailTemplateService } from "../../../email/email-template.service";
+import { SesMailer } from "@/email/ses-mailer";
+import { EmailTemplateService } from "@/email/email-template.service";
 import {
   EmailBodyBuilder,
   type EmailFileLink,
-} from "../../../email/email-body.builder";
-import { FilesService } from "../../../files/files.service";
+} from "@/email/email-body.builder";
+import { FilesService } from "@/files/files.service";
 import {
   classifyRecipientField,
   CONTACT_DETAILS_PREFIX,
@@ -20,7 +20,7 @@ import type {
   ProcessorOutput,
 } from "./submission-processor.interface";
 import type { SubmissionCreatedEvent } from "../submissions.types";
-import { FormConfigService } from "../../form-config/form-config.service";
+import { FormConfigService } from "@/forms/form-config/form-config.service";
 import { NonRetryableError } from "./non-retryable-error";
 
 // The detailed reviewer/MDA email: full field-by-field summary of the
