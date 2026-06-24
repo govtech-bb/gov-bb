@@ -14,9 +14,13 @@
     "experimentalDecorators": true,
     "isolatedModules": true,
     "paths": {
+      "@govtech-bb/ai-bedrock/converse": [
+        "dist/packages/ai-bedrock/src/converse.d.ts"
+      ],
       "@govtech-bb/database": ["../../packages/database/src/index.ts"],
       "@govtech-bb/form-builder": ["../../packages/form-builder/src/index.ts"],
-      "@govtech-bb/form-types": ["../../packages/form-types/src/index.ts"]
+      "@govtech-bb/form-types": ["../../packages/form-types/src/index.ts"],
+      "@govtech-bb/git-publish": ["../../packages/git-publish/src/index.ts"]
     }
   },
   "include": ["src/**/*.ts"],

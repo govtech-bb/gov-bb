@@ -1,0 +1,321 @@
+{
+  "formId": "nhs-tenants-notice-intention-purchase-freehold",
+  "title": "Tenant's Notice of Intention to Purchase Freehold",
+  "description": "Formal notice under the Tenantries Freehold Purchase Act, Cap. 239B, Section 12(1)",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your notice of intention to purchase freehold has been received",
+        "recipientField": "tenant-contact-details.email"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "tenant-contact-details",
+      "title": "Tell us about yourself",
+      "elements": [
+        {
+          "ref": "components/title",
+          "overrides": {
+            "label": "Title",
+            "fieldId": "tenant-title"
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First name",
+            "fieldId": "tenant-first-name",
+            "validations": {
+              "required": {
+                "error": "Enter your first name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "hint": "Optional",
+            "label": "Middle name",
+            "fieldId": "tenant-middle-name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last name",
+            "fieldId": "tenant-last-name",
+            "validations": {
+              "required": {
+                "error": "Enter your last name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone"
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "hint": "Optional",
+            "label": "Email address",
+            "fieldId": "email",
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "landlord-type",
+      "title": "Who is the landlord?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Is the landlord an individual or a company?",
+            "fieldId": "landlord-type-selection",
+            "options": [
+              {
+                "label": "Individual",
+                "value": "individual"
+              },
+              {
+                "label": "Company",
+                "value": "company"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select whether the landlord is an individual or a company",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "landlord-details",
+      "title": "Give the landlord's details",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First name",
+            "fieldId": "landlord-first-name",
+            "validations": {
+              "required": {
+                "error": "Enter the landlord's first name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "hint": "Optional",
+            "label": "Middle name",
+            "fieldId": "landlord-middle-name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last name",
+            "fieldId": "landlord-last-name",
+            "validations": {
+              "required": {
+                "error": "Enter the landlord's last name",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "value": "individual",
+          "operator": "equal",
+          "targetStepId": "landlord-type",
+          "targetFieldId": "landlord-type-selection"
+        }
+      ]
+    },
+    {
+      "stepId": "landlord-company-details",
+      "title": "Give the company's details",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Company name",
+            "fieldId": "company-name",
+            "validations": {
+              "required": {
+                "error": "Enter the company name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "hint": "Optional",
+            "label": "Company representative first name",
+            "fieldId": "company-representative-person-first-name",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "hint": "Optional",
+            "label": "Company representative middle name",
+            "fieldId": "company-representative-middle-name"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "hint": "Optional",
+            "label": "Company representative last name",
+            "fieldId": "company-representative-person-last-name",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "value": "company",
+          "operator": "equal",
+          "targetStepId": "landlord-type",
+          "targetFieldId": "landlord-type-selection"
+        }
+      ]
+    },
+    {
+      "stepId": "tenantry-location",
+      "title": "Where is the tenantry's location",
+      "elements": [
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Tenantry name"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "tenantry-address-line-1",
+            "validations": {
+              "required": {
+                "error": "Enter the address",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "hint": "Optional",
+            "label": "Address line 2",
+            "fieldId": "tenantry-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish"
+        },
+        {
+          "ref": "components/postcode",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "hint": "Optional",
+            "label": "Postcode",
+            "fieldId": "tenantry-postcode"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I confirm that the information provided in this notice is true and correct.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "We have received your notice of intention to purchase the freehold. You will receive a confirmation email at the address you provided."
+        }
+      ]
+    }
+  ],
+  "createdAt": "2026-06-16T15:04:28.511Z",
+  "updatedAt": "2026-06-16T15:04:28.511Z"
+}

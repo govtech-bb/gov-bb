@@ -8,7 +8,6 @@ import {
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
 import { getPublishedRecipe } from "./github-recipes";
-import { compare as compareSemver } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
 import { requireSession } from "./auth/require-session";
 import {
@@ -44,8 +43,9 @@ export const listForms = createServerFn({ method: "GET" })
     const byFormId = new Map<string, FormDefinitionSummary>();
     for (const d of drafts) byFormId.set(d.formId, d);
     for (const p of published) {
-      const existing = byFormId.get(p.formId);
-      if (existing && compareSemver(existing.version, p.version) > 0) continue;
+      // #1196: a draft row is the current working copy — always prefer it over
+      // the published entry. `isPublished` is OR'd back in by the map below.
+      if (byFormId.has(p.formId)) continue;
       byFormId.set(p.formId, {
         id: p.formId,
         formId: p.formId,
@@ -72,45 +72,33 @@ export const listForms = createServerFn({ method: "GET" })
       .filter((f) => !f.isDisabled || f.isPublished);
   });
 
-// Resolve the recipe the builder should load for `formId`: the draft, unless a
-// published copy is strictly newer (ties go to the draft). Returns null when
-// neither exists. Shared by getRecipe (which redacts secrets before returning)
-// and the save path (which restores redacted secrets from this same source).
+// Resolve the recipe the builder should load for `formId`, using the same
+// precedence as getRecipe (#1196): the DB draft row is the current working copy,
+// so prefer it; with no draft row (e.g. just after the post-merge archive), fall
+// back to the published canonical flat file. Returns null when neither exists.
+// Shared by getRecipe (which redacts secrets before returning) and the save path
+// (which restores redacted secrets from this same source) so both resolve the
+// secret from one place.
 async function resolveStoredRecipe(
   formId: string,
   token: string,
 ): Promise<ServiceContractRecipe | null> {
-  let draft: ServiceContractRecipe | null = null;
+  // #1196: the DB scratch row is the current working draft — prefer it.
   try {
-    draft = await api.get<ServiceContractRecipe>(
+    return await api.get<ServiceContractRecipe>(
       `/builder/forms/${encodeURIComponent(formId)}`,
     );
   } catch (err) {
     if (!(err instanceof ApiError) || err.status !== 404) throw err;
   }
 
-  let published: { version: string; recipe: unknown } | null = null;
+  // No draft row — seed from the published canonical flat file.
   try {
     const recipe = await getPublishedRecipe(token, { formId });
-    const version =
-      typeof (recipe as { version?: unknown }).version === "string"
-        ? (recipe as { version: string }).version
-        : null;
-    if (version) published = { version, recipe };
+    return serviceContractRecipeSchema.parse(recipe);
   } catch {
-    // No published copy — fall back to draft (or null below).
+    return null;
   }
-
-  if (
-    draft &&
-    (!published || compareSemver(draft.version, published.version) >= 0)
-  ) {
-    return draft;
-  }
-  if (published) {
-    return serviceContractRecipeSchema.parse(published.recipe);
-  }
-  return null;
 }
 
 // Re-inject real processor secrets onto a recipe the browser sent back, pulling
@@ -133,6 +121,8 @@ export const getRecipe = createServerFn({ method: "GET", strict: false })
   .middleware([requireSession])
   .inputValidator(z.object({ formId: z.string() }))
   .handler(async ({ data, context }): Promise<ServiceContractRecipe> => {
+    // #1196 precedence (draft row, else published) lives in resolveStoredRecipe,
+    // so getRecipe and the save path resolve from the same source.
     const recipe = await resolveStoredRecipe(
       data.formId,
       context.session.accessToken,
@@ -311,21 +301,4 @@ export const enableForm = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }): Promise<void> => {
     await api.del(`/builder/forms/${encodeURIComponent(data.formId)}/disabled`);
-  });
-
-// Delete a single version row of a form. Unlike deleteForm, this leaves no
-// tombstone and only removes the one matching row — for pruning a superseded
-// draft. The API returns 404 if no such row and 400 if it's published.
-export const deleteFormVersion = createServerFn({ method: "POST" })
-  .middleware([requireSession])
-  .inputValidator(
-    z.object({
-      formId: z.string().min(1),
-      version: z.string().min(1),
-    }),
-  )
-  .handler(async ({ data }): Promise<void> => {
-    await api.del(
-      `/builder/forms/${encodeURIComponent(data.formId)}/versions/${encodeURIComponent(data.version)}`,
-    );
   });

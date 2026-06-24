@@ -367,7 +367,8 @@ export class FilesService {
 
   private async resolveFileField(
     formId: string,
-    formVersion: string,
+    // Optional post-#1196: absent → canonical recipe, present → legacy file.
+    formVersion: string | undefined,
     stepId: string,
     fieldId: string,
     preview = false,
@@ -380,7 +381,9 @@ export class FilesService {
         preview,
       });
     } catch {
-      throw new BadRequestException(`Form not found: ${formId}@${formVersion}`);
+      throw new BadRequestException(
+        `Form not found: ${formId}${formVersion ? `@${formVersion}` : ""}`,
+      );
     }
     const step = contract.steps.find((s) => s.stepId === stepId);
     if (!step) {

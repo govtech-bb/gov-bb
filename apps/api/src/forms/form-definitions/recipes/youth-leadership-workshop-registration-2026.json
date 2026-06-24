@@ -1,0 +1,357 @@
+{
+  "steps": [
+    {
+      "title": "Informed Consent",
+      "stepId": "informed-consent",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "hint": "The Ministry of Youth, Sports and Community Empowerment will use the information you provide solely for the purposes of planning, evaluating, and improving its programmes and initiatives. By completing this form, you consent to the collection and use of your responses for these purposes. You may withdraw your consent at any time by contacting the Ministry.",
+            "label": "Would you like to continue applying?",
+            "fieldId": "continue-applying",
+            "options": [
+              {
+                "label": "Yes, I would like to continue applying.",
+                "value": "yes"
+              },
+              {
+                "label": "No, I do not wish to continue applying.",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please indicate whether you wish to continue applying",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Demographic Information",
+      "stepId": "demographic-information",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "applicant-first-name",
+            "validations": {
+              "required": {
+                "error": "Enter your first name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last Name",
+            "fieldId": "applicant-last-name",
+            "validations": {
+              "required": {
+                "error": "Enter your last name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Name of School",
+            "fieldId": "school-name",
+            "validations": {
+              "required": {
+                "error": "Enter the name of your school",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Gender",
+            "fieldId": "applicant-gender",
+            "options": [
+              {
+                "label": "Female",
+                "value": "female"
+              },
+              {
+                "label": "Male",
+                "value": "male"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select your gender",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Age",
+            "fieldId": "applicant-age",
+            "validations": {
+              "required": {
+                "error": "Enter your age",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "hint": "Example: January 7, 2019",
+            "label": "Date of Birth",
+            "fieldId": "applicant-date-of-birth",
+            "validations": {
+              "required": {
+                "error": "Enter your date of birth",
+                "value": true
+              },
+              "pastOrToday": {
+                "error": "Date of birth must be in the past",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "applicant-parish",
+            "options": [
+              {
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "label": "St. Andrew",
+                "value": "st-andrew"
+              },
+              {
+                "label": "St. George",
+                "value": "st-george"
+              },
+              {
+                "label": "St. James",
+                "value": "st-james"
+              },
+              {
+                "label": "St. John",
+                "value": "st-john"
+              },
+              {
+                "label": "St. Joseph",
+                "value": "st-joseph"
+              },
+              {
+                "label": "St. Lucy",
+                "value": "st-lucy"
+              },
+              {
+                "label": "St. Michael",
+                "value": "st-michael"
+              },
+              {
+                "label": "St. Peter",
+                "value": "st-peter"
+              },
+              {
+                "label": "St. Philip",
+                "value": "st-philip"
+              },
+              {
+                "label": "St. Thomas",
+                "value": "st-thomas"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select your parish",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Contact Information",
+      "stepId": "contact-information",
+      "elements": [
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "label": "Telephone Number (Landline and Cell)",
+            "fieldId": "applicant-telephone",
+            "validations": {
+              "required": {
+                "error": "Enter your telephone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "label": "Email Address",
+            "fieldId": "applicant-email",
+            "validations": {
+              "email": {
+                "error": "Enter a valid email address",
+                "value": true
+              },
+              "required": {
+                "error": "Enter your email address",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Emergency Contact Information",
+      "stepId": "emergency-contact",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First Name",
+            "fieldId": "emergency-first-name",
+            "validations": {
+              "required": {
+                "error": "Enter the emergency contact's first name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last Name",
+            "fieldId": "emergency-last-name",
+            "validations": {
+              "required": {
+                "error": "Enter the emergency contact's last name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "e.g. parent, grand-parent, guardian",
+            "label": "Relationship to Applicant",
+            "fieldId": "emergency-relationship",
+            "validations": {
+              "required": {
+                "error": "Enter your relationship to the applicant",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address (If different from above)",
+            "fieldId": "emergency-address"
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "label": "Telephone Numbers (Landline & Cell)",
+            "fieldId": "emergency-telephone",
+            "validations": {
+              "required": {
+                "error": "Enter the emergency contact's telephone number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "label": "Email Address",
+            "fieldId": "emergency-email",
+            "validations": {
+              "email": {
+                "error": "Enter a valid email address",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Declaration",
+      "stepId": "declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I confirm that the information provided in this form is true and correct. I consent to the collection and use of my responses by the Ministry of Youth, Sports and Community Empowerment for the purposes of planning, evaluating, and improving its programmes and initiatives.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Application Submitted",
+      "stepId": "submission-confirmation",
+      "elements": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "Thank you for registering for the Youth Leadership Workshop 2026. We have received your application and you will receive a confirmation email at the address you provided. If you have any questions, please contact the Youth Development Programme at ydp@barbados.gov.bb or (246) 535-3835."
+        }
+      ]
+    }
+  ],
+  "title": "Youth Leadership Workshop: Registration Form 2026",
+  "formId": "youth-leadership-workshop-registration-2026",
+  "createdAt": "2026-01-01T00:00:00Z",
+  "updatedAt": "2026-01-01T00:00:00Z",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Youth Leadership Workshop Registration Has Been Received",
+        "recipientField": "contact-information.applicant-email"
+      }
+    }
+  ],
+  "description": "The application form is for the Ministry of Youth, Sports and Community Empowerment's 'Youth Leadership Workshop'. All personal information collected through this form will be stored securely and treated with strict confidentiality, in accordance with applicable data protection and privacy standards."
+}

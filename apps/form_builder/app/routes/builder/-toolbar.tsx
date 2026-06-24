@@ -19,7 +19,6 @@ interface ToolbarProps {
   leading?: ReactNode;
   formId: string;
   title: string;
-  version: string;
   /** Uniqueness error for the formId (e.g. id already taken), computed by the
    *  parent against the forms list. Shown alongside the local format error. */
   idError?: string | null;
@@ -54,7 +53,6 @@ export function Toolbar({
   leading,
   formId,
   title,
-  version,
   idError,
   isDirty,
   hasUnsavedChanges,
@@ -97,7 +95,6 @@ export function Toolbar({
               a constant set of children so verdicts never reflow the header. */}
           <div className={styles.eyebrowRow}>
             <span className={styles.eyebrow}>Form builder</span>
-            <span className={styles.badge}>v{version}</span>
             {hasUnsavedChanges && (
               <span className={styles.statusUnsaved}>● Unsaved changes</span>
             )}

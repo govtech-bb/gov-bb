@@ -1,7 +1,15 @@
 # 0041 — Recipe versions are immutable, and a deploy claims its version before touching GitHub
 
 **Date:** 2026-06-05
-**Status:** Accepted
+**Status:** Superseded by [0057](0057-recipe-versioning-removed-one-flat-file-per-form.md) (#1196)
+
+> **Superseded (2026-06-23, #1196).** Recipe versioning was removed, so the
+> premises here invert: recipes are no longer immutable versioned artifacts but a
+> single mutable file `recipes/{formId}.json` edited in place and reviewed by
+> diff. The `recipe-version-guard` CI gate, the `recipe-version-override` label,
+> the DB deploy-claim reservation, and the `UNIQUE(form_id, version)` constraint
+> are all removed. Cross-PR version collisions cannot occur because there are no
+> versions to collide.
 
 ## Context
 

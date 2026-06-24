@@ -27,25 +27,6 @@ function ghHeaders(token: string): Record<string, string> {
   };
 }
 
-function parseSemver(v: string): number[] {
-  return v.split(".").map((seg) => {
-    const n = Number.parseInt(seg, 10);
-    return Number.isFinite(n) ? n : -Infinity;
-  });
-}
-
-export function compareSemver(a: string, b: string): number {
-  const aa = parseSemver(a);
-  const bb = parseSemver(b);
-  const len = Math.max(aa.length, bb.length);
-  for (let i = 0; i < len; i++) {
-    const av = aa[i] ?? 0;
-    const bv = bb[i] ?? 0;
-    if (av !== bv) return av - bv;
-  }
-  return 0;
-}
-
 async function ghGet(
   url: string,
   token: string,
@@ -61,22 +42,12 @@ async function ghGet(
   return { status: res.status, body };
 }
 
-/** Fetch a single recipe by formId + optional version. Latest when version omitted. */
+/** Fetch a form's canonical published recipe (#1196: the flat `{formId}.json`). */
 export async function getPublishedRecipe(
   token: string,
-  args: { formId: string; version?: string },
+  args: { formId: string },
 ): Promise<Record<string, unknown>> {
-  let version = args.version;
-  if (!version) {
-    const versions = await listVersions(token, args.formId);
-    if (versions.length === 0) {
-      throw new Error(`No recipe found for formId "${args.formId}"`);
-    }
-    version = versions.reduce((best, v) =>
-      compareSemver(v, best) > 0 ? v : best,
-    );
-  }
-  return fetchRecipeFile(token, args.formId, version);
+  return fetchRecipeFile(token, args.formId);
 }
 
 /**
@@ -113,31 +84,28 @@ export async function listVersions(
 async function fetchRecipeFile(
   token: string,
   formId: string,
-  version: string,
 ): Promise<Record<string, unknown>> {
   const res = await ghGet(
-    `${API_BASE}/repos/${repoOwner()}/${REPO_NAME}/contents/${RECIPES_BASE}/${encodeURIComponent(formId)}/${encodeURIComponent(version)}.json`,
+    `${API_BASE}/repos/${repoOwner()}/${REPO_NAME}/contents/${RECIPES_BASE}/${encodeURIComponent(formId)}.json`,
     token,
   );
   if (res.status === 404) {
-    throw new Error(
-      `Recipe not found: ${RECIPES_BASE}/${formId}/${version}.json`,
-    );
+    throw new Error(`Recipe not found: ${RECIPES_BASE}/${formId}.json`);
   }
   if (res.status < 200 || res.status >= 300) {
     throw new Error(
-      `GitHub Contents API returned ${res.status} for ${formId}/${version}.json: ${JSON.stringify(res.body)}`,
+      `GitHub Contents API returned ${res.status} for ${formId}.json: ${JSON.stringify(res.body)}`,
     );
   }
   const file = res.body as ContentsFile;
   if (file.encoding !== "base64") {
     throw new Error(
-      `Unexpected encoding "${file.encoding}" for ${formId}/${version}.json — expected "base64"`,
+      `Unexpected encoding "${file.encoding}" for ${formId}.json — expected "base64"`,
     );
   }
   if (!file.content) {
     throw new Error(
-      `Recipe ${formId}/${version}.json has no inline content — file may exceed 1MB`,
+      `Recipe ${formId}.json has no inline content — file may exceed 1MB`,
     );
   }
   const decoded = Buffer.from(file.content, "base64").toString("utf8");

@@ -9,13 +9,14 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@aws-sdk/client-bedrock-runtime": "^3.1057.0",
     "@aws-sdk/client-s3": "^3.1052.0",
     "@aws-sdk/client-textract": "^3.1064.0",
     "@aws-sdk/s3-request-presigner": "^3.1052.0",
+    "@govtech-bb/ai-bedrock": "workspace:*",
     "@govtech-bb/database": "workspace:*",
     "@govtech-bb/form-builder": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
+    "@govtech-bb/git-publish": "workspace:*",
     "cors": "^2.8.5",
     "dotenv": "17.4.2",
     "express": "^5.1.0",

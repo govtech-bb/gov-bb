@@ -1,0 +1,320 @@
+{
+  "formId": "bssee-form-b-defer-examination",
+  "title": "BSSEE Form B - Request for 11 Year Old Pupil to Defer Taking Examination for One Year",
+  "description": "Request for an 11-year-old pupil to defer taking the Barbados Secondary Schools' Entrance Examination for one year, completed by parent/guardian.",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "parent-guardian-information.guardian-email",
+        "subject": "BSSEE Form B - Deferral Request Received"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "school-information",
+      "title": "School Information",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "fieldId": "primary-school-name",
+            "label": "Name of Primary School",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Primary school name is required"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "pupil-information",
+      "title": "Pupil Information",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "pupil-first-name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Pupil's first name is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "pupil-surname",
+            "label": "Surname",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Pupil's surname is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "fieldId": "pupil-other-names",
+            "label": "Other Names",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "fieldId": "pupil-date-of-birth",
+            "label": "Pupil's Date of Birth",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Pupil's date of birth is required"
+              },
+              "pastOrToday": {
+                "value": true,
+                "error": "Date of birth must be in the past"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "pupil-age-31-august",
+            "label": "Age on 31st August this Year",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Age is required"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "parent-guardian-information",
+      "title": "Parent/Guardian Information",
+      "elements": [
+        {
+          "ref": "components/title",
+          "overrides": {
+            "fieldId": "guardian-title",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Title is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "guardian-first-name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Guardian's first name is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "guardian-last-name",
+            "label": "Last Name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Guardian's last name is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "guardian-address",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Address is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/contact-telephone",
+          "overrides": {
+            "fieldId": "guardian-contact-number",
+            "label": "Contact Number",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Contact number is required"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "deferral-reasons",
+      "title": "Reason for Deferral Request",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "fieldId": "pupil-name-fill",
+            "label": "Child's Name (for reference)",
+            "hint": "This field is pre-filled from pupil information above",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "reason-low-scores",
+            "label": "Reason 1: Low Academic Scores",
+            "options": [
+              {
+                "label": "My child was scoring less than 20% in both Mathematics and English over six (6) consecutive terms in Class 2 and Class 3.",
+                "value": "low-scores"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "reason-missed-instruction",
+            "label": "Reason 2: Missed Instruction",
+            "options": [
+              {
+                "label": "My child missed a significant portion of their instruction due to trauma, illness, or significant learning difficulties.",
+                "value": "missed-instruction"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "additional-reason-details",
+            "label": "Additional Details (if needed)",
+            "hint": "Provide any additional information supporting your request",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "ui": {
+              "width": "long"
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "applicant-signature",
+      "title": "Applicant Declaration",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "fieldId": "applicant-signature",
+            "label": "Signature",
+            "hint": "Type your name or initials",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Signature is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "fieldId": "applicant-signature-date",
+            "label": "Date",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Date is required"
+              },
+              "pastOrToday": {
+                "value": true,
+                "error": "Date must be today or in the past"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "options": [
+              {
+                "label": "I confirm that the information provided is true and correct. I am aware that my child will be given only one opportunity to write this examination.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "You must confirm the declaration to continue"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-06-02T13:52:44.173Z",
+  "updatedAt": "2026-06-02T13:52:44.173Z"
+}

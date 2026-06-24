@@ -127,14 +127,16 @@ describe("listForms", () => {
     );
   });
 
-  it("prefers the published entry when its version is newer than the draft", async () => {
+  it("prefers the draft row, marking it isPublished from the index (#1196)", async () => {
+    // #1196: the draft row is the current working copy, so it always wins the
+    // merge; isPublished is OR'd in from the published index.
     apiGet.mockImplementation((path: string) => {
       if (path === "/builder/forms")
         return Promise.resolve([
           {
             id: "uuid-1",
             formId: "passport-renewal",
-            title: "Old draft",
+            title: "Working draft",
             version: "1.0.0",
             isPublished: false,
           },
@@ -156,7 +158,7 @@ describe("listForms", () => {
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       formId: "passport-renewal",
-      version: "1.1.0",
+      title: "Working draft",
       isPublished: true,
     });
   });
@@ -488,7 +490,9 @@ describe("getRecipe (draft-vs-published precedence)", () => {
     return { ...publishedRecipe(version), title: "Conductor (draft)" };
   }
 
-  it("returns the published copy when it is newer than the draft", async () => {
+  it("returns the draft when present, ignoring the published copy (#1196)", async () => {
+    // #1196: the DB scratch draft is the working copy — it always wins when
+    // present; the published flat file is only the fallback (no version compare).
     apiGet.mockResolvedValue(draftRecipe("1.1.0"));
     getPublishedRecipeMock.mockResolvedValue(publishedRecipe("1.3.0"));
 
@@ -497,21 +501,6 @@ describe("getRecipe (draft-vs-published precedence)", () => {
       context: { session: SESSION },
     } as never);
 
-    expect(result.version).toBe("1.3.0");
-    expect(result.title).toBe("Apply for Conductor Licence");
-  });
-
-  it("returns the draft when its version is greater than or equal to the published copy", async () => {
-    apiGet.mockResolvedValue(draftRecipe("1.3.0"));
-    getPublishedRecipeMock.mockResolvedValue(publishedRecipe("1.3.0"));
-
-    const result = await getRecipe({
-      data: { formId: FORM_ID },
-      context: { session: SESSION },
-    } as never);
-
-    expect(result.version).toBe("1.3.0");
-    // Equal versions tie-break to the draft.
     expect(result.title).toBe("Conductor (draft)");
   });
 

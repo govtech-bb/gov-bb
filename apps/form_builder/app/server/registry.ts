@@ -3,14 +3,10 @@ import { z } from "zod";
 import { getCatalog } from "@govtech-bb/form-builder";
 import type {
   RegistryCatalog,
-  CustomComponentEntry,
   ValidationResult,
-  ValidationRuleDescriptor,
 } from "@govtech-bb/form-builder";
 import type { ServiceContract } from "@govtech-bb/form-types";
 
-// BEHAVIOUR_TYPE_DESCRIPTORS has no exported type; consumers use the JSON shape.
-type BehaviourTypeDescriptor = Record<string, unknown>;
 import { api } from "./api-client";
 import { requireSession } from "./auth/require-session";
 
@@ -41,26 +37,6 @@ export const getCatalogFn = createServerFn({
     _catalogCache = { data: catalog, expiresAt: now + 60_000 };
     return catalog;
   });
-
-export const getRegistryItemFn = createServerFn({ method: "GET" })
-  .middleware([requireSession])
-  .inputValidator(z.object({ ref: z.string() }))
-  .handler(async ({ data }): Promise<CustomComponentEntry> => {
-    return api.get<CustomComponentEntry>(
-      `/builder/registry/item?ref=${encodeURIComponent(data.ref)}`,
-    );
-  });
-
-export const getBuilderMetadata = createServerFn({ method: "GET" })
-  .middleware([requireSession])
-  .handler(
-    async (): Promise<{
-      behaviourDescriptors: readonly BehaviourTypeDescriptor[];
-      validationDescriptors: readonly ValidationRuleDescriptor[];
-    }> => {
-      return api.get("/builder/registry/metadata");
-    },
-  );
 
 export const validateRecipe = createServerFn({ method: "POST", strict: false })
   .middleware([requireSession])
