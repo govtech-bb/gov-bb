@@ -83,11 +83,15 @@ async function resolveStoredRecipe(
   formId: string,
   token: string,
 ): Promise<ServiceContractRecipe | null> {
-  // #1196: the DB scratch row is the current working draft — prefer it.
+  // #1196: the DB scratch row is the current working draft — prefer it. Guard
+  // on truthiness (not just a non-404 response) so a falsy body — a 204 or a
+  // `200 null` for an empty draft row — falls through to the published copy
+  // rather than being returned as the recipe.
   try {
-    return await api.get<ServiceContractRecipe>(
+    const draft = await api.get<ServiceContractRecipe>(
       `/builder/forms/${encodeURIComponent(formId)}`,
     );
+    if (draft) return draft;
   } catch (err) {
     if (!(err instanceof ApiError) || err.status !== 404) throw err;
   }
