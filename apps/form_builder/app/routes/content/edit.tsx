@@ -15,7 +15,7 @@ import { listForms } from "../../server/forms";
 import { getPublishBaseBranch } from "../../server/publish";
 import { publishStartPage, deleteContentPage } from "./-server";
 import { HeaderMenu } from "./-header-menu";
-import { isValidSlug, parseStartLink } from "./-lib";
+import { isValidSlug, parseStartLink, linkableForms } from "./-lib";
 import { StartPagePreviewFrame, LANDING_ORIGIN } from "./-preview-frame";
 import { useContentList } from "./-use-content-list";
 import { usePersistedState } from "./-use-persisted";
@@ -44,7 +44,9 @@ export const Route = createFileRoute("/content/edit")({
   }),
   loader: async () => {
     const [forms, baseBranch] = await Promise.all([
-      listForms().catch(() => []),
+      // Hide disabled draft-only / orphan-override rows the picker uses for
+      // re-enable (#1658) — they have no live recipe to link content to.
+      listForms().then(linkableForms).catch(() => []),
       getPublishBaseBranch().catch(() => "dev"),
     ]);
     return { forms, baseBranch };

@@ -15,6 +15,21 @@
 
 import { KEBAB_ID_PATTERN } from "@govtech-bb/form-types";
 import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
+import type { BuilderFormSummary } from "../../types/index";
+
+/**
+ * Forms the CMS can link a content page to: every form except a disabled one
+ * with no published recipe. `listForms()` returns disabled draft-only and
+ * orphan-override rows so the form-builder picker can re-enable them (#1658),
+ * but those have no live recipe to point a content page at — so the content
+ * screens hide them. A disabled *published* form stays listed (it was before
+ * #1658 too); this restores exactly the filter `listForms` used to apply.
+ */
+export function linkableForms(
+  forms: BuilderFormSummary[],
+): BuilderFormSummary[] {
+  return forms.filter((f) => !f.isDisabled || f.isPublished);
+}
 
 /**
  * Top-level landing categories — the canonical taxonomy owned by
