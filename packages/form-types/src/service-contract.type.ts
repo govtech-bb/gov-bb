@@ -60,6 +60,22 @@ export const serviceContractSchema = z.object({
 });
 export type ServiceContract = z.infer<typeof serviceContractSchema>;
 
+// Service launch gate (#1646). `visibility` decides whether the public can
+// reach a form: `public` is served normally; `preview`/`draft` are hidden
+// (404) from the public and only resolve when a valid recipe-preview token is
+// supplied. Mirrors apps/landing's page-level visibility levels.
+export const recipeVisibilitySchema = z.enum(["public", "preview", "draft"]);
+export type RecipeVisibility = z.infer<typeof recipeVisibilitySchema>;
+
+// `meta` is an extensible container for recipe-level metadata. Optional during
+// the #1646 rollout so existing recipes (which carry no `meta`) still validate;
+// an absent `meta` or `visibility` is treated as `public` (see
+// getRecipeVisibility).
+export const recipeMetaSchema = z.object({
+  visibility: recipeVisibilitySchema.default("public"),
+});
+export type RecipeMeta = z.infer<typeof recipeMetaSchema>;
+
 export const serviceContractRecipeSchema = z.object({
   formId: formIdSchema,
   title: titleSchema,
@@ -70,5 +86,16 @@ export const serviceContractRecipeSchema = z.object({
   createdAt: dateTimeFormatSchema,
   updatedAt: dateTimeFormatSchema,
   version: semverSchema,
+  meta: recipeMetaSchema.optional(),
 });
 export type ServiceContractRecipe = z.infer<typeof serviceContractRecipeSchema>;
+
+/**
+ * Resolve a recipe's effective visibility. An absent `meta` (every recipe
+ * predating #1646) or absent `visibility` defaults to `public`.
+ */
+export function getRecipeVisibility(
+  recipe: Pick<ServiceContractRecipe, "meta">,
+): RecipeVisibility {
+  return recipe.meta?.visibility ?? "public";
+}

@@ -11,6 +11,7 @@ import * as path from "node:path";
 import {
   serviceContractRecipeSchema,
   compareSemver,
+  getRecipeVisibility,
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
 
@@ -228,7 +229,10 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
     }[] = [];
     for (const [formId, versions] of this.store) {
       const latest = this.latestVersion(versions);
-      if (latest)
+      // Hide non-public forms from the list (#1646) — the list carries no
+      // preview token, so preview/draft forms are unlisted for everyone,
+      // matching the 404 their single-form GET returns to the public.
+      if (latest && getRecipeVisibility(latest) === "public")
         out.push({
           formId,
           title: latest.title,
