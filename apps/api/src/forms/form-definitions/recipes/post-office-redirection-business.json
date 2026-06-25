@@ -525,5 +525,8 @@
     }
   ],
   "createdAt": "2026-06-04T22:01:37.244Z",
-  "updatedAt": "2026-06-16T00:00:00.000Z"
+  "updatedAt": "2026-06-16T00:00:00.000Z",
+  "meta": {
+    "visibility": "preview"
+  }
 }

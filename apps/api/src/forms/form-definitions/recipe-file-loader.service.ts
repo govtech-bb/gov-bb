@@ -10,6 +10,7 @@ import { watch, type FSWatcher } from "node:fs";
 import * as path from "node:path";
 import {
   serviceContractRecipeSchema,
+  getRecipeVisibility,
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
 
@@ -214,6 +215,10 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
       category?: string;
     }[] = [];
     for (const [formId, recipe] of this.recipes) {
+      // Hide non-public forms from the list (#1646) — the list carries no
+      // preview token, so preview/draft forms are unlisted for everyone,
+      // matching the 404 their single-form GET returns to the public.
+      if (getRecipeVisibility(recipe) !== "public") continue;
       out.push({
         formId,
         title: recipe.title,

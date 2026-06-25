@@ -1,6 +1,6 @@
 import { JSX } from "react";
 import ErrorMessage from "../error-message";
-import { renderRepeatableOrSingle } from "./repeatable-field";
+import { renderRepeatableOrSingle, rowInputProps } from "./repeatable-field";
 import { FieldRenderContext } from "./render-context";
 
 export function renderTextareaField(ctx: FieldRenderContext): JSX.Element {
@@ -21,19 +21,23 @@ export function renderTextareaField(ctx: FieldRenderContext): JSX.Element {
     value: string,
     onChange: (next: string) => void,
     withRequired: boolean,
-  ): JSX.Element => (
-    <div className="govbb-input-wrapper">
-      <textarea
-        key={field.id}
-        {...sharedProps}
-        {...(withRequired ? requiredProps : {})}
-        className="govbb-textarea"
-        value={value}
-        aria-invalid={invalid}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
-  );
+    index?: number,
+  ): JSX.Element => {
+    const props = rowInputProps(sharedProps, field, index);
+    return (
+      <div className="govbb-input-wrapper">
+        <textarea
+          key={props.id}
+          {...props}
+          {...(withRequired ? requiredProps : {})}
+          className="govbb-textarea"
+          value={value}
+          aria-invalid={invalid}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </div>
+    );
+  };
 
   const textareaElement = renderRepeatableOrSingle(ctx, renderTextarea);
 

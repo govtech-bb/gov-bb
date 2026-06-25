@@ -370,7 +370,7 @@
             "fieldId": "declaration-confirmed",
             "options": [
               {
-                "label": "I declare that the information provided in this application is true and correct to the best of my knowledge. I understand that providing false or misleading information may result in disqualification from the benefit and possible legal action. Any changes in the children's circumstances should be immediately reported.",
+                "label": "I declare that the information provided in this application is true and correct to the best of my knowledge. I understand that providing false or misleading information may result in disqualification from the benefit and possible legal action.",
                 "value": "confirmed"
               }
             ],
@@ -392,6 +392,6 @@
       "behaviours": []
     }
   ],
-  "createdAt": "2026-06-17T10:50:41.039Z",
-  "updatedAt": "2026-06-17T10:50:41.039Z"
+  "createdAt": "2026-06-25T14:17:23.186Z",
+  "updatedAt": "2026-06-25T14:17:23.186Z"
 }

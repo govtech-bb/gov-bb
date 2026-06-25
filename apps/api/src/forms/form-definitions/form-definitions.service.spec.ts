@@ -794,6 +794,70 @@ describe("FormDefinitionsService", () => {
     });
   });
 
+  describe("visibility gate (#1646)", () => {
+    const PREVIEW_RECIPE = {
+      ...MOCK_RECIPE,
+      meta: { visibility: "preview" as const },
+    };
+
+    it("getRecipe returns null for a non-public recipe with no preview token", async () => {
+      const { fileLoader, service } = makeMocks({ source: "files" });
+      (fileLoader.findByFormId as Mock).mockReturnValue(PREVIEW_RECIPE);
+
+      const result = await service.getRecipe({ formId: "passport-renewal" });
+
+      expect(result).toBeNull();
+    });
+
+    it("getRecipe returns the non-public recipe when preview:true (token bypasses the gate)", async () => {
+      const { fileLoader, repo, service } = makeMocks({ source: "files" });
+      // preview forces the "both" path; DB miss → falls back to the file loader.
+      (repo.findOne as Mock).mockResolvedValue(null);
+      (fileLoader.findByFormId as Mock).mockReturnValue(PREVIEW_RECIPE);
+
+      const result = await service.getRecipe({
+        formId: "passport-renewal",
+        preview: true,
+      });
+
+      expect(result).toBe(PREVIEW_RECIPE);
+    });
+
+    it("getRecipe still returns a public recipe", async () => {
+      const { fileLoader, service } = makeMocks({ source: "files" });
+      (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
+
+      const result = await service.getRecipe({ formId: "passport-renewal" });
+
+      expect(result).toBe(MOCK_RECIPE);
+    });
+
+    it("findByFormId throws NotFound for a non-public recipe (404 to the public)", async () => {
+      const { fileLoader, service } = makeMocks({ source: "files" });
+      (fileLoader.findByFormId as Mock).mockReturnValue(PREVIEW_RECIPE);
+
+      await expect(
+        service.findByFormId({ formId: "passport-renewal" }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("findAll (db mode) hides non-public forms from the list", async () => {
+      const { service } = makeFindAllMocks([
+        makeEntityWithTitle("public-form", "Public Form"),
+        makeEntityWithTitle("preview-form", "Preview Form", {
+          schema: {
+            title: "Preview Form",
+            meta: { visibility: "preview" },
+          } as unknown as FormDefinitionEntity["schema"],
+        }),
+      ]);
+
+      const list = await service.findAll();
+
+      expect(list.map((e) => e.formId)).toEqual(["public-form"]);
+    });
+  });
+
   describe("preview flag", () => {
     describe("valid preview resolves via DB/both even in prod files mode", () => {
       it("getRecipe with preview:true consults DB (both path) even when source=files/prod", async () => {

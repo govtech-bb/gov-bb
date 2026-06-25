@@ -3,6 +3,7 @@ import pg from "pg";
 import {
   getCachedSecretJson,
   getCachedSecretString,
+  invalidateSecretCache,
 } from "@govtech-bb/aws-secrets";
 import * as schema from "./schema";
 
@@ -47,11 +48,18 @@ async function resolveConnectionString(): Promise<string> {
   return getCachedSecretString(arn);
 }
 
+// `||` not `??` — Vite's `define` block in apps/chat/vite.config.ts bakes a
+// literal empty string for any env var that's missing in the build
+// environment (its `pick()` returns `""` as the fallback). Empty string is
+// NOT nullish, so `??` short-circuits at the first empty-baked var and
+// silently skips the rest of the chain — which broke chat in any deploy env
+// that set only the legacy URL_SECRET_ARN without also setting the
+// credentials-path vars (see #1631 revert; regression test below).
 export function hasDatabase(): boolean {
   return Boolean(
-    process.env.DATABASE_URL ??
-    process.env.CHAT_DATABASE_URL ??
-    process.env.CHAT_DATABASE_CREDENTIALS_SECRET_ARN ??
+    process.env.DATABASE_URL ||
+    process.env.CHAT_DATABASE_URL ||
+    process.env.CHAT_DATABASE_CREDENTIALS_SECRET_ARN ||
     process.env.CHAT_DATABASE_URL_SECRET_ARN,
   );
 }
@@ -93,6 +101,53 @@ export function getDb(): Promise<Database> {
     })();
   }
   return dbPromise;
+}
+
+/**
+ * Drop the cached pool + cached credentials so the next `getDb()` re-resolves
+ * the connection string from Secrets Manager and rebuilds the pool with the
+ * fresh password. Called by `withDbAuthRetry` when a query fails with PG
+ * `28P01` after an RDS master-password rotation.
+ */
+export function invalidateDb(): void {
+  dbPromise = null;
+  for (const arn of [
+    process.env.CHAT_DATABASE_CREDENTIALS_SECRET_ARN,
+    process.env.CHAT_DATABASE_URL_SECRET_ARN,
+  ]) {
+    if (arn) invalidateSecretCache(arn);
+  }
+}
+
+/**
+ * PG SQLSTATE 28P01 — `invalid_password`. After an RDS master-password
+ * rotation, the warm Lambda holds the old password in both the secrets cache
+ * and the pg.Pool's connection string; the first query on the stale pool fails
+ * with 28P01. drizzle wraps the pg error, so check `err.cause.code` too.
+ */
+export function isAuthFailure(err: unknown): boolean {
+  const code = (err as { code?: unknown } | null)?.code;
+  if (code === "28P01") return true;
+  const cause = (err as { cause?: unknown } | null)?.cause;
+  return (cause as { code?: unknown } | null)?.code === "28P01";
+}
+
+/**
+ * Wrap a DB operation so it transparently survives an RDS master-password
+ * rotation. On PG `28P01`, drop the cached pool + secret and retry the
+ * operation once with a freshly-resolved connection string. Any other error
+ * propagates unchanged. The retry runs at most once per call.
+ */
+export async function withDbAuthRetry<T>(
+  op: (db: Database) => Promise<T>,
+): Promise<T> {
+  try {
+    return await op(await getDb());
+  } catch (err) {
+    if (!isAuthFailure(err)) throw err;
+    invalidateDb();
+    return op(await getDb());
+  }
 }
 
 export { schema };
