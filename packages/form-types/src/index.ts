@@ -180,8 +180,6 @@ export {
   eraseBranchName,
 } from "./deploy-branch";
 
-export { compareSemver, validate, bumpMinor, bumpPatch } from "./semver";
-
 export type {
   MdaContact,
   MdaContactAddress,
