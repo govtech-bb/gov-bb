@@ -330,6 +330,22 @@ describe("BuilderPage — validate on Save draft click", () => {
     expect(confirmSpy).not.toHaveBeenCalled();
   });
 
+  it("carries the draft's meta.visibility into the serialized recipe sent to the server (#1682)", async () => {
+    // serializeRecipeDraft is real here, so this proves the builder's visibility
+    // selection round-trips all the way to the save/validate wire.
+    mockEmptyDraft = { ...VALID_DRAFT, meta: { visibility: "preview" } };
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+
+    expect(validateRecipe).toHaveBeenCalledTimes(1);
+    const arg = validateRecipe.mock.calls[0][0] as {
+      data: { recipe: { meta?: { visibility?: string } } };
+    };
+    expect(arg.data.recipe.meta).toEqual({ visibility: "preview" });
+  });
+
   it(
     "hard-gates Save draft on a title collision: error shown, modal closed, no save-anyway",
     async () => {
