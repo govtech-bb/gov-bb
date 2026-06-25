@@ -62,14 +62,17 @@ the retire is staged:
 - **Phase 1 (shipped, PR A + PR B / #1622, #1630).** Stop *generating* versions;
   serve flat files; keep the legacy `{formId}/{version}.json` directories as a
   read-only fallback so already-created pinned items still resolve.
-- **Phase 2 (PR C).** Delete the legacy directories, the loader's versioned map,
-  `loadLegacyVersion`, `latestVersion`, and the `version?` threading through the
-  read-back paths (loader, `findByFormId`/`getRecipe`, submission pipeline,
-  payment webhook, email builder, files service). The `findByFormId({ version })`
-  fallback no longer exists — a form resolves to its one canonical recipe.
-  **Time-gated:** PR C is authored ahead of time but MUST NOT merge until the
-  cutover (Phase 1) has been promoted to prod and the trigger below is met —
-  otherwise the fallback is removed while in-flight pinned items still need it.
+- **Phase 2 (PR C / #1632) — SHIPPED & LIVE in prod 2026-06-25.** Deleted the
+  legacy directories, the loader's versioned map, `loadLegacyVersion`,
+  `latestVersion`, and the `version?` threading through the read-back paths
+  (loader, `findByFormId`/`getRecipe`, submission pipeline, payment webhook,
+  email builder, files service). The `findByFormId({ version })` fallback no
+  longer exists — a form resolves to its one canonical recipe. Promoted
+  sandbox → staging (#1716) → prod (#1718) after the trigger below was met;
+  verified live (forms resolve from flat recipes, recipes tree fully flat).
+  **Time-gated:** PR C was authored ahead of time and held until the cutover
+  (Phase 1) reached prod and the trigger below was met — otherwise the fallback
+  would be removed while in-flight pinned items still needed it.
 
 ### Phase 2 trigger
 
@@ -79,9 +82,13 @@ PR C is safe once no *active* row still depends on a pinned version:
   pre-`fireDownstream` state (e.g. `PENDING_PAYMENT`), and the SQS DLQ drained.
 - `form_drafts`: all `form_version IS NOT NULL` rows past their TTL.
 - Conservative fallback: wait ≥ `max(draft TTL, payment-session expiry, SQS DLQ
-  retention)` from the PR B prod deploy. **Record the concrete values here when
-  the prod deploy lands** (Stage 0 Task 0.3): draft TTL = _TBD_, EzPay
-  payment-session expiry = _TBD_, SQS DLQ `MessageRetentionPeriod` = _TBD_.
+  retention)` from the PR B prod deploy. Concrete values: draft TTL = **7 days**
+  (`DRAFT_EXPIRY_DAYS`), abandoned EzPay payment-session expiry = **72h**
+  (`AbandonedPaymentCleanupService` `DEFAULT_TTL_HOURS`), SQS DLQ retention set
+  in IaC. **Outcome (2026-06-25):** the trigger was met by direct data check
+  before promoting to prod — zero pinned `pending_payment` submissions, zero
+  pinned active drafts, and the submissions DLQ drained — rather than waiting
+  the full conservative window.
 
 The `form_version` (submissions/drafts) and `version` (form_definitions) columns
 stay as never-read audit breadcrumbs — PR C stops writing meaningful values
