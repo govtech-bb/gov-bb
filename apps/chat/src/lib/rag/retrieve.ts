@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { getServerEnv } from "#/config/env";
-import { withDbAuthRetry, type Database } from "#/lib/db";
+import { getDb, type Database } from "#/lib/db";
 import { embed } from "./embed";
 import { rewriteLandingHost } from "./landing-host";
 import { MAX_CHUNKS_PER_DOC, SIMILARITY_THRESHOLD, TOP_K } from "./config";
@@ -84,9 +84,9 @@ export async function searchByVector(
   topK = TOP_K,
   db?: Database,
 ): Promise<RetrieveResponse> {
+  const database = db ?? (await getDb());
   const literal = JSON.stringify(vector);
-  const runQuery = (database: Database) =>
-    database.execute<RetrieveRow>(sql`
+  const res = await database.execute<RetrieveRow>(sql`
     WITH ranked AS (
       SELECT
         d.id          AS document_id,
@@ -116,10 +116,6 @@ export async function searchByVector(
     ORDER BY sim DESC
     LIMIT ${topK}
   `);
-  // Tests inject a `db` directly — skip the retry wrapper so the injected handle
-  // is honored verbatim. Production callers go through withDbAuthRetry so a
-  // mid-life RDS password rotation triggers exactly one re-resolve + retry.
-  const res = db ? await runQuery(db) : await withDbAuthRetry(runQuery);
 
   return rowsToResult(res.rows, getServerEnv().LANDING_URL, topK);
 }
