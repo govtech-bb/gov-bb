@@ -2,19 +2,21 @@ import { createFileRoute, notFound } from '@tanstack/react-router'
 import { Heading, Text, linkVariants } from '@govtech-bb/react'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
-import { MarkdownContent } from '../components/MarkdownContent'
+import { MarkdownContent } from '../components/markdown'
 import {
   categoryServices,
   findPage,
   isCategoryVisible,
-  isPreview,
+  isStartSubPageVisible,
   isVisible,
-  startSubPageInPreview,
+  pageLevel,
 } from '../content/registry'
 import type { ContentPage } from '../content/registry'
+import type { ViewLevel } from '../lib/frontmatter'
 import { CATEGORY_BY_SLUG, getSubcategory } from '../content/categories'
 import type { Category, SubCategory } from '../content/categories'
 import { getAvailableForms } from '../lib/available-forms'
+import { seoTags } from '../lib/page-head'
 
 interface CategoryListItem {
   title: string
@@ -45,14 +47,14 @@ type LoaderData =
 
 export const Route = createFileRoute('/$')({
   loader: async ({ params, context }): Promise<LoaderData> => {
-    const { preview } = context
+    const { level } = context
     const splat = (params._splat ?? '').replace(/^\/+|\/+$/g, '')
     const segments = splat.split('/').filter(Boolean)
 
     if (segments.length === 1) {
       const cat = CATEGORY_BY_SLUG[segments[0]]
       if (cat) {
-        if (!isCategoryVisible(cat, preview)) throw notFound()
+        if (!isCategoryVisible(cat, level)) throw notFound()
         if (cat.subcategories && cat.subcategories.length > 0) {
           return {
             kind: 'subcategory-index',
@@ -60,14 +62,14 @@ export const Route = createFileRoute('/$')({
             subcategories: cat.subcategories,
           }
         }
-        const items = categoryServices(cat.slug, preview).map(toListItem)
+        const items = categoryServices(cat.slug, level).map(toListItem)
         return { kind: 'category', category: cat, items }
       }
     }
 
     const page = findPage(splat)
     if (page) {
-      if (!isVisible(page, preview)) throw notFound()
+      if (!isVisible(page, level)) throw notFound()
       // Only content pages render Start now buttons, so the forms list is
       // resolved here (server-side, cached) and nowhere else.
       const availableForms = await getAvailableForms()
@@ -78,8 +80,8 @@ export const Route = createFileRoute('/$')({
       const cat = CATEGORY_BY_SLUG[segments[0]]
       const sub = cat ? getSubcategory(cat.slug, segments[1]) : undefined
       if (cat && sub) {
-        if (!isCategoryVisible(cat, preview)) throw notFound()
-        const items = categoryServices(cat.slug, preview)
+        if (!isCategoryVisible(cat, level)) throw notFound()
+        const items = categoryServices(cat.slug, level)
           .filter((p) => p.frontmatter.subcategory === sub.slug)
           .map(toListItem)
         return { kind: 'subcategory', category: cat, subcategory: sub, items }
@@ -91,48 +93,57 @@ export const Route = createFileRoute('/$')({
   head: ({ loaderData }) => {
     if (!loaderData) return {}
     if (loaderData.kind === 'page') {
+      const { page } = loaderData
+      const title = page.frontmatter.title
+      const isPublic = pageLevel(page) === 'public'
+      // Canonical/OG only for indexable pages — a gated page is noindex.
+      const seo = isPublic
+        ? seoTags(title, page.frontmatter.description ?? '', `/${page.url}`)
+        : undefined
       return {
         meta: [
-          { title: loaderData.page.frontmatter.title },
-          ...(loaderData.page.frontmatter.description
-            ? [
-                {
-                  name: 'description',
-                  content: loaderData.page.frontmatter.description,
-                },
-              ]
+          { title },
+          ...(page.frontmatter.description
+            ? [{ name: 'description', content: page.frontmatter.description }]
             : []),
-          // A preview page only reaches here for a token holder, but keep
+          // A gated page only reaches here for a token holder, but keep
           // crawlers out in case the URL is ever shared.
-          ...(isPreview(loaderData.page)
-            ? [{ name: 'robots', content: 'noindex' }]
-            : []),
+          ...(isPublic ? [] : [{ name: 'robots', content: 'noindex' }]),
+          ...(seo?.meta ?? []),
         ],
+        ...(seo ? { links: seo.links } : {}),
       }
     }
     if (loaderData.kind === 'subcategory') {
-      return {
-        meta: [
-          {
-            title: `${loaderData.subcategory.title} | ${loaderData.category.title}`,
-          },
-        ],
-      }
+      const { category, subcategory } = loaderData
+      const title = `${subcategory.title} | ${category.title}`
+      const seo = seoTags(
+        title,
+        subcategory.description ?? '',
+        `/${category.slug}/${subcategory.slug}`,
+      )
+      return { meta: [{ title }, ...seo.meta], links: seo.links }
     }
-    return { meta: [{ title: loaderData.category.title }] }
+    const { category } = loaderData
+    const seo = seoTags(
+      category.title,
+      category.description ?? '',
+      `/${category.slug}`,
+    )
+    return { meta: [{ title: category.title }, ...seo.meta], links: seo.links }
   },
   component: ContentRoute,
 })
 
 function ContentRoute() {
   const data = Route.useLoaderData()
-  const { preview } = Route.useRouteContext()
+  const { level } = Route.useRouteContext()
   if (data.kind === 'page')
     return (
       <PageView
         page={data.page}
         availableForms={data.availableForms}
-        inPreview={preview}
+        viewerLevel={level}
       />
     )
   if (data.kind === 'subcategory-index')
@@ -157,20 +168,22 @@ function ContentRoute() {
 function PageView({
   page,
   availableForms,
-  inPreview,
+  viewerLevel,
 }: {
   page: ContentPage
   availableForms: string[]
-  inPreview: boolean
+  viewerLevel: ViewLevel
 }) {
-  // A public visitor on a page whose `/start` sub-page is in preview sees the
-  // online-application method stripped and the "N ways" count rewritten down.
-  const hideStartLink = !inPreview && startSubPageInPreview(page)
+  // A visitor whose level can't see this page's `/start` sub-page (because it's
+  // gated above them) sees the online-application method stripped and the
+  // "N ways" count rewritten down.
+  const hideStartLink = !isStartSubPageVisible(page, viewerLevel)
+  const level = pageLevel(page)
   return (
     <Shell>
-      {isPreview(page) ? <PreviewBanner /> : null}
+      {level !== 'public' ? <ReviewBanner level={level} /> : null}
       <MarkdownContent
-        body={page.body}
+        hast={page.hast}
         frontmatter={page.frontmatter}
         availableForms={new Set(availableForms)}
         hideStartLink={hideStartLink}
@@ -268,21 +281,34 @@ function SubcategoryIndexView({
 }
 
 /**
- * Shown only to a reviewer in preview mode, and only on a page that is
- * effectively preview — a public visitor never reaches such a page.
+ * Shown only to a reviewer whose grant lets them see a gated page — a public
+ * visitor never reaches one. The copy names the level so a reviewer knows
+ * whether they're seeing `preview` content (visible to preview + draft tokens)
+ * or `draft` content (visible to the draft token only).
  */
-function PreviewBanner() {
+function ReviewBanner({ level }: { level: Exclude<ViewLevel, 'public'> }) {
+  const copy = {
+    preview: {
+      heading: 'Under review — not public',
+      detail:
+        'This page is visible to you because you are in preview mode. It is hidden from the public and search engines until it is published.',
+    },
+    draft: {
+      heading: 'Draft — hidden from preview',
+      detail:
+        'This page is visible to you because you are in draft mode. It is hidden from the public, from preview reviewers, and from search engines until it is published.',
+    },
+  }[level]
   return (
     <div
       role="status"
       className="mb-6 border-yellow-40 border-l-4 bg-yellow-10 p-4"
     >
       <Text as="p" className="font-bold">
-        Under review — not public
+        {copy.heading}
       </Text>
       <Text as="p" size="caption" className="text-mid-grey-00">
-        This page is visible to you because you are in preview mode. It is
-        hidden from the public and search engines until it is published.
+        {copy.detail}
       </Text>
     </div>
   )

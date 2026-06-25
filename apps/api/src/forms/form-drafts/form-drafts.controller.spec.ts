@@ -1,7 +1,7 @@
 import { NotFoundException } from "@nestjs/common";
 import { FormDraftsController } from "./form-drafts.controller";
 import { CreateFormDraftDto, UpdateFormDraftDto } from "./dto";
-import type { FormDraftEntity } from "../../database/entities/form-draft.entity";
+import type { FormDraftEntity } from "@/database/entities/form-draft.entity";
 
 const mockDraft = (overrides: Partial<FormDraftEntity> = {}): FormDraftEntity =>
   ({
@@ -15,17 +15,17 @@ const mockDraft = (overrides: Partial<FormDraftEntity> = {}): FormDraftEntity =>
   }) as unknown as FormDraftEntity;
 
 const mockService = {
-  create: jest.fn(),
-  findById: jest.fn(),
-  update: jest.fn(),
-  abandon: jest.fn(),
+  create: vi.fn(),
+  findById: vi.fn(),
+  update: vi.fn(),
+  abandon: vi.fn(),
 };
 
 describe("FormDraftsController", () => {
   let controller: FormDraftsController;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     controller = new FormDraftsController(mockService as never);
   });
 

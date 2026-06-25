@@ -40,13 +40,22 @@ export function firstStepId(draft: RecipeDraft): string | null {
 // pure review screen and `submission-confirmation` renders only its nextSteps
 // copy — neither should expose the FieldPicker. `declaration` is intentionally
 // absent: it bears the confirmation checkbox and stays field-editable.
-export const NO_FIELDS_STEP_IDS = [
+const NO_FIELDS_STEP_IDS = [
   "check-your-answers",
   "submission-confirmation",
 ] as const;
 
 export function isNoFieldsStep(stepId: string): boolean {
   return (NO_FIELDS_STEP_IDS as readonly string[]).includes(stepId);
+}
+
+// The final, platform-managed step. It alone renders recipe-authored
+// `markdownContent` (the editable "What happens next" copy — #1292), so the
+// markdown editor in StepEditor is shown for this step only.
+const SUBMISSION_CONFIRMATION_STEP_ID = "submission-confirmation";
+
+export function isConfirmationStep(stepId: string): boolean {
+  return stepId === SUBMISSION_CONFIRMATION_STEP_ID;
 }
 
 // Default title/description seeded for each required step when one is missing
@@ -65,12 +74,44 @@ const REQUIRED_STEP_DEFAULTS: Record<
   "submission-confirmation": { title: "Submission Confirmation" },
 };
 
+// The single field the declaration step seeds with: the "I confirm" checkbox.
+// The declaration step must carry exactly this one field — the AI system
+// prompt (apps/form_builder_api/src/ai/system-prompt.ts) pins the same
+// fieldId/label/required contract for generated recipes. `options` is
+// intentionally not overridden: the statement text shown next to the checkbox
+// stays the registry default ("I confirm") until the author edits it per form.
+// Fresh editor id per call, mirroring makeDefaultProcessors().
+function makeDeclarationField(): RecipeFieldDraft {
+  return {
+    id: crypto.randomUUID(),
+    kind: "component",
+    ref: "components/confirmation",
+    overrides: {
+      fieldId: "declaration-confirmed",
+      label: "Declaration",
+      validations: {
+        required: {
+          value: true,
+          error: "You must confirm the declaration to continue",
+        },
+      },
+    },
+  };
+}
+
+// Fields seeded for a required step when one is missing (new form via
+// makeRequiredSteps, or an older recipe loaded via LOAD_DRAFT). Only the
+// declaration step seeds a field; the other required steps are field-free.
+function makeRequiredStepFields(stepId: RequiredStepId): RecipeFieldDraft[] {
+  return stepId === "declaration" ? [makeDeclarationField()] : [];
+}
+
 function makeRequiredSteps(): RecipeStepDraft[] {
   return REQUIRED_STEP_IDS.map((stepId) => ({
     stepId,
     title: REQUIRED_STEP_DEFAULTS[stepId].title,
     description: REQUIRED_STEP_DEFAULTS[stepId].description,
-    fields: [],
+    fields: makeRequiredStepFields(stepId),
     behaviours: [],
   }));
 }
@@ -113,7 +154,12 @@ export type RecipeAction =
   | {
       type: "UPDATE_STEP_META";
       stepId: string;
-      meta: Partial<Pick<RecipeStepDraft, "stepId" | "title" | "description">>;
+      meta: Partial<
+        Pick<
+          RecipeStepDraft,
+          "stepId" | "title" | "description" | "markdownContent"
+        >
+      >;
     }
   | { type: "SET_STEP_BEHAVIOURS"; stepId: string; behaviours: Behaviour[] }
   | {
@@ -378,7 +424,7 @@ export function recipeReducer(
             stepId: id,
             title: REQUIRED_STEP_DEFAULTS[id].title,
             description: REQUIRED_STEP_DEFAULTS[id].description,
-            fields: [],
+            fields: makeRequiredStepFields(id),
             behaviours: [],
           }
         );

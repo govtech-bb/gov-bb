@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { axe } from "jest-axe";
@@ -11,11 +12,14 @@ import { axe } from "jest-axe";
 // (the real Link interpolates `params` into `to`). A simpler stub that
 // only honoured `to` would silently allow a regression that drops
 // `params={{ formId }}` to ship.
-jest.mock("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (routeConfig) => ({
     ...routeConfig,
-    useLoaderData: jest.fn(),
+    useLoaderData: vi.fn(),
   }),
+  // Mirror redirect()'s throw-shape: a tagged object carrying the options, so
+  // beforeLoad tests can `throw`/catch it and assert the external href.
+  redirect: vi.fn((opts) => ({ isRedirect: true, options: opts })),
   Link: ({
     children,
     to,
@@ -35,10 +39,25 @@ jest.mock("@tanstack/react-router", () => ({
   ),
 }));
 
+// isDevMode gates the index redirect: in dev the index renders, otherwise
+// visitors are bounced to the landing site. Mock it so each test controls the
+// environment.
+vi.mock("../lib/env", () => ({
+  isDevMode: vi.fn(),
+}));
+import { isDevMode } from "../lib/env";
+const mockIsDevMode = isDevMode as Mock;
+
+// LANDING_URL reads import.meta.env at module load; mock the module so the
+// redirect destination is a fixed, asserted value.
+vi.mock("../config/landing", () => ({
+  LANDING_URL: "https://alpha.gov.bb",
+}));
+
 // Stub the loader so we control the data returned by useLoaderData().
 // The real loader fetches from an API server that won't be available in Jest.
-jest.mock("@forms/form-api", () => ({
-  fetchFormDefinitions: jest.fn(),
+vi.mock("@forms/form-api", () => ({
+  fetchFormDefinitions: vi.fn(),
 }));
 
 // After the mocks are in place, import the route module so that
@@ -53,11 +72,13 @@ const MOCK_FORMS = [
 ];
 
 beforeEach(() => {
-  jest.spyOn(Route, "useLoaderData").mockReturnValue(MOCK_FORMS);
+  vi.spyOn(Route, "useLoaderData").mockReturnValue(MOCK_FORMS);
+  // Default: dev mode → index renders, no redirect.
+  mockIsDevMode.mockReturnValue(true);
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 describe("Index route", () => {
@@ -95,7 +116,7 @@ describe("Index route", () => {
   });
 
   it("renders an empty list when no forms are returned", () => {
-    jest.spyOn(Route, "useLoaderData").mockReturnValue([]);
+    vi.spyOn(Route, "useLoaderData").mockReturnValue([]);
     render(<Route.component />);
     expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
   });
@@ -129,6 +150,30 @@ describe("Index route", () => {
     const { container } = render(<Route.component />);
     const results = await axe(container);
     expect(results).toHaveNoViolations();
+  });
+});
+
+describe("Index route redirect (beforeLoad)", () => {
+  it("redirects to the landing site when not in dev mode", () => {
+    mockIsDevMode.mockReturnValue(false);
+
+    // beforeLoad throws the redirect; catch it and assert the external href.
+    let thrown: unknown;
+    try {
+      Route.beforeLoad?.({} as never);
+    } catch (e) {
+      thrown = e;
+    }
+
+    expect(thrown).toMatchObject({
+      isRedirect: true,
+      options: { href: "https://alpha.gov.bb", replace: true },
+    });
+  });
+
+  it("does not redirect (renders the index) in dev mode", () => {
+    mockIsDevMode.mockReturnValue(true);
+    expect(() => Route.beforeLoad?.({} as never)).not.toThrow();
   });
 });
 

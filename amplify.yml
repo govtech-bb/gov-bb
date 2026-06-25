@@ -6,7 +6,8 @@ applications:
       phases:
         preBuild:
           commands:
-            - npm install -g pnpm@10.30.0
+            - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
+            - npm install -g pnpm@11.6.0
             - pnpm install --frozen-lockfile
         build:
           commands:
@@ -28,22 +29,37 @@ applications:
               value: "nosniff"
             - key: "Referrer-Policy"
               value: "strict-origin-when-cross-origin"
+            # frame-ancestors allows the form_builder's /content live preview to
+            # embed this app (modern browsers ignore X-Frame-Options when
+            # frame-ancestors is present; DENY stays as the legacy fallback).
             - key: "X-Frame-Options"
               value: "DENY"
             - key: "Permissions-Policy"
               value: "camera=(), microphone=(), geolocation=(), payment=()"
+            # script-src includes https://cloud.umami.is so the Umami Cloud
+            # analytics script loads. Without it the browser blocks the fetch
+            # and the script tag (rendered from VITE_UMAMI_WEBSITE_ID) never
+            # executes — see issue #1364 follow-up.
             - key: "Content-Security-Policy"
-              value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+              value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cloud.umami.is; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; frame-ancestors https://*.alpha.gov.bb; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
   - appRoot: apps/chat
     frontend:
       buildPath: /
       phases:
         preBuild:
           commands:
-            - npm install -g pnpm@10.30.0
+            # DIAGNOSTIC — confirms which chat env vars are visible to the build
+            # subprocess. Investigating why chat staging health returns "db:
+            # unconfigured" despite Amplify Console having CHAT_DATABASE_URL_SECRET_ARN
+            # set at app level. Prints key names only (no values). Remove after
+            # diagnosing.
+            - echo "=== chat preBuild env keys ==="; env | grep -E "^(CHAT_|DATABASE_URL|LANDING_URL|RAG_URL|BEDROCK_REGION|LLM_MODEL|REWRITE_MODEL|FEATURE_|FORMS_URL|FORM_API_URL|VITE_)" | cut -d= -f1 | sort
+            - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
+            - npm install -g pnpm@11.6.0
             - pnpm install --frozen-lockfile
         build:
           commands:
+            - echo "=== chat build env keys ==="; env | grep -E "^(CHAT_|DATABASE_URL|LANDING_URL|RAG_URL|BEDROCK_REGION|LLM_MODEL|REWRITE_MODEL|FEATURE_|FORMS_URL|FORM_API_URL|VITE_)" | cut -d= -f1 | sort
             - pnpm exec nx run chat:build
       artifacts:
         baseDirectory: apps/chat/.amplify-hosting
@@ -74,7 +90,8 @@ applications:
       phases:
         preBuild:
           commands:
-            - npm install -g pnpm@10.30.0
+            - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
+            - npm install -g pnpm@11.6.0
             - pnpm install --frozen-lockfile
         build:
           commands:
@@ -102,15 +119,20 @@ applications:
               value: "DENY"
             - key: "Permissions-Policy"
               value: "camera=(), microphone=(), geolocation=(), payment=()"
+            # script-src includes https://cloud.umami.is so the Umami Cloud
+            # analytics script loads. Without it the browser blocks the fetch
+            # and the script tag (rendered from VITE_UMAMI_WEBSITE_ID) never
+            # executes — see issue #1364 follow-up.
             - key: "Content-Security-Policy"
-              value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+              value: "default-src 'self'; script-src 'self' https://cloud.umami.is; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
   - appRoot: apps/form_builder
     frontend:
       buildPath: /
       phases:
         preBuild:
           commands:
-            - npm install -g pnpm@10.30.0
+            - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
+            - npm install -g pnpm@11.6.0
             - pnpm install --frozen-lockfile
         build:
           commands:
@@ -136,5 +158,7 @@ applications:
               value: "DENY"
             - key: "Permissions-Policy"
               value: "camera=(), microphone=(), geolocation=(), payment=()"
+            # frame-src allows the /content editor's live preview iframe of the
+            # landing app's /preview-start-page route.
             - key: "Content-Security-Policy"
-              value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.github.com https://github.com https://*.s3.ca-central-1.amazonaws.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://github.com; object-src 'none'; upgrade-insecure-requests"
+              value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.github.com https://github.com https://*.s3.ca-central-1.amazonaws.com; frame-src 'self' https://*.alpha.gov.bb; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://github.com; object-src 'none'; upgrade-insecure-requests"

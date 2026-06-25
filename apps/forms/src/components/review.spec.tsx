@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -7,8 +8,8 @@ import type { ClientFormStep, FormMeta } from "@forms/types";
 
 // Mock TanStack Router — Review calls useNavigate({ from: "/forms/$formId/" })
 // which requires a router context unavailable in jsdom unit tests.
-const mockNavigate = jest.fn();
-jest.mock("@tanstack/react-router", () => ({
+const mockNavigate = vi.fn();
+vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
@@ -50,7 +51,7 @@ function makeMockForm(values: Record<string, unknown> = {}) {
     // getVisibleFields evaluates fieldConditionalOn behaviours against the
     // composite-keyed value map in `state.values` (#737).
     state: { values },
-    getFieldValue: jest.fn((fieldId: string) => values[fieldId]),
+    getFieldValue: vi.fn((fieldId: string) => values[fieldId]),
   };
 }
 
@@ -59,7 +60,7 @@ function makeMockForm(values: Record<string, unknown> = {}) {
 // ---------------------------------------------------------------------------
 
 describe("Review", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   // -------------------------------------------------------------------------
   // Basic rendering
@@ -104,6 +105,64 @@ describe("Review", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Address" }),
+    ).toBeInTheDocument();
+  });
+
+  it("resolves a step's conditionalTitle from the form values (#871)", () => {
+    const conditionalStep = makeStep({
+      stepId: "birth-details",
+      title: "Provide the person's birth details",
+      conditionalTitle: [
+        {
+          targetStepId: "applying-for-yourself",
+          targetFieldId: "applying-for-yourself",
+          operator: "equal",
+          value: "yes",
+          title: "Provide your birth details",
+        },
+      ],
+      fields: [
+        makeField({
+          id: "birth-details.place-of-birth",
+          fieldId: "place-of-birth",
+          label: "Place of birth",
+        }),
+      ],
+    });
+
+    const form = makeMockForm({
+      "applying-for-yourself_applying-for-yourself": "yes",
+      "birth-details.place-of-birth": "Bridgetown",
+    });
+
+    const { rerender } = render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={[conditionalStep]}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Provide your birth details" }),
+    ).toBeInTheDocument();
+
+    // Flip the watched answer → the static title is used instead.
+    rerender(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={
+          makeMockForm({
+            "applying-for-yourself_applying-for-yourself": "no",
+            "birth-details.place-of-birth": "Bridgetown",
+          }) as never
+        }
+        visibleSteps={[conditionalStep]}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: "Provide the person's birth details",
+      }),
     ).toBeInTheDocument();
   });
 
@@ -748,8 +807,10 @@ describe("Review", () => {
     const steps: ClientFormStep[] = [
       makeStep({ stepId: "step-1", title: "Step One", fields: [dateField] }),
     ];
+    // Date parts are stored as the digit-strings the user typed (#815),
+    // including any leading zeros.
     const form = makeMockForm({
-      "step-1.dob": { day: 1, month: 1, year: 2026 },
+      "step-1.dob": { day: "09", month: "01", year: "2026" },
     });
 
     render(
@@ -760,7 +821,7 @@ describe("Review", () => {
       />,
     );
 
-    const expectedDate = new Date(2026, 0, 1)
+    const expectedDate = new Date(2026, 0, 9)
       .toDateString()
       .trim()
       .replace(/^\w+\s/, "");

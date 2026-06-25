@@ -1,14 +1,4 @@
 import z from "zod";
-import { FormValues } from "../field-mapper.type";
-
-type stepId = string;
-
-export interface FormSubmissionBody {
-  formId: string;
-  formVersion: string;
-  draftId?: string;
-  values: Record<stepId, FormValues>;
-}
 
 export const formSubmissionResponseBodySchema = z.object({
   id: z.string(),
@@ -16,7 +6,9 @@ export const formSubmissionResponseBodySchema = z.object({
   updatedAt: z.string(),
   idempotencyKey: z.string(),
   formId: z.string(),
-  formVersion: z.string(),
+  // #1196: versionless submissions return null; older rows a semver string.
+  // The client doesn't read it — tolerate any/absent shape.
+  formVersion: z.string().nullable().optional(),
   status: z.string(),
   // `values` is the server's echo of the submitted answers. The client does
   // not read it back here (the confirmation screen needs only id / submittedAt
@@ -28,7 +20,13 @@ export const formSubmissionResponseBodySchema = z.object({
   // submit time.
   values: z.record(z.string(), z.unknown()),
   meta: z.unknown(),
-  submittedAt: z.string(),
+  // Nullable: payment ("gated") forms return `status: "pending_payment"` with
+  // `submittedAt: null` — the submission isn't finalised until the citizen
+  // pays. A non-nullable `z.string()` here rejected those responses, making
+  // postFormSubmission throw and bouncing the citizen to the generic
+  // "Something went wrong" screen instead of the EZ Pay redirect (#919).
+  // Non-payment forms still return an ISO timestamp string.
+  submittedAt: z.string().nullable(),
   // Human-readable reference shown on the confirmation screen (e.g.
   // "JPP-20260604-130732-9JZRZC"). Optional so an older API deploy that does
   // not yet return this field still passes validation — the client falls back

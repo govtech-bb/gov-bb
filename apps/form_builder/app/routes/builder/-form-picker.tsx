@@ -5,6 +5,7 @@ import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe, Processor } from "@govtech-bb/form-types";
 import type { FormDefinitionSummary } from "../../types/index";
 import styles from "../../styles/builder.module.css";
+import { useEscClose } from "./-use-esc-close";
 
 interface FormPickerProps {
   /** The forms to choose from, or `null` while the background fetch is in flight. */
@@ -13,7 +14,7 @@ interface FormPickerProps {
   loadError: string | null;
   isDirty: boolean;
   catalog: RegistryCatalog;
-  onLoad: (draft: RecipeDraft, formId: string, version: string) => void;
+  onLoad: (draft: RecipeDraft, formId: string) => void;
   onClose: () => void;
   /** Draft-only forms: hard-delete the draft rows (formId freed for reuse). */
   onRequestDelete: (form: FormDefinitionSummary) => void;
@@ -23,6 +24,8 @@ interface FormPickerProps {
   onRequestErase: (form: FormDefinitionSummary) => void;
   /** Disabled published forms: clear the tombstone and restore the service. */
   onEnable: (form: FormDefinitionSummary) => void;
+  /** Open the chosen form's recipe as a new unsaved "Copy of …" draft. */
+  onDuplicate: (draft: RecipeDraft) => void;
 }
 
 function matches(query: string, ...fields: Array<string | undefined>) {
@@ -31,7 +34,7 @@ function matches(query: string, ...fields: Array<string | undefined>) {
   return fields.some((f) => f !== undefined && f.toLowerCase().includes(q));
 }
 
-export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose, onRequestDelete, onRequestDisable, onRequestErase, onEnable }: FormPickerProps) {
+export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose, onRequestDelete, onRequestDisable, onRequestErase, onEnable, onDuplicate }: FormPickerProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -71,7 +74,7 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
         mdaContactId: config.mdaContactId,
         processors: mergeDbProcessors(draft.processors, config.processors),
       };
-      onLoad(draftWithConfig, form.formId, form.version);
+      onLoad(draftWithConfig, form.formId);
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load recipe");
@@ -80,10 +83,40 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
     }
   }
 
+  // Duplicate opens the chosen recipe as a brand-new unsaved draft. Only the
+  // recipe is fetched (not the config sidecar): the form-definition processors
+  // ride in the recipe, while the DB-only siblings (mdaContactId, payment
+  // processors) are env-specific and intentionally start blank on the copy.
+  // deserializeRecipe mints fresh editor ids, so the copy shares nothing
+  // mutable with the source. The "-copy" formId / "Copy of" title seed unique
+  // identifiers; the builder's live uniqueness check flags them if they collide
+  // (e.g. duplicating the same form twice) so the author renames before saving.
+  async function handleDuplicate(form: FormDefinitionSummary) {
+    if (isDirty && !window.confirm("Unsaved changes will be lost. Continue?")) return;
+    setError(null);
+    setLoadingId(form.formId);
+    try {
+      const recipe = (await getRecipe({ data: { formId: form.formId } })) as ServiceContractRecipe;
+      const draft = deserializeRecipe(recipe, catalog);
+      onDuplicate({
+        ...draft,
+        formId: `${draft.formId}-copy`,
+        title: `Copy of ${draft.title}`,
+      });
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load recipe");
+    } finally {
+      setLoadingId(null);
+    }
+  }
+
+  useEscClose(onClose);
+
   return (
     <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+      <div className={`${styles.modalContent} ${styles.modalContentWide}`} role="dialog" aria-modal="true" aria-label="Open Form" onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHead}>
           <strong>Open Form</strong>
           <button type="button" onClick={onClose}>Close</button>
         </div>
@@ -117,7 +150,12 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
         )}
 
         {forms === null && !loadError && (
-          <p style={{ color: "#888" }}>Loading forms…</p>
+          <div role="status">
+            <span className={styles.srOnly}>Loading forms…</span>
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className={styles.skelRow} />
+            ))}
+          </div>
         )}
 
         {forms !== null && forms.length === 0 && (
@@ -149,6 +187,20 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
             </span>
             <span style={{ color: "#888", fontSize: "0.8rem" }}>{form.formId}</span>
             {loadingId === form.formId && <span> Loading…</span>}
+            {/* Duplicate is non-destructive and works on any form (a published
+                form makes a fine template), so it sits ahead of the
+                publish-state danger cluster below. */}
+            <button
+              type="button"
+              style={{ marginLeft: 8 }}
+              disabled={!!loadingId}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDuplicate(form);
+              }}
+            >
+              Duplicate
+            </button>
             {/* Per-row action follows intent: drafts delete (id freed),
                 disabled forms enable, and live published forms get both
                 Disable (reversible 410 tombstone) and Erase (permanent on-disk

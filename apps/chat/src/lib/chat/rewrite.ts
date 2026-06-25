@@ -1,63 +1,54 @@
 import { chat } from "@tanstack/ai";
-import type { UIMessage } from "@tanstack/ai";
 import { bedrockText } from "@govtech-bb/ai-bedrock";
 import { z } from "zod";
-import { childController } from "#/lib/abort";
 import { getServerEnv } from "#/config/env";
-import { extractText, lastUserText } from "./messages";
+import { childController } from "./abort";
+import { lastUserText, recentHistory, type ChatMessage } from "./messages";
 
-const PROMPT = `You rewrite the user's latest message into a single self-contained search query for a retrieval system over Barbados government services.
-
-Rules:
-- Output ONLY the rewritten query as JSON.
-- If the latest message is already a standalone topical question, return it unchanged.
-- If it's a short follow-up ("how much?", "what documents?", "where do I go?", "is it online?"), expand it using the prior turns so the topic is explicit.
-- Drop greetings, filler, and personal data. Keep proper nouns and service names.
-- Keep it under 20 words.
+// Fold the conversation into ONE standalone search query. The question-answering
+// path only needs the query — there's no apply/info intent classification here.
+// The query is embedded against formal, standard-English service pages, so
+// dialect is normalised to service vocabulary.
+const PROMPT = `Rewrite the user's latest message into a single self-contained search query for the Government of Barbados service catalogue. It is embedded against formal, standard-English service pages, so use standard-English service vocabulary.
+- Users may write in Bajan dialect — infer the intent from keywords and translate it to the standard-English service the catalogue would use.
+- If the message is already a standalone topical question in standard English, return it essentially unchanged.
+- If it's a short follow-up ("how much?", "what documents?", "is it online?"), expand it using the prior turns so the topic is explicit.
+- Drop greetings, filler, and personal data. Keep proper nouns and service names. Under 20 words.
 
 Conversation:
 {{HISTORY}}
 
 Latest user message: {{LATEST}}`;
 
-const Schema = z.object({
-  rewrittenQuery: z.string(),
-});
+const Schema = z.object({ query: z.string() });
 
-function buildHistory(messages: UIMessage[]): string {
-  const trail = messages.slice(-6, -1);
-  if (!trail.length) return "(no prior turns)";
-  return trail
-    .map((m) => `${m.role}: ${extractText(m).slice(0, 300)}`)
-    .filter((line) => !line.endsWith(": "))
-    .join("\n");
-}
-
+// Standalone-question rewrite via the cheaper REWRITE_MODEL. Never blocks a
+// turn: a failure / timeout falls back to the raw latest message. Greetings and
+// too-short messages never reach here (the caller skips retrieval for those).
 export async function rewriteRetrievalQuery(
-  messages: UIMessage[],
-  signal: AbortSignal,
+  messages: ChatMessage[],
+  signal?: AbortSignal,
 ): Promise<string> {
   const latest = lastUserText(messages);
-  if (messages.length <= 1 || !latest) return latest;
+  if (!latest) return latest;
 
-  const prompt = PROMPT.replace("{{HISTORY}}", buildHistory(messages)).replace(
+  const prompt = PROMPT.replace("{{HISTORY}}", recentHistory(messages)).replace(
     "{{LATEST}}",
     latest,
   );
 
   const env = getServerEnv();
-  // Fall back to raw input if the rewrite call fails — never block a turn.
+  // Abort on the parent signal (client disconnect) OR a 3s timeout — never block
+  // the turn on the rewrite. AbortSignal.timeout self-clears, so no bookkeeping.
   try {
     const result = await chat({
-      adapter: bedrockText(env.REWRITE_MODEL, {
-        region: env.BEDROCK_REGION,
-      }),
+      adapter: bedrockText(env.REWRITE_MODEL, { region: env.BEDROCK_REGION }),
       messages: [{ role: "user", content: prompt }],
       outputSchema: Schema,
       modelOptions: { maxTokens: 100, temperature: 0 },
       abortController: childController(signal, 3000),
     });
-    const out = result.rewrittenQuery.trim();
+    const out = result.query?.trim() ?? "";
     return out.length > 2 ? out : latest;
   } catch {
     return latest;

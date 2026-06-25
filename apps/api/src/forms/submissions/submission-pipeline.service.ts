@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { evaluateFormConditions } from "@govtech-bb/form-conditions";
 import { validate as validateFields } from "@govtech-bb/form-validation";
 import type {
@@ -6,11 +6,11 @@ import type {
   RepeatableBehaviour,
   Primitive,
 } from "@govtech-bb/form-types";
-import type { FormDraftEntity } from "../../database/entities/form-draft.entity";
+import type { FormDraftEntity } from "@/database/entities/form-draft.entity";
 import { FormDefinitionsService } from "../form-definitions/form-definitions.service";
 import { FormDraftsService } from "../form-drafts/form-drafts.service";
-import { FilesService } from "../../files/files.service";
-import { AppError } from "../../common/errors";
+import { FilesService } from "@/files/files.service";
+import { AppError } from "@/common/errors";
 import { expandSubmission, type StepInstance } from "./submission-expand";
 import {
   foldErrors,
@@ -106,22 +106,66 @@ export class SubmissionPipelineService {
     dto: SubmitDto,
   ): Promise<{ draft: FormDraftEntity | null; contract: ServiceContract }> {
     if (!dto.draftId) {
-      const contract = await this.formDefinitionsService.findByFormId({
+      const contract = await this.resolveSubmittableContract({
         formId: dto.formId,
         version: dto.formVersion,
-        includeProcessors: true,
       });
       return { draft: null, contract };
     }
 
     const draft = await this.formDraftsService.findById(dto.draftId);
-    const contract = await this.formDefinitionsService.findByFormId({
+    const contract = await this.resolveSubmittableContract({
       formId: dto.formId,
-      version: draft.formVersion,
-      includeProcessors: true,
+      // null (canonical-pinned draft, #1196) → resolve the canonical recipe.
+      version: draft.formVersion ?? undefined,
     });
 
     return { draft, contract };
+  }
+
+  /**
+   * Resolve the recipe to submit against. `findByFormId` (with
+   * `includeProcessors`) resolves from published FILE recipes only (outside
+   * dev) and throws a NotFoundException when the version isn't a published
+   * file — including for a DB-only draft version previewed via `?preview=`.
+   *
+   * To avoid an opaque 404 for that case, on a NotFoundException we probe the
+   * DB-consulting preview path (`getRecipe({ preview: true })`): if the version
+   * exists as an unpublished draft, surface a clear 400; if it's genuinely
+   * unknown, re-throw the original 404. Any non-NotFound error is re-thrown
+   * unchanged.
+   */
+  private async resolveSubmittableContract({
+    formId,
+    version,
+  }: {
+    formId: string;
+    // Optional post-#1196: absent → the canonical recipe; present → the legacy
+    // versioned file (still sent by pre-cutover clients).
+    version?: string;
+  }): Promise<ServiceContract> {
+    try {
+      return await this.formDefinitionsService.findByFormId({
+        formId,
+        version,
+        includeProcessors: true,
+      });
+    } catch (err) {
+      if (!(err instanceof NotFoundException)) throw err;
+
+      const previewRecipe = await this.formDefinitionsService.getRecipe({
+        formId,
+        version,
+        preview: true,
+      });
+      if (previewRecipe) {
+        throw AppError.badRequest(
+          "This version is an unpublished preview and cannot be submitted. Publish the form before submitting.",
+        );
+      }
+
+      throw err;
+    }
   }
 
   private validate(
@@ -225,7 +269,7 @@ export class SubmissionPipelineService {
 
     return {
       schemaVersion: 2,
-      pinnedFormVersion: draft?.formVersion ?? dto.formVersion,
+      pinnedFormVersion: draft?.formVersion ?? dto.formVersion ?? null,
       draftId: dto.draftId ?? null,
       activeStepIds: Array.from(cond.activeStepIds),
       hiddenStepIds: Array.from(cond.hiddenStepIds),

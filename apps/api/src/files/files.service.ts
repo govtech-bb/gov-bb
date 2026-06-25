@@ -14,6 +14,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuid } from "uuid";
 import type { Primitive, ServiceContract } from "@govtech-bb/form-types";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
+import { isValidSecretToken } from "../common/secret-token";
 import type {
   SubmissionValues,
   ValidationErrorBundle,
@@ -73,6 +74,7 @@ export class FilesService {
 
   async presignUpload(
     dto: PresignUploadDto,
+    previewToken?: string,
   ): Promise<PresignUploadResponseDto> {
     this.assertConfigured();
     const field = await this.resolveFileField(
@@ -80,6 +82,7 @@ export class FilesService {
       dto.formVersion,
       dto.stepId,
       dto.fieldId,
+      this.isPreview(previewToken),
     );
 
     this.assertContentTypeAllowed(field, dto.contentType, dto.fileName);
@@ -102,7 +105,10 @@ export class FilesService {
     return { uploadUrl, key, expiresIn: this.presignTtl, maxSize };
   }
 
-  async confirmUpload(dto: ConfirmUploadDto): Promise<FileAttachmentDto> {
+  async confirmUpload(
+    dto: ConfirmUploadDto,
+    previewToken?: string,
+  ): Promise<FileAttachmentDto> {
     this.assertConfigured();
     // TODO(security): the (formId, stepId, fieldId) the client supplies here
     // is NOT cryptographically bound to the S3 key — a caller could presign
@@ -114,6 +120,7 @@ export class FilesService {
       dto.formVersion,
       dto.stepId,
       dto.fieldId,
+      this.isPreview(previewToken),
     );
 
     let head;
@@ -346,20 +353,37 @@ export class FilesService {
     }
   }
 
+  /**
+   * Mirrors the form-GET path: only honour `preview: true` when the supplied
+   * token validates against the configured `RECIPE_PREVIEW_TOKEN`. A missing or
+   * invalid token leaves behaviour exactly as before (published recipes only).
+   */
+  private isPreview(previewToken?: string): boolean {
+    return isValidSecretToken(
+      this.config.get<string>("RECIPE_PREVIEW_TOKEN", ""),
+      previewToken,
+    );
+  }
+
   private async resolveFileField(
     formId: string,
-    formVersion: string,
+    // Optional post-#1196: absent → canonical recipe, present → legacy file.
+    formVersion: string | undefined,
     stepId: string,
     fieldId: string,
+    preview = false,
   ): Promise<Primitive> {
     let contract;
     try {
       contract = await this.formDefs.findByFormId({
         formId,
         version: formVersion,
+        preview,
       });
     } catch {
-      throw new BadRequestException(`Form not found: ${formId}@${formVersion}`);
+      throw new BadRequestException(
+        `Form not found: ${formId}${formVersion ? `@${formVersion}` : ""}`,
+      );
     }
     const step = contract.steps.find((s) => s.stepId === stepId);
     if (!step) {

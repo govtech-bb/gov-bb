@@ -5,24 +5,21 @@ import { HelpfulBox } from '../components/HelpfulBox'
 import { CATEGORIES } from '../content/categories'
 import { isCategoryVisible } from '../content/registry'
 import { trackEvent } from '../lib/analytics'
+import { pageHead } from '../lib/page-head'
 
 export const Route = createFileRoute('/')({
-  head: () => ({
-    meta: [
-      { title: 'Government Services | Government of Barbados' },
-      {
-        name: 'description',
-        content:
-          "Access official Barbados government services online — apply for passports, birth certificates, driver's licences, and more at alpha.gov.bb.",
-      },
-    ],
-  }),
+  head: () =>
+    pageHead(
+      'Government Services',
+      "Access official Barbados government services online — apply for passports, birth certificates, driver's licences, and more at alpha.gov.bb.",
+      { path: '/' },
+    ),
   component: Home,
 })
 
 function Home() {
-  const { preview } = Route.useRouteContext()
-  const categories = CATEGORIES.filter((cat) => isCategoryVisible(cat, preview))
+  const { level } = Route.useRouteContext()
+  const categories = CATEGORIES.filter((cat) => isCategoryVisible(cat, level))
 
   const handleSearch = (q: string) => {
     trackEvent('search-submit', { query: q, source: 'home' })

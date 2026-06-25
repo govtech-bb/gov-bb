@@ -1,5 +1,5 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  *
  * (#618) The validation editor must surface the rules a component declares at
  * the *base* level — not just recipe overrides — so an author can see and
@@ -8,7 +8,7 @@
  * resetting drops the override key so the recipe carries only genuine deltas.
  */
 import "@testing-library/jest-dom";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ValidationRule } from "@govtech-bb/form-types";
 import type { FieldRef, StepRef } from "./-recipe-refs";
@@ -20,7 +20,7 @@ function renderEditor(props: {
   fieldRefs?: FieldRef[];
   stepRefs?: StepRef[];
 }) {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <ValidationRulesEditor
       htmlType="text"
@@ -224,9 +224,24 @@ describe("reference rule step scoping (#840)", () => {
     { stepId: "step-two", title: "Step Two" },
   ];
   const FIELD_REFS: FieldRef[] = [
-    { stepId: "step-one", fieldId: "first-name", displayName: "First Name", isBoolean: false },
-    { stepId: "step-one", fieldId: "last-name", displayName: "Last Name", isBoolean: false },
-    { stepId: "step-two", fieldId: "age", displayName: "Age", isBoolean: false },
+    {
+      stepId: "step-one",
+      fieldId: "first-name",
+      displayName: "First Name",
+      isBoolean: false,
+    },
+    {
+      stepId: "step-one",
+      fieldId: "last-name",
+      displayName: "Last Name",
+      isBoolean: false,
+    },
+    {
+      stepId: "step-two",
+      fieldId: "age",
+      displayName: "Age",
+      isBoolean: false,
+    },
   ];
 
   // Locate the Reference Step select by its containing label.
@@ -316,7 +331,9 @@ describe("reference rule step scoping (#840)", () => {
 
   it("changing the step clears a now-stale referenceFieldId", async () => {
     const onChange = renderEditor({
-      rules: { gt: { targetStepId: "step-one", referenceFieldId: "first-name" } },
+      rules: {
+        gt: { targetStepId: "step-one", referenceFieldId: "first-name" },
+      },
       fieldRefs: FIELD_REFS,
       stepRefs: STEP_REFS,
     });
@@ -333,7 +350,9 @@ describe("reference rule step scoping (#840)", () => {
       // first-name and last-name are both on step-one; we'll switch the
       // targetStepId away then... actually test same-step revalidation: a field
       // that survives the new step is kept. Set up a field present on the new step.
-      rules: { gt: { targetStepId: "step-one", referenceFieldId: "first-name" } },
+      rules: {
+        gt: { targetStepId: "step-one", referenceFieldId: "first-name" },
+      },
       fieldRefs: [
         ...FIELD_REFS,
         // a field that exists on step-two with the same id is unrealistic; instead
@@ -379,5 +398,83 @@ describe("inherited and author-added rules coexist", () => {
     expect(
       override.compareDocumentPosition(del) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+});
+
+describe("transform on a date field's numeric rules (#1020)", () => {
+  function renderDate(rules?: ValidationRule) {
+    const onChange = vi.fn();
+    render(
+      <ValidationRulesEditor
+        htmlType="date"
+        rules={rules}
+        fieldRefs={[]}
+        stepRefs={[]}
+        onChange={onChange}
+      />,
+    );
+    return onChange;
+  }
+
+  const transformSelect = () =>
+    screen
+      .getAllByRole("combobox")
+      .find((el) => within(el).queryByRole("option", { name: /yearsSince/i }));
+
+  const addRuleSelect = () =>
+    screen
+      .getAllByRole("combobox")
+      .find((el) => within(el).queryByRole("option", { name: /add rule/i }))!;
+
+  it("renders a Transform selector for a date's duration rule", () => {
+    renderDate({ min: { value: "16", transform: "yearsSince" } });
+    expect(transformSelect()).toBeDefined();
+  });
+
+  it("writes the chosen transform onto the rule config", async () => {
+    const onChange = renderDate({ min: { value: "16" } });
+    await userEvent.selectOptions(transformSelect()!, "monthsSince");
+    expect(onChange).toHaveBeenLastCalledWith({
+      min: expect.objectContaining({ transform: "monthsSince" }),
+    });
+  });
+
+  it("seeds transform=yearsSince when a duration rule is added", async () => {
+    const onChange = renderDate(undefined);
+    await userEvent.selectOptions(addRuleSelect(), "min");
+    expect(onChange).toHaveBeenLastCalledWith({
+      min: { transform: "yearsSince" },
+    });
+  });
+});
+
+describe("a date duration rule's transform is mandatory (#1020)", () => {
+  function renderDate(rules?: ValidationRule) {
+    const onChange = vi.fn();
+    render(
+      <ValidationRulesEditor
+        htmlType="date"
+        rules={rules}
+        fieldRefs={[]}
+        stepRefs={[]}
+        onChange={onChange}
+      />,
+    );
+    return onChange;
+  }
+  const transformSelect = () =>
+    screen
+      .getAllByRole("combobox")
+      .find((el) => within(el).queryByRole("option", { name: /yearsSince/i }))!;
+
+  it("offers no '— none —' option, so the rule can't be left always-failing", () => {
+    renderDate({ min: { value: "16", transform: "yearsSince" } });
+    const values = within(transformSelect())
+      .getAllByRole("option")
+      .map((o) => (o as HTMLOptionElement).value);
+    expect(values).not.toContain("");
+    expect(values).toEqual(
+      expect.arrayContaining(["yearsSince", "monthsSince", "daysSince"]),
+    );
   });
 });

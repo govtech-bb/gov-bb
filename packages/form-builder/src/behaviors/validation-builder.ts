@@ -6,6 +6,10 @@ export type ValidationRuleDescriptor = {
   hasValue: boolean; // whether the rule takes a `value` parameter
   hasReference: boolean; // whether the rule takes a `referenceFieldId`
   valuePlaceholder?: string; // placeholder hint for the `value` input, e.g. "DD/MM/YYYY"
+  // Whether the rule can carry a date→number `transform` (#1020) — offered on
+  // a date field's numeric rules so the bound applies to a derived value (e.g.
+  // `min: 16` on an age derived from a date-of-birth via `yearsSince`).
+  hasTransform?: boolean;
 };
 
 export const VALIDATION_RULE_DESCRIPTORS: Record<
@@ -221,6 +225,37 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
       hasValue: true,
       hasReference: false,
     },
+    // Duration-derived numeric rules (#1020): the bound applies to a number
+    // derived from the date via `transform` (e.g. an age from a DOB), so a form
+    // can require "at least 16 / at most 24 years since".
+    {
+      type: "min",
+      label: "Min (duration)",
+      hasValue: true,
+      hasReference: false,
+      hasTransform: true,
+    },
+    {
+      type: "max",
+      label: "Max (duration)",
+      hasValue: true,
+      hasReference: false,
+      hasTransform: true,
+    },
+    {
+      type: "gt",
+      label: "Greater Than (duration)",
+      hasValue: true,
+      hasReference: false,
+      hasTransform: true,
+    },
+    {
+      type: "lt",
+      label: "Less Than (duration)",
+      hasValue: true,
+      hasReference: false,
+      hasTransform: true,
+    },
   ],
   tel: [
     {
@@ -287,6 +322,17 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
       hasValue: false,
       hasReference: false,
     },
+    // Choice fields are closed sets, so string-length/pattern rules are
+    // meaningless on them — but equality against a literal value (or a
+    // reference field) lets an author gate progression on a specific answer
+    // (e.g. a Yes/No radio that must equal "yes"). See #1036.
+    { type: "equal", label: "Equal", hasValue: true, hasReference: true },
+    {
+      type: "notEqual",
+      label: "Not Equal",
+      hasValue: true,
+      hasReference: true,
+    },
   ],
   checkbox: [
     {
@@ -294,6 +340,16 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
       label: "Required",
       hasValue: false,
       hasReference: false,
+    },
+    // See the radio note above (#1036): equality gating is useful on a
+    // single-value checkbox; on a multi-select checkbox the array value is
+    // stringified before comparison, so it suits single-value choices.
+    { type: "equal", label: "Equal", hasValue: true, hasReference: true },
+    {
+      type: "notEqual",
+      label: "Not Equal",
+      hasValue: true,
+      hasReference: true,
     },
   ],
   file: [

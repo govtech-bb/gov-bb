@@ -2,10 +2,10 @@
 # ---- builder ------------------------------------------------------------
 # Compiles the NestJS app + the workspace packages it depends on into
 # /app/dist, using the full monorepo as context.
-FROM node:20-alpine AS builder
+FROM node:24-alpine3.23@sha256:7c70d1235c0b4c2bc9eeed5393d19f1bbdde6885ba0d58ba62bb385d7b0f3ff1 AS builder
 
 # Corepack must run as root — it writes to /usr/local/bin.
-RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
+RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 
 # Create the app user up front so every COPY can use --chown=app:app.
 # Explicit UID/GID so we can match them in the cache-mount uid=/gid= options
@@ -67,9 +67,9 @@ CMD ["pnpm", "exec", "nx", "dev", "api"]
 # ---- runner -------------------------------------------------------------
 # Slim runtime image. Includes pnpm so the ECS sandbox migrate-task
 # (deploy-sandbox.yml) can shell into the container and run `pnpm migration:run`.
-FROM node:20-alpine AS runner
+FROM node:24-alpine3.23@sha256:7c70d1235c0b4c2bc9eeed5393d19f1bbdde6885ba0d58ba62bb385d7b0f3ff1 AS runner
 
-RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
+RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 
 # Closes #15 (CIS Docker Benchmark — no container should run as root).
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
@@ -118,6 +118,15 @@ RUN mkdir -p node_modules/@govtech-bb && \
       ln -sfn "../../packages/$pkg_name" "node_modules/@govtech-bb/$pkg_name"; \
       echo "  symlinked @govtech-bb/$pkg_name"; \
     done
+
+# The in-app `@/*` alias (tsconfig: "@/*" -> "./src/*") is left as a literal
+# `require("@/...")` in the compiled output — the runtime CMD is plain
+# `node dist/src/main.js` with no path resolver. Expose dist/src under the `@`
+# scope so those requires resolve (e.g. `@/database/base.repository` ->
+# dist/src/database/base.repository.js), the same symlink approach used for the
+# workspace packages above. Without it the container crash-loops on
+# MODULE_NOT_FOUND and ECS's circuit breaker silently rolls back (#1385).
+RUN ln -sfn ../dist/src node_modules/@
 COPY --from=builder --chown=app:app /app/package.json ./
 COPY --from=builder --chown=app:app /app/pnpm-lock.yaml ./
 COPY --from=builder --chown=app:app /app/pnpm-workspace.yaml ./

@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import { FilesController } from "./files.controller";
@@ -5,10 +6,10 @@ import { FilesService } from "./files.service";
 
 describe("FilesController", () => {
   let controller: FilesController;
-  let svc: { presignUpload: jest.Mock; confirmUpload: jest.Mock };
+  let svc: { presignUpload: Mock; confirmUpload: Mock };
 
   beforeEach(async () => {
-    svc = { presignUpload: jest.fn(), confirmUpload: jest.fn() };
+    svc = { presignUpload: vi.fn(), confirmUpload: vi.fn() };
     const mod: TestingModule = await Test.createTestingModule({
       controllers: [FilesController],
       providers: [{ provide: FilesService, useValue: svc }],
@@ -56,5 +57,44 @@ describe("FilesController", () => {
     });
     expect(r.status).toBe("success");
     expect(r.data.key).toBe("k");
+  });
+
+  it("forwards the x-recipe-preview header to presignUpload", async () => {
+    svc.presignUpload.mockResolvedValue({
+      uploadUrl: "u",
+      key: "k",
+      expiresIn: 1,
+      maxSize: 2,
+    });
+    const dto = {
+      formId: "f",
+      formVersion: "1.0.0",
+      stepId: "s",
+      fieldId: "fi",
+      fileName: "x.pdf",
+      contentType: "application/pdf",
+      size: 1,
+    };
+    await controller.presignUpload(dto, "tok");
+    expect(svc.presignUpload).toHaveBeenCalledWith(dto, "tok");
+  });
+
+  it("forwards the x-recipe-preview header to confirmUpload", async () => {
+    svc.confirmUpload.mockResolvedValue({
+      key: "k",
+      url: "u",
+      name: "n",
+      size: 1,
+      type: "t",
+    });
+    const dto = {
+      key: "k",
+      formId: "f",
+      formVersion: "1.0.0",
+      stepId: "s",
+      fieldId: "fi",
+    };
+    await controller.confirmUpload(dto, "tok");
+    expect(svc.confirmUpload).toHaveBeenCalledWith(dto, "tok");
   });
 });

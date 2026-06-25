@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { Logger } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
@@ -7,11 +8,11 @@ import { EZPAY_CONFIG } from "./ezpay.config";
 
 describe("EzpayClient", () => {
   let client: EzpayClient;
-  let http: { post: jest.Mock };
+  let http: { post: Mock };
   let module: TestingModule;
 
   beforeEach(async () => {
-    http = { post: jest.fn() };
+    http = { post: vi.fn() };
     module = await Test.createTestingModule({
       providers: [
         EzpayClient,
@@ -52,6 +53,29 @@ describe("EzpayClient", () => {
         headers: expect.objectContaining({ EZPluginKey: "api-key-1" }),
       }),
     );
+  });
+
+  it("createPayment always enables credit, debit and Payce (#936)", async () => {
+    http.post.mockReturnValue(of({ data: { token: "tok-1" } }));
+
+    await client.createPayment(
+      {
+        paymentCode: "EDU",
+        amount: 50,
+        description: "fees",
+        reference: "ref-1",
+        customerEmail: "a@b.c",
+        customerName: "A B",
+      },
+      "api-key-1",
+    );
+
+    const [, body] = http.post.mock.calls[0];
+    // "true"/"false" strings, not "1"/"0": EzPay's payment_page renders a method
+    // only when its flag === "true"; "1" blanks every option (#936 regression).
+    expect((body as URLSearchParams).get("ez_allow_credit")).toBe("true");
+    expect((body as URLSearchParams).get("ez_allow_debit")).toBe("true");
+    expect((body as URLSearchParams).get("ez_allow_payce")).toBe("true");
   });
 
   it("createPayment throws on EzPay error response", async () => {
@@ -226,7 +250,9 @@ describe("EzpayClient", () => {
 
   it("queryTransactions returns [] (no throw) when EzPay returns a non-array error/access object", async () => {
     // e.g. the body returned when the caller IP is not whitelisted
-    const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
     http.post.mockReturnValue(
       of({ data: { error: "Access denied", code: "E-IP" } }),
     );

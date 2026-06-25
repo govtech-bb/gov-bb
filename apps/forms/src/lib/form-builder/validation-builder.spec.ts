@@ -68,7 +68,7 @@ function makeFieldApi(
       state: { values: fieldValues },
       getFieldValue: (id: string) => fieldValues[id],
     },
-    handleChange: jest.fn(),
+    handleChange: vi.fn(),
   } as unknown as AnyFieldApi;
 }
 
@@ -264,7 +264,7 @@ describe("buildFieldValidationProperties", () => {
     it("flags an incomplete date with the missing part highlighted", () => {
       const { onDynamic } = buildFieldValidationProperties(dateField);
       const fieldApi = makeFieldApi();
-      const result = onDynamic!({ value: { day: 15, month: 6 }, fieldApi });
+      const result = onDynamic!({ value: { day: "15", month: "6" }, fieldApi });
       expect(result).toEqual([
         { message: "dob must include a year", parts: ["year"] },
       ]);
@@ -274,7 +274,7 @@ describe("buildFieldValidationProperties", () => {
       const { onDynamic } = buildFieldValidationProperties(dateField);
       const fieldApi = makeFieldApi();
       const result = onDynamic!({
-        value: { day: 15, month: 6, year: 2024 },
+        value: { day: "15", month: "6", year: "2024" },
         fieldApi,
       });
       expect(result).toBeUndefined();
@@ -296,9 +296,9 @@ describe("buildFieldValidationProperties", () => {
       future.setFullYear(future.getFullYear() + 1);
       const result = onDynamic!({
         value: {
-          day: future.getDate(),
-          month: future.getMonth() + 1,
-          year: future.getFullYear(),
+          day: String(future.getDate()),
+          month: String(future.getMonth() + 1),
+          year: String(future.getFullYear()),
         },
         fieldApi,
       });
@@ -553,12 +553,12 @@ describe("buildFieldValidationProperties", () => {
       });
       const { onDynamic } = buildFieldValidationProperties(field);
       const fieldApi = makeFieldApi(
-        { step1_startDate: { day: 10, month: 6, year: 2024 } },
+        { step1_startDate: { day: "10", month: "6", year: "2024" } },
         "step1_endDate",
       );
 
       expect(
-        onDynamic!({ value: { day: 1, month: 6, year: 2024 }, fieldApi }),
+        onDynamic!({ value: { day: "1", month: "6", year: "2024" }, fieldApi }),
       ).toEqual([
         {
           message: "End date must be after the start date.",
@@ -566,7 +566,10 @@ describe("buildFieldValidationProperties", () => {
         },
       ]);
       expect(
-        onDynamic!({ value: { day: 20, month: 6, year: 2024 }, fieldApi }),
+        onDynamic!({
+          value: { day: "20", month: "6", year: "2024" },
+          fieldApi,
+        }),
       ).toBeUndefined();
     });
 

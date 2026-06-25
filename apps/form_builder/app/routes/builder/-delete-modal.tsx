@@ -1,4 +1,5 @@
 import styles from "../../styles/builder.module.css";
+import { useEscClose } from "./-use-esc-close";
 
 interface DeleteModalProps {
   formId: string;
@@ -21,16 +22,11 @@ export function DeleteModal({
   onConfirm,
   onClose,
 }: DeleteModalProps) {
+  useEscClose(onClose);
   return (
     <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginBottom: 12,
-          }}
-        >
+      <div className={styles.modalContent} role="dialog" aria-modal="true" aria-label="Delete Draft" onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHead}>
           <strong>Delete Draft</strong>
           <button type="button" onClick={onClose}>
             Close

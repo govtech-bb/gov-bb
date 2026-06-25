@@ -5,7 +5,6 @@ import {
   HttpException,
   HttpStatus,
   Param,
-  Query,
   Res,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
@@ -15,9 +14,9 @@ import type { Response } from "express";
 import { FormDefinitionsService } from "./form-definitions.service";
 import { FormDisabledOverridesService } from "../form-disabled-overrides/form-disabled-overrides.service";
 import { GetFormDefinitionDocs } from "./form-definitions.docs";
-import { ApiResponse as AppApiResponse } from "../../common/response";
-import { isValidPreviewToken } from "./recipe-preview-token";
-import type { ApiResponseShape } from "../../common/response";
+import { ApiResponse as AppApiResponse } from "@/common/response";
+import { isValidSecretToken } from "@/common/secret-token";
+import type { ApiResponseShape } from "@/common/response";
 import type { ServiceContract } from "@govtech-bb/form-types";
 
 @ApiTags("Form Definitions")
@@ -59,7 +58,6 @@ export class FormDefinitionsController {
   @GetFormDefinitionDocs()
   async get(
     @Param("formId") formId: string,
-    @Query("version") version?: string,
     @Headers("x-recipe-preview") previewToken?: string,
     @Res({ passthrough: true }) res?: Response,
   ): Promise<ApiResponseShape<ServiceContract>> {
@@ -73,7 +71,7 @@ export class FormDefinitionsController {
       );
     }
 
-    const preview = isValidPreviewToken(
+    const preview = isValidSecretToken(
       this.configService.get<string>("RECIPE_PREVIEW_TOKEN", ""),
       previewToken,
     );
@@ -86,7 +84,6 @@ export class FormDefinitionsController {
 
     const data = await this.formDefinitionsService.findByFormId({
       formId,
-      version,
       preview,
     });
     return AppApiResponse.success(data, {

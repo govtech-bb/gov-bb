@@ -1,0 +1,188 @@
+<html>
+  <head>
+    <meta charset='utf-8' />
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.55;
+        color: #1a202c;
+        margin: 0;
+        padding: 0;
+        background-color: #ffffff;
+      }
+      .wrapper {
+        max-width: 720px;
+        margin: 0 auto;
+        background: #ffffff;
+      }
+      .header {
+        background-color: #ffc726;
+        padding: 22px 48px;
+      }
+      .header-brand {
+        display: flex;
+        align-items: center;
+      }
+      .header-brand img {
+        height: 34px;
+        width: auto;
+        margin-right: 12px;
+        display: inline-block;
+        vertical-align: middle;
+      }
+      .header-brand span {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a202c;
+        vertical-align: middle;
+      }
+      .body {
+        padding: 12px 48px 40px;
+      }
+      .title {
+        font-size: 40px;
+        font-weight: 800;
+        color: #1a202c;
+        margin: 28px 0 24px;
+        line-height: 1.15;
+      }
+      .intro {
+        font-size: 17px;
+        color: #1a202c;
+        margin: 0 0 28px;
+      }
+      .details {
+        background-color: #e9ecf3;
+        padding: 6px 28px;
+        margin: 0 0 28px;
+      }
+      .details table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .details td {
+        padding: 11px 0;
+        font-size: 15px;
+        vertical-align: top;
+      }
+      .details .d-label {
+        font-weight: 700;
+        color: #1a202c;
+        width: 42%;
+        padding-right: 16px;
+      }
+      .details .amount {
+        font-size: 22px;
+        font-weight: 800;
+        color: #00267f;
+      }
+      .pay-cta {
+        margin: 0 0 32px;
+      }
+      .pay-button {
+        display: inline-block;
+        background-color: #00267f;
+        color: #ffffff;
+        font-size: 17px;
+        font-weight: 700;
+        text-decoration: none;
+        padding: 14px 32px;
+        border-radius: 4px;
+      }
+      .pay-fallback {
+        font-size: 13px;
+        color: #4a5568;
+        margin: 14px 0 0;
+        word-break: break-all;
+      }
+      .footer {
+        background-color: #00267f;
+        color: #ffffff;
+        padding: 32px 48px;
+      }
+      .footer p {
+        font-size: 14px;
+        color: #ffffff;
+        margin: 0 0 16px;
+        max-width: 75%;
+      }
+      .footer .copyright {
+        font-size: 14px;
+        margin: 0;
+        opacity: 0.9;
+      }
+      .footer-crest {
+        float: right;
+        height: 80px;
+        width: auto;
+        margin-left: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class='wrapper'>
+      <div class='header'>
+        <div class='header-brand'>
+          {{#if coatOfArmsUrl}}
+            <img src='{{coatOfArmsUrl}}' alt='' />
+          {{/if}}
+          <span>Government of Barbados</span>
+        </div>
+      </div>
+
+      <div class='body'>
+        <h1 class='title'>Payment required for {{formTitle}}</h1>
+
+        <p class='intro'>
+          Your submission has been received. To complete your request, payment
+          is required.
+        </p>
+
+        <div class='details'>
+          <table>
+            <tr>
+              <td class='d-label'>Amount due:</td>
+              <td class='amount'>{{amountDue}}</td>
+            </tr>
+            <tr>
+              <td class='d-label'>Service:</td>
+              <td>{{description}}</td>
+            </tr>
+            <tr>
+              <td class='d-label'>Reference number:</td>
+              <td>{{referenceCode}}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class='pay-cta'>
+          <a class='pay-button' href='{{paymentUrl}}'>Pay now</a>
+          <p class='pay-fallback'>
+            If the button does not work, copy and paste this link into your
+            browser:<br />{{paymentUrl}}
+          </p>
+        </div>
+
+        <p class='intro'>
+          Once your payment is complete, your submission will be processed and
+          you will be contacted if any further information is needed. Please
+          retain your reference number for tracking and follow-up purposes.
+        </p>
+      </div>
+
+      <div class='footer'>
+        {{#if coatOfArmsUrl}}
+          <img class='footer-crest' src='{{coatOfArmsUrl}}' alt='' />
+        {{/if}}
+        <p>This is an automated email from the Government of Barbados.</p>
+        <p>
+          If you have any questions, please include your reference number:
+          {{referenceCode}}
+        </p>
+        <p>Please do not reply to this email.</p>
+        <p class='copyright'>&copy; {{year}} Government of Barbados</p>
+      </div>
+    </div>
+  </body>
+</html>

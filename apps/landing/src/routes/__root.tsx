@@ -9,7 +9,8 @@ import { Footer, textVariants } from '@govtech-bb/react'
 import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
 import { trackEvent } from '../lib/analytics'
-import { resolvePreview } from '../lib/preview'
+import { resolveViewLevel } from '../lib/preview'
+import { SITE_URL } from '../lib/site-url'
 
 import appCss from '../styles.css?url'
 
@@ -33,23 +34,60 @@ interface MyRouterContext {
   queryClient: QueryClient
 }
 
+// Umami analytics. The website id is a `VITE_`-prefixed var, so Vite inlines it
+// at build time from the build-container env (`import.meta.env`) — no runtime
+// env needed, which is what makes it work on Amplify (the SSR compute never
+// sees Console env vars; see vite.config.ts for the server-only PREVIEW_SECRET
+// equivalent). The id is public — it ships in the rendered <script> tag — so it
+// must NOT be read via the server-only runtime config the way PREVIEW_SECRET is.
+// When the id is unset the script is omitted entirely, so no events are sent.
+const UMAMI_WEBSITE_ID = import.meta.env.VITE_UMAMI_WEBSITE_ID as
+  | string
+  | undefined
+const UMAMI_SRC =
+  (import.meta.env.VITE_UMAMI_SRC as string | undefined) ??
+  'https://cloud.umami.is/script.js'
+
 export const Route = createRootRouteWithContext<MyRouterContext>()({
-  // Resolve preview mode once, server-side, and expose it on the router context
-  // so every child loader/component can gate on it. Runs on the initial SSR
-  // load; the resolved boolean rides the dehydrated context across subsequent
-  // client navigations, so there's no per-navigation server round-trip.
+  // Resolve the viewer's content level once, server-side, and expose it on the
+  // router context so every child loader/component can gate on it. Runs on the
+  // initial SSR load; the resolved level rides the dehydrated context across
+  // subsequent client navigations, so there's no per-navigation server round-trip.
   beforeLoad: async () => {
-    const { preview, redirectTo } = await resolvePreview()
+    const { level, redirectTo } = await resolveViewLevel()
     if (redirectTo) throw redirect({ href: redirectTo })
-    return { preview }
+    return { level }
   },
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: 'Government Services | Government of Barbados' },
+      { name: 'theme-color', content: '#000000' },
+      // Open Graph / Twitter defaults. Per-page routes override the title,
+      // description and url (via `pageHead`); these site-wide values aren't
+      // worth repeating per page.
+      { property: 'og:site_name', content: 'Government of Barbados' },
+      { property: 'og:locale', content: 'en_BB' },
+      { property: 'og:type', content: 'website' },
+      { property: 'og:image', content: `${SITE_URL}/og-image.png` },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:image', content: `${SITE_URL}/og-image.png` },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      { rel: 'manifest', href: '/manifest.json' },
+    ],
+    scripts: UMAMI_WEBSITE_ID
+      ? [
+          {
+            src: UMAMI_SRC,
+            defer: true,
+            'data-website-id': UMAMI_WEBSITE_ID,
+            'data-auto-track': 'false',
+          },
+        ]
+      : undefined,
   }),
   notFoundComponent: NotFoundPage,
   errorComponent: ServerErrorPage,
@@ -103,7 +141,7 @@ function ServerErrorPage() {
         'Try again in a few minutes',
         'Contact us if the problem continues',
       ]}
-      secondary={{ label: 'Contact us', href: '/contact' }}
+      secondary={{ label: 'Contact us', href: '/feedback' }}
       primary={{ label: 'Return to homepage', href: '/' }}
     />
   )

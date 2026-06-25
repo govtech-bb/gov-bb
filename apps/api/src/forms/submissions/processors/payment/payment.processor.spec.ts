@@ -1,32 +1,34 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { PaymentProcessor } from "./payment.processor";
 import { EzpayClient } from "./ezpay/ezpay.client";
 import { DepartmentKeyResolver } from "./ezpay/department-keys";
-import { PaymentRepository } from "../../../../payments/payment.repository";
+import { PaymentRepository } from "@/payments/payment.repository";
 import {
   PaymentEntity,
   PaymentStatus,
-} from "../../../../database/entities/payment.entity";
-import type { SubmissionCreatedEvent } from "../../submissions.types";
+} from "@/database/entities/payment.entity";
+import type { SubmissionCreatedEvent } from "@/forms/submissions/submissions.types";
 
 describe("PaymentProcessor.process", () => {
   let processor: PaymentProcessor;
   let module: TestingModule;
-  const ezpay = { createPayment: jest.fn() };
+  const ezpay = { createPayment: vi.fn() };
   const paymentRepo = {
-    create: jest.fn().mockImplementation((d) => d),
-    findOrCreate: jest.fn().mockImplementation(async (e: PaymentEntity) => ({
+    create: vi.fn().mockImplementation((d) => d),
+    findOrCreate: vi.fn().mockImplementation(async (e: PaymentEntity) => ({
       ...e,
       id: "pay-1",
       status: PaymentStatus.PENDING,
     })),
-    save: jest.fn().mockImplementation(async (e) => e),
+    save: vi.fn().mockImplementation(async (e) => e),
   };
   const deptKeys = new DepartmentKeyResolver({ education: "edu-key" });
+  const events = { emit: vi.fn() };
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     paymentRepo.create.mockImplementation((d) => d);
     paymentRepo.findOrCreate.mockImplementation(async (e: PaymentEntity) => ({
       ...e,
@@ -40,6 +42,7 @@ describe("PaymentProcessor.process", () => {
         { provide: EzpayClient, useValue: ezpay },
         { provide: DepartmentKeyResolver, useValue: deptKeys },
         { provide: PaymentRepository, useValue: paymentRepo },
+        { provide: EventEmitter2, useValue: events },
       ],
     }).compile();
     processor = module.get(PaymentProcessor);
@@ -115,6 +118,41 @@ describe("PaymentProcessor.process", () => {
         providerToken: "tok-1",
       }),
     );
+  });
+
+  it("emits payment.required with the pre-payment email details on fresh initiation", async () => {
+    ezpay.createPayment.mockResolvedValue({
+      token: "tok-1",
+      url: "https://ezpay/p?token=tok-1",
+    });
+
+    await processor.process(event());
+
+    expect(events.emit).toHaveBeenCalledWith("payment.required", {
+      customerEmail: "p@q.r",
+      formId: "school-fees",
+      formVersion: "1.0.0",
+      referenceCode: "SCH-20260604-130732-000001",
+      submissionId: "sub-1",
+      amount: 50,
+      description: "Term fees",
+      paymentUrl: "https://ezpay/p?token=tok-1",
+    });
+  });
+
+  it("does NOT emit payment.required when returning a cached payment URL (retry)", async () => {
+    paymentRepo.findOrCreate.mockResolvedValue({
+      id: "pay-1",
+      submissionId: "sub-1",
+      status: PaymentStatus.INITIATED,
+      providerUrl: "https://ezpay/p?token=existing",
+      expectedAmount: "50",
+      description: "Term fees",
+    } as PaymentEntity);
+
+    await processor.process(event());
+
+    expect(events.emit).not.toHaveBeenCalled();
   });
 
   it("returns the existing payment URL on retry (idempotent)", async () => {
@@ -204,6 +242,7 @@ describe("PaymentProcessor.process", () => {
           useValue: new DepartmentKeyResolver({}),
         },
         { provide: PaymentRepository, useValue: paymentRepo },
+        { provide: EventEmitter2, useValue: events },
       ],
     }).compile();
     const isolated = moduleRef.get(PaymentProcessor);
@@ -223,7 +262,9 @@ describe("PaymentProcessor.process", () => {
   });
 
   it("warns and uses only the first config when multiple payment configs are present", async () => {
-    const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
     ezpay.createPayment.mockResolvedValue({
       token: "tok-1",
       url: "https://ezpay/p?token=tok-1",

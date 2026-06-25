@@ -5,7 +5,7 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "scripts": {
-    "test": "jest --config jest.config.ts"
+    "test": "vitest run"
   },
   "lint-staged": {
     "*.ts": "npx prettier --write"
@@ -14,6 +14,7 @@
     "lint-staged": "^16.4.0"
   },
   "dependencies": {
+    "@govtech-bb/expressions": "workspace:*",
     "libphonenumber-js": "^1.13.5"
   }
 }

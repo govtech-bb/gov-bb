@@ -8,7 +8,7 @@ import {
   FormValues,
   FormMeta,
 } from "@forms/types";
-import { getFullFieldId } from "@forms/lib";
+import { getFullFieldId } from "../field-mapper";
 import {
   RepeatableBehaviour,
   SharedFieldsBehaviour,
@@ -76,12 +76,14 @@ export const setupRepeatSteps = (
 
     if (hasSharedFields) {
       // Shared-fields steps: the source step is a separate "shared values" page
-      // (it holds the shared fields, filled once) and the minimum repeat
+      // (it holds ONLY the shared fields, filled once) and the minimum repeat
       // instances are materialised as ~1..~min. The "Add another?" control sits
-      // on the last generated instance.
+      // on the last generated instance. The per-instance (non-shared) fields
+      // must NOT remain on the source step — otherwise they are collected here
+      // AND on ~1, so a min:1 step asks for them twice (#1257).
       updatedSteps[i] = {
         ...step,
-        fields: sourceFields,
+        fields: sourceFields.filter((f) => sharedFieldsIds.includes(f.fieldId)),
       };
 
       // Start at 1 to account for source step
@@ -229,7 +231,7 @@ export const generateRepeatableAddAnotherField = (
     validations: {
       required: {
         value: true,
-        error: "Add another is required.",
+        error: "This question is required",
       },
     },
   };

@@ -4,6 +4,7 @@ import type {
   TokenUsage,
 } from "@aws-sdk/client-bedrock-runtime";
 import {
+  buildBaseUsage,
   EventType,
   type RunErrorEvent,
   type RunFinishedEvent,
@@ -258,11 +259,11 @@ function emitRunFinished(
     timestamp: Date.now(),
     finishReason,
     usage: usage
-      ? {
+      ? buildBaseUsage({
           promptTokens: usage.inputTokens ?? 0,
           completionTokens: usage.outputTokens ?? 0,
           totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
-        }
+        })
       : undefined,
   };
 }

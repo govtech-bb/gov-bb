@@ -1,13 +1,21 @@
+import type { Mock } from "vitest";
 import type { Request, Response } from "express";
 
 // forms.ts imports FormDefinitionEntity + FormConfigEntity. Stub them so loading
 // the module doesn't drag in the full TypeORM entity graph.
-jest.mock("@govtech-bb/database", () => ({
+vi.mock("@govtech-bb/database", () => ({
   FormDefinitionEntity: class FormDefinitionEntity {},
   FormConfigEntity: class FormConfigEntity {},
 }));
 
-jest.mock("../db.js", () => ({ getDataSource: jest.fn() }));
+vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
+
+// Presence (read-only lock, #874) is exercised in presence.spec.ts; here it's
+// out of scope, so treat every caller as the holder and let mockReq stamp a
+// userLogin so the save handlers' presence gate is satisfied transparently.
+vi.mock("./presence.js", () => ({
+  holdsFreshClaim: vi.fn().mockResolvedValue(true),
+}));
 
 import { getDataSource } from "../db.js";
 import {
@@ -16,10 +24,14 @@ import {
   getFormConfigHandler,
 } from "./forms";
 
-const getDataSourceMock = getDataSource as jest.Mock;
+const getDataSourceMock = getDataSource as Mock;
 
 function mockReq(body: unknown, params: Record<string, string> = {}): Request {
-  return { body, params } as unknown as Request;
+  const withLogin =
+    body && typeof body === "object" && !Array.isArray(body)
+      ? { userLogin: "tester", ...(body as Record<string, unknown>) }
+      : body;
+  return { body: withLogin, params } as unknown as Request;
 }
 
 interface CapturingResponse extends Response {
@@ -29,11 +41,11 @@ interface CapturingResponse extends Response {
 
 function mockRes(): CapturingResponse {
   const res = { statusCode: 200, body: undefined } as CapturingResponse;
-  res.status = jest.fn((code: number) => {
+  res.status = vi.fn((code: number) => {
     res.statusCode = code;
     return res;
   }) as unknown as Response["status"];
-  res.json = jest.fn((payload: unknown) => {
+  res.json = vi.fn((payload: unknown) => {
     res.body = payload;
     return res;
   }) as unknown as Response["json"];
@@ -56,10 +68,10 @@ const originalApiBaseUrl = process.env.API_BASE_URL;
 
 beforeEach(() => {
   process.env.API_BASE_URL = "http://api.test";
-  global.fetch = jest.fn().mockResolvedValue({
+  global.fetch = vi.fn().mockResolvedValue({
     ok: true,
     status: 200,
-    json: jest.fn().mockResolvedValue({ data: [] }),
+    json: vi.fn().mockResolvedValue({ data: [] }),
   }) as unknown as typeof fetch;
 });
 
@@ -78,11 +90,11 @@ function fakeDataSource(
   opts: { formConfigRows?: unknown[]; managerConfigRow?: unknown } = {},
 ) {
   const { formConfigRows = [], managerConfigRow = null } = opts;
-  const configUpsert = jest.fn(async () => undefined);
-  const formDefSave = jest.fn(async (e: unknown) => e);
+  const configUpsert = vi.fn(async () => undefined);
+  const formDefSave = vi.fn(async (e: unknown) => e);
   // The in-transaction form_config repo's findOne — the existing-blob read the
   // processors merge does before writing. Distinct from the GET path's findOne.
-  const managerConfigFindOne = jest.fn(async () => managerConfigRow);
+  const managerConfigFindOne = vi.fn(async () => managerConfigRow);
 
   // Repo factory for the live (non-transaction) DataSource — used by the GET
   // .../config lookup.
@@ -90,12 +102,12 @@ function fakeDataSource(
     if (entity?.name === "FormConfigEntity") {
       return {
         upsert: configUpsert,
-        findOne: jest.fn(async () => formConfigRows[0] ?? null),
+        findOne: vi.fn(async () => formConfigRows[0] ?? null),
       };
     }
     return {
-      findOne: jest.fn(async () => null),
-      create: jest.fn((e: unknown) => e),
+      findOne: vi.fn(async () => null),
+      create: vi.fn((e: unknown) => e),
       save: formDefSave,
     };
   }
@@ -111,30 +123,30 @@ function fakeDataSource(
       };
     }
     return {
-      findOne: jest.fn(async () => null),
-      create: jest.fn((e: unknown) => e),
+      findOne: vi.fn(async () => null),
+      create: vi.fn((e: unknown) => e),
       save: formDefSave,
     };
   }
 
   const manager = {
-    getRepository: jest.fn(managerRepoFor),
-    query: jest.fn(async () => []),
+    getRepository: vi.fn(managerRepoFor),
+    query: vi.fn(async () => []),
   };
 
-  const query = jest.fn(async (sql: string) => {
+  const query = vi.fn(async (sql: string) => {
     if (/DISTINCT ON \(form_id\)/i.test(sql)) return [];
     if (/SELECT 1 FROM form_definitions WHERE form_id/i.test(sql)) return [];
-    // PUT latest-version lookup
-    if (/SELECT id, version, published_at/i.test(sql))
-      return [{ id: 7, version: "1.0.0", published_at: null }];
+    // PUT row lookup (#1196: one row per form, keyed by formId)
+    if (/SELECT id FROM form_definitions WHERE form_id/i.test(sql))
+      return [{ id: 7 }];
     return [];
   });
 
   const ds = {
-    getRepository: jest.fn(repoFor),
+    getRepository: vi.fn(repoFor),
     query,
-    transaction: jest.fn(async (cb: (m: typeof manager) => unknown) =>
+    transaction: vi.fn(async (cb: (m: typeof manager) => unknown) =>
       cb(manager),
     ),
   };

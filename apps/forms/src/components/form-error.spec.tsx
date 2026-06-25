@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "jest-axe";
 import { FormFetchError } from "@forms/form-api";
+import { LANDING_URL } from "../config/landing";
 import FormError from "./form-error";
 
 describe("FormError", () => {
@@ -76,19 +77,19 @@ describe("FormError", () => {
 
   it('renders a "Try again" button that calls reset when clicked', async () => {
     const user = userEvent.setup();
-    const reset = jest.fn();
+    const reset = vi.fn();
     const error = new Error("Oops");
     render(<FormError error={error} reset={reset} />);
     await user.click(screen.getByRole("button", { name: "Try again" }));
     expect(reset).toHaveBeenCalledTimes(1);
   });
 
-  it('renders a "Go to Homepage" link pointing to "/"', () => {
+  it('renders a "Go to Homepage" link pointing to the landing site', () => {
     const error = new Error("Oops");
     render(<FormError error={error} reset={noopReset} />);
     expect(
       screen.getByRole("link", { name: "Go to Homepage" }),
-    ).toHaveAttribute("href", "/");
+    ).toHaveAttribute("href", LANDING_URL);
   });
 
   it("passes axe accessibility audit", async () => {

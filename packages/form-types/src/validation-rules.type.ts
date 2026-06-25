@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { kebabIdSchema } from "./id-pattern";
+import { durationTransformSchema } from "./behavior.type";
 
 // ---------------------------------------------------------------------------
 // Shared optional base fields present on many rule schemas
@@ -12,6 +13,12 @@ const baseRuleFields = {
 const referenceFields = {
   referenceFieldId: kebabIdSchema.optional(),
   targetStepId: kebabIdSchema.optional(),
+};
+
+// Optional date→number derivation on the numeric rules (#1020): the field's
+// date value is passed through `durationSince` before the bound is checked.
+const transformField = {
+  transform: durationTransformSchema.optional(),
 };
 
 // ---------------------------------------------------------------------------
@@ -64,6 +71,7 @@ export type MaxItemsRule = z.infer<typeof maxItemsRuleSchema>;
 export const minRuleSchema = z.object({
   ...baseRuleFields,
   ...referenceFields,
+  ...transformField,
   value: z.number().optional(),
 });
 export type MinRule = z.infer<typeof minRuleSchema>;
@@ -71,6 +79,7 @@ export type MinRule = z.infer<typeof minRuleSchema>;
 export const maxRuleSchema = z.object({
   ...baseRuleFields,
   ...referenceFields,
+  ...transformField,
   value: z.number().optional(),
 });
 export type MaxRule = z.infer<typeof maxRuleSchema>;
@@ -78,6 +87,7 @@ export type MaxRule = z.infer<typeof maxRuleSchema>;
 export const gtRuleSchema = z.object({
   ...baseRuleFields,
   ...referenceFields,
+  ...transformField,
   value: z.number().optional(),
 });
 export type GtRule = z.infer<typeof gtRuleSchema>;
@@ -85,6 +95,7 @@ export type GtRule = z.infer<typeof gtRuleSchema>;
 export const ltRuleSchema = z.object({
   ...baseRuleFields,
   ...referenceFields,
+  ...transformField,
   value: z.number().optional(),
 });
 export type LtRule = z.infer<typeof ltRuleSchema>;
@@ -111,6 +122,9 @@ export const afterRuleSchema = z.object({
   ...baseRuleFields,
   ...referenceFields,
   value: z.string().optional(),
+  // Shifts the reference date forward by N calendar months before comparing —
+  // bound becomes "reference + N months" (see validation.type.ts).
+  offsetMonths: z.number().optional(),
 });
 export type AfterRule = z.infer<typeof afterRuleSchema>;
 
@@ -118,6 +132,9 @@ export const beforeRuleSchema = z.object({
   ...baseRuleFields,
   ...referenceFields,
   value: z.string().optional(),
+  // Shifts the reference date forward by N calendar months before comparing —
+  // bound becomes "reference + N months" (see validation.type.ts).
+  offsetMonths: z.number().optional(),
 });
 export type BeforeRule = z.infer<typeof beforeRuleSchema>;
 

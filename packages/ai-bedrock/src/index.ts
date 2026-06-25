@@ -6,3 +6,4 @@ export {
   resolveBedrockModelId,
   type BedrockModelAlias,
 } from "./models.js";
+export { emitTextTurn, type TextTurnIds } from "./static-text-turn.js";

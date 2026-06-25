@@ -6,6 +6,7 @@ publish_date: 2026-03-06
 category: work-employment
 form_id: apply-for-conductor-licence
 service_type: digital
+visibility: preview
 ---
 
 If you are 18 years old or older, you can use this service to apply for a licence to become a conductor on a Public Service Vehicle (PSV).

@@ -60,6 +60,118 @@ describe("ExpressionsService", () => {
     ]);
   });
 
+  it("passes a mapped webhook through resolution unchanged", () => {
+    // The mapping/endpoint/auth fields are literal routing (no dynamic()), so a
+    // mapped webhook must survive resolution and validate against
+    // resolvedProcessorSchema — otherwise the listener skips ALL non-gating
+    // dispatch for the submission.
+    const mapped = {
+      type: "webhook" as const,
+      config: {
+        endpoint: { env: "WEBHOOK_URL" },
+        method: "POST" as const,
+        signatureHeader: "X-Webhook-Signature",
+        timeoutMs: 10_000,
+        auth: {
+          scheme: "apiKey" as const,
+          header: "X-API-Key",
+          secretEnv: "WEBHOOK_SECRET",
+        },
+        mapping: {
+          programmeCode: "SCIENCE2026",
+          applicant: {
+            name: ["child-details.child-first-name"],
+            email: "contact-details.parent-email",
+            phone: "contact-details.parent-mobile-phone",
+          },
+          excludeSteps: ["declaration"],
+        },
+      },
+    };
+    const out = service.resolveProcessors([mapped] as Processor[], {
+      values: {},
+    });
+    expect(out).toEqual([mapped]);
+  });
+
+  // Mirrors the get-a-primary-school-textbook-grant 1.7.0 processor batch:
+  // an applicant confirmation email plus a school email routed by the shared
+  // `child-school` value via the `schoolEmail` op. See issue #1213.
+  const textbookGrantProcessors: Processor[] = [
+    {
+      type: "email",
+      config: {
+        label: "Applicant Email",
+        subject: "Your textbook grant application has been received",
+        recipientField: "applicant-details.applicant-email",
+      },
+    },
+    {
+      type: "email",
+      config: {
+        label: "School Email",
+        subject: "A textbook grant application has been received",
+        recipientField: {
+          schoolEmail: { var: "values.child-details.0.child-school" },
+        } as unknown as string,
+      },
+    },
+  ];
+
+  it("routes the school email to the mapped address for a selected school (whole batch resolves)", () => {
+    const out = service.resolveProcessors(textbookGrantProcessors, {
+      values: {
+        "child-details": [{ "child-school": "st-george-primary" }],
+      },
+    });
+
+    expect(out).toEqual([
+      {
+        type: "email",
+        config: {
+          label: "Applicant Email",
+          subject: "Your textbook grant application has been received",
+          // A plain "stepId.fieldId" reference is NOT a JSONLogic rule, so it
+          // passes through unchanged here — the email processor resolves it to
+          // the applicant's address downstream.
+          recipientField: "applicant-details.applicant-email",
+        },
+      },
+      {
+        type: "email",
+        config: {
+          label: "School Email",
+          subject: "A textbook grant application has been received",
+          // The schoolEmail rule resolves to a literal address at this stage.
+          recipientField: "StGeorgePrimary@mes.gov.bb",
+        },
+      },
+    ]);
+  });
+
+  it("falls back to a valid address for a forged/unmapped school (batch does not throw, applicant email survives)", () => {
+    const out = service.resolveProcessors(textbookGrantProcessors, {
+      values: {
+        "child-details": [{ "child-school": "not-a-real-school" }],
+      },
+    });
+
+    // The applicant processor still resolves (its reference passes through)...
+    expect(out[0].config).toEqual({
+      label: "Applicant Email",
+      subject: "Your textbook grant application has been received",
+      recipientField: "applicant-details.applicant-email",
+    });
+    // ...and the school email resolves to a non-empty fallback address rather
+    // than an empty string (which would fail the resolved schema and drop the
+    // entire batch, including the applicant confirmation).
+    expect(out[1].config).toEqual({
+      label: "School Email",
+      subject: "A textbook grant application has been received",
+      recipientField: "testing@govtech.bb",
+    });
+  });
+
   it("throws when a resolved config violates the resolved schema (e.g. amount is not a number)", () => {
     const processors: Processor[] = [
       {

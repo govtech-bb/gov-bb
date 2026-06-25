@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
-import { Button, Logo, Link as GovLink } from '@govtech-bb/react'
-import { OfficialBanner } from './OfficialBanner'
+import { Button, Logo, Link as GovLink, OfficialBanner } from '@govtech-bb/react'
 import { StageBanner } from './StageBanner'
 
 const NAV_ITEMS = [{ label: 'Services', to: '/services' }] as const
@@ -38,7 +37,16 @@ export default function Header() {
 
   return (
     <div>
-      <OfficialBanner />
+      <div className='bg-blue-100'>
+        <div className="container">
+          <OfficialBanner
+            imageSrc="/images/coat-of-arms.png"
+            className="[&>div]:px-0"
+            imageAlt=""
+            showLearnMore={false}
+          />
+        </div>
+      </div>
       <div className="bg-blue-10">
         <div className="container">
           <StageBanner stage="alpha" />

@@ -3,6 +3,9 @@ import { useNavigate } from "@tanstack/react-router";
 import { AnyFormApi } from "@tanstack/react-form";
 import { ClientFormStep, ClientPrimitive, FormMeta } from "@forms/types";
 import { getInstanceMarker, getVisibleFields } from "@forms/lib";
+import { DateValue } from "@govtech-bb/form-types";
+import { resolveStepTitle } from "@govtech-bb/form-conditions";
+import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
 
 export default function Review({
   formMeta,
@@ -16,18 +19,17 @@ export default function Review({
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
   const excludeStepIds = [
+    "intro",
     "check-your-answers",
     "declaration",
     "submission-confirmation",
   ];
 
-  const formatDate = (dateValue: {
-    day: number;
-    month: number;
-    year: number;
-  }) => {
+  // Date parts are stored as digit-strings (#815); coerce to numbers for the
+  // Date constructor so leading zeros ("09") format correctly.
+  const formatDate = (dateValue: DateValue) => {
     const { day, month, year } = dateValue;
-    const formattedDate = new Date(year, month - 1, day)
+    const formattedDate = new Date(Number(year), Number(month) - 1, Number(day))
       .toDateString()
       .trim()
       .replace(/^\w+\s/, ""); // Remove the day of the week from the date string
@@ -83,13 +85,7 @@ export default function Review({
       }
       case "date": {
         if (!value) return null;
-        return formatDate(
-          value as {
-            day: number;
-            month: number;
-            year: number;
-          },
-        );
+        return formatDate(value as DateValue);
       }
       case "checkbox": {
         if (!field.options) return emptyToNull(value);
@@ -126,11 +122,18 @@ export default function Review({
     }
   };
 
+  // Step titles may carry per-answer overrides (#871); resolve each against the
+  // current values so the review heading matches what the applicant saw.
+  const stepScopedValues = buildStepScopedValues(
+    form.state.values as Record<string, unknown>,
+  );
+
   return (
     <div className="form-page__review">
       {visibleSteps
         .filter((step) => !excludeStepIds.includes(step.stepId))
         .map((step) => {
+          const stepTitle = resolveStepTitle(step, stepScopedValues);
           // Compute each visible field's display value once, then drop the
           // rows that have no answer so blank fields are omitted entirely.
           // Visibility is evaluated from current form values (#737) — the
@@ -154,7 +157,7 @@ export default function Review({
           return (
             <section key={step.stepId} className="govbb-summary-section">
               <h2 className="govbb-summary-section__title">
-                {marker ? `${step.title} — ${marker.text}` : step.title}
+                {marker ? `${stepTitle} — ${marker.text}` : stepTitle}
               </h2>
               <div className="govbb-summary-section__action">
                 <a
@@ -163,7 +166,7 @@ export default function Review({
                   onClick={handleChangeClick(step.stepId)}
                 >
                   Change{" "}
-                  <span className="govbb-visually-hidden">{step.title}</span>
+                  <span className="govbb-visually-hidden">{stepTitle}</span>
                 </a>
               </div>
               {rows.length === 0 ? (

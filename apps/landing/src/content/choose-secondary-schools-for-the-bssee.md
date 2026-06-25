@@ -17,7 +17,7 @@ You can use this service if you are the parent or guardian of a child sitting th
 
 You can complete the form online. It takes about 15 minutes.
 
-<a data-start-link href="/education/choose-secondary-schools-for-the-bssee/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 

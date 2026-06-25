@@ -38,6 +38,60 @@ describe("formStepSchema", () => {
     ).toBe(false);
   });
 
+  it("accepts and preserves a conditionalTitle array", () => {
+    const parsed = formStepSchema.parse({
+      ...validStep,
+      title: "Provide the person's birth details",
+      conditionalTitle: [
+        {
+          targetFieldId: "applying-for-yourself",
+          operator: "equal",
+          value: "yes",
+          title: "Provide your birth details",
+        },
+      ],
+    });
+    expect(parsed.conditionalTitle).toEqual([
+      {
+        targetFieldId: "applying-for-yourself",
+        operator: "equal",
+        value: "yes",
+        title: "Provide your birth details",
+      },
+    ]);
+  });
+
+  it("rejects a conditionalTitle entry with a non-kebab targetFieldId", () => {
+    expect(
+      formStepSchema.safeParse({
+        ...validStep,
+        conditionalTitle: [
+          {
+            targetFieldId: "applyingForYourself",
+            operator: "equal",
+            value: "yes",
+            title: "Provide your birth details",
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a conditionalTitle entry missing its title", () => {
+    expect(
+      formStepSchema.safeParse({
+        ...validStep,
+        conditionalTitle: [
+          {
+            targetFieldId: "applying-for-yourself",
+            operator: "equal",
+            value: "yes",
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
   it("rejects missing stepId", () => {
     const { stepId: _s, ...noStepId } = validStep;
     expect(formStepSchema.safeParse(noStepId).success).toBe(false);

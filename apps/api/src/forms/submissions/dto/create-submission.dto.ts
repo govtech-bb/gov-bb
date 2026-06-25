@@ -3,11 +3,13 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  Matches,
   Validate,
   ValidatorConstraint,
   type ValidatorConstraintInterface,
 } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
+import { SEMVER_PATTERN } from "@govtech-bb/form-types";
 import type { SubmissionValues } from "../submissions.types";
 
 const MAX_INSTANCES_HARD = 500;
@@ -65,10 +67,14 @@ export class CreateSubmissionDto {
   @IsNotEmpty()
   formId!: string;
 
-  @ApiProperty({ description: "Form version", example: "1.0.0" })
+  // Version is retired (#1196): new clients omit it and the recipe resolves to
+  // the canonical file. Accepted but optional so an old client still sending a
+  // (well-formed) version hits the legacy fallback during the cutover.
+  @ApiProperty({ description: "Form version (deprecated)", required: false })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  formVersion!: string;
+  @Matches(SEMVER_PATTERN)
+  formVersion?: string;
 
   @ApiProperty({ description: "Optional draft ID", required: false })
   @IsOptional()

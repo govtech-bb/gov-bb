@@ -1,15 +1,16 @@
+import type { Mock, Mocked } from "vitest";
 import { DataSource, EntityManager } from "typeorm";
 import { FormSubmissionRepository } from "./form-submission.repository";
-import { FormSubmissionEntity } from "../../database/entities/form-submission.entity";
+import { FormSubmissionEntity } from "@/database/entities/form-submission.entity";
 
-function makeDataSource(): jest.Mocked<DataSource> {
+function makeDataSource(): Mocked<DataSource> {
   const fakeManager = {
-    transaction: jest.fn(),
+    transaction: vi.fn(),
   } as unknown as EntityManager;
 
   return {
-    createEntityManager: jest.fn().mockReturnValue(fakeManager),
-  } as unknown as jest.Mocked<DataSource>;
+    createEntityManager: vi.fn().mockReturnValue(fakeManager),
+  } as unknown as Mocked<DataSource>;
 }
 
 describe("FormSubmissionRepository", () => {
@@ -38,14 +39,14 @@ describe("FormSubmissionRepository", () => {
       const repo = new FormSubmissionRepository(dataSource);
 
       const fakeTxManager = {} as EntityManager;
-      const mockTransaction = jest
+      const mockTransaction = vi
         .fn()
         .mockImplementation(
           (_iso: string, cb: (m: EntityManager) => Promise<unknown>) =>
             cb(fakeTxManager),
         );
       (
-        repo as unknown as { manager: { transaction: jest.Mock } }
+        repo as unknown as { manager: { transaction: Mock } }
       ).manager.transaction = mockTransaction;
 
       const result = await repo.tx(async () => "committed");
@@ -62,14 +63,14 @@ describe("FormSubmissionRepository", () => {
       const repo = new FormSubmissionRepository(dataSource);
 
       const fakeTxManager = { id: "tx-manager" } as unknown as EntityManager;
-      const mockTransaction = jest
+      const mockTransaction = vi
         .fn()
         .mockImplementation(
           (_iso: string, cb: (m: EntityManager) => Promise<unknown>) =>
             cb(fakeTxManager),
         );
       (
-        repo as unknown as { manager: { transaction: jest.Mock } }
+        repo as unknown as { manager: { transaction: Mock } }
       ).manager.transaction = mockTransaction;
 
       let capturedRepo: FormSubmissionRepository | undefined;
@@ -91,14 +92,14 @@ describe("FormSubmissionRepository", () => {
 
       const originalError = new Error("unique constraint violation");
 
-      const mockTransaction = jest
+      const mockTransaction = vi
         .fn()
         .mockImplementation(
           (_iso: string, cb: (m: EntityManager) => Promise<unknown>) =>
             cb({} as EntityManager),
         );
       (
-        repo as unknown as { manager: { transaction: jest.Mock } }
+        repo as unknown as { manager: { transaction: Mock } }
       ).manager.transaction = mockTransaction;
 
       await expect(
@@ -113,9 +114,9 @@ describe("FormSubmissionRepository", () => {
       const repo = new FormSubmissionRepository(dataSource);
 
       const deadlockError = new Error("deadlock detected");
-      const mockTransaction = jest.fn().mockRejectedValue(deadlockError);
+      const mockTransaction = vi.fn().mockRejectedValue(deadlockError);
       (
-        repo as unknown as { manager: { transaction: jest.Mock } }
+        repo as unknown as { manager: { transaction: Mock } }
       ).manager.transaction = mockTransaction;
 
       await expect(repo.tx(async () => "ok")).rejects.toBe(deadlockError);

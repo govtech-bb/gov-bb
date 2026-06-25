@@ -1,5 +1,5 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -15,6 +15,7 @@ const FIELDS: ResolvedFieldId[] = [
     stepTitle: "Contact",
     display: "Email",
     isBoolean: false,
+    isNumeric: false,
   },
   {
     fieldId: "full-name",
@@ -24,6 +25,7 @@ const FIELDS: ResolvedFieldId[] = [
     display: "Name › Full name",
     childFieldId: "full-name",
     isBoolean: false,
+    isNumeric: false,
   },
 ];
 
@@ -36,7 +38,7 @@ it("renders an option per resolved field with a `stepId.fieldId` value", () => {
 });
 
 it("calls onChange with the selected `stepId.fieldId` path", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(<ValuePathPicker value="" fields={FIELDS} onChange={onChange} />);
   await userEvent.selectOptions(screen.getByRole("combobox"), "contact.email");
   expect(onChange).toHaveBeenCalledWith("contact.email");
@@ -51,7 +53,7 @@ it("keeps an existing value selectable even when it matches no current field", (
 });
 
 it("renders extraOptions as `label (value)` and makes them selectable", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <ValuePathPicker
       value=""
@@ -79,6 +81,7 @@ it("drops an extra option that collides with a real field path", () => {
       stepTitle: "Contact Details",
       display: "Email",
       isBoolean: false,
+      isNumeric: false,
     },
   ];
   render(

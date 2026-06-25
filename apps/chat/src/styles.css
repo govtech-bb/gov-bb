@@ -12,27 +12,22 @@
 }
 
 @keyframes shimmer {
-  from { background-position: 100% 0; }
-  to { background-position: -100% 0; }
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
 }
 
 @keyframes bot-hum {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
-}
-
-@theme {
-  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
-}
-
-@keyframes shimmer {
-  from { background-position: 100% 0; }
-  to { background-position: -100% 0; }
-}
-
-@keyframes bot-hum {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
 @utility text-bubble {
@@ -52,25 +47,6 @@
   }
 }
 
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#app {
-  min-height: 100%;
-}
-
-body {
-  margin: 0;
-  background: var(--color-white-00);
-  color: var(--color-black-00);
-  font-family: var(--font-sans);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-}
-
 @utility container {
   margin-inline: auto;
   width: 100%;
@@ -80,6 +56,14 @@ body {
     max-width: 1200px;
     padding-inline: 8rem;
   }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
 }
 
 .sr-only {
@@ -92,6 +76,25 @@ body {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* Assistant markdown inherits the chat bubble's text size (text-bubble) instead
+   of Tailwind Typography's fixed prose size, so the assistant's default text is
+   the same size as the user's bubble. It also recolours prose to the design
+   tokens — body/headings/bold/lists in black-00, links in the design-system
+   link colour (teal-00) — via Typography's own --tw-prose-* variables (the
+   idiomatic override, no specificity fights). Unlayered, so it beats the prose
+   plugin's layered defaults. */
+.prose-bubble {
+  font-size: inherit;
+  line-height: inherit;
+  color: var(--color-black-00);
+  --tw-prose-body: var(--color-black-00);
+  --tw-prose-headings: var(--color-black-00);
+  --tw-prose-bold: var(--color-black-00);
+  --tw-prose-counters: var(--color-black-00);
+  --tw-prose-bullets: var(--color-black-00);
+  --tw-prose-links: var(--color-teal-00);
 }
 
 /* Composer field grows with its content where supported (Chromium, Safari),

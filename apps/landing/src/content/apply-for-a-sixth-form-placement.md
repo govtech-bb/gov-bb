@@ -4,7 +4,7 @@ description: "Apply for placement in a public secondary school that offers Sixth
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
-visibility: preview
+visibility: draft
 ---
 
 If you have completed CSEC and want to continue your studies at a public secondary school that offers Sixth Form (CAPE), use this service to apply.

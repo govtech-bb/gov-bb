@@ -11,6 +11,7 @@ import { FormsModule } from "./forms/forms.module";
 import { FilesModule } from "./files/files.module";
 import { PaymentsModule } from "./payments/payments.module";
 import { WebhooksModule } from "./webhooks/webhooks.module";
+import { FeedbackModule } from "./feedback/feedback.module";
 import { TelemetryModule } from "./telemetry/telemetry.module";
 import { configs } from "./config";
 import { envValidationSchema } from "./config/env.validation";
@@ -26,11 +27,11 @@ import { envValidationSchema } from "./config/env.validation";
     ConfigModule.forRoot({
       isGlobal: true,
       load: configs,
-      validationSchema: envValidationSchema,
-      validationOptions: {
-        allowUnknown: true,
-        abortEarly: false,
-      },
+      // Zod fail-fast validation (#1422). The schema bakes in `.passthrough()`
+      // (== Joi's allowUnknown) and collects all issues (== abortEarly: false);
+      // ConfigModule writes the parsed result back to process.env, so we return
+      // the parsed object rather than just throwing.
+      validate: (config) => envValidationSchema.parse(config),
     }),
     ThrottlerModule.forRoot([
       { name: "short", ttl: 10_000, limit: 5 },
@@ -46,6 +47,7 @@ import { envValidationSchema } from "./config/env.validation";
     FilesModule,
     PaymentsModule,
     WebhooksModule,
+    FeedbackModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

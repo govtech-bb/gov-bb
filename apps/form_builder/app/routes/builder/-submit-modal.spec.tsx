@@ -1,12 +1,12 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 import { SubmitModal } from "./-submit-modal";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 
-// VITE_FORMS_URL is stubbed by ts-jest-mock-import-meta (see jest.config.ts).
+// VITE_FORMS_URL is stubbed by ts-jest-mock-import-meta (see vi.config.ts).
 const draft = {
   formId: "passport",
   title: "Passport Application",
@@ -18,14 +18,12 @@ function renderModal(props: Partial<React.ComponentProps<typeof SubmitModal>> = 
   return render(
     <SubmitModal
       draft={draft}
-      version="1.0.0"
-      currentVersion={null}
       loadedFromId={null}
       isSubmitting={false}
       submitSuccess={false}
       submitError={null}
-      onSubmit={jest.fn()}
-      onClose={jest.fn()}
+      onSubmit={vi.fn()}
+      onClose={vi.fn()}
       {...props}
     />,
   );

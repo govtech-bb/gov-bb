@@ -2,3 +2,12 @@ dist
 .next
 node_modules
 **/*.gen.ts
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Published form recipes are machine-written artifacts: the builder's publish
+# flow overwrites recipes/{formId}.json verbatim and the PR diff is the record of
+# change (#1196). Prettier reformatting them via the lint-staged hook would create
+# spurious diffs on any commit that happens to stage one. Leave them untouched.
+apps/api/src/forms/form-definitions/recipes/

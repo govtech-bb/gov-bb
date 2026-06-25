@@ -1,30 +1,31 @@
-import { HttpException, HttpStatus } from "@nestjs/common";
+import type { Mock } from "vitest";
+import { HttpStatus } from "@nestjs/common";
 import { FormDefinitionsController } from "./form-definitions.controller";
 
 const mockFormDefinitionsService = {
-  findAll: jest.fn(),
-  findByFormId: jest.fn(),
+  findAll: vi.fn(),
+  findByFormId: vi.fn(),
 };
 
 const mockDisabledOverridesService = {
-  find: jest.fn(),
-  findAllFormIds: jest.fn().mockResolvedValue([]),
-  disable: jest.fn(),
-  enable: jest.fn(),
+  find: vi.fn(),
+  findAllFormIds: vi.fn().mockResolvedValue([]),
+  disable: vi.fn(),
+  enable: vi.fn(),
 };
 
 const mockConfigService = {
-  get: jest.fn().mockReturnValue(""),
+  get: vi.fn().mockReturnValue(""),
 };
 
 describe("FormDefinitionsController — kill switch short-circuit", () => {
   let controller: FormDefinitionsController;
-  let res: { setHeader: jest.Mock };
+  let res: { setHeader: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockConfigService.get.mockReturnValue("");
-    res = { setHeader: jest.fn() };
+    res = { setHeader: vi.fn() };
     controller = new FormDefinitionsController(
       mockFormDefinitionsService as never,
       mockDisabledOverridesService as never,
@@ -40,7 +41,6 @@ describe("FormDefinitionsController — kill switch short-circuit", () => {
     const result = await controller.get(
       "passport-renewal",
       undefined,
-      undefined,
       res as never,
     );
 
@@ -49,7 +49,6 @@ describe("FormDefinitionsController — kill switch short-circuit", () => {
     );
     expect(mockFormDefinitionsService.findByFormId).toHaveBeenCalledWith({
       formId: "passport-renewal",
-      version: undefined,
       preview: false,
     });
     expect(result).toMatchObject({ status: "success", data: contract });
@@ -64,26 +63,11 @@ describe("FormDefinitionsController — kill switch short-circuit", () => {
     });
 
     await expect(
-      controller.get("passport-renewal", undefined, undefined, res as never),
+      controller.get("passport-renewal", undefined, res as never),
     ).rejects.toMatchObject({
       status: HttpStatus.GONE,
       response: { disabled: true, reason: "Step 3 is broken" },
     });
-
-    expect(mockFormDefinitionsService.findByFormId).not.toHaveBeenCalled();
-  });
-
-  it("short-circuits regardless of version query parameter", async () => {
-    mockDisabledOverridesService.find.mockResolvedValue({
-      formId: "passport-renewal",
-      reason: "All versions disabled",
-      disabledBy: "alice@govtech.bb",
-      disabledAt: new Date("2026-05-22T09:00:00.000Z"),
-    });
-
-    await expect(
-      controller.get("passport-renewal", "1.0.0", undefined, res as never),
-    ).rejects.toBeInstanceOf(HttpException);
 
     expect(mockFormDefinitionsService.findByFormId).not.toHaveBeenCalled();
   });

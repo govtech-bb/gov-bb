@@ -4,7 +4,7 @@ description: "Apply for a Certificate of Exemption if your child cannot attend s
 stage: "alpha"
 publish_date: 2026-06-02
 category: education
-visibility: preview
+visibility: draft
 ---
 
 If your child cannot attend school in the usual way — for example, because of a medical condition, a disability, religious reasons, or an extended family relocation — you can apply for a Certificate of Exemption under the Education Act.

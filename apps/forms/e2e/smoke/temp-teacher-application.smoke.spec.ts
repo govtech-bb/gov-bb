@@ -79,7 +79,7 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     await fillField(page, step, "address", faker.location.streetAddress());
     // parish and citizenship render as native <select> dropdowns
     // (components/parish, components/country) — option values are slugs.
-    await selectDropdown(page, step, "parish", "saint-michael");
+    await selectDropdown(page, step, "parish", "st-michael");
     await fillField(page, step, "email", "testing@govtech.bb");
     await fillField(page, step, "tel-cell", "246-418-1234");
     // marital-status is a required <select> (components/marital-status).

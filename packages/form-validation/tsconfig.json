@@ -6,13 +6,16 @@
     "declaration": true,
     "module": "commonjs",
     "types": [
-      "jest",
+      "vitest/globals",
       "node"
     ]
   },
   "references": [
     {
       "path": "../form-types"
+    },
+    {
+      "path": "../expressions"
     }
   ],
   "include": [

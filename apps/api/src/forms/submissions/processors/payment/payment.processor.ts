@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import type {
   Processor,
   ResolvedPaymentProcessorConfig,
@@ -7,15 +8,18 @@ import type {
   ISubmissionProcessor,
   ProcessorOutput,
 } from "../submission-processor.interface";
-import type { SubmissionCreatedEvent } from "../../submissions.types";
+import type {
+  PaymentRequiredEvent,
+  SubmissionCreatedEvent,
+} from "@/forms/submissions/submissions.types";
 import { EzpayClient } from "./ezpay/ezpay.client";
 import { DepartmentKeyResolver } from "./ezpay/department-keys";
-import { PaymentRepository } from "../../../../payments/payment.repository";
-import { generatePaymentReference } from "../../../../payments/payment-reference";
+import { PaymentRepository } from "@/payments/payment.repository";
+import { generatePaymentReference } from "@/payments/payment-reference";
 import {
   PaymentProvider,
   PaymentStatus,
-} from "../../../../database/entities/payment.entity";
+} from "@/database/entities/payment.entity";
 
 @Injectable()
 export class PaymentProcessor implements ISubmissionProcessor {
@@ -27,6 +31,7 @@ export class PaymentProcessor implements ISubmissionProcessor {
     private readonly ezpay: EzpayClient,
     private readonly deptKeys: DepartmentKeyResolver,
     private readonly paymentRepo: PaymentRepository,
+    private readonly events: EventEmitter2,
   ) {}
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
@@ -107,9 +112,6 @@ export class PaymentProcessor implements ISubmissionProcessor {
         reference: payment.referenceNumber,
         customerEmail,
         customerName,
-        allowCredit: cfg.allowCredit,
-        allowDebit: cfg.allowDebit,
-        allowPayce: cfg.allowPayce,
       },
       apiKey,
     );
@@ -120,6 +122,23 @@ export class PaymentProcessor implements ISubmissionProcessor {
     await this.paymentRepo.save(payment);
 
     this.logger.log(`Payment ${payment.id} initiated with EzPay`);
+
+    // Notify the citizen that payment is required, with the pay link. Emitted
+    // only here (fresh initiation), never on the cached-URL branch above, so a
+    // resubmit of an already-initiated payment does not re-send the email. A
+    // listener handles delivery asynchronously, so a slow/failed send can't
+    // affect the deferred result returned to the submit request.
+    const paymentRequired: PaymentRequiredEvent = {
+      customerEmail,
+      formId: payload.formId,
+      formVersion: payload.formVersion,
+      referenceCode: payload.referenceCode,
+      submissionId: payload.submissionId,
+      amount: cfg.amount,
+      description: cfg.description,
+      paymentUrl: url,
+    };
+    this.events.emit("payment.required", paymentRequired);
 
     return {
       kind: "deferred",

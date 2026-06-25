@@ -1,12 +1,12 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { Toolbar } from "./-toolbar";
 
 function renderToolbar(overrides: Partial<Parameters<typeof Toolbar>[0]> = {}) {
-  const onFormIdChange = jest.fn();
+  const onFormIdChange = vi.fn();
   const props = {
     formId: "",
     title: "",
@@ -18,16 +18,17 @@ function renderToolbar(overrides: Partial<Parameters<typeof Toolbar>[0]> = {}) {
     isPreviewing: false,
     isSubmitting: false,
     isPublishing: false,
+    isReadOnly: false,
     lastSaveStatus: "idle" as const,
     onFormIdChange,
-    onTitleChange: jest.fn(),
-    onNew: jest.fn(),
-    onOpen: jest.fn(),
-    onValidate: jest.fn(),
-    onPreview: jest.fn(),
-    onSubmit: jest.fn(),
-    onPublish: jest.fn(),
-    onDiscard: jest.fn(),
+    onTitleChange: vi.fn(),
+    onNew: vi.fn(),
+    onOpen: vi.fn(),
+    onValidate: vi.fn(),
+    onPreview: vi.fn(),
+    onSubmit: vi.fn(),
+    onPublish: vi.fn(),
+    onDiscard: vi.fn(),
     ...overrides,
   };
   render(<Toolbar {...props} />);
@@ -143,5 +144,25 @@ describe("Toolbar — unsaved changes + Discard", () => {
     renderToolbar({ hasUnsavedChanges: false });
 
     expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
+  });
+});
+
+describe("Toolbar — read-only lock (#874)", () => {
+  it("disables Save draft when read-only, even with unsaved changes", () => {
+    renderToolbar({ hasUnsavedChanges: true, isReadOnly: true });
+    expect(
+      screen.getByRole("button", { name: /save draft/i }),
+    ).toBeDisabled();
+  });
+
+  it("disables Deploy when read-only, even on a clean draft", () => {
+    renderToolbar({ hasUnsavedChanges: false, isReadOnly: true });
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
+  });
+
+  it("disables the Form ID and Title inputs when read-only", () => {
+    renderToolbar({ isReadOnly: true });
+    expect(formIdInput()).toBeDisabled();
+    expect(screen.getByLabelText(/title/i)).toBeDisabled();
   });
 });

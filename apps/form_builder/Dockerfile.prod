@@ -3,9 +3,9 @@
 # node-server preset. Deployed to ECS behind the ALB at /builder/*.
 
 # ---- builder ----------------------------------------------------------------
-FROM node:20-alpine AS builder
+FROM node:24-alpine3.23@sha256:7c70d1235c0b4c2bc9eeed5393d19f1bbdde6885ba0d58ba62bb385d7b0f3ff1 AS builder
 
-RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
+RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
 
 WORKDIR /app
@@ -35,7 +35,7 @@ ENV NITRO_PRESET=node-server
 RUN pnpm exec nx run form-builder-app:build
 
 # ---- runner -----------------------------------------------------------------
-FROM node:20-alpine AS runner
+FROM node:24-alpine3.23@sha256:7c70d1235c0b4c2bc9eeed5393d19f1bbdde6885ba0d58ba62bb385d7b0f3ff1 AS runner
 
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
 

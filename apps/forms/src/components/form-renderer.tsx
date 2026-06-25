@@ -6,6 +6,9 @@ import {
 } from "@forms/types";
 import FieldRenderer from "./field-renderer";
 import React from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { markdownComponents } from "./markdown-components";
 import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { isDateValidationError } from "@govtech-bb/form-validation";
@@ -24,6 +27,16 @@ import {
   buildFieldValidationProperties,
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
+import { StatusBanner } from "@govtech-bb/react";
+import { resolveStepTitle } from "@govtech-bb/form-conditions";
+import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
+
+// The feedback form citizens are sent to from a confirmation page, and its
+// first step. A root-relative path (not the absolute sandbox URL) so the link
+// resolves to whichever environment is serving the form — sandbox, prod, or
+// local. The originating form id is appended as `?source=` at render time.
+const EXIT_SURVEY_FORM_ID = "exit-survey";
+const EXIT_SURVEY_FIRST_STEP = "difficulty-rating";
 
 // ---------------------------------------------------------------------------
 // Field grouping (show-hide + radio/select conditional reveal)
@@ -138,6 +151,8 @@ export default function FormRenderer({
   visibleSteps,
   repeatableStepSettingsRef,
   submissionState,
+  isPreview = false,
+  previewToken,
 }: FormRendererProps) {
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
     formId: formMeta.formId,
@@ -357,7 +372,16 @@ export default function FormRenderer({
 
   const isSubmissionConfirmation =
     currentStep.stepId === "submission-confirmation";
-  const isLastFormStep = currentStep.stepId === "declaration";
+  // The form is submitted from whichever step sits immediately before the
+  // submission-confirmation step. For standard recipes that is `declaration`;
+  // surveys with no declaration (e.g. the exit survey) submit from the
+  // build-form-injected check-your-answers step instead. Matching `declaration`
+  // explicitly as well keeps every existing recipe identical — across all
+  // recipes that carry one, declaration is always the step before confirmation,
+  // so the two clauses never disagree (and never yield two submit steps).
+  const isLastFormStep =
+    currentStep.stepId === "declaration" ||
+    visibleSteps[stepIndex + 1]?.stepId === "submission-confirmation";
   // Build show-hide groups so the left-border content wrapper spans the toggle
   // hint AND all conditionally-controlled sibling fields.
   const fieldGroups = buildFieldGroups(currentFields);
@@ -375,21 +399,48 @@ export default function FormRenderer({
     return result;
   });
 
+  // Resolve the step's effective title reactively: a step may carry
+  // `conditionalTitle` overrides (#871) that depend on an earlier answer, so the
+  // heading must recompute when the watched value changes. `resolveStepTitle`
+  // returns the static title unchanged for steps without overrides.
+  const resolvedStepTitle = useStore(form.store, (state) =>
+    resolveStepTitle(
+      currentStep,
+      buildStepScopedValues(state.values as Record<string, unknown>),
+    ),
+  );
+
+  // A content-only step carries `markdownContent` and no fields (e.g. an intro
+  // page). Its markdown supplies its own headings, so we suppress the default
+  // step `<h1>` to avoid a duplicate heading.
+  const isContentStep =
+    !!currentStep.markdownContent && currentStep.fields.length === 0;
+
   // The submission confirmation owns its own full-width layout (a full-bleed
   // banner plus inner containers), so it renders outside the page container.
   if (isSubmissionConfirmation) {
+    // Link to the exit survey, tagging the originating form id so the survey
+    // submission records which service the feedback is about. Suppressed on the
+    // exit survey itself so it never invites feedback on the feedback form.
+    const feedbackUrl =
+      formMeta.formId === EXIT_SURVEY_FORM_ID
+        ? undefined
+        : `/forms/${EXIT_SURVEY_FORM_ID}?step=${EXIT_SURVEY_FIRST_STEP}&source=${encodeURIComponent(
+            formMeta.formId,
+          )}`;
     return (
       <div className="form-page-confirmation">
         <SubmissionConfirmation
           key={"submission-confirmation"}
           serviceTitle={formMeta.formTitle}
-          stepTitle={currentStep.title}
+          stepTitle={resolvedStepTitle}
           processingMessage={currentStep.description}
           nextSteps={currentStep.nextSteps}
           markdownContent={currentStep.markdownContent}
           contactDetails={formMeta.contactDetails}
           onTryAgain={() => navigateToStep("check-your-answers")}
           submissionState={submissionState}
+          feedbackUrl={feedbackUrl}
         />
       </div>
     );
@@ -398,24 +449,31 @@ export default function FormRenderer({
   return (
     <div className="container pb-8 lg:pb-16">
       <div className="form-page form-width">
+        {isPreview && (
+          <StatusBanner variant="service-issue" data-testid="preview-banner">
+            Preview mode — this is an unpublished draft and cannot be submitted.
+          </StatusBanner>
+        )}
         <div className="form-page__header">
           <p className="form-page__service-title"> {formMeta.formTitle} </p>
-          <h1 className="govbb-text-h1">
-            {/* GOV.UK caption-in-heading pattern: the caption sits inside the
+          {!isContentStep && (
+            <h1 className="govbb-text-h1">
+              {/* GOV.UK caption-in-heading pattern: the caption sits inside the
                 h1 so the accessible name distinguishes repeat instances for
                 screen-reader heading navigation. */}
-            {instanceMarker?.hasLabel && (
-              <span
-                data-testid="repeat-instance-marker"
-                className="block text-caption text-mid-grey-00"
-              >
-                {instanceMarker.text}
-              </span>
-            )}
-            {instanceMarker && !instanceMarker.hasLabel
-              ? `${currentStep.title} — ${instanceMarker.text}`
-              : currentStep.title}
-          </h1>
+              {instanceMarker?.hasLabel && (
+                <span
+                  data-testid="repeat-instance-marker"
+                  className="block text-caption text-mid-grey-00"
+                >
+                  {instanceMarker.text}
+                </span>
+              )}
+              {instanceMarker && !instanceMarker.hasLabel
+                ? `${resolvedStepTitle} — ${instanceMarker.text}`
+                : resolvedStepTitle}
+            </h1>
+          )}
           {currentStep.description && (
             <p className="form-page__step-description">
               {currentStep.description}
@@ -425,6 +483,20 @@ export default function FormRenderer({
         <ErrorSummary errors={errors} />
 
         <div className="form-page__step">
+          {currentStep.markdownContent && (
+            <div className="form-page__markdown-content">
+              {/* Recipe-authored step copy (e.g. an intro page). react-markdown
+                  escapes raw HTML by default and we omit rehype-raw, so recipe
+                  content cannot inject markup. */}
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={markdownComponents}
+              >
+                {currentStep.markdownContent}
+              </ReactMarkdown>
+            </div>
+          )}
+
           {currentStep.stepId === "check-your-answers" && (
             <Review
               key={"review-step"}
@@ -443,17 +515,18 @@ export default function FormRenderer({
               const isOpen = showHideValues[group.toggle.id] ?? false;
               return (
                 <React.Fragment key={group.toggle.id}>
-                  {/* Toggle button — hint and controlled fields live outside the
-                    FieldRenderer so we can wrap them all in the content border */}
+                  {/* Toggle (<details>/<summary>) — the hint and controlled
+                    fields live outside the FieldRenderer so we can wrap them all
+                    in the govbb-show-hide content border */}
                   <FieldRenderer
                     form={form}
                     field={group.toggle}
                     validationProperties={resolveValidators(group.toggle)}
                     formId={formMeta.formId}
-                    formVersion={formMeta.version}
+                    previewToken={previewToken}
                   />
                   {isOpen && (
-                    <div className="form-page__show-hide-content">
+                    <div className="govbb-show-hide__content">
                       {group.toggle.hint && (
                         <p className="govbb-hint">{group.toggle.hint}</p>
                       )}
@@ -464,7 +537,7 @@ export default function FormRenderer({
                           field={field}
                           validationProperties={resolveValidators(field)}
                           formId={formMeta.formId}
-                          formVersion={formMeta.version}
+                          previewToken={previewToken}
                         />
                       ))}
                     </div>
@@ -497,7 +570,7 @@ export default function FormRenderer({
                   validationProperties={resolveValidators(group.field)}
                   insetFieldsByOption={insetFieldsByOption}
                   formId={formMeta.formId}
-                  formVersion={formMeta.version}
+                  previewToken={previewToken}
                 />
               );
             }
@@ -509,7 +582,7 @@ export default function FormRenderer({
                 field={group.field}
                 validationProperties={resolveValidators(group.field)}
                 formId={formMeta.formId}
-                formVersion={formMeta.version}
+                previewToken={previewToken}
               />
             );
           })}
@@ -528,17 +601,30 @@ export default function FormRenderer({
               <button
                 className="govbb-btn"
                 type="button"
-                disabled={isLastFormStep && isSubmitting}
+                disabled={
+                  (isLastFormStep && isSubmitting) ||
+                  (isLastFormStep && isPreview)
+                }
                 onClick={isLastFormStep ? handleSubmit : handleContinue}
               >
                 {isLastFormStep && isSubmitting
                   ? "Submitting…"
-                  : isLastFormStep
-                    ? "Submit"
-                    : "Continue"}
+                  : isLastFormStep && isPreview
+                    ? "Submit (preview)"
+                    : isLastFormStep
+                      ? "Submit"
+                      : "Continue"}
               </button>
             </div>
           )}
+          {currentStep.stepId !== "submission-confirmation" &&
+            isLastFormStep &&
+            isPreview && (
+              <p className="govbb-hint" data-testid="preview-submit-hint">
+                Submitting is disabled in preview. Publish the form to enable
+                submission.
+              </p>
+            )}
         </div>
       </div>
     </div>

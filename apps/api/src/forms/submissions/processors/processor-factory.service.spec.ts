@@ -9,7 +9,7 @@ import {
 
 const makeProcessor = (type: Processor["type"]): ISubmissionProcessor => ({
   type,
-  process: jest.fn().mockResolvedValue(undefined),
+  process: vi.fn().mockResolvedValue(undefined),
 });
 
 const cfg = (type: string): Processor =>
@@ -62,7 +62,9 @@ describe("ProcessorFactory", () => {
     });
 
     it("skips and warns on an unknown processor type", () => {
-      const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+      const warn = vi
+        .spyOn(Logger.prototype, "warn")
+        .mockImplementation(() => {});
 
       const resolved = factory.resolve([cfg("email"), cfg("unknown")]);
 
@@ -107,7 +109,7 @@ describe("ProcessorFactory", () => {
     });
 
     it("returns empty array when configured types are not in the registry", () => {
-      jest.spyOn(Logger.prototype, "warn").mockImplementation();
+      vi.spyOn(Logger.prototype, "warn").mockImplementation(() => {});
 
       const resolved = factory.resolve([cfg("opencrvs")]);
 
@@ -144,7 +146,7 @@ describe("ProcessorFactory", () => {
     const gatingPayment: ISubmissionProcessor = {
       type: "payment" as Processor["type"],
       gatesPipeline: true,
-      process: jest.fn().mockResolvedValue({ kind: "completed" }),
+      process: vi.fn().mockResolvedValue({ kind: "completed" }),
     };
 
     beforeEach(async () => {

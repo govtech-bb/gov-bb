@@ -12,6 +12,7 @@ import {
 } from "../forms/submissions/processors/payment/ezpay/ezpay.config";
 import { DepartmentKeyResolver } from "../forms/submissions/processors/payment/ezpay/department-keys";
 import { PaymentWebhookController } from "./payment-webhook.controller";
+import { PaymentReturnController } from "./payment-return.controller";
 import { PaymentWebhookService } from "./payment-webhook.service";
 import { PaymentReconciliationService } from "./payment-reconciliation.service";
 import { AbandonedPaymentCleanupService } from "./abandoned-payment-cleanup.service";
@@ -23,7 +24,7 @@ import { FormDefinitionsModule } from "../forms/form-definitions/form-definition
     TypeOrmModule.forFeature([PaymentEntity, PaymentTransactionEntity]),
     FormDefinitionsModule,
   ],
-  controllers: [PaymentWebhookController],
+  controllers: [PaymentWebhookController, PaymentReturnController],
   providers: [
     PaymentRepository,
     {

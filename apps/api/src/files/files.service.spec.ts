@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { ConfigService } from "@nestjs/config";
 import { mockClient } from "aws-sdk-client-mock";
@@ -48,7 +49,7 @@ function makeContract(): ServiceContract {
 
 describe("FilesService", () => {
   let service: FilesService;
-  let formDefs: { findByFormId: jest.Mock };
+  let formDefs: { findByFormId: Mock };
 
   beforeAll(() => {
     process.env.AWS_ACCESS_KEY_ID = "test-access-key";
@@ -58,7 +59,7 @@ describe("FilesService", () => {
   beforeEach(async () => {
     s3Mock.reset();
     formDefs = {
-      findByFormId: jest.fn().mockResolvedValue(makeContract()),
+      findByFormId: vi.fn().mockResolvedValue(makeContract()),
     };
 
     const cfg: Record<string, unknown> = {
@@ -69,6 +70,7 @@ describe("FilesService", () => {
       "upload.maxSizeBytes": 10 * 1024 * 1024,
       "upload.presignTtlSeconds": 900,
       "upload.readUrlTtlSeconds": 604800,
+      RECIPE_PREVIEW_TOKEN: "secret-preview-token",
     };
 
     const mod: TestingModule = await Test.createTestingModule({
@@ -140,6 +142,44 @@ describe("FilesService", () => {
         service.presignUpload({ ...dto, size: 5 * 1024 * 1024 }),
       ).rejects.toThrow(BadRequestException);
     });
+
+    describe("preview token", () => {
+      it("resolves with preview:true when the token is valid", async () => {
+        await service.presignUpload(dto, "secret-preview-token");
+        expect(formDefs.findByFormId).toHaveBeenCalledWith(
+          expect.objectContaining({ preview: true }),
+        );
+      });
+
+      it("resolves with preview:false when no token is supplied", async () => {
+        await service.presignUpload(dto);
+        expect(formDefs.findByFormId).toHaveBeenCalledWith(
+          expect.objectContaining({ preview: false }),
+        );
+      });
+
+      it("resolves with preview:false when the token is invalid", async () => {
+        await service.presignUpload(dto, "wrong-token");
+        expect(formDefs.findByFormId).toHaveBeenCalledWith(
+          expect.objectContaining({ preview: false }),
+        );
+      });
+
+      it("presigns a DB-only draft only with a valid token", async () => {
+        // Simulate an unpublished draft: resolvable only on the preview path.
+        formDefs.findByFormId.mockImplementation(
+          ({ preview }: { preview?: boolean }) =>
+            preview
+              ? Promise.resolve(makeContract())
+              : Promise.reject(new Error("not found")),
+        );
+        await expect(service.presignUpload(dto)).rejects.toThrow(
+          BadRequestException,
+        );
+        const r = await service.presignUpload(dto, "secret-preview-token");
+        expect(r.uploadUrl).toMatch(/^https?:\/\//);
+      });
+    });
   });
 
   describe("confirmUpload", () => {
@@ -191,6 +231,46 @@ describe("FilesService", () => {
           key: "uploads/passport-renewal/2026/05/abcdef01-2345-6789-abcd-ef0123456789-evil.exe",
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    describe("preview token", () => {
+      beforeEach(() => {
+        s3Mock.on(HeadObjectCommand).resolves({
+          ContentLength: 1234,
+          ContentType: "application/pdf",
+        });
+      });
+
+      it("resolves with preview:true when the token is valid", async () => {
+        await service.confirmUpload(confirmDto, "secret-preview-token");
+        expect(formDefs.findByFormId).toHaveBeenCalledWith(
+          expect.objectContaining({ preview: true }),
+        );
+      });
+
+      it("resolves with preview:false when no token is supplied", async () => {
+        await service.confirmUpload(confirmDto);
+        expect(formDefs.findByFormId).toHaveBeenCalledWith(
+          expect.objectContaining({ preview: false }),
+        );
+      });
+
+      it("confirms a DB-only draft only with a valid token", async () => {
+        formDefs.findByFormId.mockImplementation(
+          ({ preview }: { preview?: boolean }) =>
+            preview
+              ? Promise.resolve(makeContract())
+              : Promise.reject(new Error("not found")),
+        );
+        await expect(service.confirmUpload(confirmDto)).rejects.toThrow(
+          BadRequestException,
+        );
+        const r = await service.confirmUpload(
+          confirmDto,
+          "secret-preview-token",
+        );
+        expect(r.size).toBe(1234);
+      });
     });
   });
 

@@ -1,5 +1,6 @@
+import type { Mock } from "vitest";
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  *
  * Regression (#487): the "Required" checkbox must reflect and control the
  * *effective* required state (registry base merged with the override), and
@@ -43,15 +44,15 @@ it("checks Required for a field that is required in the registry", () => {
       catalog={catalog}
       draft={makeDraft(field)}
       stepId="step-1"
-      dispatch={jest.fn()}
-      onClose={jest.fn()}
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
     />,
   );
   expect(requiredCheckbox()).toBeChecked();
 });
 
 it("writes required:{value:false} when un-requiring a base-required field", async () => {
-  const dispatch = jest.fn();
+  const dispatch = vi.fn();
   const field = makeField("components/last-name");
   render(
     <FieldEditPanel
@@ -60,7 +61,7 @@ it("writes required:{value:false} when un-requiring a base-required field", asyn
       draft={makeDraft(field)}
       stepId="step-1"
       dispatch={dispatch}
-      onClose={jest.fn()}
+      onClose={vi.fn()}
     />,
   );
 
@@ -85,15 +86,15 @@ it("leaves an optional field unchecked and adds no override when untouched", () 
       catalog={catalog}
       draft={makeDraft(field)}
       stepId="step-1"
-      dispatch={jest.fn()}
-      onClose={jest.fn()}
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
     />,
   );
   expect(requiredCheckbox()).not.toBeChecked();
 });
 
 it("writes required:{value:true} when requiring an optional field", async () => {
-  const dispatch = jest.fn();
+  const dispatch = vi.fn();
   const field = makeField("components/middle-name");
   render(
     <FieldEditPanel
@@ -102,7 +103,7 @@ it("writes required:{value:true} when requiring an optional field", async () => 
       draft={makeDraft(field)}
       stepId="step-1"
       dispatch={dispatch}
-      onClose={jest.fn()}
+      onClose={vi.fn()}
     />,
   );
 
@@ -130,7 +131,7 @@ const widthSelect = () =>
 const hideLabelCheckbox = () =>
   screen.getByRole("checkbox", { name: /hide label/i });
 
-function renderPanel(field: RecipeFieldDraft, dispatch = jest.fn()) {
+function renderPanel(field: RecipeFieldDraft, dispatch = vi.fn()) {
   render(
     <FieldEditPanel
       field={field}
@@ -138,13 +139,13 @@ function renderPanel(field: RecipeFieldDraft, dispatch = jest.fn()) {
       draft={makeDraft(field)}
       stepId="step-1"
       dispatch={dispatch}
-      onClose={jest.fn()}
+      onClose={vi.fn()}
     />,
   );
   return dispatch;
 }
 
-const lastOverrides = (dispatch: jest.Mock) =>
+const lastOverrides = (dispatch: Mock) =>
   dispatch.mock.calls.at(-1)![0].overrides;
 
 it.each(["short", "medium"] as const)(
@@ -281,8 +282,8 @@ it("renders no Field type picker for a block field", () => {
         ],
       }}
       stepId="step-1"
-      dispatch={jest.fn()}
-      onClose={jest.fn()}
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
     />,
   );
   expect(
@@ -381,4 +382,82 @@ it("writes the base value into overrides when an inherited rule is overridden", 
       error: NATIONAL_ID_PATTERN_ERROR,
     },
   });
+});
+
+// --- Custom Required error message (#1022) -------------------------------
+// #618 moved `required` off the ValidationRulesEditor (to kill a double
+// control) and onto the dedicated checkbox — but the checkbox only ever wrote
+// the boolean, leaving no UI path to set `required.error`. This input restores
+// it: visible only when the field is *effectively* required, owned by the same
+// single control as the checkbox. The override must carry both keys together
+// (`{ value: true, error }`) because validations merge shallow at the rule
+// level (`shallowMergeDefined`) — a bare `{ error }` would drop `value`.
+
+const requiredErrorInput = () =>
+  screen.queryByLabelText(/required error message/i);
+
+it("hides the Required error message input when the field is not required", () => {
+  renderPanel(makeField("components/middle-name")); // registry: no required rule
+  expect(requiredErrorInput()).not.toBeInTheDocument();
+});
+
+it("shows the Required error message input with the inherited base error as placeholder", () => {
+  // last-name declares a custom required error in the registry. With no
+  // override of its own, the input is empty but hints the inherited message.
+  renderPanel(makeField("components/last-name"));
+  const input = requiredErrorInput();
+  expect(input).toBeInTheDocument();
+  expect(input).toHaveAttribute("placeholder", "Last name is required");
+  expect(input).toHaveValue("");
+});
+
+it("populates the input with an existing custom Required error", () => {
+  renderPanel(
+    makeFieldWith("components/middle-name", {
+      validations: { required: { value: true, error: "Please tell us your middle name" } },
+    }),
+  );
+  expect(requiredErrorInput()).toHaveValue("Please tell us your middle name");
+});
+
+it("writes required:{ value: true, error } when a message is typed", async () => {
+  const dispatch = renderPanel(makeField("components/middle-name"));
+
+  await userEvent.click(requiredCheckbox()); // make it effectively required
+  await userEvent.type(requiredErrorInput()!, "Middle name is required");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+  expect(lastOverrides(dispatch).validations).toEqual({
+    required: { value: true, error: "Middle name is required" },
+  });
+});
+
+it("keeps required:{ value: true } when the message is emptied on an override-required (base-optional) field", async () => {
+  const dispatch = renderPanel(
+    makeFieldWith("components/middle-name", {
+      validations: { required: { value: true, error: "Middle name is required" } },
+    }),
+  );
+
+  await userEvent.clear(requiredErrorInput()!);
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+  // Base doesn't require the field — dropping the rule would un-require it, so
+  // the override must persist as a bare `{ value: true }`.
+  expect(lastOverrides(dispatch).validations).toEqual({ required: { value: true } });
+});
+
+it("clears the override to restore inheritance when the message is emptied on a base-required field", async () => {
+  const dispatch = renderPanel(
+    makeFieldWith("components/last-name", {
+      validations: { required: { value: true, error: "Surname is required" } },
+    }),
+  );
+
+  await userEvent.clear(requiredErrorInput()!);
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+  // Base already requires the field, so dropping the override restores
+  // inheritance rather than persisting a redundant `{ value: true }`.
+  expect(lastOverrides(dispatch).validations).toBeUndefined();
 });

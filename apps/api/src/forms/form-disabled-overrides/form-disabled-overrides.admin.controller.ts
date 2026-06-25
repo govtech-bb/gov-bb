@@ -12,8 +12,8 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { FormDisabledOverridesService } from "./form-disabled-overrides.service";
 import { DisableFormDto } from "./dto";
-import { ApiResponse } from "../../common/response";
-import type { ApiResponseShape } from "../../common/response";
+import { ApiResponse } from "@/common/response";
+import type { ApiResponseShape } from "@/common/response";
 
 interface DisabledStatusResponse {
   disabled: boolean;

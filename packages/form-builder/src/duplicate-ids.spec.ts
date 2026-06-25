@@ -945,6 +945,7 @@ describe("formatCollisionIssues", () => {
               stepTitle: "Personal details",
               display: "Text",
               isBoolean: false,
+              isNumeric: false,
             },
             {
               fieldId: "text",
@@ -953,6 +954,7 @@ describe("formatCollisionIssues", () => {
               stepTitle: "Personal details",
               display: "Text",
               isBoolean: false,
+              isNumeric: false,
             },
           ],
         },

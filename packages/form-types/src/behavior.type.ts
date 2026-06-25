@@ -1,10 +1,35 @@
 import { z } from "zod";
 import { kebabIdSchema } from "./id-pattern";
 
-const operationValues = ["equal", "notEqual", "in", "exists"] as const;
+const operationValues = [
+  "equal",
+  "notEqual",
+  "in",
+  "exists",
+  // Numeric comparison operators (#1020). Both sides are coerced to Number;
+  // NaN on either side never matches. Ranges compose through the implicit AND
+  // across stacked conditions (gte 16 + lte 24 → "16–24"), so no fused range
+  // operator is needed.
+  "gte",
+  "lte",
+  "gt",
+  "lt",
+] as const;
 
 export const equalityOperationsSchema = z.enum(operationValues);
 export type EqualityOperations = z.infer<typeof equalityOperationsSchema>;
+
+// Optional date→number derivation (#1020), shared by the branch (conditional)
+// and block (validation) engines. When set, the date value is passed through
+// `durationSince` (Barbados tz, truncated whole integer) before the operator /
+// numeric rule runs — so a form can gate on an age derived from a
+// date-of-birth field. Invalid/empty date → NaN → no match / validation-fail.
+export const durationTransformSchema = z.enum([
+  "yearsSince",
+  "monthsSince",
+  "daysSince",
+]);
+export type DurationTransform = z.infer<typeof durationTransformSchema>;
 
 export const fieldConditionalOnBehaviourSchema = z.object({
   type: z.literal("fieldConditionalOn"),
@@ -12,6 +37,7 @@ export const fieldConditionalOnBehaviourSchema = z.object({
   targetFieldId: kebabIdSchema,
   targetStepId: kebabIdSchema.optional(),
   operator: equalityOperationsSchema,
+  transform: durationTransformSchema.optional(),
   value: z.union([
     z.string(),
     z.number(),
@@ -32,6 +58,7 @@ export const optionalIfBehaviourSchema = z.object({
   targetFieldId: kebabIdSchema,
   targetStepId: kebabIdSchema.optional(),
   operator: equalityOperationsSchema,
+  transform: durationTransformSchema.optional(),
   value: z.union([
     z.string(),
     z.number(),
@@ -42,11 +69,36 @@ export const optionalIfBehaviourSchema = z.object({
 });
 export type OptionalIfBehaviour = z.infer<typeof optionalIfBehaviourSchema>;
 
+// A conditional step title (#871): when its condition matches the submitted
+// values, the step renders this `title` in place of its static
+// `FormStep.title`. It reuses the same condition vocabulary as the
+// `*ConditionalOn` behaviours (targetFieldId, optional targetStepId, operator,
+// optional transform, value) so the shared `evaluateCondition` engine resolves
+// it identically on the client and the server. Steps carry an ARRAY of these;
+// the first entry whose condition matches wins, and the static title is the
+// fallback when none match.
+export const conditionalTitleSchema = z.object({
+  targetFieldId: kebabIdSchema,
+  targetStepId: kebabIdSchema.optional(),
+  operator: equalityOperationsSchema,
+  transform: durationTransformSchema.optional(),
+  value: z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.string()),
+    z.array(z.number()),
+  ]),
+  title: z.string(),
+});
+export type ConditionalTitle = z.infer<typeof conditionalTitleSchema>;
+
 export const stepConditionalOnBehaviourSchema = z.object({
   type: z.literal("stepConditionalOn"),
   targetFieldId: kebabIdSchema,
   targetStepId: kebabIdSchema,
   operator: equalityOperationsSchema,
+  transform: durationTransformSchema.optional(),
   value: z.union([
     z.string(),
     z.number(),

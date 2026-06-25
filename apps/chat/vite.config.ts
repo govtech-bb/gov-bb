@@ -26,17 +26,48 @@ export default defineConfig(({ mode }) => {
       "process.env.CHAT_DATABASE_URL_SECRET_ARN": JSON.stringify(
         pick("CHAT_DATABASE_URL_SECRET_ARN"),
       ),
+      // Preferred: read RDS's master secret directly so the chat self-heals
+      // through RDS password rotations without a `tofu apply` in the loop.
+      // src/lib/db/index.ts builds the URL at request time from {username,
+      // password} (the JSON secret) + the non-secret host/port/dbname here.
+      "process.env.CHAT_DATABASE_CREDENTIALS_SECRET_ARN": JSON.stringify(
+        pick("CHAT_DATABASE_CREDENTIALS_SECRET_ARN"),
+      ),
+      "process.env.CHAT_DATABASE_HOST": JSON.stringify(
+        pick("CHAT_DATABASE_HOST"),
+      ),
+      "process.env.CHAT_DATABASE_PORT": JSON.stringify(
+        pick("CHAT_DATABASE_PORT"),
+      ),
+      "process.env.CHAT_DATABASE_NAME": JSON.stringify(
+        pick("CHAT_DATABASE_NAME"),
+      ),
       "process.env.FORM_API_URL": JSON.stringify(pick("FORM_API_URL")),
-      "process.env.FORMS_URL": JSON.stringify(pick("FORMS_URL")),
+      "process.env.LANDING_URL": JSON.stringify(
+        pick("LANDING_URL", "https://alpha.gov.bb"),
+      ),
       "process.env.BEDROCK_REGION": JSON.stringify(
         pick("BEDROCK_REGION", "ca-central-1"),
       ),
       "process.env.LLM_MODEL": JSON.stringify(
-        pick("LLM_MODEL", "claude-haiku-4-5"),
+        pick("LLM_MODEL", "claude-sonnet-4-6"),
       ),
       "process.env.REWRITE_MODEL": JSON.stringify(
         pick("REWRITE_MODEL", "claude-haiku-4-5"),
       ),
+      // Feature gates + behaviour flags. Amplify Compute can't read runtime
+      // env, so these MUST be baked too — otherwise the form features stay off
+      // and submit stays dry-run in a deployed env no matter what's configured.
+      // Default "" → off / dry-run (boolFlag treats only "1"/"true" as true).
+      "process.env.FEATURE_FORMS": JSON.stringify(pick("FEATURE_FORMS")),
+      "process.env.FEATURE_FEEDBACK": JSON.stringify(pick("FEATURE_FEEDBACK")),
+      "process.env.FEATURE_OFFERS": JSON.stringify(pick("FEATURE_OFFERS")),
+      "process.env.RAG_ONLY": JSON.stringify(pick("RAG_ONLY")),
+      "process.env.SUBMIT_LIVE": JSON.stringify(pick("SUBMIT_LIVE")),
+      "process.env.BEDROCK_PROMPT_CACHE": JSON.stringify(
+        pick("BEDROCK_PROMPT_CACHE"),
+      ),
+      "process.env.TURN_TIMEOUT_MS": JSON.stringify(pick("TURN_TIMEOUT_MS")),
     },
     plugins: [
       tailwindcss(),

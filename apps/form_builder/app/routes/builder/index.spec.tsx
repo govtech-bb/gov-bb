@@ -1,9 +1,10 @@
+import type { MockInstance } from "vitest";
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { createElement, type ReactElement } from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 
@@ -11,77 +12,90 @@ import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 // at module-eval. The component only reads `Route.useLoaderData()` /
 // `Route.useSearch()` and `useNavigate`, so a minimal shim is enough to render
 // BuilderPage in jsdom.
-jest.mock("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (config: Record<string, unknown>) => ({
     ...config,
     useLoaderData: () => ({ catalog: CATALOG, baseBranch: "dev" }),
     useSearch: () => ({}),
   }),
-  useNavigate: () => jest.fn(),
+  useNavigate: () => vi.fn(),
 }));
 
 // validateRecipe is the only server fn a Save-draft click reaches (and only on
 // the valid path); the rest are mocked so importing the route doesn't attempt a
 // real RPC. previewRecipe is threaded out the same way so the Preview-modal
 // tests can drive its success/failure paths.
-const validateRecipe = jest.fn();
-const previewRecipe = jest.fn();
-jest.mock("../../server/registry", () => ({
-  getCatalogFn: jest.fn(),
+const validateRecipe = vi.fn();
+const previewRecipe = vi.fn();
+vi.mock("../../server/registry", () => ({
+  getCatalogFn: vi.fn(),
   validateRecipe: (...args: unknown[]) => validateRecipe(...args),
   previewRecipe: (...args: unknown[]) => previewRecipe(...args),
 }));
-const getRecipe = jest.fn();
-const rekeyRecipe = jest.fn();
-const submitRecipe = jest.fn();
+const getRecipe = vi.fn();
+const rekeyRecipe = vi.fn();
+const submitRecipe = vi.fn();
+const updateRecipe = vi.fn();
 // Always resolve to "no selection" by default so the picker's Promise.all
 // load path works; individual tests can override per case.
-const getFormConfig = jest.fn((..._args: unknown[]) =>
+const getFormConfig = vi.fn((..._args: unknown[]) =>
   Promise.resolve({ mdaContactId: null, processors: null }),
 );
-jest.mock("../../server/forms", () => ({
+vi.mock("../../server/forms", () => ({
   submitRecipe: (...args: unknown[]) => submitRecipe(...args),
-  updateRecipe: jest.fn(),
+  updateRecipe: (...args: unknown[]) => updateRecipe(...args),
   rekeyRecipe: (...args: unknown[]) => rekeyRecipe(...args),
-  deleteForm: jest.fn(),
-  disableForm: jest.fn(),
-  enableForm: jest.fn(),
+  deleteForm: vi.fn(),
+  disableForm: vi.fn(),
+  enableForm: vi.fn(),
   getRecipe: (...args: unknown[]) => getRecipe(...args),
   getFormConfig: (...args: unknown[]) => getFormConfig(...args),
 }));
 // MDA contact directory (issue #607) — stub the server fn and the hook so the
 // contact-details dropdown doesn't pull a real RPC at module-eval.
-jest.mock("../../server/mda-contacts", () => ({
-  listMdaContacts: jest.fn(() => Promise.resolve([])),
-  createMdaContact: jest.fn(),
+vi.mock("../../server/mda-contacts", () => ({
+  listMdaContacts: vi.fn(() => Promise.resolve([])),
+  createMdaContact: vi.fn(),
 }));
-jest.mock("./-use-mda-contacts", () => ({
+vi.mock("./-use-mda-contacts", () => ({
   useMdaContacts: () => ({
     contacts: [],
     loadError: null,
-    refetch: jest.fn(),
-    upsertContact: jest.fn(),
+    refetch: vi.fn(),
+    upsertContact: vi.fn(),
   }),
 }));
-jest.mock("../../server/publish", () => ({
-  publishRecipe: jest.fn(),
-  getPublishBaseBranch: jest.fn(),
+const publishRecipe = vi.fn();
+const getNextDeployVersion = vi.fn();
+vi.mock("../../server/publish", () => ({
+  publishRecipe: (...args: unknown[]) => publishRecipe(...args),
+  getPublishBaseBranch: vi.fn(),
+  getNextDeployVersion: (...args: unknown[]) => getNextDeployVersion(...args),
+  eraseRecipe: vi.fn(),
 }));
-// The AI sidebar's convert server-fn is another createServerFn; stub it so
-// importing the editor doesn't pull a real RPC at module-eval.
-jest.mock("../../server/ai-builder/convert", () => ({
-  convertRecipe: jest.fn(),
-  getAiStatus: jest.fn(),
+// The AI sidebar's convert server-fns are createServerFn; stub them so
+// importing the editor doesn't pull a real RPC at module-eval. The Edit Form
+// flow is now an async job — startEditRecipe → poll getEditStatus — so route
+// both through swappable spies.
+const startEditRecipe = vi.fn();
+const getEditStatus = vi.fn();
+vi.mock("../../server/ai-builder/convert", () => ({
+  convertRecipe: vi.fn(),
+  startEditRecipe: (...args: unknown[]) => startEditRecipe(...args),
+  getEditStatus: (...args: unknown[]) => getEditStatus(...args),
+  presignPdfUpload: vi.fn(),
+  startPdfConvert: vi.fn(),
+  getPdfConvertStatus: vi.fn(),
 }));
 
 // The Open picker's forms list is a slow GitHub-API waterfall; stub it out.
 // `mockForms` is swappable per test so we can drive the uniqueness pre-flight.
 // `refetch`/`upsertForm` are stable spies so the save-flow tests can assert
 // which branch fired (full refetch for a new form, cheap upsert for a re-save).
-let mockForms: { id: string; formId: string; title: string; version: string; isPublished: boolean }[] = [];
-const mockRefetch = jest.fn();
-const mockUpsertForm = jest.fn();
-jest.mock("./-use-forms-list", () => ({
+let mockForms: { id: string; formId: string; title: string; version: string; isPublished: boolean; publishedVersion?: string }[] = [];
+const mockRefetch = vi.fn();
+const mockUpsertForm = vi.fn();
+vi.mock("./-use-forms-list", () => ({
   useFormsList: () => ({
     forms: mockForms,
     loadError: null,
@@ -93,8 +107,8 @@ jest.mock("./-use-forms-list", () => ({
 // Keep the real reducer logic, but make EMPTY_DRAFT (the useReducer seed)
 // swappable per test so we can render an invalid vs a valid starting draft.
 let mockEmptyDraft: RecipeDraft;
-jest.mock("./-recipe-reducer", () => {
-  const actual = jest.requireActual("./-recipe-reducer");
+vi.mock("./-recipe-reducer", async () => {
+  const actual = await vi.importActual("./-recipe-reducer");
   return {
     __esModule: true,
     ...actual,
@@ -109,14 +123,17 @@ jest.mock("./-recipe-reducer", () => {
 // free and pure (it strips editor-only field ids), and the unsaved-changes
 // tests rely on `draftsEqual` — which serializes both drafts — to discriminate
 // edited drafts from the saved baseline. No test inspects the serialized recipe.
-jest.mock("@govtech-bb/form-builder", () => {
-  const actual = jest.requireActual("@govtech-bb/form-builder");
+// findRecipeIdCollisions is swappable per test (default: no collisions) so the
+// AI apply path's collision pre-flight can be driven. formatCollisionIssues
+// stays real, so its message text is asserted directly.
+let mockCollisions: ReturnType<
+  typeof import("@govtech-bb/form-builder").findRecipeIdCollisions
+> = { fieldIdCollisions: [], stepIdCollisions: [] };
+vi.mock("@govtech-bb/form-builder", async () => {
+  const actual = await vi.importActual("@govtech-bb/form-builder");
   return {
     ...actual,
-    findRecipeIdCollisions: () => ({
-      fieldIdCollisions: [],
-      stepIdCollisions: [],
-    }),
+    findRecipeIdCollisions: () => mockCollisions,
     resolveFieldIds: () => [],
   };
 });
@@ -224,21 +241,21 @@ const DRAFT_WITH_COMPLETE_PAYMENT: RecipeDraft = {
   processors: [{ id: "pay-1", type: "payment", config: COMPLETE_PAYMENT_CONFIG }],
 } as RecipeDraft;
 
+const { Route } = (await import("./index")) as unknown as {
+  Route: { component: () => ReactElement };
+};
+
 function renderBuilder() {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { Route } = require("./index") as {
-    Route: { component: () => ReactElement };
-  };
   return render(createElement(Route.component));
 }
 
 describe("BuilderPage — validate on Save draft click", () => {
-  let confirmSpy: jest.SpyInstance;
+  let confirmSpy: MockInstance;
 
   beforeEach(() => {
     validateRecipe.mockReset();
     mockForms = [];
-    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(false);
+    confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -349,13 +366,13 @@ describe("BuilderPage — validate on Save draft click", () => {
 });
 
 describe("BuilderPage — incomplete payment config blocks save", () => {
-  let confirmSpy: jest.SpyInstance;
+  let confirmSpy: MockInstance;
 
   beforeEach(() => {
     validateRecipe.mockReset();
     submitRecipe.mockReset();
     mockForms = [];
-    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+    confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -476,13 +493,13 @@ describe("BuilderPage — formId/title pre-flight on Validate", () => {
 });
 
 describe("BuilderPage — unsaved changes + Discard", () => {
-  let confirmSpy: jest.SpyInstance;
+  let confirmSpy: MockInstance;
 
   beforeEach(() => {
     mockForms = [];
     validateRecipe.mockReset();
     getRecipe.mockReset();
-    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+    confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -623,6 +640,10 @@ describe("BuilderPage — Open picker freshness after save", () => {
     getRecipe.mockReset();
     mockRefetch.mockClear();
     mockUpsertForm.mockClear();
+    submitRecipe.mockReset();
+    updateRecipe.mockReset();
+    publishRecipe.mockReset();
+    getNextDeployVersion.mockReset();
   });
 
   it("full-refetches the picker (no upsert) after saving a brand-new form", async () => {
@@ -640,9 +661,12 @@ describe("BuilderPage — Open picker freshness after save", () => {
     expect(mockRefetch).toHaveBeenCalledTimes(1);
     // …and the cheap upsert path must not also fire.
     expect(mockUpsertForm).not.toHaveBeenCalled();
+    // A brand-new form is a create (POST), never an in-place update.
+    expect(submitRecipe).toHaveBeenCalledTimes(1);
+    expect(updateRecipe).not.toHaveBeenCalled();
   });
 
-  it("upserts the picker row (no refetch) after re-saving an existing form", async () => {
+  it("overwrites the loaded draft in place (PUT, same version) and upserts the picker row without a refetch", async () => {
     mockEmptyDraft = INVALID_DRAFT;
     mockForms = [
       { id: "old", formId: "old-form", title: "Old Form", version: "2.0.0", isPublished: true },
@@ -684,13 +708,19 @@ describe("BuilderPage — Open picker freshness after save", () => {
       target: { value: "Old Form (renamed)" },
     });
 
-    // Save a new version (the default save-draft patch bump off 2.0.0). A loaded
-    // form's modal reads "Save Changes" rather than "Submit Recipe".
+    // Save Changes now defaults to the loaded version (2.0.0), so the save
+    // overwrites the draft in place rather than minting a new patch row (#329).
+    // A loaded form's modal reads "Save Changes" rather than "Submit Recipe".
     await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
     await userEvent.click(
       await screen.findByRole("button", { name: "Save Changes" }),
     );
     await screen.findByText(/recipe submitted successfully/i);
+
+    // The same-version save routes through updateRecipe (PUT, overwrite), never
+    // submitRecipe (POST create) — so no duplicate draft is created.
+    expect(updateRecipe).toHaveBeenCalledTimes(1);
+    expect(submitRecipe).not.toHaveBeenCalled();
 
     // Re-save patches just this row client-side — no slow listForms() waterfall.
     expect(mockRefetch).not.toHaveBeenCalled();
@@ -700,17 +730,89 @@ describe("BuilderPage — Open picker freshness after save", () => {
       id: "old",
       formId: "old-form",
       title: "Old Form (renamed)",
-      version: "2.0.1",
-      // A version bump (2.0.0 → 2.0.1) makes this the highest draft, which the
-      // merge marks unpublished.
-      isPublished: false,
+      // The version is unchanged — Save Changes overwrites in place at 2.0.0.
+      version: "2.0.0",
+      // An in-place same-version save leaves the published row winning the
+      // version tie, so the badge stays.
+      isPublished: true,
     });
   });
 
-  it("preserves isPublished when re-saving an existing form in place at the same version", async () => {
+  it("preserves publishedVersion in the optimistic picker row after Deploy", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    // A published form, loaded clean (no edits) so Deploy is enabled.
+    mockForms = [
+      {
+        id: "old",
+        formId: "old-form",
+        title: "Old Form",
+        version: "1.0.0",
+        isPublished: true,
+        publishedVersion: "1.0.0",
+      },
+    ];
+    getRecipe.mockResolvedValue({
+      formId: "old-form",
+      title: "Old Form",
+      version: "1.0.0",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/first-name" }],
+          behaviours: [],
+        },
+        { stepId: "check-your-answers", title: "Check your answers", elements: [], behaviours: [] },
+        { stepId: "declaration", title: "Declaration", elements: [], behaviours: [] },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+    });
+    validateRecipe.mockResolvedValue({ ok: true });
+    // #1196: Deploy overwrites the flat file; the published index is unchanged
+    // until the PR merges.
+    publishRecipe.mockResolvedValue({
+      prUrl: "https://github.com/x/y/pull/7",
+      prNumber: 7,
+    });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(await screen.findByText("Old Form"));
+    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
+
+    // Deploy from the toolbar opens the modal and resolves the target version.
+    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+    const publishModal = (
+      screen.getByText("Deploy", { selector: "strong" }).closest("div") as HTMLElement
+    ).parentElement as HTMLElement;
+    await userEvent.click(
+      within(publishModal).getByRole("button", { name: /deploy/i }),
+    );
+    await waitFor(() => expect(publishRecipe).toHaveBeenCalledTimes(1));
+
+    // The published index is unchanged until the PR merges, so the optimistic
+    // row keeps its existing version + publishedVersion (a frozen breadcrumb).
+    expect(mockUpsertForm).toHaveBeenCalledWith({
+      id: "old",
+      formId: "old-form",
+      title: "Old Form",
+      version: "1.0.0",
+      isPublished: false,
+      publishedVersion: "1.0.0",
+    });
+  });
+
+  it("overwrites in place on every consecutive Save Changes — no duplicate drafts (#329)", async () => {
     mockEmptyDraft = INVALID_DRAFT;
     mockForms = [
-      { id: "old", formId: "old-form", title: "Old Form", version: "2.0.0", isPublished: true },
+      { id: "old", formId: "old-form", title: "Old Form", version: "2.0.0", isPublished: false },
     ];
     getRecipe.mockResolvedValue({
       formId: "old-form",
@@ -742,29 +844,35 @@ describe("BuilderPage — Open picker freshness after save", () => {
     await userEvent.click(await screen.findByText("Old Form"));
     expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
 
-    // Dirty the form so Save draft enables, then type the version back down to
-    // the current 2.0.0 so the save overwrites the published version in place.
-    fireEvent.change(screen.getByLabelText(/title/i), {
-      target: { value: "Old Form (tweaked)" },
-    });
+    const titleField = screen.getByLabelText(/title/i);
+
+    // First edit + Save: defaults to 2.0.0, overwrites in place (PUT).
+    fireEvent.change(titleField, { target: { value: "Old Form (edit 1)" } });
     await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
-    const versionField = await screen.findByDisplayValue("2.0.1");
-    fireEvent.change(versionField, { target: { value: "2.0.0" } });
     await userEvent.click(
       await screen.findByRole("button", { name: "Save Changes" }),
     );
     await screen.findByText(/recipe submitted successfully/i);
 
-    // An in-place same-version save leaves the published row winning the version
-    // tie, so the badge must stay — mirroring what a refetch would show.
-    expect(mockRefetch).not.toHaveBeenCalled();
-    expect(mockUpsertForm).toHaveBeenCalledWith({
-      id: "old",
-      formId: "old-form",
-      title: "Old Form (tweaked)",
-      version: "2.0.0",
-      isPublished: true,
-    });
+    // Second edit + Save: still defaults to 2.0.0 (the save didn't bump it), so
+    // it overwrites the same row again rather than minting 2.0.1.
+    fireEvent.change(titleField, { target: { value: "Old Form (edit 2)" } });
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save Changes" }),
+    );
+    await screen.findAllByText(/recipe submitted successfully/i);
+
+    // Both saves are PUTs at the unchanged version; no POST ever fires, so the
+    // backend keeps exactly one 2.0.0 draft instead of accumulating duplicates.
+    expect(updateRecipe).toHaveBeenCalledTimes(2);
+    expect(submitRecipe).not.toHaveBeenCalled();
+    // Both PUTs target the same loaded row (same formId), confirming the second
+    // save overwrote the first rather than branching to a new draft.
+    const targetedFormIds = updateRecipe.mock.calls.map(
+      ([arg]) => arg.data.formId,
+    );
+    expect(new Set(targetedFormIds).size).toBe(1);
   });
 });
 
@@ -797,7 +905,7 @@ describe("BuilderPage — re-key (changing a loaded form's ID)", () => {
     };
   }
 
-  let confirmSpy: jest.SpyInstance;
+  let confirmSpy: MockInstance;
 
   beforeEach(() => {
     mockForms = [];
@@ -807,7 +915,7 @@ describe("BuilderPage — re-key (changing a loaded form's ID)", () => {
     submitRecipe.mockReset();
     mockRefetch.mockClear();
     mockUpsertForm.mockClear();
-    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+    confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -960,5 +1068,240 @@ describe("BuilderPage — Preview modal recipe JSON (#744)", () => {
     expect(
       screen.getByRole("button", { name: /view recipe json/i }),
     ).toBeInTheDocument();
+  }, 30_000);
+});
+
+// #1051: an AI-generated recipe that fails contract validation or has an id
+// collision must LOAD into the builder with the defects surfaced in the
+// validation panel, rather than being hard-rejected so the draft never appears.
+// Only a structurally-unreadable recipe (buildLoadArgs throws) or a failed
+// validate *request* stay hard errors. These drive the real AiSidebar's Edit
+// Form flow, which routes through the route's internal `applyAiRecipe`.
+describe("BuilderPage — AI apply loads with a warning (#1051)", () => {
+  let confirmSpy: MockInstance;
+
+  // A recipe that deserializes to a draft different from VALID_DRAFT, so the
+  // no-op guard passes and the apply proceeds. Empty `elements` keeps
+  // deserialize off crypto.randomUUID.
+  const EDITED_RECIPE = {
+    formId: "edited-form",
+    title: "Edited Form",
+    version: "1.0.1",
+    steps: [{ stepId: "step-1", title: "Step 1", elements: [] }],
+  };
+
+  // The draft EDITED_RECIPE deserializes to — used to seed an unchanged-draft
+  // (no-op) case.
+  const EDITED_DRAFT: RecipeDraft = {
+    formId: "edited-form",
+    title: "Edited Form",
+    steps: [{ stepId: "step-1", title: "Step 1", fields: [], behaviours: [] }],
+  };
+
+  beforeEach(() => {
+    startEditRecipe.mockReset();
+    getEditStatus.mockReset();
+    validateRecipe.mockReset();
+    mockForms = [];
+    mockCollisions = { fieldIdCollisions: [], stepIdCollisions: [] };
+    mockEmptyDraft = VALID_DRAFT;
+    // VALID_DRAFT seeds a dirty, never-saved draft, so applyAiRecipe prompts the
+    // dirty-overwrite confirm; accept it so the changed path proceeds.
+    confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+  });
+
+  afterEach(() => {
+    confirmSpy.mockRestore();
+  });
+
+  async function driveEditForm(message = "tweak the form") {
+    await userEvent.type(
+      screen.getByPlaceholderText(/make the email field required/i),
+      message,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
+  }
+
+  // The async Edit Form flow: start returns a jobId, then a single status poll
+  // returns the terminal "done" payload the sidebar applies.
+  function mockEditResult(payload: {
+    recipe: Record<string, unknown> | null;
+    reply: string;
+    unresolvableRefs?: unknown[];
+  }) {
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue({ status: "done", ...payload });
+  }
+
+  it("loads a contract-invalid recipe and lights up the validation panel", async () => {
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    validateRecipe.mockResolvedValue({
+      ok: false,
+      issues: [
+        { path: "steps[0].fields", message: "Each step needs at least one field." },
+      ],
+    });
+    renderBuilder();
+
+    await driveEditForm();
+
+    // The draft loaded (form title input now reflects the AI recipe)...
+    expect(await screen.findByDisplayValue("Edited Form")).toBeInTheDocument();
+    // ...the contract issue shows in the validation panel...
+    expect(
+      await screen.findByText(/each step needs at least one field/i),
+    ).toBeInTheDocument();
+    // ...the sidebar confirms it was applied, not rejected...
+    expect(
+      await screen.findByText(/applied to the editor/i),
+    ).toBeInTheDocument();
+    // ...and there is no red error banner (warning, not rejection).
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  }, 30_000);
+
+  it("loads a recipe with an id collision and warns instead of rejecting", async () => {
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    validateRecipe.mockResolvedValue({ ok: true });
+    mockCollisions = {
+      fieldIdCollisions: [
+        {
+          id: "email",
+          locations: [
+            {
+              fieldId: "email",
+              editorFieldId: "a",
+              stepId: "step-1",
+              stepTitle: "Step 1",
+              display: "Email",
+              isBoolean: false,
+              isNumeric: false,
+            },
+            {
+              fieldId: "email",
+              editorFieldId: "b",
+              stepId: "step-1",
+              stepTitle: "Step 1",
+              display: "Email (2)",
+              isBoolean: false,
+              isNumeric: false,
+            },
+          ],
+        },
+      ],
+      stepIdCollisions: [],
+    };
+    renderBuilder();
+
+    await driveEditForm();
+
+    expect(await screen.findByDisplayValue("Edited Form")).toBeInTheDocument();
+    // The collision is surfaced by the always-on collision panel...
+    expect(
+      await screen.findByText(/Duplicate IDs must be fixed/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/is used by 2 fields/i)).toBeInTheDocument();
+    // ...and the sidebar confirms it was applied, not rejected.
+    expect(
+      await screen.findByText(/applied to the editor/i),
+    ).toBeInTheDocument();
+  }, 30_000);
+
+  it("still loads with a warning when convert flags unresolvable refs", async () => {
+    mockEditResult({
+      recipe: EDITED_RECIPE,
+      reply: "Built it.",
+      unresolvableRefs: [
+        { ref: "components/made-up", path: "steps[0].elements[0].ref" },
+      ],
+    });
+    renderBuilder();
+
+    await driveEditForm();
+
+    expect(await screen.findByDisplayValue("Edited Form")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Unknown component\/block ref "components\/made-up"/),
+    ).toBeInTheDocument();
+    // The contract validate is skipped when refs are already flagged.
+    expect(validateRecipe).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it("hard-errors and does not load a structurally unreadable recipe", async () => {
+    // No `steps` array → deserializeRecipe throws → buildLoadArgs throws.
+    mockEditResult({
+      recipe: { formId: "broken", title: "Broken", version: "1.0.1" },
+      reply: "Here you go.",
+    });
+    renderBuilder();
+
+    await driveEditForm();
+
+    // The red error banner shows...
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    // ...and nothing loaded (no apply status, draft untouched).
+    expect(screen.queryByText(/applied to the editor/i)).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Broken")).not.toBeInTheDocument();
+  }, 30_000);
+
+  it("hard-errors when the validate request itself fails", async () => {
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    validateRecipe.mockRejectedValue(new Error("Validation service unavailable"));
+    renderBuilder();
+
+    await driveEditForm();
+
+    expect(
+      await screen.findByText("Validation service unavailable"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/applied to the editor/i)).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Edited Form")).not.toBeInTheDocument();
+  }, 30_000);
+
+  it("reports 'unchanged' without validating when the recipe matches the draft", async () => {
+    mockEmptyDraft = EDITED_DRAFT;
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "No change needed." });
+    renderBuilder();
+
+    await driveEditForm();
+
+    expect(
+      await screen.findByText(/returned the form unchanged/i),
+    ).toBeInTheDocument();
+    // No-op guard fires before the validate gate.
+    expect(validateRecipe).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  }, 30_000);
+
+  it("stays silent and does not load when the dirty-overwrite confirm is declined", async () => {
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    validateRecipe.mockResolvedValue({ ok: true });
+    confirmSpy.mockReturnValue(false);
+    renderBuilder();
+
+    await driveEditForm();
+
+    // The assistant prose lands, but no apply status, no error, no load.
+    expect(await screen.findByText("Here you go.")).toBeInTheDocument();
+    expect(screen.queryByText(/applied to the editor/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Edited Form")).not.toBeInTheDocument();
+  }, 30_000);
+
+  it("keeps Deploy blocked after a load-with-warning", async () => {
+    mockEditResult({ recipe: EDITED_RECIPE, reply: "Here you go." });
+    validateRecipe.mockResolvedValue({
+      ok: false,
+      issues: [
+        { path: "steps[0].fields", message: "Each step needs at least one field." },
+      ],
+    });
+    renderBuilder();
+
+    await driveEditForm();
+    await screen.findByText(/each step needs at least one field/i);
+
+    // The loaded-but-invalid draft is unsaved, so Deploy stays disabled
+    // (#331 unsaved gate / #504 hard deploy gate).
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
   }, 30_000);
 });

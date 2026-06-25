@@ -1,18 +1,19 @@
+import type { Mock } from "vitest";
 /**
- * @jest-environment node
+ * @vitest-environment node
  */
 import type { FormDefinitionSummary } from "../types/index";
 
 // Mock the auth surface before importing the SUT — the requireSession
 // middleware reads SESSION_SECRET + a session cookie and would otherwise
 // throw under jsdom-free jest. Matches the pattern in publish.spec.ts.
-jest.mock("./session-cipher.server", () => ({
-  getSession: jest.fn(),
+vi.mock("./session-cipher.server", () => ({
+  getSession: vi.fn(),
 }));
-jest.mock("@tanstack/react-start/server", () => ({
+vi.mock("@tanstack/react-start/server", () => ({
   getRequestHeaders: () => new Headers({ cookie: "fb_session=opaque" }),
 }));
-jest.mock("./api-client", () => {
+vi.mock("./api-client", () => {
   const ApiError = class extends Error {
     constructor(
       public readonly status: number,
@@ -22,23 +23,29 @@ jest.mock("./api-client", () => {
     }
   };
   return {
-    api: { get: jest.fn(), post: jest.fn(), put: jest.fn(), del: jest.fn() },
+    api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), del: vi.fn() },
     ApiError,
   };
 });
 
 // getRecipe resolves the published copy through getPublishedRecipe; mock it so
 // the precedence tests don't hit GitHub.
-jest.mock("./github-recipes", () => ({
-  getPublishedRecipe: jest.fn(),
+vi.mock("./github-recipes", () => ({
+  getPublishedRecipe: vi.fn(),
 }));
 
 import { getSession } from "./session-cipher.server";
 import { api, ApiError } from "./api-client";
 import { getPublishedRecipe } from "./github-recipes";
-import { listForms, getRecipe, rekeyRecipe } from "./forms";
+import {
+  listForms,
+  getRecipe,
+  rekeyRecipe,
+  submitRecipe,
+  updateRecipe,
+} from "./forms";
 
-const getPublishedRecipeMock = getPublishedRecipe as jest.Mock;
+const getPublishedRecipeMock = getPublishedRecipe as Mock;
 
 const SESSION = {
   login: "alice",
@@ -46,12 +53,12 @@ const SESSION = {
   expiresAt: Date.now() + 3600_000,
 };
 
-const apiGet = api.get as jest.Mock;
+const apiGet = api.get as Mock;
 
 beforeEach(() => {
-  jest.resetAllMocks();
+  vi.resetAllMocks();
   process.env.SESSION_SECRET = Buffer.alloc(32).toString("base64");
-  (getSession as jest.Mock).mockReturnValue(SESSION);
+  (getSession as Mock).mockReturnValue(SESSION);
 });
 
 afterEach(() => {
@@ -120,14 +127,16 @@ describe("listForms", () => {
     );
   });
 
-  it("prefers the published entry when its version is newer than the draft", async () => {
+  it("prefers the draft row, marking it isPublished from the index (#1196)", async () => {
+    // #1196: the draft row is the current working copy, so it always wins the
+    // merge; isPublished is OR'd in from the published index.
     apiGet.mockImplementation((path: string) => {
       if (path === "/builder/forms")
         return Promise.resolve([
           {
             id: "uuid-1",
             formId: "passport-renewal",
-            title: "Old draft",
+            title: "Working draft",
             version: "1.0.0",
             isPublished: false,
           },
@@ -149,7 +158,7 @@ describe("listForms", () => {
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       formId: "passport-renewal",
-      version: "1.1.0",
+      title: "Working draft",
       isPublished: true,
     });
   });
@@ -188,6 +197,56 @@ describe("listForms", () => {
       version: "1.2.0",
       isPublished: true,
     });
+  });
+
+  it("exposes publishedVersion (the index version) distinctly from the merged version", async () => {
+    apiGet.mockImplementation((path: string) => {
+      if (path === "/builder/forms")
+        return Promise.resolve([
+          {
+            id: "uuid-1",
+            formId: "with-draft",
+            title: "Newer draft",
+            version: "1.2.0",
+            isPublished: false,
+          },
+          {
+            id: "uuid-2",
+            formId: "draft-only",
+            title: "Draft only",
+            version: "1.0.0",
+            isPublished: false,
+          },
+        ]);
+      if (path === "/builder/forms/published")
+        return Promise.resolve([
+          { formId: "with-draft", title: "With Draft", version: "1.1.0" },
+          {
+            formId: "published-only",
+            title: "Published Only",
+            version: "2.0.0",
+          },
+        ]);
+      if (path === "/builder/forms/disabled") return Promise.resolve([]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    const result = await listForms();
+    const byId = Object.fromEntries(result.map((f) => [f.formId, f]));
+
+    // A higher draft over a published copy: merged version is the draft's, but
+    // publishedVersion is the (lower) version that's actually in the index.
+    expect(byId["with-draft"]).toMatchObject({
+      version: "1.2.0",
+      publishedVersion: "1.1.0",
+    });
+    // A published-only form: publishedVersion equals the version.
+    expect(byId["published-only"]).toMatchObject({
+      version: "2.0.0",
+      publishedVersion: "2.0.0",
+    });
+    // A draft-only form is not in the index, so it has no publishedVersion.
+    expect(byId["draft-only"].publishedVersion).toBeUndefined();
   });
 
   it("keeps a disabled published form, marking it isDisabled: true", async () => {
@@ -340,7 +399,7 @@ describe("listForms", () => {
 
 describe("rekeyRecipe", () => {
   it("posts the recipe to the old form's rekey endpoint", async () => {
-    const apiPost = api.post as jest.Mock;
+    const apiPost = api.post as Mock;
     apiPost.mockResolvedValue(undefined);
     const recipe = { formId: "birth-registration", version: "1.0.0" };
 
@@ -351,11 +410,12 @@ describe("rekeyRecipe", () => {
 
     expect(apiPost).toHaveBeenCalledWith("/builder/forms/birth-reg-old/rekey", {
       recipe,
+      userLogin: "alice",
     });
   });
 
   it("URL-encodes the old form ID in the endpoint path", async () => {
-    const apiPost = api.post as jest.Mock;
+    const apiPost = api.post as Mock;
     apiPost.mockResolvedValue(undefined);
 
     await rekeyRecipe({
@@ -369,6 +429,43 @@ describe("rekeyRecipe", () => {
     expect(apiPost.mock.calls[0][0] as string).toBe(
       "/builder/forms/weird%20id%2Fwith%20slash/rekey",
     );
+  });
+});
+
+describe("submitRecipe — userLogin threading (#874)", () => {
+  it("stamps the session login onto the save so the read-only-lock gate passes", async () => {
+    const apiPost = api.post as Mock;
+    apiPost.mockResolvedValue(undefined);
+    const recipe = { formId: "marriage-license", version: "1.0.0" };
+
+    await submitRecipe({
+      data: { recipe, isNew: true },
+      context: { session: SESSION },
+    } as never);
+
+    expect(apiPost).toHaveBeenCalledWith("/builder/forms", {
+      recipe,
+      isNew: true,
+      userLogin: "alice",
+    });
+  });
+});
+
+describe("updateRecipe — userLogin threading (#874)", () => {
+  it("stamps the session login onto the PUT save", async () => {
+    const apiPut = api.put as Mock;
+    apiPut.mockResolvedValue(undefined);
+    const recipe = { formId: "marriage-license", version: "1.0.0" };
+
+    await updateRecipe({
+      data: { formId: "marriage-license", recipe },
+      context: { session: SESSION },
+    } as never);
+
+    expect(apiPut).toHaveBeenCalledWith("/builder/forms/marriage-license", {
+      recipe,
+      userLogin: "alice",
+    });
   });
 });
 
@@ -393,7 +490,9 @@ describe("getRecipe (draft-vs-published precedence)", () => {
     return { ...publishedRecipe(version), title: "Conductor (draft)" };
   }
 
-  it("returns the published copy when it is newer than the draft", async () => {
+  it("returns the draft when present, ignoring the published copy (#1196)", async () => {
+    // #1196: the DB scratch draft is the working copy — it always wins when
+    // present; the published flat file is only the fallback (no version compare).
     apiGet.mockResolvedValue(draftRecipe("1.1.0"));
     getPublishedRecipeMock.mockResolvedValue(publishedRecipe("1.3.0"));
 
@@ -402,21 +501,6 @@ describe("getRecipe (draft-vs-published precedence)", () => {
       context: { session: SESSION },
     } as never);
 
-    expect(result.version).toBe("1.3.0");
-    expect(result.title).toBe("Apply for Conductor Licence");
-  });
-
-  it("returns the draft when its version is greater than or equal to the published copy", async () => {
-    apiGet.mockResolvedValue(draftRecipe("1.3.0"));
-    getPublishedRecipeMock.mockResolvedValue(publishedRecipe("1.3.0"));
-
-    const result = await getRecipe({
-      data: { formId: FORM_ID },
-      context: { session: SESSION },
-    } as never);
-
-    expect(result.version).toBe("1.3.0");
-    // Equal versions tie-break to the draft.
     expect(result.title).toBe("Conductor (draft)");
   });
 

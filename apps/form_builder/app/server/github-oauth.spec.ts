@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import {
   exchangeCodeForToken,
   fetchGitHubLogin,
@@ -5,10 +6,7 @@ import {
   userIsTeamMember,
 } from "./github-oauth";
 
-type FetchMock = jest.Mock<
-  Promise<Response>,
-  [RequestInfo | URL, RequestInit?]
->;
+type FetchMock = Mock<Promise<Response>, [RequestInfo | URL, RequestInit?]>;
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -27,12 +25,12 @@ describe("github-oauth helpers", () => {
   let fetchMock: FetchMock;
 
   beforeEach(() => {
-    fetchMock = jest.fn() as unknown as FetchMock;
+    fetchMock = vi.fn() as unknown as FetchMock;
     globalThis.fetch = fetchMock as unknown as typeof fetch;
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   describe("exchangeCodeForToken", () => {

@@ -1,12 +1,8 @@
 import { ContactDetails } from "@govtech-bb/form-types";
 import { AnyFormApi } from "@tanstack/react-form";
-import {
-  ClientFormStep,
-  ClientPrimitive,
-  ClientServiceContract,
-} from "./field-mapper.type";
+import { ClientFormStep, ClientPrimitive } from "./field-mapper.type";
 import { FormMeta } from "./renderer.type";
-import { RepeatableStepSettings } from "./behavior-helper.type";
+import { RepeatableStepSettings } from "./repeatable.type";
 
 export interface FormRendererProps {
   form: AnyFormApi;
@@ -15,12 +11,13 @@ export interface FormRendererProps {
   stepId: string;
   repeatableStepSettingsRef: React.MutableRefObject<RepeatableStepSettings>;
   submissionState?: SubmissionState;
+  isPreview?: boolean;
+  /**
+   * The raw `?preview=` token, forwarded to file uploads so presign/confirm
+   * resolve an unpublished draft. `isPreview` is the boolean derived from it.
+   */
+  previewToken?: string;
 }
-
-export type FormRouteProps = {
-  contract: ClientServiceContract;
-  stepId?: string;
-};
 
 export type UseStepGuardProps = {
   formId: string;
@@ -61,8 +58,11 @@ export type FileUploadProps = {
   /** id for the error element, so the input's aria-describedby resolves. */
   errorId?: string;
   formId?: string;
-  /** Form version, required for the presigned-upload requests. */
-  formVersion?: string;
+  /**
+   * The `?preview=` token, present only when previewing an unpublished draft.
+   * Forwarded on presign + confirm so uploads resolve the DB-only draft.
+   */
+  previewToken?: string;
 };
 
 export interface SubmissionState {
@@ -73,8 +73,18 @@ export interface SubmissionState {
   quantity?: number;
   submissionSuccess: boolean;
   paymentSuccess?: boolean;
+  /**
+   * Set when the submission came back `processing` — an idempotency-key replay
+   * of an in-flight submission (HTTP 202). The confirmation step renders a
+   * neutral "we're processing your submission" panel rather than a finished
+   * receipt (#463). Absent on every other state.
+   */
+  processing?: boolean;
   referenceNumber: string;
-  date: string;
+  // Optional: payment ("gated") submissions are not finalised yet, so the
+  // server returns `submittedAt: null` — there is no submission date to show
+  // until payment completes (#919). formatDate() renders nothing for undefined.
+  date?: string;
   paymentUrl?: string;
   paymentId?: string;
   paymentDescription?: string;
@@ -101,4 +111,11 @@ export interface SubmissionConfirmationProps {
   contactDetails?: ContactDetails;
   onTryAgain?: () => void;
   submissionState?: SubmissionState;
+  /**
+   * Target for the "Give feedback on this service" link. When set, the feedback
+   * section renders an exit-survey link carrying the originating form id as
+   * `?source=`. Omitted (e.g. on the exit survey's own confirmation) hides the
+   * section so the feedback form never links back to itself.
+   */
+  feedbackUrl?: string;
 }

@@ -1,0 +1,99 @@
+{
+  "steps": [
+    {
+      "title": "Applicant details",
+      "stepId": "applicant",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Full name",
+            "validations": {
+              "required": {
+                "error": "Full name is required",
+                "value": true
+              },
+              "minLength": {
+                "error": "Full name must be at least 2 characters",
+                "value": 2
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "validations": {
+              "email": {
+                "error": "Enter a valid email address",
+                "value": true
+              },
+              "required": {
+                "error": "Email address is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "validations": {
+              "required": {
+                "error": "Date of birth is required",
+                "value": true
+              },
+              "pastOrToday": {
+                "error": "Date of birth must be today or earlier",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Review and pay",
+      "stepId": "declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Application submitted",
+      "stepId": "submission-confirmation",
+      "elements": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "We have received your submission. You will receive a confirmation email at the address you provided."
+        }
+      ]
+    }
+  ],
+  "title": "School Registration Fee",
+  "formId": "school-registration-fee",
+  "createdAt": "2026-05-06T00:00:00Z",
+  "updatedAt": "2026-05-06T00:00:00Z",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "School registration confirmed",
+        "recipientField": "applicant.email"
+      }
+    }
+  ],
+  "description": "Sample form for end-to-end testing of the EzPay payment flow."
+}

@@ -1,11 +1,13 @@
 import {
   Behaviour,
+  ConditionalTitle,
   ContactDetails,
   DateTimeFormat,
   fieldValueSchema,
   HtmlTypes,
   Option,
   PrimitiveUI,
+  SubmissionValues,
   ValidationRule,
 } from "@govtech-bb/form-types";
 import z from "zod";
@@ -34,6 +36,9 @@ export interface ClientPrimitive {
 export interface ClientFormStep {
   stepId: string;
   title: string;
+  /** Per-answer title overrides (#871); the renderer resolves the effective
+   * title from live form values via `resolveStepTitle`. */
+  conditionalTitle?: ConditionalTitle[];
   description?: string;
   fields: ClientPrimitive[];
   behaviours?: Behaviour[];
@@ -50,12 +55,12 @@ export interface ClientServiceContract {
   steps: ClientFormStep[];
   createdAt: DateTimeFormat;
   updatedAt: DateTimeFormat;
-  version: string;
 }
 
 const fieldId = z.string();
 export const formValuesSchema = z.record(fieldId, fieldValueSchema);
 export type FormValues = z.infer<typeof formValuesSchema>;
 
-type stepId = string;
-export type FormValuesByStep = Record<stepId, FormValues | Array<FormValues>>;
+// The browser↔backend wire shape, single-sourced in @govtech-bb/form-types
+// (#1399). Kept under this load-bearing local name.
+export type FormValuesByStep = SubmissionValues;

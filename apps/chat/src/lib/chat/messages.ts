@@ -1,51 +1,35 @@
-import type { UIMessage } from "@tanstack/ai";
+// Server-side helpers over AG-UI chat messages (role + string content). Used by
+// the rewrite + grounding stages and telemetry. (Client-side part rendering is
+// separate — components map message.parts directly, the example's way.)
 
-type TextPart = Extract<UIMessage["parts"][number], { type: "text" }>;
-type ToolCallPart = Extract<UIMessage["parts"][number], { type: "tool-call" }>;
+export type ChatMessage = { role?: string; content?: unknown };
 
-export function extractText(message: UIMessage): string {
-  if (Array.isArray(message.parts)) {
-    return message.parts
-      .filter((p): p is TextPart => p.type === "text")
-      .map((p) => p.content ?? "")
-      .join("")
-      .trim();
-  }
-  const content = (message as { content?: unknown }).content;
-  return typeof content === "string" ? content.trim() : "";
+export function messageText(m: ChatMessage | undefined): string {
+  return typeof m?.content === "string" ? m.content : "";
 }
 
-export function lastUserText(messages: UIMessage[]): string {
+export function lastUserText(messages: ChatMessage[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === "user") return extractText(messages[i]);
+    if (messages[i]?.role === "user") return messageText(messages[i]);
   }
   return "";
 }
 
-// Concatenated text of the last `limit` user messages. Used by intent-style
-// matchers that need conversational context but not the whole history.
-export function recentUserText(messages: UIMessage[], limit = 5): string {
-  const parts: string[] = [];
-  for (let i = messages.length - 1; i >= 0 && parts.length < limit; i--) {
-    if (messages[i].role === "user") parts.unshift(extractText(messages[i]));
+// The most recent assistant message text — used to disambiguate a bare "no"/"ok"
+// closer (only a closer if we just asked a wrap-up question).
+export function lastAssistantText(messages: ChatMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i]?.role === "assistant") return messageText(messages[i]);
   }
-  return parts.join(" ");
+  return "";
 }
 
-export function findToolCall(
-  message: UIMessage,
-  name: string,
-): ToolCallPart | undefined {
-  return message.parts
-    .filter((p): p is ToolCallPart => p.type === "tool-call")
-    .find((p) => p.name === name);
-}
-
-export function hasAnyToolCall(
-  messages: UIMessage[],
-  names: string[],
-): boolean {
-  return messages.some((m) =>
-    m.parts.some((p) => p.type === "tool-call" && names.includes(p.name)),
-  );
+// The recent conversation (excluding the latest message) as plain lines, for
+// the rewrite prompt's follow-up expansion. Capped per line; empties dropped.
+export function recentHistory(messages: ChatMessage[], turns = 5): string {
+  const trail = messages.slice(-turns - 1, -1);
+  const lines = trail
+    .map((m) => `${m.role}: ${messageText(m).slice(0, 300)}`)
+    .filter((line) => !line.endsWith(": "));
+  return lines.length ? lines.join("\n") : "(no prior turns)";
 }

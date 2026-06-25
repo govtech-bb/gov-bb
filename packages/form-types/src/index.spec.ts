@@ -34,6 +34,8 @@ import {
   sharedFieldsBehaviourSchema,
   behaviourSchema,
   equalityOperationsSchema,
+  durationTransformSchema,
+  conditionalTitleSchema,
   formStepSchema,
   recipeComponentFieldSchema,
   recipeBlockFieldSchema,
@@ -45,6 +47,7 @@ import {
   formConfigBlobSchema,
   parseFormConfigBlob,
   dynamic,
+  shallowMergeDefined,
   validateFormContract,
   dateTimeFormatSchema,
   serviceContractSchema,
@@ -52,6 +55,9 @@ import {
   contactDetailsSchema,
   KEBAB_ID_PATTERN,
   KEBAB_ID_ERROR,
+  SEMVER_PATTERN,
+  SEMVER_ERROR,
+  semverSchema,
   classifyRecipientField,
   CONTACT_DETAILS_PREFIX,
   CONFIG_RECIPIENT_PREFIX,
@@ -433,18 +439,35 @@ describe("fieldValueSchema", () => {
 });
 
 describe("dateValueInputSchema", () => {
-  it("accepts a full date object", () => {
+  // Tolerant during the number→string migration (ADR 0043): both shapes parse.
+  it("accepts a full date object with string parts", () => {
+    expect(
+      dateValueInputSchema.safeParse({ day: "1", month: "6", year: "2024" })
+        .success,
+    ).toBe(true);
+  });
+
+  it("accepts a full date object with numeric parts", () => {
     expect(
       dateValueInputSchema.safeParse({ day: 1, month: 6, year: 2024 }).success,
     ).toBe(true);
+  });
+
+  it("preserves string parts verbatim, including leading zeros", () => {
+    const parsed = dateValueInputSchema.parse({
+      day: "09",
+      month: "06",
+      year: "2024",
+    });
+    expect(parsed).toEqual({ day: "09", month: "06", year: "2024" });
   });
 
   it("accepts an empty object (all fields optional)", () => {
     expect(dateValueInputSchema.safeParse({}).success).toBe(true);
   });
 
-  it("rejects when a field is a string instead of number", () => {
-    expect(dateValueInputSchema.safeParse({ day: "1" }).success).toBe(false);
+  it("rejects a part that is neither string nor number", () => {
+    expect(dateValueInputSchema.safeParse({ day: true }).success).toBe(false);
   });
 });
 
@@ -461,6 +484,16 @@ describe("equalityOperationsSchema", () => {
     expect(equalityOperationsSchema.safeParse("greaterThan").success).toBe(
       false,
     );
+  });
+});
+
+describe("durationTransformSchema", () => {
+  it("accepts a known duration transform", () => {
+    expect(durationTransformSchema.safeParse("yearsSince").success).toBe(true);
+  });
+
+  it("rejects an unknown transform", () => {
+    expect(durationTransformSchema.safeParse("weeksSince").success).toBe(false);
   });
 });
 
@@ -540,6 +573,24 @@ describe("stepConditionalOnBehaviourSchema", () => {
     expect(stepConditionalOnBehaviourSchema.safeParse(rest).success).toBe(
       false,
     );
+  });
+});
+
+describe("conditionalTitleSchema", () => {
+  const valid = {
+    targetFieldId: "applying-for-yourself",
+    operator: "equal" as const,
+    value: "yes",
+    title: "Provide your birth details",
+  };
+
+  it("accepts a valid conditional title", () => {
+    expect(conditionalTitleSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejects when the title is missing", () => {
+    const { title: _, ...rest } = valid;
+    expect(conditionalTitleSchema.safeParse(rest).success).toBe(false);
   });
 });
 
@@ -859,6 +910,15 @@ describe("dynamic", () => {
   });
 });
 
+describe("shallowMergeDefined (re-export)", () => {
+  it("merges override keys over the base", () => {
+    expect(shallowMergeDefined({ a: 1, b: 2 }, { b: 3 })).toEqual({
+      a: 1,
+      b: 3,
+    });
+  });
+});
+
 // ---------------------------------------------------------------------------
 // service-contract.type exports
 // ---------------------------------------------------------------------------
@@ -981,6 +1041,28 @@ describe("KEBAB_ID_ERROR (re-export)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// version-pattern exports
+// ---------------------------------------------------------------------------
+
+describe("SEMVER_PATTERN / semverSchema (re-export)", () => {
+  it("accepts a plain X.Y.Z version", () => {
+    expect(SEMVER_PATTERN.test("1.2.0")).toBe(true);
+    expect(semverSchema.safeParse("1.2.0").success).toBe(true);
+  });
+
+  it("rejects a non-semver version", () => {
+    expect(SEMVER_PATTERN.test("latest")).toBe(false);
+    expect(semverSchema.safeParse("latest").success).toBe(false);
+  });
+});
+
+describe("SEMVER_ERROR (re-export)", () => {
+  it("is a non-empty string", () => {
+    expect(SEMVER_ERROR.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // validateFormContract
 // ---------------------------------------------------------------------------
 
@@ -1029,7 +1111,7 @@ describe("recipient prefix constants (re-export)", () => {
 
 describe("deployBranchName / eraseBranchName (re-export)", () => {
   it("build dot-free branch names", () => {
-    expect(deployBranchName("passport-renewal", "1.2.0")).not.toContain(".");
+    expect(deployBranchName("passport-renewal")).not.toContain(".");
     expect(eraseBranchName("passport-renewal")).not.toContain(".");
   });
 });

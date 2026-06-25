@@ -64,7 +64,7 @@ test.describe("CSEC Private Candidate Registration — Live Smoke", () => {
     await fillField(page, step, "id-number", "850101-0001");
     await fillField(page, step, "address", faker.location.streetAddress());
     // `components/parish` native <select>; pick by slug.
-    await selectDropdown(page, step, "parish", "saint-michael");
+    await selectDropdown(page, step, "parish", "st-michael");
     await fillField(page, step, "email", "testing@govtech.bb");
     await fillField(page, step, "telephone-no", "246-418-1234");
     await advance(page, step);
@@ -88,6 +88,10 @@ test.describe("CSEC Private Candidate Registration — Live Smoke", () => {
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
-    await submitAndConfirm(page, { heading: "Submission Confirmation" });
+    await submitAndConfirm(page, {
+      heading: "Your application has been submitted",
+      subheading:
+        "Your application to sit CSEC exams as a private candidate has been submitted.",
+    });
   });
 });

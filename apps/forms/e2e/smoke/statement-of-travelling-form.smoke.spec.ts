@@ -114,6 +114,9 @@ test.describe("Statement of Travelling — Live Smoke", () => {
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
-    await submitAndConfirm(page, { heading: "Submission Confirmation" });
+    await submitAndConfirm(page, {
+      heading: "Your claim has been submitted",
+      subheading: "Your travel claim for the exam period has been submitted.",
+    });
   });
 });

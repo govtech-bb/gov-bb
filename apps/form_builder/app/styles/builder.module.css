@@ -1,51 +1,40 @@
 /* ── Buttons ─────────────────────────────────────── */
 
 .btnPrimary {
-  background: var(--color-accent);
-  color: white;
-  border-color: var(--color-accent);
+  background: var(--el-1000);
+  color: var(--on-inverse);
+  border-color: transparent;
 }
 
 .btnPrimary:hover:not(:disabled) {
-  background: var(--color-accent-hover);
-  border-color: var(--color-accent-hover);
+  background: var(--el-800);
+  border-color: transparent;
 }
 
 .btnDanger {
   background: var(--color-danger);
   color: white;
-  border-color: var(--color-danger);
+  border-color: transparent;
 }
 
 .btnDanger:hover:not(:disabled) {
-  background: #b91c1c;
-  border-color: #b91c1c;
+  background: var(--color-danger-hover);
+  border-color: transparent;
 }
 
 /* Erase is permanent (deletes the on-disk recipe via PR), so it reads stronger
-   than the reversible Disable: a darker, heavier red so the two destructive
-   actions on a live published row aren't confused. */
+   than the reversible Disable: same red family as btnDanger but heavier
+   weight + the danger-hover shade as its base. */
 .btnErase {
-  background: #7f1d1d;
+  background: var(--color-danger-hover);
   color: white;
-  border-color: #7f1d1d;
+  border-color: transparent;
   font-weight: 600;
 }
 
 .btnErase:hover:not(:disabled) {
-  background: #5f1414;
-  border-color: #5f1414;
-}
-
-.btnSwitch {
-  background: #7c3aed;
-  color: white;
-  border-color: #7c3aed;
-}
-
-.btnSwitch:hover:not(:disabled) {
-  background: #6d28d9;
-  border-color: #6d28d9;
+  background: #6e1713;
+  border-color: transparent;
 }
 
 /* ── Inputs & textareas ───────────────────────────── */
@@ -58,19 +47,67 @@
 
 /* ── Layout ──────────────────────────────────────── */
 
-/* The editor and the docked AI sidebar sit side by side. */
+/* Header on top; beneath it the editor and the docked AI sidebar sit side by
+   side, so toggling the sidebar never reflows the header. */
 .builderShell {
   display: flex;
+  flex-direction: column;
   height: 100vh;
 }
 
+.builderMain {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
 .builderRoot {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1;
   min-width: 0;
-  height: 100%;
-  background: var(--color-bg);
+  background: var(--el-100);
+}
+
+/* Validation/duplicate-ID banners float over the bottom of the canvas so
+   they never reflow it (the centred empty state used to jump). */
+.bannerStack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px 12px;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.bannerStack > * {
+  margin: 0;
+  pointer-events: auto;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  /* Slide-up entrance so the result of a header action draws the eye. */
+  opacity: 1;
+  translate: 0 0;
+  transition:
+    opacity 250ms cubic-bezier(0.22, 1, 0.36, 1),
+    translate 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@starting-style {
+  .bannerStack > * {
+    opacity: 0;
+    translate: 0 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bannerStack > * {
+    transition: none;
+  }
 }
 
 .builderBody {
@@ -79,87 +116,425 @@
   overflow: hidden;
 }
 
-/* ── Toolbar ─────────────────────────────────────── */
+/* ── Document header ─────────────────────────────── */
+/* Content-CMS-style header: section switch + an eyebrow/title block on the
+   left (the title and form id are in-place editable), actions on the right. */
 
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 24px;
   padding: 10px 20px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  background: var(--el-0);
+  border-bottom: 1px solid var(--el-200);
 }
 
-.toolbar input {
-  padding: 4px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  margin-left: 4px;
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
 }
 
-.toolbarTitle {
-  font-size: 0.95rem;
+.headerDivider {
+  width: 1px;
+  height: 26px;
+  flex-shrink: 0;
+  background: var(--el-200);
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* Fixed height: the status chips that appear here are taller than the
+   eyebrow text, and must not push the title down when they show up. */
+.eyebrowRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 22px;
+}
+
+.eyebrow {
+  font-size: 11px;
   font-weight: 600;
-  color: var(--color-text);
-  letter-spacing: -0.01em;
-  margin-right: auto;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--txt-dim);
+  white-space: nowrap;
+}
+
+/* Title + form id sit on one baseline as underlined fields — the persistent
+   underline plus placeholder is what marks them as editable. */
+.fieldsRow {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  min-width: 0;
+}
+
+.toolbar input.titleInput {
+  width: 280px;
+  padding: 1px 2px 3px;
+  border: none;
+  border-bottom: 1px solid var(--el-250);
+  border-radius: 0;
+  background: transparent;
+  color: var(--txt);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.15px;
+  transition: border-color 0.15s;
+}
+.toolbar input.titleInput:hover:not(:disabled):not(:focus) {
+  border-bottom-color: var(--el-400);
+}
+.toolbar input.titleInput:focus {
+  outline: none;
+  box-shadow: none;
+  border-bottom-color: var(--el-1000);
+}
+.toolbar input.titleInput::placeholder {
+  color: var(--el-400);
+  font-weight: 500;
+}
+
+/* Where supported, the fields grow with their content (capped) instead of
+   clipping long names; the fixed widths above are the fallback. */
+@supports (field-sizing: content) {
+  .toolbar input.titleInput {
+    field-sizing: content;
+    width: auto;
+    min-width: 180px;
+    max-width: min(440px, 38vw);
+  }
+
+  .toolbar input.idInput {
+    field-sizing: content;
+    width: auto;
+    min-width: 120px;
+    max-width: min(320px, 26vw);
+  }
+}
+
+.idRow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.idLabel {
+  font-size: 11.5px;
+  color: var(--txt-dim);
+  white-space: nowrap;
+}
+
+.toolbar input.idInput {
+  width: 200px;
+  padding: 1px 2px 3px;
+  border: none;
+  border-bottom: 1px solid var(--el-250);
+  border-radius: 0;
+  background: transparent;
+  color: var(--el-800);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  transition: border-color 0.15s;
+}
+.toolbar input.idInput:hover:not(:disabled):not(:focus) {
+  border-bottom-color: var(--el-400);
+}
+.toolbar input.idInput:focus {
+  outline: none;
+  box-shadow: none;
+  border-bottom-color: var(--el-1000);
+  color: var(--txt);
+}
+.toolbar input.idInput::placeholder {
+  color: var(--el-400);
+}
+
+.idError {
+  font-size: 11.5px;
+  color: var(--err-tx);
+  white-space: nowrap;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.headerActions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Square icon-only action (New / Open / Validate / Preview / Discard / theme
+   toggle); the label lives in the tooltip + aria-label. */
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--el-800);
+}
+
+/* Why-disabled hint beside the header actions. */
+.actionHint {
+  font-size: 12px;
+  color: var(--txt-dim);
+  white-space: nowrap;
+  margin-right: 2px;
+}
+
+/* Visually hidden, still read by screen readers (and findable by tests). */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Loading placeholder rows in the Open Form picker. */
+.skelRow {
+  height: 38px;
+  margin-bottom: 6px;
+  border-radius: var(--rad-m);
+  background: var(--el-150);
+  animation: skel-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes skel-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skelRow {
+    animation: none;
+  }
 }
 
 .toolbarHint {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
+  font-size: 12px;
+  color: var(--txt-dim);
   max-width: 220px;
   line-height: 1.3;
 }
 
-/* ── Step list ───────────────────────────────────── */
+.fieldHint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--txt-dim);
+  line-height: 1.3;
+}
+
+/* ── Step rail ───────────────────────────────────── */
 
 .stepList {
-  width: 240px;
-  border-right: 1px solid var(--color-border);
+  width: 248px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--el-200);
   overflow-y: auto;
-  padding: 12px 8px;
-  background: var(--color-surface);
+  padding: 6px 12px 16px;
+  background: var(--el-0);
+}
+
+.railTitle {
+  margin: 16px 6px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--txt-dim);
 }
 
 .stepListAddButton {
-  border: 1px dashed var(--color-border-strong);
-  color: var(--color-text-muted);
+  border: 1px dashed var(--el-250);
+  border-radius: var(--rad-s);
+  color: var(--el-500);
   background: transparent;
   width: 100%;
-  margin-bottom: 8px;
+  margin-top: 6px;
+  justify-content: center;
 }
 
 .stepRow {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 8px;
+  gap: 8px;
+  padding: 7px 8px;
   cursor: pointer;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  color: var(--color-text);
-  transition: background 0.1s;
+  border-radius: var(--rad-s);
+  font-size: 13.5px;
+  color: var(--txt);
+  transition: background 0.12s;
 }
 
 .stepRow:hover {
-  background: var(--color-bg);
+  background: var(--el-100);
 }
 
 .stepRowActive {
-  background: var(--color-accent-light);
-  color: var(--color-accent);
-  font-weight: 500;
+  background: var(--el-150);
+  color: var(--txt);
+  font-weight: 600;
 }
 
-/* ── Step editor ─────────────────────────────────── */
+.stepIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--el-150);
+  color: var(--el-500);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.stepRowActive .stepIndex {
+  background: var(--el-1000);
+  color: var(--on-inverse);
+}
+
+/* Rendered as a <button> for keyboard access — strip the global button
+   chrome so it still reads as a row label. */
+.stepRowTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.stepRowTitle:hover:not(:disabled) {
+  background: transparent;
+  border: none;
+}
+
+/* Whole-row button variant (Contact Details / Processors). */
+button.stepRowButton {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  color: var(--txt);
+  text-align: left;
+}
+
+button.stepRowButton:hover:not(:disabled) {
+  background: var(--el-100);
+  border: none;
+}
+
+button.stepRowButton.stepRowActive,
+button.stepRowButton.stepRowActive:hover:not(:disabled) {
+  background: var(--el-150);
+  font-weight: 600;
+}
+
+/* Reorder/delete controls surface on hover (always on the active row). */
+.stepRowActions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.stepRow:hover .stepRowActions,
+.stepRowActive .stepRowActions {
+  opacity: 1;
+}
+
+.railIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--txt-dim);
+}
+
+.railIconBtn:hover:not(:disabled) {
+  background: var(--el-200);
+  border: none;
+  color: var(--txt);
+}
+
+/* ── Step editor canvas ──────────────────────────── */
 
 .stepEditor {
   flex: 1;
   overflow-y: auto;
   padding: 24px;
-  background: var(--color-bg);
+  background: var(--el-100);
+}
+
+/* Content sits in a centred document column, like the content CMS's wide
+   editor layout. Modals rendered inline (e.g. the field edit panel) are
+   fixed-position overlays — exclude them or the column cap shrinks their
+   full-screen backdrop. */
+.stepEditor > *:not(.modal),
+.processorsEditor > *:not(.modal) {
+  max-width: 920px;
+  margin-inline: auto;
+}
+
+/* Card per editor section. The heading inside keeps the `.sectionTitle`
+   class (specs select on it for section order). */
+.card {
+  background: var(--el-0);
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-l);
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+
+.card .sectionTitle {
+  margin: 0 0 14px;
 }
 
 .noStepSelected {
@@ -167,8 +542,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
+  color: var(--txt-dim);
+  font-size: 14px;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--el-400);
+}
+
+.emptyState p {
+  margin: 0;
+  color: var(--txt-dim);
 }
 
 /* ── Modal ───────────────────────────────────────── */
@@ -180,19 +568,68 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px;
   z-index: 100;
+  /* Entry fade via @starting-style — no JS open/close state needed. */
+  opacity: 1;
+  transition: opacity 250ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+@starting-style {
+  .modal {
+    opacity: 0;
+  }
+}
+
+/* Dialogs come in two fixed widths so they never size to content: the 560px
+   default (mirrors the content CMS modal) and an 880px wide tier for
+   content-heavy ones (field editor, preview, form picker). */
 .modalContent {
-  background: var(--color-surface);
-  border-radius: 10px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  padding: 28px 32px;
-  border: 1px solid var(--color-border);
-  min-width: 400px;
-  max-width: 80vw;
+  background: var(--el-0);
+  border-radius: var(--rad-l);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  padding: 24px 28px;
+  width: 100%;
+  max-width: 560px;
   max-height: 80vh;
   overflow-y: auto;
+  /* A default scrollbar paints a square track through the rounded corners;
+     a thin thumb on a transparent track stays clear of the curve. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--el-250) transparent;
+  transform: scale(1);
+  transition: transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@starting-style {
+  .modalContent {
+    transform: scale(0.96);
+  }
+}
+
+.modalContentWide {
+  max-width: 880px;
+}
+
+/* Shared dialog header: title left, Close right. */
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.modalHead strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal,
+  .modalContent {
+    transition: none;
+  }
 }
 
 /* ── Field picker search ─────────────────────────── */
@@ -204,17 +641,18 @@
 
 .pickerSearchInput {
   width: 100%;
-  padding: 8px 28px 8px 10px;
-  font-size: 0.875rem;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-surface);
-  color: var(--color-text);
+  padding: 9px 28px 9px 12px;
+  font-size: 14px;
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-s);
+  background: var(--el-0);
+  color: var(--txt);
 }
 
 .pickerSearchInput:focus {
   outline: none;
-  border-color: var(--color-accent);
+  border-color: var(--el-500);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.06);
 }
 
 .pickerSearchClear {
@@ -231,13 +669,15 @@
   background: none;
   font-size: 1.1rem;
   line-height: 1;
-  color: var(--color-text-muted);
+  color: var(--txt-dim);
   cursor: pointer;
   padding: 0;
 }
 
 .pickerSearchClear:hover {
-  color: var(--color-text);
+  color: var(--txt);
+  background: none;
+  border: none;
 }
 
 .pickerHintLink {
@@ -245,39 +685,16 @@
   background: none;
   padding: 0;
   font: inherit;
-  color: var(--color-accent);
+  color: var(--txt);
   text-decoration: underline;
   cursor: pointer;
 }
 
-/* ── Tabs ────────────────────────────────────────── */
+/* ── Field picker tabs ───────────────────────────── */
+/* The segmented control itself comes from SlidingTabs (.cms-tabs). */
 
-.tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 2px solid var(--color-border);
-  margin-bottom: 16px;
-}
-
-.tab {
-  padding: 8px 16px;
-  cursor: pointer;
-  border: none;
-  background: none;
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
-  transition: color 0.1s;
-}
-
-.tab:hover {
-  color: var(--color-text);
-}
-
-.tabActive {
-  color: var(--color-accent);
-  font-weight: 600;
-  border-bottom: 2px solid var(--color-accent);
-  margin-bottom: -2px;
+.pickerTabs {
+  margin-bottom: 14px;
 }
 
 /* ── Field row ───────────────────────────────────── */
@@ -286,16 +703,38 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--color-border);
+  padding: 9px 12px;
+  border-radius: var(--rad-m);
+  border: 1px solid var(--el-200);
   margin-bottom: 6px;
-  background: var(--color-surface);
-  transition: border-color 0.1s;
+  background: var(--el-0);
+  transition: border-color 0.12s;
 }
 
 .fieldRow:hover {
-  border-color: var(--color-border-strong);
+  border-color: var(--el-400);
+}
+
+/* One-shot highlight on a just-added field row. */
+.fieldRowNew {
+  animation: field-row-flash 1.2s ease-out;
+}
+
+@keyframes field-row-flash {
+  0%,
+  35% {
+    background: var(--color-warning-light);
+    border-color: var(--color-warning-text);
+  }
+  100% {
+    background: var(--el-0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fieldRowNew {
+    animation: none;
+  }
 }
 
 .dragHandle {
@@ -305,7 +744,7 @@
   padding: 0 4px;
   border: none;
   background: none;
-  color: var(--color-text-muted);
+  color: var(--txt-dim);
   font-size: 1rem;
   line-height: 1;
   cursor: grab;
@@ -317,18 +756,18 @@
 }
 
 .fieldRowSecondary {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
+  font-size: 12px;
+  color: var(--txt-dim);
 }
 
 /* ── Section title ───────────────────────────────── */
 
 .sectionTitle {
-  font-size: 0.75rem;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--color-text-muted);
+  color: var(--txt-dim);
   margin: 20px 0 8px;
 }
 
@@ -337,142 +776,200 @@
 .formGroup {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 12px;
+  gap: 5px;
+  margin-bottom: 14px;
 }
 
 .formGroup label {
-  font-size: 0.8rem;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--color-text);
+  color: var(--el-800);
 }
 
 /* ── Badges ──────────────────────────────────────── */
 
 .badge {
-  font-size: 0.7rem;
-  font-weight: 500;
-  padding: 2px 7px;
-  border-radius: 10px;
-  background: #e5e7eb;
-  color: #374151;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--el-150);
+  color: var(--el-800);
 }
 
 .publishedBadge {
-  font-size: 0.7rem;
-  font-weight: 500;
-  padding: 2px 7px;
-  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
   background: var(--color-warning-light);
   color: var(--color-warning-text);
   margin-left: 4px;
 }
 
 .disabledBadge {
-  font-size: 0.7rem;
-  font-weight: 500;
-  padding: 2px 7px;
-  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
   background: var(--color-danger);
   color: white;
   margin-left: 4px;
 }
 
 /* ── Validation banners ───────────────────────────── */
+/* Inline (in-modal / in-editor) variants of the floating .errorBanner /
+   .successBanner: same tokens and shape, no floating margins. */
 
 .validationSuccess {
+  padding: 10px 12px;
+  border-radius: var(--rad-s);
   background: var(--color-success-light);
   color: var(--color-success);
-  border-left: 3px solid var(--color-success);
-  padding: 10px 16px;
-  font-size: 0.875rem;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .validationErrors {
-  background: var(--color-danger-light);
-  color: var(--color-danger);
-  border-left: 3px solid var(--color-danger);
-  padding: 10px 16px;
-  font-size: 0.875rem;
+  padding: 10px 12px;
+  border: 1px solid var(--err-bd);
+  border-radius: var(--rad-s);
+  background: var(--err-bg);
+  color: var(--err-tx);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Editor-level banners (duplicate IDs, validation results), pinned under the
+   editor: same treatment as the content CMS's error banner. */
+.errorBanner {
+  margin: 0 16px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--err-bd);
+  border-radius: var(--rad-s);
+  background: var(--err-bg);
+  color: var(--err-tx);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.successBanner {
+  margin: 0 16px 12px;
+  padding: 10px 12px;
+  border-radius: var(--rad-s);
+  background: var(--color-success-light);
+  color: var(--color-success);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.bannerList {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.bannerList li {
+  margin: 2px 0;
+}
+
+.bannerList code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
 }
 
 /* ── Toolbar status badge ─────────────────────────── */
 
 .statusOk {
-  color: var(--color-success, #1f7a3a);
-  font-size: 0.8rem;
-  padding: 2px 6px;
-  background: var(--color-success-light, #e6f4ea);
-  border-radius: 4px;
+  color: var(--color-success);
+  font-size: 12px;
+  padding: 3px 10px;
+  background: var(--color-success-light);
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 .statusError {
-  color: var(--color-danger);
-  font-size: 0.8rem;
-  padding: 2px 6px;
-  background: var(--color-danger-light);
-  border-radius: 4px;
+  color: var(--err-tx);
+  font-size: 12px;
+  padding: 3px 10px;
+  background: var(--err-bg);
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 /* Unsaved-changes indicator — amber, distinct from the green/red save status
    it sits beside, to read as "pending" rather than success or failure. */
 .statusUnsaved {
   color: var(--color-warning-text);
-  font-size: 0.8rem;
-  padding: 2px 6px;
+  font-size: 12px;
+  padding: 3px 10px;
   background: var(--color-warning-light);
-  border-radius: 4px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 /* ── Override indicators ──────────────────────────── */
 
+/* Author-set overrides ("modified, awaiting save") use the same amber as the
+   Unsaved-changes chip, so pending state reads as one colour everywhere. */
 .overrideDot {
   display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--color-accent, #1565c0);
+  background: var(--color-warning-text);
   margin-right: 6px;
   vertical-align: middle;
 }
 
+/* A slim amber rail on the modified item. */
 .overrideField {
-  border-left: 3px solid var(--color-accent, #1565c0);
-  padding-left: 8px;
+  border-left: 2px solid var(--color-warning-text);
+}
+
+/* On bare form groups the rail hangs in the gutter — the negative margin
+   offsets the border and padding so overridden fields stay aligned with
+   their neighbours. (Rows have their own border box; the rail just tints
+   their left edge.) */
+.formGroup.overrideField {
+  padding-left: 10px;
+  margin-left: -12px;
 }
 
 /* Inherited (base component) validation rule: read-only, visually muted to
-   distinguish it from author-set overrides (#618). */
+   distinguish it from author-set overrides (#618). Same 2px edge treatment
+   as .overrideField so the rows stay aligned. */
 .inheritedRow {
-  border-left: 3px dashed var(--color-border, #d4d4d4);
-  padding-left: 8px;
+  border-left: 2px dashed var(--el-250);
 }
 
 .inheritedTag {
-  font-size: 0.7rem;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--color-text-muted, #6b7280);
-  background: var(--color-surface-muted, #f3f4f6);
-  border-radius: 4px;
-  padding: 2px 6px;
+  color: var(--txt-dim);
+  background: var(--el-150);
+  border-radius: 999px;
+  padding: 2px 8px;
 }
 
 /* ── Select fields ────────────────────────────────── */
 
 .formGroup select {
   width: 100%;
-  padding: 6px 10px;
-  border: 1px solid var(--color-border, #d4d4d4);
-  border-radius: 4px;
-  background: var(--color-surface, #fff);
-  font-size: 0.9rem;
+  padding: 8px 12px;
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-s);
+  background: var(--el-0);
+  color: var(--txt);
+  font-size: 14px;
   appearance: auto;
 }
 
 .formGroup select:focus {
-  outline: 2px solid var(--color-accent, #1565c0);
-  outline-offset: -1px;
+  outline: none;
+  border-color: var(--el-500);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.06);
 }
 
 /* ── Checkbox rows ────────────────────────────────── */
@@ -500,7 +997,7 @@
 /* Rail entry for the form-level processors view. */
 .processorsRow {
   margin-top: 8px;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--el-150);
   padding-top: 12px;
   border-radius: 0;
 }
@@ -509,17 +1006,17 @@
   flex: 1;
   overflow-y: auto;
   padding: 24px;
-  background: var(--color-bg);
+  background: var(--el-100);
 }
 
 .processorWarning {
   margin: 8px 0 16px;
   padding: 10px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--color-border-strong);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
+  border-radius: var(--rad-s);
+  border: 1px solid var(--el-200);
+  background: var(--el-50);
+  color: var(--el-500);
+  font-size: 12.5px;
 }
 
 .addProcessorRow {
@@ -530,23 +1027,23 @@
 }
 
 .addProcessorRow label {
-  font-size: 0.8rem;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--color-text);
+  color: var(--el-800);
 }
 
 .noProcessors {
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
+  color: var(--txt-dim);
+  font-size: 13.5px;
   padding: 8px 0;
 }
 
 .processorCard {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-l);
   padding: 16px;
   margin-bottom: 16px;
-  background: var(--color-surface);
+  background: var(--el-0);
 }
 
 .processorCardHeader {
@@ -557,15 +1054,15 @@
 }
 
 .processorReadOnly {
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
+  font-size: 13px;
+  color: var(--txt-dim);
   line-height: 1.4;
 }
 
 .fieldLabel {
-  font-size: 0.8rem;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--color-text);
+  color: var(--el-800);
 }
 
 /* ── Key/value editor ────────────────────────────── */
@@ -617,4 +1114,268 @@
   display: flex;
   gap: 6px;
   margin-top: 6px;
+}
+
+/* ── AI assistant sidebar ────────────────────────── */
+
+.aiSidebar {
+  width: 380px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-left: 1px solid var(--el-200);
+  background: var(--el-50);
+}
+
+.aiCollapsedBar {
+  width: 48px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding-top: 10px;
+  border-left: 1px solid var(--el-200);
+  background: var(--el-50);
+}
+
+.aiHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--el-200);
+}
+
+.aiTitle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.aiTitle svg {
+  color: var(--el-500);
+}
+
+.aiTranscript {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+/* Empty transcript: centred invitation, like the editor's empty state. */
+.aiEmpty {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 250px;
+  text-align: center;
+  color: var(--el-400);
+}
+
+.aiEmpty p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--txt-dim);
+}
+
+.aiBubble {
+  max-width: 88%;
+  padding: 9px 13px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.aiBubbleUser {
+  align-self: flex-end;
+  background: var(--el-1000);
+  color: var(--on-inverse);
+  border-bottom-right-radius: 4px;
+}
+
+.aiBubbleAi {
+  align-self: flex-start;
+  background: var(--el-0);
+  border: 1px solid var(--el-200);
+  border-bottom-left-radius: 4px;
+}
+
+/* Pipeline progress lines ("Uploading…", "Applied to the editor") sit
+   centred between bubbles, styled as quiet pills. */
+.aiStatus {
+  align-self: center;
+  max-width: 100%;
+  padding: 3px 11px;
+  border-radius: 999px;
+  background: var(--el-150);
+  color: var(--txt-dim);
+  font-size: 12px;
+  text-align: center;
+}
+
+.aiThinking {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 1px;
+  font-size: 13px;
+}
+
+.aiStopBtn {
+  padding: 2px 10px;
+  border: 1px solid var(--el-200);
+  border-radius: 999px;
+  background: var(--el-0);
+  color: var(--el-500);
+  font-size: 11.5px;
+}
+
+.aiStopBtn:hover:not(:disabled) {
+  color: var(--txt);
+  border-color: var(--el-250);
+}
+
+.aiError {
+  padding: 8px 11px;
+  border: 1px solid var(--err-bd);
+  border-radius: var(--rad-s);
+  background: var(--err-bg);
+  color: var(--err-tx);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+/* ── Composer ── */
+
+.aiComposer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--el-200);
+}
+
+.aiAttachChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 3px 5px 3px 10px;
+  border-radius: 999px;
+  background: var(--el-150);
+  color: var(--el-800);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.aiAttachName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aiAttachClear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--el-500);
+}
+
+.aiAttachClear:hover:not(:disabled) {
+  background: var(--el-250);
+  border: none;
+  color: var(--txt);
+}
+
+.aiComposerCard {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  background: var(--el-0);
+  border: 1px solid var(--el-200);
+  border-radius: var(--rad-l);
+  transition: border-color 0.15s;
+}
+
+.aiComposerCard:focus-within {
+  border-color: var(--el-500);
+}
+
+.aiComposerCard textarea.aiTextarea {
+  border: none;
+  background: transparent;
+  resize: none;
+  padding: 4px 6px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  min-height: 44px;
+}
+
+.aiComposerCard textarea.aiTextarea:focus {
+  outline: none;
+  border: none;
+  box-shadow: none;
+}
+
+.aiComposerRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+}
+
+.aiComposerRow button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Quiet attach affordance; pushes the action buttons right. */
+.aiAttachBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  padding: 5px 8px;
+  border-radius: var(--rad-s);
+  color: var(--el-500);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.aiAttachBtn:hover {
+  background: var(--el-150);
+  color: var(--txt);
+}
+
+/* ── Editing-presence read-only banner (#874) ─────── */
+.presenceBanner {
+  margin: 0 0 12px;
+  padding: 10px 16px;
+  border-left: 3px solid var(--color-warning-text);
+  background: var(--color-warning-light);
+  color: var(--color-warning-text);
+  font-size: 13px;
 }

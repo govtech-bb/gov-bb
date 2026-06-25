@@ -1,15 +1,16 @@
+import type { Mock, Mocked } from "vitest";
 import { DataSource, EntityManager } from "typeorm";
 import { FormDefinitionRepository } from "./form-definition.repository";
-import { FormDefinitionEntity } from "../../database/entities/form-definition.entity";
+import { FormDefinitionEntity } from "@/database/entities/form-definition.entity";
 
-function makeDataSource(): jest.Mocked<DataSource> {
+function makeDataSource(): Mocked<DataSource> {
   const fakeManager = {
-    transaction: jest.fn(),
+    transaction: vi.fn(),
   } as unknown as EntityManager;
 
   return {
-    createEntityManager: jest.fn().mockReturnValue(fakeManager),
-  } as unknown as jest.Mocked<DataSource>;
+    createEntityManager: vi.fn().mockReturnValue(fakeManager),
+  } as unknown as Mocked<DataSource>;
 }
 
 describe("FormDefinitionRepository", () => {
@@ -38,14 +39,14 @@ describe("FormDefinitionRepository", () => {
       const repo = new FormDefinitionRepository(dataSource);
 
       const fakeTxManager = {} as EntityManager;
-      const mockTransaction = jest
+      const mockTransaction = vi
         .fn()
         .mockImplementation(
           (_iso: string, cb: (m: EntityManager) => Promise<unknown>) =>
             cb(fakeTxManager),
         );
       (
-        repo as unknown as { manager: { transaction: jest.Mock } }
+        repo as unknown as { manager: { transaction: Mock } }
       ).manager.transaction = mockTransaction;
 
       await repo.tx(async () => "done");
@@ -61,9 +62,9 @@ describe("FormDefinitionRepository", () => {
       const repo = new FormDefinitionRepository(dataSource);
 
       const txError = new Error("tx failed");
-      const mockTransaction = jest.fn().mockRejectedValue(txError);
+      const mockTransaction = vi.fn().mockRejectedValue(txError);
       (
-        repo as unknown as { manager: { transaction: jest.Mock } }
+        repo as unknown as { manager: { transaction: Mock } }
       ).manager.transaction = mockTransaction;
 
       await expect(repo.tx(async () => "ok")).rejects.toBe(txError);

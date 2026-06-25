@@ -1,5 +1,5 @@
 /**
- * @jest-environment jsdom
+ * @vitest-environment jsdom
  *
  * #519: the conditional Target Field picker is gated on and scoped to the
  * selected Target Step, keyed by resolved field id.
@@ -35,7 +35,12 @@ const FIELD_REFS: FieldRef[] = [
     displayName: "Agree",
     isBoolean: true,
   },
-  { stepId: "step-2", fieldId: "email", displayName: "Email", isBoolean: false },
+  {
+    stepId: "step-2",
+    fieldId: "email",
+    displayName: "Email",
+    isBoolean: false,
+  },
 ];
 
 function targetFieldSelect() {
@@ -55,7 +60,7 @@ function targetStepSelect() {
     ) as HTMLSelectElement;
 }
 
-function renderStepBehaviour(behaviours: Behaviour[], onChange = jest.fn()) {
+function renderStepBehaviour(behaviours: Behaviour[], onChange = vi.fn()) {
   render(
     <BehavioursEditor
       scope="step"
@@ -70,21 +75,39 @@ function renderStepBehaviour(behaviours: Behaviour[], onChange = jest.fn()) {
 
 it("disables the Target Field picker until a Target Step is chosen", () => {
   renderStepBehaviour([
-    { type: "stepConditionalOn", targetStepId: "", targetFieldId: "", operator: "equal", value: "" } as unknown as Behaviour,
+    {
+      type: "stepConditionalOn",
+      targetStepId: "",
+      targetFieldId: "",
+      operator: "equal",
+      value: "",
+    } as unknown as Behaviour,
   ]);
   expect(targetFieldSelect()).toBeDisabled();
 });
 
 it("enables the Target Field picker once a Target Step is set", () => {
   renderStepBehaviour([
-    { type: "stepConditionalOn", targetStepId: "step-1", targetFieldId: "", operator: "equal", value: "" } as unknown as Behaviour,
+    {
+      type: "stepConditionalOn",
+      targetStepId: "step-1",
+      targetFieldId: "",
+      operator: "equal",
+      value: "",
+    } as unknown as Behaviour,
   ]);
   expect(targetFieldSelect()).toBeEnabled();
 });
 
 it("limits Target Field options to fields in the selected Target Step", () => {
   renderStepBehaviour([
-    { type: "stepConditionalOn", targetStepId: "step-1", targetFieldId: "", operator: "equal", value: "" } as unknown as Behaviour,
+    {
+      type: "stepConditionalOn",
+      targetStepId: "step-1",
+      targetFieldId: "",
+      operator: "equal",
+      value: "",
+    } as unknown as Behaviour,
   ]);
   const options = within(targetFieldSelect())
     .getAllByRole("option")
@@ -99,7 +122,13 @@ it("limits Target Field options to fields in the selected Target Step", () => {
 
 it("uses the resolved field id as the option value", () => {
   renderStepBehaviour([
-    { type: "stepConditionalOn", targetStepId: "step-1", targetFieldId: "", operator: "equal", value: "" } as unknown as Behaviour,
+    {
+      type: "stepConditionalOn",
+      targetStepId: "step-1",
+      targetFieldId: "",
+      operator: "equal",
+      value: "",
+    } as unknown as Behaviour,
   ]);
   const firstName = within(targetFieldSelect()).getByRole("option", {
     name: "First Name",
@@ -109,7 +138,13 @@ it("uses the resolved field id as the option value", () => {
 
 it("clears an incompatible Target Field when the Target Step changes", async () => {
   const onChange = renderStepBehaviour([
-    { type: "stepConditionalOn", targetStepId: "step-1", targetFieldId: "first-name", operator: "equal", value: "" } as unknown as Behaviour,
+    {
+      type: "stepConditionalOn",
+      targetStepId: "step-1",
+      targetFieldId: "first-name",
+      operator: "equal",
+      value: "",
+    } as unknown as Behaviour,
   ]);
   await userEvent.selectOptions(targetStepSelect(), "step-2");
   expect(onChange).toHaveBeenLastCalledWith([
@@ -120,15 +155,31 @@ it("clears an incompatible Target Field when the Target Step changes", async () 
 it("keeps the Target Field when the new step still contains it", async () => {
   // A field id that exists in both steps must survive the step change.
   const refs: FieldRef[] = [
-    { stepId: "step-1", fieldId: "shared", displayName: "Shared", isBoolean: false },
-    { stepId: "step-2", fieldId: "shared", displayName: "Shared", isBoolean: false },
+    {
+      stepId: "step-1",
+      fieldId: "shared",
+      displayName: "Shared",
+      isBoolean: false,
+    },
+    {
+      stepId: "step-2",
+      fieldId: "shared",
+      displayName: "Shared",
+      isBoolean: false,
+    },
   ];
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
       behaviours={[
-        { type: "stepConditionalOn", targetStepId: "step-1", targetFieldId: "shared", operator: "equal", value: "" } as unknown as Behaviour,
+        {
+          type: "stepConditionalOn",
+          targetStepId: "step-1",
+          targetFieldId: "shared",
+          operator: "equal",
+          value: "",
+        } as unknown as Behaviour,
       ]}
       fieldRefs={refs}
       stepRefs={STEP_REFS}
@@ -137,7 +188,10 @@ it("keeps the Target Field when the new step still contains it", async () => {
   );
   await userEvent.selectOptions(targetStepSelect(), "step-2");
   expect(onChange).toHaveBeenLastCalledWith([
-    expect.objectContaining({ targetStepId: "step-2", targetFieldId: "shared" }),
+    expect.objectContaining({
+      targetStepId: "step-2",
+      targetFieldId: "shared",
+    }),
   ]);
 });
 
@@ -146,18 +200,34 @@ it("renders distinct options for two fields in a step that resolve to the same i
   // the same fieldId. The picker must still render both without a duplicate
   // React key crashing the render (keys are stepId:fieldId:index).
   const refs: FieldRef[] = [
-    { stepId: "step-1", fieldId: "text", displayName: "Text", isBoolean: false },
-    { stepId: "step-1", fieldId: "text", displayName: "Text", isBoolean: false },
+    {
+      stepId: "step-1",
+      fieldId: "text",
+      displayName: "Text",
+      isBoolean: false,
+    },
+    {
+      stepId: "step-1",
+      fieldId: "text",
+      displayName: "Text",
+      isBoolean: false,
+    },
   ];
   render(
     <BehavioursEditor
       scope="step"
       behaviours={[
-        { type: "stepConditionalOn", targetStepId: "step-1", targetFieldId: "", operator: "equal", value: "" } as unknown as Behaviour,
+        {
+          type: "stepConditionalOn",
+          targetStepId: "step-1",
+          targetFieldId: "",
+          operator: "equal",
+          value: "",
+        } as unknown as Behaviour,
       ]}
       fieldRefs={refs}
       stepRefs={STEP_REFS}
-      onChange={jest.fn()}
+      onChange={vi.fn()}
     />,
   );
   // Placeholder + two duplicate-id options, all rendered (no key collision).
@@ -165,7 +235,7 @@ it("renders distinct options for two fields in a step that resolve to the same i
 });
 
 it("defaults a new fieldConditionalOn's Target Step to currentStepId", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="field"
@@ -181,7 +251,10 @@ it("defaults a new fieldConditionalOn's Target Step to currentStepId", async () 
     "fieldConditionalOn",
   );
   expect(onChange).toHaveBeenCalledWith([
-    expect.objectContaining({ type: "fieldConditionalOn", targetStepId: "step-2" }),
+    expect.objectContaining({
+      type: "fieldConditionalOn",
+      targetStepId: "step-2",
+    }),
   ]);
 });
 
@@ -199,7 +272,13 @@ function valueBooleanSelect() {
 
 it("renders a true/false select for a boolean Target Field", () => {
   renderStepBehaviour([
-    { type: "stepConditionalOn", targetStepId: "step-1", targetFieldId: "agree", operator: "equal", value: true } as unknown as Behaviour,
+    {
+      type: "stepConditionalOn",
+      targetStepId: "step-1",
+      targetFieldId: "agree",
+      operator: "equal",
+      value: true,
+    } as unknown as Behaviour,
   ]);
   const select = valueBooleanSelect();
   expect(select).toBeDefined();
@@ -214,9 +293,18 @@ it("renders a true/false select for a boolean Target Field", () => {
 
 it("stores a real boolean when the true/false control changes", async () => {
   const onChange = renderStepBehaviour([
-    { type: "stepConditionalOn", targetStepId: "step-1", targetFieldId: "agree", operator: "equal", value: true } as unknown as Behaviour,
+    {
+      type: "stepConditionalOn",
+      targetStepId: "step-1",
+      targetFieldId: "agree",
+      operator: "equal",
+      value: true,
+    } as unknown as Behaviour,
   ]);
-  await userEvent.selectOptions(valueBooleanSelect() as HTMLSelectElement, "false");
+  await userEvent.selectOptions(
+    valueBooleanSelect() as HTMLSelectElement,
+    "false",
+  );
   expect(onChange).toHaveBeenLastCalledWith([
     expect.objectContaining({ value: false }),
   ]);
@@ -224,7 +312,13 @@ it("stores a real boolean when the true/false control changes", async () => {
 
 it("renders a text input for a non-boolean Target Field", () => {
   renderStepBehaviour([
-    { type: "stepConditionalOn", targetStepId: "step-1", targetFieldId: "first-name", operator: "equal", value: "" } as unknown as Behaviour,
+    {
+      type: "stepConditionalOn",
+      targetStepId: "step-1",
+      targetFieldId: "first-name",
+      operator: "equal",
+      value: "",
+    } as unknown as Behaviour,
   ]);
   expect(valueBooleanSelect()).toBeUndefined();
   expect(screen.getByRole("textbox")).toBeInTheDocument();
@@ -232,7 +326,13 @@ it("renders a text input for a non-boolean Target Field", () => {
 
 it("resets the value to true when the Target Field switches to boolean", async () => {
   const onChange = renderStepBehaviour([
-    { type: "stepConditionalOn", targetStepId: "step-1", targetFieldId: "first-name", operator: "equal", value: "hello" } as unknown as Behaviour,
+    {
+      type: "stepConditionalOn",
+      targetStepId: "step-1",
+      targetFieldId: "first-name",
+      operator: "equal",
+      value: "hello",
+    } as unknown as Behaviour,
   ]);
   await userEvent.selectOptions(targetFieldSelect(), "agree");
   expect(onChange).toHaveBeenLastCalledWith([
@@ -242,7 +342,13 @@ it("resets the value to true when the Target Field switches to boolean", async (
 
 it("resets the value to an empty string when the Target Field switches to non-boolean", async () => {
   const onChange = renderStepBehaviour([
-    { type: "stepConditionalOn", targetStepId: "step-1", targetFieldId: "agree", operator: "equal", value: true } as unknown as Behaviour,
+    {
+      type: "stepConditionalOn",
+      targetStepId: "step-1",
+      targetFieldId: "agree",
+      operator: "equal",
+      value: true,
+    } as unknown as Behaviour,
   ]);
   await userEvent.selectOptions(targetFieldSelect(), "first-name");
   expect(onChange).toHaveBeenLastCalledWith([
@@ -268,7 +374,7 @@ it("offers Optional If in the Add Behaviour dropdown for field scope", () => {
       behaviours={[]}
       fieldRefs={FIELD_REFS}
       stepRefs={STEP_REFS}
-      onChange={jest.fn()}
+      onChange={vi.fn()}
       currentStepId="step-1"
     />,
   );
@@ -285,7 +391,7 @@ it("does not offer Optional If for step scope", () => {
 });
 
 it("defaults a new optionalIf's Target Step to currentStepId", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="field"
@@ -319,61 +425,79 @@ it("adding a repeatable behaviour initialises { min: 1, max: 5 }", async () => {
 });
 
 it("the Min input for repeatable has min='1' and changing to 0 stores 1", () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
-      behaviours={[{ type: "repeatable", min: 1, max: 5 } as unknown as Behaviour]}
+      behaviours={[
+        { type: "repeatable", min: 1, max: 5 } as unknown as Behaviour,
+      ]}
       fieldRefs={FIELD_REFS}
       stepRefs={STEP_REFS}
       onChange={onChange}
     />,
   );
-  const minInput = screen.getAllByRole("spinbutton").find(
-    (el) => (el as HTMLInputElement).closest("div")?.textContent?.includes("Min"),
-  ) as HTMLInputElement;
+  const minInput = screen
+    .getAllByRole("spinbutton")
+    .find((el) =>
+      (el as HTMLInputElement).closest("div")?.textContent?.includes("Min"),
+    ) as HTMLInputElement;
   expect(minInput).toHaveAttribute("min", "1");
   // fireEvent.change sets the full value atomically on a controlled input
   fireEvent.change(minInput, { target: { value: "0" } });
-  const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as Behaviour[];
+  const lastCall = onChange.mock.calls[
+    onChange.mock.calls.length - 1
+  ][0] as Behaviour[];
   expect((lastCall[0] as Record<string, unknown>)["min"]).toBe(1);
 });
 
 it("with min: 3, changing Max to 2 stores 3 (clamped to atLeastParam)", () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
-      behaviours={[{ type: "repeatable", min: 3, max: 5 } as unknown as Behaviour]}
+      behaviours={[
+        { type: "repeatable", min: 3, max: 5 } as unknown as Behaviour,
+      ]}
       fieldRefs={FIELD_REFS}
       stepRefs={STEP_REFS}
       onChange={onChange}
     />,
   );
-  const maxInput = screen.getAllByRole("spinbutton").find(
-    (el) => (el as HTMLInputElement).closest("div")?.textContent?.includes("Max"),
-  ) as HTMLInputElement;
+  const maxInput = screen
+    .getAllByRole("spinbutton")
+    .find((el) =>
+      (el as HTMLInputElement).closest("div")?.textContent?.includes("Max"),
+    ) as HTMLInputElement;
   fireEvent.change(maxInput, { target: { value: "2" } });
-  const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as Behaviour[];
+  const lastCall = onChange.mock.calls[
+    onChange.mock.calls.length - 1
+  ][0] as Behaviour[];
   expect((lastCall[0] as Record<string, unknown>)["max"]).toBe(3);
 });
 
 it("raising Min above current Max also raises Max (min: 7 with max: 5 stores { min: 7, max: 7 })", () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
-      behaviours={[{ type: "repeatable", min: 3, max: 5 } as unknown as Behaviour]}
+      behaviours={[
+        { type: "repeatable", min: 3, max: 5 } as unknown as Behaviour,
+      ]}
       fieldRefs={FIELD_REFS}
       stepRefs={STEP_REFS}
       onChange={onChange}
     />,
   );
-  const minInput = screen.getAllByRole("spinbutton").find(
-    (el) => (el as HTMLInputElement).closest("div")?.textContent?.includes("Min"),
-  ) as HTMLInputElement;
+  const minInput = screen
+    .getAllByRole("spinbutton")
+    .find((el) =>
+      (el as HTMLInputElement).closest("div")?.textContent?.includes("Min"),
+    ) as HTMLInputElement;
   fireEvent.change(minInput, { target: { value: "7" } });
-  const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as Behaviour[];
+  const lastCall = onChange.mock.calls[
+    onChange.mock.calls.length - 1
+  ][0] as Behaviour[];
   expect((lastCall[0] as Record<string, unknown>)["min"]).toBe(7);
   expect((lastCall[0] as Record<string, unknown>)["max"]).toBe(7);
 });
@@ -383,11 +507,17 @@ it("renders the gated step/field/operator/value controls for an optionalIf behav
     <BehavioursEditor
       scope="field"
       behaviours={[
-        { type: "optionalIf", targetStepId: "step-1", targetFieldId: "agree", operator: "equal", value: true } as unknown as Behaviour,
+        {
+          type: "optionalIf",
+          targetStepId: "step-1",
+          targetFieldId: "agree",
+          operator: "equal",
+          value: true,
+        } as unknown as Behaviour,
       ]}
       fieldRefs={FIELD_REFS}
       stepRefs={STEP_REFS}
-      onChange={jest.fn()}
+      onChange={vi.fn()}
       currentStepId="step-1"
     />,
   );
@@ -426,7 +556,7 @@ it("shows the stored addAnotherLabel value", () => {
 });
 
 it("does not initialize addAnotherLabel when adding a repeatable behaviour", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
@@ -481,7 +611,7 @@ it("treats whitespace-only input as blank", async () => {
 
 function renderSharedFields(
   fieldIds: string[],
-  onChange = jest.fn(),
+  onChange = vi.fn(),
   { refs = FIELD_REFS, currentStepId = "step-1" as string | undefined } = {},
 ) {
   render(
@@ -499,11 +629,17 @@ function renderSharedFields(
 
 it("renders a checkbox per current-step field and none for other steps' fields", () => {
   renderSharedFields([]);
-  expect(screen.getByRole("checkbox", { name: "First Name" })).toBeInTheDocument();
-  expect(screen.getByRole("checkbox", { name: "Last Name" })).toBeInTheDocument();
+  expect(
+    screen.getByRole("checkbox", { name: "First Name" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("checkbox", { name: "Last Name" }),
+  ).toBeInTheDocument();
   expect(screen.getByRole("checkbox", { name: "Agree" })).toBeInTheDocument();
   // step-2's field must not be offered.
-  expect(screen.queryByRole("checkbox", { name: "Email" })).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("checkbox", { name: "Email" }),
+  ).not.toBeInTheDocument();
   // The old comma-separated text input is gone.
   expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
 });
@@ -535,10 +671,20 @@ it("renders one checkbox for two same-step fields that resolve to the same id", 
   // Two same-type components on one step resolve to the same runtime fieldId;
   // the list dedupes so the id is offered once.
   const refs: FieldRef[] = [
-    { stepId: "step-1", fieldId: "text", displayName: "Text", isBoolean: false },
-    { stepId: "step-1", fieldId: "text", displayName: "Text", isBoolean: false },
+    {
+      stepId: "step-1",
+      fieldId: "text",
+      displayName: "Text",
+      isBoolean: false,
+    },
+    {
+      stepId: "step-1",
+      fieldId: "text",
+      displayName: "Text",
+      isBoolean: false,
+    },
   ];
-  renderSharedFields([], jest.fn(), { refs });
+  renderSharedFields([], vi.fn(), { refs });
   expect(screen.getAllByRole("checkbox")).toHaveLength(1);
 });
 
@@ -554,13 +700,13 @@ it("renders no checkbox for a stale id and drops it on the next toggle", async (
 });
 
 it("shows a hint instead of checkboxes when the step has no fields", () => {
-  renderSharedFields([], jest.fn(), { currentStepId: "step-9" });
+  renderSharedFields([], vi.fn(), { currentStepId: "step-9" });
   expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   expect(screen.getByText(/no fields/i)).toBeInTheDocument();
 });
 
 it("adding a Shared Fields behaviour seeds an empty fieldIds array", async () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
@@ -581,7 +727,7 @@ it("step-scope stepConditionalOn still seeds an empty Target Step when currentSt
   // The step editor now passes currentStepId for the checkbox list; the
   // stepRef seeding must stay field-scope-only so the Target Step doesn't
   // default to the step itself (#519 gating unchanged).
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
@@ -596,4 +742,116 @@ it("step-scope stepConditionalOn still seeds an empty Target Step when currentSt
   expect(onChange).toHaveBeenLastCalledWith([
     expect.objectContaining({ type: "stepConditionalOn", targetStepId: "" }),
   ]);
+});
+
+// ─── numeric operators + duration transform (#1020) ──────────────────────────
+
+function operatorSelect() {
+  // The operator dropdown is the combobox that offers the "equal" option.
+  return screen
+    .getAllByRole("combobox")
+    .find((el) => within(el).queryByRole("option", { name: "equal" })) as
+    | HTMLSelectElement
+    | undefined;
+}
+
+function transformSelect() {
+  // The transform dropdown is the combobox that offers the "yearsSince" option.
+  return screen
+    .getAllByRole("combobox")
+    .find((el) => within(el).queryByRole("option", { name: /yearsSince/i })) as
+    | HTMLSelectElement
+    | undefined;
+}
+
+it("offers the numeric comparison operators (gte/lte/gt/lt)", () => {
+  renderStepBehaviour([
+    {
+      type: "stepConditionalOn",
+      targetStepId: "step-1",
+      targetFieldId: "first-name",
+      operator: "equal",
+      value: "",
+    } as unknown as Behaviour,
+  ]);
+  const values = within(operatorSelect()!)
+    .getAllByRole("option")
+    .map((o) => (o as HTMLOptionElement).value);
+  expect(values).toEqual(expect.arrayContaining(["gte", "lte", "gt", "lt"]));
+});
+
+it("shows a duration transform selector once a numeric operator is chosen", () => {
+  renderStepBehaviour([
+    {
+      type: "stepConditionalOn",
+      targetStepId: "step-1",
+      targetFieldId: "first-name",
+      operator: "gte",
+      value: "16",
+    } as unknown as Behaviour,
+  ]);
+  expect(transformSelect()).toBeDefined();
+});
+
+it("hides the transform selector for non-numeric operators", () => {
+  renderStepBehaviour([
+    {
+      type: "stepConditionalOn",
+      targetStepId: "step-1",
+      targetFieldId: "first-name",
+      operator: "equal",
+      value: "",
+    } as unknown as Behaviour,
+  ]);
+  expect(transformSelect()).toBeUndefined();
+});
+
+it("writes the chosen transform onto the behaviour", async () => {
+  const onChange = renderStepBehaviour([
+    {
+      type: "stepConditionalOn",
+      targetStepId: "step-1",
+      targetFieldId: "first-name",
+      operator: "gte",
+      value: "16",
+    } as unknown as Behaviour,
+  ]);
+  await userEvent.selectOptions(transformSelect()!, "yearsSince");
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ transform: "yearsSince" }),
+  ]);
+});
+
+it("clears a stale transform when the operator switches to a non-numeric one (#1020)", async () => {
+  const onChange = renderStepBehaviour([
+    {
+      type: "stepConditionalOn",
+      targetStepId: "step-1",
+      targetFieldId: "first-name",
+      operator: "gte",
+      value: "16",
+      transform: "yearsSince",
+    } as unknown as Behaviour,
+  ]);
+  await userEvent.selectOptions(operatorSelect()!, "equal");
+  const next = onChange.mock.calls.at(-1)![0][0] as Record<string, unknown>;
+  expect(next.operator).toBe("equal");
+  expect(next.transform).toBeUndefined();
+});
+
+it("keeps the transform when switching between numeric operators (#1020)", async () => {
+  const onChange = renderStepBehaviour([
+    {
+      type: "stepConditionalOn",
+      targetStepId: "step-1",
+      targetFieldId: "first-name",
+      operator: "gte",
+      value: "16",
+      transform: "yearsSince",
+    } as unknown as Behaviour,
+  ]);
+  await userEvent.selectOptions(operatorSelect()!, "lte");
+  const next = onChange.mock.calls.at(-1)![0][0] as Record<string, unknown>;
+  expect(next.operator).toBe("lte");
+  expect(next.transform).toBe("yearsSince");
 });

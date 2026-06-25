@@ -20,3 +20,4 @@ export { FormDisabledOverrideEntity } from "./form-disabled-override.entity";
 export { MdaContactEntity } from "./mda-contact.entity";
 export type { MdaContactAddress } from "./mda-contact.entity";
 export { FormConfigEntity } from "./form-config.entity";
+export { FormEditingSessionEntity } from "./form-editing-session.entity";

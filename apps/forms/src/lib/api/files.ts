@@ -6,7 +6,6 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
 export interface PresignUploadRequest {
   formId: string;
-  formVersion: string;
   stepId: string;
   fieldId: string;
   fileName: string;
@@ -24,7 +23,6 @@ export interface PresignUploadResponse {
 export interface ConfirmUploadRequest {
   key: string;
   formId: string;
-  formVersion: string;
   stepId: string;
   fieldId: string;
 }
@@ -46,12 +44,20 @@ async function postJson<T>(
   endpoint: string,
   body: unknown,
   stage: UploadStage,
+  previewToken?: string,
 ): Promise<T> {
+  // Forward the preview token as a header (never in the body — the API runs
+  // forbidNonWhitelisted) so presign/confirm can resolve an unpublished draft,
+  // mirroring the form-GET path. Omitted when no token is present.
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(previewToken ? { "X-Recipe-Preview": previewToken } : {}),
+  };
   let response: Response;
   try {
     response = await fetch(`${API_URL}${endpoint}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body),
     });
   } catch {
@@ -73,13 +79,20 @@ async function postJson<T>(
 
 export const presignUpload = (
   req: PresignUploadRequest,
+  previewToken?: string,
 ): Promise<PresignUploadResponse> =>
-  postJson<PresignUploadResponse>("/files/presign-upload", req, "presign");
+  postJson<PresignUploadResponse>(
+    "/files/presign-upload",
+    req,
+    "presign",
+    previewToken,
+  );
 
 export const confirmUpload = (
   req: ConfirmUploadRequest,
+  previewToken?: string,
 ): Promise<UploadedFile> =>
-  postJson<UploadedFile>("/files/confirm-upload", req, "confirm");
+  postJson<UploadedFile>("/files/confirm-upload", req, "confirm", previewToken);
 
 export const putFileToS3 = async (
   uploadUrl: string,
@@ -110,9 +123,14 @@ export const putFileToS3 = async (
 export interface UploadFileParams {
   file: File;
   formId: string;
-  formVersion: string;
   stepId: string;
   fieldId: string;
+  /**
+   * The `?preview=` token, present only when previewing an unpublished draft.
+   * Forwarded as the X-Recipe-Preview header on presign + confirm so the API
+   * resolves the DB-only draft instead of 400ing on the missing recipe.
+   */
+  previewToken?: string;
 }
 
 /**
@@ -123,27 +141,31 @@ export interface UploadFileParams {
 export const uploadFile = async ({
   file,
   formId,
-  formVersion,
   stepId,
   fieldId,
+  previewToken,
 }: UploadFileParams): Promise<UploadedFile> => {
-  const presign = await presignUpload({
-    formId,
-    formVersion,
-    stepId,
-    fieldId,
-    fileName: file.name,
-    contentType: file.type,
-    size: file.size,
-  });
+  const presign = await presignUpload(
+    {
+      formId,
+      stepId,
+      fieldId,
+      fileName: file.name,
+      contentType: file.type,
+      size: file.size,
+    },
+    previewToken,
+  );
 
   await putFileToS3(presign.uploadUrl, file);
 
-  return confirmUpload({
-    key: presign.key,
-    formId,
-    formVersion,
-    stepId,
-    fieldId,
-  });
+  return confirmUpload(
+    {
+      key: presign.key,
+      formId,
+      stepId,
+      fieldId,
+    },
+    previewToken,
+  );
 };

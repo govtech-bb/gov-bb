@@ -22,6 +22,8 @@ export type {
 export type {
   RepeatableStepSettings,
   RepeatableConfig,
+} from "./repeatable.type.ts";
+export type {
   AddRepeatableStepParams,
   RemoveRepeatableStepParams,
 } from "./behavior-helper.type.ts";
@@ -32,7 +34,6 @@ export type {
   FormSubmissionResponseBody,
   FormDraftResponse,
   FormSubmissionResponse,
-  FormSubmissionBody,
   FormDefinitionResponse,
   FormDefinitionsListResponse,
   FormDefinitionSummary,

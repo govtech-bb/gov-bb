@@ -170,6 +170,10 @@ test.describe("Referral to Student Support Services — Live Smoke", () => {
     expectStep(page, "declaration", { exact: true });
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
-    await submitAndConfirm(page, { heading: "Submission Confirmation" });
+    await submitAndConfirm(page, {
+      heading: "Your application has been submitted",
+      subheading:
+        "Your referral has been submitted to the Student Support Services Unit.",
+    });
   });
 });

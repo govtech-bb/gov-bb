@@ -6,29 +6,33 @@
     "dev": "TSX_TSCONFIG_PATH=tsconfig.dev.json tsx watch src/main.ts",
     "build": "tsc && tsc-alias",
     "start": "node dist/main.js",
-    "test": "jest --no-coverage"
+    "test": "vitest run"
   },
   "dependencies": {
-    "@aws-sdk/client-bedrock-runtime": "^3.700.0",
+    "@aws-sdk/client-s3": "^3.1052.0",
+    "@aws-sdk/client-textract": "^3.1064.0",
+    "@aws-sdk/s3-request-presigner": "^3.1052.0",
+    "@govtech-bb/ai-bedrock": "workspace:*",
     "@govtech-bb/database": "workspace:*",
     "@govtech-bb/form-builder": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
+    "@govtech-bb/git-publish": "workspace:*",
     "cors": "^2.8.5",
     "dotenv": "17.4.2",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.5.2",
     "reflect-metadata": "^0.2.0",
     "typeorm": "^0.3.28",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
-    "@types/jest": "^30.0.0",
-    "@types/node": "^22.0.0",
-    "jest": "^30.3.0",
-    "ts-jest": "^29.4.6",
+    "@types/node": "^24.0.0",
+    "@types/supertest": "^7.2.0",
+    "supertest": "^7.2.2",
     "tsc-alias": "^1.8.10",
-    "tsx": "^4.19.0",
+    "tsx": "^4.22.3",
     "typescript": "catalog:"
   }
 }

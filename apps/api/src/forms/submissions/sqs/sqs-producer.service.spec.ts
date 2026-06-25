@@ -1,11 +1,12 @@
+import type { Mock, MockedClass } from "vitest";
 import { SqsProducerService } from "./sqs-producer.service";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
-jest.mock("@aws-sdk/client-sqs");
+vi.mock("@aws-sdk/client-sqs");
 
-const MockedSQSClient = SQSClient as jest.MockedClass<typeof SQSClient>;
-const MockedSendMessageCommand = SendMessageCommand as jest.MockedClass<
+const MockedSQSClient = SQSClient as MockedClass<typeof SQSClient>;
+const MockedSendMessageCommand = SendMessageCommand as MockedClass<
   typeof SendMessageCommand
 >;
 
@@ -46,11 +47,11 @@ function makeService(
 }
 
 describe("SqsProducerService", () => {
-  let sendMock: jest.Mock;
+  let sendMock: Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    sendMock = jest.fn().mockResolvedValue({ MessageId: "msg-xyz" });
+    vi.clearAllMocks();
+    sendMock = vi.fn().mockResolvedValue({ MessageId: "msg-xyz" });
     MockedSQSClient.prototype.send = sendMock;
   });
 
@@ -67,8 +68,8 @@ describe("SqsProducerService", () => {
     const service = makeService();
 
     for (const type of ["email", "spreadsheet", "opencrvs"]) {
-      jest.clearAllMocks();
-      sendMock = jest.fn().mockResolvedValue({ MessageId: "msg-xyz" });
+      vi.clearAllMocks();
+      sendMock = vi.fn().mockResolvedValue({ MessageId: "msg-xyz" });
       MockedSQSClient.prototype.send = sendMock;
 
       await service.enqueue(EVENT, type, 0);

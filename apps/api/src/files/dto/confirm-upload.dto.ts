@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsString, Matches, MaxLength } from "class-validator";
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+} from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 
 // Matches buildKey output: uploads/<formId>/<yyyy>/<mm>/<uuid>-<sanitized>
@@ -24,11 +30,13 @@ export class ConfirmUploadDto {
   @Matches(FORM_ID_PATTERN)
   formId!: string;
 
-  @ApiProperty()
+  // Optional post-#1196 (version retired); pre-cutover clients still send it.
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(20)
-  formVersion!: string;
+  formVersion?: string;
 
   @ApiProperty()
   @IsString()

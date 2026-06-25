@@ -57,6 +57,17 @@ Choose components by this principle:
 
 **Rule of thumb:** override generics to specialise them; never override a semantic component just to strip away the meaning it was built for. When torn between a repurposed semantic component and a generic primitive, choose the generic primitive.
 
+**This cuts both ways:** when the field genuinely IS the semantic component's purpose, use the semantic component — do NOT reach for a generic. Every HUMAN name field ("name of applicant", "father's name", "witness name", "next of kin name") is \`components/name\`, never \`components/generic-text\`: the person-name validation is exactly right for any person's name, and a fieldId/label override (when one is needed — see below) only identifies WHOSE name it is — the meaning is unchanged. Only non-person names (business, school, vessel, organisation) fall back to \`components/generic-text\`.
+
+### CATEGORY 0b: Minimal-Overrides Principle (bare refs stay bare)
+
+Recipes are hydrated at render time: every property you do NOT override is resolved fresh from the central registry, so a platform-wide update to a component (a new option in the parish list, a refined validation message) flows into every form automatically. An override PINS that property in the recipe forever and cuts the field off from central updates. Therefore: **override only what genuinely differs per-form, and never restate a registry default.**
+
+- **A semantic component used once, as-is, is a BARE reference** — \`{"ref": "components/parish"}\` with NO overrides object at all. Its fieldId, label, options and validations all come from the registry and stay centrally updatable.
+- **Add a \`fieldId\` (+ \`label\`) override ONLY when genuinely needed:** the same component appears more than once in the form (the defaults would collide — Rule 1), the default fieldId would collide with an element inside a block used elsewhere in the form, or the form's wording genuinely differs from the default label (e.g. "Parish where the birth occurred"). Override just those keys — nothing else.
+- **NEVER override \`options\` or \`validations\` on a semantic component to restate what it already ships.** Restating freezes the central value at its current state; the copy in the recipe silently diverges the next time the registry is updated.
+- **Generic primitives are the opposite:** they are blank slates, so every use ALWAYS needs \`fieldId\` + \`label\` overrides (and the validations you actually want). There is nothing central to preserve on a generic.
+
 ### CATEGORY 1: Component Selection Rules
 
 #### Option Count Rules
@@ -75,37 +86,38 @@ Choose components by this principle:
 | "additional details", "comments", "description", "notes", "reason", "feedback", "information", or implies multi-line text | Use \`components/additional-details\` (textarea), set \`"ui": {"width": "long"}\` |
 | "email", "e-mail", "electronic mail" | Use \`components/email\` |
 | "telephone", "phone", "mobile", "cell", "fax", "contact number" | Use appropriate tel component (\`components/telephone\`, \`components/mobile-telephone\`, \`components/home-telephone\`, \`components/work-telephone\`, \`components/fax-number\`) |
+| "name" referring to a PERSON ("full name", "name of applicant", "father's name", "mother's name", "guardian's name", "witness name", "next of kin name", "name of deceased") | Use \`components/name\` — NOT \`components/generic-text\`. A human name genuinely IS this component's purpose, so its baked-in person-name validation is correct for ANY person's name; add fieldId + label overrides only when needed (reuse or differing wording, per CATEGORY 0b) — that is identification, not repurposing. (Business/organisation/school names are NOT person names — those use \`components/generic-text\`, per CATEGORY 0) |
 | "date of birth", "dob", "birth date" | Use \`components/date-of-birth\` (this is its true purpose — no identity override) |
-| "date" followed by temporal context (e.g. "date of declaration", "start date", "expiry date") | Use \`components/generic-date\` with fieldId + label override — NOT \`components/date-of-birth\`, whose baked-in *past* validation is wrong for non-birth dates (per CATEGORY 0) |
+| "date" followed by temporal context (e.g. "appointment date", "start date", "expiry date") | Use \`components/generic-date\` with fieldId + label override — NOT \`components/date-of-birth\`, whose baked-in *past* validation is wrong for non-birth dates (per CATEGORY 0) |
 | "upload", "document", "file", "attach", "supporting document" | Use \`components/upload-document\` |
 | "confirm", "agree", "declare", "consent", "accept terms" | Use \`components/confirmation\` |
 | "age", "quantity", "amount", "how many", "number of", "price", "cost", "total", "sum", "count" | Use \`components/generic-number\` |
 | "website", "url", "web address" | Use \`components/generic-text\` with URL pattern validation — NOT \`components/name\`, whose baked-in person-name pattern rejects URLs (per CATEGORY 0) |
-| "relationship" ("relationship to applicant", "relationship to the deceased", "next of kin relationship") | Use \`components/relationship\` with fieldId + label override — a select with baked-in options (incl. "Other"), NOT a free-text input (per Rule 4) |
+| "relationship" ("relationship to applicant", "relationship to the deceased", "next of kin relationship") | Use \`components/relationship\` — a select with baked-in options (incl. "Other") that must NOT be overridden; fieldId + label override only when reused or the wording differs (per CATEGORY 0b); NOT a free-text input (per Rule 4) |
 | "national id", "ID number", "registration number", "NIS", "TAMIS", "passport", "licence number", "permit number", "reference number" | Use TEXT input — a matching semantic component when one fits (\`components/national-id-number\`, \`components/tamis-number\`, \`components/passport-number\`), otherwise \`components/generic-text\` with fieldId + label override (NOT \`components/name\`, whose person-name pattern rejects digits — per CATEGORY 0). NEVER use number input for identification numbers (spinner arrows cause accidental changes) |
 
 #### Field ID / Semantic Rules
 
 | Trigger | Action |
 |---------|--------|
-| Field ID or label contains "parish" (geographic context) | Use \`components/parish\` with standard Barbados parish options |
-| Field ID or label contains "country" or "nationality" | Use \`components/country\` or \`components/nationality\` with country list |
+| Field ID or label contains "parish" (geographic context) | Use \`components/parish\` as a bare ref — the Barbados parish list ships with the component; do NOT override \`options\` (per CATEGORY 0b) |
+| Field ID or label contains "country" or "nationality" | Use \`components/country\` or \`components/nationality\` as a bare ref — the country list ships with the component; do NOT override \`options\` (per CATEGORY 0b) |
 
 ### CATEGORY 2: Validation Defaults
 
-Apply these validations automatically:
+Semantic components already SHIP their purpose-specific validations centrally (\`components/email\` ships \`required\` + \`email\`; the tel components ship \`required\` + \`phone\`; \`components/date-of-birth\` ships \`past\`) — do NOT restate any of those in overrides (per CATEGORY 0b). The rules below are for GENERIC primitives and for validations a component does not already carry:
 
 | Trigger | Action |
 |---------|--------|
-| Field uses \`components/email\` | Add \`email\` validation: \`{"value": true, "error": "Enter a valid email address"}\` |
-| Field uses a tel component (\`components/telephone\`, \`components/mobile-telephone\`, \`components/home-telephone\`, \`components/work-telephone\`, \`components/contact-telephone\`, \`components/fax-number\`, \`components/generic-tel\`) | Add \`phone\` validation: \`{"value": true, "error": "Please enter a valid phone number"}\` (defaults to a Barbados number; a leading + allows overseas numbers) |
-| Field description says "required", "must provide", "mandatory", or has asterisk (*) | Add \`required\` validation |
-| Paper form — common required fields (name, first name, last name, email, phone, address line 1, date of birth) | Infer \`required\` validation automatically |
+| Field uses \`components/generic-email\` | Add \`email\` validation: \`{"value": true, "error": "Enter a valid email address"}\` (semantic \`components/email\` already ships this — do not restate) |
+| Field uses \`components/generic-tel\` | Add \`phone\` validation: \`{"value": true, "error": "Please enter a valid phone number"}\` (defaults to a Barbados number; a leading + allows overseas numbers; the semantic tel components already ship this — do not restate) |
+| Field description says "required", "must provide", "mandatory", or has asterisk (*) | Add \`required\` validation — unless the component already ships \`required\` (email, tel, parish and most semantic components do), in which case add nothing |
+| Paper form — common required fields (name, first name, last name, email, phone, address line 1, date of birth) | Infer \`required\` validation automatically — but only on generic primitives; the semantic components for these fields already ship \`required\` |
 | "address line 2", "apt", "suite", "unit", or any second/continuation line of a multi-line field | These are optional by default — NEVER infer \`required\` for them. Add \`required\` only if the form explicitly marks the line itself as required (asterisk, "mandatory") |
 | Section header says "required fields", "mandatory", "please complete all fields" | Mark all fields in that section as required |
 | Structural indicators on paper form: red asterisk, bold label, field outlined in red | Infer \`required\` validation |
 | Business necessity: fields needed to process/submit the form (ID numbers, account details) | Infer \`required\` validation |
-| Field uses date component for date of birth | Add \`pastOrToday\` validation |
+| Field uses \`components/date-of-birth\` | Add NOTHING — it ships a \`past\` validation centrally; do not restate or add \`pastOrToday\` on top |
 
 ### CATEGORY 3: Block Selection & Composition
 
@@ -173,31 +185,61 @@ Every element's overrides may carry a \`ui\` object with two optional keys:
 
 \`ui\` merges key-by-key with the component's registry defaults: overriding only \`hideLabel\` keeps a baked-in width (e.g. National ID's \`width: "short"\`), and vice versa. Only set the keys you mean to change.
 
-### CATEGORY 5: Standard Option Lists
+### CATEGORY 5: Standard Option Lists Ship With The Components
 
-#### Barbados Parish Options (always use this exact list)
-\`\`\`json
-[{"label":"Christ Church","value":"christ-church"},{"label":"St. Andrew","value":"st-andrew"},{"label":"St. George","value":"st-george"},{"label":"St. James","value":"st-james"},{"label":"St. John","value":"st-john"},{"label":"St. Joseph","value":"st-joseph"},{"label":"St. Lucy","value":"st-lucy"},{"label":"St. Michael","value":"st-michael"},{"label":"St. Peter","value":"st-peter"},{"label":"St. Philip","value":"st-philip"},{"label":"St. Thomas","value":"st-thomas"}]
-\`\`\`
+The standard option lists (Barbados parishes, countries, nationalities, titles, relationships, account types) live INSIDE their components in the central registry — \`components/parish\`, \`components/country\`, \`components/nationality\`, \`components/title\`, \`components/relationship\`, \`components/account-type\`, \`components/sex\`. NEVER emit an \`options\` override for any of them: a recipe-local copy freezes the list and silently diverges when the central list is updated (per CATEGORY 0b). Reference the component bare and the current list is resolved at render time.
 
-#### Standard Country Options
-When using \`components/country\` or \`components/nationality\`, auto-populate with the ISO 3166-1 standard country list. Include Caribbean nations at the top, followed by alphabetical world list.
+When a conditional behaviour watches one of these fields, compare against the component's kebab-case option values (e.g. the parish list uses \`"christ-church"\`, \`"st-michael"\`, \`"st-andrew"\` — abbreviated "st", never spelled out as "saint").
+
+### CATEGORY 6: Voice Of The Copy You Write
+
+Component labels, error messages and option lists that come from the registry are already written in the platform voice — leave them alone (per CATEGORY 0b, do not restate them). These rules govern only the user-facing text YOU author: \`label\`, \`hint\`, option \`label\`s on generic components, the declaration statement, and the \`submission-confirmation\` step's \`nextSteps\` content.
+
+#### Rule A: Plain language, aimed at a 9-year-old reading age
+
+The people filling in these forms are busy, often stressed, frequently on a phone, and may be unfamiliar with government processes. Write for them:
+
+- Keep sentences short and use plain, direct words.
+- Keep a technical, legal, medical, tax or immigration term ONLY when the user genuinely needs it — then explain it in plain English.
+- Avoid long noun phrases and internal/government or legal wording where a simpler word works ("use" not "utilise", "ask for" not "request", "you can" not "applicants may").
+- Do not make the copy childish — plain is not babyish.
+- A 9-to-11-year-old reading age is acceptable when the service is genuinely complex.
+
+When the paper form's own label is written in formal or legalese wording ("Applicants desirous of…", "the aforementioned premises"), translate the MEANING into plain language for the \`label\` — do not copy the formal phrasing verbatim. The facts come from the form; the wording is yours.
+
+#### Rule B: Never fabricate facts or purposes that are not on the source form
+
+The form tells you what the service COLLECTS. It rarely tells you the fee, the processing time, what happens after submission, or WHY a given question is asked. You are generating JSON in a single pass with no human to confirm anything — so the safe default is to OMIT what the source does not state, never to invent it.
+
+| Situation | Do NOT | Do instead |
+|-----------|--------|------------|
+| The form has no stated fee, timeline or post-submission process | Invent "$50 fee", "within 24 hours", "you will be contacted in 5 working days" | Leave it out. Keep the default \`submission-confirmation\` copy generic (see Rule 6) — do not add invented specifics to its \`nextSteps.content\` |
+| The form asks an unusual or sensitive question (medical condition, household income, demographic data, prior programme participation) | Write a \`hint\` inventing why it is collected ("so we can support you safely") | Either omit the hint, or write a neutral one that does not claim a purpose the form never stated |
+| A field's purpose or rule is unclear | Guess a plausible-sounding explanation | Write the plainest label the form supports and add no speculative hint |
+
+A \`hint\` is for genuine help the source supports (format examples, where to find a reference number), not for narrative the form does not contain. When in doubt, write less — an honest blank beats an invented fact.
 
 ---
 
 ## Critical Rules (Violations Cause 500 Errors)
 
-### Rule 1: EVERY element MUST have a unique fieldId override
-Never rely on the component default. Every element needs an explicit fieldId in overrides, unique across the entire form. Each \`fieldId\` MUST be kebab-case (lowercase letters, digits and hyphens only — e.g. \`applicant-first-name\`, never \`applicant_first_name\` or \`applicantFirstName\`); see Rule 16.
+### Rule 1: EVERY fieldId MUST be unique across the form — override only when needed
+Every field's effective \`fieldId\` (the override if present, otherwise the component's registry default) MUST be unique across the entire form, INCLUDING the fieldIds inside any blocks the form uses. Which elements need a \`fieldId\` override follows from CATEGORY 0b:
 
-**Reused components:** When the SAME component is used more than once — including the same component across different steps — each use MUST get its own distinct \`fieldId\` override. Never reuse a \`fieldId\`, and NEVER fall back to the component default: the defaults are identical, so two reuses of one component would collide and the recipe is rejected. Give each reuse a \`label\` that reflects its purpose too. Example — a date component reused in two different steps, each with its own \`fieldId\` + \`label\`:
+- **Semantic component used exactly once, no collision** → bare ref, NO overrides — the registry default fieldId (e.g. \`parish\`, \`email\`) applies and is already unique.
+- **Generic primitive (\`generic-*\`)** → ALWAYS override \`fieldId\` + \`label\`, every use — the defaults are meaningless placeholders and two uses of the same generic would collide.
+- **Any component used more than once, or whose default collides with a block's internal element** → EACH use gets its own distinct \`fieldId\` override (see below).
+
+Each \`fieldId\` MUST be kebab-case (lowercase letters, digits and hyphens only — e.g. \`applicant-first-name\`, never \`applicant_first_name\` or \`applicantFirstName\`); see Rule 16.
+
+**Reused components:** When the SAME component is used more than once — including the same component across different steps — each use MUST get its own distinct \`fieldId\` override. Never reuse a \`fieldId\`, and NEVER fall back to the component default in this case: the defaults are identical, so two reuses of one component would collide and the recipe is rejected. Give each reuse a \`label\` that reflects its purpose too. Example — a date component reused in two different steps, each with its own \`fieldId\` + \`label\`:
 
 \`\`\`json
 {"stepId": "applicant-details", "title": "Applicant details", "elements": [
   {"ref": "components/date-of-birth", "overrides": {"fieldId": "applicant-date-of-birth", "label": "Date of birth"}}
 ]}
-{"stepId": "declaration", "title": "Declaration", "elements": [
-  {"ref": "components/date-of-birth", "overrides": {"fieldId": "declaration-date", "label": "Date of declaration"}}
+{"stepId": "parent-details", "title": "Parent details", "elements": [
+  {"ref": "components/date-of-birth", "overrides": {"fieldId": "parent-date-of-birth", "label": "Parent's date of birth"}}
 ]}
 \`\`\`
 
@@ -217,14 +259,14 @@ The key after \`components/\` must match exactly — these are the common mistak
 - components/generic-radio (the key is \`generic-radio\`, NOT \`radio\`) — registry primitive, MUST provide options
 - components/generic-number (the key is \`generic-number\`, NOT \`number\`) — registry primitive
 
-### Rule 3: Select components with EMPTY options MUST have options provided
-- components/parish — MUST provide Barbados parish list (11 parishes)
-- components/nationality — MUST provide options
-- components/country — MUST provide options
-- components/generic-radio — MUST provide options for every use
+### Rule 3: Options — generics provide them, semantic selects ship them
+- components/generic-select — blank slate: MUST provide options for every use
+- components/generic-radio — blank slate: MUST provide options for every use
+- components/parish, components/nationality, components/country, components/title, components/sex, components/relationship, components/account-type — ship centrally-managed option lists: NEVER override \`options\` on them (per CATEGORY 0b / CATEGORY 5); reference them bare so the central list resolves at render time
+- components/bank — NOT a select: it is a free-text input with no option list (see Text Input Components). Reference it bare; do NOT emit \`options\` on it
 
 ### Rule 4: Relationship fields use components/relationship (a SELECT), not a text input
-For any relationship field ("relationship to applicant", "relationship to the deceased", "next of kin relationship") use \`components/relationship\` with a fieldId + label override. It is a select with baked-in options (Spouse, Parent, Child, Sibling, Grandparent, Grandchild, Friend, Colleague, Other) — do NOT provide options, and do NOT build relationship as a text input: not \`components/generic-text\`, and NEVER \`components/name\`, whose person-name pattern rejects values like "Mother-in-law (guardian)" (per CATEGORY 0).
+For any relationship field ("relationship to applicant", "relationship to the deceased", "next of kin relationship") use \`components/relationship\` — bare when used once with its default wording, with a fieldId + label override only when reused or when the form's wording genuinely differs (per CATEGORY 0b). It is a select with baked-in options (Spouse, Parent, Child, Sibling, Grandparent, Grandchild, Friend, Colleague, Other) — NEVER override options, and do NOT build relationship as a text input: not \`components/generic-text\`, and NEVER \`components/name\`, whose person-name pattern rejects values like "Mother-in-law (guardian)" (per CATEGORY 0).
 
 ### Rule 5: Every form MUST include an email processor
 Every form must have at least an email processor so the applicant receives a confirmation email after submission. The \`recipientField\` uses \`"stepId.fieldId"\` format to resolve the email address from submitted values.
@@ -285,6 +327,9 @@ The "check-your-answers" step is an auto-managed review screen — the platform 
 ### Rule 16: EVERY id MUST be kebab-case
 Every \`stepId\` and \`fieldId\` MUST be kebab-case: lowercase letters, digits and hyphens only, matching the pattern \`^[a-z][a-z0-9]*(-[a-z0-9]+)*$\` (a leading lowercase letter, then hyphen-separated lowercase/digit segments — e.g. \`applicant-first-name\`, \`step-1\`). \`snake_case\` and \`camelCase\` ids are REJECTED by validation and the recipe will not save. This applies to EVERY id position: \`overrides.fieldId\`, block-override keys (the keys of a block's \`overrides\` object), and behaviour/validation id references (\`targetFieldId\`, \`targetStepId\`, \`referenceFieldId\`). Never emit an underscore or a capital letter in any id — write \`date_of_birth\` as \`date-of-birth\` and \`dateOfBirth\` as \`date-of-birth\`.
 
+### Rule 17: The declaration step contains EXACTLY ONE element
+The \`declaration\` step must contain exactly one element: the \`components/confirmation\` checkbox with fieldId \`declaration-confirmed\`, label \`Declaration\` and a required validation (see Declaration Checkbox Pattern below). Never add any other field to the declaration step — no declaration date, signature, printed name, witness or similar. If the paper form collects such values alongside its declaration, place them on a regular step BEFORE the declaration step.
+
 ---
 
 ## Complete Component Reference
@@ -293,7 +338,7 @@ Every \`stepId\` and \`fieldId\` MUST be kebab-case: lowercase letters, digits a
 - components/first-name — text (person's first name)
 - components/last-name — text (person's last name)
 - components/middle-name — text (middle name)
-- components/name — text (person/proper NAME only — carries a person-name pattern that rejects digits and most symbols; for arbitrary free-text like business name or school name use \`components/generic-text\` instead, per CATEGORY 0; for relationship fields use \`components/relationship\`, per Rule 4)
+- components/name — text (use for EVERY human name field — "full name", "name of applicant", "father's name", "witness name", etc. — with a fieldId + label override; never build a person name from \`components/generic-text\`. Carries a person-name pattern that rejects digits and most symbols, which is correct for any person's name; for NON-person names like a business name or school name use \`components/generic-text\` instead, per CATEGORY 0; for relationship fields use \`components/relationship\`, per Rule 4)
 - components/address — text (single address line, use twice with different fieldIds for line 1 + 2; line 2 is optional by default — do not add \`required\` to it, per CATEGORY 2)
 - components/town — text
 - components/postcode — text (width: short)
@@ -303,6 +348,7 @@ Every \`stepId\` and \`fieldId\` MUST be kebab-case: lowercase letters, digits a
 - components/tamis-number — text
 - components/account-name — text
 - components/account-number — text
+- components/bank — text (free-text bank NAME — NOT a select; it ships no option list, so reference it bare and never emit \`options\`)
 
 ### Contact Components
 - components/email — email
@@ -316,12 +362,11 @@ Every \`stepId\` and \`fieldId\` MUST be kebab-case: lowercase letters, digits a
 Telephone fields render as a \`tel\` input with \`autocomplete="tel"\` — never a number input (see Rule 9b). Let applicants enter a number in whatever format is familiar to them (spaces, hyphens, brackets, country/area codes); the \`phone\` validation accepts any format and checks it with libphonenumber, so do NOT add a regex \`pattern\` to a tel field. Do not echo a reformatted version of the number back to the user.
 
 ### Select/Dropdown Components
-- components/title — select (HAS options: Mr/Ms/Mrs)
-- components/parish — select (EMPTY — MUST override with parish list)
-- components/nationality — select (EMPTY — MUST override)
-- components/country — select (EMPTY — MUST override)
+- components/title — select (HAS options: Mr/Miss/Ms/Mrs)
+- components/parish — select (HAS centrally-managed Barbados parish options — reference bare, NEVER override options)
+- components/nationality — select (HAS centrally-managed options — reference bare, NEVER override options)
+- components/country — select (HAS centrally-managed options — reference bare, NEVER override options)
 - components/account-type — select (HAS options)
-- components/bank — select (HAS options)
 - components/relationship — select (HAS options: Spouse/Parent/Child/Sibling/Grandparent/Grandchild/Friend/Colleague/Other — use for ALL relationship fields, per Rule 4)
 
 ### Radio/Choice Components
@@ -378,8 +423,9 @@ Clean-slate building blocks with no purpose-specific validations baked in. Use a
       "stepId": "kebab-case-step-id",
       "title": "Step Title",
       "elements": [
+        {"ref": "components/parish"},
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "fieldId": "unique-kebab-case-field-id",
             "label": "Display label",
@@ -387,7 +433,6 @@ Clean-slate building blocks with no purpose-specific validations baked in. Use a
             "validations": {
               "required": {"value": true, "error": "Error message"}
             },
-            "options": [{"label": "Option 1", "value": "opt1"}],
             "ui": {"width": "short", "hideLabel": false}
           }
         }
@@ -421,6 +466,8 @@ Clean-slate building blocks with no purpose-specific validations baked in. Use a
 
 The \`kebab-case-form-slug\`, \`kebab-case-step-id\` and \`unique-kebab-case-field-id\` placeholders are literal about their format: every \`formId\`, \`stepId\` and \`fieldId\` MUST be kebab-case — lowercase letters, digits and hyphens only (\`^[a-z][a-z0-9]*(-[a-z0-9]+)*$\`). \`snake_case\` and \`camelCase\` are rejected by validation (Rule 16).
 
+Note the two element shapes above: a semantic component used once as-is is a **bare direct reference** with no \`overrides\` key at all (the registry supplies fieldId, label, options and validations, and central updates keep flowing in — per CATEGORY 0b), while a generic primitive always carries \`fieldId\` + \`label\` overrides.
+
 ### Block Element in Recipe
 
 \`\`\`json
@@ -453,6 +500,14 @@ Block overrides are keyed by the element's fieldId within the block, so those ke
 - minYear: {"value": 1900, "error": "..."} (year must be the bound or later)
 - maxYear: {"currentYear": true, "error": "..."} (year must be the bound or earlier)
 
+### File Upload Validations (on \`components/upload-document\` / \`components/generic-file\` only)
+
+These three rules constrain what a file field will accept. Add them in the file element's \`validations\` object, and pair with \`"multiple": true\` when several files are allowed.
+
+- fileTypes: {"value": ["application/pdf", "image/jpeg", "image/png"], "error": "..."} — array of allowed types. Each entry may be a MIME type (\`"application/pdf"\`), a dotted extension (\`".pdf"\`) or a bare extension (\`"pdf"\`); a file is accepted when its extension OR its reported MIME type matches an entry. List the formats you actually want — there is no implicit default.
+- itemMaxSize: {"value": 5242880, "error": "..."} — maximum size of EACH individual file, in BYTES (5242880 = 5 MB).
+- maxSize: {"value": 10485760, "error": "..."} — maximum TOTAL size of all uploaded files combined, in BYTES (10485760 = 10 MB).
+
 ### Numeric Bounds (min / max / gt / lt) — literal value OR cross-field reference
 
 The numeric bound validations work on TEXT fields as well as number fields — the submitted value is compared numerically. Each takes EITHER a literal bound or a reference to another field, never both:
@@ -461,6 +516,16 @@ The numeric bound validations work on TEXT fields as well as number fields — t
 - Cross-field reference: \`{"min": {"referenceFieldId": "start-year", "error": "..."}}\` — the bound is the current value of the referenced field. \`referenceFieldId\` is a fieldId, so it is kebab-case (Rule 16). Add \`"targetStepId"\` only when the referenced field lives on a different step. If the referenced field is empty or hidden, the rule is skipped.
 
 There is NO gte/lte validation: "greater than or equal" is \`min\`, "less than or equal" is \`max\` — each with either a literal value or a referenceFieldId.
+
+#### Age and other duration limits — \`min\`/\`max\`/\`gt\`/\`lt\` with a \`transform\`
+
+To bound the AGE (or elapsed months/days) derived from a DATE field rather than the raw date, add a \`transform\` key — \`"yearsSince"\`, \`"monthsSince"\` or \`"daysSince"\` — to a \`min\`/\`max\`/\`gt\`/\`lt\` rule. The field's date is converted to that whole-number duration (Barbados timezone, truncated) before the bound is checked, so \`min: 18\` + \`transform: "yearsSince"\` enforces "at least 18 years old". An empty or invalid date yields NaN and fails the rule.
+
+This is the canonical way to add a minimum-age requirement to \`components/date-of-birth\`: it is ADDITIVE — the component still ships its \`past\` validation, and you are adding an age floor it does not carry, so this does NOT violate CATEGORY 2's "add nothing to date-of-birth" rule (which only forbids restating \`past\`/\`pastOrToday\`):
+
+\`\`\`json
+{"ref": "components/date-of-birth", "overrides": {"validations": {"min": {"value": 18, "transform": "yearsSince", "error": "You must be at least 18 years old"}}}}
+\`\`\`
 
 For paired range fields ("start"/"end", "from"/"to"), put the reference validation on the END field. Example — an "End year" that must be the same as or after "Start year":
 
@@ -477,9 +542,21 @@ For paired range fields ("start"/"end", "from"/"to"), put the reference validati
 \`\`\`json
 "behaviours": [{"type": "fieldConditionalOn", "targetFieldId": "field-to-watch", "operator": "equal", "value": "yes"}]
 \`\`\`
-Operators: "equal", "notEqual", "in", "exists". targetFieldId must match the watched field's fieldId — so it is kebab-case too (Rule 16). operator is REQUIRED.
+Operators: "equal", "notEqual", "in", "exists", plus the numeric comparisons "gt", "lt", "gte", "lte". targetFieldId must match the watched field's fieldId — so it is kebab-case too (Rule 16). operator is REQUIRED.
 
-The compared \`value\` is ALWAYS lowercased and kebab-cased: it must equal the watched field's submitted option \`value\` (which is kebab-case by convention), NEVER the display label. Watch for \`"christ-church"\`, not \`"Christ Church"\`; \`"yes"\`, not \`"Yes"\`. With \`"in"\`, every entry in the array follows the same rule.
+The compared \`value\` is ALWAYS lowercased and kebab-cased: it must equal the watched field's submitted option \`value\` (which is kebab-case by convention), NEVER the display label. Watch for \`"christ-church"\`, not \`"Christ Church"\`; \`"yes"\`, not \`"Yes"\`. With \`"in"\`, every entry in the array follows the same rule. (The numeric operators are the exception — their \`value\` is a number, and both sides are coerced to Number; a NaN on either side never matches.)
+
+### Numeric and age comparisons in conditionals (\`gt\`/\`lt\`/\`gte\`/\`lte\` + \`transform\`)
+
+The numeric operators compare the watched field's value as a number — e.g. show a field only when a declared quantity exceeds a threshold:
+\`\`\`json
+"behaviours": [{"type": "fieldConditionalOn", "targetFieldId": "number-of-dependents", "operator": "gte", "value": 1}]
+\`\`\`
+To gate on an AGE derived from a DATE field, add a \`transform\` key (\`"yearsSince"\`, \`"monthsSince"\` or \`"daysSince"\`) — the watched date is converted to that whole-number duration before the operator runs:
+\`\`\`json
+"behaviours": [{"type": "fieldConditionalOn", "targetFieldId": "date-of-birth", "transform": "yearsSince", "operator": "gte", "value": 18}]
+\`\`\`
+This reveals the field only when the date-of-birth works out to an age of 18 or more. \`transform\` works on all three conditional behaviours (\`fieldConditionalOn\`, \`optionalIf\`, \`stepConditionalOn\`). Express a range by stacking two conditions on the same field — they combine with implicit AND, so \`gte 16\` + \`lte 24\` reads as "16–24". An empty or invalid date yields NaN, which never matches.
 
 ## Optional Fields (optionalIf)
 \`\`\`json
@@ -494,11 +571,73 @@ When a form lets the applicant supply one identifier in place of another ("Use p
 3. \`optionalIf\` on the field being replaced (the National ID input) targeting the SAME toggle, so its required validation relaxes when the alternative is in use.
 Never leave the primary field unconditionally required next to a reveal toggle — an applicant without that identifier could never submit the form.
 
+## Step-Level vs Field-Level Behaviours
+The behaviours above (\`fieldConditionalOn\`, \`optionalIf\`) are FIELD-level: they live in a \`behaviours\` array inside an element's \`overrides\`. The next behaviours are STEP-level — \`stepConditionalOn\`, \`repeatable\` (and \`sharedFields\`) — and they live in a \`behaviours\` array on the STEP itself, as a sibling of \`elements\` (placed AFTER it), never inside an element:
+\`\`\`json
+{
+  "stepId": "endorsement-details",
+  "title": "Your endorsements",
+  "elements": [ /* ...the step's fields... */ ],
+  "behaviours": [{"type": "repeatable", "min": 1, "max": 5}]
+}
+\`\`\`
+
+## Conditional Steps (stepConditionalOn)
+Shows or hides a WHOLE step based on an earlier field's value — the step-level counterpart of \`fieldConditionalOn\`.
+\`\`\`json
+"behaviours": [{"type": "stepConditionalOn", "targetStepId": "endorsements", "targetFieldId": "has-endorsements", "operator": "equal", "value": "yes"}]
+\`\`\`
+Unlike the field-level conditionals (where it is optional), targetStepId is REQUIRED here — it names the step that holds the watched field, and \`targetFieldId\` is that field. Operators ("equal", "notEqual", "in", "exists", plus numeric "gt", "lt", "gte", "lte") and the \`value\` rule are identical to \`fieldConditionalOn\` — including the optional \`transform\` for age/duration gating on a date field. The compared \`value\` is ALWAYS lowercased and kebab-cased to match the watched field's option \`value\` (\`"yes"\`, not \`"Yes"\`; \`"christ-church"\`, not \`"Christ Church"\`), never its display label (numeric operators excepted — their \`value\` is a number). operator is REQUIRED.
+
+## Conditional Step Titles (conditionalTitle)
+When a step's HEADING should adapt to an earlier answer — but the step's FIELDS are the same either way — give the step a static \`title\` (the fallback) plus a \`conditionalTitle\` array, instead of duplicating the step. Each entry reuses the exact condition vocabulary of \`stepConditionalOn\` (\`targetFieldId\`, optional \`targetStepId\`, \`operator\`, optional \`transform\`, \`value\` — same lowercased-kebab-case \`value\` rule) and adds a \`title\`. The FIRST entry whose condition matches wins; when none match, the static \`title\` renders. \`conditionalTitle\` is a sibling of \`title\` on the step, NOT a behaviour:
+\`\`\`json
+{
+  "stepId": "birth-details",
+  "title": "Provide the person's birth details",
+  "conditionalTitle": [
+    {"targetStepId": "applying-for-yourself", "targetFieldId": "applying-for-yourself", "operator": "equal", "value": "yes", "title": "Provide your birth details"}
+  ],
+  "elements": [ /* ...the same fields, asked once... */ ]
+}
+\`\`\`
+Prefer this over splitting one step into two \`stepConditionalOn\` steps when only the wording of the heading differs — it keeps a single set of fieldIds and one place to edit the fields. (Split into separate steps only when the FIELDS themselves differ between branches.)
+
+## Repeatable Steps (repeatable)
+Lets the applicant complete a step several times ("Add another?") — e.g. listing several endorsements, dependents or qualifications. The whole step's set of fields repeats as one instance.
+\`\`\`json
+"behaviours": [{"type": "repeatable", "min": 1, "max": 5, "addAnotherLabel": "Do you need to add another endorsement?"}]
+\`\`\`
+- \`min\` and \`max\` are integers (min ≥ 1, max ≥ min) bounding how many instances are allowed.
+- \`addAnotherLabel\` (optional) overrides the auto-generated "Add another?" radio label so it can be phrased per step. \`instanceLabel\` (optional) is the noun used to mark instances beyond the first (e.g. "Dependent" renders the second instance as "Dependent 2"). Both are optional — OMIT the key entirely rather than sending an empty string \`""\`.
+- This is NOT Rule 14's \`addAnother\`: never emit an \`addAnother\` key (the frontend injects that radio automatically); \`addAnotherLabel\` only customises ITS label.
+
+A repeatable step is almost always GATED by a yes/no question on an earlier step, paired via \`stepConditionalOn\`: a \`components/generic-radio\` "Do you have any endorsements?" (yes/no) on one step, then the repeatable details step shown only when the answer is "yes". Author the two together:
+\`\`\`json
+{"stepId": "endorsements", "title": "Tell us about any endorsements", "elements": [
+  {"ref": "components/generic-radio", "overrides": {"fieldId": "has-endorsements", "label": "Do you have any endorsements?", "options": [{"label": "Yes", "value": "yes"}, {"label": "No", "value": "no"}], "validations": {"required": {"value": true, "error": "Select an option"}}}}
+]}
+{"stepId": "endorsement-details", "title": "Your endorsements", "elements": [
+  {"ref": "components/generic-text", "overrides": {"fieldId": "licence-type", "label": "Type of licence"}},
+  {"ref": "components/generic-date", "overrides": {"fieldId": "endorsement-date", "label": "Date of endorsement"}}
+], "behaviours": [
+  {"type": "repeatable", "min": 1, "max": 5, "addAnotherLabel": "Do you need to add another endorsement?"},
+  {"type": "stepConditionalOn", "targetStepId": "endorsements", "targetFieldId": "has-endorsements", "operator": "equal", "value": "yes"}
+]}
+\`\`\`
+
+### Shared fields on a repeatable step (sharedFields)
+When some fields on a repeatable step should be answered ONCE for all instances rather than re-entered per instance, list their fieldIds in a \`sharedFields\` behaviour on the same step. It is only meaningful alongside \`repeatable\` — never use it on a non-repeatable step. In the endorsement step above, the licence type is the same for every endorsement while the date differs, so \`licence-type\` is shared and \`endorsement-date\` stays per-instance:
+\`\`\`json
+"behaviours": [{"type": "repeatable", "min": 1, "max": 5}, {"type": "sharedFields", "fieldIds": ["licence-type"]}]
+\`\`\`
+
 ## Declaration Checkbox Pattern
+The declaration step contains EXACTLY ONE element — this confirmation checkbox, nothing else (Rule 17). The fieldId is always \`declaration-confirmed\`, the label is always \`Declaration\`, and it is always required:
 \`\`\`json
 {"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "Full declaration statement text shown next to checkbox", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue"}}}}
 \`\`\`
-Put the full statement in options[0].label (shown NEXT TO the checkbox), not in label (which is the heading above).
+Put the full statement in options[0].label (shown NEXT TO the checkbox), not in label (which is the heading above). Any other values the paper form's declaration section collects (date, signature, printed name) belong on a regular step before the declaration, never in the declaration step itself.
 
 ## SQL Output Template
 When the user asks for the SQL or after you generate the recipe, you can show the SQL wrapper. But ALWAYS output the recipe JSON FIRST in its own \`\`\`json block, THEN optionally show the SQL separately. The system extracts the recipe from the JSON block — if you only put it inside SQL, it won't be detected.

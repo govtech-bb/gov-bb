@@ -3,28 +3,25 @@ import { Heading, Link, Search, Text } from '@govtech-bb/react'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { isDigitalService, isVisible, PAGES } from '../content/registry'
 import { trackEvent } from '../lib/analytics'
+import { pageHead } from '../lib/page-head'
 
 export const Route = createFileRoute('/services')({
-  head: () => ({
-    meta: [
-      { title: 'Alpha services | Government of Barbados' },
-      {
-        name: 'description',
-        content:
-          'Browse all digital government services available on alpha.gov.bb.',
-      },
-    ],
-  }),
+  head: () =>
+    pageHead(
+      'Alpha services',
+      'Browse all digital government services available on alpha.gov.bb.',
+      { path: '/services' },
+    ),
   component: ServicesPage,
 })
 
 function ServicesPage() {
-  const { preview } = Route.useRouteContext()
+  const { level } = Route.useRouteContext()
   const items = PAGES.filter(
     (p) =>
       p.frontmatter.stage === 'alpha' &&
       !p.slug.endsWith('/start') &&
-      isVisible(p, preview),
+      isVisible(p, level),
   )
     .map((p) => ({
       title: p.frontmatter.title,

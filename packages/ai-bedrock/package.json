@@ -4,19 +4,18 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./converse": {
+      "types": "./src/converse.ts",
+      "default": "./src/converse.js"
+    }
   },
   "scripts": {
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-bedrock-runtime": "^3.700.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1057.0",
     "@tanstack/ai": "catalog:"
-  },
-  "devDependencies": {
-    "@types/jest": "^30.0.0",
-    "jest": "^30.3.0",
-    "ts-jest": "^29.4.6"
   },
   "lint-staged": {
     "*.ts": "npx prettier --write"

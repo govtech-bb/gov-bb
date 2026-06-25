@@ -1,60 +1,40 @@
-import { useState } from "react";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
-import { validate, compare } from "../../lib/version";
 import { formPreviewUrl } from "../../lib/form-url";
 import styles from "../../styles/builder.module.css";
+import { useEscClose } from "./-use-esc-close";
 
 interface SubmitModalProps {
   draft: RecipeDraft;
-  version: string;
-  currentVersion: string | null;
   loadedFromId: string | null;
   isSubmitting: boolean;
   submitSuccess: boolean;
   submitError: string | null;
-  onSubmit: (version: string) => void;
+  /** Read-only lock (#874): another user holds the editing claim. Warns and
+   *  disables the action even if the modal was already open when it flipped. */
+  isReadOnly?: boolean;
+  onSubmit: () => void;
   onClose: () => void;
 }
 
 export function SubmitModal({
   draft,
-  version: versionProp,
-  currentVersion,
   loadedFromId,
   isSubmitting,
   submitSuccess,
   submitError,
+  isReadOnly = false,
   onSubmit,
   onClose,
 }: SubmitModalProps) {
-  const [versionInput, setVersionInput] = useState(versionProp);
-  const [clientError, setClientError] = useState<string | null>(null);
-
   const isUpdate = loadedFromId !== null;
   const mode = isUpdate ? "Save Changes" : "Submit Recipe";
 
-  function handleSubmit() {
-    setClientError(null);
-
-    if (!validate(versionInput)) {
-      setClientError("Version must be a valid semver (e.g. 1.0.0, major >= 1)");
-      return;
-    }
-
-    if (isUpdate && currentVersion) {
-      if (compare(versionInput, currentVersion) < 0) {
-        setClientError(`Version must be the same as or greater than the current version (${currentVersion})`);
-        return;
-      }
-    }
-
-    onSubmit(versionInput);
-  }
+  useEscClose(onClose);
 
   return (
     <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+      <div className={styles.modalContent} role="dialog" aria-modal="true" aria-label={mode} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHead}>
           <strong>{mode}</strong>
           <button type="button" onClick={onClose}>Close</button>
         </div>
@@ -74,6 +54,12 @@ export function SubmitModal({
           </div>
         ) : (
           <div>
+            {isReadOnly && (
+              <div className={styles.presenceBanner} role="alert" style={{ marginBottom: 8 }}>
+                Another user is currently editing this form. Saving is disabled
+                until their editing session ends.
+              </div>
+            )}
             <div className={styles.formGroup}>
               <label>Form ID</label>
               <input type="text" value={draft.formId} readOnly />
@@ -82,20 +68,7 @@ export function SubmitModal({
               <label>Title</label>
               <input type="text" value={draft.title} readOnly />
             </div>
-            <div className={styles.formGroup}>
-              <label>Version</label>
-              <input
-                type="text"
-                value={versionInput}
-                onChange={(e) => setVersionInput(e.target.value)}
-              />
-            </div>
 
-            {clientError && (
-              <div className={styles.validationErrors} style={{ marginBottom: 8 }}>
-                {clientError}
-              </div>
-            )}
             {submitError && (
               <div className={styles.validationErrors} style={{ marginBottom: 8 }}>
                 {submitError}
@@ -103,7 +76,7 @@ export function SubmitModal({
             )}
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" className={styles.btnPrimary} onClick={handleSubmit} disabled={isSubmitting}>
+              <button type="button" className={styles.btnPrimary} onClick={onSubmit} disabled={isSubmitting || isReadOnly}>
                 {isSubmitting ? "Submitting…" : mode}
               </button>
               <button type="button" onClick={onClose}>Cancel</button>
