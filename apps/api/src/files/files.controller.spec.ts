@@ -75,8 +75,8 @@ describe("FilesController", () => {
       contentType: "application/pdf",
       size: 1,
     };
-    await controller.presignUpload(dto, "tok");
-    expect(svc.presignUpload).toHaveBeenCalledWith(dto, "tok");
+    await controller.presignUpload(dto, "tok", "drafttok");
+    expect(svc.presignUpload).toHaveBeenCalledWith(dto, "tok", "drafttok");
   });
 
   it("forwards the x-recipe-preview header to confirmUpload", async () => {
@@ -94,7 +94,7 @@ describe("FilesController", () => {
       stepId: "s",
       fieldId: "fi",
     };
-    await controller.confirmUpload(dto, "tok");
-    expect(svc.confirmUpload).toHaveBeenCalledWith(dto, "tok");
+    await controller.confirmUpload(dto, "tok", "drafttok");
+    expect(svc.confirmUpload).toHaveBeenCalledWith(dto, "tok", "drafttok");
   });
 });

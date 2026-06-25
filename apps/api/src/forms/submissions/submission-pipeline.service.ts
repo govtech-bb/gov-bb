@@ -105,10 +105,16 @@ export class SubmissionPipelineService {
   private async pinVersion(
     dto: SubmitDto,
   ): Promise<{ draft: FormDraftEntity | null; contract: ServiceContract }> {
+    // A ?preview= submission (valid RECIPE_PREVIEW_TOKEN) bypasses the #1646
+    // visibility gate so a published-but-flagged form resolves and submits
+    // normally for a reviewer (#1682).
+    const bypassVisibility = dto.bypassVisibility ?? false;
+
     if (!dto.draftId) {
       const contract = await this.resolveSubmittableContract({
         formId: dto.formId,
         version: dto.formVersion,
+        bypassVisibility,
       });
       return { draft: null, contract };
     }
@@ -118,6 +124,7 @@ export class SubmissionPipelineService {
       formId: dto.formId,
       // null (canonical-pinned draft, #1196) → resolve the canonical recipe.
       version: draft.formVersion ?? undefined,
+      bypassVisibility,
     });
 
     return { draft, contract };
@@ -127,38 +134,42 @@ export class SubmissionPipelineService {
    * Resolve the recipe to submit against. `findByFormId` (with
    * `includeProcessors`) resolves from published FILE recipes only (outside
    * dev) and throws a NotFoundException when the version isn't a published
-   * file — including for a DB-only draft version previewed via `?preview=`.
+   * file. `bypassVisibility` lets an authorized ?preview= submission resolve a
+   * published-but-flagged (non-public) recipe so it submits normally (#1682).
    *
-   * To avoid an opaque 404 for that case, on a NotFoundException we probe the
-   * DB-consulting preview path (`getRecipe({ preview: true })`): if the version
-   * exists as an unpublished draft, surface a clear 400; if it's genuinely
+   * On a NotFoundException we probe the DB scratch (`getRecipe({ draft: true })`):
+   * if the version exists only as an unpublished draft, that recipe is
+   * draft-sourced and not submittable — surface a clear 400; if it's genuinely
    * unknown, re-throw the original 404. Any non-NotFound error is re-thrown
    * unchanged.
    */
   private async resolveSubmittableContract({
     formId,
     version,
+    bypassVisibility = false,
   }: {
     formId: string;
     // Optional post-#1196: absent → the canonical recipe; present → the legacy
     // versioned file (still sent by pre-cutover clients).
     version?: string;
+    bypassVisibility?: boolean;
   }): Promise<ServiceContract> {
     try {
       return await this.formDefinitionsService.findByFormId({
         formId,
         version,
         includeProcessors: true,
+        bypassVisibility,
       });
     } catch (err) {
       if (!(err instanceof NotFoundException)) throw err;
 
-      const previewRecipe = await this.formDefinitionsService.getRecipe({
+      const draftRecipe = await this.formDefinitionsService.getRecipe({
         formId,
         version,
-        preview: true,
+        draft: true,
       });
-      if (previewRecipe) {
+      if (draftRecipe) {
         throw AppError.badRequest(
           "This version is an unpublished preview and cannot be submitted. Publish the form before submitting.",
         );
