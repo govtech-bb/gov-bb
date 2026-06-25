@@ -241,6 +241,18 @@ function viewerMeets(viewer: ViewLevel, required: ViewLevel): boolean {
 }
 
 /**
+ * A service is "digital" — completed online — when it has a form to submit or
+ * is an interactive tool (calculators, the bank-holiday lookup, etc.); anything
+ * else is informational. Tools carry `service_type: digital`; forms imply it.
+ */
+export function isDigitalService(page: ContentPage): boolean {
+  return (
+    Boolean(page.frontmatter.form_id) ||
+    page.frontmatter.service_type === 'digital'
+  )
+}
+
+/**
  * A page's *effective* level: the most restricted of its own `visibility` and
  * every ancestor page's. Walking ancestors by slug means flagging a service's
  * `index.md` as `preview`/`draft` automatically gates its `/start` (and other)

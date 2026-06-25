@@ -6,6 +6,7 @@ featured: false
 publish_date: 2026-01-22
 category: family-birth-relationships
 form_id: get-birth-certificate
+service_type: digital
 ---
 
 This service can be used to get a copy of a birth certificate for anyone whose birth was registered in Barbados.

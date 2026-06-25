@@ -6,6 +6,7 @@ stage: alpha
 section: "Travel, ID and citizenship"
 category: travel-id-citizenship
 form_id: post-office-redirection-business
+service_type: digital
 visibility: preview
 ---
 

@@ -6,6 +6,7 @@ publish_date: 2026-06-02
 category: education
 visibility: preview
 form_id: statement-of-travelling-form
+service_type: digital
 ---
 
 If you are a teacher or a member of exam-centre staff, you can claim reimbursement for travel you made on official examination business. This includes travel for invigilation, marking sessions, exam centre setup, and collecting or returning papers.

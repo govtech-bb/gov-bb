@@ -6,6 +6,7 @@ publish_date: 2026-06-02
 category: education
 visibility: preview
 form_id: duties-performed-exam-claim
+service_type: digital
 ---
 
 ## Who can claim
