@@ -15,9 +15,9 @@ import type { Response } from "express";
 import { FormDefinitionsService } from "./form-definitions.service";
 import { FormDisabledOverridesService } from "../form-disabled-overrides/form-disabled-overrides.service";
 import { GetFormDefinitionDocs } from "./form-definitions.docs";
-import { ApiResponse as AppApiResponse } from "../../common/response";
-import { isValidSecretToken } from "../../common/secret-token";
-import type { ApiResponseShape } from "../../common/response";
+import { ApiResponse as AppApiResponse } from "@/common/response";
+import { isValidSecretToken } from "@/common/secret-token";
+import type { ApiResponseShape } from "@/common/response";
 import type { ServiceContract } from "@govtech-bb/form-types";
 
 @ApiTags("Form Definitions")

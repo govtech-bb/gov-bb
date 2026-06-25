@@ -1,0 +1,31 @@
+{
+  "name": "aws-secrets",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/aws-secrets/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/aws-secrets",
+        "tsConfig": "packages/aws-secrets/tsconfig.json",
+        "main": "packages/aws-secrets/src/index.ts"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run",
+        "cwd": "packages/aws-secrets"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["packages/aws-secrets/**/*.ts"]
+      }
+    }
+  },
+  "tags": []
+}

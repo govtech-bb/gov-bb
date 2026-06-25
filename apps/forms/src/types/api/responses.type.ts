@@ -1,4 +1,4 @@
-import { ServiceContract } from "@govtech-bb/form-types";
+import { ApiResponseShape, ServiceContract } from "@govtech-bb/form-types";
 import { FormDraftResponseBody } from "./form-draft.type";
 import { FormSubmissionResponseBody } from "./form-submission.type";
 
@@ -10,10 +10,15 @@ type FormSubmissionStatus =
   | "complete"
   | "error";
 
-export interface ApiResponse {
-  status: "success" | "failed" | FormSubmissionStatus;
-  message: string;
-  data: unknown;
+// Derived from the shared producer envelope (#1399) so `message`/`data` stay in
+// lockstep with apps/api, while keeping the two browser-side deviations: the
+// API echoes the submission's own status into the envelope `status` (hence the
+// FormSubmissionStatus widening), and an older deploy may omit `statusCode`.
+export interface ApiResponse extends Omit<
+  ApiResponseShape<unknown>,
+  "status" | "statusCode" | "meta"
+> {
+  status: ApiResponseShape<unknown>["status"] | FormSubmissionStatus;
   statusCode?: number;
 }
 

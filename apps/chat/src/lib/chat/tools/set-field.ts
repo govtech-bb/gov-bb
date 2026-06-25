@@ -41,7 +41,7 @@ export async function applySetField(
     : { ok: false, fieldId, value: canonical, errors };
 }
 
-export const setFieldToolDef = toolDefinition({
+const setFieldToolDef = toolDefinition({
   name: "setField",
   description:
     "Record and validate ONE of the user's answers for a form field, after they answer it. Pass the formId, the fieldId (from getFormDefinition), and the user's value. Returns ok:false with errors when the value breaks a rule — tell the user what's wrong and ask again. The recorded answers are the collection state: read your prior setField results to track what's filled and what's still needed.",

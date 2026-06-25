@@ -166,7 +166,7 @@ Publishing is not the sidebar's job: the AI assistant only ever writes to the li
 
 - Provider is selectable via `AI_PROVIDER` env var: `anthropic` (default) or `bedrock`.
 - Model is selectable via `AI_MODEL`; defaults to `claude-sonnet-4-20250514` for Anthropic or `us.anthropic.claude-sonnet-4-6` for Bedrock.
-- If `ANTHROPIC_API_KEY` is missing (and Bedrock isn't configured), AI features fail with a clear error and `getAiStatus` reports the service as unavailable.
+- If `ANTHROPIC_API_KEY` is missing (and Bedrock isn't configured), AI features fail with a clear error.
 
 ---
 
@@ -181,13 +181,10 @@ The app uses TanStack Start's `createServerFn` so all "API endpoints" are in-pro
 - `updateRecipe(formId, recipe)` — overwrite the latest unpublished row in place.
 - `nextVersion(formId)` — current version + suggested next minor.
 - `getCatalogFn` — builtin registry catalog + custom components (60s in-memory cache).
-- `getRegistryItemFn(ref)` — single catalog item.
-- `getBuilderMetadata` — behaviour and validation descriptors used to drive the editor UIs.
 - `validateRecipe(recipe)` — runs `validateFormContract`.
 - `previewRecipe(recipe)` — hydrates a recipe into a `ServiceContract`.
 
 **AI assistant**
-- `getAiStatus` — whether the AI client is configured.
 - `convertRecipe({ message?, recipeJson?, pdfBase64? })` — the single stateless AI call. Proxies `POST /builder/ai/convert` and returns `{ recipe, reply }` (`recipe` is `null` for a conversational reply). Edit Form sends `{ message, recipeJson }`; Upload sends `{ pdfBase64 }`.
 
 ---

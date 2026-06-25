@@ -44,7 +44,7 @@ export function MarkdownBody({
   )
 }
 
-export type MarkdownContentProps = {
+type MarkdownContentProps = {
   frontmatter: Frontmatter
   hast: Root
   headings?: Array<MarkdownHeading>

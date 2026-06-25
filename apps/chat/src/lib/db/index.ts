@@ -1,35 +1,64 @@
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import pg from "pg";
+import {
+  getCachedSecretJson,
+  getCachedSecretString,
+} from "@govtech-bb/aws-secrets";
 import * as schema from "./schema";
-import { getCachedSecret } from "../secrets";
 
 export type Database = NodePgDatabase<typeof schema> & { $client: pg.Pool };
 let dbPromise: Promise<Database> | null = null;
 
-// Resolves the connection string from one of three sources, in priority:
+// Resolves the connection string, in priority:
 //   1. process.env.DATABASE_URL — CLI / ingest ECS task (ECS injects from
 //      Secrets Manager via the task def's `valueFrom`).
 //   2. process.env.CHAT_DATABASE_URL — legacy local-dev override.
-//   3. AWS Secrets Manager via CHAT_DATABASE_URL_SECRET_ARN — the SSR Lambda
-//      path (issue #202). The Lambda has no plaintext DATABASE_URL env var;
-//      it knows only the ARN of the secret and reads the value via
-//      secretsmanager:GetSecretValue using its compute role.
+//   3. CHAT_DATABASE_CREDENTIALS_SECRET_ARN (+ HOST/PORT/NAME) — preferred
+//      SSR Lambda path. The ARN points at RDS's master secret (JSON
+//      `{username, password}`); host/port/dbname are non-secret and baked
+//      at build via Vite's `define`. RDS owns the password, so any rotation
+//      is picked up by the next request that misses the in-process cache —
+//      no derived secret to keep in sync via `tofu apply`.
+//   4. CHAT_DATABASE_URL_SECRET_ARN — legacy fallback. ARN of a derived
+//      secret holding a full `postgresql://...` URL. Kept during the
+//      transition; remove once #3 is wired in all envs.
 async function resolveConnectionString(): Promise<string> {
   const direct = process.env.DATABASE_URL ?? process.env.CHAT_DATABASE_URL;
   if (direct) return direct;
+
+  const credsArn = process.env.CHAT_DATABASE_CREDENTIALS_SECRET_ARN;
+  const host = process.env.CHAT_DATABASE_HOST;
+  const port = process.env.CHAT_DATABASE_PORT;
+  const dbName = process.env.CHAT_DATABASE_NAME;
+  if (credsArn && host && port && dbName) {
+    const creds = await getCachedSecretJson<{
+      username: string;
+      password: string;
+    }>(credsArn);
+    return `postgresql://${creds.username}:${encodeURIComponent(creds.password)}@${host}:${port}/${dbName}?sslmode=require`;
+  }
+
   const arn = process.env.CHAT_DATABASE_URL_SECRET_ARN;
   if (!arn) {
     throw new Error(
-      "Neither DATABASE_URL/CHAT_DATABASE_URL nor CHAT_DATABASE_URL_SECRET_ARN is set",
+      "Neither DATABASE_URL/CHAT_DATABASE_URL, CHAT_DATABASE_CREDENTIALS_SECRET_ARN (+ HOST/PORT/NAME), nor CHAT_DATABASE_URL_SECRET_ARN is set",
     );
   }
-  return getCachedSecret(arn);
+  return getCachedSecretString(arn);
 }
 
+// `||` not `??` — Vite's `define` block in apps/chat/vite.config.ts bakes a
+// literal empty string for any env var that's missing in the build
+// environment (its `pick()` returns `""` as the fallback). Empty string is
+// NOT nullish, so `??` short-circuits at the first empty-baked var and
+// silently skips the rest of the chain — which broke chat in any deploy env
+// that set only the legacy URL_SECRET_ARN without also setting the
+// credentials-path vars (see #1631 revert; regression test below).
 export function hasDatabase(): boolean {
   return Boolean(
-    process.env.DATABASE_URL ??
-    process.env.CHAT_DATABASE_URL ??
+    process.env.DATABASE_URL ||
+    process.env.CHAT_DATABASE_URL ||
+    process.env.CHAT_DATABASE_CREDENTIALS_SECRET_ARN ||
     process.env.CHAT_DATABASE_URL_SECRET_ARN,
   );
 }

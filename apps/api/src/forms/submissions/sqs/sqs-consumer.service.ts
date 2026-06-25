@@ -13,7 +13,7 @@ import {
   Message,
   MessageSystemAttributeName,
 } from "@aws-sdk/client-sqs";
-import sqsConfig from "../../../config/sqs.config";
+import sqsConfig from "@/config/sqs.config";
 import { ProcessorFactory } from "../processors/processor-factory.service";
 import { NonRetryableError } from "../processors/non-retryable-error";
 import type { SubmissionCreatedEvent } from "../submissions.types";

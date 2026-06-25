@@ -85,6 +85,18 @@ export type {
 
 export type { Block } from "./block.type";
 
+export type { SubmissionValues } from "./submission.type";
+
+export type { ApiResponseShape } from "./api-response.type";
+
+export { valueIsEmpty, isDateComplete } from "./value-empty";
+
+export {
+  assembleStepKeyedValues,
+  isSubmittableValue,
+} from "./reshape-submission";
+export type { StepFieldEntry } from "./reshape-submission";
+
 export {
   formStepSchema,
   recipeComponentFieldSchema,
@@ -135,6 +147,7 @@ export { SEMVER_PATTERN, SEMVER_ERROR, semverSchema } from "./version-pattern";
 export { dynamic } from "./dynamic";
 
 export { shallowMergeDefined } from "./merge";
+export { applyFieldOverrides } from "./resolution-merge";
 
 export { validateFormContract } from "./validate-form-contract";
 export type {
@@ -161,3 +174,11 @@ export {
   deployBranchName,
   eraseBranchName,
 } from "./deploy-branch";
+
+export { compareSemver, validate, bumpMinor, bumpPatch } from "./semver";
+
+export type {
+  MdaContact,
+  MdaContactAddress,
+  CreateMdaContactInput,
+} from "./mda-contact.type";
