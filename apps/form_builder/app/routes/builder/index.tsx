@@ -7,8 +7,16 @@ import { createMdaContact } from "../../server/mda-contacts";
 import { publishRecipe, getPublishBaseBranch, eraseRecipe } from "../../server/publish";
 import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds, extractDbProcessors, firstIncompletePaymentProcessor } from "@govtech-bb/form-builder";
-import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
-import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "@govtech-bb/form-types";
+import type {
+  ServiceContract,
+  ServiceContractRecipe,
+  RecipeVisibility,
+} from "@govtech-bb/form-types";
+import {
+  KEBAB_ID_PATTERN,
+  KEBAB_ID_ERROR,
+  getRecipeVisibility,
+} from "@govtech-bb/form-types";
 import type { RecipeDraft, ValidationResult, RecipeValidateResponse, ValidationIssue, UnknownRef } from "@govtech-bb/form-builder";
 
 import { Layers01Icon, Moon02Icon, Sun03Icon } from "hugeicons-react";
@@ -882,6 +890,10 @@ function BuilderPage() {
     dispatch({ type: "SET_FORM_META", formId: draft.formId, title, description: draft.description });
   };
 
+  const handleVisibilityChange = (visibility: RecipeVisibility) => {
+    dispatch({ type: "SET_VISIBILITY", visibility });
+  };
+
   // Create an MDA contact via the API, patch it into the local directory so the
   // dropdown shows it immediately, and hand the created row back to the editor
   // (which selects it). Issue #607.
@@ -977,6 +989,8 @@ function BuilderPage() {
         isPublishing={isPublishing}
         isReadOnly={isReadOnly}
         lastSaveStatus={lastSaveStatus}
+        visibility={getRecipeVisibility(draft)}
+        onVisibilityChange={handleVisibilityChange}
         onFormIdChange={handleFormIdChange}
         onTitleChange={handleTitleChange}
         onNew={handleNew}
