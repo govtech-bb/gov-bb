@@ -599,6 +599,43 @@ describe("RecipeFileLoaderService", () => {
   // configured root, an operator-editable manifest, etc.) cannot smuggle
   // traversal segments through `path.join`. This unit-tests the guard
   // directly; integration follows by the loader applying it on every entry.
+  describe("findAll visibility gate (#1646)", () => {
+    it("omits non-public forms from the list, keeps public ones", async () => {
+      const root = await newRoot({});
+      await writeFlatRecipe(root, "public-form");
+      await writeFlatRecipe(root, "preview-form", {
+        meta: { visibility: "preview" },
+      });
+      await writeFlatRecipe(root, "draft-form", {
+        meta: { visibility: "draft" },
+      });
+      const loader = new RecipeFileLoaderService(root);
+      await loader.loadAll();
+
+      expect(loader.findAll().map((f) => f.formId)).toEqual(["public-form"]);
+    });
+
+    it("treats a recipe with no meta as public (listed)", async () => {
+      const root = await newRoot({});
+      await writeFlatRecipe(root, "legacy-form");
+      const loader = new RecipeFileLoaderService(root);
+      await loader.loadAll();
+
+      expect(loader.findAll().map((f) => f.formId)).toContain("legacy-form");
+    });
+
+    it("still resolves a non-public recipe via findByFormId (gate is applied by the service, not the loader)", async () => {
+      const root = await newRoot({});
+      await writeFlatRecipe(root, "preview-form", {
+        meta: { visibility: "preview" },
+      });
+      const loader = new RecipeFileLoaderService(root);
+      await loader.loadAll();
+
+      expect(loader.findByFormId({ formId: "preview-form" })).not.toBeNull();
+    });
+  });
+
   describe("isLeafName", () => {
     it.each<[string, boolean]>([
       ["passport-renewal", true],
