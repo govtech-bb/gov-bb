@@ -60,3 +60,13 @@ export async function getCachedSecretJson<T = Record<string, unknown>>(
   const raw = await getCachedSecretString(arn);
   return JSON.parse(raw) as T;
 }
+
+/**
+ * Drop the cached value for an ARN so the next call re-fetches from Secrets
+ * Manager. Needed when a consumer detects the cached value is stale at use
+ * time — e.g. chat hits PG `28P01: password authentication failed` after RDS
+ * rotated the master password but the warm container still holds the old one.
+ */
+export function invalidateSecretCache(arn: string): void {
+  cache.delete(arn);
+}
