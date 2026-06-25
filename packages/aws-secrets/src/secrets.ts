@@ -62,11 +62,17 @@ export async function getCachedSecretJson<T = Record<string, unknown>>(
 }
 
 /**
- * Drop the cached value for an ARN so the next call re-fetches from Secrets
- * Manager. Needed when a consumer detects the cached value is stale at use
- * time — e.g. chat hits PG `28P01: password authentication failed` after RDS
- * rotated the master password but the warm container still holds the old one.
+ * Fetch + parse a JSON secret, bypassing the cache. For values that must be
+ * current at use time rather than for the container's lifetime — e.g. a DB
+ * password resolved per new pool connection so an RDS master-password rotation
+ * is picked up without a redeploy.
  */
-export function invalidateSecretCache(arn: string): void {
-  cache.delete(arn);
+export async function getSecretJson<T = Record<string, unknown>>(
+  arn: string,
+): Promise<T> {
+  const r = await getClient().send(
+    new GetSecretValueCommand({ SecretId: arn }),
+  );
+  if (!r.SecretString) throw new Error(`Secret ${arn} has no SecretString`);
+  return JSON.parse(r.SecretString) as T;
 }
