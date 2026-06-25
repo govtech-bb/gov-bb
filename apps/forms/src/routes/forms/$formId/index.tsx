@@ -65,16 +65,23 @@ export const Route = createFileRoute("/forms/$formId/")({
 
     // Tier 1: get the contract (from cache or server).
     const clientContract = await queryClient.ensureQueryData(
-      contractQueryOptions(params.formId, deps.preview),
+      contractQueryOptions(params.formId, deps.preview, deps.draft),
     );
 
-    // Tier 2: get or build the FormMeta for this specific (version, preview) pair.
+    // Tier 2: get or build the FormMeta for this specific
+    // (version, preview, draft) combination.
     return queryClient.ensureQueryData(
-      formMetaQueryOptions(params.formId, clientContract, deps.preview),
+      formMetaQueryOptions(
+        params.formId,
+        clientContract,
+        deps.preview,
+        deps.draft,
+      ),
     );
   },
   loaderDeps: ({ search }: { search: FormSearchParams }) => ({
     preview: search.preview,
+    draft: search.draft,
   }),
   validateSearch: (search): FormSearchParams =>
     formSearchParamSchema.parse(search),
@@ -91,8 +98,10 @@ export const Route = createFileRoute("/forms/$formId/")({
 
 function RouteComponent() {
   const formMeta = Route.useLoaderData();
-  const { step, preview, source, payment } = Route.useSearch();
-  const isPreview = Boolean(preview);
+  const { step, preview, draft, source, payment } = Route.useSearch();
+  // Only `?draft=` (the DB scratch) blocks submission. `?preview=` serves the
+  // published recipe and submits exactly as a citizen would (#1682).
+  const isDraft = Boolean(draft);
   // Rehydrate the committed submission outcome on a confirmation-step reload so
   // the renderer doesn't bounce the citizen off it (submissionState is React
   // state and is otherwise lost on refresh). A lazy initialiser — not an effect
@@ -210,7 +219,7 @@ function RouteComponent() {
       );
       let response;
       try {
-        response = await postFormSubmission(formMeta, formattedData);
+        response = await postFormSubmission(formMeta, formattedData, preview);
       } catch {
         trackEvent("form-submit-error", {
           form_id: formMeta.formId,
@@ -287,8 +296,9 @@ function RouteComponent() {
       visibleSteps={visibleSteps}
       repeatableStepSettingsRef={repeatableStepSettingsRef}
       submissionState={submissionState}
-      isPreview={isPreview}
+      isDraft={isDraft}
       previewToken={preview}
+      draftToken={draft}
     />
   );
 }

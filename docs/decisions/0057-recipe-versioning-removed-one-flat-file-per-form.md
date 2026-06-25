@@ -59,12 +59,17 @@ is removed.**
 Removing the runtime pin atomically would break in-flight items at cutover, so
 the retire is staged:
 
-- **Phase 1 (shipped, PR A + PR B / #1622).** Stop *generating* versions; serve
-  flat files; keep the legacy `{formId}/{version}.json` directories as a
+- **Phase 1 (shipped, PR A + PR B / #1622, #1630).** Stop *generating* versions;
+  serve flat files; keep the legacy `{formId}/{version}.json` directories as a
   read-only fallback so already-created pinned items still resolve.
-- **Phase 2 (this work's follow-on, PR C — time-gated).** Once no active item
-  pins a version, delete the legacy directories and the `loadLegacyVersion` /
-  `version?` threading. See the trigger below.
+- **Phase 2 (PR C).** Delete the legacy directories, the loader's versioned map,
+  `loadLegacyVersion`, `latestVersion`, and the `version?` threading through the
+  read-back paths (loader, `findByFormId`/`getRecipe`, submission pipeline,
+  payment webhook, email builder, files service). The `findByFormId({ version })`
+  fallback no longer exists — a form resolves to its one canonical recipe.
+  **Time-gated:** PR C is authored ahead of time but MUST NOT merge until the
+  cutover (Phase 1) has been promoted to prod and the trigger below is met —
+  otherwise the fallback is removed while in-flight pinned items still need it.
 
 ### Phase 2 trigger
 
@@ -78,8 +83,9 @@ PR C is safe once no *active* row still depends on a pinned version:
   the prod deploy lands** (Stage 0 Task 0.3): draft TTL = _TBD_, EzPay
   payment-session expiry = _TBD_, SQS DLQ `MessageRetentionPeriod` = _TBD_.
 
-The `form_version` column itself stays as a never-read audit breadcrumb
-(decision deferred to PR C).
+The `form_version` (submissions/drafts) and `version` (form_definitions) columns
+stay as never-read audit breadcrumbs — PR C stops writing meaningful values
+(drafts write `null`) but does not drop the columns. No M3 migration.
 
 ## Migrations
 

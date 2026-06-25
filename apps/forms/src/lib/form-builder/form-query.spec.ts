@@ -42,9 +42,9 @@ function makeClientContract(
 // ---------------------------------------------------------------------------
 
 describe("formSchemaCacheKey", () => {
-  it("returns a tuple of [FORM_SCHEMA_CACHE_KEY, formId, null] when no preview", () => {
+  it("returns a tuple of [FORM_SCHEMA_CACHE_KEY, formId, null, null] when no tokens", () => {
     const key = formSchemaCacheKey("my-form");
-    expect(key).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", null]);
+    expect(key).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", null, null]);
   });
 
   it("two calls with the same args produce deeply-equal keys", () => {
@@ -61,15 +61,26 @@ describe("formSchemaCacheKey", () => {
 
   it("includes the preview token in the 3rd slot when provided", () => {
     const key = formSchemaCacheKey("my-form", "tok");
-    expect(key).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", "tok"]);
+    expect(key).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", "tok", null]);
+  });
+
+  it("includes the draft token in the 4th slot when provided", () => {
+    const key = formSchemaCacheKey("my-form", undefined, "dtok");
+    expect(key).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", null, "dtok"]);
+  });
+
+  it("preview and draft keys for the same formId+token are NOT equal (no collision)", () => {
+    const asPreview = formSchemaCacheKey("my-form", "tok");
+    const asDraft = formSchemaCacheKey("my-form", undefined, "tok");
+    expect(asPreview).not.toEqual(asDraft);
   });
 
   it("blank/whitespace token normalizes to null (same as no preview)", () => {
     const withBlank = formSchemaCacheKey("my-form", "   ");
     const withEmpty = formSchemaCacheKey("my-form", "");
     const withNone = formSchemaCacheKey("my-form");
-    expect(withBlank).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", null]);
-    expect(withEmpty).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", null]);
+    expect(withBlank).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", null, null]);
+    expect(withEmpty).toEqual([FORM_SCHEMA_CACHE_KEY, "my-form", null, null]);
     expect(withBlank).toEqual(withNone);
     expect(withEmpty).toEqual(withNone);
   });
@@ -114,7 +125,12 @@ describe("normalizePreviewToken", () => {
 describe("contractQueryOptions", () => {
   it("queryKey starts with CONTRACT_CACHE_KEY and includes formId", () => {
     const opts = contractQueryOptions("benefit-claim");
-    expect(opts.queryKey).toEqual([CONTRACT_CACHE_KEY, "benefit-claim", null]);
+    expect(opts.queryKey).toEqual([
+      CONTRACT_CACHE_KEY,
+      "benefit-claim",
+      null,
+      null,
+    ]);
   });
 
   it("staleTime is 60 seconds", () => {
@@ -127,9 +143,30 @@ describe("contractQueryOptions", () => {
     expect(typeof opts.queryFn).toBe("function");
   });
 
-  it("queryKey includes the preview token when provided", () => {
+  it("queryKey includes the preview token in the 3rd slot when provided", () => {
     const opts = contractQueryOptions("benefit-claim", "tok");
-    expect(opts.queryKey).toEqual([CONTRACT_CACHE_KEY, "benefit-claim", "tok"]);
+    expect(opts.queryKey).toEqual([
+      CONTRACT_CACHE_KEY,
+      "benefit-claim",
+      "tok",
+      null,
+    ]);
+  });
+
+  it("queryKey includes the draft token in the 4th slot when provided", () => {
+    const opts = contractQueryOptions("benefit-claim", undefined, "dtok");
+    expect(opts.queryKey).toEqual([
+      CONTRACT_CACHE_KEY,
+      "benefit-claim",
+      null,
+      "dtok",
+    ]);
+  });
+
+  it("preview and draft keys for the same token do NOT collide", () => {
+    const asPreview = contractQueryOptions("benefit-claim", "tok");
+    const asDraft = contractQueryOptions("benefit-claim", undefined, "tok");
+    expect(asPreview.queryKey).not.toEqual(asDraft.queryKey);
   });
 
   it("with-token and without-token keys for the same formId are NOT equal", () => {
@@ -151,6 +188,7 @@ describe("contractQueryOptions", () => {
       CONTRACT_CACHE_KEY,
       "benefit-claim",
       null,
+      null,
     ]);
     expect(withEmpty.queryKey).toEqual(withoutPreview.queryKey);
   });
@@ -161,6 +199,7 @@ describe("contractQueryOptions", () => {
       CONTRACT_CACHE_KEY,
       "benefit-claim",
       null,
+      null,
     ]);
   });
 });
@@ -170,12 +209,13 @@ describe("contractQueryOptions", () => {
 // ---------------------------------------------------------------------------
 
 describe("formMetaQueryOptions", () => {
-  it("queryKey is [FORM_SCHEMA_CACHE_KEY, formId, null] when no preview", () => {
+  it("queryKey is [FORM_SCHEMA_CACHE_KEY, formId, null, null] when no tokens", () => {
     const contract = makeClientContract("benefit-claim", "3.0.0");
     const opts = formMetaQueryOptions("benefit-claim", contract);
     expect(opts.queryKey).toEqual([
       FORM_SCHEMA_CACHE_KEY,
       "benefit-claim",
+      null,
       null,
     ]);
   });
@@ -193,6 +233,23 @@ describe("formMetaQueryOptions", () => {
       FORM_SCHEMA_CACHE_KEY,
       "benefit-claim",
       "tok",
+      null,
+    ]);
+  });
+
+  it("draft token lands in the 4th slot of the queryKey", () => {
+    const contract = makeClientContract("benefit-claim", "3.0.0");
+    const opts = formMetaQueryOptions(
+      "benefit-claim",
+      contract,
+      undefined,
+      "dtok",
+    );
+    expect(opts.queryKey).toEqual([
+      FORM_SCHEMA_CACHE_KEY,
+      "benefit-claim",
+      null,
+      "dtok",
     ]);
   });
 
@@ -203,6 +260,7 @@ describe("formMetaQueryOptions", () => {
       FORM_SCHEMA_CACHE_KEY,
       "benefit-claim",
       null,
+      null,
     ]);
   });
 
@@ -211,6 +269,13 @@ describe("formMetaQueryOptions", () => {
     const withToken = formMetaQueryOptions("f", contract, "tok");
     const withoutToken = formMetaQueryOptions("f", contract);
     expect(withToken.queryKey).not.toEqual(withoutToken.queryKey);
+  });
+
+  it("preview and draft builds with the same token produce DIFFERENT queryKeys (no collision)", () => {
+    const contract = makeClientContract("f", "1.0.0");
+    const asPreview = formMetaQueryOptions("f", contract, "tok");
+    const asDraft = formMetaQueryOptions("f", contract, undefined, "tok");
+    expect(asPreview.queryKey).not.toEqual(asDraft.queryKey);
   });
 });
 
