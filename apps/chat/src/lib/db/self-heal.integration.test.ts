@@ -1,20 +1,22 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import pg from "pg";
-import { sql } from "drizzle-orm";
 
 // Local integration test (Tier 2): proves the chat DB self-heal works end-to-end
 // against a real Postgres. Gated — runs only when CHAT_DB_IT=1, so a normal
 // `npm test` / CI run never requires a database.
 //
-// It reproduces the PRODUCTION rotation signal faithfully: RDS rotation changes
-// the password but does not kill live sessions, so the failure surfaces when the
-// pool opens a *fresh* connection with the now-stale password — a real PG `28P01`.
-// We trigger that by waiting past the pool's idle timeout (node-postgres default
-// ~10s), which closes the warm connection; the next query must dial anew with the
-// stale connection string and fail `28P01`, which `withDbAuthRetry` self-heals.
-// No `pg_terminate_backend` — terminating a pooled connection would emit `57P02`
-// (a test artifact, not the production signal) and an unhandled pool error.
+// It exercises the load-bearing assumption getDb() relies on: a pg.Pool built
+// with `password` as a function re-invokes that function for each NEW physical
+// connection (verified in pg 8.22 client.js `_getPassword` + pg-pool
+// `newClient`). So after an RDS master-password rotation, an in-flight container
+// picks up the new password on its next connection — no redeploy, no pool
+// teardown, no retry wrapper. The rotation signal is reproduced faithfully:
+// ALTER ROLE changes the password but leaves live sessions untouched; we force
+// a fresh connection (low idle timeout, max:1) so the next query must dial anew
+// with the now-current password. If pg ever stopped re-resolving the password
+// per connection, the post-rotation query would fail PG `28P01` and this test
+// would catch it.
 
 const RUN = process.env.CHAT_DB_IT === "1";
 const ADMIN_URL =
@@ -23,8 +25,6 @@ const ADMIN_URL =
 const ROLE = "selfheal_it";
 const PW_V1 = "pw_v1";
 const PW_V2 = "pw_v2";
-// node-postgres default idleTimeoutMillis is 10_000; wait just past it.
-const IDLE_WAIT_MS = 11_000;
 
 let admin: pg.Pool;
 
@@ -38,15 +38,6 @@ before(async () => {
 
 after(async () => {
   if (!RUN) return;
-  // Gracefully close the app pool (no terminate → no pool 'error' event) so the
-  // role has no live sessions when we drop it.
-  try {
-    const { getDb } = await import("./index.ts");
-    const db = await getDb();
-    await db.$client.end();
-  } catch {
-    // pool may already be torn down — ignore
-  }
   // Remove the role's privileges (e.g. GRANT CONNECT) before dropping it, or
   // DROP ROLE fails with 2BP01 (dependent_objects_still_exist).
   await admin.query(`DROP OWNED BY ${ROLE}`).catch(() => {});
@@ -55,39 +46,44 @@ after(async () => {
 });
 
 test(
-  "self-heals after rotation: idle reconnect with stale creds -> 28P01 -> re-resolve -> reconnect",
+  "password-as-function self-heals after rotation: new connection re-resolves creds",
   {
     skip: !RUN ? "set CHAT_DB_IT=1 and run docker compose up postgres" : false,
     timeout: 30_000,
   },
   async () => {
-    // Force the direct CHAT_DATABASE_URL path; clear the others.
-    delete process.env.DATABASE_URL;
-    delete process.env.CHAT_DATABASE_CREDENTIALS_SECRET_ARN;
-    delete process.env.CHAT_DATABASE_URL_SECRET_ARN;
-    process.env.CHAT_DATABASE_URL = `postgres://${ROLE}:${PW_V1}@localhost:5432/chat`;
+    let currentPw = PW_V1;
+    const app = new pg.Pool({
+      host: "localhost",
+      port: 5432,
+      database: "chat",
+      user: ROLE,
+      // The mechanism under test: pg calls this per new physical connection.
+      password: async () => currentPw,
+      max: 1,
+      idleTimeoutMillis: 300,
+    });
+    try {
+      const first = await app.query("select 1 as ok");
+      assert.equal(first.rows[0].ok, 1, "baseline query works on v1");
 
-    // Import AFTER env is set so the module's lazy getDb() sees it.
-    const { withDbAuthRetry } = await import("./index.ts");
+      // Rotate: change the password and point the resolver at the new one. The
+      // existing idle connection still holds v1; Postgres leaves it untouched.
+      await admin.query(`ALTER ROLE ${ROLE} PASSWORD '${PW_V2}'`);
+      currentPw = PW_V2;
 
-    const first = await withDbAuthRetry((db) =>
-      db.execute(sql`select 1 as ok`),
-    );
-    assert.equal(first.rows[0].ok, 1, "baseline query works on v1");
+      // Wait past the idle timeout so the v1 connection is reaped; the next
+      // query must open a fresh connection, which re-invokes password() -> v2.
+      await new Promise((r) => setTimeout(r, 600));
 
-    // Rotate: change the password and point env at the new one. The existing
-    // pool keeps connectionString=v1; the live session is left untouched.
-    await admin.query(`ALTER ROLE ${ROLE} PASSWORD '${PW_V2}'`);
-    process.env.CHAT_DATABASE_URL = `postgres://${ROLE}:${PW_V2}@localhost:5432/chat`;
-
-    // Wait past the pool's idle timeout so the stale v1 connection closes; the
-    // next query must open a fresh connection that dials with the stale v1
-    // connection string and gets a real 28P01 — the production signal.
-    await new Promise((r) => setTimeout(r, IDLE_WAIT_MS));
-
-    const healed = await withDbAuthRetry((db) =>
-      db.execute(sql`select 1 as ok`),
-    );
-    assert.equal(healed.rows[0].ok, 1, "query self-heals on the new password");
+      const healed = await app.query("select 1 as ok");
+      assert.equal(
+        healed.rows[0].ok,
+        1,
+        "query self-heals on the new password",
+      );
+    } finally {
+      await app.end();
+    }
   },
 );

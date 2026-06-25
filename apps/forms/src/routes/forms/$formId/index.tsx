@@ -98,8 +98,10 @@ export const Route = createFileRoute("/forms/$formId/")({
 
 function RouteComponent() {
   const formMeta = Route.useLoaderData();
-  const { step, preview, source, payment } = Route.useSearch();
-  const isPreview = Boolean(preview);
+  const { step, preview, draft, source, payment } = Route.useSearch();
+  // Only `?draft=` (the DB scratch) blocks submission. `?preview=` serves the
+  // published recipe and submits exactly as a citizen would (#1682).
+  const isDraft = Boolean(draft);
   // Rehydrate the committed submission outcome on a confirmation-step reload so
   // the renderer doesn't bounce the citizen off it (submissionState is React
   // state and is otherwise lost on refresh). A lazy initialiser — not an effect
@@ -294,8 +296,9 @@ function RouteComponent() {
       visibleSteps={visibleSteps}
       repeatableStepSettingsRef={repeatableStepSettingsRef}
       submissionState={submissionState}
-      isPreview={isPreview}
+      isDraft={isDraft}
       previewToken={preview}
+      draftToken={draft}
     />
   );
 }
