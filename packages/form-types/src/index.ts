@@ -160,6 +160,9 @@ export {
   serviceContractSchema,
   serviceContractRecipeSchema,
   contactDetailsSchema,
+  recipeVisibilitySchema,
+  recipeMetaSchema,
+  getRecipeVisibility,
 } from "./service-contract.type";
 
 export type {
@@ -167,6 +170,8 @@ export type {
   ServiceContractRecipe,
   DateTimeFormat,
   ContactDetails,
+  RecipeVisibility,
+  RecipeMeta,
 } from "./service-contract.type";
 
 export {
