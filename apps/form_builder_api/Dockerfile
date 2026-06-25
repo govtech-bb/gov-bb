@@ -95,3 +95,8 @@ ENV PORT=3003
 EXPOSE 3003
 
 CMD ["node", "--require", "reflect-metadata", "dist/main.js"]
+
+# Bootstrap: trip nx-affected for form-builder-api so deploy-staging.yml builds
+# and pushes the first image to the gov-bb-form-builder ECR (empty since the
+# staging env stood up — same nx-affected gap that hit chat-ingest #468 and
+# api #470). form-builder-staging ECS has had no image to run.
