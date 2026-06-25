@@ -253,14 +253,18 @@ jobs:
     name: Smoke test forms preview (term-leave)
     needs: [setup, preview-forms]
     # Runs only when the preview built AND this PR does NOT change the
-    # term-leave recipe/spec. A contract change can't be preview-smoked — the
-    # preview frontend serves the sandbox API's OLD recipe, so the updated spec
-    # would always fail until the new version ships (ADR 0029). Those PRs are
-    # covered post-deploy by smoke-test-term-leave in deploy-sandbox.yml.
+    # term-leave recipe/spec AND it doesn't target prod. A contract change can't
+    # be preview-smoked — the preview frontend serves the sandbox API's OLD
+    # recipe, so the updated spec would always fail until the new version ships
+    # (ADR 0029). The same skew applies to prod-targeted PRs (hotfixes/restores):
+    # their frontend carries prod's contract, which can lag the sandbox API the
+    # preview always points at, so the smoke would spuriously fail. Both cases
+    # are covered post-deploy by smoke-test-term-leave in deploy-{sandbox,prod}.yml.
     if: >
       needs.preview-forms.result == 'success'
       && needs.preview-forms.outputs.status == 'SUCCEED'
       && needs.setup.outputs.term-leave-contract-changed == 'false'
+      && github.event.pull_request.base.ref != 'prod'
     uses: ./.github/workflows/forms-smoke.yml
     with:
       base_url: ${{ needs.preview-forms.outputs.url }}
