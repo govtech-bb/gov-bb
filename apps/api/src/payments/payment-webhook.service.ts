@@ -230,8 +230,6 @@ export class PaymentWebhookService {
 
       const contract = await this.formDefs.findByFormId({
         formId: payment.formId,
-        // null (canonical, #1196) → resolve the canonical recipe.
-        version: submission.formVersion ?? undefined,
         includeProcessors: true,
       });
       const downstreamProcessors = (contract.processors ?? []).filter(
