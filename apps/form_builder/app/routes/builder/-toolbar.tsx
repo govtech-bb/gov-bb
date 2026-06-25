@@ -118,11 +118,13 @@ export function Toolbar({
                 {lastSaveStatus === "submitted" && "✓ Submitted"}
               </span>
             )}
-            {(isReadOnly || hasUnsavedChanges) && (
+            {(isReadOnly || hasUnsavedChanges || visibility === "draft") && (
               <span className={styles.actionHint}>
                 {isReadOnly
                   ? "Another user is editing this form"
-                  : "Save draft before deploying"}
+                  : hasUnsavedChanges
+                    ? "Save draft before deploying"
+                    : "Set visibility to Preview or Public to deploy"}
               </span>
             )}
           </div>
@@ -280,16 +282,24 @@ export function Toolbar({
           className={styles.btnPrimary}
           onClick={onPublish}
           // Deploy requires a saved draft (#331): publishing an unsaved draft
-          // opens a PR for a recipe the draft API has never seen.
+          // opens a PR for a recipe the draft API has never seen. A `draft`
+          // visibility is "not ready" — only `preview`/`public` recipes deploy
+          // (#1682), so block it here too.
           disabled={
-            isValidating || isPublishing || hasUnsavedChanges || isReadOnly
+            isValidating ||
+            isPublishing ||
+            hasUnsavedChanges ||
+            isReadOnly ||
+            visibility === "draft"
           }
           title={
             isReadOnly
               ? "Another user is editing this form"
               : hasUnsavedChanges
                 ? "Save draft before deploying"
-                : undefined
+                : visibility === "draft"
+                  ? "Set visibility to Preview or Public to deploy"
+                  : undefined
           }
         >
           <RocketIcon size={14} />

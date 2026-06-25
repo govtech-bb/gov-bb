@@ -405,7 +405,29 @@ function BuilderPage() {
     setIsSubmitOpen(true);
   };
 
+  // Hard gate for Deploy ONLY (#1682 follow-up): a form whose visibility is
+  // still `draft` is not ready to publish — only `preview`/`public` recipes may
+  // deploy. Lights the validation panel and returns true when blocked. Save
+  // draft is intentionally NOT gated: scratch-saving a draft is exactly what
+  // draft visibility is for.
+  const blockedByDraftVisibility = (): boolean => {
+    if (getRecipeVisibility(draft) !== "draft") return false;
+    setValidateResult({
+      valid: false,
+      issues: [
+        {
+          path: "meta.visibility",
+          message:
+            "This form's visibility is Draft. Set it to Preview or Public in the toolbar before deploying.",
+        },
+      ],
+    });
+    setLastSaveStatus("error");
+    return true;
+  };
+
   const handleDeployClick = async () => {
+    if (blockedByDraftVisibility()) return;
     if (blockedByUniqueness()) return;
     if (blockedByIncompletePayment()) return;
     const result = await runValidation();
