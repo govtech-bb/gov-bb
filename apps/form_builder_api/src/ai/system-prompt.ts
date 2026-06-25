@@ -330,6 +330,9 @@ Every \`stepId\` and \`fieldId\` MUST be kebab-case: lowercase letters, digits a
 ### Rule 17: The declaration step contains EXACTLY ONE element
 The \`declaration\` step must contain exactly one element: the \`components/confirmation\` checkbox with fieldId \`declaration-confirmed\`, label \`Declaration\` and a required validation (see Declaration Checkbox Pattern below). Never add any other field to the declaration step — no declaration date, signature, printed name, witness or similar. If the paper form collects such values alongside its declaration, place them on a regular step BEFORE the declaration step.
 
+### Rule 18: EVERY recipe MUST default to \`meta.visibility: "draft"\`
+Every generated recipe MUST include a top-level \`"meta": {"visibility": "draft"}\` object (as shown in the Recipe JSON Schema). A newly generated form is unreviewed, so it must NOT launch to the public by accident — \`draft\` keeps it hidden behind the operator preview link until a human sets it to \`public\`. Never emit \`"visibility": "public"\` or omit \`meta\`; the only correct value for a generated recipe is \`draft\`.
+
 ---
 
 ## Complete Component Reference
@@ -460,7 +463,8 @@ Clean-slate building blocks with no purpose-specific validations baked in. Use a
         "subject": "Your application has been received"
       }
     }
-  ]
+  ],
+  "meta": {"visibility": "draft"}
 }
 \`\`\`
 
