@@ -5,7 +5,7 @@ import { RecipeFileLoaderService } from "./recipe-file-loader.service";
 import { RegistryService } from "@/registry/registry.service";
 import { FormConfigService } from "../form-config/form-config.service";
 import { AppError } from "@/common/errors";
-import { compareSemver } from "@govtech-bb/form-types";
+import { compareSemver, getRecipeVisibility } from "@govtech-bb/form-types";
 import type {
   Processor,
   ServiceContract,
@@ -84,6 +84,10 @@ export class FormDefinitionsService {
     for (const entity of entities) {
       if (!seen.has(entity.formId)) {
         seen.add(entity.formId);
+        // Hide non-public forms from the list (#1646) — the list carries no
+        // preview token, so preview/draft forms are unlisted for everyone,
+        // matching the 404 their single-form GET returns to the public.
+        if (getRecipeVisibility(entity.schema) !== "public") continue;
         result.push({
           formId: entity.formId,
           title: entity.schema.title,
@@ -110,6 +114,9 @@ export class FormDefinitionsService {
     includeProcessors?: boolean;
     preview?: boolean;
   }): Promise<ServiceContract> {
+    // getRecipe applies the #1646 visibility gate: a non-public recipe resolves
+    // to null for the public (no preview token), so this 404s exactly like a
+    // missing form.
     const recipe = await this.getRecipe({ formId, version, preview });
     if (!recipe) {
       throw AppError.notFound("Form definition", { formId, version });
@@ -157,6 +164,10 @@ export class FormDefinitionsService {
    *
    * When `preview` is `true`, resolution always uses the "both" path regardless
    * of the configured source or NODE_ENV — enabling per-request DB preview.
+   *
+   * Applies the #1646 visibility gate: a non-public recipe resolves to null for
+   * the public, so every consumer treats a hidden form as missing (404). A
+   * valid preview token bypasses the gate.
    */
   async getRecipe({
     formId,
@@ -166,6 +177,33 @@ export class FormDefinitionsService {
     formId: string;
     version?: string;
     preview?: boolean;
+  }): Promise<ServiceContractRecipe | null> {
+    const recipe = await this.resolveRecipe({ formId, version, preview });
+
+    // Launch gate (#1646): a non-public recipe is invisible to the public —
+    // getRecipe returns null exactly as if it didn't exist, so every consumer
+    // (the single-form GET, draft-create version pinning, …) 404s. A valid
+    // preview token (already resolved into `preview`) bypasses the gate so
+    // reviewers can resolve preview/draft recipes.
+    if (recipe && getRecipeVisibility(recipe) !== "public" && !preview) {
+      return null;
+    }
+    return recipe;
+  }
+
+  /**
+   * Resolve a raw recipe from the configured source, without the visibility
+   * gate. Private — callers must go through getRecipe so the #1646 gate is
+   * always applied.
+   */
+  private async resolveRecipe({
+    formId,
+    version,
+    preview,
+  }: {
+    formId: string;
+    version?: string;
+    preview: boolean;
   }): Promise<ServiceContractRecipe | null> {
     // When preview is true, force "both" so the DB is consulted regardless of
     // the configured RECIPE_SOURCE or NODE_ENV. Otherwise, use the normal
