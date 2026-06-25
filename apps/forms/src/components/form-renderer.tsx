@@ -153,6 +153,7 @@ export default function FormRenderer({
   submissionState,
   isDraft = false,
   previewToken,
+  draftToken,
 }: FormRendererProps) {
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
     formId: formMeta.formId,
@@ -524,6 +525,7 @@ export default function FormRenderer({
                     validationProperties={resolveValidators(group.toggle)}
                     formId={formMeta.formId}
                     previewToken={previewToken}
+                    draftToken={draftToken}
                   />
                   {isOpen && (
                     <div className="govbb-show-hide__content">
@@ -538,6 +540,7 @@ export default function FormRenderer({
                           validationProperties={resolveValidators(field)}
                           formId={formMeta.formId}
                           previewToken={previewToken}
+                          draftToken={draftToken}
                         />
                       ))}
                     </div>

@@ -21,9 +21,15 @@ export interface FormRendererProps {
   isDraft?: boolean;
   /**
    * The raw `?preview=` token, forwarded to file uploads so presign/confirm
-   * resolve the non-public recipe.
+   * resolve the non-public published recipe.
    */
   previewToken?: string;
+  /**
+   * The raw `?draft=` token, forwarded to file uploads so presign/confirm
+   * resolve the file field against the in-progress DB scratch during review
+   * (#1682).
+   */
+  draftToken?: string;
 }
 
 export type UseStepGuardProps = {
@@ -66,10 +72,15 @@ export type FileUploadProps = {
   errorId?: string;
   formId?: string;
   /**
-   * The `?preview=` token, present only when previewing an unpublished draft.
-   * Forwarded on presign + confirm so uploads resolve the DB-only draft.
+   * The `?preview=` token (published recipe of a non-public form). Forwarded as
+   * X-Recipe-Preview on presign + confirm.
    */
   previewToken?: string;
+  /**
+   * The `?draft=` token (in-progress DB scratch). Forwarded as X-Recipe-Draft so
+   * the file field resolves during draft review (#1682).
+   */
+  draftToken?: string;
 };
 
 export interface SubmissionState {
