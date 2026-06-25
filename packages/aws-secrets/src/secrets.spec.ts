@@ -14,7 +14,11 @@ vi.mock("@aws-sdk/client-secrets-manager", () => ({
   },
 }));
 
-import { getCachedSecretJson, getCachedSecretString } from "./secrets";
+import {
+  getCachedSecretJson,
+  getCachedSecretString,
+  invalidateSecretCache,
+} from "./secrets";
 
 beforeEach(() => {
   sendMock.mockReset();
@@ -95,5 +99,21 @@ describe("getCachedSecretJson", () => {
     await getCachedSecretString("arn:json:shared");
     expect(await getCachedSecretJson("arn:json:shared")).toEqual({ k: "v" });
     expect(sendMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("invalidateSecretCache", () => {
+  it("forces the next call to re-fetch from Secrets Manager", async () => {
+    sendMock
+      .mockResolvedValueOnce({ SecretString: "old" })
+      .mockResolvedValueOnce({ SecretString: "new" });
+    expect(await getCachedSecretString("arn:invalidate:me")).toBe("old");
+    invalidateSecretCache("arn:invalidate:me");
+    expect(await getCachedSecretString("arn:invalidate:me")).toBe("new");
+    expect(sendMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("is a no-op for an ARN that was never cached", () => {
+    expect(() => invalidateSecretCache("arn:never:seen")).not.toThrow();
   });
 });
