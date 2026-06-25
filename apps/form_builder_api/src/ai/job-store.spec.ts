@@ -3,6 +3,7 @@ import {
   toStatusResponse,
   ONE_HOUR_MS,
   SWEEP_INTERVAL_MS,
+  DEFAULT_MAX_SIZE,
 } from "./job-store";
 
 describe("createJobStore", () => {
@@ -52,6 +53,54 @@ describe("createJobStore", () => {
       vi.advanceTimersByTime(SWEEP_INTERVAL_MS);
 
       expect(store.get("fresh")).toEqual({ kind: "running", startedAt });
+    });
+  });
+
+  describe("max size cap", () => {
+    it("exposes a default cap of 500", () => {
+      expect(DEFAULT_MAX_SIZE).toBe(500);
+    });
+
+    it("evicts the oldest entry by insertion order when at cap", () => {
+      const evicted: string[] = [];
+      const store = createJobStore<number>({
+        maxSize: 3,
+        onEvict: (k) => evicted.push(k),
+      });
+
+      store.set("a", { kind: "running", startedAt: 1 });
+      store.set("b", { kind: "running", startedAt: 2 });
+      store.set("c", { kind: "running", startedAt: 3 });
+      // Adding a 4th distinct key forces eviction of "a" (oldest insertion).
+      store.set("d", { kind: "running", startedAt: 4 });
+
+      expect(store.get("a")).toBeUndefined();
+      expect(store.get("b")).toBeDefined();
+      expect(store.get("c")).toBeDefined();
+      expect(store.get("d")).toBeDefined();
+      expect(evicted).toEqual(["a"]);
+    });
+
+    it("updating an existing key does not count against the cap", () => {
+      const evicted: string[] = [];
+      const store = createJobStore<number>({
+        maxSize: 2,
+        onEvict: (k) => evicted.push(k),
+      });
+
+      store.set("a", { kind: "running", startedAt: 1 });
+      store.set("b", { kind: "running", startedAt: 2 });
+      // running → done is a state transition on an existing key — must not
+      // evict "b" just because we're at cap.
+      store.set("a", { kind: "done", result: 1, finishedAt: 3 });
+
+      expect(store.get("a")).toEqual({
+        kind: "done",
+        result: 1,
+        finishedAt: 3,
+      });
+      expect(store.get("b")).toBeDefined();
+      expect(evicted).toEqual([]);
     });
   });
 });

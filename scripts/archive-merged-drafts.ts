@@ -8,9 +8,11 @@
  *   - ARCHIVE_DRAFTS_TOKEN: bearer token for the admin endpoint.
  *
  * Behavior:
- *   - Runs `git diff --name-only --diff-filter=A <before> <after>`.
- *   - Filters to `recipes/{formId}/{version}.json` (one slash after `recipes/`).
- *   - POSTs to /admin/drafts/{formId}/{version}/archive for each.
+ *   - Runs `git diff --name-only --diff-filter=AM <before> <after>`.
+ *   - Filters to the flat `…/recipes/{formId}.json` canonical files (#1196).
+ *     Re-publishing a form *modifies* its flat file rather than adding a new
+ *     versioned one, so we match both Added and Modified (AM).
+ *   - POSTs to /admin/drafts/{formId}/archive for each.
  *   - 204 / 404 = success. Other statuses logged but non-fatal.
  *
  * Best-effort by design: spec says archival must not block PR merge.
@@ -18,16 +20,17 @@
 import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 
+// Recipes are colocated with the API module. `git diff` yields repo-root-relative
+// paths, so match the full path (not a bare `recipes/` prefix, which never
+// matched and left this archival a silent no-op).
 const RECIPE_PATH_PATTERN =
-  /^recipes\/([a-z0-9][a-z0-9-]*)\/([0-9]+\.[0-9]+\.[0-9]+)\.json$/;
+  /(?:^|\/)apps\/api\/src\/forms\/form-definitions\/recipes\/([a-z0-9][a-z0-9-]*)\.json$/;
 
-export function parseAddedRecipePaths(
-  paths: string[],
-): { formId: string; version: string }[] {
-  const out: { formId: string; version: string }[] = [];
+export function parseAddedRecipePaths(paths: string[]): { formId: string }[] {
+  const out: { formId: string }[] = [];
   for (const p of paths) {
     const m = RECIPE_PATH_PATTERN.exec(p.trim());
-    if (m) out.push({ formId: m[1], version: m[2] });
+    if (m) out.push({ formId: m[1] });
   }
   return out;
 }
@@ -40,11 +43,11 @@ export interface ArchiveDriverDeps {
 }
 
 export async function archiveDrafts(
-  entries: { formId: string; version: string }[],
+  entries: { formId: string }[],
   { apiUrl, token, fetch: fetchFn, log }: ArchiveDriverDeps,
 ): Promise<void> {
-  for (const { formId, version } of entries) {
-    const url = `${apiUrl.replace(/\/+$/, "")}/admin/drafts/${formId}/${version}/archive`;
+  for (const { formId } of entries) {
+    const url = `${apiUrl.replace(/\/+$/, "")}/admin/drafts/${formId}/archive`;
     try {
       const res = await fetchFn(url, {
         method: "POST",
@@ -54,16 +57,14 @@ export async function archiveDrafts(
         },
       });
       if (res.status === 204 || res.status === 404) {
-        log(`OK [${res.status}] ${formId}@${version}`);
+        log(`OK [${res.status}] ${formId}`);
       } else {
         log(
-          `WARN [${res.status}] ${formId}@${version} — draft not archived; clean up manually`,
+          `WARN [${res.status}] ${formId} — draft not archived; clean up manually`,
         );
       }
     } catch (err) {
-      log(
-        `WARN ${formId}@${version} — request failed: ${(err as Error).message}`,
-      );
+      log(`WARN ${formId} — request failed: ${(err as Error).message}`);
     }
   }
 }
@@ -109,7 +110,7 @@ async function main(): Promise<void> {
   try {
     raw = execFileSync(
       "git",
-      ["diff", "--name-only", "--diff-filter=A", before, after],
+      ["diff", "--name-only", "--diff-filter=AM", before, after],
       { encoding: "utf8" },
     );
   } catch (err) {

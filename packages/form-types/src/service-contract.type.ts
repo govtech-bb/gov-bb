@@ -56,7 +56,9 @@ export const serviceContractSchema = z.object({
   requiresPayment: z.boolean().optional(),
   createdAt: dateTimeFormatSchema,
   updatedAt: dateTimeFormatSchema,
-  version: semverSchema,
+  // Version is retired (#1196): canonical recipes carry no version. Kept
+  // optional so legacy versioned files still parse during the two-phase retire.
+  version: semverSchema.optional(),
 });
 export type ServiceContract = z.infer<typeof serviceContractSchema>;
 
@@ -85,7 +87,8 @@ export const serviceContractRecipeSchema = z.object({
   processors: z.array(processorSchema).optional(),
   createdAt: dateTimeFormatSchema,
   updatedAt: dateTimeFormatSchema,
-  version: semverSchema,
+  // See serviceContractSchema.version — optional during the #1196 two-phase retire.
+  version: semverSchema.optional(),
   meta: recipeMetaSchema.optional(),
 });
 export type ServiceContractRecipe = z.infer<typeof serviceContractRecipeSchema>;

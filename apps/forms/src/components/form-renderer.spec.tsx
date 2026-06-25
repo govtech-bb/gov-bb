@@ -560,25 +560,6 @@ describe("FormRenderer", () => {
     expect(renderers).toHaveLength(2);
   });
 
-  it("threads formVersion to plain field renderers (needed for file presign, #438)", () => {
-    const fields = [makePlainField("step-1_doc", "doc", "step-1")];
-    const step = makeStep("step-1", fields);
-    render(
-      <FormRenderer
-        form={mockForm}
-        formMeta={makeMeta({ steps: [step], version: "1.1.0" }) as any}
-        stepId="step-1"
-        visibleSteps={[step]}
-        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
-        submissionState={mockSubmissionState as any}
-      />,
-    );
-    expect(screen.getByTestId("field-renderer")).toHaveAttribute(
-      "data-form-version",
-      "1.1.0",
-    );
-  });
-
   it("builds validators from the field when it is missing from validationProperties (repeat instances, #432)", () => {
     const { buildFieldValidationProperties } = vi.mocked(formsLibMock);
     // A repeat-instance field (step~N_*) that buildValidation never saw, so it

@@ -31,7 +31,6 @@ const fakePage: ContentPage = {
   frontmatter: { title: 'Secret', categories: [], visibility: 'draft' },
   body: '',
   hast: { type: 'root', children: [] },
-  headings: [],
 }
 
 function caught(fn: () => unknown): unknown {

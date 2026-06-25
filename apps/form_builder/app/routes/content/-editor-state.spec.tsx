@@ -63,3 +63,29 @@ describe("useEditorState autosave", () => {
     expect(readDraft(NEW_KEY)).toBeNull();
   });
 });
+
+describe("useEditorState deployBlockReason", () => {
+  it("names the first unmet condition, in canDeploy order", () => {
+    const { result } = renderEditor();
+    expect(result.current.deployBlockReason).toBe("Add a title");
+
+    act(() => result.current.set("title", "Renew passport"));
+    expect(result.current.deployBlockReason).toBe("Add page content");
+  });
+
+  it("is null exactly when the page can deploy", () => {
+    const { result } = renderEditor();
+    expect(result.current.canDeploy).toBe(false);
+    expect(result.current.deployBlockReason).not.toBeNull();
+
+    act(() => {
+      result.current.set("title", "Renew passport");
+      result.current.set("body", "How to renew your passport.");
+      result.current.set("slug", "renew-passport");
+      result.current.set("linkType", "none");
+    });
+
+    expect(result.current.canDeploy).toBe(true);
+    expect(result.current.deployBlockReason).toBeNull();
+  });
+});

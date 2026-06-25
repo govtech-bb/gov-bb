@@ -3,6 +3,7 @@ import {
   categoryServices,
   findPage,
   isCategoryVisible,
+  isDigitalService,
   isStartSubPageVisible,
   isSubPage,
   isVisible,
@@ -145,6 +146,28 @@ describe('step pages hang off their parent service URL', () => {
     expect(
       findPage('money-financial-support/calculate-severance-pay/start'),
     ).toBeDefined()
+  })
+})
+
+describe('isDigitalService', () => {
+  it('treats a form service as digital', () => {
+    const formService = findPage(
+      'family-birth-relationships/get-death-certificate',
+    )
+    expect(formService).toBeDefined()
+    expect(isDigitalService(formService!)).toBe(true)
+  })
+
+  it('treats a service_type: digital tool as digital', () => {
+    const tool = PAGES.find((p) => p.slug === 'calculate-your-pension')
+    expect(tool).toBeDefined()
+    expect(isDigitalService(tool!)).toBe(true)
+  })
+
+  it('treats an informational page (no form, no tool) as not digital', () => {
+    const info = PAGES.find((p) => p.slug === 'loud-music-permit')
+    expect(info).toBeDefined()
+    expect(isDigitalService(info!)).toBe(false)
   })
 })
 

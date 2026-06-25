@@ -58,8 +58,6 @@ export type FileUploadProps = {
   /** id for the error element, so the input's aria-describedby resolves. */
   errorId?: string;
   formId?: string;
-  /** Form version, required for the presigned-upload requests. */
-  formVersion?: string;
   /**
    * The `?preview=` token, present only when previewing an unpublished draft.
    * Forwarded on presign + confirm so uploads resolve the DB-only draft.

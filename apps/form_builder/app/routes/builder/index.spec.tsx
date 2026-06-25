@@ -652,10 +652,6 @@ describe("BuilderPage — Open picker freshness after save", () => {
     renderBuilder();
 
     await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
-    // A brand-new form picks its initial version, so the field stays editable
-    // here — the read-only pin only applies to the Save Changes (update) path.
-    const newVersionField = await screen.findByDisplayValue("1.0.0");
-    expect(newVersionField).not.toHaveAttribute("readonly");
     await userEvent.click(
       await screen.findByRole("button", { name: "Submit Recipe" }),
     );
@@ -742,147 +738,6 @@ describe("BuilderPage — Open picker freshness after save", () => {
     });
   });
 
-  it("cuts a new draft version (POST, bumped patch) when the loaded version is the published one — never an in-place overwrite", async () => {
-    mockEmptyDraft = INVALID_DRAFT;
-    // The form is loaded at its *published* version (publishedVersion ===
-    // version === currentVersion). Overwriting it in place is forbidden by the
-    // API, so Save Changes must auto-bump a patch and create a new draft row.
-    mockForms = [
-      {
-        id: "old",
-        formId: "old-form",
-        title: "Old Form",
-        version: "1.0.0",
-        isPublished: true,
-        publishedVersion: "1.0.0",
-      },
-    ];
-    getRecipe.mockResolvedValue({
-      formId: "old-form",
-      title: "Old Form",
-      version: "1.0.0",
-      steps: [
-        {
-          stepId: "step-1",
-          title: "Step 1",
-          elements: [{ ref: "components/first-name" }],
-          behaviours: [],
-        },
-        { stepId: "check-your-answers", title: "Check your answers", elements: [], behaviours: [] },
-        { stepId: "declaration", title: "Declaration", elements: [], behaviours: [] },
-        {
-          stepId: "submission-confirmation",
-          title: "Submission Confirmation",
-          elements: [],
-          behaviours: [],
-        },
-      ],
-      createdAt: "2020-01-01T00:00:00.000Z",
-      updatedAt: "2020-01-01T00:00:00.000Z",
-    });
-    validateRecipe.mockResolvedValue({ ok: true });
-    renderBuilder();
-
-    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
-    await userEvent.click(await screen.findByText("Old Form"));
-    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText(/title/i), {
-      target: { value: "Old Form (edited)" },
-    });
-
-    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
-    // The modal auto-bumps the published 1.0.0 to a 1.0.1 draft version.
-    expect(await screen.findByDisplayValue("1.0.1")).toBeInTheDocument();
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Save Changes" }),
-    );
-    await screen.findByText(/recipe submitted successfully/i);
-
-    // Routes through submitRecipe (POST, new version), never updateRecipe (PUT,
-    // overwrite) — so the immutable published 1.0.0 is left intact.
-    expect(submitRecipe).toHaveBeenCalledTimes(1);
-    expect(updateRecipe).not.toHaveBeenCalled();
-    const submitArg = submitRecipe.mock.calls[0][0] as {
-      data: { recipe: { version: string }; isNew: boolean };
-    };
-    expect(submitArg.data.recipe.version).toBe("1.0.1");
-    expect(submitArg.data.isNew).toBe(false);
-
-    // The optimistic picker row keeps the published badge and version, advancing
-    // only the working version to the new draft.
-    expect(mockUpsertForm).toHaveBeenCalledWith({
-      id: "old",
-      formId: "old-form",
-      title: "Old Form (edited)",
-      version: "1.0.1",
-      isPublished: true,
-      publishedVersion: "1.0.0",
-    });
-  });
-
-  it("still overwrites in place (PUT) when a higher unpublished draft sits over a published version", async () => {
-    mockEmptyDraft = INVALID_DRAFT;
-    // publishedVersion (1.0.0) < the loaded draft version (1.2.0): the loaded
-    // version is an unpublished draft, so Save Changes overwrites it in place
-    // rather than bumping — the published-version exception must NOT fire here.
-    mockForms = [
-      {
-        id: "old",
-        formId: "old-form",
-        title: "Old Form",
-        version: "1.2.0",
-        isPublished: true,
-        publishedVersion: "1.0.0",
-      },
-    ];
-    getRecipe.mockResolvedValue({
-      formId: "old-form",
-      title: "Old Form",
-      version: "1.2.0",
-      steps: [
-        {
-          stepId: "step-1",
-          title: "Step 1",
-          elements: [{ ref: "components/first-name" }],
-          behaviours: [],
-        },
-        { stepId: "check-your-answers", title: "Check your answers", elements: [], behaviours: [] },
-        { stepId: "declaration", title: "Declaration", elements: [], behaviours: [] },
-        {
-          stepId: "submission-confirmation",
-          title: "Submission Confirmation",
-          elements: [],
-          behaviours: [],
-        },
-      ],
-      createdAt: "2020-01-01T00:00:00.000Z",
-      updatedAt: "2020-01-01T00:00:00.000Z",
-    });
-    validateRecipe.mockResolvedValue({ ok: true });
-    renderBuilder();
-
-    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
-    await userEvent.click(await screen.findByText("Old Form"));
-    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText(/title/i), {
-      target: { value: "Old Form (edited)" },
-    });
-
-    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
-    // The modal pins the loaded draft version (1.2.0) — no bump.
-    expect(await screen.findByDisplayValue("1.2.0")).toBeInTheDocument();
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Save Changes" }),
-    );
-    await screen.findByText(/recipe submitted successfully/i);
-
-    // In-place overwrite of the unpublished draft: PUT, never a new-version POST.
-    expect(updateRecipe).toHaveBeenCalledTimes(1);
-    expect(submitRecipe).not.toHaveBeenCalled();
-  });
-
   it("preserves publishedVersion in the optimistic picker row after Deploy", async () => {
     mockEmptyDraft = INVALID_DRAFT;
     // A published form, loaded clean (no edits) so Deploy is enabled.
@@ -920,8 +775,8 @@ describe("BuilderPage — Open picker freshness after save", () => {
       updatedAt: "2020-01-01T00:00:00.000Z",
     });
     validateRecipe.mockResolvedValue({ ok: true });
-    // Deploy opens a PR at the next minor; the published index is unchanged.
-    getNextDeployVersion.mockResolvedValue({ version: "1.1.0" });
+    // #1196: Deploy overwrites the flat file; the published index is unchanged
+    // until the PR merges.
     publishRecipe.mockResolvedValue({
       prUrl: "https://github.com/x/y/pull/7",
       prNumber: 7,
@@ -937,71 +792,21 @@ describe("BuilderPage — Open picker freshness after save", () => {
     const publishModal = (
       screen.getByText("Deploy", { selector: "strong" }).closest("div") as HTMLElement
     ).parentElement as HTMLElement;
-    await within(publishModal).findByDisplayValue("1.1.0");
     await userEvent.click(
       within(publishModal).getByRole("button", { name: /deploy/i }),
     );
     await waitFor(() => expect(publishRecipe).toHaveBeenCalledTimes(1));
 
-    // The new version becomes the working version, but the published index is
-    // still at 1.0.0 until the PR merges — so the row must keep publishedVersion
-    // 1.0.0 rather than dropping it (a refetch would still report 1.0.0).
+    // The published index is unchanged until the PR merges, so the optimistic
+    // row keeps its existing version + publishedVersion (a frozen breadcrumb).
     expect(mockUpsertForm).toHaveBeenCalledWith({
       id: "old",
       formId: "old-form",
       title: "Old Form",
-      version: "1.1.0",
+      version: "1.0.0",
       isPublished: false,
       publishedVersion: "1.0.0",
     });
-  });
-
-  it("renders the Version field read-only on Save Changes — the version can't be forked from the modal", async () => {
-    mockEmptyDraft = INVALID_DRAFT;
-    mockForms = [
-      { id: "old", formId: "old-form", title: "Old Form", version: "2.0.0", isPublished: true },
-    ];
-    getRecipe.mockResolvedValue({
-      formId: "old-form",
-      title: "Old Form",
-      version: "2.0.0",
-      steps: [
-        {
-          stepId: "step-1",
-          title: "Step 1",
-          elements: [{ ref: "components/first-name" }],
-          behaviours: [],
-        },
-        { stepId: "check-your-answers", title: "Check your answers", elements: [], behaviours: [] },
-        { stepId: "declaration", title: "Declaration", elements: [], behaviours: [] },
-        {
-          stepId: "submission-confirmation",
-          title: "Submission Confirmation",
-          elements: [],
-          behaviours: [],
-        },
-      ],
-      createdAt: "2020-01-01T00:00:00.000Z",
-      updatedAt: "2020-01-01T00:00:00.000Z",
-    });
-    validateRecipe.mockResolvedValue({ ok: true });
-    renderBuilder();
-
-    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
-    await userEvent.click(await screen.findByText("Old Form"));
-    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
-
-    // Dirty the form so Save draft enables, then open the Save Changes modal.
-    fireEvent.change(screen.getByLabelText(/title/i), {
-      target: { value: "Old Form (tweaked)" },
-    });
-    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
-
-    // The Version field is pinned to the loaded version and read-only: Save
-    // Changes always overwrites in place, so there's no fork-a-new-version path
-    // from this modal (Deploy is the way to cut a new version).
-    const versionField = await screen.findByDisplayValue("2.0.0");
-    expect(versionField).toHaveAttribute("readonly");
   });
 
   it("overwrites in place on every consecutive Save Changes — no duplicate drafts (#329)", async () => {

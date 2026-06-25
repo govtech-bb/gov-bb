@@ -48,7 +48,10 @@ export class SubmissionsService {
 
     const { draft, contract, auditTrail, normalizedValues } =
       await this.pipeline.run(dto);
-    const pinnedVersion = draft?.formVersion ?? dto.formVersion;
+    // #1196: versionless submissions persist form_version = NULL (the recipe
+    // resolves to the canonical flat file). A draft-sourced submission carries
+    // its draft's pin (may itself be null) for the legacy fallback window.
+    const pinnedVersion = draft?.formVersion ?? dto.formVersion ?? null;
 
     // Smoke submissions exercise the full persist/validate/reference-code path
     // but must fire zero processors (no real emails/webhooks/payment gating).
@@ -91,7 +94,7 @@ export class SubmissionsService {
       submissionId: saved.id,
       referenceCode,
       formId: dto.formId,
-      formVersion: pinnedVersion,
+      formVersion: pinnedVersion ?? undefined,
       idempotencyKey: dto.idempotencyKey,
       processors: rawProcessors,
       values: normalizedValues,
