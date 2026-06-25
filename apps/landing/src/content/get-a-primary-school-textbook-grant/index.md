@@ -5,6 +5,7 @@ stage: "alpha"
 publish_date: 2026-02-06
 category: money-financial-support
 form_id: get-a-primary-school-textbook-grant
+service_type: digital
 visibility: preview
 ---
 
