@@ -12,8 +12,9 @@ import { fetchFormDefinition } from "@forms/form-api";
  * maps it into a ClientServiceContract ready for the form renderer.
  *
  * Note: the synthetic `"example"` and `"master"` IDs resolve local JSON
- * fixtures and are not backed by the database, so the `preview` token is not
- * applicable to them and is intentionally ignored when either ID is supplied.
+ * fixtures and are not backed by the database, so the `preview`/`draft` tokens
+ * are not applicable to them and are intentionally ignored when either ID is
+ * supplied.
  *
  * @throws {FormFetchError} when the API returns a non-OK response or the
  *   response body indicates failure.
@@ -21,12 +22,13 @@ import { fetchFormDefinition } from "@forms/form-api";
 export const fetchContract = async (
   id: string,
   preview?: string,
+  draft?: string,
 ): Promise<ClientServiceContract> => {
   if (id === "example" || id === "master") {
     return fetchExampleContract(id);
   }
 
-  const contract = await fetchFormDefinition(id, preview);
+  const contract = await fetchFormDefinition(id, preview, draft);
 
   return mapContractToLocale(contract);
 };
