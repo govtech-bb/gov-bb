@@ -1,4 +1,5 @@
 import type { Mock, Mocked } from "vitest";
+import { Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   SESv2Client,
@@ -207,6 +208,23 @@ describe("EmailProcessor", () => {
       expect(getSentInput().Destination?.ToAddresses).toEqual([
         "testing@govtech.bb",
       ]);
+    });
+
+    it("masks the recipient's email address in logs — never logs it in full (issue #1640)", async () => {
+      const logSpy = vi
+        .spyOn(Logger.prototype, "log")
+        .mockImplementation(() => {});
+
+      await processor.process(makePayload());
+
+      const confirmation = logSpy.mock.calls.find(([msg]) =>
+        String(msg).includes("Confirmation sent"),
+      );
+      expect(confirmation).toBeDefined();
+      expect(String(confirmation?.[0])).toContain("j***@example.com");
+      expect(String(confirmation?.[0])).not.toContain("jane@example.com");
+
+      logSpy.mockRestore();
     });
 
     it("sends from the configured SES sender identity", async () => {
