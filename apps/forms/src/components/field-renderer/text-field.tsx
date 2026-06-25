@@ -2,7 +2,7 @@ import { JSX } from "react";
 import ErrorMessage from "../error-message";
 import { MaskedInput } from "../masked-input";
 import { NumberInput } from "./number-input";
-import { renderRepeatableOrSingle } from "./repeatable-field";
+import { renderRepeatableOrSingle, rowInputProps } from "./repeatable-field";
 import { FieldRenderContext } from "./render-context";
 
 /** Renders the `text` / `number` / `tel` / `email` field types. */
@@ -29,22 +29,22 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
     value: string,
     onChange: (next: string) => void,
     withRequired: boolean,
-  ): JSX.Element =>
-    isNumber ? (
+    index?: number,
+  ): JSX.Element => {
+    const props = rowInputProps(sharedProps, field, index);
+    return isNumber ? (
       <NumberInput
         value={value}
         onChange={onChange}
         invalid={invalid}
-        inputProps={
-          withRequired ? { ...sharedProps, ...requiredProps } : sharedProps
-        }
+        inputProps={withRequired ? { ...props, ...requiredProps } : props}
       />
     ) : (
       <div className="govbb-input-wrapper">
         <MaskedInput
-          key={field.id}
+          key={props.id}
           mask={field.mask}
-          {...sharedProps}
+          {...props}
           {...(withRequired ? requiredProps : {})}
           autoComplete={autoComplete}
           className="govbb-input"
@@ -54,6 +54,7 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
         />
       </div>
     );
+  };
 
   const inputElement = renderRepeatableOrSingle(ctx, renderControl);
 

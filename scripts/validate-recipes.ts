@@ -7,7 +7,6 @@ import {
   checkRegistryRefsResolve,
   checkNoMigratedSlashRefs,
   checkNoOrphanRefsInLatest,
-  compareSemver,
   refsOf,
   type RefLocation,
 } from "./recipe-ref-guards";
@@ -24,10 +23,16 @@ const RECIPES_ROOT = path.resolve(
 );
 
 async function main(): Promise<void> {
-  let formDirs: string[];
+  // Each form is a single flat file `recipes/{formId}.json` (#1196). Legacy
+  // versioned `{formId}/{version}.json` dirs are retained as a read-only
+  // runtime fallback until the Phase 2 decommission, but they are frozen and
+  // never the served artifact, so validation only covers the flat files.
+  let files: string[];
   try {
     const entries = await fs.readdir(RECIPES_ROOT, { withFileTypes: true });
-    formDirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+    files = entries
+      .filter((e) => e.isFile() && e.name.endsWith(".json"))
+      .map((e) => e.name);
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       console.error(`Recipes directory not found at ${RECIPES_ROOT}.`);
@@ -39,67 +44,44 @@ async function main(): Promise<void> {
   let recipeCount = 0;
   const errors: string[] = [];
   const allRefs: RefLocation[] = [];
-  const latestRefs: RefLocation[] = [];
 
-  for (const formId of formDirs) {
-    const dir = path.join(RECIPES_ROOT, formId);
-    const files = (await fs.readdir(dir)).filter((f) => f.endsWith(".json"));
-    if (files.length === 0) continue;
-
-    // The highest-semver file is the one the loader serves by default.
-    const latestFile = files.reduce((best, file) =>
-      compareSemver(file.replace(/\.json$/, ""), best.replace(/\.json$/, "")) >
-      0
-        ? file
-        : best,
-    );
-
-    for (const file of files) {
-      const filePath = path.join(dir, file);
-      const relative = path.relative(process.cwd(), filePath);
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(await fs.readFile(filePath, "utf8"));
-      } catch (err) {
-        errors.push(`${relative}: invalid JSON — ${(err as Error).message}`);
-        continue;
-      }
-
-      const result = serviceContractRecipeSchema.safeParse(parsed);
-      if (!result.success) {
-        errors.push(
-          `${relative}: schema validation failed — ${result.error.message}`,
-        );
-        continue;
-      }
-      const recipe = result.data;
-
-      const filenameVersion = file.replace(/\.json$/, "");
-      if (filenameVersion !== recipe.version) {
-        errors.push(
-          `${relative}: filename version "${filenameVersion}" does not match recipe.version "${recipe.version}"`,
-        );
-        continue;
-      }
-      if (recipe.formId !== formId) {
-        errors.push(
-          `${relative}: directory name "${formId}" does not match recipe.formId "${recipe.formId}"`,
-        );
-        continue;
-      }
-      recipeCount++;
-
-      const where = `${formId}/${file}`;
-      const refs = refsOf(recipe, where);
-      allRefs.push(...refs);
-      if (file === latestFile) latestRefs.push(...refs);
+  for (const file of files) {
+    const filePath = path.join(RECIPES_ROOT, file);
+    const relative = path.relative(process.cwd(), filePath);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(await fs.readFile(filePath, "utf8"));
+    } catch (err) {
+      errors.push(`${relative}: invalid JSON — ${(err as Error).message}`);
+      continue;
     }
+
+    const result = serviceContractRecipeSchema.safeParse(parsed);
+    if (!result.success) {
+      errors.push(
+        `${relative}: schema validation failed — ${result.error.message}`,
+      );
+      continue;
+    }
+    const recipe = result.data;
+
+    const fileFormId = file.replace(/\.json$/, "");
+    if (recipe.formId !== fileFormId) {
+      errors.push(
+        `${relative}: filename "${fileFormId}" does not match recipe.formId "${recipe.formId}"`,
+      );
+      continue;
+    }
+    recipeCount++;
+
+    allRefs.push(...refsOf(recipe, file));
   }
 
-  // Ref guards run across every valid recipe collected above.
+  // Every flat file is the canonical (served) recipe, so the orphan-ref guard —
+  // which used to apply only to the highest-version file — now runs across all.
   errors.push(...checkRegistryRefsResolve(allRefs, BUILTIN_REGISTRY));
   errors.push(...checkNoMigratedSlashRefs(allRefs));
-  errors.push(...checkNoOrphanRefsInLatest(latestRefs));
+  errors.push(...checkNoOrphanRefsInLatest(allRefs));
 
   if (errors.length > 0) {
     console.error(`Found ${errors.length} recipe validation error(s):`);
@@ -107,9 +89,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  console.log(
-    `Validated ${recipeCount} recipe file(s) across ${formDirs.length} form(s). OK.`,
-  );
+  console.log(`Validated ${recipeCount} recipe file(s). OK.`);
 }
 
 main().catch((err) => {

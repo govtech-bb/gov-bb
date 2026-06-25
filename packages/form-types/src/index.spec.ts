@@ -1111,7 +1111,7 @@ describe("recipient prefix constants (re-export)", () => {
 
 describe("deployBranchName / eraseBranchName (re-export)", () => {
   it("build dot-free branch names", () => {
-    expect(deployBranchName("passport-renewal", "1.2.0")).not.toContain(".");
+    expect(deployBranchName("passport-renewal")).not.toContain(".");
     expect(eraseBranchName("passport-renewal")).not.toContain(".");
   });
 });

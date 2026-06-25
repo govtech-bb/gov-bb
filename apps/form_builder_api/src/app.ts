@@ -10,6 +10,14 @@ import { aiRouter } from "./routes/ai";
 import { publishRouter } from "./routes/publish";
 import { presenceRouter } from "./routes/presence";
 import { authMiddleware } from "./middleware/auth";
+import { getEnv } from "./config/env";
+
+// Fail fast: validate env at boot (after dotenv/config above) so missing or
+// malformed config crashes startup with a readable ZodError instead of failing
+// lazily at request time. The read sites below still use process.env directly;
+// this call only validates. A bad config crashing boot triggers an ECS
+// rollback, which is the intended safe failure — never a half-configured task.
+getEnv();
 
 export const app = express();
 

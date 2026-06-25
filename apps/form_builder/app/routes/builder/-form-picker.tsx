@@ -14,7 +14,7 @@ interface FormPickerProps {
   loadError: string | null;
   isDirty: boolean;
   catalog: RegistryCatalog;
-  onLoad: (draft: RecipeDraft, formId: string, version: string) => void;
+  onLoad: (draft: RecipeDraft, formId: string) => void;
   onClose: () => void;
   /** Draft-only forms: hard-delete the draft rows (formId freed for reuse). */
   onRequestDelete: (form: FormDefinitionSummary) => void;
@@ -74,7 +74,7 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
         mdaContactId: config.mdaContactId,
         processors: mergeDbProcessors(draft.processors, config.processors),
       };
-      onLoad(draftWithConfig, form.formId, form.version);
+      onLoad(draftWithConfig, form.formId);
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load recipe");

@@ -6,20 +6,15 @@ import rehypeRaw from 'rehype-raw'
 import rehypeSlug from 'rehype-slug'
 import rehypeAutolinkHeadings from 'rehype-autolink-headings'
 import type { Root } from 'hast'
-import { collectHeadings, sanitizeUrls } from './plugins'
-import type { MarkdownHeading } from './plugins'
+import { sanitizeUrls } from './plugins'
 
 type ProcessedMarkdown = {
   hast: Root
-  headings: Array<MarkdownHeading>
 }
 
 export async function processMarkdown(
   markdown: string,
 ): Promise<ProcessedMarkdown> {
-  // Built per call so collectHeadings pushes into a fresh array.
-  const headings: Array<MarkdownHeading> = []
-
   const processor = unified()
     .use(remarkParse)
     .use(remarkGfm)
@@ -27,7 +22,6 @@ export async function processMarkdown(
     .use(rehypeRaw)
     .use(sanitizeUrls)
     .use(rehypeSlug)
-    .use(() => collectHeadings(headings))
     .use(rehypeAutolinkHeadings, {
       behavior: 'append',
       content: { type: 'text', value: '#' },
@@ -40,5 +34,5 @@ export async function processMarkdown(
 
   const tree = processor.parse(markdown)
   const hast = (await processor.run(tree)) as unknown as Root
-  return { hast, headings }
+  return { hast }
 }

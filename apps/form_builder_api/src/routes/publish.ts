@@ -49,16 +49,6 @@ export async function publishHandler(req: Request, res: Response) {
     const typedRecipe = recipe as ServiceContractRecipe;
     const token = githubToken as string;
 
-    // Recipe `version` is optional on the type during the #1196 two-phase
-    // retire, but this (Phase 1) publish path still writes versioned files, so
-    // a version is required here. The builder UI always sends one; reject
-    // otherwise rather than fabricate a path segment.
-    const recipeVersion = typedRecipe.version;
-    if (!recipeVersion) {
-      res.status(400).json({ error: "recipe.version is required" });
-      return;
-    }
-
     // Read-only lock (#874): deploying is a write, so only the current fresh
     // claim holder may publish. Require the SSR-stamped login (400) and verify
     // the claim (409) before touching GitHub.
@@ -84,22 +74,28 @@ export async function publishHandler(req: Request, res: Response) {
     const gh = createPublishClient(repoIdentity());
 
     // Read the base tip and create the deploy branch off it.
-    const branch = deployBranchName(typedRecipe.formId, recipeVersion);
+    const branch = deployBranchName(typedRecipe.formId);
     await gh.createBranchFrom(token, baseBranch, branch);
 
     try {
-      // Write recipe file. formId/version are user-provided, so encode each
-      // segment as it enters the request path (slashes between segments are
-      // structural and must survive) — sink-level sanitization that clears the
-      // CodeQL js/request-forgery alert and neutralises any injected path
-      // characters. Backstopped by the kebab `formId` / semver `version`
-      // validation in validateRecipeFully; for valid input this is a no-op (#935).
-      const contentsPath = `recipes/${encodeURIComponent(typedRecipe.formId)}/${encodeURIComponent(recipeVersion)}.json`;
+      // Overwrite the canonical flat recipe file (#1196 — versioning retired).
+      // formId is user-provided, so encode the segment as it enters the request
+      // path — sink-level sanitization that clears the CodeQL js/request-forgery
+      // alert. Backstopped by the kebab `formId` validation in
+      // validateRecipeFully; for valid input this is a no-op (#935).
+      const contentsPath = `recipes/${encodeURIComponent(typedRecipe.formId)}.json`;
+      // The flat file already exists on the base branch, so fetch its blob SHA
+      // to update in place (the Contents API requires `sha` to overwrite).
+      const existing = await gh.getContents(token, contentsPath, branch);
+      const existingSha = existing.ok
+        ? ((await existing.json()) as { sha?: string }).sha
+        : undefined;
       const putRes = await gh.putFile(token, {
         path: contentsPath,
-        message: `Publish ${typedRecipe.formId} v${recipeVersion}`,
+        message: `Publish ${typedRecipe.formId}`,
         content: JSON.stringify(typedRecipe, null, 2) + "\n",
         branch,
+        ...(existingSha ? { sha: existingSha } : {}),
       });
       if (!putRes.ok) {
         throw new Error(`Failed to write recipe: ${putRes.status}`);
@@ -108,7 +104,7 @@ export async function publishHandler(req: Request, res: Response) {
       const { prUrl, prNumber } = await gh.openPullRequest(token, {
         base: baseBranch,
         head: branch,
-        title: `Publish form: ${typedRecipe.title ?? typedRecipe.formId} v${recipeVersion}`,
+        title: `Publish form: ${typedRecipe.title ?? typedRecipe.formId}`,
         body: description ?? "",
       });
       res.json({ prUrl, prNumber });

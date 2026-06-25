@@ -1,6 +1,7 @@
-# Published form recipes are immutable, versioned artifacts (enforced by
-# scripts/recipe-version-guard.ts). The lint-staged hook in this package runs
-# prettier with apps/api as its CWD, so it reads THIS ignore file (not the
-# repo-root one) — without it, a commit that stages a recipe would silently
-# reformat a published version and trip the guard. Leave recipes untouched.
+# Published form recipes are machine-written artifacts (the builder overwrites
+# recipes/{formId}.json verbatim; the PR diff is the record of change — #1196).
+# The lint-staged hook in this package runs prettier with apps/api as its CWD, so
+# it reads THIS ignore file (not the repo-root one) — without it, a commit that
+# stages a recipe would silently reformat it and create a spurious diff. Leave
+# recipes untouched.
 src/forms/form-definitions/recipes/

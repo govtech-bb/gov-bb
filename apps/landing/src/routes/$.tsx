@@ -16,6 +16,7 @@ import type { ViewLevel } from '../lib/frontmatter'
 import { CATEGORY_BY_SLUG, getSubcategory } from '../content/categories'
 import type { Category, SubCategory } from '../content/categories'
 import { getAvailableForms } from '../lib/available-forms'
+import { seoTags } from '../lib/page-head'
 
 interface CategoryListItem {
   title: string
@@ -92,35 +93,44 @@ export const Route = createFileRoute('/$')({
   head: ({ loaderData }) => {
     if (!loaderData) return {}
     if (loaderData.kind === 'page') {
+      const { page } = loaderData
+      const title = page.frontmatter.title
+      const isPublic = pageLevel(page) === 'public'
+      // Canonical/OG only for indexable pages — a gated page is noindex.
+      const seo = isPublic
+        ? seoTags(title, page.frontmatter.description ?? '', `/${page.url}`)
+        : undefined
       return {
         meta: [
-          { title: loaderData.page.frontmatter.title },
-          ...(loaderData.page.frontmatter.description
-            ? [
-                {
-                  name: 'description',
-                  content: loaderData.page.frontmatter.description,
-                },
-              ]
+          { title },
+          ...(page.frontmatter.description
+            ? [{ name: 'description', content: page.frontmatter.description }]
             : []),
           // A gated page only reaches here for a token holder, but keep
           // crawlers out in case the URL is ever shared.
-          ...(pageLevel(loaderData.page) !== 'public'
-            ? [{ name: 'robots', content: 'noindex' }]
-            : []),
+          ...(isPublic ? [] : [{ name: 'robots', content: 'noindex' }]),
+          ...(seo?.meta ?? []),
         ],
+        ...(seo ? { links: seo.links } : {}),
       }
     }
     if (loaderData.kind === 'subcategory') {
-      return {
-        meta: [
-          {
-            title: `${loaderData.subcategory.title} | ${loaderData.category.title}`,
-          },
-        ],
-      }
+      const { category, subcategory } = loaderData
+      const title = `${subcategory.title} | ${category.title}`
+      const seo = seoTags(
+        title,
+        subcategory.description ?? '',
+        `/${category.slug}/${subcategory.slug}`,
+      )
+      return { meta: [{ title }, ...seo.meta], links: seo.links }
     }
-    return { meta: [{ title: loaderData.category.title }] }
+    const { category } = loaderData
+    const seo = seoTags(
+      category.title,
+      category.description ?? '',
+      `/${category.slug}`,
+    )
+    return { meta: [{ title: category.title }, ...seo.meta], links: seo.links }
   },
   component: ContentRoute,
 })
@@ -174,7 +184,6 @@ function PageView({
       {level !== 'public' ? <ReviewBanner level={level} /> : null}
       <MarkdownContent
         hast={page.hast}
-        headings={page.headings}
         frontmatter={page.frontmatter}
         availableForms={new Set(availableForms)}
         hideStartLink={hideStartLink}

@@ -1,4 +1,5 @@
 import React from "react";
+import { LANDING_URL } from "../config/landing";
 
 export default function NotFound() {
   return (
@@ -24,7 +25,7 @@ export default function NotFound() {
 
         {/* Quick Link Buttons */}
         <div>
-          <a className="govbb-btn" href="/">
+          <a className="govbb-btn" href={LANDING_URL}>
             Go to Homepage
           </a>
         </div>
