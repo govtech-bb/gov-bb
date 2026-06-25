@@ -65,16 +65,23 @@ export const Route = createFileRoute("/forms/$formId/")({
 
     // Tier 1: get the contract (from cache or server).
     const clientContract = await queryClient.ensureQueryData(
-      contractQueryOptions(params.formId, deps.preview),
+      contractQueryOptions(params.formId, deps.preview, deps.draft),
     );
 
-    // Tier 2: get or build the FormMeta for this specific (version, preview) pair.
+    // Tier 2: get or build the FormMeta for this specific
+    // (version, preview, draft) combination.
     return queryClient.ensureQueryData(
-      formMetaQueryOptions(params.formId, clientContract, deps.preview),
+      formMetaQueryOptions(
+        params.formId,
+        clientContract,
+        deps.preview,
+        deps.draft,
+      ),
     );
   },
   loaderDeps: ({ search }: { search: FormSearchParams }) => ({
     preview: search.preview,
+    draft: search.draft,
   }),
   validateSearch: (search): FormSearchParams =>
     formSearchParamSchema.parse(search),
@@ -210,7 +217,7 @@ function RouteComponent() {
       );
       let response;
       try {
-        response = await postFormSubmission(formMeta, formattedData);
+        response = await postFormSubmission(formMeta, formattedData, preview);
       } catch {
         trackEvent("form-submit-error", {
           form_id: formMeta.formId,

@@ -4,7 +4,9 @@
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { Mock } from "vitest";
 import { FormPicker } from "./-form-picker";
+import { getRecipe } from "../../server/forms";
 import type { FormDefinitionSummary } from "../../types/index";
 import type { RegistryCatalog } from "@govtech-bb/form-builder";
 
@@ -55,6 +57,7 @@ function renderPicker(props: Partial<React.ComponentProps<typeof FormPicker>> = 
       onRequestDisable={vi.fn()}
       onRequestErase={vi.fn()}
       onEnable={vi.fn()}
+      onDuplicate={vi.fn()}
       {...props}
     />,
   );
@@ -137,5 +140,27 @@ describe("FormPicker", () => {
 
     await userEvent.click(enableBtn);
     expect(onEnable).toHaveBeenCalledWith(DISABLED_PUBLISHED);
+  });
+
+  it("duplicating a public form starts the copy hidden (visibility: draft, #1682)", async () => {
+    (getRecipe as Mock).mockResolvedValue({
+      formId: "passport",
+      title: "Passport Application",
+      steps: [],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      meta: { visibility: "public" },
+    });
+    const onDuplicate = vi.fn();
+    renderPicker({ forms: FORMS, onDuplicate });
+
+    await userEvent.click(screen.getByRole("button", { name: /duplicate/i }));
+
+    expect(onDuplicate).toHaveBeenCalledTimes(1);
+    const draft = onDuplicate.mock.calls[0][0];
+    // A duplicate is a fresh, unpublished form — it must NOT inherit the
+    // source's `public` launch state.
+    expect(draft.meta).toEqual({ visibility: "draft" });
+    expect(draft.formId).toBe("passport-copy");
   });
 });

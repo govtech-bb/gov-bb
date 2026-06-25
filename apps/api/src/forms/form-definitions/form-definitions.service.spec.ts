@@ -809,18 +809,33 @@ describe("FormDefinitionsService", () => {
       expect(result).toBeNull();
     });
 
-    it("getRecipe returns the non-public recipe when preview:true (token bypasses the gate)", async () => {
+    it("getRecipe returns the non-public recipe when bypassVisibility (serves the published file, gate skipped)", async () => {
       const { fileLoader, repo, service } = makeMocks({ source: "files" });
-      // preview forces the "both" path; DB miss → falls back to the file loader.
+      (fileLoader.findByFormId as Mock).mockReturnValue(PREVIEW_RECIPE);
+
+      const result = await service.getRecipe({
+        formId: "passport-renewal",
+        bypassVisibility: true,
+      });
+
+      // bypassVisibility serves the PUBLISHED file — the DB is never consulted.
+      expect(result).toBe(PREVIEW_RECIPE);
+      expect(repo.findOne).not.toHaveBeenCalled();
+    });
+
+    it("getRecipe returns the non-public recipe when draft (DB path also bypasses the gate)", async () => {
+      const { fileLoader, repo, service } = makeMocks({ source: "files" });
+      // draft forces the "both" path; DB miss → falls back to the file loader.
       (repo.findOne as Mock).mockResolvedValue(null);
       (fileLoader.findByFormId as Mock).mockReturnValue(PREVIEW_RECIPE);
 
       const result = await service.getRecipe({
         formId: "passport-renewal",
-        preview: true,
+        draft: true,
       });
 
       expect(result).toBe(PREVIEW_RECIPE);
+      expect(repo.findOne).toHaveBeenCalled();
     });
 
     it("getRecipe still returns a public recipe", async () => {
@@ -858,9 +873,9 @@ describe("FormDefinitionsService", () => {
     });
   });
 
-  describe("preview flag", () => {
-    describe("valid preview resolves via DB/both even in prod files mode", () => {
-      it("getRecipe with preview:true consults DB (both path) even when source=files/prod", async () => {
+  describe("draft flag", () => {
+    describe("draft resolves via DB/both even in prod files mode", () => {
+      it("getRecipe with draft:true consults DB (both path) even when source=files/prod", async () => {
         const { repo, fileLoader, service } = makeMocks({
           source: "files",
           nodeEnv: "production",
@@ -877,7 +892,7 @@ describe("FormDefinitionsService", () => {
 
         const result = await service.getRecipe({
           formId: "passport-renewal",
-          preview: true,
+          draft: true,
         });
 
         // The both path must have run — DB consulted
@@ -886,7 +901,7 @@ describe("FormDefinitionsService", () => {
         expect(result).toMatchObject({ title: "DB" });
       });
 
-      it("findByFormId with preview:true consults DB (both path) even when source=files/prod", async () => {
+      it("findByFormId with draft:true consults DB (both path) even when source=files/prod", async () => {
         const { repo, fileLoader, registry, service } = makeMocks({
           source: "files",
           nodeEnv: "production",
@@ -903,7 +918,7 @@ describe("FormDefinitionsService", () => {
 
         await service.findByFormId({
           formId: "passport-renewal",
-          preview: true,
+          draft: true,
         });
 
         // DB was consulted — both path ran despite source=files/prod
@@ -915,21 +930,37 @@ describe("FormDefinitionsService", () => {
       });
     });
 
-    describe("preview=false or omitted leaves existing source resolution unchanged", () => {
-      it("getRecipe with preview:false delegates to fileLoader only (no DB)", async () => {
+    describe("draft=false or omitted leaves existing source resolution unchanged", () => {
+      it("getRecipe with draft:false delegates to fileLoader only (no DB)", async () => {
         const { fileLoader, repo, service } = makeMocks({
           source: "files",
           nodeEnv: "production",
         });
         (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
 
-        await service.getRecipe({ formId: "passport-renewal", preview: false });
+        await service.getRecipe({ formId: "passport-renewal", draft: false });
 
         expect(fileLoader.findByFormId).toHaveBeenCalled();
         expect(repo.findOne).not.toHaveBeenCalled();
       });
 
-      it("getRecipe with preview omitted delegates to fileLoader only (no DB)", async () => {
+      it("bypassVisibility alone does NOT consult the DB (serves the published file)", async () => {
+        const { fileLoader, repo, service } = makeMocks({
+          source: "files",
+          nodeEnv: "production",
+        });
+        (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
+
+        await service.getRecipe({
+          formId: "passport-renewal",
+          bypassVisibility: true,
+        });
+
+        expect(fileLoader.findByFormId).toHaveBeenCalled();
+        expect(repo.findOne).not.toHaveBeenCalled();
+      });
+
+      it("getRecipe with draft omitted delegates to fileLoader only (no DB)", async () => {
         const { fileLoader, repo, service } = makeMocks({
           source: "files",
           nodeEnv: "production",
@@ -943,7 +974,7 @@ describe("FormDefinitionsService", () => {
       });
     });
 
-    describe("preview resolves the draft (#1196)", () => {
+    describe("draft resolves the DB scratch (#1196)", () => {
       it("returns the DB draft (keyed by formId)", async () => {
         const { repo, fileLoader, service } = makeMocks({
           source: "files",
@@ -957,7 +988,7 @@ describe("FormDefinitionsService", () => {
 
         const result = await service.getRecipe({
           formId: "passport-renewal",
-          preview: true,
+          draft: true,
         });
 
         expect(repo.findOne).toHaveBeenCalledWith(
@@ -977,7 +1008,7 @@ describe("FormDefinitionsService", () => {
 
         const result = await service.getRecipe({
           formId: "passport-renewal",
-          preview: true,
+          draft: true,
         });
 
         expect(fileLoader.findByFormId).toHaveBeenCalledWith({

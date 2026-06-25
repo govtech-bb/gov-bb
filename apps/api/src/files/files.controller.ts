@@ -24,11 +24,18 @@ export class FilesController {
   @Throttle({ medium: { ttl: 60_000, limit: 30 } })
   async presignUpload(
     @Body() dto: PresignUploadDto,
-    // Forwarded to honour an unpublished preview draft (validated server-side),
-    // mirroring the form-GET path. Absent/invalid → published recipes only.
+    // Forwarded to resolve a non-public recipe's file-field config server-side,
+    // mirroring the form-GET path (#1682). `X-Recipe-Preview` serves the
+    // published recipe; `X-Recipe-Draft` sources the in-progress DB scratch.
+    // Absent/invalid → published recipes only.
     @Headers("x-recipe-preview") previewToken?: string,
+    @Headers("x-recipe-draft") draftToken?: string,
   ): Promise<ApiResponseShape<PresignUploadResponseDto>> {
-    const data = await this.filesService.presignUpload(dto, previewToken);
+    const data = await this.filesService.presignUpload(
+      dto,
+      previewToken,
+      draftToken,
+    );
     return ApiResponse.success(data, { message: "Upload URL generated" });
   }
 
@@ -37,8 +44,13 @@ export class FilesController {
   async confirmUpload(
     @Body() dto: ConfirmUploadDto,
     @Headers("x-recipe-preview") previewToken?: string,
+    @Headers("x-recipe-draft") draftToken?: string,
   ): Promise<ApiResponseShape<FileAttachmentDto>> {
-    const data = await this.filesService.confirmUpload(dto, previewToken);
+    const data = await this.filesService.confirmUpload(
+      dto,
+      previewToken,
+      draftToken,
+    );
     return ApiResponse.success(data, { message: "Upload confirmed" });
   }
 }
