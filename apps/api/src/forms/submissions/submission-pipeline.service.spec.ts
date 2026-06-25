@@ -111,6 +111,7 @@ describe("SubmissionPipelineService", () => {
         formId: "passport-renewal",
         version: "2.0.0",
         includeProcessors: true,
+        bypassVisibility: false,
       });
     });
 
@@ -126,6 +127,7 @@ describe("SubmissionPipelineService", () => {
         formId: dto.formId,
         version: dto.formVersion,
         includeProcessors: true,
+        bypassVisibility: false,
       });
       expect(result.draft).toBeNull();
       expect(result.contract).toBe(contract);
@@ -159,10 +161,10 @@ describe("SubmissionPipelineService", () => {
     });
   });
 
-  describe("preview-only version guard", () => {
+  describe("draft-sourced version guard", () => {
     const noDraftDto = () => ({ ...baseDto(), draftId: undefined });
 
-    it("DB-only/preview version → 400 BadRequest, not 404", async () => {
+    it("DB-only/draft version → 400 BadRequest, not 404", async () => {
       const dto = noDraftDto();
       definitionsService.findByFormId.mockRejectedValue(
         AppError.notFound("Form definition", {
@@ -176,11 +178,33 @@ describe("SubmissionPipelineService", () => {
         BadRequestException,
       );
       await expect(service.run(dto)).rejects.toThrow(/unpublished preview/);
+      // The probe consults the DB scratch (draft path), not the visibility
+      // bypass — only a draft-sourced recipe is rejected (#1682).
       expect(definitionsService.getRecipe).toHaveBeenCalledWith({
         formId: dto.formId,
         version: dto.formVersion,
-        preview: true,
+        draft: true,
       });
+    });
+
+    it("bypassVisibility submission resolves a published-but-flagged form (no 400)", async () => {
+      // A ?preview= submission carries bypassVisibility: the published recipe
+      // of a non-public form resolves at step 1, so the draft-sourced guard is
+      // never reached and submission proceeds (#1682).
+      const contract = mockContract();
+      const dto = { ...noDraftDto(), bypassVisibility: true };
+      definitionsService.findByFormId.mockResolvedValue(contract);
+
+      const result = await service.run(dto);
+
+      expect(definitionsService.findByFormId).toHaveBeenCalledWith({
+        formId: dto.formId,
+        version: dto.formVersion,
+        includeProcessors: true,
+        bypassVisibility: true,
+      });
+      expect(definitionsService.getRecipe).not.toHaveBeenCalled();
+      expect(result.contract).toBe(contract);
     });
 
     it("genuinely unknown version → still 404 NotFound", async () => {

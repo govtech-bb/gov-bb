@@ -58,33 +58,42 @@ export class FormDefinitionsController {
   @GetFormDefinitionDocs()
   async get(
     @Param("formId") formId: string,
+    // `?preview=` → visibility bypass: serve the published recipe of a
+    // non-public form (submission stays allowed). `?draft=` → DB scratch
+    // sourcing: serve the in-progress builder draft (submission blocked). Both
+    // validate against RECIPE_PREVIEW_TOKEN and both bypass the #1646 gate
+    // (#1682).
     @Headers("x-recipe-preview") previewToken?: string,
+    @Headers("x-recipe-draft") draftToken?: string,
     @Res({ passthrough: true }) res?: Response,
   ): Promise<ApiResponseShape<ServiceContract>> {
     const override = await this.disabledOverridesService.find(formId);
     if (override) {
       // 410 Gone — the kill switch is engaged. Body shape matches the spec.
-      // A disabled form remains disabled even with a valid preview token.
+      // A disabled form remains disabled even with a valid preview/draft token.
       throw new HttpException(
         { disabled: true, reason: override.reason },
         HttpStatus.GONE,
       );
     }
 
-    const preview = isValidSecretToken(
-      this.configService.get<string>("RECIPE_PREVIEW_TOKEN", ""),
-      previewToken,
+    const configuredToken = this.configService.get<string>(
+      "RECIPE_PREVIEW_TOKEN",
+      "",
     );
+    const bypassVisibility = isValidSecretToken(configuredToken, previewToken);
+    const draft = isValidSecretToken(configuredToken, draftToken);
 
-    if (preview) {
-      // Prevent CDN/proxy/browser caching for preview responses — the recipe
-      // may include unpublished DB content that must not be served from cache.
+    if (bypassVisibility || draft) {
+      // Prevent CDN/proxy/browser caching for preview/draft responses — they
+      // may carry non-public or unpublished DB content that must not be cached.
       res?.setHeader("Cache-Control", "no-store");
     }
 
     const data = await this.formDefinitionsService.findByFormId({
       formId,
-      preview,
+      bypassVisibility,
+      draft,
     });
     return AppApiResponse.success(data, {
       message: "Form definition retrieved",

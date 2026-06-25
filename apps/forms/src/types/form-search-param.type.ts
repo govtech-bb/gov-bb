@@ -2,7 +2,18 @@ import { z } from "zod";
 
 export const formSearchParamSchema = z.object({
   step: z.string().optional(),
+  /**
+   * Operator visibility-bypass token (`?preview=`). Forwarded as
+   * `X-Recipe-Preview` so a reviewer sees and submits the *published* recipe of
+   * a non-public form exactly as a citizen would once it launches (#1682).
+   */
   preview: z.string().optional(),
+  /**
+   * Operator DB-draft token (`?draft=`). Forwarded as `X-Recipe-Draft` so a
+   * reviewer sees the in-progress builder scratch; submission stays blocked
+   * (#1682).
+   */
+  draft: z.string().optional(),
   /**
    * The id of the form a citizen came from when sent to a feedback form (e.g.
    * the exit survey's "Give feedback on this service" link sets

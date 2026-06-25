@@ -95,13 +95,19 @@ const makeFetch = async <T extends ApiResponse>(
 export const fetchFormDefinition = async (
   contractId: string,
   preview?: string,
+  draft?: string,
 ): Promise<ServiceContract> => {
+  // `?preview=` → X-Recipe-Preview (visibility bypass, published recipe);
+  // `?draft=` → X-Recipe-Draft (DB scratch). Both validate server-side against
+  // RECIPE_PREVIEW_TOKEN (#1682).
+  const headers: Record<string, string> = {};
+  if (preview) headers["X-Recipe-Preview"] = preview;
+  if (draft) headers["X-Recipe-Draft"] = draft;
+
   const { body } = await makeFetch<FormDefinitionResponse>(
     `/form-definitions/${encodeURIComponent(contractId)}`,
     { not_found: `The form "${contractId}" could not be found.` },
-    preview
-      ? { method: "GET", headers: { "X-Recipe-Preview": preview } }
-      : undefined,
+    Object.keys(headers).length > 0 ? { method: "GET", headers } : undefined,
   );
 
   try {
@@ -218,6 +224,10 @@ export const deleteFormDraft = async (draftId: string): Promise<number> => {
 export const postFormSubmission = async (
   { formId, idempotencyKey }: FormMeta,
   valuesBySteps: FormValuesByStep,
+  // `?preview=` token: forwarded as X-Recipe-Preview so a reviewer can submit a
+  // published-but-flagged (non-public) form — the visibility gate is bypassed
+  // server-side (#1682). Absent on the normal citizen flow.
+  previewToken?: string,
 ) => {
   const endpoint = `/submissions`;
   const errorMessage = {};
@@ -226,6 +236,7 @@ export const postFormSubmission = async (
     headers: {
       "Content-Type": "application/json",
       "idempotency-key": idempotencyKey,
+      ...(previewToken ? { "X-Recipe-Preview": previewToken } : {}),
     },
     body: JSON.stringify({
       formId,
