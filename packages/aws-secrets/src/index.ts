@@ -1,5 +1,5 @@
 export {
   getCachedSecretJson,
   getCachedSecretString,
-  invalidateSecretCache,
+  getSecretJson,
 } from "./secrets.js";
