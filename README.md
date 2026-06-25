@@ -1,11 +1,16 @@
-# modular-forms-monorepo
+# Simple Service Builder (SSB)
 
-Modular form component system for Barbados government services.
+Platform for building and delivering Barbados government digital services —
+online forms, a no-code form builder, a services landing site, and an assistant
+chatbot.
+
+> The npm/monorepo package is still named `@govtech-bb/modular-forms-monorepo`
+> for historical reasons; the product is **SSB**.
 
 ## Prerequisites
 
 - Node.js >= 20
-- pnpm >= 10 (`corepack enable` or `npm install -g pnpm@10.30.0`)
+- pnpm 11 (`corepack enable`, pinned to `pnpm@11.6.0` via `packageManager`)
 
 ## Getting started
 
@@ -15,107 +20,128 @@ pnpm install
 
 ## Project structure
 
+This is an **nx + TypeScript project-references monorepo** using pnpm workspaces.
+
 ```
 apps/
-  forms/        Next.js frontend (port 4200)
-  api/          NestJS backend  (port 3001)
+  api/               NestJS backend — forms, recipes, submissions, and per-form
+                     processors (email, payment, uploads). Postgres via TypeORM.
+                     Runs as a container on ECS/Fargate.
+  forms/             Citizen-facing form renderer (Vite + React, static site).
+                     Deployed on Amplify.
+  form_builder/      No-code form-authoring app (SSR, GitHub-OAuth gated).
+                     Deployed on Amplify (compute).
+  form_builder_api/  Backend for the builder — publishes recipes via git and
+                     issues presigned S3 upload URLs. Container on ECS.
+  landing/           gov.bb services landing site (TanStack Start SSR).
+                     Deployed on Amplify (compute).
+  chat/              Assistant chatbot (SSR) plus a RAG ingest task. Uses AWS
+                     Bedrock. Amplify (compute) + a Fargate ingest job.
 
 packages/
-  form-types/       Shared TypeScript types
-  form-conditions/  Condition evaluation logic
+  form-types/        Shared TypeScript types for forms and recipes.
+  registry/          Canonical registry of built-in field & component definitions.
+  form-conditions/   Conditional show/hide evaluation.
+  form-validation/   Field-level validation rules.
+  expressions/       Expression evaluation engine.
+  form-builder/      Shared form-builder logic and components.
+  database/          TypeORM entities, DB access, and recipe file loaders.
+  git-publish/       Publishes recipes to the repo via git commits.
+  ai-bedrock/        AWS Bedrock client wrapper.
+  analytics/         Analytics event tracking.
+  aws-secrets/       AWS Secrets Manager helpers.
+  content/           Shared content / markdown loaders.
 ```
+
+> **Adding a new package?** It must be a buildable nx project *and* be listed in
+> the consuming project's `tsconfig.json` `references`, or the strict `tsc`
+> build fails with `TS6059`/`TS6307`. See `CLAUDE.md` → "Monorepo build gotcha".
 
 ## Scripts
 
 | Command | Description |
 |---|---|
-| `pnpm dev:forms` | Start forms app in dev mode |
-| `pnpm dev:api` | Start API in dev mode |
-| `pnpm dev:landing` | Start landing app in dev mode |
-| `pnpm start:forms` | Start forms app in production mode |
-| `pnpm start:api` | Start API in production mode |
-| `pnpm build` | Build all apps and packages |
-| `pnpm lint` | Lint all apps and packages |
-| `pnpm format` | Format all files with Prettier |
-| `pnpm format:check` | Check formatting without writing |
+| `pnpm build` | Build all apps and packages (`nx run-many -t build`) |
+| `pnpm test:all` | Run the full test suite (`nx run-many -t test`) |
+| `pnpm lint` | Lint all projects |
+| `pnpm lint:deps` | Check workspace dependency consistency (sherif) |
+| `pnpm dev:forms` | Start the forms app in dev mode |
+| `pnpm dev:api` | Start the API in dev mode |
+| `pnpm dev:landing` | Start the landing app in dev mode |
+| `pnpm format` / `pnpm format:check` | Format (or check) with Prettier |
+| `pnpm validate-recipes` | Validate all recipe files |
+| `pnpm dump-recipes` | Dump recipes from the DB to files |
 | `pnpm migration:generate -- <path>` | Generate a migration from entity changes |
-| `pnpm migration:run` | Run all pending migrations |
-| `pnpm migration:revert` | Revert the last migration |
-| `pnpm migration:show` | Show applied / pending migration status |
+| `pnpm migration:run` / `:revert` / `:show` | Apply / revert / show migrations |
+
+Other apps run directly via nx, e.g. `pnpm exec nx dev chat`,
+`pnpm exec nx dev form-builder-app`, `pnpm exec nx serve form-builder-api`.
+
+> **Local build caveat:** `landing`'s prebuild fetches from a live external
+> forms API, so a fully offline build fails on it; `cms` is deprecated. When
+> verifying locally, run
+> `pnpm exec nx run-many -t build --exclude=landing,cms` and let CI build
+> everything. Scope tests to what you touched
+> (`pnpm exec nx run-many -t test -p <projects>`) to avoid local OOM.
 
 ## Environment variables
 
-Copy the example files and adjust as needed:
+Each app ships a `.env.example` — copy it and adjust:
 
 ```bash
 cp apps/forms/.env.example apps/forms/.env
 cp apps/api/.env.example apps/api/.env
 ```
 
-| Variable | App | Default | Description |
-|---|---|---|---|
-| `PORT` | forms | `4200` | Next.js server port |
-| `VITE_API_URL` | forms | `http://localhost:3001` | API base URL |
-| `API_PORT` | api | `3001` | NestJS server port |
-| `DB_HOST` | api | `localhost` | PostgreSQL host |
-| `DB_PORT` | api | `5432` | PostgreSQL port |
-| `DB_USERNAME` | api | `postgres` | Database user |
-| `DB_PASSWORD` | api | `postgres` | Database password |
-| `DB_NAME` | api | `modular_forms` | Database name |
-| `DB_SYNCHRONIZE` | api | `false` | Auto-sync schema (dev only — never `true` in production) |
-| `DB_LOGGING` | api | `false` | Log all SQL queries |
-| `DB_SSL_CA` | api | _(unset)_ | Optional CA bundle (PEM contents or path) for verifying the DB TLS cert in production. If unset, Node's built-in trust store is used. |
+Key variables:
 
-## Deployment
-
-### Forms (AWS Amplify)
-
-The `amplify.yml` at the repo root configures the build. Amplify runs `pnpm exec nx run forms:build` and serves from `apps/forms/dist`.
-
-Set environment variables in the Amplify console.
-
-### API (AWS Fargate)
-
-A Dockerfile is provided at `apps/api/Dockerfile`. Build and push to ECR:
-
-```bash
-docker build -f apps/api/Dockerfile -t govtech-api .
-```
-
-Set `API_PORT` and all `DB_*` variables in the ECS task definition environment variables.
+| Variable | App | Description |
+|---|---|---|
+| `VITE_API_URL` | forms | API base URL (Vite, build-time) |
+| `API_PORT` | api | API server port (default `3001`) |
+| `DB_HOST` / `DB_PORT` / `DB_USERNAME` / `DB_PASSWORD` / `DB_NAME` | api | PostgreSQL connection |
+| `DB_SYNCHRONIZE` | api | Auto-sync schema — **dev only, never `true` in production** |
+| `DB_SSL_CA` | api | Optional CA bundle for verifying the DB TLS cert in production |
 
 ## Database
 
-The API uses PostgreSQL via TypeORM. The connection is configured through the `DB_*` environment variables above.
-
-### Migrations
-
-The TypeORM CLI DataSource is at `apps/api/typeorm.config.ts`. Run migrations from the repo root:
+The API uses PostgreSQL via TypeORM. The CLI DataSource is at
+`apps/api/typeorm.config.ts`; migrations live in
+`apps/api/src/database/migrations/`.
 
 ```bash
-# Generate a new migration from entity changes
-pnpm migration:generate -- src/database/migrations/<MigrationName>
-
-# Run pending migrations
+pnpm migration:generate -- apps/api/src/database/migrations/<MigrationName>
 pnpm migration:run
-
-# Revert the last migration
 pnpm migration:revert
-
-# Show migration status
 pnpm migration:show
 ```
 
-Migration files are stored in `apps/api/src/database/migrations/`.
+> `DB_SYNCHRONIZE=true` auto-syncs the schema on startup — useful in local dev,
+> never in production. Use migrations instead.
 
-> **Note:** `DB_SYNCHRONIZE=true` auto-syncs the schema on startup — useful in local dev but must never be enabled in production. Use migrations instead.
+> **Note:** at runtime, production forms are served from **recipe files**, not
+> the `form_definitions` table (a `NODE_ENV` guard) — so DB changes don't alter
+> the live forms list. See `docs/decisions/0007-runtime-recipes-load-from-files…`.
+
+## Deployment & branching
+
+- **Frontends** (`forms`, `landing`, `chat`, `form_builder`) deploy on **AWS
+  Amplify** — `forms` as a static site, the others as SSR compute apps.
+- **Backends** (`api`, `form_builder_api`) and the **chat RAG ingest** run as
+  containers on **ECS/Fargate**.
+- Environments: **`sandbox` → `staging` → `prod`**, each tied to its AWS
+  environment.
+
+The team is moving to a **trunk-based model** with `main` as the single
+CI-gated source of truth (merges to `main` fan out to the environments;
+production is a manual, windowed deploy). See
+[`docs/trunk-based-development.md`](docs/trunk-based-development.md).
 
 ## Path aliases
 
-Shared packages are available via these TypeScript path aliases (configured in `tsconfig.base.json`):
-
-- `@govtech-bb/form-types`
-- `@govtech-bb/form-conditions`
+Shared packages are imported via `@govtech-bb/<name>` (configured in
+`tsconfig.base.json`), e.g. `@govtech-bb/form-types`, `@govtech-bb/registry`,
+`@govtech-bb/form-conditions`, `@govtech-bb/database`.
 
 ## Nx
 
@@ -123,4 +149,5 @@ Shared packages are available via these TypeScript path aliases (configured in `
 pnpm exec nx graph              # Visualize the dependency graph
 pnpm exec nx show projects      # List all projects
 pnpm exec nx run forms:build    # Build a single project
+pnpm exec nx affected -t build  # Build only what changed vs the base branch
 ```
