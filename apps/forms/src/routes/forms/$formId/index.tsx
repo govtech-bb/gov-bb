@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { canDropPreviewToken } from "../../../lib/preview-url";
 import {
   getVisibleSteps,
   getVisibleFields,
@@ -102,6 +103,7 @@ function RouteComponent() {
   // Only `?draft=` (the DB scratch) blocks submission. `?preview=` serves the
   // published recipe and submits exactly as a citizen would (#1682).
   const isDraft = Boolean(draft);
+  const navigate = useNavigate({ from: "/forms/$formId/" });
   // Rehydrate the committed submission outcome on a confirmation-step reload so
   // the renderer doesn't bounce the citizen off it (submissionState is React
   // state and is otherwise lost on refresh). A lazy initialiser — not an effect
@@ -125,6 +127,21 @@ function RouteComponent() {
   React.useEffect(() => {
     trackEvent("form-open", { form_id: formMeta.formId });
   }, [formMeta.formId]);
+
+  // Secret hygiene: once a `?preview=` token has unlocked the form, drop it from
+  // the URL (matching landing) so the secret doesn't linger in history. Only
+  // where the shared cookie can persist (forms and API same-site) — the API
+  // minted it on the first credentialed fetch, so the loader re-runs with a
+  // cookie-only fetch and stays unlocked. On cross-site Amplify previews the
+  // cookie is inert, so we keep the token or the refetch would 404 (#1646 P3).
+  React.useEffect(() => {
+    if (!preview) return;
+    if (!canDropPreviewToken(window.location.hostname)) return;
+    navigate({
+      search: (prev) => ({ ...prev, preview: undefined }),
+      replace: true,
+    });
+  }, [preview, navigate]);
 
   // Mount-only: a fresh load on any step other than the confirmation means we
   // are not viewing a committed outcome, so discard any submissionState left in

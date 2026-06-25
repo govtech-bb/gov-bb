@@ -23,6 +23,8 @@ vi.mock("@tanstack/react-router", () => ({
     useLoaderData: vi.fn(),
     useSearch: vi.fn(),
   }),
+  // RouteComponent calls useNavigate to strip the ?preview= token after load.
+  useNavigate: () => vi.fn(),
 }));
 
 vi.mock("@tanstack/react-form", () => ({
