@@ -558,6 +558,49 @@ describe("BuilderPage — unsaved changes + Discard", () => {
     expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
   });
 
+  it("disables Deploy for a clean form whose visibility is draft (#1682)", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockForms = [
+      { id: "wip", formId: "wip-form", title: "WIP Form", version: "1.0.0", isPublished: false },
+    ];
+    // Loaded clean (no edits) so the ONLY thing blocking Deploy is the draft
+    // visibility — proves the gate, not the unsaved-changes gate.
+    getRecipe.mockResolvedValue({
+      formId: "wip-form",
+      title: "WIP Form",
+      version: "1.0.0",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/first-name" }],
+          behaviours: [],
+        },
+        { stepId: "check-your-answers", title: "Check your answers", elements: [], behaviours: [] },
+        { stepId: "declaration", title: "Declaration", elements: [], behaviours: [] },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+      meta: { visibility: "draft" },
+    });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(await screen.findByText("WIP Form"));
+    expect(await screen.findByDisplayValue("wip-form")).toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
+    expect(
+      screen.getByText(/set visibility to preview or public to deploy/i),
+    ).toBeInTheDocument();
+  });
+
   it("clears the form when Discard is confirmed and there is no saved baseline", () => {
     mockEmptyDraft = VALID_DRAFT; // dirty but never saved/loaded ⇒ no baseline
     renderBuilder();

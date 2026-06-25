@@ -183,6 +183,34 @@ describe("Toolbar — unsaved changes + Discard", () => {
   });
 });
 
+describe("Toolbar — Deploy blocked while visibility is draft (#1682)", () => {
+  it("disables Deploy when visibility is draft, even on a clean valid draft", () => {
+    renderToolbar({ hasUnsavedChanges: false, visibility: "draft" });
+
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
+  });
+
+  it("shows a hint telling the author to set Preview or Public", () => {
+    renderToolbar({ hasUnsavedChanges: false, visibility: "draft" });
+
+    expect(
+      screen.getByText(/set visibility to preview or public to deploy/i),
+    ).toBeInTheDocument();
+  });
+
+  it("enables Deploy when visibility is preview", () => {
+    renderToolbar({ hasUnsavedChanges: false, visibility: "preview" });
+
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
+  });
+
+  it("enables Deploy when visibility is public", () => {
+    renderToolbar({ hasUnsavedChanges: false, visibility: "public" });
+
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
+  });
+});
+
 describe("Toolbar — read-only lock (#874)", () => {
   it("disables Save draft when read-only, even with unsaved changes", () => {
     renderToolbar({ hasUnsavedChanges: true, isReadOnly: true });
