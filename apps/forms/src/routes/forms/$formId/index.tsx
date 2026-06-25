@@ -298,6 +298,7 @@ function RouteComponent() {
       submissionState={submissionState}
       isDraft={isDraft}
       previewToken={preview}
+      draftToken={draft}
     />
   );
 }

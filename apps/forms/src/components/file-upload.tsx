@@ -24,6 +24,7 @@ export default function FileUpload({
   errorId,
   formId,
   previewToken,
+  draftToken,
 }: FileUploadProps) {
   const files = value ?? [];
 
@@ -106,6 +107,7 @@ export default function FileUpload({
             stepId: presignStepId,
             fieldId: field.fieldId,
             previewToken,
+            draftToken,
           });
           appendConfirmed(confirmed);
           setPending((prev) => prev.filter((p) => p.id !== id));

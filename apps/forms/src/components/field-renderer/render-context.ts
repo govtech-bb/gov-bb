@@ -27,6 +27,7 @@ export function buildFieldRenderContext(args: {
   insetFieldsByOption?: Map<string, InsetFieldEntry[]>;
   formId?: string;
   previewToken?: string;
+  draftToken?: string;
 }) {
   const {
     field,
@@ -36,6 +37,7 @@ export function buildFieldRenderContext(args: {
     insetFieldsByOption,
     formId,
     previewToken,
+    draftToken,
   } = args;
 
   let errorMessage = "";
@@ -114,6 +116,7 @@ export function buildFieldRenderContext(args: {
     insetFieldsByOption,
     formId,
     previewToken,
+    draftToken,
   };
 }
 
