@@ -278,19 +278,30 @@ describe("RouteComponent", () => {
     });
   });
 
-  it("passes isPreview=true to FormRenderer when a preview token is in search", () => {
+  it("passes isDraft=true to FormRenderer when a draft token is in search", () => {
+    vi.spyOn(Route, "useSearch").mockReturnValue({
+      step: "step1",
+      draft: "tok",
+    });
+    render(<Route.component />);
+    expect(mockFormRendererProps.current.isDraft).toBe(true);
+  });
+
+  it("does NOT set isDraft for a preview token — preview is submittable (#1682)", () => {
     vi.spyOn(Route, "useSearch").mockReturnValue({
       step: "step1",
       preview: "tok",
     });
     render(<Route.component />);
-    expect(mockFormRendererProps.current.isPreview).toBe(true);
+    expect(mockFormRendererProps.current.isDraft).toBe(false);
+    // The preview token is still forwarded for file uploads.
+    expect(mockFormRendererProps.current.previewToken).toBe("tok");
   });
 
-  it("passes isPreview=false to FormRenderer when no preview token is in search", () => {
+  it("passes isDraft=false to FormRenderer when no draft token is in search", () => {
     vi.spyOn(Route, "useSearch").mockReturnValue({ step: "step1" });
     render(<Route.component />);
-    expect(mockFormRendererProps.current.isPreview).toBe(false);
+    expect(mockFormRendererProps.current.isDraft).toBe(false);
   });
 
   it("ignores and clears any persisted submissionState on a fresh non-confirmation load", () => {

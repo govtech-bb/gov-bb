@@ -151,7 +151,7 @@ export default function FormRenderer({
   visibleSteps,
   repeatableStepSettingsRef,
   submissionState,
-  isPreview = false,
+  isDraft = false,
   previewToken,
 }: FormRendererProps) {
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
@@ -449,9 +449,9 @@ export default function FormRenderer({
   return (
     <div className="container pb-8 lg:pb-16">
       <div className="form-page form-width">
-        {isPreview && (
-          <StatusBanner variant="service-issue" data-testid="preview-banner">
-            Preview mode — this is an unpublished draft and cannot be submitted.
+        {isDraft && (
+          <StatusBanner variant="service-issue" data-testid="draft-banner">
+            Draft mode — this is an unpublished draft and cannot be submitted.
           </StatusBanner>
         )}
         <div className="form-page__header">
@@ -603,14 +603,14 @@ export default function FormRenderer({
                 type="button"
                 disabled={
                   (isLastFormStep && isSubmitting) ||
-                  (isLastFormStep && isPreview)
+                  (isLastFormStep && isDraft)
                 }
                 onClick={isLastFormStep ? handleSubmit : handleContinue}
               >
                 {isLastFormStep && isSubmitting
                   ? "Submitting…"
-                  : isLastFormStep && isPreview
-                    ? "Submit (preview)"
+                  : isLastFormStep && isDraft
+                    ? "Submit (draft)"
                     : isLastFormStep
                       ? "Submit"
                       : "Continue"}
@@ -619,9 +619,10 @@ export default function FormRenderer({
           )}
           {currentStep.stepId !== "submission-confirmation" &&
             isLastFormStep &&
-            isPreview && (
-              <p className="govbb-hint" data-testid="preview-submit-hint">
-                Submitting is disabled in preview. Publish the form to enable
+            isDraft && (
+              <p className="govbb-hint" data-testid="draft-submit-hint">
+                Submitting is disabled for an unpublished draft. Set the form's
+                visibility to Preview or Public and publish it to enable
                 submission.
               </p>
             )}

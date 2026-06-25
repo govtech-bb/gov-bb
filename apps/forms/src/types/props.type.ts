@@ -11,10 +11,17 @@ export interface FormRendererProps {
   stepId: string;
   repeatableStepSettingsRef: React.MutableRefObject<RepeatableStepSettings>;
   submissionState?: SubmissionState;
-  isPreview?: boolean;
+  /**
+   * `?draft=` mode (#1682): viewing the in-progress DB scratch draft. Submission
+   * is BLOCKED (the recipe isn't published). Drives the blocking banner, the
+   * disabled submit button, and the submit hint. `?preview=` (the published
+   * recipe of a non-public form) is intentionally NOT flagged here — it submits
+   * exactly as a citizen would once the form launches.
+   */
+  isDraft?: boolean;
   /**
    * The raw `?preview=` token, forwarded to file uploads so presign/confirm
-   * resolve an unpublished draft. `isPreview` is the boolean derived from it.
+   * resolve the non-public recipe.
    */
   previewToken?: string;
 }
