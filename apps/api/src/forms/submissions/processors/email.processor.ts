@@ -145,7 +145,6 @@ export class EmailProcessor implements ISubmissionProcessor {
         } else {
           const contract = await this.emailBodyBuilder.resolveContract(
             payload.formId,
-            payload.formVersion,
           );
           subject = `A new submission has been received for ${contract.title}`;
         }
@@ -304,7 +303,6 @@ export class EmailProcessor implements ISubmissionProcessor {
   }> {
     const contract = await this.emailBodyBuilder.resolveContract(
       payload.formId,
-      payload.formVersion,
     );
     const entries = FilesService.collectFileEntries(
       FilesService.collectFileFieldsByStep(contract),

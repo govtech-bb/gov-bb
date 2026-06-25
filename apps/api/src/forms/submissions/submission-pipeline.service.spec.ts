@@ -98,18 +98,15 @@ describe("SubmissionPipelineService", () => {
     if (module) await module.close();
   });
 
-  describe("pinVersion", () => {
-    it("uses the draft's pinned version even when the client sends a different one", async () => {
-      draftsService.findById.mockResolvedValue(
-        mockDraft({ formVersion: "2.0.0" }),
-      );
+  describe("resolveDraftAndContract", () => {
+    it("draft path resolves the canonical recipe by formId (#1196: no version)", async () => {
+      draftsService.findById.mockResolvedValue(mockDraft());
       definitionsService.findByFormId.mockResolvedValue(mockContract());
 
       await service.run(baseDto());
 
       expect(definitionsService.findByFormId).toHaveBeenCalledWith({
         formId: "passport-renewal",
-        version: "2.0.0",
         includeProcessors: true,
         bypassVisibility: false,
       });
@@ -125,7 +122,6 @@ describe("SubmissionPipelineService", () => {
       expect(draftsService.findById).not.toHaveBeenCalled();
       expect(definitionsService.findByFormId).toHaveBeenCalledWith({
         formId: dto.formId,
-        version: dto.formVersion,
         includeProcessors: true,
         bypassVisibility: false,
       });
@@ -161,10 +157,10 @@ describe("SubmissionPipelineService", () => {
     });
   });
 
-  describe("draft-sourced version guard", () => {
+  describe("draft-sourced guard", () => {
     const noDraftDto = () => ({ ...baseDto(), draftId: undefined });
 
-    it("DB-only/draft version → 400 BadRequest, not 404", async () => {
+    it("DB-only/draft recipe → 400 BadRequest, not 404", async () => {
       const dto = noDraftDto();
       definitionsService.findByFormId.mockRejectedValue(
         AppError.notFound("Form definition", {
@@ -182,7 +178,6 @@ describe("SubmissionPipelineService", () => {
       // bypass — only a draft-sourced recipe is rejected (#1682).
       expect(definitionsService.getRecipe).toHaveBeenCalledWith({
         formId: dto.formId,
-        version: dto.formVersion,
         draft: true,
       });
     });
@@ -199,7 +194,6 @@ describe("SubmissionPipelineService", () => {
 
       expect(definitionsService.findByFormId).toHaveBeenCalledWith({
         formId: dto.formId,
-        version: dto.formVersion,
         includeProcessors: true,
         bypassVisibility: true,
       });
@@ -207,7 +201,7 @@ describe("SubmissionPipelineService", () => {
       expect(result.contract).toBe(contract);
     });
 
-    it("genuinely unknown version → still 404 NotFound", async () => {
+    it("genuinely unknown recipe → still 404 NotFound", async () => {
       const dto = noDraftDto();
       definitionsService.findByFormId.mockRejectedValue(
         AppError.notFound("Form definition", {
@@ -220,7 +214,7 @@ describe("SubmissionPipelineService", () => {
       await expect(service.run(dto)).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it("published file version → unaffected, getRecipe not called", async () => {
+    it("published recipe → unaffected, getRecipe not called", async () => {
       const contract = mockContract();
       definitionsService.findByFormId.mockResolvedValue(contract);
 

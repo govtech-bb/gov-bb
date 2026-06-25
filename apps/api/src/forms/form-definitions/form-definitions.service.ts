@@ -107,25 +107,18 @@ export class FormDefinitionsService {
 
   async findByFormId({
     formId,
-    version,
     includeProcessors = false,
     bypassVisibility = false,
     draft = false,
   }: {
     formId: string;
-    version?: string;
     includeProcessors?: boolean;
     bypassVisibility?: boolean;
     draft?: boolean;
   }): Promise<ServiceContract> {
-    const recipe = await this.getRecipe({
-      formId,
-      version,
-      bypassVisibility,
-      draft,
-    });
+    const recipe = await this.getRecipe({ formId, bypassVisibility, draft });
     if (!recipe) {
-      throw AppError.notFound("Form definition", { formId, version });
+      throw AppError.notFound("Form definition", { formId });
     }
 
     const contract = await this.registryService.hydrateForm(recipe);
@@ -163,10 +156,10 @@ export class FormDefinitionsService {
   }
 
   /**
-   * Resolve a raw recipe by formId (and optional version) from the configured
-   * source. Public so other services (e.g. FormDraftsService) can pin draft
-   * `formVersion` without reaching into the `form_definitions` table directly
-   * — which would expose unpublished builder scratch space (issue #145).
+   * Resolve a raw recipe by formId from the configured source. Public so other
+   * services (e.g. FormDraftsService) can read a recipe without reaching into
+   * the `form_definitions` table directly — which would expose unpublished
+   * builder scratch space (issue #145).
    *
    * Two independent, token-gated signals (#1682, split from the single
    * `preview` flag #1646 conflated):
@@ -182,16 +175,14 @@ export class FormDefinitionsService {
    */
   async getRecipe({
     formId,
-    version,
     bypassVisibility = false,
     draft = false,
   }: {
     formId: string;
-    version?: string;
     bypassVisibility?: boolean;
     draft?: boolean;
   }): Promise<ServiceContractRecipe | null> {
-    const recipe = await this.resolveRecipe({ formId, version, draft });
+    const recipe = await this.resolveRecipe({ formId, draft });
 
     // Launch gate (#1646): a non-public recipe is invisible to the public —
     // getRecipe returns null exactly as if it didn't exist, so every consumer
@@ -215,11 +206,9 @@ export class FormDefinitionsService {
    */
   private async resolveRecipe({
     formId,
-    version,
     draft,
   }: {
     formId: string;
-    version?: string;
     draft: boolean;
   }): Promise<ServiceContractRecipe | null> {
     // When draft is true, force "both" so the DB scratch is consulted regardless
@@ -228,30 +217,27 @@ export class FormDefinitionsService {
     const effectiveSource: RecipeSource = draft ? "both" : this.source();
 
     if (effectiveSource === "files") {
-      return this.recipeFileLoader.findByFormId({ formId, version });
+      return this.recipeFileLoader.findByFormId({ formId });
     }
 
     if (effectiveSource === "db") {
-      return this.getRecipeFromDb({ formId, version });
+      return this.getRecipeFromDb({ formId });
     }
 
     // effectiveSource === "both" — the draft path (#1196). The DB scratch row
     // is the in-progress authoring draft: prefer it, else fall back to the
-    // canonical flat file. No version dimension — a form is one draft + one
-    // canonical recipe.
+    // canonical flat file. A form is one draft + one canonical recipe.
     const dbRecipe = await this.getRecipeFromDb({ formId });
     return dbRecipe ?? this.recipeFileLoader.findByFormId({ formId });
   }
 
   private async getRecipeFromDb({
     formId,
-    version,
   }: {
     formId: string;
-    version?: string;
   }): Promise<ServiceContractRecipe | null> {
     const entity = await this.formDefRepo.findOne({
-      where: { formId, ...(version && { version }) },
+      where: { formId },
       order: { createdAt: "DESC" },
     });
     return entity ? entity.schema : null;
