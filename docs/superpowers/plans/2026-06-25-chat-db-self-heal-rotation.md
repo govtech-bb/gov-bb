@@ -382,6 +382,8 @@ git commit -m "feat(chat): route health + RAG retrieve through withDbAuthRetry"
 
 Tier 2 of the verification ladder. Runs against the local `docker-compose` `postgres` service, exercises **real** node-postgres + drizzle (real `28P01`), and is **skipped unless `CHAT_DB_IT=1`** so it never breaks CI.
 
+> **Trigger mechanism (revised):** do NOT use `pg_terminate_backend` — terminating a pooled connection yields PG `57P02` ("terminating connection"), a *test artifact* not the production rotation signal, and emits an unhandled pool `'error'` (which would force a production pool-listener we don't want). Instead trigger a genuine `28P01` the way production does: after the baseline query, `ALTER ROLE` the password + point `CHAT_DATABASE_URL` at the new one, then **wait past the pool's idle timeout (~11s; node-postgres default `idleTimeoutMillis` is 10s)** so the warm connection closes; the next query opens a fresh connection that dials with the stale connection string → real `28P01` → `withDbAuthRetry` self-heals. Self-heal stays scoped to `28P01` only — no production-code changes in this task. Cleanup must `DROP OWNED BY` the role before `DROP ROLE` (else `2BP01`).
+
 **Files:**
 - Create: `apps/chat/src/lib/db/self-heal.integration.test.ts`
 
