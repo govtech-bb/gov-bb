@@ -1,0 +1,64 @@
+name: Workflow Drift Guard
+
+# Trunk-owned workflow files (shared CI logic) must not be edited directly on
+# the long-lived environment branches. Doing so is how staging/prod silently
+# diverged from the trunk (e.g. main's docker-job rewrite that never reached
+# staging; tag pins that the SHA-pin cleanup couldn't see). They belong on the
+# trunk and reach env branches only via promotion. This guard fails any PR
+# into staging/prod that edits one of them — unless it is a promotion branch.
+
+on:
+  pull_request:
+    branches: [staging, prod]
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: Reject direct edits to trunk-owned workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check trunk-owned workflow files are untouched
+        env:
+          # Via env (not inline ${{ }}) so nothing is interpolated into the
+          # shell — keeps zizmor's template-injection check happy.
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          # Promotions legitimately carry trunk-owned files downstream.
+          case "$HEAD_REF" in
+            promote/*|promote-*)
+              echo "Promotion branch ($HEAD_REF) — guard skipped."
+              exit 0 ;;
+          esac
+
+          # Shared CI files: everything except the env-specific deploy workflows
+          # (deploy-staging.yml / deploy-prod.yml), which are allowed to differ.
+          SHARED=(
+            .github/workflows/ci.yml
+            .github/workflows/zizmor.yml
+            .github/workflows/pr-preview.yml
+            .github/workflows/forms-smoke.yml
+            .github/workflows/deploy-sandbox.yml
+            .github/workflows/archive-merged-drafts.yml
+            .github/workflows/assign-author-to-issues.yml
+            .github/workflows/project-automation.yml
+            .github/workflows/workflow-drift-guard.yml
+          )
+
+          changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- "${SHARED[@]}")
+          if [ -n "$changed" ]; then
+            echo "::error::This PR edits trunk-owned workflow file(s) on an environment branch:"
+            echo "$changed" | sed 's/^/  - /'
+            echo "These are shared CI files. Edit them on the trunk (sandbox) and let them"
+            echo "promote down. If this genuinely IS a promotion, name the branch promote/*."
+            exit 1
+          fi
+          echo "No trunk-owned workflow files modified — OK."
