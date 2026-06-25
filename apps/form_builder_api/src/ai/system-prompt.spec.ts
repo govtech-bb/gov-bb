@@ -118,6 +118,13 @@ describe("AI system prompt", () => {
     expect(prompt).toContain("camelCase");
   });
 
+  it("defaults every generated recipe to meta.visibility: draft (#1682)", () => {
+    // The schema example carries the meta object...
+    expect(prompt).toContain('"meta": {"visibility": "draft"}');
+    // ...and an explicit rule requires it on every generated recipe.
+    expect(prompt).toContain("EVERY recipe MUST default to");
+  });
+
   it("documents the optionalIf behaviour", () => {
     expect(prompt).toContain('"type": "optionalIf"');
     expect(prompt).toContain("stays VISIBLE but becomes optional");

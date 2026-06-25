@@ -102,6 +102,9 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
         ...draft,
         formId: `${draft.formId}-copy`,
         title: `Copy of ${draft.title}`,
+        // A duplicate is a brand-new, unpublished form — start it hidden so it
+        // can't inherit a `public` source's launch state by accident (#1682).
+        meta: { visibility: "draft" },
       });
       onClose();
     } catch (e) {
