@@ -1101,4 +1101,111 @@ describe("FormDefinitionsService.findAll", () => {
 
     expect(result[0]).not.toHaveProperty("category");
   });
+
+  it("excludes non-public forms from the list (#1646)", async () => {
+    const entities = [
+      makeEntityWithTitle("public-form", "Public Form"),
+      makeEntityWithTitle("preview-form", "Preview Form", {
+        schema: {
+          title: "Preview Form",
+          meta: { visibility: "preview" },
+        } as unknown as ServiceContractRecipe,
+      }),
+    ];
+    const { service } = makeFindAllMocks(entities);
+
+    const result = await service.findAll();
+
+    expect(result.map((f) => f.formId)).toEqual(["public-form"]);
+  });
+});
+
+describe("FormDefinitionsService — visibility gate (#1646)", () => {
+  const recipeWith = (visibility?: "public" | "preview" | "draft") => ({
+    ...MOCK_RECIPE,
+    ...(visibility ? { meta: { visibility } } : {}),
+  });
+
+  it("serves a public recipe", async () => {
+    const { fileLoader, service } = makeMocks({ source: "files" });
+    (fileLoader.findByFormId as Mock).mockReturnValue(recipeWith("public"));
+
+    await expect(
+      service.findByFormId({ formId: "passport-renewal" }),
+    ).resolves.toBeDefined();
+  });
+
+  it("serves a recipe with no meta (treated as public)", async () => {
+    const { fileLoader, service } = makeMocks({ source: "files" });
+    (fileLoader.findByFormId as Mock).mockReturnValue(recipeWith());
+
+    await expect(
+      service.findByFormId({ formId: "passport-renewal" }),
+    ).resolves.toBeDefined();
+  });
+
+  it.each(["preview", "draft"] as const)(
+    "404s a %s recipe for the public (no preview token)",
+    async (visibility) => {
+      const { fileLoader, service } = makeMocks({ source: "files" });
+      (fileLoader.findByFormId as Mock).mockReturnValue(recipeWith(visibility));
+
+      await expect(
+        service.findByFormId({ formId: "passport-renewal" }),
+      ).rejects.toThrow(NotFoundException);
+    },
+  );
+
+  it.each(["preview", "draft"] as const)(
+    "serves a %s recipe when a valid preview token is present",
+    async (visibility) => {
+      const { fileLoader, service } = makeMocks({ source: "files" });
+      (fileLoader.findByFormId as Mock).mockReturnValue(recipeWith(visibility));
+
+      await expect(
+        service.findByFormId({ formId: "passport-renewal", preview: true }),
+      ).resolves.toBeDefined();
+    },
+  );
+
+  // getRecipe is the single chokepoint for the gate, so every consumer
+  // (single-form GET, draft-create version pinning, …) inherits it.
+  it.each(["preview", "draft"] as const)(
+    "getRecipe returns null for a %s recipe without a preview token",
+    async (visibility) => {
+      const { fileLoader, service } = makeMocks({ source: "files" });
+      (fileLoader.findByFormId as Mock).mockReturnValue(recipeWith(visibility));
+
+      await expect(
+        service.getRecipe({ formId: "passport-renewal" }),
+      ).resolves.toBeNull();
+    },
+  );
+
+  it("getRecipe returns a public recipe", async () => {
+    const { fileLoader, service } = makeMocks({ source: "files" });
+    (fileLoader.findByFormId as Mock).mockReturnValue(recipeWith("public"));
+
+    await expect(
+      service.getRecipe({ formId: "passport-renewal" }),
+    ).resolves.toMatchObject({ formId: "passport-renewal" });
+  });
+
+  it("getRecipe returns a recipe with no meta", async () => {
+    const { fileLoader, service } = makeMocks({ source: "files" });
+    (fileLoader.findByFormId as Mock).mockReturnValue(recipeWith());
+
+    await expect(
+      service.getRecipe({ formId: "passport-renewal" }),
+    ).resolves.toMatchObject({ formId: "passport-renewal" });
+  });
+
+  it("getRecipe returns a preview recipe when preview is true", async () => {
+    const { fileLoader, service } = makeMocks({ source: "files" });
+    (fileLoader.findByFormId as Mock).mockReturnValue(recipeWith("preview"));
+
+    await expect(
+      service.getRecipe({ formId: "passport-renewal", preview: true }),
+    ).resolves.toMatchObject({ formId: "passport-renewal" });
+  });
 });

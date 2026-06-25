@@ -1,6 +1,8 @@
 import {
   contactDetailsSchema,
   dateTimeFormatSchema,
+  getRecipeVisibility,
+  recipeMetaSchema,
   serviceContractRecipeSchema,
   serviceContractSchema,
 } from "./service-contract.type";
@@ -286,4 +288,79 @@ describe("serviceContractRecipeSchema", () => {
         .success,
     ).toBe(false);
   });
+
+  // Visibility meta (#1646) — optional during rollout so legacy recipes (no
+  // `meta`) still validate.
+  it("accepts a recipe with no meta", () => {
+    expect(serviceContractRecipeSchema.safeParse(baseRecipe).success).toBe(
+      true,
+    );
+  });
+
+  it.each(["public", "preview", "draft"])(
+    "accepts meta.visibility %p",
+    (visibility) => {
+      expect(
+        serviceContractRecipeSchema.safeParse({
+          ...baseRecipe,
+          meta: { visibility },
+        }).success,
+      ).toBe(true);
+    },
+  );
+
+  it("defaults meta.visibility to public when meta is an empty object", () => {
+    const result = serviceContractRecipeSchema.safeParse({
+      ...baseRecipe,
+      meta: {},
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.meta?.visibility).toBe("public");
+    }
+  });
+
+  it("rejects an unknown meta.visibility value", () => {
+    expect(
+      serviceContractRecipeSchema.safeParse({
+        ...baseRecipe,
+        meta: { visibility: "hidden" },
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("recipeMetaSchema", () => {
+  it("defaults visibility to public", () => {
+    const result = recipeMetaSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.visibility).toBe("public");
+  });
+
+  it.each(["public", "preview", "draft"])("accepts %p", (visibility) => {
+    expect(recipeMetaSchema.safeParse({ visibility }).success).toBe(true);
+  });
+
+  it("rejects an unknown visibility", () => {
+    expect(recipeMetaSchema.safeParse({ visibility: "secret" }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("getRecipeVisibility", () => {
+  it("returns public when meta is absent", () => {
+    expect(getRecipeVisibility({})).toBe("public");
+  });
+
+  it("returns public when meta has no visibility", () => {
+    expect(getRecipeVisibility({ meta: undefined })).toBe("public");
+  });
+
+  it.each(["public", "preview", "draft"] as const)(
+    "returns the set visibility %p",
+    (visibility) => {
+      expect(getRecipeVisibility({ meta: { visibility } })).toBe(visibility);
+    },
+  );
 });

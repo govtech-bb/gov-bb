@@ -388,6 +388,23 @@ describe("RecipeFileLoaderService", () => {
       expect(recipe?.version).toBeUndefined();
     });
 
+    it("hides a non-public canonical recipe from findAll (#1646)", async () => {
+      const root = await newRoot({});
+      await writeFlatRecipe(root, "public-form");
+      await writeFlatRecipe(root, "preview-form", {
+        meta: { visibility: "preview" },
+      });
+      const loader = new RecipeFileLoaderService(root);
+      await loader.loadAll();
+
+      expect(loader.findAll().map((f) => f.formId)).toEqual(["public-form"]);
+      // The list filter is list-only — the recipe still resolves for the
+      // (service-gated) single-form GET.
+      expect(loader.findByFormId({ formId: "preview-form" })?.formId).toBe(
+        "preview-form",
+      );
+    });
+
     it("(ii) falls back to the highest versioned recipe when no flat file exists", async () => {
       const root = await newRoot({
         "passport-renewal": ["valid-recipe.json", "valid-recipe-v2.json"],
