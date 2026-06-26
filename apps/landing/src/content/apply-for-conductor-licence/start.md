@@ -3,7 +3,6 @@ title: "Apply for a conductor's licence"
 stage: "alpha"
 publish_date: 2026-03-06
 form_id: apply-for-conductor-licence
-visibility: preview
 ---
 
 You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.

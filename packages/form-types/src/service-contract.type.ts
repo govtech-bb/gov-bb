@@ -63,10 +63,20 @@ export const serviceContractSchema = z.object({
 export type ServiceContract = z.infer<typeof serviceContractSchema>;
 
 // Service launch gate (#1646). `visibility` decides whether the public can
-// reach a form: `public` is served normally; `preview`/`draft` are hidden
-// (404) from the public and only resolve when a valid recipe-preview token is
-// supplied. Mirrors apps/landing's page-level visibility levels.
-export const recipeVisibilitySchema = z.enum(["public", "preview", "draft"]);
+// reach a form: `public` is served normally; `preview`/`draft`/`maintenance`
+// are hidden (404) from the public and only resolve when a valid recipe-preview
+// token is supplied. Mirrors apps/landing's page-level visibility levels.
+//
+// `maintenance` (#1694) behaves like `preview` for gating — non-public, so the
+// form is unlisted and its "Start now" button is hidden — but it is also
+// surfaced publicly (see the /form-definitions/maintenance endpoint) so the
+// landing page can render an "under maintenance" notice for the form.
+export const recipeVisibilitySchema = z.enum([
+  "public",
+  "preview",
+  "draft",
+  "maintenance",
+]);
 export type RecipeVisibility = z.infer<typeof recipeVisibilitySchema>;
 
 // `meta` is an extensible container for recipe-level metadata. Optional during

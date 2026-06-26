@@ -307,7 +307,7 @@ describe("recipeMetaSchema (#1646)", () => {
   });
 
   it("accepts each visibility level", () => {
-    for (const visibility of ["public", "preview", "draft"]) {
+    for (const visibility of ["public", "preview", "draft", "maintenance"]) {
       expect(recipeMetaSchema.safeParse({ visibility }).success).toBe(true);
     }
   });
@@ -328,6 +328,9 @@ describe("getRecipeVisibility (#1646)", () => {
     );
     expect(getRecipeVisibility({ meta: { visibility: "draft" } })).toBe(
       "draft",
+    );
+    expect(getRecipeVisibility({ meta: { visibility: "maintenance" } })).toBe(
+      "maintenance",
     );
   });
 });
