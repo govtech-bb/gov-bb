@@ -17,6 +17,7 @@ import type { ViewLevel } from '../lib/frontmatter'
 import { CATEGORY_BY_SLUG, getSubcategory } from '../content/categories'
 import type { Category, SubCategory } from '../content/categories'
 import { getAvailableForms, getMaintenanceForms } from '../lib/available-forms'
+import { shouldHideStartLink } from '../lib/hide-start-link'
 import { checkFormAccessible } from '../lib/preview-form-access'
 import { seoTags } from '../lib/page-head'
 
@@ -89,6 +90,17 @@ export const Route = createFileRoute('/$')({
         if (await checkFormAccessible({ data: formId })) {
           availableForms = [...availableForms, formId]
         }
+      }
+      // The `/start` sub-page IS the online-application step. When its form is
+      // non-public (preview/maintenance) it is hidden the same way its Start
+      // button is — a reviewer keeps access (the form was added to
+      // availableForms above); otherwise the step stays reachable by direct URL.
+      if (
+        page.slug.endsWith('/start') &&
+        formId !== undefined &&
+        !availableForms.includes(formId)
+      ) {
+        throw notFound()
       }
       // A maintenance recipe is non-public, so it never appears in the available
       // list above; landing learns it is *specifically* under maintenance (vs
@@ -202,12 +214,16 @@ function PageView({
 }) {
   // A visitor whose level can't see this page's `/start` sub-page (because it's
   // gated above them) sees the online-application method stripped and the
-  // "N ways" count rewritten down. A form under maintenance hides the same way
-  // for the public, while a reviewer (preview/draft) keeps the Start button so
-  // they can still test it — matching how a feature-flagged form behaves.
-  const hideStartLink =
-    !isStartSubPageVisible(page, viewerLevel) ||
-    (underMaintenance && viewerLevel === 'public')
+  // "N ways" count rewritten down. Any non-public recipe — `preview`, `draft`,
+  // or `maintenance` — is absent from `availableForms`, so it hides the same way
+  // for the public; a reviewer keeps the Start button (the loader adds a
+  // token-accessible form back to the list) so they can still test it.
+  // `maintenance` differs only in also rendering the notice (below).
+  const hideStartLink = shouldHideStartLink({
+    startSubPageVisible: isStartSubPageVisible(page, viewerLevel),
+    formId: page.frontmatter.form_id,
+    availableForms,
+  })
   const level = pageLevel(page)
   return (
     <Shell>
