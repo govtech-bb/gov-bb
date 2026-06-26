@@ -1,8 +1,13 @@
 import type { UploadedFile } from "@forms/types";
+import { requireEnv } from "../../config/env";
 
-// Same resolution as the forms API client. Vite injects VITE_API_URL at build;
-// the jest config provides it for tests.
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+// Same resolution as the forms API client: required in production, defaults to
+// localhost only in dev (#1366). Vite injects VITE_API_URL at build.
+const API_URL = requireEnv(
+  import.meta.env.VITE_API_URL,
+  "VITE_API_URL",
+  "http://localhost:3001",
+);
 
 export interface PresignUploadRequest {
   formId: string;

@@ -1,14 +1,12 @@
-const DEFAULT_ALLOWED_ORIGINS = ["ezpay.gov.bb"];
-
 function getAllowedHosts(): string[] {
-  // Vite statically replaces `import.meta.env.VITE_*` with the build-time
-  // value when bundling the browser app, so this resolves to the configured
-  // allowlist in production. Read lazily here so tests can drive it per-case
-  // with `vi.stubEnv`.
+  // Fail closed (#1366): there is no baked-in default allowlist. When
+  // VITE_PAYMENT_ALLOWED_ORIGINS is unset (or blank), the allowlist is empty
+  // and every payment URL is rejected, rather than silently trusting a
+  // hardcoded host that governs where a citizen can be redirected to pay.
+  // Vite statically replaces `import.meta.env.VITE_*` at build; read lazily here
+  // so tests can drive it per-case with `vi.stubEnv`.
   const raw = import.meta.env.VITE_PAYMENT_ALLOWED_ORIGINS;
-  if (typeof raw !== "string" || raw.trim() === "") {
-    return DEFAULT_ALLOWED_ORIGINS;
-  }
+  if (typeof raw !== "string") return [];
   return raw
     .split(",")
     .map((h) => h.trim().toLowerCase())
