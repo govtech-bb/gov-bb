@@ -156,9 +156,10 @@ intended dev shortcut.
 pnpm tsx packages/database/scripts/dump-recipes-to-files.ts
 ```
 
-Writes every published recipe row to
-`apps/api/src/forms/form-definitions/recipes/{formId}/{version}.json`. Useful
-for bootstrapping a working tree from a DB snapshot.
+Writes each form's published recipe to the flat canonical
+`apps/api/src/forms/form-definitions/recipes/{formId}.json` (#1196 — one file
+per form, matching what the runtime loads). Useful for bootstrapping a working
+tree from a DB snapshot.
 
 ---
 

@@ -21,7 +21,7 @@ const mockConfigService = {
 
 describe("FormDefinitionsController", () => {
   let controller: FormDefinitionsController;
-  let res: { setHeader: Mock };
+  let res: { setHeader: Mock; cookie: Mock };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -29,7 +29,7 @@ describe("FormDefinitionsController", () => {
     mockOverridesService.findAllFormIds.mockResolvedValue([]);
     // Default: feature disabled (empty token) so existing tests exercise non-preview path.
     mockConfigService.get.mockReturnValue("");
-    res = { setHeader: vi.fn() };
+    res = { setHeader: vi.fn(), cookie: vi.fn() };
     controller = new FormDefinitionsController(
       mockService as never,
       mockOverridesService as never,
@@ -281,6 +281,198 @@ describe("FormDefinitionsController", () => {
 
       // The service must NOT be called — the kill switch fires first.
       expect(mockService.findByFormId).not.toHaveBeenCalled();
+      // …and no cookie is minted for a tombstoned form.
+      expect(res.cookie).not.toHaveBeenCalled();
+    });
+
+    describe("shared preview cookie (#1646 Phase 3)", () => {
+      // 4 hours, in milliseconds (express res.cookie maxAge unit). Mirrors
+      // landing's 4h grant; both emit Max-Age=14400 in the Set-Cookie header.
+      const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
+
+      it("mints the shared cookie scoped to PREVIEW_COOKIE_DOMAIN when X-Recipe-Preview is valid", async () => {
+        mockConfigService.get.mockImplementation(
+          (key: string) =>
+            ({
+              RECIPE_PREVIEW_TOKEN: "s3cret",
+              PREVIEW_COOKIE_DOMAIN: ".sandbox.alpha.gov.bb",
+              NODE_ENV: "production",
+            })[key] ?? "",
+        );
+        mockService.findByFormId.mockResolvedValue({
+          formId: "passport-renewal",
+        });
+
+        await controller.get(
+          "passport-renewal",
+          "s3cret",
+          undefined,
+          res as never,
+        );
+
+        expect(res.cookie).toHaveBeenCalledWith("preview", "preview", {
+          domain: ".sandbox.alpha.gov.bb",
+          httpOnly: true,
+          sameSite: "lax",
+          secure: true,
+          maxAge: FOUR_HOURS_MS,
+          path: "/",
+        });
+      });
+
+      it("omits Domain (host-only) and is insecure outside production when domain is unset", async () => {
+        mockConfigService.get.mockImplementation(
+          (key: string) =>
+            ({ RECIPE_PREVIEW_TOKEN: "s3cret", NODE_ENV: "development" })[
+              key
+            ] ?? "",
+        );
+        mockService.findByFormId.mockResolvedValue({
+          formId: "passport-renewal",
+        });
+
+        await controller.get(
+          "passport-renewal",
+          "s3cret",
+          undefined,
+          res as never,
+        );
+
+        expect(res.cookie).toHaveBeenCalledWith(
+          "preview",
+          "preview",
+          expect.objectContaining({ domain: undefined, secure: false }),
+        );
+      });
+
+      it("treats a `preview` cookie (no header) as a visibility bypass and mints no new cookie", async () => {
+        // Token unset → the header path is disabled; the cookie alone must still
+        // bypass, proving the grant is cookie PRESENCE, not the secret.
+        mockConfigService.get.mockReturnValue("");
+        mockService.findByFormId.mockResolvedValue({
+          formId: "passport-renewal",
+        });
+
+        await controller.get(
+          "passport-renewal",
+          undefined,
+          undefined,
+          res as never,
+          "preview=preview",
+        );
+
+        expect(mockService.findByFormId).toHaveBeenCalledWith({
+          formId: "passport-renewal",
+          bypassVisibility: true,
+          draft: false,
+        });
+        expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
+        expect(res.cookie).not.toHaveBeenCalled();
+      });
+
+      it("treats a `draft`-level cookie as a visibility bypass but NOT DB sourcing", async () => {
+        mockConfigService.get.mockReturnValue("");
+        mockService.findByFormId.mockResolvedValue({
+          formId: "passport-renewal",
+        });
+
+        await controller.get(
+          "passport-renewal",
+          undefined,
+          undefined,
+          res as never,
+          "preview=draft",
+        );
+
+        expect(mockService.findByFormId).toHaveBeenCalledWith({
+          formId: "passport-renewal",
+          bypassVisibility: true,
+          draft: false,
+        });
+      });
+
+      it("reads the legacy `1` cookie value as a bypass", async () => {
+        mockConfigService.get.mockReturnValue("");
+        mockService.findByFormId.mockResolvedValue({
+          formId: "passport-renewal",
+        });
+
+        await controller.get(
+          "passport-renewal",
+          undefined,
+          undefined,
+          res as never,
+          "preview=1",
+        );
+
+        expect(mockService.findByFormId).toHaveBeenCalledWith({
+          formId: "passport-renewal",
+          bypassVisibility: true,
+          draft: false,
+        });
+      });
+
+      it("parses the `preview` cookie out of a multi-cookie header", async () => {
+        mockConfigService.get.mockReturnValue("");
+        mockService.findByFormId.mockResolvedValue({
+          formId: "passport-renewal",
+        });
+
+        await controller.get(
+          "passport-renewal",
+          undefined,
+          undefined,
+          res as never,
+          "session=abc; preview=preview; theme=dark",
+        );
+
+        expect(mockService.findByFormId).toHaveBeenCalledWith({
+          formId: "passport-renewal",
+          bypassVisibility: true,
+          draft: false,
+        });
+      });
+
+      it("does not bypass when no `preview` cookie is present", async () => {
+        mockConfigService.get.mockReturnValue("");
+        mockService.findByFormId.mockResolvedValue({
+          formId: "passport-renewal",
+        });
+
+        await controller.get(
+          "passport-renewal",
+          undefined,
+          undefined,
+          res as never,
+          "session=abc; theme=dark",
+        );
+
+        expect(mockService.findByFormId).toHaveBeenCalledWith({
+          formId: "passport-renewal",
+          bypassVisibility: false,
+          draft: false,
+        });
+        expect(res.setHeader).not.toHaveBeenCalled();
+        expect(res.cookie).not.toHaveBeenCalled();
+      });
+
+      it("does not mint a cookie on the X-Recipe-Draft path", async () => {
+        mockConfigService.get.mockImplementation((key: string) =>
+          key === "RECIPE_PREVIEW_TOKEN" ? "s3cret" : "",
+        );
+        mockService.findByFormId.mockResolvedValue({
+          formId: "passport-renewal",
+        });
+
+        await controller.get(
+          "passport-renewal",
+          undefined,
+          "s3cret",
+          res as never,
+        );
+
+        expect(res.cookie).not.toHaveBeenCalled();
+      });
     });
   });
 });

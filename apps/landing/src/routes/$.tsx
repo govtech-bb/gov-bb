@@ -16,6 +16,7 @@ import type { ViewLevel } from '../lib/frontmatter'
 import { CATEGORY_BY_SLUG, getSubcategory } from '../content/categories'
 import type { Category, SubCategory } from '../content/categories'
 import { getAvailableForms } from '../lib/available-forms'
+import { checkFormAccessible } from '../lib/preview-form-access'
 import { seoTags } from '../lib/page-head'
 
 interface CategoryListItem {
@@ -72,7 +73,17 @@ export const Route = createFileRoute('/$')({
       if (!isVisible(page, level)) throw notFound()
       // Only content pages render Start now buttons, so the forms list is
       // resolved here (server-side, cached) and nowhere else.
-      const availableForms = await getAvailableForms()
+      let availableForms = await getAvailableForms()
+      // A reviewer (preview/draft) on a not-yet-public page: its form is hidden
+      // from the public list, so confirm the form is reachable under the preview
+      // token and, if so, allow its Start button. Append to a FRESH array, never
+      // pushing into the shared public-forms cache (#1646 Phase 3).
+      const formId = page.frontmatter.form_id
+      if (level !== 'public' && formId && !availableForms.includes(formId)) {
+        if (await checkFormAccessible({ data: formId })) {
+          availableForms = [...availableForms, formId]
+        }
+      }
       return { kind: 'page', page, availableForms }
     }
 

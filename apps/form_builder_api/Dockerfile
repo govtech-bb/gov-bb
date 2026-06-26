@@ -58,6 +58,13 @@ COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
 # node_modules from builder (has all deps resolved)
 COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
 
+# Drop esbuild from the runtime image (#1567). esbuild ships a Go-compiled
+# binary (@esbuild/<platform>/bin/esbuild) that AWS Inspector flags as
+# go/stdlib CVE-2025-68121 (+ other go/stdlib CVEs). It's a build-time tool
+# only — the runner runs `node dist/main.js` and never loads esbuild — so
+# removing it closes the finding with no runtime impact.
+RUN rm -rf node_modules/@esbuild node_modules/esbuild
+
 # Workspace package symlinks so require("@govtech-bb/database") resolves.
 # Generated from whatever's actually in packages/ rather than a hand-maintained
 # list — the previous hard-coded list silently broke when `@govtech-bb/git-publish`

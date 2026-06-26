@@ -54,7 +54,7 @@ describe("writePublishedRecipes", () => {
     return r;
   }
 
-  it("writes a single published row to recipes/{formId}/{version}.json", async () => {
+  it("writes a single published row to recipes/{formId}.json", async () => {
     const root = await newRoot();
     const row = await loadFixture("published-row.json");
     const logger = createSpyLogger();
@@ -65,7 +65,7 @@ describe("writePublishedRecipes", () => {
       logger,
     });
 
-    const expectedPath = path.join(root, "passport-renewal", "1.0.0.json");
+    const expectedPath = path.join(root, "passport-renewal.json");
     const written = await fs.readFile(expectedPath, "utf8");
 
     expect(written).toBe(JSON.stringify(row.schema, null, 2) + "\n");
@@ -77,7 +77,10 @@ describe("writePublishedRecipes", () => {
     });
   });
 
-  it("writes multiple versions of the same form to separate files", async () => {
+  it("collapses rows of the same form to one flat file (later differing rows are conflicts)", async () => {
+    // Post-M2 there is one row per formId; this guards the flat-write behaviour
+    // if two rows for a form are ever passed — first wins on disk, the second is
+    // a conflict (never silently overwritten).
     const root = await newRoot();
     const rows = [
       await loadFixture("published-row.json"),
@@ -91,18 +94,14 @@ describe("writePublishedRecipes", () => {
       logger,
     });
 
-    const v1 = await fs.readFile(
-      path.join(root, "passport-renewal", "1.0.0.json"),
-      "utf8",
-    );
-    const v2 = await fs.readFile(
-      path.join(root, "passport-renewal", "1.1.0.json"),
+    const written = await fs.readFile(
+      path.join(root, "passport-renewal.json"),
       "utf8",
     );
 
-    expect(JSON.parse(v1).version).toBe("1.0.0");
-    expect(JSON.parse(v2).version).toBe("1.1.0");
-    expect(summary.filesWritten).toBe(2);
+    expect(JSON.parse(written).version).toBe("1.0.0"); // first row wins on disk
+    expect(summary.filesWritten).toBe(1);
+    expect(summary.conflicts).toBe(1);
     expect(summary.formsSeen).toBe(1);
   });
 
@@ -118,7 +117,7 @@ describe("writePublishedRecipes", () => {
       logger: logger1,
     });
     const firstContent = await fs.readFile(
-      path.join(root, "passport-renewal", "1.0.0.json"),
+      path.join(root, "passport-renewal.json"),
       "utf8",
     );
 
@@ -128,7 +127,7 @@ describe("writePublishedRecipes", () => {
       logger: logger2,
     });
     const secondContent = await fs.readFile(
-      path.join(root, "passport-renewal", "1.0.0.json"),
+      path.join(root, "passport-renewal.json"),
       "utf8",
     );
 
@@ -147,9 +146,7 @@ describe("writePublishedRecipes", () => {
     const logger = createSpyLogger();
 
     // Pre-write a file with deliberately different content.
-    const formDir = path.join(root, "passport-renewal");
-    await fs.mkdir(formDir, { recursive: true });
-    const targetPath = path.join(formDir, "1.0.0.json");
+    const targetPath = path.join(root, "passport-renewal.json");
     await fs.writeFile(
       targetPath,
       JSON.stringify(
@@ -174,19 +171,19 @@ describe("writePublishedRecipes", () => {
 
     const warnings = logger.logs.filter((l) => l.level === "warn");
     expect(warnings.length).toBeGreaterThanOrEqual(1);
-    expect(warnings[0].message).toMatch(/passport-renewal.*1\.0\.0\.json/);
+    expect(warnings[0].message).toMatch(/passport-renewal\.json/);
     expect(warnings[0].message.toLowerCase()).toMatch(/diff|differs|conflict/);
   });
 
-  it("creates parent directories for new formIds", async () => {
+  it("writes the flat file directly under recipesRoot (no per-form subdir)", async () => {
     const root = await newRoot();
     const row = await loadFixture("published-row.json");
     const logger = createSpyLogger();
 
     await writePublishedRecipes({ rows: [row], recipesRoot: root, logger });
 
-    const stat = await fs.stat(path.join(root, "passport-renewal"));
-    expect(stat.isDirectory()).toBe(true);
+    const stat = await fs.stat(path.join(root, "passport-renewal.json"));
+    expect(stat.isFile()).toBe(true);
   });
 
   it("handles an empty rows array as a no-op", async () => {
@@ -256,6 +253,8 @@ describe("writePublishedRecipes", () => {
       .map((l) => l.message)
       .find((m) => /summary|written/i.test(m));
     expect(summaryLine).toBeDefined();
-    expect(summaryLine!).toMatch(/2/); // mentions count
+    // Flat layout (#1196): two rows of the same form collapse to one file —
+    // one form, one written, the second a conflict.
+    expect(summaryLine!).toMatch(/1 form\(s\)/);
   });
 });
