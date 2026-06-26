@@ -4,6 +4,7 @@ import { FormDefinitionsController } from "./form-definitions.controller";
 const mockService = {
   findAll: vi.fn(),
   findByFormId: vi.fn(),
+  findMaintenanceFormIds: vi.fn(),
 };
 
 const mockOverridesService = {
@@ -90,6 +91,34 @@ describe("FormDefinitionsController", () => {
       const result = await controller.getAll();
 
       expect(result).toMatchObject({ status: "success", data: list });
+    });
+  });
+
+  describe("getMaintenance (GET /form-definitions/maintenance)", () => {
+    it("returns the maintenance form IDs in the success shape", async () => {
+      mockService.findMaintenanceFormIds.mockResolvedValue([
+        "post-office-redirection-individual",
+        "apply-for-conductor-licence",
+      ]);
+
+      const result = await controller.getMaintenance();
+
+      expect(mockService.findMaintenanceFormIds).toHaveBeenCalled();
+      expect(result).toMatchObject({
+        status: "success",
+        data: [
+          "post-office-redirection-individual",
+          "apply-for-conductor-licence",
+        ],
+      });
+    });
+
+    it("returns an empty list when nothing is under maintenance", async () => {
+      mockService.findMaintenanceFormIds.mockResolvedValue([]);
+
+      const result = await controller.getMaintenance();
+
+      expect(result.data).toEqual([]);
     });
   });
 

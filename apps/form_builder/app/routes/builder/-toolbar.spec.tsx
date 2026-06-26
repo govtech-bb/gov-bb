@@ -51,14 +51,14 @@ describe("Toolbar — Visibility selector (#1682)", () => {
     expect(screen.getByLabelText(/visibility/i)).toHaveValue("draft");
   });
 
-  it("offers public, preview and draft options", () => {
+  it("offers public, preview, draft and maintenance options", () => {
     renderToolbar();
     const select = screen.getByLabelText(/visibility/i);
     const values = Array.from(
       select.querySelectorAll("option"),
       (o) => (o as HTMLOptionElement).value,
     );
-    expect(values).toEqual(["public", "preview", "draft"]);
+    expect(values).toEqual(["public", "preview", "draft", "maintenance"]);
   });
 
   it("calls onVisibilityChange with the selected level", () => {
@@ -206,6 +206,12 @@ describe("Toolbar — Deploy blocked while visibility is draft (#1682)", () => {
 
   it("enables Deploy when visibility is public", () => {
     renderToolbar({ hasUnsavedChanges: false, visibility: "public" });
+
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
+  });
+
+  it("enables Deploy when visibility is maintenance (#1694)", () => {
+    renderToolbar({ hasUnsavedChanges: false, visibility: "maintenance" });
 
     expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
   });

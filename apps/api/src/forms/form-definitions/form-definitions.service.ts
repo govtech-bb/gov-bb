@@ -68,6 +68,44 @@ export class FormDefinitionsService {
     return [...dbEntries, ...fileEntries];
   }
 
+  /**
+   * Form IDs currently under maintenance (#1694). Mirrors findAll's source
+   * dispatch. Maintenance forms are non-public (so absent from findAll), but
+   * advertised here so landing can show an "under maintenance" notice.
+   */
+  async findMaintenanceFormIds(): Promise<string[]> {
+    const source = this.source();
+    if (source === "files") {
+      return this.recipeFileLoader.findMaintenanceFormIds();
+    }
+
+    const dbIds = await this.findMaintenanceFromDb();
+    if (source === "db") {
+      return dbIds;
+    }
+
+    // source === "both": dev-only escape hatch — union of DB + file IDs.
+    return [
+      ...new Set([...dbIds, ...this.recipeFileLoader.findMaintenanceFormIds()]),
+    ];
+  }
+
+  private async findMaintenanceFromDb(): Promise<string[]> {
+    const entities = await this.formDefRepo.find({
+      order: { createdAt: "DESC" },
+    });
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const entity of entities) {
+      if (seen.has(entity.formId)) continue;
+      seen.add(entity.formId);
+      if (getRecipeVisibility(entity.schema) === "maintenance") {
+        result.push(entity.formId);
+      }
+    }
+    return result;
+  }
+
   private async findAllFromDb(): Promise<
     { formId: string; title: string; version: string; category?: string }[]
   > {

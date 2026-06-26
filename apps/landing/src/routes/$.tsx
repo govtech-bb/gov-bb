@@ -2,6 +2,7 @@ import { createFileRoute, notFound } from '@tanstack/react-router'
 import { Heading, Text, linkVariants } from '@govtech-bb/react'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
+import { MaintenanceNotice } from '../components/MaintenanceNotice'
 import { MarkdownContent } from '../components/markdown'
 import {
   categoryServices,
@@ -15,7 +16,7 @@ import type { ContentPage } from '../content/registry'
 import type { ViewLevel } from '../lib/frontmatter'
 import { CATEGORY_BY_SLUG, getSubcategory } from '../content/categories'
 import type { Category, SubCategory } from '../content/categories'
-import { getAvailableForms } from '../lib/available-forms'
+import { getAvailableForms, getMaintenanceForms } from '../lib/available-forms'
 import { checkFormAccessible } from '../lib/preview-form-access'
 import { seoTags } from '../lib/page-head'
 
@@ -32,7 +33,12 @@ const toListItem = (p: ContentPage): CategoryListItem => ({
 })
 
 type LoaderData =
-  | { kind: 'page'; page: ContentPage; availableForms: string[] }
+  | {
+      kind: 'page'
+      page: ContentPage
+      availableForms: string[]
+      underMaintenance: boolean
+    }
   | { kind: 'category'; category: Category; items: CategoryListItem[] }
   | {
       kind: 'subcategory-index'
@@ -84,7 +90,13 @@ export const Route = createFileRoute('/$')({
           availableForms = [...availableForms, formId]
         }
       }
-      return { kind: 'page', page, availableForms }
+      // A maintenance recipe is non-public, so it never appears in the available
+      // list above; landing learns it is *specifically* under maintenance (vs
+      // merely unpublished) from the dedicated endpoint, to render the notice.
+      const underMaintenance = formId
+        ? (await getMaintenanceForms()).includes(formId)
+        : false
+      return { kind: 'page', page, availableForms, underMaintenance }
     }
 
     if (segments.length === 2) {
@@ -155,6 +167,7 @@ function ContentRoute() {
         page={data.page}
         availableForms={data.availableForms}
         viewerLevel={level}
+        underMaintenance={data.underMaintenance}
       />
     )
   if (data.kind === 'subcategory-index')
@@ -180,19 +193,26 @@ function PageView({
   page,
   availableForms,
   viewerLevel,
+  underMaintenance,
 }: {
   page: ContentPage
   availableForms: string[]
   viewerLevel: ViewLevel
+  underMaintenance: boolean
 }) {
   // A visitor whose level can't see this page's `/start` sub-page (because it's
   // gated above them) sees the online-application method stripped and the
-  // "N ways" count rewritten down.
-  const hideStartLink = !isStartSubPageVisible(page, viewerLevel)
+  // "N ways" count rewritten down. A form under maintenance hides the same way
+  // for the public, while a reviewer (preview/draft) keeps the Start button so
+  // they can still test it — matching how a feature-flagged form behaves.
+  const hideStartLink =
+    !isStartSubPageVisible(page, viewerLevel) ||
+    (underMaintenance && viewerLevel === 'public')
   const level = pageLevel(page)
   return (
     <Shell>
       {level !== 'public' ? <ReviewBanner level={level} /> : null}
+      {underMaintenance ? <MaintenanceNotice /> : null}
       <MarkdownContent
         hast={page.hast}
         frontmatter={page.frontmatter}

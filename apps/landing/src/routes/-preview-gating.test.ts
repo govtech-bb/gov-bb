@@ -22,6 +22,7 @@ vi.mock('../content/registry', () => mocks)
 // it so the gating tests don't reach the network.
 const formMocks = vi.hoisted(() => ({
   getAvailableForms: vi.fn(async () => ['get-birth-certificate']),
+  getMaintenanceForms: vi.fn(async () => [] as string[]),
 }))
 vi.mock('../lib/available-forms', () => formMocks)
 
@@ -83,8 +84,54 @@ describe('$ route loader gating', () => {
       kind: 'page',
       page: fakePage,
       availableForms: ['get-birth-certificate'],
+      underMaintenance: false,
     })
     expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'draft')
+  })
+
+  it('flags a page whose form is under maintenance', async () => {
+    const { Route } = await import('./$')
+    const formPage: ContentPage = {
+      ...fakePage,
+      frontmatter: {
+        ...fakePage.frontmatter,
+        visibility: 'public',
+        form_id: 'post-office-redirection-individual',
+      },
+    }
+    mocks.findPage.mockReturnValue(formPage)
+    mocks.isVisible.mockReturnValue(true)
+    formMocks.getMaintenanceForms.mockResolvedValueOnce([
+      'post-office-redirection-individual',
+    ])
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: 'secret-service' },
+      context: { level: 'public' },
+    })) as { underMaintenance: boolean }
+    expect(data.underMaintenance).toBe(true)
+  })
+
+  it('does not flag a page whose form is not under maintenance', async () => {
+    const { Route } = await import('./$')
+    const formPage: ContentPage = {
+      ...fakePage,
+      frontmatter: {
+        ...fakePage.frontmatter,
+        visibility: 'public',
+        form_id: 'get-birth-certificate',
+      },
+    }
+    mocks.findPage.mockReturnValue(formPage)
+    mocks.isVisible.mockReturnValue(true)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: 'secret-service' },
+      context: { level: 'public' },
+    })) as { underMaintenance: boolean }
+    expect(data.underMaintenance).toBe(false)
   })
 })
 
