@@ -1,4 +1,4 @@
-import { sanitizeForLog } from "./log-sanitize";
+import { redactPii, sanitizeForLog } from "./log-sanitize";
 
 const ESC = String.fromCharCode(0x1b); // ANSI escape
 const NUL = String.fromCharCode(0); // null byte
@@ -31,5 +31,32 @@ describe("sanitizeForLog", () => {
   it("coerces non-string values", () => {
     expect(sanitizeForLog(42)).toBe("42");
     expect(sanitizeForLog(null)).toBe("null");
+  });
+});
+
+describe("redactPii", () => {
+  it("masks an email to its first character plus domain", () => {
+    expect(redactPii("jane@gmail.com")).toBe("j***@gmail.com");
+  });
+
+  it("never reveals the local part beyond its first character, nor its length", () => {
+    const masked = redactPii("jonathan@example.com");
+    expect(masked).toBe("j***@example.com");
+    expect(masked).not.toContain("jonathan");
+  });
+
+  it("fully redacts a value that is not an email (name, phone)", () => {
+    expect(redactPii("Jane Doe")).toBe("[hidden]");
+    expect(redactPii("+1 246 555 0100")).toBe("[hidden]");
+  });
+
+  it("fully redacts a malformed address — empty local part or missing domain", () => {
+    expect(redactPii("@example.com")).toBe("[hidden]");
+    expect(redactPii("jane@")).toBe("[hidden]");
+  });
+
+  it("redacts null/undefined without throwing", () => {
+    expect(redactPii(null)).toBe("[hidden]");
+    expect(redactPii(undefined)).toBe("[hidden]");
   });
 });
