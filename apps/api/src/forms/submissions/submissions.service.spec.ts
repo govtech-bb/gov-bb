@@ -665,5 +665,35 @@ describe("SubmissionsService", () => {
       expect(payment.process).toHaveBeenCalledTimes(1);
       expect(eventEmitter.emit as Mock).not.toHaveBeenCalled();
     });
+
+    it("drops only the zero-amount payment, leaving any other gating processor intact", async () => {
+      // A hypothetical second gating processor type. The zero-amount guard must
+      // remove only the payment from the gating set, not clear all gating — so
+      // this one still runs and still gates the pipeline.
+      const otherGate = {
+        type: "spreadsheet",
+        gatesPipeline: true,
+        process: vi.fn().mockResolvedValue({ kind: "completed" }),
+      } as unknown as ISubmissionProcessor;
+      const payment = makePaymentHandler();
+      const { service, txRepo, eventEmitter } = makeMocks({
+        gating: [otherGate, payment],
+        processors: [paymentConfig(0)],
+      });
+
+      await service.submit(BASE_DTO);
+
+      // Still gated by the other processor.
+      expect(txRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: FormSubmissionStatus.PENDING_PAYMENT,
+        }),
+      );
+      expect(otherGate.process).toHaveBeenCalledTimes(1);
+      // The zero-amount payment was dropped — never invoked.
+      expect(payment.process).not.toHaveBeenCalled();
+      // Gating path does not emit submission.created.
+      expect(eventEmitter.emit as Mock).not.toHaveBeenCalled();
+    });
   });
 });
