@@ -1,11 +1,13 @@
 import { createServerFn } from '@tanstack/react-start'
 import { useRuntimeConfig } from 'nitro/runtime-config'
 import { z } from 'zod'
+import { requireEnv } from '@/config/env'
 
-// Same default the form-availability resolver uses (see available-forms.ts).
-// The real value is injected per-environment via VITE_FORMS_API_URL, snapshotted
-// into the Nitro runtime config at build time (see vite.config.ts) because the
-// Amplify SSR Lambda never sees Console env vars at runtime.
+// Dev-only default the form-availability resolver also uses (see
+// available-forms.ts). The real value is injected per-environment via
+// VITE_FORMS_API_URL, snapshotted into the Nitro runtime config at build time
+// (see vite.config.ts) because the Amplify SSR Lambda never sees Console env
+// vars at runtime. In production an unset value fails fast (requireEnv).
 const DEFAULT_API_URL = 'https://forms.api.sandbox.alpha.gov.bb'
 
 const GENERIC_ERROR =
@@ -74,7 +76,10 @@ export const sendFeedback = createServerFn({ method: 'POST' })
   .inputValidator((raw: unknown) => raw as Record<string, unknown>)
   .handler(async ({ data }): Promise<FeedbackState> => {
     const config = useRuntimeConfig() as { formsApiUrl?: string }
-    const apiBase =
-      config.formsApiUrl || process.env.VITE_FORMS_API_URL || DEFAULT_API_URL
+    const apiBase = requireEnv(
+      config.formsApiUrl || process.env.VITE_FORMS_API_URL,
+      'VITE_FORMS_API_URL',
+      DEFAULT_API_URL,
+    )
     return postFeedback(data, { apiBase })
   })

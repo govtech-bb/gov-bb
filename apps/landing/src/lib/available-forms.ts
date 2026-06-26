@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
+import { requireEnv } from '@/config/env'
 
 /**
  * Runtime resolution of the available forms list.
@@ -105,10 +106,11 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
 
 /** Fetch and validate the canonical list of available form IDs. */
 async function fetchFormIds(): Promise<string[]> {
-  const apiBase = (process.env.VITE_FORMS_API_URL ?? DEFAULT_API_URL).replace(
-    /\/+$/,
-    '',
-  )
+  const apiBase = requireEnv(
+    process.env.VITE_FORMS_API_URL,
+    'VITE_FORMS_API_URL',
+    DEFAULT_API_URL,
+  ).replace(/\/+$/, '')
   const endpoint = `${apiBase}/form-definitions`
 
   const response = await fetchWithTimeout(endpoint, FETCH_TIMEOUT_MS)
