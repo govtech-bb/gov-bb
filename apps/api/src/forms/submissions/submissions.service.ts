@@ -65,7 +65,28 @@ export class SubmissionsService {
       ? []
       : (contract.processors ?? []);
     const split = this.processorFactory.resolveSplit(rawProcessors);
-    const hasGating = split.gating.length > 0;
+
+    // A payment whose fee resolves to 0 (a fee-waiver branch / dynamic
+    // expression) is not a real payment: gating it would create a Payment row,
+    // open an EzPay session, and email the citizen "Amount due: $0.00 — Pay
+    // now" (#1449). Resolve the amount up front (ResolutionContext.submission is
+    // optional, so values + meta suffice before the entity exists) and treat a
+    // zero-amount payment as no gating, so the submission proceeds as a normal
+    // SUBMITTED submission. Only the exact number 0 un-gates; a negative /
+    // non-numeric amount stays gated and is rejected by the processor's existing
+    // post-resolution validation. Payment is the only gatesPipeline processor,
+    // so a zero-amount payment means no effective gating.
+    const paymentConfig = rawProcessors.find((p) => p.type === "payment");
+    const paymentIsNoOp =
+      paymentConfig !== undefined &&
+      this.expressions.resolveConfig(
+        paymentConfig.config as Record<string, unknown>,
+        {
+          values: normalizedValues,
+          meta: auditTrail as unknown as Record<string, unknown>,
+        },
+      ).amount === 0;
+    const hasGating = split.gating.length > 0 && !paymentIsNoOp;
 
     const referenceCode = await this.generateUniqueReferenceCode(dto.formId);
 
