@@ -100,6 +100,15 @@ COPY --from=builder --chown=app:app /app/packages/form-types/src/ ./packages/for
 COPY --from=builder --chown=app:app /app/packages/database/src/ ./packages/database/src/
 COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
 
+# Drop esbuild from the runtime image (#1567). esbuild ships a Go-compiled
+# binary (@esbuild/<platform>/bin/esbuild) that AWS Inspector flags as
+# go/stdlib CVE-2025-68121 (+ other go/stdlib CVEs). This image deliberately
+# keeps devDeps (in-container `pnpm migration:run`), but migrations run via
+# typeorm-ts-node-commonjs (ts-node, not tsx/esbuild) and the runtime CMD is
+# `node dist/src/main.js` — nothing here loads esbuild, so removing it closes
+# the finding with no runtime impact.
+RUN rm -rf node_modules/@esbuild node_modules/esbuild
+
 # pnpm (hoisted mode) keeps workspace-package symlinks in the consumer's
 # own node_modules (apps/api/node_modules/@govtech-bb/*). The runtime
 # entry is /app/dist/src/main.js, and Node's module-lookup walks up from
