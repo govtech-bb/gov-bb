@@ -29,7 +29,9 @@ describe("isInternalIp", () => {
     "fc00::1", // ULA
     "fd12:3456::1", // ULA
     "fe80::1", // link-local
-    "::ffff:169.254.169.254", // IPv4-mapped metadata
+    "::ffff:169.254.169.254", // IPv4-mapped metadata (dotted)
+    "::ffff:a9fe:a9fe", // IPv4-mapped metadata (hex form) — #287 bypass
+    "::ffff:0a00:0001", // IPv4-mapped 10.0.0.1 (hex form)
   ])("flags %s as internal", (ip) => {
     expect(isInternalIp(ip)).toBe(true);
   });
@@ -79,8 +81,12 @@ describe("assertSafeUrl", () => {
     "https://10.0.0.5/",
     "https://192.168.1.1/",
     "https://[::1]/",
+    // IPv4-mapped metadata in hex form — the #287 bypass. Must be rejected
+    // without a DNS lookup, same as the dotted literal.
+    "https://[::ffff:a9fe:a9fe]/latest/meta-data/",
   ])("rejects internal IP literal %s", async (url) => {
     await expect(assertSafeUrl(url)).rejects.toThrow(UnsafeUrlError);
+    expect(mockLookup).not.toHaveBeenCalled();
   });
 
   it("rejects a hostname that resolves to a private IP (DNS rebinding attempt)", async () => {

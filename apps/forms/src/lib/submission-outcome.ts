@@ -1,6 +1,6 @@
 import { FormSubmissionResponse, SubmissionState } from "@forms/types";
 
-export type SubmissionEvent =
+type SubmissionEvent =
   | { name: "form-submit-success" }
   | { name: "form-submit-error"; reason: "server" | "payment-init" };
 

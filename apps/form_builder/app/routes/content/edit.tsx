@@ -266,7 +266,9 @@ function StartPagesEditor() {
         </div>
         <div className={s.headerActions}>
           {ed.dirty && !success && (
-            <span className={s.dirtyHint}>Unsaved changes</span>
+            <span className={s.dirtyHint}>
+              {ed.draftSaved ? "Draft saved" : "Saving…"}
+            </span>
           )}
           {!success && (
             <button
@@ -318,6 +320,22 @@ function StartPagesEditor() {
                   ),
                 onSelect: toggleTheme,
               },
+              ...(ed.dirty && !success
+                ? [
+                    {
+                      label: "Discard unsaved changes",
+                      danger: true,
+                      onSelect: () => {
+                        if (
+                          window.confirm(
+                            "Discard your unsaved changes and revert to the saved version?",
+                          )
+                        )
+                          ed.discardDraft();
+                      },
+                    },
+                  ]
+                : []),
               ...(ed.editing && !success
                 ? [
                     {
@@ -330,6 +348,9 @@ function StartPagesEditor() {
                 : []),
             ]}
           />
+          {!success && !ed.loadingPage && ed.deployBlockReason && (
+            <span className={s.deployHint}>{ed.deployBlockReason}</span>
+          )}
           {!success && (
             <button
               type="button"

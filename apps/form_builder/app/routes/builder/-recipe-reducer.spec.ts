@@ -212,6 +212,39 @@ describe("EMPTY_DRAFT", () => {
       expect(p.id).not.toBe("");
     }
   });
+
+  it("defaults visibility to 'draft' so a new form never launches by accident (#1682)", () => {
+    expect(EMPTY_DRAFT.meta).toEqual({ visibility: "draft" });
+  });
+});
+
+// ── SET_VISIBILITY ───────────────────────────────────────────────────────────
+
+describe("SET_VISIBILITY", () => {
+  it("sets meta.visibility on a draft that already has meta", () => {
+    const state = { ...baseDraft(), meta: { visibility: "draft" as const } };
+    const result = recipeReducer(state, {
+      type: "SET_VISIBILITY",
+      visibility: "public",
+    });
+    expect(result.meta).toEqual({ visibility: "public" });
+  });
+
+  it("seeds meta when a legacy draft has none (loaded without it)", () => {
+    const state = baseDraft();
+    expect((state as RecipeDraft).meta).toBeUndefined();
+    const result = recipeReducer(state, {
+      type: "SET_VISIBILITY",
+      visibility: "preview",
+    });
+    expect(result.meta).toEqual({ visibility: "preview" });
+  });
+
+  it("does not mutate the input draft", () => {
+    const state = { ...baseDraft(), meta: { visibility: "draft" as const } };
+    recipeReducer(state, { type: "SET_VISIBILITY", visibility: "public" });
+    expect(state.meta).toEqual({ visibility: "draft" });
+  });
 });
 
 // ── RESET ────────────────────────────────────────────────────────────────────
@@ -241,6 +274,14 @@ describe("RESET", () => {
     );
     expect(result.formId).toBe("");
     expect(result.title).toBe("");
+  });
+
+  it("resets visibility to 'draft' so a new form never launches by accident (#1682)", () => {
+    const result = recipeReducer(
+      { ...baseDraft(), meta: { visibility: "public" as const } },
+      { type: "RESET" },
+    );
+    expect(result.meta).toEqual({ visibility: "draft" });
   });
 
   it("yields independent array references on consecutive resets", () => {

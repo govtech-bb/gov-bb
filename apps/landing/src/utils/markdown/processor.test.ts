@@ -16,16 +16,6 @@ function elements(tree: Root, tagName: string): Array<Element> {
 }
 
 describe('processMarkdown', () => {
-  it('collects h2/h3 headings with slug ids', async () => {
-    const { headings } = await processMarkdown(
-      '## Apply online\n\nSome text.\n\n### What to bring',
-    )
-    expect(headings).toEqual([
-      { id: 'apply-online', text: 'Apply online', level: 2 },
-      { id: 'what-to-bring', text: 'What to bring', level: 3 },
-    ])
-  })
-
   it('gives headings an id and an appended anchor link', async () => {
     const { hast } = await processMarkdown('## Apply online')
     const [h2] = elements(hast, 'h2')

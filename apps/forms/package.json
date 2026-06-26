@@ -5,6 +5,7 @@
   "type": "module",
   "dependencies": {
     "@fontsource/figtree": "^5.2.10",
+    "@govtech-bb/analytics": "workspace:*",
     "@govtech-bb/design": "^1.0.0-alpha.16",
     "@govtech-bb/form-conditions": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
@@ -29,9 +30,6 @@
     "zod": "^4.4.3"
   },
   "scripts": {
-    "nextdev": "next dev",
-    "next build": "next build",
-    "next start": "next start",
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "preview": "vite preview",
@@ -50,11 +48,14 @@
     "@faker-js/faker": "^10.4.0",
     "@playwright/test": "^1.60.0",
     "@tanstack/router-plugin": "catalog:",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@vitejs/plugin-react": "^6.0.2",
     "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.37.5",
     "globals": "^17.5.0",
-    "jiti": "^2.6.1",
+    "jest-axe": "^10.0.0",
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.1",
     "typescript-eslint": "^8.58.2",

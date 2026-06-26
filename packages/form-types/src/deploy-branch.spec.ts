@@ -13,15 +13,15 @@ describe("deploy branch names", () => {
   afterEach(() => vi.restoreAllMocks());
 
   describe("deployBranchName", () => {
-    it("replaces the version's dots with dashes (#805)", () => {
-      expect(deployBranchName("passport-renewal", "1.2.0")).toBe(
-        "form-builder/passport-renewal-1-2-0-1700000000000",
+    it("builds a versionless deploy branch (#1196)", () => {
+      expect(deployBranchName("passport-renewal")).toBe(
+        "form-builder/passport-renewal-1700000000000",
       );
     });
 
     it("never emits a '.' even if the formId contains one", () => {
-      const branch = deployBranchName("weird.form.id", "2.0.0");
-      expect(branch).toBe("form-builder/weird-form-id-2-0-0-1700000000000");
+      const branch = deployBranchName("weird.form.id");
+      expect(branch).toBe("form-builder/weird-form-id-1700000000000");
       expect(branch).not.toContain(".");
     });
   });
@@ -37,9 +37,9 @@ describe("deploy branch names", () => {
       // listOpenDeployClaims relies on deployBranchName starting with the
       // prefix so it can recognise open deploy PRs for a form (#873).
       const prefix = deployBranchPrefix("passport.renewal");
-      expect(
-        deployBranchName("passport.renewal", "1.2.0").startsWith(prefix),
-      ).toBe(true);
+      expect(deployBranchName("passport.renewal").startsWith(prefix)).toBe(
+        true,
+      );
     });
   });
 

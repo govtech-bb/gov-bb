@@ -30,7 +30,10 @@ import type { ViewLevel } from './frontmatter'
  * httpOnly means client JS cannot forge the grant — a level can only be granted
  * by presenting the matching token to the server.
  */
-export const COOKIE_NAME = 'preview'
+const COOKIE_NAME = 'preview'
+
+/** Reviewer grant cookie lifetime: 4 hours, in seconds. */
+const COOKIE_MAX_AGE_SECONDS = 4 * 60 * 60
 
 export interface ViewLevelResolution {
   /** The view level granted to the current request. */
@@ -110,6 +113,22 @@ export function decideViewLevel({
   return { level: cookieLevel, cookie: 'none' }
 }
 
+/**
+ * The parent-domain the grant cookie is scoped to, so landing, forms and the
+ * API share ONE cookie across `*.sandbox.alpha.gov.bb` / `*.alpha.gov.bb`
+ * (#1646 Phase 3, ADR 0058). Build-baked via vite `runtimeConfig` in prod;
+ * `process.env` in local dev (the same dual-source as the secrets above).
+ * Empty/unset → undefined → host-only cookie, so local and per-PR Amplify
+ * previews degrade gracefully to per-app URL tokens. The value MUST byte-match
+ * the API's `PREVIEW_COOKIE_DOMAIN`, or the browser stores two separate cookies.
+ */
+export function previewCookieDomain(
+  configValue: string | undefined,
+  envValue: string | undefined,
+): string | undefined {
+  return configValue || envValue || undefined
+}
+
 export const resolveViewLevel = createServerFn().handler(
   async (): Promise<ViewLevelResolution> => {
     const url = new URL(getRequest().url)
@@ -133,15 +152,27 @@ export const resolveViewLevel = createServerFn().handler(
       draftSecret: config.draftSecret || process.env.DRAFT_SECRET || undefined,
     })
 
+    // The cookie's Domain must match on both set and delete (#1646 Phase 3): the
+    // browser keys deletion by name+domain+path, so a domain-scoped grant can't
+    // be cleared by `?preview=exit` unless the delete carries the same Domain.
+    // Localized cast: the nitro runtime-config type may not surface the
+    // freshly-added key until types regenerate.
+    const cookieDomain = previewCookieDomain(
+      (config as { previewCookieDomain?: string }).previewCookieDomain,
+      process.env.PREVIEW_COOKIE_DOMAIN,
+    )
+
     if (decision.cookie === 'preview' || decision.cookie === 'draft') {
       setCookie(COOKIE_NAME, decision.cookie, {
+        domain: cookieDomain,
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === 'production',
+        maxAge: COOKIE_MAX_AGE_SECONDS,
       })
     } else if (decision.cookie === 'clear') {
-      deleteCookie(COOKIE_NAME)
+      deleteCookie(COOKIE_NAME, { domain: cookieDomain, path: '/' })
     }
 
     return { level: decision.level, redirectTo: decision.redirectTo }

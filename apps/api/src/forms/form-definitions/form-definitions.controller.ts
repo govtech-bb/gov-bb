@@ -5,7 +5,6 @@ import {
   HttpException,
   HttpStatus,
   Param,
-  Query,
   Res,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
@@ -15,10 +14,42 @@ import type { Response } from "express";
 import { FormDefinitionsService } from "./form-definitions.service";
 import { FormDisabledOverridesService } from "../form-disabled-overrides/form-disabled-overrides.service";
 import { GetFormDefinitionDocs } from "./form-definitions.docs";
-import { ApiResponse as AppApiResponse } from "../../common/response";
-import { isValidSecretToken } from "../../common/secret-token";
-import type { ApiResponseShape } from "../../common/response";
+import { ApiResponse as AppApiResponse } from "@/common/response";
+import { isValidSecretToken } from "@/common/secret-token";
+import type { ApiResponseShape } from "@/common/response";
 import type { ServiceContract } from "@govtech-bb/form-types";
+
+/**
+ * Cross-app shared preview cookie (#1646 Phase 3, ADR 0058). Byte-identical to
+ * the one apps/landing mints (name/path/4h TTL) so the browser stores a single
+ * grant visible to landing, forms and the API across the parent domain.
+ */
+const PREVIEW_COOKIE_NAME = "preview";
+/** 4 hours, in MILLISECONDS — express `res.cookie` maxAge unit. Matches landing's 4h. */
+const PREVIEW_COOKIE_MAX_AGE_MS = 4 * 60 * 60 * 1000;
+/**
+ * Cookie values that grant a visibility bypass: the level name, or the legacy
+ * boolean grant `"1"`. Mirrors `levelFromCookie` in apps/landing/src/lib/preview.ts.
+ */
+const PREVIEW_COOKIE_BYPASS_VALUES = new Set(["preview", "draft", "1"]);
+
+/**
+ * Pull the `preview` cookie's value out of a raw `Cookie` request header without
+ * a cookie-parser dependency. Returns undefined when the cookie is absent.
+ */
+function readPreviewCookie(
+  cookieHeader: string | undefined,
+): string | undefined {
+  if (!cookieHeader) return undefined;
+  for (const pair of cookieHeader.split(";")) {
+    const eq = pair.indexOf("=");
+    if (eq === -1) continue;
+    if (pair.slice(0, eq).trim() === PREVIEW_COOKIE_NAME) {
+      return pair.slice(eq + 1).trim();
+    }
+  }
+  return undefined;
+}
 
 @ApiTags("Form Definitions")
 @ApiBearerAuth()
@@ -59,35 +90,75 @@ export class FormDefinitionsController {
   @GetFormDefinitionDocs()
   async get(
     @Param("formId") formId: string,
-    @Query("version") version?: string,
+    // `?preview=` → visibility bypass: serve the published recipe of a
+    // non-public form (submission stays allowed). `?draft=` → DB scratch
+    // sourcing: serve the in-progress builder draft (submission blocked). Both
+    // validate against RECIPE_PREVIEW_TOKEN and both bypass the #1646 gate
+    // (#1682).
     @Headers("x-recipe-preview") previewToken?: string,
+    @Headers("x-recipe-draft") draftToken?: string,
     @Res({ passthrough: true }) res?: Response,
+    // The shared `preview` cookie (set by landing's SSR or minted below). Its
+    // presence grants the visibility bypass cross-app — see #1646 Phase 3.
+    @Headers("cookie") cookieHeader?: string,
   ): Promise<ApiResponseShape<ServiceContract>> {
     const override = await this.disabledOverridesService.find(formId);
     if (override) {
       // 410 Gone — the kill switch is engaged. Body shape matches the spec.
-      // A disabled form remains disabled even with a valid preview token.
+      // A disabled form remains disabled even with a valid preview/draft token.
       throw new HttpException(
         { disabled: true, reason: override.reason },
         HttpStatus.GONE,
       );
     }
 
-    const preview = isValidSecretToken(
-      this.configService.get<string>("RECIPE_PREVIEW_TOKEN", ""),
-      previewToken,
+    const configuredToken = this.configService.get<string>(
+      "RECIPE_PREVIEW_TOKEN",
+      "",
     );
+    const validPreviewToken = isValidSecretToken(configuredToken, previewToken);
+    const draft = isValidSecretToken(configuredToken, draftToken);
 
-    if (preview) {
-      // Prevent CDN/proxy/browser caching for preview responses — the recipe
-      // may include unpublished DB content that must not be served from cache.
+    // A shared `preview` cookie grants the visibility bypass by its PRESENCE
+    // alone — the value is only the level, never a secret (#1646 Phase 3, a
+    // forgeable rollout gate per ADR 0013/0058). It NEVER triggers DB sourcing;
+    // a `draft`-level cookie bypasses visibility but the in-progress DB scratch
+    // still requires the per-request X-Recipe-Draft secret header (ADR 0011).
+    const cookieValue = readPreviewCookie(cookieHeader);
+    const hasPreviewCookie =
+      cookieValue !== undefined &&
+      PREVIEW_COOKIE_BYPASS_VALUES.has(cookieValue);
+    const bypassVisibility = validPreviewToken || hasPreviewCookie;
+
+    if (bypassVisibility || draft) {
+      // Prevent CDN/proxy/browser caching for preview/draft responses — they
+      // may carry non-public or unpublished DB content that must not be cached.
       res?.setHeader("Cache-Control", "no-store");
+    }
+
+    // Forms is a static client-only SPA and cannot set landing's httpOnly cookie
+    // itself, so the API mints it here when a valid preview token arrives via
+    // header (the SPA forwarding a `?preview=` URL token). Byte-identical to
+    // landing's cookie (name/domain/path) so the browser stores ONE shared
+    // grant. The `?draft=` path mints no cookie — DB sourcing stays per-request.
+    if (validPreviewToken && res) {
+      const domain =
+        this.configService.get<string>("PREVIEW_COOKIE_DOMAIN", "") ||
+        undefined;
+      res.cookie(PREVIEW_COOKIE_NAME, "preview", {
+        domain,
+        httpOnly: true,
+        sameSite: "lax",
+        secure: this.configService.get<string>("NODE_ENV") === "production",
+        maxAge: PREVIEW_COOKIE_MAX_AGE_MS,
+        path: "/",
+      });
     }
 
     const data = await this.formDefinitionsService.findByFormId({
       formId,
-      version,
-      preview,
+      bypassVisibility,
+      draft,
     });
     return AppApiResponse.success(data, {
       message: "Form definition retrieved",

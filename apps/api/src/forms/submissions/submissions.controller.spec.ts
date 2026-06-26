@@ -5,8 +5,8 @@ import { ConfigService } from "@nestjs/config";
 import { SubmissionsController } from "./submissions.controller";
 import { SubmissionsService } from "./submissions.service";
 import { SubmissionPayloadSizePipe } from "./submission-payload-size.pipe";
-import type { FormSubmissionEntity } from "../../database/entities/form-submission.entity";
-import { FormSubmissionStatus } from "../../database/entities/form-submission.entity";
+import type { FormSubmissionEntity } from "@/database/entities/form-submission.entity";
+import { FormSubmissionStatus } from "@/database/entities/form-submission.entity";
 import type { CreateSubmissionDto } from "./dto";
 
 function makeEntity(
@@ -71,7 +71,12 @@ describe("SubmissionsController", () => {
         deferred: undefined,
       });
 
-      const result = await controller.create("key-abc", undefined, baseDto);
+      const result = await controller.create(
+        "key-abc",
+        undefined,
+        undefined,
+        baseDto,
+      );
 
       expect(service.submit).toHaveBeenCalledWith({
         ...baseDto,
@@ -104,7 +109,12 @@ describe("SubmissionsController", () => {
         deferred: deferredData,
       });
 
-      const result = await controller.create("key-abc", undefined, baseDto);
+      const result = await controller.create(
+        "key-abc",
+        undefined,
+        undefined,
+        baseDto,
+      );
 
       expect(result).toMatchObject({
         status: "success",
@@ -124,7 +134,12 @@ describe("SubmissionsController", () => {
         deferred: undefined,
       });
 
-      const result = await controller.create("key-abc", undefined, baseDto);
+      const result = await controller.create(
+        "key-abc",
+        undefined,
+        undefined,
+        baseDto,
+      );
 
       expect("meta" in result).toBe(false);
     });
@@ -138,7 +153,12 @@ describe("SubmissionsController", () => {
         deferred: undefined,
       });
 
-      const result = await controller.create("key-abc", undefined, baseDto);
+      const result = await controller.create(
+        "key-abc",
+        undefined,
+        undefined,
+        baseDto,
+      );
 
       expect(result).toMatchObject({
         status: "success",
@@ -157,7 +177,12 @@ describe("SubmissionsController", () => {
         deferred: undefined,
       });
 
-      const result = await controller.create("key-abc", undefined, baseDto);
+      const result = await controller.create(
+        "key-abc",
+        undefined,
+        undefined,
+        baseDto,
+      );
 
       expect(result).toMatchObject({
         status: "success",
@@ -173,7 +198,7 @@ describe("SubmissionsController", () => {
       );
 
       await expect(
-        controller.create("key-abc", undefined, baseDto),
+        controller.create("key-abc", undefined, undefined, baseDto),
       ).rejects.toThrow("Validation failed");
     });
 
@@ -186,7 +211,12 @@ describe("SubmissionsController", () => {
         deferred: undefined,
       });
 
-      await controller.create("unique-idem-key-xyz", undefined, baseDto);
+      await controller.create(
+        "unique-idem-key-xyz",
+        undefined,
+        undefined,
+        baseDto,
+      );
 
       expect(service.submit).toHaveBeenCalledWith(
         expect.objectContaining({ idempotencyKey: "unique-idem-key-xyz" }),
@@ -209,7 +239,7 @@ describe("SubmissionsController", () => {
         values: { "step-1": { field1: "hello" } },
       };
 
-      await controller.create("key-xyz", undefined, dtoWithDraft);
+      await controller.create("key-xyz", undefined, undefined, dtoWithDraft);
 
       expect(service.submit).toHaveBeenCalledWith({
         formId: "my-form",
@@ -234,7 +264,7 @@ describe("SubmissionsController", () => {
     it("threads isSmokeSubmission:true when the token matches", async () => {
       config.get.mockReturnValue("smoke-s3cret");
 
-      await controller.create("key-abc", "smoke-s3cret", baseDto);
+      await controller.create("key-abc", "smoke-s3cret", undefined, baseDto);
 
       expect(config.get).toHaveBeenCalledWith("SMOKE_SUBMISSION_TOKEN", "");
       expect(service.submit).toHaveBeenCalledWith(
@@ -245,7 +275,7 @@ describe("SubmissionsController", () => {
     it("does NOT set the flag when the token is wrong", async () => {
       config.get.mockReturnValue("smoke-s3cret");
 
-      await controller.create("key-abc", "wrong", baseDto);
+      await controller.create("key-abc", "wrong", undefined, baseDto);
 
       const arg = (service.submit as Mock).mock.calls[0][0];
       expect(arg.isSmokeSubmission).toBeFalsy();
@@ -254,7 +284,7 @@ describe("SubmissionsController", () => {
     it("does NOT set the flag when the header is absent", async () => {
       config.get.mockReturnValue("smoke-s3cret");
 
-      await controller.create("key-abc", undefined, baseDto);
+      await controller.create("key-abc", undefined, undefined, baseDto);
 
       const arg = (service.submit as Mock).mock.calls[0][0];
       expect(arg.isSmokeSubmission).toBeFalsy();
@@ -264,7 +294,7 @@ describe("SubmissionsController", () => {
       // SMOKE_SUBMISSION_TOKEN unset → no ""==="" match; processors still fire.
       config.get.mockReturnValue("");
 
-      await controller.create("key-abc", "", baseDto);
+      await controller.create("key-abc", "", undefined, baseDto);
 
       const arg = (service.submit as Mock).mock.calls[0][0];
       expect(arg.isSmokeSubmission).toBeFalsy();
@@ -273,10 +303,59 @@ describe("SubmissionsController", () => {
     it("fails closed when the configured token is empty and the header has a value", async () => {
       config.get.mockReturnValue("");
 
-      await controller.create("key-abc", "anything", baseDto);
+      await controller.create("key-abc", "anything", undefined, baseDto);
 
       const arg = (service.submit as Mock).mock.calls[0][0];
       expect(arg.isSmokeSubmission).toBeFalsy();
+    });
+  });
+
+  describe("recipe preview header (X-Recipe-Preview)", () => {
+    beforeEach(() => {
+      (service.submit as Mock).mockResolvedValue({
+        data: makeEntity(),
+        message: "Submission created",
+        statusCode: HttpStatus.CREATED,
+        deferred: undefined,
+      });
+    });
+
+    it("threads bypassVisibility:true when the token matches", async () => {
+      config.get.mockReturnValue("preview-s3cret");
+
+      await controller.create("key-abc", undefined, "preview-s3cret", baseDto);
+
+      expect(config.get).toHaveBeenCalledWith("RECIPE_PREVIEW_TOKEN", "");
+      expect(service.submit).toHaveBeenCalledWith(
+        expect.objectContaining({ bypassVisibility: true }),
+      );
+    });
+
+    it("does NOT set the flag when the token is wrong", async () => {
+      config.get.mockReturnValue("preview-s3cret");
+
+      await controller.create("key-abc", undefined, "wrong", baseDto);
+
+      const arg = (service.submit as Mock).mock.calls[0][0];
+      expect(arg.bypassVisibility).toBeFalsy();
+    });
+
+    it("does NOT set the flag when the header is absent", async () => {
+      config.get.mockReturnValue("preview-s3cret");
+
+      await controller.create("key-abc", undefined, undefined, baseDto);
+
+      const arg = (service.submit as Mock).mock.calls[0][0];
+      expect(arg.bypassVisibility).toBeFalsy();
+    });
+
+    it("fails closed when the configured token is empty even if the header matches", async () => {
+      config.get.mockReturnValue("");
+
+      await controller.create("key-abc", undefined, "", baseDto);
+
+      const arg = (service.submit as Mock).mock.calls[0][0];
+      expect(arg.bypassVisibility).toBeFalsy();
     });
   });
 });

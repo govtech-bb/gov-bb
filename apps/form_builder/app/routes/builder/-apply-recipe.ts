@@ -6,8 +6,9 @@ import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 
 /**
- * Turn a recipe into the args the editor's load path needs. The version comes
- * from the recipe itself. `deserialize` is injectable for testing.
+ * Turn a recipe into the args the editor's load path needs. `deserialize` is
+ * injectable for testing. Recipe versioning is retired (#1196), so no version
+ * is returned.
  *
  * Used by the AI sidebar's apply pipeline: a recipe returned by the assistant
  * is deserialized into a draft before it can be validated and loaded.
@@ -19,8 +20,8 @@ export function buildLoadArgs(
     r: ServiceContractRecipe,
     c: RegistryCatalog,
   ) => RecipeDraft = deserializeRecipe,
-): { draft: RecipeDraft; version: string } {
-  return { draft: deserialize(recipe, catalog), version: recipe.version };
+): { draft: RecipeDraft } {
+  return { draft: deserialize(recipe, catalog) };
 }
 
 /**
@@ -37,13 +38,7 @@ export function draftsEqual(
   opts: { comparePayments?: boolean } = {},
 ): boolean {
   const normalize = (d: RecipeDraft): string => {
-    const {
-      createdAt: _c,
-      updatedAt: _u,
-      ...rest
-    } = serializeRecipeDraft(d, {
-      version: "0.0.0",
-    });
+    const { createdAt: _c, updatedAt: _u, ...rest } = serializeRecipeDraft(d);
     return JSON.stringify(rest);
   };
   if (normalize(a) !== normalize(b)) return false;

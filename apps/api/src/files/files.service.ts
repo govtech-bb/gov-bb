@@ -75,14 +75,15 @@ export class FilesService {
   async presignUpload(
     dto: PresignUploadDto,
     previewToken?: string,
+    draftToken?: string,
   ): Promise<PresignUploadResponseDto> {
     this.assertConfigured();
     const field = await this.resolveFileField(
       dto.formId,
-      dto.formVersion,
       dto.stepId,
       dto.fieldId,
-      this.isPreview(previewToken),
+      this.isValidRecipeToken(previewToken),
+      this.isValidRecipeToken(draftToken),
     );
 
     this.assertContentTypeAllowed(field, dto.contentType, dto.fileName);
@@ -108,6 +109,7 @@ export class FilesService {
   async confirmUpload(
     dto: ConfirmUploadDto,
     previewToken?: string,
+    draftToken?: string,
   ): Promise<FileAttachmentDto> {
     this.assertConfigured();
     // TODO(security): the (formId, stepId, fieldId) the client supplies here
@@ -117,10 +119,10 @@ export class FilesService {
     // (or sign a token at presign and require it here).
     const field = await this.resolveFileField(
       dto.formId,
-      dto.formVersion,
       dto.stepId,
       dto.fieldId,
-      this.isPreview(previewToken),
+      this.isValidRecipeToken(previewToken),
+      this.isValidRecipeToken(draftToken),
     );
 
     let head;
@@ -354,33 +356,37 @@ export class FilesService {
   }
 
   /**
-   * Mirrors the form-GET path: only honour `preview: true` when the supplied
-   * token validates against the configured `RECIPE_PREVIEW_TOKEN`. A missing or
-   * invalid token leaves behaviour exactly as before (published recipes only).
+   * Mirrors the form-GET path (#1682): both the `X-Recipe-Preview` and
+   * `X-Recipe-Draft` tokens validate against the same `RECIPE_PREVIEW_TOKEN`. A
+   * missing or invalid token leaves behaviour exactly as before (published
+   * recipes only, visibility gate enforced).
    */
-  private isPreview(previewToken?: string): boolean {
+  private isValidRecipeToken(token?: string): boolean {
     return isValidSecretToken(
       this.config.get<string>("RECIPE_PREVIEW_TOKEN", ""),
-      previewToken,
+      token,
     );
   }
 
   private async resolveFileField(
     formId: string,
-    formVersion: string,
     stepId: string,
     fieldId: string,
-    preview = false,
+    // Mirror the form-GET sourcing so the file-field config matches the recipe
+    // the citizen/reviewer loaded: bypassVisibility serves a non-public
+    // published recipe; draft sources the in-progress DB scratch (#1682).
+    bypassVisibility = false,
+    draft = false,
   ): Promise<Primitive> {
     let contract;
     try {
       contract = await this.formDefs.findByFormId({
         formId,
-        version: formVersion,
-        preview,
+        bypassVisibility,
+        draft,
       });
     } catch {
-      throw new BadRequestException(`Form not found: ${formId}@${formVersion}`);
+      throw new BadRequestException(`Form not found: ${formId}`);
     }
     const step = contract.steps.find((s) => s.stepId === stepId);
     if (!step) {

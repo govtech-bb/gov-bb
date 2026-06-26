@@ -12,10 +12,42 @@ export class UnsafeUrlError extends Error {
   }
 }
 
-/** First 16-bit hextet of an IPv6 address as an integer (handles `::` / shortening). */
-function firstHextet(ip: string): number {
-  if (ip.startsWith("::")) return 0;
-  return parseInt(ip.split(":")[0] || "0", 16);
+/**
+ * Expands a valid IPv6 literal to its 8 16-bit hextets. Handles `::`
+ * compression and a trailing embedded IPv4 (`::ffff:1.2.3.4`), normalising the
+ * dotted tail into two hextets so callers reason about the address numerically
+ * rather than by text form. Returns null if it can't expand to exactly 8
+ * hextets (the caller has already confirmed a valid IPv6 via `net.isIP`, so
+ * this is a defensive guard).
+ */
+function ipv6ToHextets(ip: string): number[] | null {
+  let s = ip.toLowerCase();
+
+  // Convert a trailing embedded IPv4 (dotted) into two hex hextets so both
+  // `::ffff:169.254.169.254` and `::ffff:a9fe:a9fe` expand identically.
+  const v4 = s.match(/^(.*:)(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (v4) {
+    const [, prefix, a, b, c, d] = v4;
+    const hi = ((Number(a) << 8) | Number(b)).toString(16);
+    const lo = ((Number(c) << 8) | Number(d)).toString(16);
+    s = `${prefix}${hi}:${lo}`;
+  }
+
+  const parts = s.split("::");
+  if (parts.length > 2) return null;
+  const left = parts[0] ? parts[0].split(":") : [];
+  const right = parts.length === 2 && parts[1] ? parts[1].split(":") : [];
+
+  let groups: string[];
+  if (parts.length === 2) {
+    const fill = 8 - left.length - right.length;
+    if (fill < 0) return null;
+    groups = [...left, ...Array(fill).fill("0"), ...right];
+  } else {
+    groups = left;
+  }
+  if (groups.length !== 8) return null;
+  return groups.map((h) => parseInt(h || "0", 16));
 }
 
 function isInternalIpv4(ip: string): boolean {
@@ -31,14 +63,29 @@ function isInternalIpv4(ip: string): boolean {
 }
 
 function isInternalIpv6(ip: string): boolean {
-  const s = ip.toLowerCase();
-  if (s === "::" || s === "::1") return true; // unspecified / loopback
-  // IPv4-mapped (`::ffff:a.b.c.d`) — apply the IPv4 rules to the embedded address.
-  const mapped = s.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (mapped) return isInternalIpv4(mapped[1]);
-  const fh = firstHextet(s);
-  if (fh >= 0xfc00 && fh <= 0xfdff) return true; // fc00::/7 (unique local)
-  if (fh >= 0xfe80 && fh <= 0xfebf) return true; // fe80::/10 (link-local)
+  const h = ipv6ToHextets(ip);
+  if (!h) return false;
+
+  const allZeroHigh = h.slice(0, 7).every((x) => x === 0);
+  if (allZeroHigh && (h[7] === 0 || h[7] === 1)) return true; // :: / ::1
+
+  // IPv4-mapped (::ffff:0:0/96) — apply the IPv4 rules to the embedded address,
+  // recovered from the low 32 bits regardless of dotted or hex notation. This
+  // closes the `::ffff:a9fe:a9fe` (= 169.254.169.254) bypass (#287).
+  const isMapped =
+    h[0] === 0 &&
+    h[1] === 0 &&
+    h[2] === 0 &&
+    h[3] === 0 &&
+    h[4] === 0 &&
+    h[5] === 0xffff;
+  if (isMapped) {
+    const v4 = `${h[6] >> 8}.${h[6] & 0xff}.${h[7] >> 8}.${h[7] & 0xff}`;
+    return isInternalIpv4(v4);
+  }
+
+  if ((h[0] & 0xfe00) === 0xfc00) return true; // fc00::/7 (unique local)
+  if ((h[0] & 0xffc0) === 0xfe80) return true; // fe80::/10 (link-local)
   return false;
 }
 
@@ -56,14 +103,14 @@ export function isInternalIp(ip: string): boolean {
 
 /**
  * SSRF guard for an outbound processor URL (#287). Enforces `https:` and that
- * the host does not resolve to an internal address, before any `fetch`. Throws
- * {@link UnsafeUrlError} on violation so the processor fails loudly rather than
- * delivering to (or leaking from) an internal endpoint.
+ * the host does not resolve to an internal address, before the request is
+ * dispatched. Throws {@link UnsafeUrlError} on violation so the processor fails
+ * loudly rather than delivering to (or leaking from) an internal endpoint.
  *
  * This resolves the host and validates the result, but does not pin the
  * connection to the validated IP — a fast-flipping DNS-rebinding attacker could
- * still bypass it (the actual `fetch` re-resolves). Closing that fully needs a
- * pinned dispatcher; out of scope here (see plan #287).
+ * still bypass it (the request re-resolves at dispatch). Closing that fully
+ * needs a pinned dispatcher; out of scope here (see plan #287).
  */
 export async function assertSafeUrl(raw: string): Promise<void> {
   let url: URL;

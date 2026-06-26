@@ -268,6 +268,28 @@
   white-space: nowrap;
 }
 
+/* Launch-gate visibility selector (#1682) — matches the subtle, underlined
+   aesthetic of the toolbar's id/title inputs. */
+.toolbar select.visibilitySelect {
+  padding: 1px 2px 3px;
+  border: none;
+  border-bottom: 1px solid var(--el-250);
+  border-radius: 0;
+  background: transparent;
+  color: var(--el-800);
+  font-size: 12.5px;
+  transition: border-color 0.15s;
+}
+.toolbar select.visibilitySelect:hover:not(:disabled):not(:focus) {
+  border-bottom-color: var(--el-400);
+}
+.toolbar select.visibilitySelect:focus {
+  outline: none;
+  box-shadow: none;
+  border-bottom-color: var(--el-1000);
+  color: var(--txt);
+}
+
 .headerActions {
   display: flex;
   align-items: center;

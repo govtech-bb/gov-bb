@@ -18,8 +18,6 @@ function renderModal(props: Partial<React.ComponentProps<typeof SubmitModal>> = 
   return render(
     <SubmitModal
       draft={draft}
-      version="1.0.0"
-      currentVersion={null}
       loadedFromId={null}
       isSubmitting={false}
       submitSuccess={false}
@@ -32,13 +30,13 @@ function renderModal(props: Partial<React.ComponentProps<typeof SubmitModal>> = 
 }
 
 describe("SubmitModal preview link", () => {
-  it("shows a Preview form link to VITE_FORMS_URL/forms/{id} with the preview token after a successful save", () => {
+  it("shows a Preview form link to VITE_FORMS_URL/forms/{id} with the draft token after a successful save", () => {
     renderModal({ submitSuccess: true });
 
     const link = screen.getByRole("link", { name: /preview form/i });
     expect(link).toHaveAttribute(
       "href",
-      "https://forms.example.test/forms/passport?preview=stub-token",
+      "https://forms.example.test/forms/passport?draft=stub-token",
     );
     expect(link).toHaveAttribute("target", "_blank");
   });
@@ -47,37 +45,6 @@ describe("SubmitModal preview link", () => {
     renderModal({ submitSuccess: false });
     expect(
       screen.queryByRole("link", { name: /preview form/i }),
-    ).not.toBeInTheDocument();
-  });
-});
-
-describe("SubmitModal version hint", () => {
-  it("says it overwrites in place when the loaded version is an unpublished draft", () => {
-    renderModal({
-      loadedFromId: "passport",
-      currentVersion: "1.0.1",
-      version: "1.0.1",
-      currentVersionIsPublished: false,
-    });
-    expect(
-      screen.getByText(/overwrites this draft in place/i),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/saves a new draft/i)).not.toBeInTheDocument();
-  });
-
-  it("says it saves a new draft (not overwrite) when the loaded version is published", () => {
-    // currentVersion is the published version; `version` is the bumped patch
-    // the page passes in. The modal must NOT claim an in-place overwrite.
-    renderModal({
-      loadedFromId: "passport",
-      currentVersion: "1.0.0",
-      version: "1.0.1",
-      currentVersionIsPublished: true,
-    });
-    expect(screen.getByText(/saves a new draft/i)).toBeInTheDocument();
-    expect(screen.getByText(/v1\.0\.1/)).toBeInTheDocument();
-    expect(
-      screen.queryByText(/overwrites this draft in place/i),
     ).not.toBeInTheDocument();
   });
 });

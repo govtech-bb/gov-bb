@@ -143,40 +143,51 @@ describe("FilesService", () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    describe("preview token", () => {
-      it("resolves with preview:true when the token is valid", async () => {
+    describe("recipe tokens", () => {
+      it("resolves with bypassVisibility:true when the preview token is valid", async () => {
         await service.presignUpload(dto, "secret-preview-token");
         expect(formDefs.findByFormId).toHaveBeenCalledWith(
-          expect.objectContaining({ preview: true }),
+          expect.objectContaining({ bypassVisibility: true, draft: false }),
         );
       });
 
-      it("resolves with preview:false when no token is supplied", async () => {
+      it("resolves with draft:true when the draft token is valid", async () => {
+        await service.presignUpload(dto, undefined, "secret-preview-token");
+        expect(formDefs.findByFormId).toHaveBeenCalledWith(
+          expect.objectContaining({ bypassVisibility: false, draft: true }),
+        );
+      });
+
+      it("resolves with no bypass/draft when no token is supplied", async () => {
         await service.presignUpload(dto);
         expect(formDefs.findByFormId).toHaveBeenCalledWith(
-          expect.objectContaining({ preview: false }),
+          expect.objectContaining({ bypassVisibility: false, draft: false }),
         );
       });
 
-      it("resolves with preview:false when the token is invalid", async () => {
-        await service.presignUpload(dto, "wrong-token");
+      it("resolves with no bypass/draft when the token is invalid", async () => {
+        await service.presignUpload(dto, "wrong-token", "wrong-token");
         expect(formDefs.findByFormId).toHaveBeenCalledWith(
-          expect.objectContaining({ preview: false }),
+          expect.objectContaining({ bypassVisibility: false, draft: false }),
         );
       });
 
-      it("presigns a DB-only draft only with a valid token", async () => {
-        // Simulate an unpublished draft: resolvable only on the preview path.
+      it("presigns a DB-only draft only with a valid draft token", async () => {
+        // Simulate an unpublished draft: resolvable only on the draft path.
         formDefs.findByFormId.mockImplementation(
-          ({ preview }: { preview?: boolean }) =>
-            preview
+          ({ draft }: { draft?: boolean }) =>
+            draft
               ? Promise.resolve(makeContract())
               : Promise.reject(new Error("not found")),
         );
         await expect(service.presignUpload(dto)).rejects.toThrow(
           BadRequestException,
         );
-        const r = await service.presignUpload(dto, "secret-preview-token");
+        const r = await service.presignUpload(
+          dto,
+          undefined,
+          "secret-preview-token",
+        );
         expect(r.uploadUrl).toMatch(/^https?:\/\//);
       });
     });
@@ -233,7 +244,7 @@ describe("FilesService", () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    describe("preview token", () => {
+    describe("recipe tokens", () => {
       beforeEach(() => {
         s3Mock.on(HeadObjectCommand).resolves({
           ContentLength: 1234,
@@ -241,24 +252,35 @@ describe("FilesService", () => {
         });
       });
 
-      it("resolves with preview:true when the token is valid", async () => {
+      it("resolves with bypassVisibility:true when the preview token is valid", async () => {
         await service.confirmUpload(confirmDto, "secret-preview-token");
         expect(formDefs.findByFormId).toHaveBeenCalledWith(
-          expect.objectContaining({ preview: true }),
+          expect.objectContaining({ bypassVisibility: true, draft: false }),
         );
       });
 
-      it("resolves with preview:false when no token is supplied", async () => {
+      it("resolves with draft:true when the draft token is valid", async () => {
+        await service.confirmUpload(
+          confirmDto,
+          undefined,
+          "secret-preview-token",
+        );
+        expect(formDefs.findByFormId).toHaveBeenCalledWith(
+          expect.objectContaining({ bypassVisibility: false, draft: true }),
+        );
+      });
+
+      it("resolves with no bypass/draft when no token is supplied", async () => {
         await service.confirmUpload(confirmDto);
         expect(formDefs.findByFormId).toHaveBeenCalledWith(
-          expect.objectContaining({ preview: false }),
+          expect.objectContaining({ bypassVisibility: false, draft: false }),
         );
       });
 
-      it("confirms a DB-only draft only with a valid token", async () => {
+      it("confirms a DB-only draft only with a valid draft token", async () => {
         formDefs.findByFormId.mockImplementation(
-          ({ preview }: { preview?: boolean }) =>
-            preview
+          ({ draft }: { draft?: boolean }) =>
+            draft
               ? Promise.resolve(makeContract())
               : Promise.reject(new Error("not found")),
         );
@@ -267,6 +289,7 @@ describe("FilesService", () => {
         );
         const r = await service.confirmUpload(
           confirmDto,
+          undefined,
           "secret-preview-token",
         );
         expect(r.size).toBe(1234);

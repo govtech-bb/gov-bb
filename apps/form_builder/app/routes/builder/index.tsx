@@ -1,15 +1,22 @@
 import "../../styles/builder.global.css";
 import { createFileRoute } from "@tanstack/react-router";
-import { useReducer, useState, useMemo, useRef, useEffect } from "react";
+import { useReducer, useState, useMemo, useEffect } from "react";
 import { getCatalogFn } from "../../server/registry";
 import { submitRecipe, updateRecipe, rekeyRecipe, deleteForm, disableForm, enableForm } from "../../server/forms";
 import { createMdaContact } from "../../server/mda-contacts";
-import { publishRecipe, getPublishBaseBranch, getNextDeployVersion, eraseRecipe } from "../../server/publish";
+import { publishRecipe, getPublishBaseBranch, eraseRecipe } from "../../server/publish";
 import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds, extractDbProcessors, firstIncompletePaymentProcessor } from "@govtech-bb/form-builder";
-import { bumpMinor, bumpPatch } from "../../lib/version";
-import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
-import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "@govtech-bb/form-types";
+import type {
+  ServiceContract,
+  ServiceContractRecipe,
+  RecipeVisibility,
+} from "@govtech-bb/form-types";
+import {
+  KEBAB_ID_PATTERN,
+  KEBAB_ID_ERROR,
+  getRecipeVisibility,
+} from "@govtech-bb/form-types";
 import type { RecipeDraft, ValidationResult, RecipeValidateResponse, ValidationIssue, UnknownRef } from "@govtech-bb/form-builder";
 
 import { Layers01Icon, Moon02Icon, Sun03Icon } from "hugeicons-react";
@@ -102,8 +109,6 @@ function BuilderPage() {
   const [mainView, setMainView] = useState<
     "step" | "processors" | "contactDetails"
   >("step");
-  const [version, setVersion] = useState("1.0.0");
-  const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [loadedFromId, setLoadedFromId] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [validateResult, setValidateResult] = useState<RecipeValidateResponse | null>(null);
@@ -126,12 +131,6 @@ function BuilderPage() {
     { prUrl: string; prNumber: number } | null
   >(null);
   const [publishError, setPublishError] = useState<string | null>(null);
-  // Server-resolved Deploy target (#873): bumps past base-branch versions and
-  // open deploy PRs, not just the DB draft. Null while resolving; falls back
-  // to the client bump on error (publishRecipe re-checks server-side).
-  const [deployTarget, setDeployTarget] = useState<string | null>(null);
-  // Guards handleOpenPublish against a stale resolution overwriting a fresher one (open→close→reopen).
-  const publishResolveSeq = useRef(0);
   const [lastSaveStatus, setLastSaveStatus] = useState<"idle" | "success" | "error" | "submitted">("idle");
   const [deleteTarget, setDeleteTarget] = useState<FormDefinitionSummary | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -219,41 +218,6 @@ function BuilderPage() {
     [forms, draft, loadedFromId],
   );
 
-  // Versioning is deterministic and client-side — no async round-trip on the
-  // load path (that fetch was the source of the version flicker). The loaded /
-  // working version (`version`, set by handleLoad / handleNew / handleSubmit) is
-  // the single source of truth. Save Changes overwrites the loaded draft in
-  // place at its current version (#329) — defaulting the modal to currentVersion
-  // makes the isInPlaceUpdate branch fire (updateRecipe/PUT) so repeated saves
-  // don't mint duplicate drafts. The SubmitModal pins this field read-only on
-  // the update path, so there's no fork-a-new-version escape hatch from Save
-  // Changes — Deploy still cuts a minor. A brand-new form (no current version)
-  // starts at 1.0.0 and keeps an editable version picker.
-  //
-  // Exception (this fix): when the loaded version is the *published* one, an
-  // in-place overwrite is impossible — the API forbids mutating a published
-  // recipe ("Cannot update a published recipe"). So Save Changes auto-bumps a
-  // patch and cuts a fresh draft version instead of overwriting the immutable
-  // published row. A higher unpublished draft over a published version
-  // (publishedVersion < currentVersion) is still overwritten in place.
-  //
-  // This reads the live `forms` list (treating the still-loading null as
-  // empty). That's safe because the only path that sets currentVersion to a
-  // published version is loading a form through the Open picker, which only
-  // renders its rows once `forms` has resolved — so the list is always
-  // populated by the time a published form can be the working version.
-  const currentVersionIsPublished =
-    !!currentVersion &&
-    (forms ?? []).some(
-      (f) => f.formId === loadedFromId && f.publishedVersion === currentVersion,
-    );
-  const saveDraftVersion = currentVersion
-    ? currentVersionIsPublished
-      ? bumpPatch(currentVersion)
-      : currentVersion
-    : "1.0.0";
-  const deployVersion = currentVersion ? bumpMinor(currentVersion) : "1.0.0";
-
   // Editing presence / read-only lock (#874). Claim the open form's single
   // editing session, keyed on the loaded form's id. A brand-new, unsaved form
   // has no concurrent editor (and the API exempts brand-new creation), so we
@@ -287,7 +251,11 @@ function BuilderPage() {
         setLastSaveStatus("error");
         return result;
       }
-      const emptyStep = editableSteps.find((s) => s.fields.length === 0);
+      // A content-only step (intro/information page) carries markdownContent
+      // and no fields — that is valid. A step with neither is the empty step.
+      const emptyStep = editableSteps.find(
+        (s) => s.fields.length === 0 && !s.markdownContent,
+      );
       if (emptyStep) {
         const result: RecipeValidateResponse = {
           valid: false,
@@ -343,7 +311,7 @@ function BuilderPage() {
         return result;
       }
 
-      const recipe = serializeRecipeDraft(draft, { version });
+      const recipe = serializeRecipeDraft(draft);
       const raw = (await validateRecipe({ data: { recipe } })) as ValidationResult;
       const result: RecipeValidateResponse = {
         valid: raw.ok,
@@ -437,7 +405,29 @@ function BuilderPage() {
     setIsSubmitOpen(true);
   };
 
+  // Hard gate for Deploy ONLY (#1682 follow-up): a form whose visibility is
+  // still `draft` is not ready to publish — only `preview`/`public` recipes may
+  // deploy. Lights the validation panel and returns true when blocked. Save
+  // draft is intentionally NOT gated: scratch-saving a draft is exactly what
+  // draft visibility is for.
+  const blockedByDraftVisibility = (): boolean => {
+    if (getRecipeVisibility(draft) !== "draft") return false;
+    setValidateResult({
+      valid: false,
+      issues: [
+        {
+          path: "meta.visibility",
+          message:
+            "This form's visibility is Draft. Set it to Preview or Public in the toolbar before deploying.",
+        },
+      ],
+    });
+    setLastSaveStatus("error");
+    return true;
+  };
+
   const handleDeployClick = async () => {
+    if (blockedByDraftVisibility()) return;
     if (blockedByUniqueness()) return;
     if (blockedByIncompletePayment()) return;
     const result = await runValidation();
@@ -454,7 +444,7 @@ function BuilderPage() {
     setIsPreviewing(true);
     setPreviewError(null);
     try {
-      const recipe = serializeRecipeDraft(draft, { version });
+      const recipe = serializeRecipeDraft(draft);
       // Captured before the request so the JSON is inspectable even when the
       // preview request fails — failure is exactly when you want to see it.
       setPreviewRecipeJson(recipe);
@@ -467,11 +457,11 @@ function BuilderPage() {
     }
   };
 
-  const handleSubmit = async (submitVersion: string) => {
+  const handleSubmit = async () => {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const recipe = serializeRecipeDraft(draft, { version: submitVersion });
+      const recipe = serializeRecipeDraft(draft);
       // Three save shapes, branching on the loaded id (captured before
       // setLoadedFromId below overwrites loadedFromId — the picker refresh
       // branches on these too):
@@ -479,7 +469,7 @@ function BuilderPage() {
       //  - re-key (#674): a loaded form whose id was changed — an atomic
       //    identity move, not a create (which would self-collide on title and
       //    leave a stale old-id row).
-      //  - in-place / new version: the loaded id is unchanged.
+      //  - in-place update: the loaded id is unchanged.
       const oldFormId = loadedFromId;
       const isCreate = oldFormId === null;
       // An empty id is never a re-key — it's left to the "Form ID is required"
@@ -487,19 +477,9 @@ function BuilderPage() {
       // cleared id on a save-anyway doesn't round-trip to the rekey endpoint.
       const isRekey =
         oldFormId !== null && draft.formId !== "" && draft.formId !== oldFormId;
-      // A same-version save of the same form overwrites its row in place
-      // (updateRecipe); any higher version creates a new draft row
-      // (submitRecipe). This split also decides the picker row's isPublished.
-      // A published current version is never overwritten in place — saving it
-      // cuts a new draft version (saveDraftVersion already bumps the patch), so
-      // exclude it here too as a belt-and-suspenders against the API's
-      // "Cannot update a published recipe" rejection.
-      const isInPlaceUpdate =
-        !!oldFormId &&
-        draft.formId === oldFormId &&
-        !!currentVersion &&
-        submitVersion === currentVersion &&
-        !currentVersionIsPublished;
+      // #1196: one scratch row per form — saving a loaded form (same id) always
+      // overwrites that row in place; there is no new-version fork.
+      const isInPlaceUpdate = !!oldFormId && draft.formId === oldFormId;
       // The selected per-environment MDA contact (issue #607). DB-only: it
       // rides alongside the recipe as a sibling field on create/update so the
       // API upserts it into form_config. Only sent when the draft carries a
@@ -546,22 +526,15 @@ function BuilderPage() {
           id: existing?.id ?? draft.formId,
           formId: draft.formId,
           title: draft.title,
-          version: submitVersion,
-          // Saving a draft never changes published-index membership (or the
-          // published version), so preserve both exactly as the server merge
-          // would: a never-published draft stays unpublished, and a published
-          // form keeps its badge whether the save overwrote a draft in place or
-          // cut a new draft version off the published one.
+          // #1196: version is a frozen breadcrumb from the API list; preserve it.
+          version: existing?.version ?? "",
+          // Saving a draft never changes published-index membership, so preserve
+          // it: a never-published draft stays unpublished, a published form keeps
+          // its badge.
           isPublished: existing?.isPublished ?? false,
           publishedVersion: existing?.publishedVersion,
         });
       }
-
-      // The just-saved version becomes the new working/current version, so the
-      // toolbar reflects it and the next Save-draft patch / Deploy minor bumps
-      // off it. No server round-trip — the bump is computed client-side.
-      setCurrentVersion(submitVersion);
-      setVersion(submitVersion);
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Submission failed");
     } finally {
@@ -569,20 +542,12 @@ function BuilderPage() {
     }
   };
 
-  const handleOpenPublish = async () => {
-    const seq = ++publishResolveSeq.current;
+  const handleOpenPublish = () => {
+    // #1196: publishing overwrites the canonical flat file — there is no
+    // deploy-version to resolve, so just open the modal.
     setPublishSuccess(null);
     setPublishError(null);
-    setDeployTarget(null);
     setIsPublishOpen(true);
-    try {
-      const next = await getNextDeployVersion({
-        data: { formId: draft.formId, currentVersion },
-      });
-      if (seq === publishResolveSeq.current) setDeployTarget(next.version);
-    } catch {
-      if (seq === publishResolveSeq.current) setDeployTarget(deployVersion);
-    }
   };
 
   const handlePublish = async (description: string) => {
@@ -595,28 +560,21 @@ function BuilderPage() {
       setPublishError("Save draft before deploying.");
       return;
     }
-    if (!deployTarget) return; // still resolving — button is disabled anyway
     setIsPublishing(true);
     setPublishError(null);
     try {
-      const recipe = serializeRecipeDraft(draft, { version: deployTarget });
+      const recipe = serializeRecipeDraft(draft);
       const result = await publishRecipe({ data: { recipe, description } });
       setPublishSuccess(result);
-      // The deploy reserved a draft row at deployTarget (#873) — make it the
-      // working version so a follow-up Save/Deploy bumps off it, and patch the
-      // picker row the same way handleSubmit does.
-      setCurrentVersion(deployTarget);
-      setVersion(deployTarget);
+      // Deploy opens a review PR; the published index is unchanged until it
+      // merges — preserve the existing picker row.
       const existing = forms?.find((f) => f.formId === draft.formId);
       upsertForm({
         id: existing?.id ?? draft.formId,
         formId: draft.formId,
         title: draft.title,
-        version: deployTarget,
+        version: existing?.version ?? "",
         isPublished: false,
-        // Deploy opens a review PR, so the published index is unchanged until it
-        // merges — preserve the existing publishedVersion (a refetch would still
-        // report the old one) rather than dropping it.
         publishedVersion: existing?.publishedVersion,
       });
     } catch (e) {
@@ -632,7 +590,7 @@ function BuilderPage() {
     setPublishError(null);
   };
 
-  const handleLoad = (loadedDraft: RecipeDraft, formId: string, ver: string) => {
+  const handleLoad = (loadedDraft: RecipeDraft, formId: string) => {
     const loadAction = { type: "LOAD_DRAFT" as const, draft: loadedDraft };
     dispatch(loadAction);
     // Snapshot the *normalized* draft the reducer produces — LOAD_DRAFT
@@ -643,8 +601,6 @@ function BuilderPage() {
     // the reducer's required first arg.
     setSavedDraft(recipeReducer(draft, loadAction));
     setLoadedFromId(formId);
-    setCurrentVersion(ver);
-    setVersion(ver);
     // Open the first step straight away so the author lands in an editable
     // state. firstStepId mirrors LOAD_DRAFT's [...editable, ...required]
     // ordering, so it picks the step the reducer puts first (not loadedDraft[0]).
@@ -717,7 +673,7 @@ function BuilderPage() {
     // infrastructure error, not a recipe defect, so it stays a hard error.
     if (unresolvableRefs.length === 0) {
       try {
-        const serialized = serializeRecipeDraft(incoming, { version });
+        const serialized = serializeRecipeDraft(incoming);
         const raw = (await validateRecipe({
           data: { recipe: serialized },
         })) as ValidationResult;
@@ -763,8 +719,6 @@ function BuilderPage() {
     }
     setSubmitSuccess(false);
     setSubmitError(null);
-    // The recipe changed, so cut a fresh patch off the working version.
-    setVersion((v) => bumpPatch(v));
     return { applied: true };
   };
 
@@ -775,8 +729,6 @@ function BuilderPage() {
     setSavedDraft(null);
     setSelectedStepId(null);
     setMainView("step");
-    setVersion("1.0.0");
-    setCurrentVersion(null);
     setLoadedFromId(null);
     setValidateResult(null);
     setSubmitSuccess(false);
@@ -809,7 +761,6 @@ function BuilderPage() {
     dispatch({ type: "LOAD_DRAFT", draft: savedDraft });
     setSelectedStepId(firstStepId(savedDraft));
     setMainView("step");
-    setVersion(currentVersion ?? "1.0.0");
     setValidateResult(null);
     setSubmitSuccess(false);
     setSubmitError(null);
@@ -827,8 +778,6 @@ function BuilderPage() {
     dispatch({ type: "LOAD_DRAFT", draft: dupDraft });
     setSavedDraft(null);
     setLoadedFromId(null);
-    setCurrentVersion(null);
-    setVersion("1.0.0");
     setSelectedStepId(firstStepId(dupDraft));
     setMainView("step");
     setValidateResult(null);
@@ -963,6 +912,10 @@ function BuilderPage() {
     dispatch({ type: "SET_FORM_META", formId: draft.formId, title, description: draft.description });
   };
 
+  const handleVisibilityChange = (visibility: RecipeVisibility) => {
+    dispatch({ type: "SET_VISIBILITY", visibility });
+  };
+
   // Create an MDA contact via the API, patch it into the local directory so the
   // dropdown shows it immediately, and hand the created row back to the editor
   // (which selects it). Issue #607.
@@ -1049,7 +1002,6 @@ function BuilderPage() {
         }
         formId={draft.formId}
         title={draft.title}
-        version={version}
         idError={uniqueness.idError}
         isDirty={isDirty}
         hasUnsavedChanges={hasUnsavedChanges}
@@ -1059,6 +1011,8 @@ function BuilderPage() {
         isPublishing={isPublishing}
         isReadOnly={isReadOnly}
         lastSaveStatus={lastSaveStatus}
+        visibility={getRecipeVisibility(draft)}
+        onVisibilityChange={handleVisibilityChange}
         onFormIdChange={handleFormIdChange}
         onTitleChange={handleTitleChange}
         onNew={handleNew}
@@ -1185,9 +1139,6 @@ function BuilderPage() {
       {isSubmitOpen && (
         <SubmitModal
           draft={draft}
-          version={saveDraftVersion}
-          currentVersion={currentVersion}
-          currentVersionIsPublished={currentVersionIsPublished}
           loadedFromId={loadedFromId}
           isSubmitting={isSubmitting}
           submitSuccess={submitSuccess}
@@ -1201,7 +1152,6 @@ function BuilderPage() {
       {isPublishOpen && (
         <PublishModal
           draft={draft}
-          version={deployTarget}
           baseBranch={baseBranch}
           isPublishing={isPublishing}
           publishSuccess={publishSuccess}
@@ -1249,7 +1199,6 @@ function BuilderPage() {
 
       <AiSidebar
         draft={draft}
-        version={version}
         onApplyRecipe={applyAiRecipe}
       />
       </div>

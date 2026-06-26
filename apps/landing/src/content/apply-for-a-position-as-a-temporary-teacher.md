@@ -6,6 +6,7 @@ stage: "alpha"
 publish_date: 2026-01-15
 category: work-employment
 form_id: temp-teacher-application-barbados
+service_type: digital
 ---
 
 If you want to be a temporary teacher in a public primary school in Barbados, you must apply. If your application meets the requirements and a suitable position becomes available, you may be contacted for an interview.
@@ -20,9 +21,12 @@ To apply, you need to:
 
 ## How to apply
 
+At the moment, you can only apply online by completing the [Application for registration as temporary/acting teacher form](https://barbados.seamlessdocs.com/f/pvyf07u3v0j2). 
+
+<!--
 You can apply online. It takes about 10 minutes.
 
-<a data-start-link>Start now</a>
+<a data-start-link>Start now</a> -->
 
 ### Find out about vacancies
 
