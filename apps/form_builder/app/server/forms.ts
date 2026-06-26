@@ -91,7 +91,26 @@ async function resolveStoredRecipe(
     const draft = await api.get<ServiceContractRecipe>(
       `/builder/forms/${encodeURIComponent(formId)}`,
     );
-    if (draft) return draft;
+    if (draft) {
+      // #1682: a form's visibility (`meta.visibility`) was written straight into
+      // the published flat files (#1676) for the #1517 flagged forms, bypassing
+      // the builder save flow — so their pre-existing DB scratch rows carry no
+      // `meta`. When the working copy has none, hydrate it from the published
+      // recipe so the builder's visibility control reflects the live launch gate
+      // instead of defaulting to "public". A draft that *did* set visibility
+      // keeps its own value; an unpublished draft (no flat file) stays metaless.
+      if (draft.meta === undefined) {
+        try {
+          const published = serviceContractRecipeSchema.parse(
+            await getPublishedRecipe(token, { formId }),
+          );
+          if (published.meta !== undefined) draft.meta = published.meta;
+        } catch {
+          // No published flat file yet — leave meta absent (treated as public).
+        }
+      }
+      return draft;
+    }
   } catch (err) {
     if (!(err instanceof ApiError) || err.status !== 404) throw err;
   }
