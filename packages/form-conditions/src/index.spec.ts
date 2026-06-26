@@ -202,6 +202,62 @@ describe("evaluateCondition", () => {
         evaluateCondition(numeric, EMPTY_VALUES, { dependants: "4" }),
       ).toBe(false);
     });
+
+    // ─── multi-select checkbox (array-valued) targets (#1709) ────────────────
+    // A multi-select checkbox stores its value as a string[] of selected
+    // options. `in` should match when ANY selected option is in the list.
+    const multiSelect: FieldConditionalOnBehaviour = {
+      type: "fieldConditionalOn",
+      targetFieldId: "contact-methods",
+      operator: "in",
+      value: ["email"],
+    };
+
+    it("matches when 2+ ticked and one is in the list (#1709 regression)", () => {
+      expect(
+        evaluateCondition(multiSelect, EMPTY_VALUES, {
+          "contact-methods": ["email", "sms"],
+        }),
+      ).toBe(true);
+    });
+
+    it("matches a single-element array selection", () => {
+      expect(
+        evaluateCondition(multiSelect, EMPTY_VALUES, {
+          "contact-methods": ["email"],
+        }),
+      ).toBe(true);
+    });
+
+    it("does not match when no selected option is in the list", () => {
+      expect(
+        evaluateCondition(multiSelect, EMPTY_VALUES, {
+          "contact-methods": ["sms", "phone"],
+        }),
+      ).toBe(false);
+    });
+
+    it("does not match an empty selection", () => {
+      expect(
+        evaluateCondition(multiSelect, EMPTY_VALUES, {
+          "contact-methods": [],
+        }),
+      ).toBe(false);
+    });
+
+    it("matches a string array element against a numeric list entry (#336)", () => {
+      const numeric: FieldConditionalOnBehaviour = {
+        type: "fieldConditionalOn",
+        targetFieldId: "dependant-counts",
+        operator: "in",
+        value: [1, 2, 3] as unknown as string[],
+      };
+      expect(
+        evaluateCondition(numeric, EMPTY_VALUES, {
+          "dependant-counts": ["2", "5"],
+        }),
+      ).toBe(true);
+    });
   });
 
   describe("operator: exists", () => {

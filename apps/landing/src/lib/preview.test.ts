@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { decideViewLevel, levelFromCookie } from './preview'
+import {
+  decideViewLevel,
+  levelFromCookie,
+  previewCookieDomain,
+} from './preview'
 import type { ViewLevel } from './frontmatter'
 
 const PREVIEW = 'preview-s3cret'
@@ -43,6 +47,28 @@ describe('levelFromCookie', () => {
   it('treats an absent or unknown cookie as public', () => {
     expect(levelFromCookie(undefined)).toBe('public')
     expect(levelFromCookie('nonsense')).toBe('public')
+  })
+})
+
+describe('previewCookieDomain', () => {
+  it('prefers the build-baked config value', () => {
+    expect(previewCookieDomain('.alpha.gov.bb', '.sandbox.alpha.gov.bb')).toBe(
+      '.alpha.gov.bb',
+    )
+  })
+
+  it('falls back to the env value when the config value is empty', () => {
+    expect(previewCookieDomain('', '.sandbox.alpha.gov.bb')).toBe(
+      '.sandbox.alpha.gov.bb',
+    )
+    expect(previewCookieDomain(undefined, '.sandbox.alpha.gov.bb')).toBe(
+      '.sandbox.alpha.gov.bb',
+    )
+  })
+
+  it('returns undefined (host-only cookie) when neither is set', () => {
+    expect(previewCookieDomain('', '')).toBeUndefined()
+    expect(previewCookieDomain(undefined, undefined)).toBeUndefined()
   })
 })
 

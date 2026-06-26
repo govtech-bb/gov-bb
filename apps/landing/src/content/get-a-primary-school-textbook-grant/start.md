@@ -3,6 +3,7 @@ title: "Get a Primary School Textbook Grant"
 stage: "alpha"
 publish_date: 2026-01-13
 form_id: get-a-primary-school-textbook-grant
+visibility: preview
 ---
 
 You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.

@@ -113,7 +113,14 @@ export function evaluateCondition(
       return coerce(target) !== coerce(behaviour.value);
     case "in": {
       const list = behaviour.value as Array<string | number>;
-      return Array.isArray(list) && list.map(coerce).includes(coerce(target));
+      if (!Array.isArray(list)) return false;
+      const coercedList = list.map(coerce);
+      // A multi-select checkbox target is a string[] of selected options;
+      // match when any selected option is in the list (set intersection).
+      if (Array.isArray(target)) {
+        return target.some((t) => coercedList.includes(coerce(t)));
+      }
+      return coercedList.includes(coerce(target));
     }
     case "exists":
       if (target === undefined || target === null || target === "")

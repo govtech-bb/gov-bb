@@ -60,6 +60,10 @@ const makeFetch = async <T extends ApiResponse>(
   try {
     response = await fetch(`${API_URL}${endpoint}`, {
       ...fetchArgs,
+      // Attach the cross-app shared `preview` cookie and store any the API mints
+      // (#1646 Phase 3). The API CORS allows credentials; harmless on the normal
+      // citizen flow where no such cookie exists.
+      credentials: "include",
     });
   } catch {
     throw new FormFetchError(

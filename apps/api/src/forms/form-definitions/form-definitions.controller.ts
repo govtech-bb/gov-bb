@@ -19,6 +19,38 @@ import { isValidSecretToken } from "@/common/secret-token";
 import type { ApiResponseShape } from "@/common/response";
 import type { ServiceContract } from "@govtech-bb/form-types";
 
+/**
+ * Cross-app shared preview cookie (#1646 Phase 3, ADR 0058). Byte-identical to
+ * the one apps/landing mints (name/path/4h TTL) so the browser stores a single
+ * grant visible to landing, forms and the API across the parent domain.
+ */
+const PREVIEW_COOKIE_NAME = "preview";
+/** 4 hours, in MILLISECONDS — express `res.cookie` maxAge unit. Matches landing's 4h. */
+const PREVIEW_COOKIE_MAX_AGE_MS = 4 * 60 * 60 * 1000;
+/**
+ * Cookie values that grant a visibility bypass: the level name, or the legacy
+ * boolean grant `"1"`. Mirrors `levelFromCookie` in apps/landing/src/lib/preview.ts.
+ */
+const PREVIEW_COOKIE_BYPASS_VALUES = new Set(["preview", "draft", "1"]);
+
+/**
+ * Pull the `preview` cookie's value out of a raw `Cookie` request header without
+ * a cookie-parser dependency. Returns undefined when the cookie is absent.
+ */
+function readPreviewCookie(
+  cookieHeader: string | undefined,
+): string | undefined {
+  if (!cookieHeader) return undefined;
+  for (const pair of cookieHeader.split(";")) {
+    const eq = pair.indexOf("=");
+    if (eq === -1) continue;
+    if (pair.slice(0, eq).trim() === PREVIEW_COOKIE_NAME) {
+      return pair.slice(eq + 1).trim();
+    }
+  }
+  return undefined;
+}
+
 @ApiTags("Form Definitions")
 @ApiBearerAuth()
 @Controller("form-definitions")
@@ -66,6 +98,9 @@ export class FormDefinitionsController {
     @Headers("x-recipe-preview") previewToken?: string,
     @Headers("x-recipe-draft") draftToken?: string,
     @Res({ passthrough: true }) res?: Response,
+    // The shared `preview` cookie (set by landing's SSR or minted below). Its
+    // presence grants the visibility bypass cross-app — see #1646 Phase 3.
+    @Headers("cookie") cookieHeader?: string,
   ): Promise<ApiResponseShape<ServiceContract>> {
     const override = await this.disabledOverridesService.find(formId);
     if (override) {
@@ -81,13 +116,43 @@ export class FormDefinitionsController {
       "RECIPE_PREVIEW_TOKEN",
       "",
     );
-    const bypassVisibility = isValidSecretToken(configuredToken, previewToken);
+    const validPreviewToken = isValidSecretToken(configuredToken, previewToken);
     const draft = isValidSecretToken(configuredToken, draftToken);
+
+    // A shared `preview` cookie grants the visibility bypass by its PRESENCE
+    // alone — the value is only the level, never a secret (#1646 Phase 3, a
+    // forgeable rollout gate per ADR 0013/0058). It NEVER triggers DB sourcing;
+    // a `draft`-level cookie bypasses visibility but the in-progress DB scratch
+    // still requires the per-request X-Recipe-Draft secret header (ADR 0011).
+    const cookieValue = readPreviewCookie(cookieHeader);
+    const hasPreviewCookie =
+      cookieValue !== undefined &&
+      PREVIEW_COOKIE_BYPASS_VALUES.has(cookieValue);
+    const bypassVisibility = validPreviewToken || hasPreviewCookie;
 
     if (bypassVisibility || draft) {
       // Prevent CDN/proxy/browser caching for preview/draft responses — they
       // may carry non-public or unpublished DB content that must not be cached.
       res?.setHeader("Cache-Control", "no-store");
+    }
+
+    // Forms is a static client-only SPA and cannot set landing's httpOnly cookie
+    // itself, so the API mints it here when a valid preview token arrives via
+    // header (the SPA forwarding a `?preview=` URL token). Byte-identical to
+    // landing's cookie (name/domain/path) so the browser stores ONE shared
+    // grant. The `?draft=` path mints no cookie — DB sourcing stays per-request.
+    if (validPreviewToken && res) {
+      const domain =
+        this.configService.get<string>("PREVIEW_COOKIE_DOMAIN", "") ||
+        undefined;
+      res.cookie(PREVIEW_COOKIE_NAME, "preview", {
+        domain,
+        httpOnly: true,
+        sameSite: "lax",
+        secure: this.configService.get<string>("NODE_ENV") === "production",
+        maxAge: PREVIEW_COOKIE_MAX_AGE_MS,
+        path: "/",
+      });
     }
 
     const data = await this.formDefinitionsService.findByFormId({
