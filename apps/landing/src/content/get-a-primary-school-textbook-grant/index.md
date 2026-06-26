@@ -7,6 +7,7 @@ category: money-financial-support
 form_id: get-a-primary-school-textbook-grant
 service_type: digital
 visibility: preview
+maintenance: true
 ---
 
 Every academic year, children attending public and private primary schools are eligible for a $100 Barbados dollars textbook grant. The grant helps parents and guardians provide the textbooks and learning materials their children need for school.

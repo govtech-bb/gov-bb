@@ -171,6 +171,28 @@ describe('isDigitalService', () => {
   })
 })
 
+describe('maintenance frontmatter flag (#1694)', () => {
+  const FLAGGED = [
+    'work-employment/apply-for-conductor-licence',
+    'money-financial-support/get-a-primary-school-textbook-grant',
+    'travel-id-citizenship/post-office-redirection-individual',
+    'travel-id-citizenship/post-office-redirection-deceased',
+    'travel-id-citizenship/post-office-redirection-business',
+  ]
+
+  it.each(FLAGGED)('surfaces maintenance: true on %s', (url) => {
+    const page = findPage(url)
+    expect(page).toBeDefined()
+    expect(page!.frontmatter.maintenance).toBe(true)
+  })
+
+  it('leaves the flag undefined on pages that do not set it', () => {
+    const page = PAGES.find((p) => !p.frontmatter.maintenance)
+    expect(page).toBeDefined()
+    expect(page!.frontmatter.maintenance).toBeUndefined()
+  })
+})
+
 describe('resolvePageLevel (ancestor inheritance)', () => {
   // A small synthetic registry: a public service with a preview /start step, a
   // fully-preview service, and a draft service whose /start is (nominally)

@@ -109,6 +109,7 @@ const markdownPages: Array<ContentPage> = Object.entries(modules).map(
       section: raw.section,
       service_type: raw.service_type,
       form_id: raw.form_id,
+      maintenance: raw.maintenance,
     }
     /** Canonical URL: category + optional subcategory + leaf; uncategorised pages live at the root. */
     const primaryCategory = categories[0]

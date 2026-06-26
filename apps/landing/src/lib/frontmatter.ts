@@ -29,6 +29,8 @@ export const FrontmatterSchema = z.object({
   section: z.string().optional(),
   service_type: z.enum(['digital', 'information']).optional(),
   form_id: z.string().optional(),
+  /** When true, the page renders a maintenance disclaimer above its content. */
+  maintenance: z.boolean().optional(),
 })
 
 type RawFrontmatter = z.infer<typeof FrontmatterSchema>

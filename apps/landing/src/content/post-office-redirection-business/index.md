@@ -8,6 +8,7 @@ category: travel-id-citizenship
 form_id: post-office-redirection-business
 service_type: digital
 visibility: preview
+maintenance: true
 ---
 
 You should use this service to tell the Post Office that you would like to change the address that your business mail gets delivered to.

@@ -2,6 +2,7 @@ import { createFileRoute, notFound } from '@tanstack/react-router'
 import { Heading, Text, linkVariants } from '@govtech-bb/react'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
+import { MaintenanceNotice } from '../components/MaintenanceNotice'
 import { MarkdownContent } from '../components/markdown'
 import {
   categoryServices,
@@ -193,6 +194,7 @@ function PageView({
   return (
     <Shell>
       {level !== 'public' ? <ReviewBanner level={level} /> : null}
+      {page.frontmatter.maintenance ? <MaintenanceNotice /> : null}
       <MarkdownContent
         hast={page.hast}
         frontmatter={page.frontmatter}
