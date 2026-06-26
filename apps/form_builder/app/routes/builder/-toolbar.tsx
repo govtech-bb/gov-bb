@@ -205,6 +205,7 @@ export function Toolbar({
                 <option value="public">Public</option>
                 <option value="preview">Preview</option>
                 <option value="draft">Draft</option>
+                <option value="maintenance">Maintenance</option>
               </select>
             </div>
           </div>

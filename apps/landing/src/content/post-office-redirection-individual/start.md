@@ -4,7 +4,6 @@ description: ""
 publish_date: 2026-01-29
 section: "Travel, ID and citizenship"
 form_id: post-office-redirection-individual
-visibility: preview
 ---
 
 You should complete the redirection notice in one go. At the moment, it is not possible to save your answers and come back to them later

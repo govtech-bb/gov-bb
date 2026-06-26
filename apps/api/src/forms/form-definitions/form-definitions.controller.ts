@@ -86,6 +86,17 @@ export class FormDefinitionsController {
     });
   }
 
+  // Declared before `:formId` so "maintenance" routes here rather than being
+  // captured as a form ID. Public (no preview token): a maintenance form is
+  // advertised so landing can render an "under maintenance" notice (#1694).
+  @Get("maintenance")
+  async getMaintenance(): Promise<ApiResponseShape<string[]>> {
+    const formIds = await this.formDefinitionsService.findMaintenanceFormIds();
+    return AppApiResponse.success(formIds, {
+      message: "Forms under maintenance retrieved",
+    });
+  }
+
   @Get(":formId")
   @GetFormDefinitionDocs()
   async get(

@@ -282,6 +282,36 @@ describe("RecipeFileLoaderService", () => {
     });
   });
 
+  describe("findMaintenanceFormIds (#1694)", () => {
+    it("returns only the IDs of maintenance recipes", async () => {
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), "recipes-test-"));
+      tempRoots.push(root);
+      await writeFlatRecipe(root, "public-form");
+      await writeFlatRecipe(root, "preview-form", {
+        meta: { visibility: "preview" },
+      });
+      await writeFlatRecipe(root, "maintenance-form", {
+        meta: { visibility: "maintenance" },
+      });
+      const loader = new RecipeFileLoaderService(root);
+      await loader.loadAll();
+
+      expect(loader.findMaintenanceFormIds()).toEqual(["maintenance-form"]);
+    });
+
+    it("excludes maintenance forms from the public findAll list", async () => {
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), "recipes-test-"));
+      tempRoots.push(root);
+      await writeFlatRecipe(root, "maintenance-form", {
+        meta: { visibility: "maintenance" },
+      });
+      const loader = new RecipeFileLoaderService(root);
+      await loader.loadAll();
+
+      expect(loader.findAll()).toEqual([]);
+    });
+  });
+
   // #1196: flat `recipes/{formId}.json` is the canonical (and only) store —
   // recipe versioning was removed, and the versioned `recipes/{formId}/{v}.json`
   // dirs were deleted entirely (no legacy fallback).
