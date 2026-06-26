@@ -56,5 +56,9 @@ export function redactPii(value: unknown): string {
   const domain = value.slice(at + 1);
   if (!domain) return REDACTED;
 
-  return `${value[0]}***@${domain}`;
+  // The local part is masked, but the domain is caller-supplied (the citizen's
+  // submitted address), so the masked result is still run through
+  // sanitizeForLog — stripping control characters (log injection, CWE-117) and
+  // bounding length, exactly as every other user-influenced log value is.
+  return sanitizeForLog(`${value[0]}***@${domain}`);
 }
