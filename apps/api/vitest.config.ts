@@ -26,6 +26,10 @@ export default defineConfig({
         find: /^@govtech-bb\/(.*)$/,
         replacement: r("../../packages") + "/$1/src/index.ts",
       },
+      {
+        find: /^@\/(.*)$/,
+        replacement: r("./src") + "/$1",
+      },
     ],
   },
   test: {

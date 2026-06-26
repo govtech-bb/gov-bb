@@ -1,0 +1,264 @@
+{
+  "formId": "csec-private-candidate-registration",
+  "title": "Registration of Private Candidates - CSEC Examination",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your CSEC Private Candidate registration has been received",
+        "recipientField": "applicant-info.email"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "applicant-info",
+      "title": "Student Information",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First name",
+            "fieldId": "first-name",
+            "validations": {
+              "required": {
+                "error": "First name is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last name",
+            "fieldId": "last-name",
+            "validations": {
+              "required": {
+                "error": "Last name is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/sex",
+          "overrides": {
+            "label": "Gender",
+            "fieldId": "gender"
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "label": "Date of birth",
+            "fieldId": "date-of-birth",
+            "validations": {
+              "required": {
+                "error": "Date of birth is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "label": "National Identification (ID) Number",
+            "fieldId": "id-number",
+            "validations": {
+              "required": {
+                "error": "National ID number is required",
+                "value": true
+              }
+            },
+            "ui": {
+              "width": "medium"
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "address",
+            "multiline": true,
+            "validations": {
+              "required": {
+                "error": "Address is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "parish",
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "label": "Email address",
+            "fieldId": "email",
+            "validations": {
+              "required": {
+                "error": "Email address is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "label": "Telephone number",
+            "fieldId": "telephone-no",
+            "validations": {
+              "required": {
+                "error": "Telephone number is required",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "subject-selection",
+      "title": "Subject Selection",
+      "description": "List each subject you are registering for. If you are repeating a subject from a previous sitting that required a School Based Assessment (SBA), tick Resit and enter your previous registration number.",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Subject(s)",
+            "fieldId": "subject",
+            "validations": {
+              "required": {
+                "error": "Subject is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Alternative",
+            "fieldId": "alternative",
+            "options": [
+              {
+                "label": "This is an alternative subject",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Resit",
+            "fieldId": "resit",
+            "options": [
+              {
+                "label": "This is a resit",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Previous registration number",
+            "fieldId": "previous-registration-number",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "resit",
+                "operator": "exists",
+                "value": "yes"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 6
+        }
+      ]
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "label": "Important notices",
+            "content": "Candidates should inform the CXC Local Registrar of any name changes that have occurred since their last examination sitting.\n\nCandidates should check all timetables before registering to avoid subject clashes with other examination boards.\n\nNo alternative arrangements will be made in respect of clashes.",
+            "fieldId": "important-notices"
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "",
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "I confirm that the information I have provided is true and complete to the best of my knowledge. I understand that providing false information may result in my registration being rejected.",
+                "value": "confirmed"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Your application has been submitted",
+      "description": "Your application to sit CSEC exams as a private candidate has been submitted.",
+      "elements": [],
+      "markdownContent": "## What happens next\n\n- Your application will be reviewed.\n- You may be contacted for further information.\n- You will be advised of your registration and any fees due.\n\n### Need help?\n\nContact the Ministry of Educational Transformation about your application.\n\nKeep a copy of this application for your records.",
+      "behaviours": []
+    }
+  ],
+  "createdAt": "2026-05-27T20:37:03.164Z",
+  "updatedAt": "2026-06-05T00:00:00.000Z"
+}

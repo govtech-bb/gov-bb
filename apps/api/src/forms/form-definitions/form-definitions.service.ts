@@ -2,10 +2,10 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { FormDefinitionRepository } from "./form-definition.repository";
 import { RecipeFileLoaderService } from "./recipe-file-loader.service";
-import { RegistryService } from "../../registry/registry.service";
+import { RegistryService } from "@/registry/registry.service";
 import { FormConfigService } from "../form-config/form-config.service";
-import { AppError } from "../../common/errors";
-import { compareSemver } from "@govtech-bb/form-types";
+import { AppError } from "@/common/errors";
+import { getRecipeVisibility } from "@govtech-bb/form-types";
 import type {
   Processor,
   ServiceContract,
@@ -84,10 +84,16 @@ export class FormDefinitionsService {
     for (const entity of entities) {
       if (!seen.has(entity.formId)) {
         seen.add(entity.formId);
+        // Hide non-public forms from the list (#1646) — the list carries no
+        // preview token, so preview/draft forms are unlisted for everyone,
+        // matching the 404 their single-form GET returns to the public.
+        if (getRecipeVisibility(entity.schema) !== "public") continue;
         result.push({
           formId: entity.formId,
+          // #1196: version is retired on the DB scratch row (nullable); the
+          // list keeps the field as a frozen breadcrumb ("" when absent).
+          version: entity.version ?? "",
           title: entity.schema.title,
-          version: entity.version,
           // See RecipeFileLoaderService.findAll: category mirrors the
           // contact-details title and is omitted when absent.
           ...(entity.schema.contactDetails?.title && {
@@ -101,18 +107,18 @@ export class FormDefinitionsService {
 
   async findByFormId({
     formId,
-    version,
     includeProcessors = false,
-    preview = false,
+    bypassVisibility = false,
+    draft = false,
   }: {
     formId: string;
-    version?: string;
     includeProcessors?: boolean;
-    preview?: boolean;
+    bypassVisibility?: boolean;
+    draft?: boolean;
   }): Promise<ServiceContract> {
-    const recipe = await this.getRecipe({ formId, version, preview });
+    const recipe = await this.getRecipe({ formId, bypassVisibility, draft });
     if (!recipe) {
-      throw AppError.notFound("Form definition", { formId, version });
+      throw AppError.notFound("Form definition", { formId });
     }
 
     const contract = await this.registryService.hydrateForm(recipe);
@@ -150,63 +156,88 @@ export class FormDefinitionsService {
   }
 
   /**
-   * Resolve a raw recipe by formId (and optional version) from the configured
-   * source. Public so other services (e.g. FormDraftsService) can pin draft
-   * `formVersion` without reaching into the `form_definitions` table directly
-   * — which would expose unpublished builder scratch space (issue #145).
+   * Resolve a raw recipe by formId from the configured source. Public so other
+   * services (e.g. FormDraftsService) can read a recipe without reaching into
+   * the `form_definitions` table directly — which would expose unpublished
+   * builder scratch space (issue #145).
    *
-   * When `preview` is `true`, resolution always uses the "both" path regardless
-   * of the configured source or NODE_ENV — enabling per-request DB preview.
+   * Two independent, token-gated signals (#1682, split from the single
+   * `preview` flag #1646 conflated):
+   * - `draft` forces the "both" path (DB scratch first, file fallback)
+   *   regardless of the configured source or NODE_ENV — the in-progress builder
+   *   draft. Submission is blocked downstream for this path.
+   * - `bypassVisibility` only skips the launch gate; it does NOT touch the
+   *   source, so it serves the *published* recipe of a non-public form.
+   *
+   * Applies the #1646 visibility gate: a non-public recipe resolves to null for
+   * the public, so every consumer treats a hidden form as missing (404). Either
+   * signal (both derive from a valid `RECIPE_PREVIEW_TOKEN`) bypasses the gate.
    */
   async getRecipe({
     formId,
-    version,
-    preview = false,
+    bypassVisibility = false,
+    draft = false,
   }: {
     formId: string;
-    version?: string;
-    preview?: boolean;
+    bypassVisibility?: boolean;
+    draft?: boolean;
   }): Promise<ServiceContractRecipe | null> {
-    // When preview is true, force "both" so the DB is consulted regardless of
-    // the configured RECIPE_SOURCE or NODE_ENV. Otherwise, use the normal
+    const recipe = await this.resolveRecipe({ formId, draft });
+
+    // Launch gate (#1646): a non-public recipe is invisible to the public —
+    // getRecipe returns null exactly as if it didn't exist, so every consumer
+    // (the single-form GET, draft-create, …) 404s. A valid preview or draft
+    // token bypasses the gate so reviewers can resolve non-public recipes.
+    if (
+      recipe &&
+      getRecipeVisibility(recipe) !== "public" &&
+      !bypassVisibility &&
+      !draft
+    ) {
+      return null;
+    }
+    return recipe;
+  }
+
+  /**
+   * Resolve a raw recipe from the configured source, without the visibility
+   * gate. Private — callers must go through getRecipe so the #1646 gate is
+   * always applied.
+   */
+  private async resolveRecipe({
+    formId,
+    draft,
+  }: {
+    formId: string;
+    draft: boolean;
+  }): Promise<ServiceContractRecipe | null> {
+    // When draft is true, force "both" so the DB scratch is consulted regardless
+    // of the configured RECIPE_SOURCE or NODE_ENV. Otherwise, use the normal
     // source() resolution (which enforces the dev-only guard).
-    const effectiveSource: RecipeSource = preview ? "both" : this.source();
+    const effectiveSource: RecipeSource = draft ? "both" : this.source();
 
     if (effectiveSource === "files") {
-      return this.recipeFileLoader.findByFormId({ formId, version });
+      return this.recipeFileLoader.findByFormId({ formId });
     }
 
     if (effectiveSource === "db") {
-      return this.getRecipeFromDb({ formId, version });
+      return this.getRecipeFromDb({ formId });
     }
 
-    // effectiveSource === "both": DB wins on collision. With a version supplied,
-    // try DB first and fall through to files on miss. Without a version, pick
-    // the candidate with the higher semver across sources (DB wins on tie).
-    if (version) {
-      const dbRecipe = await this.getRecipeFromDb({ formId, version });
-      if (dbRecipe) return dbRecipe;
-      return this.recipeFileLoader.findByFormId({ formId, version });
-    }
-
+    // effectiveSource === "both" — the draft path (#1196). The DB scratch row
+    // is the in-progress authoring draft: prefer it, else fall back to the
+    // canonical flat file. A form is one draft + one canonical recipe.
     const dbRecipe = await this.getRecipeFromDb({ formId });
-    const fileRecipe = this.recipeFileLoader.findByFormId({ formId });
-    if (!dbRecipe) return fileRecipe;
-    if (!fileRecipe) return dbRecipe;
-    return compareSemver(fileRecipe.version, dbRecipe.version) > 0
-      ? fileRecipe
-      : dbRecipe;
+    return dbRecipe ?? this.recipeFileLoader.findByFormId({ formId });
   }
 
   private async getRecipeFromDb({
     formId,
-    version,
   }: {
     formId: string;
-    version?: string;
   }): Promise<ServiceContractRecipe | null> {
     const entity = await this.formDefRepo.findOne({
-      where: { formId, ...(version && { version }) },
+      where: { formId },
       order: { createdAt: "DESC" },
     });
     return entity ? entity.schema : null;

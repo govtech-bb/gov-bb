@@ -7,7 +7,7 @@ const MASK_CHAR_MAP: Record<string, RegExp> = {
   "*": /[a-zA-Z0-9]/,
 };
 
-export function parseMask(maskString: string): Array<string | RegExp> {
+function parseMask(maskString: string): Array<string | RegExp> {
   return Array.from(maskString).map((ch) => MASK_CHAR_MAP[ch] ?? ch);
 }
 

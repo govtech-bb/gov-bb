@@ -165,7 +165,7 @@ describe("POST /builder/publish — validation backstop", () => {
       ([, init]) => (init as RequestInit | undefined)?.method === "PUT",
     );
     expect(putCall?.[0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/contents/recipes/form-001/1.0.0.json",
+      "https://api.github.com/repos/govtech-bb/gov-bb/contents/recipes/form-001.json",
     );
   });
 
@@ -205,7 +205,7 @@ describe("POST /builder/publish — validation backstop", () => {
     // path is the plain `heads/form-builder/<branch-name>` GitHub can match.
     const deleteUrl = deleteCall?.[0] as string;
     expect(deleteUrl).toContain(
-      "https://api.github.com/repos/govtech-bb/gov-bb/git/refs/heads/form-builder/form-001-1-0-0-",
+      "https://api.github.com/repos/govtech-bb/gov-bb/git/refs/heads/form-builder/form-001-",
     );
     expect(deleteUrl).not.toContain("%2F");
   });

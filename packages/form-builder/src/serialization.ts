@@ -12,7 +12,6 @@ import type { RegistryCatalog } from "./catalog";
  */
 export function serializeRecipeDraft(
   draft: RecipeDraft,
-  opts: { version: string },
 ): ServiceContractRecipe {
   const now = new Date().toISOString();
 
@@ -81,7 +80,6 @@ export function serializeRecipeDraft(
     ...(draft.contactDetails !== undefined
       ? { contactDetails: draft.contactDetails }
       : {}),
-    version: opts.version,
     // Carry processors through, stripping the editor-only id (never persisted,
     // per ADR 0009) AND every `payment` processor: payment config is now a
     // per-environment DB sibling living in `form_config.config` (#716, ADR
@@ -98,6 +96,10 @@ export function serializeRecipeDraft(
             .map(({ id: _id, ...rest }) => rest),
         }
       : {}),
+    // Carry recipe-level metadata (launch-gate visibility, #1646/#1682)
+    // through verbatim. `!== undefined` keeps "absent" (legacy recipe → public)
+    // distinct from an explicit object — same guard as contactDetails.
+    ...(draft.meta !== undefined ? { meta: draft.meta } : {}),
     steps,
     createdAt: now,
     updatedAt: now,
@@ -195,6 +197,10 @@ export function deserializeRecipe(
           })),
         }
       : {}),
+    // Symmetric read so recipe-level metadata (visibility, #1646/#1682) survives
+    // an open → deploy cycle. A legacy recipe with no `meta` stays absent — the
+    // builder treats that as `public` (getRecipeVisibility), not `draft`.
+    ...(recipe.meta !== undefined ? { meta: recipe.meta } : {}),
     steps,
   };
 }

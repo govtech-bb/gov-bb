@@ -238,7 +238,6 @@ export class PaymentWebhookService {
 
         const contract = await this.formDefs.findByFormId({
           formId: payment.formId,
-          version: submission.formVersion,
           includeProcessors: true,
         });
         const downstreamProcessors = (contract.processors ?? []).filter(
@@ -253,7 +252,7 @@ export class PaymentWebhookService {
           submissionId: submission.id,
           referenceCode: submission.referenceCode,
           formId: submission.formId,
-          formVersion: submission.formVersion,
+          formVersion: submission.formVersion ?? undefined,
           idempotencyKey: submission.idempotencyKey,
           processors: downstreamProcessors,
           values: submission.values as SubmissionCreatedEvent["values"],

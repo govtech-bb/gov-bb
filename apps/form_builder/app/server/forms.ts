@@ -8,9 +8,14 @@ import {
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
 import { getPublishedRecipe } from "./github-recipes";
-import { compareSemver } from "../lib/version";
 import type { FormDefinitionSummary } from "../types/index";
 import { requireSession } from "./auth/require-session";
+import {
+  redactRecipeSecrets,
+  restoreRecipeSecrets,
+  assertNoRedactedSecrets,
+  hasRedactedSecret,
+} from "./redact-processor-secrets";
 
 export const listForms = createServerFn({ method: "GET" })
   .middleware([requireSession])
@@ -38,8 +43,9 @@ export const listForms = createServerFn({ method: "GET" })
     const byFormId = new Map<string, FormDefinitionSummary>();
     for (const d of drafts) byFormId.set(d.formId, d);
     for (const p of published) {
-      const existing = byFormId.get(p.formId);
-      if (existing && compareSemver(existing.version, p.version) > 0) continue;
+      // #1196: a draft row is the current working copy — always prefer it over
+      // the published entry. `isPublished` is OR'd back in by the map below.
+      if (byFormId.has(p.formId)) continue;
       byFormId.set(p.formId, {
         id: p.formId,
         formId: p.formId,
@@ -66,43 +72,68 @@ export const listForms = createServerFn({ method: "GET" })
       .filter((f) => !f.isDisabled || f.isPublished);
   });
 
+// Resolve the recipe the builder should load for `formId`, using the same
+// precedence as getRecipe (#1196): the DB draft row is the current working copy,
+// so prefer it; with no draft row (e.g. just after the post-merge archive), fall
+// back to the published canonical flat file. Returns null when neither exists.
+// Shared by getRecipe (which redacts secrets before returning) and the save path
+// (which restores redacted secrets from this same source) so both resolve the
+// secret from one place.
+async function resolveStoredRecipe(
+  formId: string,
+  token: string,
+): Promise<ServiceContractRecipe | null> {
+  // #1196: the DB scratch row is the current working draft — prefer it. Guard
+  // on truthiness (not just a non-404 response) so a falsy body — a 204 or a
+  // `200 null` for an empty draft row — falls through to the published copy
+  // rather than being returned as the recipe.
+  try {
+    const draft = await api.get<ServiceContractRecipe>(
+      `/builder/forms/${encodeURIComponent(formId)}`,
+    );
+    if (draft) return draft;
+  } catch (err) {
+    if (!(err instanceof ApiError) || err.status !== 404) throw err;
+  }
+
+  // No draft row — seed from the published canonical flat file.
+  try {
+    const recipe = await getPublishedRecipe(token, { formId });
+    return serviceContractRecipeSchema.parse(recipe);
+  } catch {
+    return null;
+  }
+}
+
+// Re-inject real processor secrets onto a recipe the browser sent back, pulling
+// them from the stored recipe getRecipe served them from. No-op unless the
+// incoming recipe actually carries a redaction placeholder, so secret-free
+// saves make no extra fetch. Fails closed if a placeholder can't be restored.
+async function restoreSecretsForSave(
+  recipe: unknown,
+  formId: string,
+  token: string,
+): Promise<unknown> {
+  if (!hasRedactedSecret(recipe)) return recipe;
+  const stored = await resolveStoredRecipe(formId, token);
+  const restored = restoreRecipeSecrets(recipe, stored);
+  assertNoRedactedSecrets(restored);
+  return restored;
+}
+
 export const getRecipe = createServerFn({ method: "GET", strict: false })
   .middleware([requireSession])
   .inputValidator(z.object({ formId: z.string() }))
   .handler(async ({ data, context }): Promise<ServiceContractRecipe> => {
-    const token = context.session.accessToken;
-
-    let draft: ServiceContractRecipe | null = null;
-    try {
-      draft = await api.get<ServiceContractRecipe>(
-        `/builder/forms/${encodeURIComponent(data.formId)}`,
-      );
-    } catch (err) {
-      if (!(err instanceof ApiError) || err.status !== 404) throw err;
-    }
-
-    let published: { version: string; recipe: unknown } | null = null;
-    try {
-      const recipe = await getPublishedRecipe(token, { formId: data.formId });
-      const version =
-        typeof (recipe as { version?: unknown }).version === "string"
-          ? (recipe as { version: string }).version
-          : null;
-      if (version) published = { version, recipe };
-    } catch {
-      // No published copy — fall back to draft (or fail below).
-    }
-
-    if (
-      draft &&
-      (!published || compareSemver(draft.version, published.version) >= 0)
-    ) {
-      return draft;
-    }
-    if (published) {
-      return serviceContractRecipeSchema.parse(published.recipe);
-    }
-    throw new Error(`No recipe found for formId: ${data.formId}`);
+    // #1196 precedence (draft row, else published) lives in resolveStoredRecipe,
+    // so getRecipe and the save path resolve from the same source.
+    const recipe = await resolveStoredRecipe(
+      data.formId,
+      context.session.accessToken,
+    );
+    if (!recipe) throw new Error(`No recipe found for formId: ${data.formId}`);
+    // Strip processor secrets before the recipe reaches the browser (#294).
+    return redactRecipeSecrets(recipe);
   });
 
 // `mdaContactId` (issue #607) is a DB-only sibling of the recipe: the API
@@ -129,8 +160,15 @@ export const submitRecipe = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }): Promise<void> => {
+    // Re-inject any processor secrets the browser received redacted (#294).
+    const formId = (data.recipe as { formId?: string }).formId ?? "";
+    const recipe = await restoreSecretsForSave(
+      data.recipe,
+      formId,
+      context.session.accessToken,
+    );
     await api.post("/builder/forms", {
-      recipe: data.recipe,
+      recipe,
       isNew: data.isNew ?? false,
       // Read-only lock (#874): the API rejects the save unless this login holds
       // the fresh editing claim. Stamped from the SSR session — the API has no
@@ -156,8 +194,14 @@ export const updateRecipe = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }): Promise<void> => {
+    // Re-inject any processor secrets the browser received redacted (#294).
+    const recipe = await restoreSecretsForSave(
+      data.recipe,
+      data.formId,
+      context.session.accessToken,
+    );
     await api.put(`/builder/forms/${encodeURIComponent(data.formId)}`, {
-      recipe: data.recipe,
+      recipe,
       // Read-only lock (#874): only the fresh claim holder may save.
       userLogin: context.session.login,
       ...(data.mdaContactId !== undefined
@@ -203,10 +247,17 @@ export const rekeyRecipe = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }): Promise<void> => {
+    // Re-inject any processor secrets the browser received redacted (#294).
+    // The stored recipe still lives under oldFormId at re-key time.
+    const recipe = await restoreSecretsForSave(
+      data.recipe,
+      data.oldFormId,
+      context.session.accessToken,
+    );
     await api.post(
       `/builder/forms/${encodeURIComponent(data.oldFormId)}/rekey`,
       // Read-only lock (#874): only the current claim holder may re-key.
-      { recipe: data.recipe, userLogin: context.session.login },
+      { recipe, userLogin: context.session.login },
     );
   });
 

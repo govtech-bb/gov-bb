@@ -184,7 +184,7 @@ export async function listDisabledHandler(
 formsRouter.get("/disabled", listDisabledHandler);
 
 // A published form as exposed by apps/api's recipe index.
-export interface PublishedForm {
+interface PublishedForm {
   formId: string;
   title: string;
   version: string;
@@ -214,7 +214,7 @@ const PUBLISHED_FETCH_TIMEOUT_MS = 2500;
 // protocol guard, a bounded timeout, and the success/failure distinction.
 // Shared by listPublishedHandler (the proxy) and the write handlers (uniqueness
 // backstop) so the fetch logic can't drift between them.
-export async function fetchPublishedForms(): Promise<FetchPublishedResult> {
+async function fetchPublishedForms(): Promise<FetchPublishedResult> {
   const baseUrl = process.env.API_BASE_URL || DEFAULT_API_BASE_URL;
   // Parse + protocol-check the configured upstream so a malformed or
   // non-http(s) API_BASE_URL can't turn this proxy into an SSRF primitive
@@ -346,12 +346,9 @@ formsRouter.get("/", async (_req, res) => {
 formsRouter.get("/:formId", async (req, res) => {
   try {
     const ds = await getDataSource();
+    // One scratch row per form (#1196); no version ordering needed.
     const rows = await ds.query(
-      `SELECT id, version, schema, published_at
-       FROM form_definitions
-       WHERE form_id = $1
-       ORDER BY string_to_array(version, '.')::int[] DESC
-       LIMIT 1`,
+      `SELECT schema FROM form_definitions WHERE form_id = $1 LIMIT 1`,
       [req.params.formId],
     );
     if (!rows.length) {
@@ -435,8 +432,8 @@ export async function createFormHandler(
   try {
     const recipe = req.body.recipe as ServiceContractRecipe;
     const isNew = req.body.isNew === true;
-    if (!recipe?.formId || !recipe?.version) {
-      res.status(400).json({ error: "recipe must have formId and version" });
+    if (!recipe?.formId) {
+      res.status(400).json({ error: "recipe must have a formId" });
       return;
     }
     const ds = await getDataSource();
@@ -449,11 +446,11 @@ export async function createFormHandler(
       return;
     const repo = ds.getRepository(FormDefinitionEntity);
     const existing = await repo.findOne({
-      where: { formId: recipe.formId, version: recipe.version },
+      where: { formId: recipe.formId },
     });
     if (existing) {
       res.status(409).json({
-        error: `Recipe ${recipe.formId} v${recipe.version} already exists`,
+        error: `Recipe ${recipe.formId} already exists`,
       });
       return;
     }
@@ -510,7 +507,7 @@ export async function createFormHandler(
       await txRepo.save(
         txRepo.create({
           formId: recipe.formId,
-          version: recipe.version,
+          version: null,
           schema: recipe,
           publishedAt: null,
         }),
@@ -525,18 +522,18 @@ export async function createFormHandler(
     res.status(201).json({ ok: true });
   } catch (err: any) {
     // The findOne duplicate check above is non-atomic: in a genuine concurrent
-    // deploy/save, two requests can both pass findOne and both reach the
+    // create, two requests can both pass findOne and both reach the
     // transactional save, where the second trips the DB unique constraint on
-    // (formId, version). Postgres reports that as SQLSTATE 23505, which TypeORM
-    // wraps in a QueryFailedError carrying the driver code (at `.code` or
-    // `.driverError.code` depending on version). Map that — and only that — to
-    // the same 409 the findOne duplicate path returns, so the caller's friendly
-    // "version was just claimed" message fires instead of a generic 500.
+    // (form_id). Postgres reports that as SQLSTATE 23505, which TypeORM wraps in
+    // a QueryFailedError carrying the driver code (at `.code` or
+    // `.driverError.code`). Map that — and only that — to the same 409 the
+    // findOne duplicate path returns, so the caller's friendly "already exists"
+    // message fires instead of a generic 500.
     const recipe = req.body?.recipe as ServiceContractRecipe | undefined;
     const pgCode = err?.code ?? err?.driverError?.code;
-    if (pgCode === "23505" && recipe?.formId && recipe?.version) {
+    if (pgCode === "23505" && recipe?.formId) {
       res.status(409).json({
-        error: `Recipe ${recipe.formId} v${recipe.version} already exists`,
+        error: `Recipe ${recipe.formId} already exists`,
       });
       return;
     }
@@ -556,27 +553,17 @@ export async function updateFormHandler(
     // Read-only lock (#874): only the current claim holder may save.
     if (!(await enforcePresence(ds, String(req.params.formId), req.body, res)))
       return;
+    // #1196: one scratch row per form, keyed by formId. The published artifact
+    // is the committed flat recipe file, so there's no publishedAt gate or
+    // version-match to enforce — the row is simply the current draft.
     const rows = await ds.query(
-      `SELECT id, version, published_at FROM form_definitions
-       WHERE form_id = $1
-       ORDER BY string_to_array(version, '.')::int[] DESC
-       LIMIT 1`,
+      `SELECT id FROM form_definitions WHERE form_id = $1 LIMIT 1`,
       [req.params.formId],
     );
     if (!rows.length) {
       res
         .status(404)
         .json({ error: `No recipe found for formId: ${req.params.formId}` });
-      return;
-    }
-    if (rows[0].published_at !== null) {
-      res.status(400).json({ error: "Cannot update a published recipe" });
-      return;
-    }
-    if (recipe.version !== rows[0].version) {
-      res.status(409).json({
-        error: `Version mismatch: stored=${rows[0].version}, provided=${recipe.version}`,
-      });
       return;
     }
     // title uniqueness on rename — reject renaming into another form's title
@@ -647,10 +634,8 @@ formsRouter.put("/:formId", updateFormHandler);
 //      the old ID, reusing the create path's id-collision message.
 //   4. Title uniqueness with excludeFormId = oldFormId so the form's own prior
 //      record is skipped (this is the false-collision fix).
-//   5. Move every old-ID row to the new ID (all guaranteed drafts by step 2).
-//   6. Persist the saved version's content under the new ID: UPDATE the
-//      just-moved row if (newId, version) now exists, else INSERT (covers a
-//      re-key combined with a version bump).
+//   5. Move the old-ID row to the new ID (guaranteed a draft by step 2).
+//   6. Persist the edited content under the new ID by updating the moved row.
 export async function rekeyFormHandler(
   req: Request,
   res: Response,
@@ -658,8 +643,8 @@ export async function rekeyFormHandler(
   try {
     const oldFormId = String(req.params.formId);
     const recipe = req.body.recipe as ServiceContractRecipe;
-    if (!recipe?.formId || !recipe?.version) {
-      res.status(400).json({ error: "recipe must have formId and version" });
+    if (!recipe?.formId) {
+      res.status(400).json({ error: "recipe must have a formId" });
       return;
     }
     const newFormId = recipe.formId;
@@ -669,13 +654,12 @@ export async function rekeyFormHandler(
     // gated on the OLD id, like update/publish.
     if (!(await enforcePresence(ds, oldFormId, req.body, res))) return;
     const result = await ds.transaction(async (manager) => {
-      // 1. Load the old-ID rows.
+      // 1. Load the old-ID row (one scratch row per form, #1196).
       const oldRows: {
         id: string;
-        version: string;
         published_at: string | null;
       }[] = await manager.query(
-        `SELECT id, version, published_at, schema FROM form_definitions WHERE form_id = $1`,
+        `SELECT id, published_at, schema FROM form_definitions WHERE form_id = $1`,
         [oldFormId],
       );
       if (!oldRows.length) {
@@ -729,8 +713,8 @@ export async function rekeyFormHandler(
           },
         };
       }
-      // 5. Move the rows to the new ID. Step 3 guarantees no (newId, *) row
-      // exists, so this can't trip the UNIQUE(form_id, version) constraint.
+      // 5. Move the row to the new ID. Step 3 guarantees no (newId) row
+      // exists, so this can't trip the UNIQUE(form_id) constraint.
       // Deliberately leaves any old-ID form_disabled_overrides tombstone in
       // place (the old ID stays claimed) — a re-key only moves the draft rows.
       // This is unreachable in practice: listForms drops disabled-and-
@@ -748,27 +732,12 @@ export async function rekeyFormHandler(
         `UPDATE form_config SET form_id = $1 WHERE form_id = $2`,
         [newFormId, oldFormId],
       );
-      // 6. Persist the saved version's content under the new ID.
-      const existing = await manager.query(
-        `SELECT id FROM form_definitions WHERE form_id = $1 AND version = $2 LIMIT 1`,
-        [newFormId, recipe.version],
+      // 6. Persist the edited content under the new ID. Step 5 already moved the
+      // single row, so update its schema in place.
+      await manager.query(
+        `UPDATE form_definitions SET schema = $1 WHERE form_id = $2`,
+        [recipe, newFormId],
       );
-      if (existing.length > 0) {
-        await manager.query(
-          `UPDATE form_definitions SET schema = $1 WHERE id = $2`,
-          [recipe, existing[0].id],
-        );
-      } else {
-        const repo = manager.getRepository(FormDefinitionEntity);
-        await repo.save(
-          repo.create({
-            formId: newFormId,
-            version: recipe.version,
-            schema: recipe,
-            publishedAt: null,
-          }),
-        );
-      }
       return { status: 200, body: { ok: true } };
     });
     res.status(result.status).json(result.body);

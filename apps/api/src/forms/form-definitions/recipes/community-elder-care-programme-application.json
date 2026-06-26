@@ -1,0 +1,1023 @@
+{
+  "formId": "community-elder-care-programme-application",
+  "title": "Community Elder Care Programme - Application Form",
+  "description": "Application form for the Community Elder Care Programme administered by the National Assistance Board",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "recipient-details.email",
+        "subject": "Your Community Elder Care Programme application has been received"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "recipient-details",
+      "title": "About the applicant",
+      "elements": [
+        {
+          "ref": "components/title"
+        },
+        {
+          "ref": "components/first-name"
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "hint": "Optional"
+          }
+        },
+        {
+          "ref": "components/last-name"
+        },
+        {
+          "ref": "components/date-of-birth"
+        },
+        {
+          "ref": "components/sex"
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "label": "National Registration Number",
+            "hint": "Format: YYMMDD-XXXX"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "personal-details",
+      "title": "Personal details",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "place-of-birth",
+            "label": "Place of birth"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "religion",
+            "label": "Religion"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "church-social-group",
+            "label": "Church or social group"
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "marital-status",
+            "label": "Marital status",
+            "validations": {
+              "required": {
+                "error": "Select your marital status",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Single",
+                "value": "single"
+              },
+              {
+                "label": "Married",
+                "value": "married"
+              },
+              {
+                "label": "Separated",
+                "value": "separated"
+              },
+              {
+                "label": "Divorced",
+                "value": "divorced"
+              },
+              {
+                "label": "Widowed",
+                "value": "widowed"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "address-and-contact",
+      "title": "Address and contact details",
+      "elements": [
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "address-line-2",
+            "label": "Address line 2",
+            "hint": "Optional",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish"
+        },
+        {
+          "ref": "components/postcode",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/telephone"
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "emergency-contact",
+      "title": "Emergency contact / Next of kin",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "fieldId": "emergency-contact-name",
+            "label": "Full name",
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "same-as-applicant-address",
+            "label": "Is this person's address the same as the applicant's?",
+            "validations": {
+              "required": {
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "emergency-contact-address-line-1",
+            "label": "Address line 1",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "same-as-applicant-address",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "emergency-contact-address-line-2",
+            "label": "Address line 2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "same-as-applicant-address",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "hint": "Optional",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "emergency-contact-parish",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "same-as-applicant-address",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/postcode",
+          "overrides": {
+            "fieldId": "emergency-contact-postcode",
+            "ui": {
+              "width": "short"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "same-as-applicant-address",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "emergency-contact-telephone",
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "emergency-contact-email",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "source-of-income",
+      "title": "Source of income",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "primary-income-source",
+            "label": "Select all income sources that apply",
+            "options": [
+              {
+                "label": "Welfare grant",
+                "value": "welfare-grant"
+              },
+              {
+                "label": "National Insurance benefit",
+                "value": "national-insurance"
+              },
+              {
+                "label": "Old Age Pension",
+                "value": "old-age-pension"
+              },
+              {
+                "label": "Overseas pension",
+                "value": "overseas-pension"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "former-occupation",
+            "label": "Former occupation",
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "referred-by",
+            "label": "Who referred you to the programme?"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "other-income-sources",
+      "title": "Other sources of income",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "income-source-name",
+            "label": "Source name"
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "income-source-amount",
+            "label": "Amount (in dollars)"
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 10,
+          "addAnotherLabel": "Do you have another source of income?"
+        }
+      ]
+    },
+    {
+      "stepId": "social-interests",
+      "title": "Social interests",
+      "elements": [
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "social-interests",
+            "label": "What are your social interests?",
+            "hint": "Please describe any hobbies, activities or interests",
+            "ui": {
+              "width": "long"
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "household-members",
+      "title": "Household members",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "fieldId": "household-member-name",
+            "label": "Full name",
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/relationship",
+          "overrides": {
+            "fieldId": "household-member-relationship",
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "household-member-age",
+            "label": "Age",
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "min": {
+                "value": 0,
+                "error": "Age cannot be negative"
+              },
+              "max": {
+                "value": 150,
+                "error": "Please enter a valid age"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "household-member-income",
+            "label": "Source of income"
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 20,
+          "addAnotherLabel": "Do you need to add another household member?"
+        }
+      ]
+    },
+    {
+      "stepId": "physical-condition",
+      "title": "Physical condition assessment",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "sight",
+            "label": "Sight",
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Blind",
+                "value": "blind"
+              },
+              {
+                "label": "Visual impairment",
+                "value": "visual-impairment"
+              },
+              {
+                "label": "Uses spectacles",
+                "value": "uses-spectacles"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "sight-description",
+            "label": "Please describe your sight condition",
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "sight",
+                "operator": "in",
+                "value": [
+                  "blind",
+                  "visual-impairment"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "hearing",
+            "label": "Hearing",
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Hearing impairment",
+                "value": "hearing-impairment"
+              },
+              {
+                "label": "Deaf",
+                "value": "deaf"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "hearing-description",
+            "label": "Please describe your hearing condition",
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "hearing",
+                "operator": "in",
+                "value": [
+                  "hearing-impairment",
+                  "deaf"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "speech",
+            "label": "Speech",
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Speech impairment",
+                "value": "speech-impairment"
+              },
+              {
+                "label": "Unable to speak",
+                "value": "unable-to-speak"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "speech-description",
+            "label": "Please describe your speech condition",
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "speech",
+                "operator": "in",
+                "value": [
+                  "speech-impairment",
+                  "unable-to-speak"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "mental-status",
+      "title": "Mental status assessment",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "behaviour",
+            "label": "Behaviour",
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Abnormal",
+                "value": "abnormal"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "behaviour-description",
+            "label": "Please describe the behaviour",
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "behaviour",
+                "operator": "equal",
+                "value": "abnormal"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "memory",
+            "label": "Memory",
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Fair",
+                "value": "fair"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "memory-description",
+            "label": "Please describe the memory condition",
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "memory",
+                "operator": "equal",
+                "value": "fair"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "physical-attributes",
+      "title": "Physical attributes and health",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "height",
+            "label": "Height",
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Short",
+                "value": "short"
+              },
+              {
+                "label": "Medium",
+                "value": "medium"
+              },
+              {
+                "label": "Tall",
+                "value": "tall"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "size-build",
+            "label": "Size and build",
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Slim",
+                "value": "slim"
+              },
+              {
+                "label": "Medium",
+                "value": "medium"
+              },
+              {
+                "label": "Obese",
+                "value": "obese"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "mobility",
+            "label": "Mobility",
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Wheelchair",
+                "value": "wheelchair"
+              },
+              {
+                "label": "Zimmer frame",
+                "value": "zimmer-frame"
+              },
+              {
+                "label": "Cane",
+                "value": "cane"
+              },
+              {
+                "label": "Normal",
+                "value": "normal"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "disability-details",
+            "label": "Please describe any disabilities",
+            "ui": {
+              "width": "long"
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "health-conditions",
+      "title": "Health conditions",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "health-conditions",
+            "label": "Do you have any of the following health conditions? Select all that apply.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "options": [
+              {
+                "label": "Hypertension",
+                "value": "hypertension"
+              },
+              {
+                "label": "Diabetes",
+                "value": "diabetes"
+              },
+              {
+                "label": "Arthritis",
+                "value": "arthritis"
+              },
+              {
+                "label": "Heart condition",
+                "value": "heart-condition"
+              },
+              {
+                "label": "Visual impairment",
+                "value": "visual-impairment"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              },
+              {
+                "label": "I am healthy",
+                "value": "healthy"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "health-condition-details",
+            "label": "Please describe any additional health conditions",
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "health-conditions",
+                "operator": "in",
+                "value": [
+                  "other"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "areas-of-assistance",
+      "title": "Areas of assistance needed",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "assistance-needed",
+            "label": "In which areas do you need assistance? Select all that apply.",
+            "validations": {
+              "required": {
+                "error": "Select at least one area of assistance",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Light cleaning",
+                "value": "light-cleaning"
+              },
+              {
+                "label": "Preparation of light meals",
+                "value": "light-meal"
+              },
+              {
+                "label": "Washing (if home care is not available)",
+                "value": "washing"
+              },
+              {
+                "label": "Light errands",
+                "value": "light-errands"
+              },
+              {
+                "label": "Supervision of bathing",
+                "value": "bathing-supervision"
+              },
+              {
+                "label": "Grooming",
+                "value": "grooming"
+              },
+              {
+                "label": "Reminding of appointments",
+                "value": "appointment-reminders"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "other-assistance-details",
+            "label": "If other, please specify",
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "maxLength": {
+                "error": "Maximum 300 characters allowed",
+                "value": 300
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "assistance-needed",
+                "operator": "in",
+                "value": [
+                  "other"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "application-date",
+      "title": "Application details",
+      "elements": [
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "fieldId": "date-of-application",
+            "label": "Date of application",
+            "validations": {
+              "required": {
+                "error": "Enter the date of application",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "I confirm that the information provided in this application is true and correct.",
+                "value": "confirmed"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "We have received your submission. You will receive a confirmation email at the address you provided."
+        }
+      ]
+    }
+  ],
+  "createdAt": "2026-06-17T12:58:02.243Z",
+  "updatedAt": "2026-06-17T12:58:02.243Z"
+}

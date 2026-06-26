@@ -11,7 +11,12 @@ const SearchParams = z.object({
 export const Route = createFileRoute('/search-results')({
   validateSearch: SearchParams,
   head: () => ({
-    meta: [{ title: 'Search Results | Government of Barbados' }],
+    meta: [
+      { title: 'Search Results | Government of Barbados' },
+      // Query-param result pages are thin/duplicate content — keep them out of
+      // the index (noindex still lets crawlers follow the result links).
+      { name: 'robots', content: 'noindex' },
+    ],
   }),
   component: SearchResultsPage,
 })

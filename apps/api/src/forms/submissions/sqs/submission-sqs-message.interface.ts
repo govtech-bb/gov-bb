@@ -22,7 +22,8 @@ export interface SubmissionSqsMessage {
   /** Position of the addressed entry within `processors[]`. */
   processorIndex: number;
   formId: string;
-  formVersion: string;
+  /** Optional post-#1196 (version retired): absent → canonical recipe. */
+  formVersion?: string;
   idempotencyKey: string;
   values: SubmissionValues;
   meta: SubmissionAuditTrail;

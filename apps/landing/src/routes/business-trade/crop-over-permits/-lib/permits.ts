@@ -9,11 +9,11 @@ export type FeatureFlag =
 
 export type VenueFlag = 'private' | 'beach' | 'road' | 'water'
 
-export type PermitCondition = FeatureFlag | VenueFlag
+type PermitCondition = FeatureFlag | VenueFlag
 
-export type UrgencyLevel = 'urgent' | 'amber' | 'green' | 'normal'
+type UrgencyLevel = 'urgent' | 'amber' | 'green' | 'normal'
 
-export interface ApplyInPerson {
+interface ApplyInPerson {
   address: string
   tel?: string
   email?: string

@@ -19,6 +19,10 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Ask alpha.gov.bb" },
+      // The assistant shell has no SEO value; keep it out of search indexes.
+      // A real `noindex` (vs a robots.txt Disallow) guarantees de-indexing —
+      // but only if crawlers may fetch the page, so robots.txt allows crawling.
+      { name: "robots", content: "noindex" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),

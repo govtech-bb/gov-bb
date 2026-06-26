@@ -1,7 +1,14 @@
 # 0019 — Builder version bumps are client-side and deterministic
 
 **Date:** 2026-05-29
-**Status:** Accepted
+**Status:** Superseded by [0057](0057-recipe-versioning-removed-one-flat-file-per-form.md) (#1196)
+
+> **Superseded (2026-06-23, #1196).** Recipe versioning was removed. The builder
+> no longer assigns or bumps SemVers — each form is a single mutable file
+> `recipes/{formId}.json` and publishing overwrites it. The client-side bump
+> helpers (`bumpMinor`/`bumpPatch` in `app/lib/version.ts`) and all version state
+> described below are deleted. Retained only as the rationale for *why* no
+> server-side "next version" lookup should ever be reintroduced.
 
 ## Context
 

@@ -7,9 +7,11 @@
  * The unified builder (/builder) renders this link. See
  * apps/form_builder/.env.example.
  *
- * The link carries the recipe preview token as `?preview=<token>`, which the
- * forms app forwards to the API as the X-Recipe-Preview header so an author
- * can view an unpublished DB draft. The token comes from
+ * The link carries the recipe preview token as `?draft=<token>`, which the
+ * forms app forwards to the API as the X-Recipe-Draft header so an author can
+ * view the in-progress DB draft (the builder scratch, submission blocked). The
+ * `?preview=` param now serves the *published* recipe and is submittable, so it
+ * is the wrong source for a builder preview (#1682). The token comes from
  * VITE_RECIPE_PREVIEW_TOKEN (baked into the bundle by Vite; acceptable because
  * the builder is gated behind GitHub OAuth) and defaults to "demo".
  */
@@ -18,8 +20,8 @@ const DEFAULT_FORMS_URL = "http://localhost:3000";
 const DEFAULT_PREVIEW_TOKEN = "demo";
 
 /**
- * Joins a forms-app origin with a form id and preview token →
- * `${origin}/forms/${formId}?preview=<token>`. Trailing slashes on the origin
+ * Joins a forms-app origin with a form id and draft token →
+ * `${origin}/forms/${formId}?draft=<token>`. Trailing slashes on the origin
  * are trimmed; an empty origin falls back to the local dev default. The token
  * is URL-encoded so a rotated token with metacharacters survives intact.
  */
@@ -29,7 +31,7 @@ export function joinFormPreviewUrl(
   token: string,
 ): string {
   const origin = (baseUrl || DEFAULT_FORMS_URL).replace(/\/+$/, "");
-  return `${origin}/forms/${formId}?preview=${encodeURIComponent(token)}`;
+  return `${origin}/forms/${formId}?draft=${encodeURIComponent(token)}`;
 }
 
 /**

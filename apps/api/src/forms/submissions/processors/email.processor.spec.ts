@@ -1,4 +1,5 @@
 import type { Mock, Mocked } from "vitest";
+import { Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   SESv2Client,
@@ -6,14 +7,14 @@ import {
   type SendEmailCommandInput,
 } from "@aws-sdk/client-sesv2";
 import { EmailProcessor } from "./email.processor";
-import type { SesMailer } from "../../../email/ses-mailer";
-import type { EmailTemplateService } from "../../../email/email-template.service";
+import type { SesMailer } from "@/email/ses-mailer";
+import type { EmailTemplateService } from "@/email/email-template.service";
 import type {
   EmailBodyBuilder,
   EmailTemplateContext,
-} from "../../../email/email-body.builder";
-import type { FilesService } from "../../../files/files.service";
-import type { FormConfigService } from "../../form-config/form-config.service";
+} from "@/email/email-body.builder";
+import type { FilesService } from "@/files/files.service";
+import type { FormConfigService } from "@/forms/form-config/form-config.service";
 import type { ContactDetails, ServiceContract } from "@govtech-bb/form-types";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import { NonRetryableError } from "./non-retryable-error";
@@ -207,6 +208,23 @@ describe("EmailProcessor", () => {
       expect(getSentInput().Destination?.ToAddresses).toEqual([
         "testing@govtech.bb",
       ]);
+    });
+
+    it("masks the recipient's email address in logs — never logs it in full (issue #1640)", async () => {
+      const logSpy = vi
+        .spyOn(Logger.prototype, "log")
+        .mockImplementation(() => {});
+
+      await processor.process(makePayload());
+
+      const confirmation = logSpy.mock.calls.find(([msg]) =>
+        String(msg).includes("Confirmation sent"),
+      );
+      expect(confirmation).toBeDefined();
+      expect(String(confirmation?.[0])).toContain("j***@example.com");
+      expect(String(confirmation?.[0])).not.toContain("jane@example.com");
+
+      logSpy.mockRestore();
     });
 
     it("sends from the configured SES sender identity", async () => {

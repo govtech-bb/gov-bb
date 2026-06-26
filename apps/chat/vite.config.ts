@@ -26,6 +26,22 @@ export default defineConfig(({ mode }) => {
       "process.env.CHAT_DATABASE_URL_SECRET_ARN": JSON.stringify(
         pick("CHAT_DATABASE_URL_SECRET_ARN"),
       ),
+      // Preferred: read RDS's master secret directly so the chat self-heals
+      // through RDS password rotations without a `tofu apply` in the loop.
+      // src/lib/db/index.ts builds the URL at request time from {username,
+      // password} (the JSON secret) + the non-secret host/port/dbname here.
+      "process.env.CHAT_DATABASE_CREDENTIALS_SECRET_ARN": JSON.stringify(
+        pick("CHAT_DATABASE_CREDENTIALS_SECRET_ARN"),
+      ),
+      "process.env.CHAT_DATABASE_HOST": JSON.stringify(
+        pick("CHAT_DATABASE_HOST"),
+      ),
+      "process.env.CHAT_DATABASE_PORT": JSON.stringify(
+        pick("CHAT_DATABASE_PORT"),
+      ),
+      "process.env.CHAT_DATABASE_NAME": JSON.stringify(
+        pick("CHAT_DATABASE_NAME"),
+      ),
       "process.env.FORM_API_URL": JSON.stringify(pick("FORM_API_URL")),
       "process.env.LANDING_URL": JSON.stringify(
         pick("LANDING_URL", "https://alpha.gov.bb"),
