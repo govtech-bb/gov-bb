@@ -59,4 +59,11 @@ describe("redactPii", () => {
     expect(redactPii(null)).toBe("[hidden]");
     expect(redactPii(undefined)).toBe("[hidden]");
   });
+
+  it("strips control characters from the caller-supplied domain (log injection)", () => {
+    const masked = redactPii(`jane@evil.com${NUL}${ESC}[31m`);
+    expect(masked).not.toContain(NUL);
+    expect(masked).not.toContain(ESC);
+    expect(masked.startsWith("j***@evil.com")).toBe(true);
+  });
 });
