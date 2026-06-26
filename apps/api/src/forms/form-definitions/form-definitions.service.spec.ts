@@ -43,6 +43,7 @@ function makeFindAllMocks(entities: FormDefinitionEntity[]) {
   const fileLoader = {
     findAll: vi.fn(),
     findByFormId: vi.fn(),
+    findMaintenanceFormIds: vi.fn(),
   } as unknown as Mocked<RecipeFileLoaderService>;
 
   // Force "db" mode (NODE_ENV=development) so these tests, which target the
@@ -132,6 +133,7 @@ function makeMocks(
   const fileLoader = {
     findAll: vi.fn(),
     findByFormId: vi.fn(),
+    findMaintenanceFormIds: vi.fn(),
   } as unknown as Mocked<RecipeFileLoaderService>;
 
   const config = {
@@ -614,6 +616,18 @@ describe("FormDefinitionsService", () => {
           version: "1.0.0",
         },
       ]);
+    });
+
+    it("findMaintenanceFormIds delegates to the file loader", async () => {
+      const { fileLoader, service } = makeMocks({ source: "files" });
+      (fileLoader.findMaintenanceFormIds as Mock).mockReturnValue([
+        "post-office-redirection-individual",
+      ]);
+
+      const result = await service.findMaintenanceFormIds();
+
+      expect(fileLoader.findMaintenanceFormIds).toHaveBeenCalled();
+      expect(result).toEqual(["post-office-redirection-individual"]);
     });
   });
 
