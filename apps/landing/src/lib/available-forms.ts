@@ -94,6 +94,33 @@ export function parseFormIds(payload: unknown): string[] {
   })
 }
 
+/**
+ * Validate a `/form-definitions/maintenance` payload — a bare array of form IDs
+ * (#1694) rather than the `{formId,…}` objects `/form-definitions` returns.
+ * Throws on an unexpected shape or a non-kebab ID so a malformed response falls
+ * back rather than yielding garbage. Pure — decoupled from the network.
+ */
+export function parseMaintenanceIds(payload: unknown): string[] {
+  const shape = payload as { status?: unknown; data?: unknown } | null
+  if (
+    typeof shape !== 'object' ||
+    shape === null ||
+    shape.status !== 'success' ||
+    !Array.isArray(shape.data)
+  ) {
+    throw new Error(
+      'unexpected response shape — expected {status:"success", data:[...]}',
+    )
+  }
+
+  return shape.data.map((id) => {
+    if (typeof id !== 'string' || !ID_PATTERN.test(id)) {
+      throw new Error(`form ID failed validation: ${JSON.stringify(id)}`)
+    }
+    return id
+  })
+}
+
 async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), ms)
@@ -104,20 +131,38 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
   }
 }
 
-/** Fetch and validate the canonical list of available form IDs. */
-async function fetchFormIds(): Promise<string[]> {
-  const apiBase = requireEnv(
+/** Base URL of the forms API, trailing slashes trimmed. Hardened env handling:
+ * requireEnv fails fast / falls back to DEFAULT_API_URL per #1366. */
+function formsApiBase(): string {
+  return requireEnv(
     process.env.VITE_FORMS_API_URL,
     'VITE_FORMS_API_URL',
     DEFAULT_API_URL,
   ).replace(/\/+$/, '')
-  const endpoint = `${apiBase}/form-definitions`
+}
 
-  const response = await fetchWithTimeout(endpoint, FETCH_TIMEOUT_MS)
+/** Fetch and validate the canonical list of available form IDs. */
+async function fetchFormIds(): Promise<string[]> {
+  const response = await fetchWithTimeout(
+    `${formsApiBase()}/form-definitions`,
+    FETCH_TIMEOUT_MS,
+  )
   if (!response.ok) {
     throw new Error(`HTTP ${response.status} ${response.statusText}`)
   }
   return parseFormIds(await response.json())
+}
+
+/** Fetch and validate the IDs of forms currently under maintenance (#1694). */
+async function fetchMaintenanceFormIds(): Promise<string[]> {
+  const response = await fetchWithTimeout(
+    `${formsApiBase()}/form-definitions/maintenance`,
+    FETCH_TIMEOUT_MS,
+  )
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText}`)
+  }
+  return parseMaintenanceIds(await response.json())
 }
 
 /**
@@ -209,10 +254,36 @@ export const getAvailableForms = createServerFn().handler(
   async (): Promise<string[]> => resolveFromModuleCache(),
 )
 
+/** Per-instance cache for the maintenance list, separate from the available one. */
+const maintenanceCache: CacheRef = { current: null }
+
+/** Resolve the maintenance list through its own per-instance cache. */
+function resolveMaintenanceFromModuleCache(): Promise<string[]> {
+  return resolveAvailableForms({
+    now: Date.now(),
+    ttlMs: TTL_MS,
+    fetcher: fetchMaintenanceFormIds,
+    cache: maintenanceCache,
+    coldStartRetries: COLD_START_RETRIES,
+  })
+}
+
+/**
+ * Server function returning the IDs of forms under maintenance (#1694), backed
+ * by its own per-instance cache. A failed fetch degrades safely to `[]` — the
+ * maintenance notice is suppressed, but the form's Start button stays hidden
+ * regardless (a maintenance recipe is non-public, so absent from the available
+ * list).
+ */
+export const getMaintenanceForms = createServerFn().handler(
+  async (): Promise<string[]> => resolveMaintenanceFromModuleCache(),
+)
+
 // Warm the cache as soon as this module loads on the server, so the first
 // request finds it already populated instead of paying the fetch. The
 // `import.meta.env.SSR` guard strips this from the client bundle; the
 // NODE_ENV check keeps it from firing real network calls under test.
 if (import.meta.env.SSR && process.env.NODE_ENV !== 'test') {
   void resolveFromModuleCache()
+  void resolveMaintenanceFromModuleCache()
 }

@@ -6,7 +6,7 @@ stage: alpha
 section: "Travel, ID and citizenship"
 category: travel-id-citizenship
 form_id: post-office-redirection-deceased
-visibility: preview
+service_type: digital
 ---
 
 You can use this service to tell the Post Office that someone has died and therefore you would like to redirect their mail to a different address.

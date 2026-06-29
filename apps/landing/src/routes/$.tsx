@@ -2,6 +2,7 @@ import { createFileRoute, notFound } from '@tanstack/react-router'
 import { Heading, Text, linkVariants } from '@govtech-bb/react'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
+import { MaintenanceNotice } from '../components/MaintenanceNotice'
 import { MarkdownContent } from '../components/markdown'
 import {
   categoryServices,
@@ -15,7 +16,9 @@ import type { ContentPage } from '../content/registry'
 import type { ViewLevel } from '../lib/frontmatter'
 import { CATEGORY_BY_SLUG, getSubcategory } from '../content/categories'
 import type { Category, SubCategory } from '../content/categories'
-import { getAvailableForms } from '../lib/available-forms'
+import { getAvailableForms, getMaintenanceForms } from '../lib/available-forms'
+import { shouldHideStartLink } from '../lib/hide-start-link'
+import { checkFormAccessible } from '../lib/preview-form-access'
 import { seoTags } from '../lib/page-head'
 
 interface CategoryListItem {
@@ -31,7 +34,12 @@ const toListItem = (p: ContentPage): CategoryListItem => ({
 })
 
 type LoaderData =
-  | { kind: 'page'; page: ContentPage; availableForms: string[] }
+  | {
+      kind: 'page'
+      page: ContentPage
+      availableForms: string[]
+      underMaintenance: boolean
+    }
   | { kind: 'category'; category: Category; items: CategoryListItem[] }
   | {
       kind: 'subcategory-index'
@@ -72,8 +80,35 @@ export const Route = createFileRoute('/$')({
       if (!isVisible(page, level)) throw notFound()
       // Only content pages render Start now buttons, so the forms list is
       // resolved here (server-side, cached) and nowhere else.
-      const availableForms = await getAvailableForms()
-      return { kind: 'page', page, availableForms }
+      let availableForms = await getAvailableForms()
+      // A reviewer (preview/draft) on a not-yet-public page: its form is hidden
+      // from the public list, so confirm the form is reachable under the preview
+      // token and, if so, allow its Start button. Append to a FRESH array, never
+      // pushing into the shared public-forms cache (#1646 Phase 3).
+      const formId = page.frontmatter.form_id
+      if (level !== 'public' && formId && !availableForms.includes(formId)) {
+        if (await checkFormAccessible({ data: formId })) {
+          availableForms = [...availableForms, formId]
+        }
+      }
+      // The `/start` sub-page IS the online-application step. When its form is
+      // non-public (preview/maintenance) it is hidden the same way its Start
+      // button is — a reviewer keeps access (the form was added to
+      // availableForms above); otherwise the step stays reachable by direct URL.
+      if (
+        page.slug.endsWith('/start') &&
+        formId !== undefined &&
+        !availableForms.includes(formId)
+      ) {
+        throw notFound()
+      }
+      // A maintenance recipe is non-public, so it never appears in the available
+      // list above; landing learns it is *specifically* under maintenance (vs
+      // merely unpublished) from the dedicated endpoint, to render the notice.
+      const underMaintenance = formId
+        ? (await getMaintenanceForms()).includes(formId)
+        : false
+      return { kind: 'page', page, availableForms, underMaintenance }
     }
 
     if (segments.length === 2) {
@@ -144,6 +179,7 @@ function ContentRoute() {
         page={data.page}
         availableForms={data.availableForms}
         viewerLevel={level}
+        underMaintenance={data.underMaintenance}
       />
     )
   if (data.kind === 'subcategory-index')
@@ -169,19 +205,30 @@ function PageView({
   page,
   availableForms,
   viewerLevel,
+  underMaintenance,
 }: {
   page: ContentPage
   availableForms: string[]
   viewerLevel: ViewLevel
+  underMaintenance: boolean
 }) {
   // A visitor whose level can't see this page's `/start` sub-page (because it's
   // gated above them) sees the online-application method stripped and the
-  // "N ways" count rewritten down.
-  const hideStartLink = !isStartSubPageVisible(page, viewerLevel)
+  // "N ways" count rewritten down. Any non-public recipe — `preview`, `draft`,
+  // or `maintenance` — is absent from `availableForms`, so it hides the same way
+  // for the public; a reviewer keeps the Start button (the loader adds a
+  // token-accessible form back to the list) so they can still test it.
+  // `maintenance` differs only in also rendering the notice (below).
+  const hideStartLink = shouldHideStartLink({
+    startSubPageVisible: isStartSubPageVisible(page, viewerLevel),
+    formId: page.frontmatter.form_id,
+    availableForms,
+  })
   const level = pageLevel(page)
   return (
     <Shell>
       {level !== 'public' ? <ReviewBanner level={level} /> : null}
+      {underMaintenance ? <MaintenanceNotice /> : null}
       <MarkdownContent
         hast={page.hast}
         frontmatter={page.frontmatter}

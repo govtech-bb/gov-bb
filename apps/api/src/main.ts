@@ -45,6 +45,7 @@ async function bootstrap() {
       "Authorization",
       "Idempotency-Key",
       "X-Recipe-Preview",
+      "X-Recipe-Draft",
       "X-Smoke-Submission",
     ],
     credentials: true,

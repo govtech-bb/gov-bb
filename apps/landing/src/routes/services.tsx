@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Heading, Link, Search, Text } from '@govtech-bb/react'
 import { HelpfulBox } from '../components/HelpfulBox'
-import { isVisible, PAGES } from '../content/registry'
+import { isDigitalService, isVisible, PAGES } from '../content/registry'
 import { trackEvent } from '../lib/analytics'
 import { pageHead } from '../lib/page-head'
 
@@ -17,9 +17,6 @@ export const Route = createFileRoute('/services')({
 
 function ServicesPage() {
   const { level } = Route.useRouteContext()
-  const startSlugs = new Set(
-    PAGES.filter((p) => p.slug.endsWith('/start')).map((p) => p.slug),
-  )
   const items = PAGES.filter(
     (p) =>
       p.frontmatter.stage === 'alpha' &&
@@ -30,7 +27,7 @@ function ServicesPage() {
       title: p.frontmatter.title,
       href: `/${p.url}`,
       slug: p.url,
-      isEntry: startSlugs.has(`${p.slug}/start`),
+      digital: isDigitalService(p),
     }))
     .sort((a, b) => a.title.localeCompare(b.title))
 
@@ -82,7 +79,7 @@ function ServicesPage() {
                     {item.title}
                   </Link>
                   <Text as="p" className="text-mid-grey-00">
-                    {item.isEntry ? 'Digital service' : 'Information service'}
+                    {item.digital ? 'Digital service' : 'Information service'}
                   </Text>
                 </li>
               ))}

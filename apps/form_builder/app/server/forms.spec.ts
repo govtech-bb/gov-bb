@@ -529,4 +529,72 @@ describe("getRecipe (draft-vs-published precedence)", () => {
     expect(result.version).toBe("1.3.0");
     expect(result.title).toBe("Apply for Conductor Licence");
   });
+
+  it("hydrates meta from the published recipe when the draft row has none (#1682)", async () => {
+    // The #1517 flagged forms had meta.visibility written straight into the
+    // published flat files (#1676), bypassing the builder save flow — so their
+    // DB scratch rows carry no meta. Backfill it from the published copy so the
+    // builder's visibility control reflects the live launch gate, not "public".
+    apiGet.mockResolvedValue(draftRecipe("1.1.0")); // no meta
+    getPublishedRecipeMock.mockResolvedValue({
+      ...publishedRecipe("1.3.0"),
+      meta: { visibility: "preview" },
+    });
+
+    const result = await getRecipe({
+      data: { formId: FORM_ID },
+      context: { session: SESSION },
+    } as never);
+
+    // The draft still wins for content; only the absent meta is hydrated.
+    expect(result.title).toBe("Conductor (draft)");
+    expect(result.meta).toEqual({ visibility: "preview" });
+  });
+
+  it("keeps the draft's own meta over the published copy (in-progress edit wins)", async () => {
+    // A post-#1682 draft that set visibility in the builder is the working copy
+    // (#1196) — hydration must only fill an absent meta, never overwrite one.
+    apiGet.mockResolvedValue({
+      ...draftRecipe("1.1.0"),
+      meta: { visibility: "public" },
+    });
+    getPublishedRecipeMock.mockResolvedValue({
+      ...publishedRecipe("1.3.0"),
+      meta: { visibility: "preview" },
+    });
+
+    const result = await getRecipe({
+      data: { formId: FORM_ID },
+      context: { session: SESSION },
+    } as never);
+
+    expect(result.meta).toEqual({ visibility: "public" });
+  });
+
+  it("leaves meta absent when neither the draft nor the published recipe has it", async () => {
+    apiGet.mockResolvedValue(draftRecipe("1.1.0")); // no meta
+    getPublishedRecipeMock.mockResolvedValue(publishedRecipe("1.3.0")); // no meta
+
+    const result = await getRecipe({
+      data: { formId: FORM_ID },
+      context: { session: SESSION },
+    } as never);
+
+    expect(result.meta).toBeUndefined();
+  });
+
+  it("leaves meta absent when the draft has none and there is no published recipe", async () => {
+    // A never-deployed draft has no flat file: the hydration fetch fails and is
+    // swallowed, leaving meta absent (getRecipeVisibility treats that as public).
+    apiGet.mockResolvedValue(draftRecipe("1.1.0")); // no meta
+    getPublishedRecipeMock.mockRejectedValue(new Error("no published recipe"));
+
+    const result = await getRecipe({
+      data: { formId: FORM_ID },
+      context: { session: SESSION },
+    } as never);
+
+    expect(result.meta).toBeUndefined();
+    expect(result.title).toBe("Conductor (draft)");
+  });
 });

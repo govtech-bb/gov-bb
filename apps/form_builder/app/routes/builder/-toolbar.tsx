@@ -7,6 +7,7 @@ import {
   Undo02Icon,
   ViewIcon,
 } from "hugeicons-react";
+import type { RecipeVisibility } from "@govtech-bb/form-types";
 import { Tip } from "../content/-sliding-tabs";
 import styles from "../../styles/builder.module.css";
 import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./-id-validation";
@@ -36,6 +37,10 @@ interface ToolbarProps {
    *  Form ID / Title inputs and the Save draft / Deploy actions. */
   isReadOnly: boolean;
   lastSaveStatus: "idle" | "success" | "error" | "submitted";
+  /** Launch-gate visibility (#1682). `public` is citizen-reachable; `preview`
+   *  serves the published recipe only via a token; `draft` is the DB scratch. */
+  visibility: RecipeVisibility;
+  onVisibilityChange: (visibility: RecipeVisibility) => void;
   onFormIdChange: (id: string) => void;
   onTitleChange: (title: string) => void;
   onNew: () => void;
@@ -62,6 +67,8 @@ export function Toolbar({
   isPublishing,
   isReadOnly,
   lastSaveStatus,
+  visibility,
+  onVisibilityChange,
   onFormIdChange,
   onTitleChange,
   onNew,
@@ -111,11 +118,13 @@ export function Toolbar({
                 {lastSaveStatus === "submitted" && "✓ Submitted"}
               </span>
             )}
-            {(isReadOnly || hasUnsavedChanges) && (
+            {(isReadOnly || hasUnsavedChanges || visibility === "draft") && (
               <span className={styles.actionHint}>
                 {isReadOnly
                   ? "Another user is editing this form"
-                  : "Save draft before deploying"}
+                  : hasUnsavedChanges
+                    ? "Save draft before deploying"
+                    : "Set visibility to Preview or Public to deploy"}
               </span>
             )}
           </div>
@@ -175,6 +184,29 @@ export function Toolbar({
                   {shownFormIdError}
                 </span>
               )}
+            </div>
+            <div className={styles.idRow}>
+              <label
+                htmlFor="builder-visibility"
+                className={styles.idLabel}
+              >
+                Visibility
+              </label>
+              <select
+                id="builder-visibility"
+                className={styles.visibilitySelect}
+                aria-label="Visibility"
+                value={visibility}
+                onChange={(e) =>
+                  onVisibilityChange(e.target.value as RecipeVisibility)
+                }
+                disabled={isReadOnly}
+              >
+                <option value="public">Public</option>
+                <option value="preview">Preview</option>
+                <option value="draft">Draft</option>
+                <option value="maintenance">Maintenance</option>
+              </select>
             </div>
           </div>
         </div>
@@ -251,16 +283,24 @@ export function Toolbar({
           className={styles.btnPrimary}
           onClick={onPublish}
           // Deploy requires a saved draft (#331): publishing an unsaved draft
-          // opens a PR for a recipe the draft API has never seen.
+          // opens a PR for a recipe the draft API has never seen. A `draft`
+          // visibility is "not ready" — only `preview`/`public` recipes deploy
+          // (#1682), so block it here too.
           disabled={
-            isValidating || isPublishing || hasUnsavedChanges || isReadOnly
+            isValidating ||
+            isPublishing ||
+            hasUnsavedChanges ||
+            isReadOnly ||
+            visibility === "draft"
           }
           title={
             isReadOnly
               ? "Another user is editing this form"
               : hasUnsavedChanges
                 ? "Save draft before deploying"
-                : undefined
+                : visibility === "draft"
+                  ? "Set visibility to Preview or Public to deploy"
+                  : undefined
           }
         >
           <RocketIcon size={14} />

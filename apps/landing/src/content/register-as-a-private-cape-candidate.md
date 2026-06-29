@@ -6,6 +6,7 @@ publish_date: 2026-06-02
 category: education
 visibility: preview
 form_id: cape-exam-registration-2024
+service_type: digital
 ---
 
 ## Who can register

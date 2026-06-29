@@ -478,6 +478,13 @@ jobs:
   # confirmation-screen bug (#919); referral-student-support-services has an
   # unsubmittable required-checkbox-with-empty-options recipe bug (ADR 0027).
   # Add them to the matrix once those are fixed.
+  #
+  # ALSO NOT listed — gated `visibility: preview` (#1646) pending the misrouted
+  # submission-email fix (#1517): apply-for-conductor-licence,
+  # get-a-primary-school-textbook-grant, and post-office-redirection-{business,
+  # deceased,individual}. The visibility gate 404s them to the public, so a live
+  # smoke can't reach them — and we must not submit them for real while their
+  # submission email is broken. Re-add each once it returns to `public`.
   smoke-test-forms:
     name: Smoke test forms
     needs: amplify-forms
@@ -490,8 +497,6 @@ jobs:
             artifact_name: temp-teacher-smoke-trace
           - spec: vendor-registration.smoke.spec.ts
             artifact_name: vendor-registration-smoke-trace
-          - spec: get-a-primary-school-textbook-grant.smoke.spec.ts
-            artifact_name: get-a-primary-school-textbook-grant-smoke-trace
           - spec: duties-performed-exam-claim.smoke.spec.ts
             artifact_name: duties-performed-smoke-trace
           # term-leave-application is smoked here post-deploy (not only per-PR
@@ -513,22 +518,15 @@ jobs:
           - spec: barbados-secondary-entrance-exam-choice.smoke.spec.ts
             artifact_name: barbados-secondary-smoke-trace
           # Forms added for issue #912 — the protege-mentor / community-sports /
-          # jobstart-plus programmes, the conductor licence, all three post-office
-          # redirections, and the beach/park vendor licence.
+          # jobstart-plus programmes and the beach/park vendor licence. (The
+          # conductor licence and the three post-office redirections are gated
+          # `visibility: preview` (#1646/#1517) — see the note above.)
           - spec: project-protege-mentor.smoke.spec.ts
             artifact_name: project-protege-mentor-smoke-trace
           - spec: sports-training-programme-form-schema.smoke.spec.ts
             artifact_name: sports-training-programme-smoke-trace
           - spec: jobstart-plus-programme.smoke.spec.ts
             artifact_name: jobstart-plus-smoke-trace
-          - spec: apply-for-conductor-licence.smoke.spec.ts
-            artifact_name: conductor-licence-smoke-trace
-          - spec: post-office-redirection-individual.smoke.spec.ts
-            artifact_name: post-office-individual-smoke-trace
-          - spec: post-office-redirection-deceased.smoke.spec.ts
-            artifact_name: post-office-deceased-smoke-trace
-          - spec: post-office-redirection-business.smoke.spec.ts
-            artifact_name: post-office-business-smoke-trace
           - spec: sell-goods-services-beach-park.smoke.spec.ts
             artifact_name: beach-park-smoke-trace
     uses: ./.github/workflows/forms-smoke.yml

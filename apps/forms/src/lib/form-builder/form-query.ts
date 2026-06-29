@@ -41,17 +41,17 @@ import { buildForm } from "./build-form";
 export const CONTRACT_CACHE_KEY = "service-contract" as const;
 
 /**
- * Normalize an operator preview token: an empty or whitespace-only value
- * becomes `undefined` (treated as no preview). Shared by both cache tiers so
- * the contract key, the FormMeta key, and the X-Recipe-Preview header guard
- * can never disagree about whether a request is a preview.
+ * Normalize an operator recipe token (preview or draft): an empty or
+ * whitespace-only value becomes `undefined`. Shared by both cache tiers so the
+ * contract key, the FormMeta key, and the X-Recipe-Preview / X-Recipe-Draft
+ * header guards can never disagree about whether a request is tokened.
  */
 export const normalizePreviewToken = (preview?: string): string | undefined =>
   preview?.trim() ? preview.trim() : undefined;
 
 /**
  * Prefix for built FormMeta cache entries.
- * Full key shape: ["form-schema", formId, preview | null]
+ * Full key shape: ["form-schema", formId, preview | null, draft | null]
  *
  * #1196: recipe versioning is retired — a form resolves to one canonical
  * recipe, so the key no longer carries a version.
@@ -62,6 +62,10 @@ export const FORM_SCHEMA_CACHE_KEY = "form-schema" as const;
  * Returns the canonical cache key tuple for a built FormMeta.
  * Useful when manually invalidating or reading from the query cache.
  *
+ * The preview and draft tokens are separate key segments (#1682) so a
+ * draft-sourced FormMeta (DB scratch) can never collide with — or be served as
+ * — a public or preview (published) FormMeta for the same formId.
+ *
  * @example
  *   queryClient.invalidateQueries({ queryKey: formSchemaCacheKey("my-form") });
  *   queryClient.invalidateQueries({ queryKey: formSchemaCacheKey("my-form", "tok") });
@@ -69,11 +73,13 @@ export const FORM_SCHEMA_CACHE_KEY = "form-schema" as const;
 export const formSchemaCacheKey = (
   formId: string,
   preview?: string,
-): readonly [string, string, string | null] =>
+  draft?: string,
+): readonly [string, string, string | null, string | null] =>
   [
     FORM_SCHEMA_CACHE_KEY,
     formId,
     normalizePreviewToken(preview) ?? null,
+    normalizePreviewToken(draft) ?? null,
   ] as const;
 
 // ---------------------------------------------------------------------------
@@ -99,13 +105,24 @@ export const formSchemaCacheKey = (
  *                 An empty or whitespace-only value is treated as no preview so
  *                 the cache key and the header guard can never disagree.
  */
-export const contractQueryOptions = (formId: string, preview?: string) => {
-  // Treat an empty/blank ?preview= the same as no preview, so the cache key
-  // and the X-Recipe-Preview header guard can never disagree.
-  const token = normalizePreviewToken(preview);
+export const contractQueryOptions = (
+  formId: string,
+  preview?: string,
+  draft?: string,
+) => {
+  // Treat an empty/blank ?preview=/?draft= the same as absent, so the cache key
+  // and the header guards can never disagree. Preview and draft are distinct
+  // key segments so their responses can never collide (#1682).
+  const previewToken = normalizePreviewToken(preview);
+  const draftToken = normalizePreviewToken(draft);
   return queryOptions<ClientServiceContract>({
-    queryKey: [CONTRACT_CACHE_KEY, formId, token ?? null] as const,
-    queryFn: () => fetchContract(formId, token),
+    queryKey: [
+      CONTRACT_CACHE_KEY,
+      formId,
+      previewToken ?? null,
+      draftToken ?? null,
+    ] as const,
+    queryFn: () => fetchContract(formId, previewToken, draftToken),
     staleTime: 60_000,
     gcTime: 10 * 60_000,
   });
@@ -148,9 +165,10 @@ export const formMetaQueryOptions = (
   formId: string,
   clientContract: ClientServiceContract,
   preview?: string,
+  draft?: string,
 ) =>
   queryOptions<FormMeta>({
-    queryKey: formSchemaCacheKey(formId, preview),
+    queryKey: formSchemaCacheKey(formId, preview, draft),
     queryFn: () => buildForm(clientContract),
     staleTime: 60_000,
     gcTime: 30 * 60_000,
