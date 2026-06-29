@@ -12,6 +12,11 @@ updates:
     # isn't pulled in the moment it ships (also satisfies zizmor's cooldown audit).
     cooldown:
       default-days: 7
+    # Stay on current majors; adopt new majors by hand (temporarily drop this
+    # to let one through). Keeps a breaking action bump out of CI.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       actions:
         patterns:
