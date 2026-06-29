@@ -77,7 +77,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Derive base/head SHAs
-        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4
+        uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1 # v5.0.1
         with:
           # MUST be sandbox: the default "main" makes nx-set-shas search a branch
           # this workflow never runs on, so it falls back to HEAD~1 every time.
