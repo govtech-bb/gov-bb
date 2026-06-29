@@ -319,8 +319,9 @@ export default function FormRenderer({
       const anotherFieldId = getFullFieldId(currentStep.stepId, "addAnother");
 
       const anotherFieldValue = form.getFieldValue(anotherFieldId);
-      // form-step-advance is not fired for repeatable add/remove transitions —
-      // out of v1 analytics scope. The next form-step-view still fires.
+      // Per-step completion events (<formId>:form-step-<word>) are not fired for
+      // repeatable add/remove transitions — out of v1 analytics scope. The next
+      // form-step-view still fires.
       if (anotherFieldValue === "yes") {
         const updatedSteps = addRepeatableStep({
           currentStep,

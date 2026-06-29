@@ -22,7 +22,7 @@ import { shouldHideStartLink } from '../lib/hide-start-link'
 import { checkFormAccessible } from '../lib/preview-form-access'
 import { seoTags } from '../lib/page-head'
 import { trackEvent } from '../lib/analytics'
-import { pageViewEvent } from './page-view-event'
+import { pageViewEvent } from './-page-view-event'
 
 interface CategoryListItem {
   title: string

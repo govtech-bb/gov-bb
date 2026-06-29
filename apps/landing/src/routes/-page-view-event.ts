@@ -2,9 +2,7 @@ import type { ContentPage } from '../content/registry'
 
 const FALLBACK_CATEGORY = 'uncategorised'
 
-export function pageViewEvent(
-  page: ContentPage,
-): {
+export function pageViewEvent(page: ContentPage): {
   name: 'page-service-view' | 'page-start-view'
   data: { form: string; category: string }
 } | null {

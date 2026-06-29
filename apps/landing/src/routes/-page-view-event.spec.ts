@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pageViewEvent } from './page-view-event'
+import { pageViewEvent } from './-page-view-event'
 
 const base = {
   url: 'work-employment/x',
