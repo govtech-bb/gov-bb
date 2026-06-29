@@ -1,5 +1,5 @@
 import type { Primitive, FieldOverrides } from "@govtech-bb/form-types";
-import { shallowMergeDefined } from "@govtech-bb/form-types";
+import { applyFieldOverrides } from "@govtech-bb/form-types";
 import type { Block } from "@govtech-bb/form-types";
 import type {
   FormStep,
@@ -25,40 +25,6 @@ function isBlock(entry: RegistryEntry): entry is Block {
   return "blockId" in entry;
 }
 
-function applyPrimitiveOverrides(
-  primitive: Primitive,
-  overrides: FieldOverrides,
-): Primitive {
-  const {
-    validations: baseValidations,
-    ui: baseUi,
-    ...restPrimitive
-  } = primitive;
-  const {
-    validations: overrideValidations,
-    ui: overrideUi,
-    ...restOverrides
-  } = overrides;
-
-  // `validations` and `ui` are deep-merged, not replaced: a recipe that
-  // restates one key must not drop the primitive's other shipped keys (a
-  // wholesale spread regressed `validations` in #371 and `ui` in #789). The
-  // builder preview merges identically in packages/form-builder/src/resolution.ts.
-  const mergedValidations = shallowMergeDefined(
-    baseValidations,
-    overrideValidations,
-  );
-  const mergedUi = shallowMergeDefined(baseUi, overrideUi);
-  return {
-    ...restPrimitive,
-    ...restOverrides,
-    ...(mergedValidations !== undefined
-      ? { validations: mergedValidations }
-      : {}),
-    ...(mergedUi !== undefined ? { ui: mergedUi } : {}),
-  } as Primitive;
-}
-
 function applyBlockOverrides(
   block: Block,
   overrides: Record<string, FieldOverrides>,
@@ -68,7 +34,7 @@ function applyBlockOverrides(
     elements: block.elements.map((el) => {
       const fieldOverride = overrides[el.fieldId];
       if (!fieldOverride) return el;
-      return applyPrimitiveOverrides(el, fieldOverride);
+      return applyFieldOverrides(el, fieldOverride);
     }),
   };
 }
@@ -88,7 +54,7 @@ export function mergeEntry(
     );
   }
 
-  return applyPrimitiveOverrides(
+  return applyFieldOverrides(
     cloned as Primitive,
     field.overrides as FieldOverrides,
   );

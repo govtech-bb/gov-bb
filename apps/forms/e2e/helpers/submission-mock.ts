@@ -35,21 +35,3 @@ export async function mockSuccessfulSubmission(page: Page): Promise<void> {
     });
   });
 }
-
-/**
- * Intercepts the submission endpoint and returns a server-error response.
- * Useful for testing the error-confirmation screen.
- */
-export async function mockFailedSubmission(page: Page): Promise<void> {
-  await page.route("**/submissions", async (route) => {
-    if (route.request().method() !== "POST") {
-      await route.continue();
-      return;
-    }
-    await route.fulfill({
-      status: 500,
-      contentType: "application/json",
-      body: JSON.stringify({ message: "Internal Server Error" }),
-    });
-  });
-}

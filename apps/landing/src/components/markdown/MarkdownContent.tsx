@@ -4,14 +4,9 @@ import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 import type { Root } from 'hast'
 import type { Frontmatter } from '../../lib/frontmatter'
-import {
-  hideStartLinks,
-  sectionise,
-  type MarkdownHeading,
-} from '../../utils/markdown/plugins'
+import { hideStartLinks, sectionise } from '../../utils/markdown/plugins'
 import { markdownComponents } from './MdComponents'
 import { AvailableFormsContext } from './StartLink'
-// import { TableOfContents } from './TableOfContents'
 import { MigrationBanner } from '../MigrationBanner'
 
 export function MarkdownBody({
@@ -44,10 +39,9 @@ export function MarkdownBody({
   )
 }
 
-export type MarkdownContentProps = {
+type MarkdownContentProps = {
   frontmatter: Frontmatter
   hast: Root
-  headings?: Array<MarkdownHeading>
   availableForms?: ReadonlySet<string>
   hideStartLink?: boolean
 }
@@ -55,7 +49,6 @@ export type MarkdownContentProps = {
 export function MarkdownContent({
   frontmatter,
   hast,
-  // headings = [],
   availableForms,
   hideStartLink = false,
 }: MarkdownContentProps) {
@@ -85,7 +78,6 @@ export function MarkdownContent({
           hideStartLink={hideStartLink}
         />
       </div>
-      {/* <TableOfContents headings={headings} /> */}
     </div>
   )
 }

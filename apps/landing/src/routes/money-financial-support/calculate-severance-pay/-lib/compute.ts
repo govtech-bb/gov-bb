@@ -33,12 +33,12 @@ export interface SeveranceInputs {
   simpleAvg: number
 }
 
-export type IneligibleReason =
+type IneligibleReason =
   | 'self-employed'
   | 'reason-not-covered'
   | 'under-two-years'
 
-export type SeveranceResult =
+type SeveranceResult =
   | { kind: 'ineligible'; reason: IneligibleReason }
   | {
       kind: 'eligible'

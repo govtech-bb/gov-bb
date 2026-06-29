@@ -54,19 +54,17 @@ export function Composer({
             rows={1}
             value={input}
           />
-          {streaming ? (
-            <Button
-              aria-label="Stop generating the response"
-              onClick={onStop}
-              type="button"
-            >
-              Stop
-            </Button>
-          ) : (
-            <Button disabled={!hasInput} type="submit">
-              Send
-            </Button>
-          )}
+          {/* One persistent button whose accessible name flips Send → Stop,
+              so screen readers announce a state change on a single control
+              rather than two buttons swapping in and out. */}
+          <Button
+            aria-label={streaming ? "Stop generating the response" : undefined}
+            disabled={streaming ? false : !hasInput}
+            onClick={streaming ? onStop : undefined}
+            type={streaming ? "button" : "submit"}
+          >
+            {streaming ? "Stop" : "Send"}
+          </Button>
         </div>
         <p className="text-disclaimer text-center text-mid-grey-00">
           Responses are based on official Government of Barbados information

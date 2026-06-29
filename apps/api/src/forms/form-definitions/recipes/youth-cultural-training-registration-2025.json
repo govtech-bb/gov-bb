@@ -1,0 +1,761 @@
+{
+  "steps": [
+    {
+      "title": "Personal Information",
+      "stepId": "personal-information",
+      "elements": [
+        {
+          "ref": "blocks/personal-information",
+          "overrides": {
+            "sex": {
+              "validations": {
+                "required": {
+                  "error": "Please select your sex",
+                  "value": true
+                }
+              }
+            },
+            "last-name": {
+              "validations": {
+                "required": {
+                  "error": "Please enter your last name",
+                  "value": true
+                }
+              }
+            },
+            "first-name": {
+              "validations": {
+                "required": {
+                  "error": "Please enter your first name",
+                  "value": true
+                }
+              }
+            },
+            "middle-name": {
+              "isHidden": true
+            },
+            "date-of-birth": {
+              "validations": {
+                "required": {
+                  "error": "Please enter your date of birth",
+                  "value": true
+                },
+                "pastOrToday": {
+                  "error": "Date of birth must be in the past",
+                  "value": true
+                }
+              }
+            },
+            "national-id-number": {
+              "label": "National Registration Number (ID No.)",
+              "validations": {
+                "required": {
+                  "error": "Please enter your National Registration Number",
+                  "value": true
+                }
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "hint": "Enter your age in years",
+            "label": "Age",
+            "fieldId": "age",
+            "validations": {
+              "required": {
+                "error": "Please enter your age",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/country",
+          "overrides": {
+            "fieldId": "country-of-birth",
+            "label": "Country of Birth"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Contact Information",
+      "stepId": "contact-information",
+      "elements": [
+        {
+          "ref": "blocks/contact-information",
+          "overrides": {
+            "email": {
+              "validations": {
+                "email": {
+                  "error": "Please enter a valid email address",
+                  "value": true
+                },
+                "required": {
+                  "error": "Please enter your email address",
+                  "value": true
+                }
+              }
+            },
+            "telephone": {
+              "label": "Work Number"
+            },
+            "home-telephone": {
+              "validations": {
+                "required": {
+                  "error": "Please enter your home telephone number",
+                  "value": true
+                }
+              }
+            },
+            "mobile-telephone": {
+              "label": "Cell Number"
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address",
+            "fieldId": "address-line-1",
+            "validations": {
+              "required": {
+                "error": "Please enter your address",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish"
+        }
+      ]
+    },
+    {
+      "title": "Current Status",
+      "stepId": "current-status",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "hint": "Please select the option that best describes your current situation",
+            "label": "Current Status",
+            "fieldId": "current-status",
+            "options": [
+              {
+                "label": "Employed (Full-time)",
+                "value": "employed-full-time"
+              },
+              {
+                "label": "Employed (Part-time)",
+                "value": "employed-part-time"
+              },
+              {
+                "label": "Self-employed",
+                "value": "self-employed"
+              },
+              {
+                "label": "In School (Full-time)",
+                "value": "in-school-full-time"
+              },
+              {
+                "label": "In School (Part-time)",
+                "value": "in-school-part-time"
+              },
+              {
+                "label": "Unemployed",
+                "value": "unemployed"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please select your current status",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "Enter the name of the school or institution you are currently attending",
+            "label": "If studying, please state the institution",
+            "fieldId": "institution-name",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": [
+                  "in-school-full-time",
+                  "in-school-part-time"
+                ],
+                "operator": "in",
+                "targetFieldId": "current-status"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "title": "Performing Arts Disciplines",
+      "stepId": "performing-arts-disciplines",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "hint": "Select all disciplines you are most interested in",
+            "label": "Performing Arts Disciplines",
+            "fieldId": "discipline-dance",
+            "options": [
+              {
+                "label": "Dance",
+                "value": "dance"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Drama",
+            "fieldId": "discipline-drama",
+            "options": [
+              {
+                "label": "Drama",
+                "value": "drama"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Steel Pan",
+            "fieldId": "discipline-steel-pan",
+            "options": [
+              {
+                "label": "Steel Pan",
+                "value": "steel-pan"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Stilt Walking",
+            "fieldId": "discipline-stilt-walking",
+            "options": [
+              {
+                "label": "Stilt Walking",
+                "value": "stilt-walking"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Shaggy Bear",
+            "fieldId": "discipline-shaggy-bear",
+            "options": [
+              {
+                "label": "Shaggy Bear",
+                "value": "shaggy-bear"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Landship",
+            "fieldId": "discipline-landship",
+            "options": [
+              {
+                "label": "Landship",
+                "value": "landship"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Violin",
+            "fieldId": "discipline-violin",
+            "options": [
+              {
+                "label": "Violin",
+                "value": "violin"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Drumming",
+            "fieldId": "discipline-drumming",
+            "options": [
+              {
+                "label": "Drumming",
+                "value": "drumming"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Voice Training",
+            "fieldId": "discipline-voice-training",
+            "options": [
+              {
+                "label": "Voice Training",
+                "value": "voice-training"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "title": "Experience",
+      "stepId": "experience",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Do you have any experience in the discipline(s) you have selected?",
+            "fieldId": "has-experience",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please indicate whether you have experience in your selected discipline(s)",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Indicate your level of experience",
+            "fieldId": "experience-level",
+            "options": [
+              {
+                "label": "Beginner",
+                "value": "beginner"
+              },
+              {
+                "label": "Intermediate",
+                "value": "intermediate"
+              },
+              {
+                "label": "Advanced",
+                "value": "advanced"
+              },
+              {
+                "label": "Expert",
+                "value": "expert"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "has-experience"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "hint": "Enter the number of years of experience",
+            "label": "How much experience do you have?",
+            "fieldId": "experience-years",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "has-experience"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "label": "Please indicate where you received training",
+            "fieldId": "training-location",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "has-experience"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "title": "Medical Information",
+      "stepId": "medical-information",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "hint": "Please tick all medical conditions that apply to you",
+            "label": "Medical Conditions",
+            "fieldId": "condition-asthma",
+            "options": [
+              {
+                "label": "Asthma",
+                "value": "asthma"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Diabetes",
+            "fieldId": "condition-diabetes",
+            "options": [
+              {
+                "label": "Diabetes",
+                "value": "diabetes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Hypertension",
+            "fieldId": "condition-hypertension",
+            "options": [
+              {
+                "label": "Hypertension",
+                "value": "hypertension"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Epilepsy",
+            "fieldId": "condition-epilepsy",
+            "options": [
+              {
+                "label": "Epilepsy",
+                "value": "epilepsy"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Allergies",
+            "fieldId": "condition-allergies",
+            "options": [
+              {
+                "label": "Allergies",
+                "value": "allergies"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Other medical condition (please specify)",
+            "fieldId": "condition-other"
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "hint": "List all current medications. Write 'None' if you do not take any medication.",
+            "label": "What medication(s) do you take, if any?",
+            "fieldId": "medications"
+          }
+        }
+      ]
+    },
+    {
+      "title": "General Information",
+      "stepId": "general-information",
+      "elements": [
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "label": "How did you find out about the Training Programme?",
+            "fieldId": "how-did-you-find-out"
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Do you belong to any clubs, groups or organisations?",
+            "fieldId": "belongs-to-clubs",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Please indicate whether you belong to any clubs, groups or organisations",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Club, Group or Organisation 1",
+            "fieldId": "club-name-1",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "belongs-to-clubs"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Club, Group or Organisation 2",
+            "fieldId": "club-name-2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "belongs-to-clubs"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Club, Group or Organisation 3",
+            "fieldId": "club-name-3",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "belongs-to-clubs"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Club, Group or Organisation 4",
+            "fieldId": "club-name-4",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetFieldId": "belongs-to-clubs"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "title": "Emergency Contact Information",
+      "stepId": "emergency-contact",
+      "elements": [
+        {
+          "ref": "blocks/emergency-contact-details",
+          "overrides": {
+            "town": {
+              "isHidden": true
+            },
+            "email": {
+              "isHidden": true
+            },
+            "parish": {
+              "isHidden": true
+            },
+            "address": {
+              "label": "Emergency Contact Address",
+              "validations": {
+                "required": {
+                  "error": "Please enter the emergency contact's address",
+                  "value": true
+                }
+              }
+            },
+            "country": {
+              "isHidden": true
+            },
+            "postcode": {
+              "isHidden": true
+            },
+            "last-name": {
+              "label": "Emergency Contact Last Name",
+              "validations": {
+                "required": {
+                  "error": "Please enter the emergency contact's last name",
+                  "value": true
+                }
+              }
+            },
+            "telephone": {
+              "label": "Emergency Contact Work Number"
+            },
+            "first-name": {
+              "label": "Emergency Contact First Name",
+              "validations": {
+                "required": {
+                  "error": "Please enter the emergency contact's first name",
+                  "value": true
+                }
+              }
+            },
+            "home-telephone": {
+              "label": "Emergency Contact Home Number",
+              "validations": {
+                "required": {
+                  "error": "Please enter the emergency contact's home telephone number",
+                  "value": true
+                }
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "hint": "e.g. Parent, Guardian, Sibling",
+            "label": "Relationship to Applicant",
+            "fieldId": "emergency-contact-relationship",
+            "validations": {
+              "required": {
+                "error": "Please enter your relationship to the emergency contact",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/mobile-telephone",
+          "overrides": {
+            "label": "Emergency Contact Cell Number",
+            "fieldId": "emergency-contact-cell"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Declaration",
+      "stepId": "declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I declare that the information provided in this registration form is true, accurate and complete to the best of my knowledge. I understand that providing false information may result in my application being disqualified.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to submit your registration",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Registration Submitted",
+      "stepId": "submission-confirmation",
+      "elements": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "Thank you for registering for the National Community Cultural Training Programme 2025–2026. We have received your application and you will receive a confirmation email at the address you provided. A member of the Ministry of Youth, Sports and Community Empowerment team will be in touch with further details about your registration."
+        }
+      ]
+    }
+  ],
+  "title": "National Community Cultural Training Programme Registration 2025–2026",
+  "formId": "youth-cultural-training-registration-2025",
+  "createdAt": "2025-01-01T00:00:00Z",
+  "updatedAt": "2026-06-05T00:00:00Z",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your Registration for the National Community Cultural Training Programme 2025–2026 has been received",
+        "recipientField": "contact-information.email"
+      }
+    }
+  ],
+  "description": "Registration form for the Youth Development Programme — Project \"Building Cultural Competence Together\" — Ministry of Youth, Sports and Community Empowerment."
+}

@@ -4,7 +4,6 @@ import { z } from "zod";
 export interface FormDraft {
   draftId: string;
   formId: string;
-  version: string;
   values: FormValues;
   lastActiveStep: string;
 }
@@ -15,7 +14,8 @@ export const formDraftResponseBodySchema = z.object({
   updatedAt: z.string(),
   draftId: z.string(),
   formId: z.string(),
-  formVersion: z.string(),
+  // #1196: versionless drafts return null; tolerate any/absent shape.
+  formVersion: z.string().nullable().optional(),
   values: formValuesSchema,
   lastActiveStep: z.string(),
   status: z.string(),

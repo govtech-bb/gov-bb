@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { getDataSource } from "../db.js";
+import { readUserLogin } from "../utils/request.js";
 
 export const presenceRouter = Router();
 
@@ -8,7 +9,7 @@ export const presenceRouter = Router();
  * it's stale: ignored on read and overwritable by the next claimant. This is
  * the guarantee behind the lock — eager release on leave is only best-effort.
  */
-export const PRESENCE_TTL_MINUTES = 15;
+const PRESENCE_TTL_MINUTES = 15;
 
 // SQL fragment: the row is a *fresh* claim. Used on read and as the inverse of
 // the stale-takeover condition on claim, so both agree on the boundary.
@@ -21,7 +22,7 @@ interface Queryable {
   query(sql: string, params?: unknown[]): Promise<any[]>;
 }
 
-export interface PresenceHolder {
+interface PresenceHolder {
   userLogin: string;
   claimedAt: string;
   lastActivityAt: string;
@@ -37,11 +38,6 @@ function toHolder(row: {
     claimedAt: row.claimed_at,
     lastActivityAt: row.last_activity_at,
   };
-}
-
-function readUserLogin(body: unknown): string {
-  const raw = (body as { userLogin?: unknown } | null)?.userLogin;
-  return typeof raw === "string" ? raw.trim() : "";
 }
 
 /**

@@ -138,6 +138,52 @@ describe("EmailTemplateService", () => {
       expect(html).toContain("Test Form");
     });
 
+    it("renders the payment block on submission-confirmation when payment is present", () => {
+      const ctx = {
+        ...STUB_CTX,
+        payment: { amountReceived: "$50.00", transactionId: "TXN-1" },
+      };
+      const html = service.render(
+        "submission-confirmation",
+        ctx as unknown as Record<string, unknown>,
+      )!;
+
+      expect(html).toContain("Payment amount received:");
+      expect(html).toContain("$50.00");
+      expect(html).toContain("EzPay transaction ID:");
+      expect(html).toContain("TXN-1");
+    });
+
+    it("omits the payment block on submission-confirmation when payment is absent", () => {
+      const html = service.render(
+        "submission-confirmation",
+        STUB_CTX as unknown as Record<string, unknown>,
+      )!;
+
+      expect(html).not.toContain("Payment amount received:");
+    });
+
+    it("renders payment-required with the amount due and pay link", () => {
+      const html = service.render("payment-required", {
+        formTitle: "Birth Certificate",
+        referenceCode: "BC-20260617-000001",
+        amountDue: "$5.00",
+        description: "Birth Certificate - 1 copy",
+        paymentUrl: "https://ezpay.example/pay?token=abc",
+        year: "2026",
+      });
+
+      expect(html).not.toBeNull();
+      expect(html).toContain("Birth Certificate");
+      expect(html).toContain("Payment required");
+      expect(html).toContain("$5.00");
+      expect(html).toContain("BC-20260617-000001");
+      // Handlebars HTML-escapes `=` (→ &#x3D;) in {{paymentUrl}}; correct for an
+      // href, so assert on the un-escaped prefix.
+      expect(html).toContain("https://ezpay.example/pay?token");
+      expect(html).toContain("Pay now");
+    });
+
     it("returns null and does not throw when template rendering fails", () => {
       const badService = new EmailTemplateService();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

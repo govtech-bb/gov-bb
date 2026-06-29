@@ -20,6 +20,7 @@ import { FormDefinitionsService } from "../forms/form-definitions/form-definitio
 import type {
   SubmissionAuditTrail,
   SubmissionCreatedEvent,
+  SubmissionPaymentSummary,
 } from "../forms/submissions/submissions.types";
 
 /** TTL for cached form contracts (seconds).
@@ -91,6 +92,10 @@ export interface EmailTemplateContext {
    * image URL. */
   departmentName?: string;
   coatOfArmsUrl?: string;
+  /** Confirmed-payment details, forwarded from the post-payment
+   * `submission.created` event. Rendered on the MDA/reviewer confirmation
+   * email; undefined for non-payment submissions. */
+  payment?: SubmissionPaymentSummary;
 }
 
 /**
@@ -137,10 +142,7 @@ export class EmailBodyBuilder {
   ) {}
 
   async build(payload: SubmissionCreatedEvent): Promise<EmailTemplateContext> {
-    const contract = await this.resolveContract(
-      payload.formId,
-      payload.formVersion,
-    );
+    const contract = await this.resolveContract(payload.formId);
 
     const { meta, values, submissionId, referenceCode } = payload;
 
@@ -217,6 +219,7 @@ export class EmailBodyBuilder {
       year: processedAt.slice(0, 4),
       sections,
       ...(markdownHtml && { markdownHtml }),
+      ...(payload.payment && { payment: payload.payment }),
     };
   }
 
@@ -232,31 +235,21 @@ export class EmailBodyBuilder {
   async resolveContactDetails(
     payload: SubmissionCreatedEvent,
   ): Promise<ContactDetails | undefined> {
-    const contract = await this.resolveContract(
-      payload.formId,
-      payload.formVersion,
-    );
+    const contract = await this.resolveContract(payload.formId);
     return contract.contactDetails;
   }
 
   /**
-   * Fetches the form's service contract through the same per-`formId:version`
-   * cache as `build`. Public so the email processor can walk the contract's
-   * file fields when gathering upload attachments.
+   * Fetches the form's service contract through the same per-`formId` cache as
+   * `build`. Public so the email processor can walk the contract's file fields
+   * when gathering upload attachments.
    */
-  async resolveContract(
-    formId: string,
-    version: string,
-  ): Promise<ServiceContract> {
-    const cacheKey = `${formId}:${version}`;
-    const cached = this.contractCache.get<ServiceContract>(cacheKey);
+  async resolveContract(formId: string): Promise<ServiceContract> {
+    const cached = this.contractCache.get<ServiceContract>(formId);
     if (cached) return cached;
 
-    const contract = await this.formDefinitionsService.findByFormId({
-      formId,
-      version,
-    });
-    this.contractCache.set(cacheKey, contract);
+    const contract = await this.formDefinitionsService.findByFormId({ formId });
+    this.contractCache.set(formId, contract);
     return contract;
   }
 

@@ -127,14 +127,16 @@ describe("listForms", () => {
     );
   });
 
-  it("prefers the published entry when its version is newer than the draft", async () => {
+  it("prefers the draft row, marking it isPublished from the index (#1196)", async () => {
+    // #1196: the draft row is the current working copy, so it always wins the
+    // merge; isPublished is OR'd in from the published index.
     apiGet.mockImplementation((path: string) => {
       if (path === "/builder/forms")
         return Promise.resolve([
           {
             id: "uuid-1",
             formId: "passport-renewal",
-            title: "Old draft",
+            title: "Working draft",
             version: "1.0.0",
             isPublished: false,
           },
@@ -156,7 +158,7 @@ describe("listForms", () => {
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       formId: "passport-renewal",
-      version: "1.1.0",
+      title: "Working draft",
       isPublished: true,
     });
   });
@@ -488,7 +490,9 @@ describe("getRecipe (draft-vs-published precedence)", () => {
     return { ...publishedRecipe(version), title: "Conductor (draft)" };
   }
 
-  it("returns the published copy when it is newer than the draft", async () => {
+  it("returns the draft when present, ignoring the published copy (#1196)", async () => {
+    // #1196: the DB scratch draft is the working copy — it always wins when
+    // present; the published flat file is only the fallback (no version compare).
     apiGet.mockResolvedValue(draftRecipe("1.1.0"));
     getPublishedRecipeMock.mockResolvedValue(publishedRecipe("1.3.0"));
 
@@ -497,21 +501,6 @@ describe("getRecipe (draft-vs-published precedence)", () => {
       context: { session: SESSION },
     } as never);
 
-    expect(result.version).toBe("1.3.0");
-    expect(result.title).toBe("Apply for Conductor Licence");
-  });
-
-  it("returns the draft when its version is greater than or equal to the published copy", async () => {
-    apiGet.mockResolvedValue(draftRecipe("1.3.0"));
-    getPublishedRecipeMock.mockResolvedValue(publishedRecipe("1.3.0"));
-
-    const result = await getRecipe({
-      data: { formId: FORM_ID },
-      context: { session: SESSION },
-    } as never);
-
-    expect(result.version).toBe("1.3.0");
-    // Equal versions tie-break to the draft.
     expect(result.title).toBe("Conductor (draft)");
   });
 
@@ -539,5 +528,73 @@ describe("getRecipe (draft-vs-published precedence)", () => {
 
     expect(result.version).toBe("1.3.0");
     expect(result.title).toBe("Apply for Conductor Licence");
+  });
+
+  it("hydrates meta from the published recipe when the draft row has none (#1682)", async () => {
+    // The #1517 flagged forms had meta.visibility written straight into the
+    // published flat files (#1676), bypassing the builder save flow — so their
+    // DB scratch rows carry no meta. Backfill it from the published copy so the
+    // builder's visibility control reflects the live launch gate, not "public".
+    apiGet.mockResolvedValue(draftRecipe("1.1.0")); // no meta
+    getPublishedRecipeMock.mockResolvedValue({
+      ...publishedRecipe("1.3.0"),
+      meta: { visibility: "preview" },
+    });
+
+    const result = await getRecipe({
+      data: { formId: FORM_ID },
+      context: { session: SESSION },
+    } as never);
+
+    // The draft still wins for content; only the absent meta is hydrated.
+    expect(result.title).toBe("Conductor (draft)");
+    expect(result.meta).toEqual({ visibility: "preview" });
+  });
+
+  it("keeps the draft's own meta over the published copy (in-progress edit wins)", async () => {
+    // A post-#1682 draft that set visibility in the builder is the working copy
+    // (#1196) — hydration must only fill an absent meta, never overwrite one.
+    apiGet.mockResolvedValue({
+      ...draftRecipe("1.1.0"),
+      meta: { visibility: "public" },
+    });
+    getPublishedRecipeMock.mockResolvedValue({
+      ...publishedRecipe("1.3.0"),
+      meta: { visibility: "preview" },
+    });
+
+    const result = await getRecipe({
+      data: { formId: FORM_ID },
+      context: { session: SESSION },
+    } as never);
+
+    expect(result.meta).toEqual({ visibility: "public" });
+  });
+
+  it("leaves meta absent when neither the draft nor the published recipe has it", async () => {
+    apiGet.mockResolvedValue(draftRecipe("1.1.0")); // no meta
+    getPublishedRecipeMock.mockResolvedValue(publishedRecipe("1.3.0")); // no meta
+
+    const result = await getRecipe({
+      data: { formId: FORM_ID },
+      context: { session: SESSION },
+    } as never);
+
+    expect(result.meta).toBeUndefined();
+  });
+
+  it("leaves meta absent when the draft has none and there is no published recipe", async () => {
+    // A never-deployed draft has no flat file: the hydration fetch fails and is
+    // swallowed, leaving meta absent (getRecipeVisibility treats that as public).
+    apiGet.mockResolvedValue(draftRecipe("1.1.0")); // no meta
+    getPublishedRecipeMock.mockRejectedValue(new Error("no published recipe"));
+
+    const result = await getRecipe({
+      data: { formId: FORM_ID },
+      context: { session: SESSION },
+    } as never);
+
+    expect(result.meta).toBeUndefined();
+    expect(result.title).toBe("Conductor (draft)");
   });
 });

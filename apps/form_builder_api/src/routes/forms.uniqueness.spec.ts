@@ -76,7 +76,8 @@ function fakeDataSource(rows: FakeRows = {}) {
     if (/DISTINCT ON \(form_id\)/i.test(sql)) return titleRows;
     if (/SELECT 1 FROM form_definitions WHERE form_id/i.test(sql))
       return idExists ? [{ "?column?": 1 }] : [];
-    if (/SELECT id, version, published_at/i.test(sql)) return putLatest;
+    if (/SELECT id FROM form_definitions WHERE form_id/i.test(sql))
+      return putLatest;
     if (/UPDATE form_definitions/i.test(sql)) return [];
     return [];
   });
@@ -195,7 +196,7 @@ describe("createFormHandler — uniqueness", () => {
     );
   });
 
-  it("keeps the existing exact formId+version 409", async () => {
+  it("keeps the existing-formId 409 (#1196: one row per form)", async () => {
     const { ds } = fakeDataSource({ existingVersion: { id: 1 } });
     getDataSourceMock.mockResolvedValue(ds);
 
@@ -204,7 +205,7 @@ describe("createFormHandler — uniqueness", () => {
 
     expect(res.statusCode).toBe(409);
     expect((res.body as { error: string }).error).toMatch(
-      /v1\.0\.0 already exists/,
+      /marriage-license already exists/,
     );
   });
 
@@ -227,7 +228,7 @@ describe("createFormHandler — uniqueness", () => {
 
     expect(res.statusCode).toBe(409);
     expect((res.body as { error: string }).error).toMatch(
-      /v1\.0\.0 already exists/,
+      /marriage-license already exists/,
     );
   });
 

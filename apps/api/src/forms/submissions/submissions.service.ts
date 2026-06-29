@@ -1,8 +1,8 @@
 import { HttpStatus, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { FormSubmissionStatus } from "../../database/entities/form-submission.entity";
-import { AppError } from "../../common/errors";
-import { ExpressionsService } from "../../expressions/expressions.service";
+import { FormSubmissionStatus } from "@/database/entities/form-submission.entity";
+import { AppError } from "@/common/errors";
+import { ExpressionsService } from "@/expressions/expressions.service";
 import { FormSubmissionRepository } from "./form-submission.repository";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { ProcessorFactory } from "./processors/processor-factory.service";
@@ -48,7 +48,10 @@ export class SubmissionsService {
 
     const { draft, contract, auditTrail, normalizedValues } =
       await this.pipeline.run(dto);
-    const pinnedVersion = draft?.formVersion ?? dto.formVersion;
+    // #1196: versionless submissions persist form_version = NULL (the recipe
+    // resolves to the canonical flat file). A draft-sourced submission carries
+    // its draft's pin (may itself be null) for the legacy fallback window.
+    const pinnedVersion = draft?.formVersion ?? dto.formVersion ?? null;
 
     // Smoke submissions exercise the full persist/validate/reference-code path
     // but must fire zero processors (no real emails/webhooks/payment gating).
@@ -62,7 +65,33 @@ export class SubmissionsService {
       ? []
       : (contract.processors ?? []);
     const split = this.processorFactory.resolveSplit(rawProcessors);
-    const hasGating = split.gating.length > 0;
+
+    // A payment whose fee resolves to 0 (a fee-waiver branch / dynamic
+    // expression) is not a real payment: gating it would create a Payment row,
+    // open an EzPay session, and email the citizen "Amount due: $0.00 — Pay
+    // now" (#1449). Resolve the amount up front (ResolutionContext.submission is
+    // optional, so values + meta suffice before the entity exists) and drop the
+    // zero-amount payment from the gating set, so the submission proceeds as a
+    // normal SUBMITTED submission. Only the exact number 0 un-gates; a negative
+    // / non-numeric amount stays gated and is rejected by the processor's
+    // existing post-resolution validation. Dropping only the payment entry
+    // (rather than clearing all gating) leaves any other gating processor
+    // intact — payment is the only gatesPipeline type today, but this does not
+    // rely on that.
+    const paymentConfig = rawProcessors.find((p) => p.type === "payment");
+    const paymentIsNoOp =
+      paymentConfig !== undefined &&
+      this.expressions.resolveConfig(
+        paymentConfig.config as Record<string, unknown>,
+        {
+          values: normalizedValues,
+          meta: auditTrail as unknown as Record<string, unknown>,
+        },
+      ).amount === 0;
+    const gatingProcessors = paymentIsNoOp
+      ? split.gating.filter((p) => p.type !== "payment")
+      : split.gating;
+    const hasGating = gatingProcessors.length > 0;
 
     const referenceCode = await this.generateUniqueReferenceCode(dto.formId);
 
@@ -91,7 +120,7 @@ export class SubmissionsService {
       submissionId: saved.id,
       referenceCode,
       formId: dto.formId,
-      formVersion: pinnedVersion,
+      formVersion: pinnedVersion ?? undefined,
       idempotencyKey: dto.idempotencyKey,
       processors: rawProcessors,
       values: normalizedValues,
@@ -120,7 +149,7 @@ export class SubmissionsService {
       // First deferred wins; later gating processors still run for their side-effects
       // (e.g. persisting their own state) but their `data` is discarded.
       let deferred: SubmitResult["deferred"];
-      for (const processor of split.gating) {
+      for (const processor of gatingProcessors) {
         const output = await processor.process(gatingEvent);
         if (output.kind === "deferred" && !deferred) {
           deferred = output.data;

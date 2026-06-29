@@ -10,6 +10,7 @@ import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
 import { trackEvent } from '../lib/analytics'
 import { resolveViewLevel } from '../lib/preview'
+import { SITE_URL } from '../lib/site-url'
 
 import appCss from '../styles.css?url'
 
@@ -62,8 +63,21 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: 'Government Services | Government of Barbados' },
+      { name: 'theme-color', content: '#000000' },
+      // Open Graph / Twitter defaults. Per-page routes override the title,
+      // description and url (via `pageHead`); these site-wide values aren't
+      // worth repeating per page.
+      { property: 'og:site_name', content: 'Government of Barbados' },
+      { property: 'og:locale', content: 'en_BB' },
+      { property: 'og:type', content: 'website' },
+      { property: 'og:image', content: `${SITE_URL}/og-image.png` },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:image', content: `${SITE_URL}/og-image.png` },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      { rel: 'manifest', href: '/manifest.json' },
+    ],
     scripts: UMAMI_WEBSITE_ID
       ? [
           {
@@ -127,7 +141,7 @@ function ServerErrorPage() {
         'Try again in a few minutes',
         'Contact us if the problem continues',
       ]}
-      secondary={{ label: 'Contact us', href: '/contact' }}
+      secondary={{ label: 'Contact us', href: '/feedback' }}
       primary={{ label: 'Return to homepage', href: '/' }}
     />
   )

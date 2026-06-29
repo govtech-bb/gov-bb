@@ -1,43 +1,61 @@
 import { FormFetchError } from "@forms/form-api";
+import { LANDING_URL } from "../config/landing";
+import { ErrorPage } from "./error-page";
 
 interface FormErrorProps {
   error: Error;
   reset: () => void;
 }
 
+const HOMEPAGE = { label: "Return to homepage", href: LANDING_URL };
+const SERVICE_DIRECTORY = {
+  label: "Browse our service directory",
+  href: `${LANDING_URL}/services`,
+};
+
 export default function FormError({ error, reset }: FormErrorProps) {
   const isNotFound = error instanceof FormFetchError && error.status === 404;
-
   const isNetworkError = error instanceof FormFetchError && error.status === 0;
 
-  const heading = isNotFound
-    ? "Form not found"
-    : isNetworkError
-      ? "Connection error"
-      : "Something went wrong";
+  if (isNotFound) {
+    return (
+      <ErrorPage
+        title="Form not found"
+        intro="We couldn't find the form you're looking for. It may have been moved, removed, or the web address may have been typed incorrectly."
+        suggestions={[
+          "Check the web address for typos",
+          "Return to the homepage",
+          "Browse our service directory",
+        ]}
+        secondary={SERVICE_DIRECTORY}
+        primary={HOMEPAGE}
+      />
+    );
+  }
 
-  const suggestion = isNotFound
-    ? "Check the URL and try again, or return to the homepage."
-    : isNetworkError
-      ? "Unable to reach the server. Check your connection and try again."
-      : "An unexpected error occurred while loading the form.";
+  if (isNetworkError) {
+    return (
+      <ErrorPage
+        title="Connection error"
+        intro="We couldn't reach the server to load this form. Check your internet connection and try again."
+        suggestions={[
+          "Check your internet connection",
+          "Wait a moment and try again",
+          "Return to the homepage",
+        ]}
+        secondary={HOMEPAGE}
+        primary={{ label: "Try again", onClick: reset }}
+      />
+    );
+  }
 
   return (
-    <div className="form-page form-page__message">
-      <div>
-        <h1 className="govbb-text-h1">{heading}</h1>
-        <p>{error.message}</p>
-        <p>{suggestion}</p>
-      </div>
-
-      <div className="govbb-btn-group">
-        <button type="button" className="govbb-btn" onClick={reset}>
-          Try again
-        </button>
-        <a className="govbb-link" href="/">
-          Go to Homepage
-        </a>
-      </div>
-    </div>
+    <ErrorPage
+      title="Something went wrong"
+      intro="An unexpected error occurred while loading the form. Please try again."
+      suggestions={["Wait a moment and try again", "Return to the homepage"]}
+      secondary={HOMEPAGE}
+      primary={{ label: "Try again", onClick: reset }}
+    />
   );
 }

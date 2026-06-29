@@ -55,6 +55,19 @@ test("reshapeByStep groups flat answers by their step", () => {
   });
 });
 
+test("reshapeByStep drops an empty optional answer (matches the browser form)", () => {
+  // The browser form strips empty values before POSTing; chat must too, so the
+  // two channels build an identical payload for the same answers (#1398).
+  const byStep = reshapeByStep(contract, {
+    "first-name": "Jane",
+    "last-name": "Doe",
+    email: "",
+  });
+  assert.deepEqual(byStep, {
+    applicant: { "first-name": "Jane", "last-name": "Doe" },
+  });
+});
+
 test("missingRequired flags an unanswered required field, ignores optional ones", () => {
   assert.deepEqual(
     missingRequired(contract, { "first-name": "Jane", "last-name": "Doe" }),
@@ -131,7 +144,6 @@ test("live POSTs the by-step body and returns the reference", async () => {
   assert.deepEqual(r, { ok: true, reference: "PPM-123" });
   assert.deepEqual(body, {
     formId: "f",
-    formVersion: "1.2.0",
     values: { applicant: { "first-name": "Jane", "last-name": "Doe" } },
   });
 });

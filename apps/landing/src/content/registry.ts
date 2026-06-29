@@ -2,7 +2,6 @@ import { FrontmatterSchema, titleFromSlug } from '../lib/frontmatter'
 import type { Frontmatter, ViewLevel } from '../lib/frontmatter'
 import type { Root } from 'hast'
 import { bakeStartLinkFormId } from '../utils/markdown/plugins'
-import type { MarkdownHeading } from '../utils/markdown/plugins'
 import { CATEGORIES, CATEGORY_BY_SLUG, getSubcategory } from './categories'
 import type { Category } from './categories'
 import { FeatureMetaSchema } from './feature-meta'
@@ -17,8 +16,6 @@ export interface ContentPage {
   body: string
   /** Build-time compiled body (see `vite-plugin-markdown.ts`). Empty root for feature pages. */
   hast: Root
-  /** Section headings for the "On this page" nav. Empty for feature pages. */
-  headings: Array<MarkdownHeading>
 }
 
 /** Shape each `*.md` file is compiled to by `vite-plugin-markdown.ts`. */
@@ -26,7 +23,6 @@ interface MarkdownModule {
   frontmatter: Record<string, unknown>
   body: string
   hast: Root
-  headings: Array<MarkdownHeading>
 }
 
 const EMPTY_HAST: Root = { type: 'root', children: [] }
@@ -128,7 +124,6 @@ const markdownPages: Array<ContentPage> = Object.entries(modules).map(
       frontmatter,
       body: mod.body,
       hast: mod.hast,
-      headings: mod.headings,
     }
   },
 )
@@ -188,7 +183,6 @@ const featurePages: Array<ContentPage> = Object.entries(featureMetaModules).map(
       frontmatter,
       body: '',
       hast: EMPTY_HAST,
-      headings: [],
     }
   },
 )
@@ -244,6 +238,18 @@ const RANK: Record<ViewLevel, number> = { public: 0, preview: 1, draft: 2 }
 /** Whether a viewer holding `viewer` may see content requiring `required`. */
 function viewerMeets(viewer: ViewLevel, required: ViewLevel): boolean {
   return RANK[viewer] >= RANK[required]
+}
+
+/**
+ * A service is "digital" — completed online — when it has a form to submit or
+ * is an interactive tool (calculators, the bank-holiday lookup, etc.); anything
+ * else is informational. Tools carry `service_type: digital`; forms imply it.
+ */
+export function isDigitalService(page: ContentPage): boolean {
+  return (
+    Boolean(page.frontmatter.form_id) ||
+    page.frontmatter.service_type === 'digital'
+  )
 }
 
 /**

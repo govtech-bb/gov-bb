@@ -20,6 +20,8 @@ function renderToolbar(overrides: Partial<Parameters<typeof Toolbar>[0]> = {}) {
     isPublishing: false,
     isReadOnly: false,
     lastSaveStatus: "idle" as const,
+    visibility: "public" as const,
+    onVisibilityChange: vi.fn(),
     onFormIdChange,
     onTitleChange: vi.fn(),
     onNew: vi.fn(),
@@ -32,12 +34,46 @@ function renderToolbar(overrides: Partial<Parameters<typeof Toolbar>[0]> = {}) {
     ...overrides,
   };
   render(<Toolbar {...props} />);
-  return { onFormIdChange: props.onFormIdChange, onDiscard: props.onDiscard };
+  return {
+    onFormIdChange: props.onFormIdChange,
+    onDiscard: props.onDiscard,
+    onVisibilityChange: props.onVisibilityChange,
+  };
 }
 
 function formIdInput() {
   return screen.getByLabelText(/form id/i);
 }
+
+describe("Toolbar — Visibility selector (#1682)", () => {
+  it("reflects the current visibility value", () => {
+    renderToolbar({ visibility: "draft" });
+    expect(screen.getByLabelText(/visibility/i)).toHaveValue("draft");
+  });
+
+  it("offers public, preview, draft and maintenance options", () => {
+    renderToolbar();
+    const select = screen.getByLabelText(/visibility/i);
+    const values = Array.from(
+      select.querySelectorAll("option"),
+      (o) => (o as HTMLOptionElement).value,
+    );
+    expect(values).toEqual(["public", "preview", "draft", "maintenance"]);
+  });
+
+  it("calls onVisibilityChange with the selected level", () => {
+    const { onVisibilityChange } = renderToolbar({ visibility: "public" });
+    fireEvent.change(screen.getByLabelText(/visibility/i), {
+      target: { value: "preview" },
+    });
+    expect(onVisibilityChange).toHaveBeenCalledWith("preview");
+  });
+
+  it("is disabled when the form is read-only", () => {
+    renderToolbar({ isReadOnly: true });
+    expect(screen.getByLabelText(/visibility/i)).toBeDisabled();
+  });
+});
 
 describe("Toolbar — Form ID input", () => {
   it("shows 'Form ID is required' and still propagates the empty value when cleared", () => {
@@ -142,6 +178,40 @@ describe("Toolbar — unsaved changes + Discard", () => {
 
   it("enables Deploy when the draft is clean", () => {
     renderToolbar({ hasUnsavedChanges: false });
+
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
+  });
+});
+
+describe("Toolbar — Deploy blocked while visibility is draft (#1682)", () => {
+  it("disables Deploy when visibility is draft, even on a clean valid draft", () => {
+    renderToolbar({ hasUnsavedChanges: false, visibility: "draft" });
+
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
+  });
+
+  it("shows a hint telling the author to set Preview or Public", () => {
+    renderToolbar({ hasUnsavedChanges: false, visibility: "draft" });
+
+    expect(
+      screen.getByText(/set visibility to preview or public to deploy/i),
+    ).toBeInTheDocument();
+  });
+
+  it("enables Deploy when visibility is preview", () => {
+    renderToolbar({ hasUnsavedChanges: false, visibility: "preview" });
+
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
+  });
+
+  it("enables Deploy when visibility is public", () => {
+    renderToolbar({ hasUnsavedChanges: false, visibility: "public" });
+
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
+  });
+
+  it("enables Deploy when visibility is maintenance (#1694)", () => {
+    renderToolbar({ hasUnsavedChanges: false, visibility: "maintenance" });
 
     expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
   });

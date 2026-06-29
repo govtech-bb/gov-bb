@@ -19,6 +19,7 @@ export default function Review({
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
   const excludeStepIds = [
+    "intro",
     "check-your-answers",
     "declaration",
     "submission-confirmation",

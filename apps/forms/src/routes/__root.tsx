@@ -4,11 +4,10 @@ import {
   Outlet,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { Footer } from "@govtech-bb/react";
+import { Footer, OfficialBanner } from "@govtech-bb/react";
 import { NotFound } from "@forms/components";
 import type { QueryClient } from "@tanstack/react-query";
 import { LANDING_URL } from "../config/landing";
-import { OfficialBanner } from "../components/official-banner";
 import { SiteHeader } from "../components/site-header";
 
 /**
@@ -37,7 +36,20 @@ const RootLayout = () => (
     <a href="#main-content" className="govbb-visually-hidden-focusable">
       Skip to main content
     </a>
-    <OfficialBanner />
+    {/* Align the banner content to the page container, matching the rest of
+        the layout. OfficialBanner's inner row carries a fixed px-4; the
+        `[&>div]:px-0` override zeroes it so the container provides the gutter
+        instead (mirrors landing's Header.tsx). */}
+    <div className="bg-blue-100">
+      <div className="container">
+        <OfficialBanner
+          imageSrc="/images/coat-of-arms.png"
+          className="[&>div]:px-0"
+          imageAlt=""
+          showLearnMore={false}
+        />
+      </div>
+    </div>
     <SiteHeader />
     <main id="main-content" className="flex-1">
       <Outlet />

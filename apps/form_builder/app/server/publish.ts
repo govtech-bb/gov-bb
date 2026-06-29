@@ -6,19 +6,15 @@ import { getSession } from "./session-cipher.server";
 import { getSessionSecret } from "./secrets";
 import {
   deployBranchName,
-  deployBranchPrefix,
   eraseBranchName,
   kebabIdSchema,
   KEBAB_ID_PATTERN,
   KEBAB_ID_ERROR,
-  SEMVER_PATTERN,
-  SEMVER_ERROR,
   type ServiceContractRecipe,
   type ValidationResult,
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
-import { listVersions, RECIPES_BASE, compareSemver } from "./github-recipes";
-import { bumpMinor } from "../lib/version";
+import { listVersions, RECIPES_BASE } from "./github-recipes";
 import {
   repoUrl,
   authHeaders,
@@ -28,7 +24,6 @@ import {
   getContents,
   putFile,
   openPullRequest,
-  listOpenPRHeads,
 } from "./github";
 
 const DEFAULT_BASE_BRANCH = "dev";
@@ -88,7 +83,6 @@ function renderPrBody({
     "",
     `- Form: **${recipe.title}**`,
     `- Form ID: \`${recipe.formId}\``,
-    `- Version: \`${recipe.version}\``,
     `- Steps: ${stepCount}`,
     `- Author: @${authorLogin}`,
     "",
@@ -114,18 +108,14 @@ export const publishRecipe = createServerFn({ method: "POST" })
     const recipe = data.recipe as ServiceContractRecipe;
     const description = data.description ?? "";
 
-    // Security gate: `recipe` enters as `z.unknown()`, so before its
-    // formId/version are interpolated into any GitHub path or branch name,
-    // assert they are a plain kebab-case id / semver. A value like
-    // `../../../.github/workflows/evil` would otherwise escape the recipes
-    // folder. This is a local, independent check — the remote /validate call
-    // below resolves refs, not id format — and the encodeURIComponent at the
-    // path sinks is the second layer.
+    // Security gate (#293): `recipe` enters as `z.unknown()`, so before its
+    // formId is interpolated into the GitHub recipe path or branch name, assert
+    // it's a plain kebab-case id. A value like `../../../.github/workflows/evil`
+    // would otherwise escape the recipes folder. This is a local, independent
+    // check — the remote /validate call below resolves refs, not id format — and
+    // the encodeURIComponent at the path sink is the second layer.
     if (!KEBAB_ID_PATTERN.test(recipe?.formId)) {
       throw new Error(`Invalid form ID. ${KEBAB_ID_ERROR}`);
-    }
-    if (!SEMVER_PATTERN.test(recipe?.version)) {
-      throw new Error(`Invalid version. ${SEMVER_ERROR}`);
     }
 
     const session = await requireSession();
@@ -150,117 +140,68 @@ export const publishRecipe = createServerFn({ method: "POST" })
       throw new Error(`Recipe validation failed: ${detail}`);
     }
 
-    // Gate (#873): the deploy version must be strictly ahead of every version
-    // already on the base branch. The client computes its bump from the DB
-    // draft, which is blind to manual repo bumps — fail fast with the real
-    // latest rather than opening a doomed PR.
-    const published = await listVersions(token, recipe.formId, baseBranch);
-    const notAhead = published.filter(
-      (v) => compareSemver(v, recipe.version) >= 0,
-    );
-    if (notAhead.length > 0) {
-      const latest = published.reduce((b, v) =>
-        compareSemver(v, b) > 0 ? v : b,
-      );
-      throw new Error(
-        `Version ${recipe.version} is not ahead of ${baseBranch} (latest published: ${latest}). ` +
-          `Reopen the form to pick up the latest version, then deploy again.`,
-      );
-    }
-
-    // Reservation (#873): atomically claim (formId, version) in the builder DB
-    // before touching GitHub. POST /builder/forms 409s on the existing
-    // UNIQUE(form_id, version), so two concurrent deploys serialize here. The
-    // row doubles as the pending-deploy draft (other users' pickers see it) and
-    // is deleted post-merge by the archive-merged-drafts workflow.
+    // Persist the current draft and enforce the read-only lock (#874) before
+    // touching GitHub: PUT /builder/forms/:formId runs through enforcePresence,
+    // so a non-holder is rejected (409) here. (#1196: recipe versioning is
+    // retired — there is no version reservation; publish overwrites the single
+    // canonical flat file.)
     try {
-      // userLogin (#874): the reservation save now passes the read-only-lock
-      // gate, so a non-holder is rejected here before any GitHub work.
-      await api.post("/builder/forms", {
+      await api.put(`/builder/forms/${recipe.formId}`, {
         recipe,
-        isNew: false,
         userLogin: session.login,
       });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         throw new Error(
-          `Version ${recipe.version} was just claimed by another deploy or save — ` +
-            `reopen the form and try again.`,
+          "Another editor holds this form. Your session is read-only until their claim expires.",
         );
       }
       throw err;
     }
 
-    // Any failure past this point must release the claim (best-effort — the
-    // delete-version endpoint only removes unpublished draft rows).
-    const releaseReservation = async (): Promise<void> => {
-      try {
-        await api.del(
-          `/builder/forms/${recipe.formId}/versions/${recipe.version}`,
-        );
-      } catch (releaseErr) {
-        console.warn(
-          `release of reservation ${recipe.formId}@${recipe.version} failed:`,
-          releaseErr,
-        );
-      }
-    };
+    // Namespaced, dot-free branch (see deployBranchName, #805).
+    const branch = deployBranchName(recipe.formId);
+    await createBranchFrom(token, baseBranch, branch);
 
-    // Single release point (#873): ANY post-reservation failure — including
-    // fetch rejections and malformed responses that never reach an !ok check —
-    // must free the claimed (formId, version). The inner catch only handles
-    // branch cleanup; its rethrow lands here.
+    // From here on, any failure must attempt to delete `branch`.
     try {
-      // Namespaced, dot-free branch (see deployBranchName, #805).
-      const branch = deployBranchName(recipe.formId, recipe.version);
-      await createBranchFrom(token, baseBranch, branch);
+      // Overwrite the canonical flat recipe file in place. It already exists on
+      // the base branch (and so on this branch), so fetch its blob SHA — the
+      // Contents API requires `sha` to update an existing file. encodeURIComponent
+      // on the formId segment is defense-in-depth at the sink (#293) — a no-op
+      // for the kebab id the guard above already enforced.
+      const recipePath = `apps/api/src/forms/form-definitions/recipes/${encodeURIComponent(
+        recipe.formId,
+      )}.json`;
+      const existing = await getContents(token, recipePath, branch);
+      const existingSha =
+        existing.status === 200
+          ? ((await existing.json()) as { sha?: string }).sha
+          : undefined;
 
-      // From here on, any failure must attempt to delete `branch`.
-      try {
-        // The file must not already exist. (Checking the new branch is
-        // equivalent to checking base — the branch was just created from it.)
-        // Encode each user-provided segment; structural slashes between
-        // segments are preserved. A no-op for the kebab/semver values the gate
-        // above already enforced — defense-in-depth at the sink.
-        const recipePath = `apps/api/src/forms/form-definitions/recipes/${encodeURIComponent(
-          recipe.formId,
-        )}/${encodeURIComponent(recipe.version)}.json`;
-        const checkRes = await getContents(token, recipePath, branch);
-        if (checkRes.status === 200) {
-          throw new Error(
-            `Version ${recipe.version} already exists on ${baseBranch}. Reopen the form to pick up the latest version, then deploy again.`,
-          );
-        }
-        if (checkRes.status !== 404) {
-          throw await ghError("Failed to check existing recipe", checkRes);
-        }
-
-        const putRes = await putFile(token, {
-          path: recipePath,
-          message: `Publish ${recipe.formId} v${recipe.version}`,
-          content: JSON.stringify(recipe, null, 2) + "\n",
-          branch,
-        });
-        if (!putRes.ok) {
-          throw await ghError("Failed to write recipe file", putRes);
-        }
-
-        return await openPullRequest(token, {
-          base: baseBranch,
-          head: branch,
-          title: `Publish form: ${recipe.title} v${recipe.version}`,
-          body: renderPrBody({
-            recipe,
-            authorLogin: session.login,
-            description,
-          }),
-        });
-      } catch (err) {
-        await deleteBranch(branch, token);
-        throw err;
+      const putRes = await putFile(token, {
+        path: recipePath,
+        message: `Publish ${recipe.formId}`,
+        content: JSON.stringify(recipe, null, 2) + "\n",
+        branch,
+        ...(existingSha ? { sha: existingSha } : {}),
+      });
+      if (!putRes.ok) {
+        throw await ghError("Failed to write recipe file", putRes);
       }
+
+      return await openPullRequest(token, {
+        base: baseBranch,
+        head: branch,
+        title: `Publish form: ${recipe.title}`,
+        body: renderPrBody({
+          recipe,
+          authorLogin: session.login,
+          description,
+        }),
+      });
     } catch (err) {
-      await releaseReservation();
+      await deleteBranch(branch, token);
       throw err;
     }
   });
@@ -275,63 +216,6 @@ export const publishRecipe = createServerFn({ method: "POST" })
 export const getPublishBaseBranch = createServerFn({ method: "GET" }).handler(
   async (): Promise<string> => resolveBaseBranch(),
 );
-
-/**
- * Versions claimed by OPEN deploy PRs for this form on the base branch (#873).
- * Recognised by the deploy branch naming scheme
- * (`form-builder/<formId>-<v1-v2-v3>-<ts>`); a branch that fails to parse is
- * skipped (fail-open — the CI recipe-version-guard is the merge-time backstop).
- */
-async function listOpenDeployClaims(
-  token: string,
-  formId: string,
-  baseBranch: string,
-): Promise<string[]> {
-  const prefix = deployBranchPrefix(formId);
-  const claims: string[] = [];
-  for (const pr of await listOpenPRHeads(token, baseBranch)) {
-    if (!pr.headRef.startsWith(prefix)) continue;
-    const m = /^(\d+)-(\d+)-(\d+)-\d+$/.exec(pr.headRef.slice(prefix.length));
-    if (m) claims.push(`${m[1]}.${m[2]}.${m[3]}`);
-  }
-  return claims;
-}
-
-/**
- * The next safe Deploy version for a form (#873): one minor bump past the
- * highest of (a) the builder's loaded version, (b) every version on the base
- * branch, and (c) every version claimed by an open deploy PR. Replaces the
- * client-only `bumpMinor(currentVersion)`, which is blind to manual repo bumps
- * and to other users' in-flight deploys.
- */
-export const getNextDeployVersion = createServerFn({ method: "GET" })
-  .inputValidator(
-    z.object({
-      // formId flows into listVersions' GitHub path (#293); pin to kebab-case.
-      formId: kebabIdSchema,
-      currentVersion: z.string().nullable(),
-    }),
-  )
-  .handler(async ({ data }): Promise<{ version: string }> => {
-    // formId flows into listVersions' GitHub path; re-check here too since a
-    // direct (in-process) call bypasses the inputValidator (#293).
-    if (!KEBAB_ID_PATTERN.test(data.formId)) {
-      throw new Error(`Invalid form ID. ${KEBAB_ID_ERROR}`);
-    }
-    const session = await requireSession();
-    const token = session.accessToken;
-    const baseBranch = resolveBaseBranch();
-
-    const published = await listVersions(token, data.formId, baseBranch);
-    const claimed = await listOpenDeployClaims(token, data.formId, baseBranch);
-    const all = [...published, ...claimed];
-    if (data.currentVersion) all.push(data.currentVersion);
-    if (all.length === 0) return { version: "1.0.0" };
-    const highest = all.reduce((best, v) =>
-      compareSemver(v, best) > 0 ? v : best,
-    );
-    return { version: bumpMinor(highest) };
-  });
 
 function renderErasePrBody({
   formId,
@@ -435,6 +319,10 @@ export const eraseRecipe = createServerFn({ method: "POST" })
 
     // Gate 2: there must be something on disk to erase. List the folder's
     // version files on the base branch (reuses the publish read path).
+    // NOTE (#1196): erase still targets the legacy versioned dir; removing the
+    // flat `recipes/{formId}.json` is deferred to the Phase-2 decommission when
+    // the legacy dirs go away. Erase is rare and the dirs are retained through
+    // Phase 1, so this stays correct in the interim.
     const versions = await listVersions(token, formId, baseBranch);
     if (versions.length === 0) {
       throw new Error(
