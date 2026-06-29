@@ -2,7 +2,7 @@
 # Form Builder API — lightweight Express server for form CRUD + AI/Bedrock calls.
 # Runs behind the existing ALB at /builder/*.
 
-FROM node:24-alpine3.23@sha256:7c70d1235c0b4c2bc9eeed5393d19f1bbdde6885ba0d58ba62bb385d7b0f3ff1 AS builder
+FROM node:26-alpine3.23@sha256:aa0d6534a72362ba0ab3c98b662ed680c32484e0aff8e0ce0888451085796a61 AS builder
 
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
@@ -33,7 +33,7 @@ RUN pnpm exec nx build form-builder-api
 
 # ---- runner ----------------------------------------------------------------
 # Matches the main API's runner pattern exactly.
-FROM node:24-alpine3.23@sha256:7c70d1235c0b4c2bc9eeed5393d19f1bbdde6885ba0d58ba62bb385d7b0f3ff1 AS runner
+FROM node:26-alpine3.23@sha256:aa0d6534a72362ba0ab3c98b662ed680c32484e0aff8e0ce0888451085796a61 AS runner
 
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
