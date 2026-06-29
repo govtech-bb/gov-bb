@@ -16,9 +16,6 @@ updates:
       actions:
         patterns:
           - "*"
-        update-types:
-          - minor
-          - patch
 
   - package-ecosystem: docker
     directories:
@@ -32,6 +29,3 @@ updates:
       docker:
         patterns:
           - "*"
-        update-types:
-          - minor
-          - patch
