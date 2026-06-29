@@ -4,7 +4,7 @@ Multi-step modular forms SPA for Barbados government services. Vite + TanStack R
 
 ```bash
 pnpm dev      # start on port 3000
-pnpm test     # run Jest unit tests
+pnpm test     # run Vitest unit tests
 pnpm build    # production build
 ```
 
@@ -13,7 +13,7 @@ See [`.env.example`](./.env.example) for environment variables.
 ## Testing
 
 ```bash
-pnpm test          # Jest unit tests
+pnpm test          # Vitest unit tests
 pnpm test:e2e      # Playwright E2E vs a local dev server + the synthetic
                    # `master` form, with mocked submissions (no backend)
 pnpm test:smoke    # Live smoke: drives REAL DB-backed forms end-to-end and
