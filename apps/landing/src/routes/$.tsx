@@ -7,6 +7,10 @@ import { MarkdownContent } from '../components/markdown'
 import { MdxArticle } from '../components/content/MdxArticle'
 import { mdxComponents } from '../components/content/mdx-components'
 import {
+  AvailableFormsContext,
+  FormIdContext,
+} from '../components/markdown/StartLink'
+import {
   categoryServices,
   findPage,
   isCategoryVisible,
@@ -247,9 +251,15 @@ function PageView({
           // A co-located `.tsx` page renders its own title + layout.
           <Body />
         ) : (
-          // `.mdx` content renders through the single-column article chrome.
+          // `.mdx` content renders through the shared article chrome; the form
+          // contexts let an MDX `<StartLink>` resolve its id and gate the button
+          // exactly as the `.md` hast path does.
           <MdxArticle frontmatter={page.frontmatter}>
-            <Body components={mdxComponents} />
+            <AvailableFormsContext.Provider value={new Set(availableForms)}>
+              <FormIdContext.Provider value={page.frontmatter.form_id}>
+                <Body components={mdxComponents} />
+              </FormIdContext.Provider>
+            </AvailableFormsContext.Provider>
           </MdxArticle>
         )
       ) : (

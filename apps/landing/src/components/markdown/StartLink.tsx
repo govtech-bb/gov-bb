@@ -9,6 +9,11 @@ const FORMS_BASE_URL =
 // Live form ids, resolved server-side per request (see lib/available-forms.ts).
 export const AvailableFormsContext = createContext<ReadonlySet<string>>(new Set())
 
+// The current page's form_id, supplied by the route. An MDX `<StartLink>` (unlike
+// the old build-baked `<a data-start-link data-form-id>`) carries no id of its
+// own, so it resolves one from here; an explicit `formId` prop still wins.
+export const FormIdContext = createContext<string | undefined>(undefined)
+
 type StartLinkProps = {
   href?: string
   formId?: string
@@ -19,7 +24,9 @@ type StartLinkProps = {
 // button. See docs/decisions/0005.
 export function StartLink({ href, formId, children, ...rest }: StartLinkProps) {
   const availableForms = useContext(AvailableFormsContext)
+  const ctxFormId = useContext(FormIdContext)
   const { pathname } = useLocation()
+  const resolvedFormId = formId ?? ctxFormId
 
   if (href) {
     return (
@@ -29,11 +36,11 @@ export function StartLink({ href, formId, children, ...rest }: StartLinkProps) {
     )
   }
 
-  if (formId) {
-    if (!availableForms.has(formId)) {
+  if (resolvedFormId) {
+    if (!availableForms.has(resolvedFormId)) {
       if (import.meta.env.DEV) {
         console.warn(
-          `[markdown] form_id "${formId}" is not in the forms API's available ` +
+          `[markdown] form_id "${resolvedFormId}" is not in the forms API's available ` +
             'list (see lib/available-forms.ts) — Start now button suppressed.',
         )
       }
@@ -41,9 +48,9 @@ export function StartLink({ href, formId, children, ...rest }: StartLinkProps) {
     }
     return (
       <LinkButton
-        href={`${FORMS_BASE_URL}/forms/${formId}`}
+        href={`${FORMS_BASE_URL}/forms/${resolvedFormId}`}
         {...rest}
-        data-umami-event={`${formId}-start`}
+        data-umami-event={`${resolvedFormId}-start`}
         data-umami-event-from={pathname}
       >
         {children}
