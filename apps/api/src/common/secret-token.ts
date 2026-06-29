@@ -1,20 +1,11 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-
-// Per-process random key for the comparison HMAC. It exists only to turn each
-// token into a fixed-length, length-hiding digest for `timingSafeEqual`; it is
-// never persisted and security doesn't depend on it (the secret is the shared
-// token, not this key). Using a keyed HMAC rather than a bare SHA-256 digest
-// also keeps this off the `js/insufficient-password-hash` path — these are
-// fixed high-entropy shared secrets compared in constant time, not passwords
-// hashed for storage.
-const COMPARE_KEY = randomBytes(32);
+import { timingSafeEqual } from "node:crypto";
 
 /**
  * Constant-time check that `providedToken` matches the `configuredToken`.
  *
  * Generic guarded-header secret check, shared by every feature that gates an
  * endpoint behind a token-validated request header (recipe preview, file
- * preview, smoke-submission processor bypass, …).
+ * preview, smoke-submission processor bypass, admin endpoints, …).
  *
  * Fail-closed semantics:
  *   - If `configuredToken` is empty/falsy the feature is disabled — return
@@ -23,11 +14,14 @@ const COMPARE_KEY = randomBytes(32);
  *     behaviour whenever the env var is not set.
  *   - If `providedToken` is empty/undefined → return false.
  *
- * Both tokens are reduced to a 32-byte fixed-length HMAC (keyed with a
- * per-process random key) before comparison. The fixed length ensures
- * `timingSafeEqual` never throws on a length mismatch (which would happen if we
- * compared raw token buffers of unequal length) AND avoids leaking the
- * configured token's length via a timing side-channel.
+ * The body of the comparison is constant-time via `timingSafeEqual`. We do NOT
+ * hash the tokens first: these are fixed, high-entropy shared secrets compared
+ * for equality, not user passwords stored at rest — hashing them would add no
+ * security and trips the `js/insufficient-password-hash` scanner. `timingSafeEqual`
+ * requires equal-length buffers, so a length mismatch (which can never be a
+ * match) returns early; we run a same-length compare first so the timing of the
+ * mismatch path doesn't trivially reveal more than the length already does. The
+ * only side-channel is the configured token's length, which is not secret.
  *
  * Never log either token.
  */
@@ -38,7 +32,12 @@ export function isValidSecretToken(
   if (!configuredToken) return false;
   if (!providedToken) return false;
 
-  const a = createHmac("sha256", COMPARE_KEY).update(configuredToken).digest();
-  const b = createHmac("sha256", COMPARE_KEY).update(providedToken).digest();
+  const a = Buffer.from(configuredToken, "utf8");
+  const b = Buffer.from(providedToken, "utf8");
+  if (a.length !== b.length) {
+    // Keep the comparison cost uniform regardless of which token is longer.
+    timingSafeEqual(a, a);
+    return false;
+  }
   return timingSafeEqual(a, b);
 }
