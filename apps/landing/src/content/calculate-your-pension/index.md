@@ -47,4 +47,4 @@ Contact the PAD or your last employer to confirm both figures.
 
 If you qualify for both a National Insurance pension and a government pension, you will receive only the higher of the two — not both.
 
-<StartLink href="/pensions-and-gratuities/calculate-your-pension/form">Start now</StartLink>
+<a data-start-link href="/pensions-and-gratuities/calculate-your-pension/form">Start now</a>
