@@ -27,6 +27,8 @@ import {
   buildFieldValidationProperties,
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
+import { formCategory } from "../lib/form-category";
+import { stepCompleteEventName } from "./step-events";
 import { StatusBanner } from "@govtech-bb/react";
 import { resolveStepTitle } from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
@@ -210,9 +212,9 @@ export default function FormRenderer({
     const prevStep = visibleSteps[stepIndex - 1];
     if (prevStep) {
       trackEvent("form-step-back", {
-        form_id: formMeta.formId,
-        from_step: currentStep.stepId,
-        to_step: prevStep.stepId,
+        form: formMeta.formId,
+        category: formCategory(formMeta.formId),
+        step: currentStep.stepId,
       });
       navigateToStep(prevStep.stepId);
     }
@@ -336,10 +338,11 @@ export default function FormRenderer({
     }
     const nextStep = visibleSteps[stepIndex + 1];
     if (nextStep) {
-      trackEvent("form-step-advance", {
-        form_id: formMeta.formId,
-        from_step: currentStep.stepId,
-        to_step: nextStep.stepId,
+      // Pre-qualified name (contains ":") so trackEvent forwards it as-is.
+      trackEvent(stepCompleteEventName(formMeta.formId, stepIndex), {
+        form: formMeta.formId,
+        category: formCategory(formMeta.formId),
+        step: currentStep.stepId,
       });
     }
     completeAndContinue(currentStep.stepId);
