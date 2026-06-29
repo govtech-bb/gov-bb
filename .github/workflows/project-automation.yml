@@ -21,6 +21,9 @@ permissions:
 jobs:
   sync:
     name: Sync issue to Alpha² board
+    # Dependabot runs can't read Actions secrets, so minting the board-bot
+    # token fails. These PRs aren't tracked on the board — skip them.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
