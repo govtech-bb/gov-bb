@@ -4,6 +4,15 @@
   "sourceRoot": "packages/content/src",
   "projectType": "library",
   "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/content",
+        "tsConfig": "packages/content/tsconfig.json",
+        "main": "packages/content/src/index.ts"
+      }
+    },
     "test": {
       "executor": "nx:run-commands",
       "options": {
