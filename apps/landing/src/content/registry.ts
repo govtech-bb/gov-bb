@@ -125,6 +125,7 @@ function buildBasePage(
     section: raw.section,
     service_type: raw.service_type,
     form_id: raw.form_id,
+    keywords: raw.keywords,
   }
   /** Canonical URL: category + optional subcategory + leaf; uncategorised pages live at the root. */
   const primaryCategory = categories[0]

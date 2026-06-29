@@ -14,12 +14,12 @@ const routeTree = readFileSync(
 )
 
 const FEATURE_URLS = [
-  '/health-and-emergency-services/find-an-emergency-shelter',
+  // The shelter finder is the one interactive `.tsx` route under this feature.
+  // Its landing and guidance pages are now markdown content served by the
+  // catch-all route, so they no longer appear in the generated route tree —
+  // same as StormReady's landing AND its checklist (a co-located `.tsx`
+  // content page).
   '/health-and-emergency-services/find-an-emergency-shelter/find',
-  '/health-and-emergency-services/find-an-emergency-shelter/guidance',
-  // StormReady is now fully content-tree — its landing AND its checklist (a
-  // co-located `.tsx` content page) are served by the catch-all route, so
-  // neither appears in the generated route tree.
 ]
 
 describe('co-located feature routes', () => {

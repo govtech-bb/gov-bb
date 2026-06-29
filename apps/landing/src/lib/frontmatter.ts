@@ -31,6 +31,7 @@ export const FrontmatterSchema = z.object({
   section: z.string().optional(),
   service_type: z.enum(['digital', 'information']).optional(),
   form_id: z.string().optional(),
+  keywords: z.array(z.string()).optional(),
 })
 
 type RawFrontmatter = z.infer<typeof FrontmatterSchema>

@@ -5,6 +5,8 @@ import { MarkdownLink } from './MarkdownLink'
 import { Notice } from '../content/Notice'
 import { Highlights, Highlight } from '../content/Highlights'
 import { Contacts, Contact } from '../content/Contacts'
+import { Contents } from '../content/Contents'
+import { EmergencyPhones, EmergencyPhone } from '../content/EmergencyPhones'
 import { Muted } from '../content/Muted'
 
 const PHONE_SLASH_RE = /^\((\d{3})\)\s*(\d{3})-(\d{4})\s*\/\s*(\d{4})$/
@@ -163,6 +165,9 @@ export const markdownComponents: Partial<Components> = {
   highlight: Highlight,
   contacts: Contacts,
   contact: Contact,
+  contents: Contents,
+  'emergency-phones': EmergencyPhones,
+  'emergency-phone': EmergencyPhone,
   muted: Muted,
   buttons: ({ children }: { children?: ReactNode }) => (
     <div className="flex flex-col gap-s sm:flex-row">{children}</div>
