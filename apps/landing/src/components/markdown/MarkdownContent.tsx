@@ -76,6 +76,12 @@ export function MarkdownContent({
               </Text>
             </div>
           ) : null}
+
+          {frontmatter.lede ? (
+            <Text as="p" className="text-mid-grey-00">
+              {frontmatter.lede}
+            </Text>
+          ) : null}
         </div>
         {children ??
           (hast ? (

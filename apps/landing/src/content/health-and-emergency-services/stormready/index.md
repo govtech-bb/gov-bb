@@ -1,12 +1,11 @@
 ---
 title: StormReady Barbados
 description: Get ready for hurricane season with a household preparation checklist and key contacts, and stay up to date with Department of Emergency Management (DEM) alerts.
+lede: Get ready for hurricane season and stay up to date with Department of Emergency Management (DEM) alerts.
 category: health-and-emergency-services
 publish_date: 2026-06-04
 visibility: public
 ---
-
-Get ready for hurricane season and stay up to date with Department of Emergency Management (DEM) alerts.
 
 <notice>
 <strong>Hurricane season</strong> runs from <strong>1 June to 30 November 2026</strong>. Prepare before the season starts — do not wait for a storm warning.

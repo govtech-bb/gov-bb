@@ -116,6 +116,7 @@ function buildBasePage(
   const frontmatter: Frontmatter = {
     title: raw.title ?? titleFromSlug(slug),
     description: raw.description,
+    lede: raw.lede,
     categories,
     subcategory: raw.subcategory,
     publish_date: raw.publish_date,
