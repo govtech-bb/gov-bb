@@ -1,5 +1,6 @@
 import { Controller, HttpCode, HttpStatus, Param, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { AdminToken } from "../../common/admin-token.decorator";
 import { DraftArchiveService } from "./draft-archive.service";
 
@@ -16,15 +17,18 @@ import { DraftArchiveService } from "./draft-archive.service";
 @ApiBearerAuth()
 @AdminToken()
 @Controller("admin/drafts")
+// Throttle token-guessing on this endpoint (mirrors the disabled-overrides admin
+// controller). Low risk with a high-entropy secret, but cheap defence in depth.
+@Throttle({
+  short: { limit: 5, ttl: 10_000 },
+  medium: { limit: 30, ttl: 60_000 },
+})
 export class DraftArchiveController {
   constructor(private readonly draftArchive: DraftArchiveService) {}
 
-  @Post(":formId/:version/archive")
+  @Post(":formId/archive")
   @HttpCode(HttpStatus.NO_CONTENT)
-  async archive(
-    @Param("formId") formId: string,
-    @Param("version") version: string,
-  ): Promise<void> {
-    await this.draftArchive.archive({ formId, version });
+  async archive(@Param("formId") formId: string): Promise<void> {
+    await this.draftArchive.archive({ formId });
   }
 }

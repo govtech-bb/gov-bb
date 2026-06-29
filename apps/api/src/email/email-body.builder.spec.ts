@@ -226,12 +226,11 @@ describe("EmailBodyBuilder", () => {
       expect(ctx.submissionId).toBe("JPP-20260604-130732-9JZRZC");
     });
 
-    it("fetches the contract using formId and formVersion from the payload", async () => {
+    it("fetches the contract by formId from the payload (#1196: no version)", async () => {
       await builder.build(makePayload());
 
       expect(formSvc.findByFormId).toHaveBeenCalledWith({
         formId: "test-form",
-        version: "1.0.0",
       });
     });
 
@@ -896,7 +895,7 @@ describe("EmailBodyBuilder", () => {
   });
 
   describe("contract caching", () => {
-    it("fetches the contract only once for the same formId + version", async () => {
+    it("fetches the contract only once for the same formId", async () => {
       const payload = makePayload();
 
       await builder.build(payload);
@@ -906,7 +905,9 @@ describe("EmailBodyBuilder", () => {
       expect(formSvc.findByFormId).toHaveBeenCalledTimes(1);
     });
 
-    it("fetches separately for different form versions", async () => {
+    it("caches per formId regardless of version (#1196)", async () => {
+      // The cache keys on formId alone now — a form resolves to one canonical
+      // recipe, so a differing legacy pin reuses the cached contract.
       const payloadV1 = makePayload();
       const payloadV2 = makePayload();
       payloadV2.formVersion = "2.0.0";
@@ -914,13 +915,7 @@ describe("EmailBodyBuilder", () => {
       await builder.build(payloadV1);
       await builder.build(payloadV2);
 
-      expect(formSvc.findByFormId).toHaveBeenCalledTimes(2);
-      expect(formSvc.findByFormId).toHaveBeenCalledWith(
-        expect.objectContaining({ version: "1.0.0" }),
-      );
-      expect(formSvc.findByFormId).toHaveBeenCalledWith(
-        expect.objectContaining({ version: "2.0.0" }),
-      );
+      expect(formSvc.findByFormId).toHaveBeenCalledTimes(1);
     });
   });
 

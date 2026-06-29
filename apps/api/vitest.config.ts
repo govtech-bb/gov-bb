@@ -26,6 +26,10 @@ export default defineConfig({
         find: /^@govtech-bb\/(.*)$/,
         replacement: r("../../packages") + "/$1/src/index.ts",
       },
+      {
+        find: /^@\/(.*)$/,
+        replacement: r("./src") + "/$1",
+      },
     ],
   },
   test: {
@@ -52,8 +56,6 @@ export default defineConfig({
         // Database infrastructure — requires live database connection
         "**/database/data-source.ts",
         "**/database/seed.ts",
-        // Constant/event definition files — no executable logic
-        "**/payment.events.ts",
         // Registry behavior/validation builders — integration tests pending
         "**/registry/builtins/behaviors/**",
         // Form builder AI module — integration in progress

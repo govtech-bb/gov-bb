@@ -63,13 +63,20 @@ function validRecipe() {
 }
 
 describe("POST /builder/publish — validation backstop", () => {
+  const originalGithubOrg = process.env.GITHUB_ORG;
+
   beforeEach(() => {
     vi.clearAllMocks();
     getFullCatalogMock.mockResolvedValue(getCatalog());
+    // Repo owner is now env-driven (#1400) — the GitHub-flow tests below assert
+    // URLs against this org.
+    process.env.GITHUB_ORG = "govtech-bb";
   });
 
   afterEach(() => {
     delete (global as { fetch?: unknown }).fetch;
+    if (originalGithubOrg === undefined) delete process.env.GITHUB_ORG;
+    else process.env.GITHUB_ORG = originalGithubOrg;
   });
 
   it("returns 400 with issues and makes no GitHub call for a contract-invalid recipe", async () => {
@@ -158,7 +165,7 @@ describe("POST /builder/publish — validation backstop", () => {
       ([, init]) => (init as RequestInit | undefined)?.method === "PUT",
     );
     expect(putCall?.[0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/contents/recipes/form-001/1.0.0.json",
+      "https://api.github.com/repos/govtech-bb/gov-bb/contents/recipes/form-001.json",
     );
   });
 
@@ -198,7 +205,7 @@ describe("POST /builder/publish — validation backstop", () => {
     // path is the plain `heads/form-builder/<branch-name>` GitHub can match.
     const deleteUrl = deleteCall?.[0] as string;
     expect(deleteUrl).toContain(
-      "https://api.github.com/repos/govtech-bb/gov-bb/git/refs/heads/form-builder/form-001-1-0-0-",
+      "https://api.github.com/repos/govtech-bb/gov-bb/git/refs/heads/form-builder/form-001-",
     );
     expect(deleteUrl).not.toContain("%2F");
   });

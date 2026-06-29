@@ -211,58 +211,67 @@ export class PaymentWebhookService {
     payment: PaymentEntity,
     verified: VerifyPaymentResult,
   ): Promise<void> {
-    await this.dataSource.transaction(async (manager) => {
-      const submissionRepo = manager.getRepository(FormSubmissionEntity);
-      const submission = await submissionRepo.findOne({
-        where: { id: payment.submissionId },
-        lock: { mode: "pessimistic_write" },
-      });
-      if (!submission) {
-        this.logger.warn(`Submission not found for payment ${payment.id}`);
-        return;
-      }
-      if (submission.status !== FormSubmissionStatus.PENDING_PAYMENT) {
-        this.logger.log(
-          `Submission ${submission.id} already transitioned (${submission.status}) — skipping emit`,
+    // Emit AFTER the transaction commits, never inside it. EventEmitter2
+    // fires listeners synchronously and the SubmissionProcessorListener enqueues
+    // to SQS; a different API instance could dequeue and read the submission row
+    // before this transaction committed, seeing PENDING_PAYMENT instead of
+    // SUBMITTED. The transaction builds and returns the event (or null on an
+    // early-exit), and we emit only once it has resolved (i.e. committed) —
+    // mirroring the normal submission flow (submissions.service.ts).
+    const event = await this.dataSource.transaction(
+      async (manager): Promise<SubmissionCreatedEvent | null> => {
+        const submissionRepo = manager.getRepository(FormSubmissionEntity);
+        const submission = await submissionRepo.findOne({
+          where: { id: payment.submissionId },
+          lock: { mode: "pessimistic_write" },
+        });
+        if (!submission) {
+          this.logger.warn(`Submission not found for payment ${payment.id}`);
+          return null;
+        }
+        if (submission.status !== FormSubmissionStatus.PENDING_PAYMENT) {
+          this.logger.log(
+            `Submission ${submission.id} already transitioned (${submission.status}) — skipping emit`,
+          );
+          return null;
+        }
+
+        const contract = await this.formDefs.findByFormId({
+          formId: payment.formId,
+          includeProcessors: true,
+        });
+        const downstreamProcessors = (contract.processors ?? []).filter(
+          (p) => p.type !== "payment",
         );
-        return;
-      }
 
-      const contract = await this.formDefs.findByFormId({
-        formId: payment.formId,
-        version: submission.formVersion,
-        includeProcessors: true,
-      });
-      const downstreamProcessors = (contract.processors ?? []).filter(
-        (p) => p.type !== "payment",
-      );
+        submission.status = FormSubmissionStatus.SUBMITTED;
+        submission.submittedAt = new Date();
+        await submissionRepo.save(submission);
 
-      submission.status = FormSubmissionStatus.SUBMITTED;
-      submission.submittedAt = new Date();
-      await submissionRepo.save(submission);
+        return {
+          submissionId: submission.id,
+          referenceCode: submission.referenceCode,
+          formId: submission.formId,
+          formVersion: submission.formVersion ?? undefined,
+          idempotencyKey: submission.idempotencyKey,
+          processors: downstreamProcessors,
+          values: submission.values as SubmissionCreatedEvent["values"],
+          meta: submission.meta as unknown as SubmissionCreatedEvent["meta"],
+          // Confirmed-payment details for the MDA/reviewer email. expectedAmount
+          // is the authoritative charged amount (amountsMatch confirmed it equals
+          // what EzPay reported). A transaction number is always present on a
+          // verified Success; guard defensively so a missing one omits the block
+          // rather than rendering "undefined".
+          ...(verified.transactionNumber && {
+            payment: {
+              amountReceived: `$${Number(payment.expectedAmount).toFixed(2)}`,
+              transactionId: verified.transactionNumber,
+            },
+          }),
+        };
+      },
+    );
 
-      const event: SubmissionCreatedEvent = {
-        submissionId: submission.id,
-        referenceCode: submission.referenceCode,
-        formId: submission.formId,
-        formVersion: submission.formVersion,
-        idempotencyKey: submission.idempotencyKey,
-        processors: downstreamProcessors,
-        values: submission.values as SubmissionCreatedEvent["values"],
-        meta: submission.meta as unknown as SubmissionCreatedEvent["meta"],
-        // Confirmed-payment details for the MDA/reviewer email. expectedAmount
-        // is the authoritative charged amount (amountsMatch confirmed it equals
-        // what EzPay reported). A transaction number is always present on a
-        // verified Success; guard defensively so a missing one omits the block
-        // rather than rendering "undefined".
-        ...(verified.transactionNumber && {
-          payment: {
-            amountReceived: `$${Number(payment.expectedAmount).toFixed(2)}`,
-            transactionId: verified.transactionNumber,
-          },
-        }),
-      };
-      this.events.emit("submission.created", event);
-    });
+    if (event) this.events.emit("submission.created", event);
   }
 }

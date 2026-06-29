@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { canDropPreviewToken } from "../../../lib/preview-url";
 import {
   getVisibleSteps,
   getVisibleFields,
@@ -65,16 +66,23 @@ export const Route = createFileRoute("/forms/$formId/")({
 
     // Tier 1: get the contract (from cache or server).
     const clientContract = await queryClient.ensureQueryData(
-      contractQueryOptions(params.formId, deps.preview),
+      contractQueryOptions(params.formId, deps.preview, deps.draft),
     );
 
-    // Tier 2: get or build the FormMeta for this specific (version, preview) pair.
+    // Tier 2: get or build the FormMeta for this specific
+    // (version, preview, draft) combination.
     return queryClient.ensureQueryData(
-      formMetaQueryOptions(params.formId, clientContract, deps.preview),
+      formMetaQueryOptions(
+        params.formId,
+        clientContract,
+        deps.preview,
+        deps.draft,
+      ),
     );
   },
   loaderDeps: ({ search }: { search: FormSearchParams }) => ({
     preview: search.preview,
+    draft: search.draft,
   }),
   validateSearch: (search): FormSearchParams =>
     formSearchParamSchema.parse(search),
@@ -91,8 +99,11 @@ export const Route = createFileRoute("/forms/$formId/")({
 
 function RouteComponent() {
   const formMeta = Route.useLoaderData();
-  const { step, preview, source, payment } = Route.useSearch();
-  const isPreview = Boolean(preview);
+  const { step, preview, draft, source, payment } = Route.useSearch();
+  // Only `?draft=` (the DB scratch) blocks submission. `?preview=` serves the
+  // published recipe and submits exactly as a citizen would (#1682).
+  const isDraft = Boolean(draft);
+  const navigate = useNavigate({ from: "/forms/$formId/" });
   // Rehydrate the committed submission outcome on a confirmation-step reload so
   // the renderer doesn't bounce the citizen off it (submissionState is React
   // state and is otherwise lost on refresh). A lazy initialiser — not an effect
@@ -116,6 +127,21 @@ function RouteComponent() {
   React.useEffect(() => {
     trackEvent("form-open", { form_id: formMeta.formId });
   }, [formMeta.formId]);
+
+  // Secret hygiene: once a `?preview=` token has unlocked the form, drop it from
+  // the URL (matching landing) so the secret doesn't linger in history. Only
+  // where the shared cookie can persist (forms and API same-site) — the API
+  // minted it on the first credentialed fetch, so the loader re-runs with a
+  // cookie-only fetch and stays unlocked. On cross-site Amplify previews the
+  // cookie is inert, so we keep the token or the refetch would 404 (#1646 P3).
+  React.useEffect(() => {
+    if (!preview) return;
+    if (!canDropPreviewToken(window.location.hostname)) return;
+    navigate({
+      search: (prev) => ({ ...prev, preview: undefined }),
+      replace: true,
+    });
+  }, [preview, navigate]);
 
   // Mount-only: a fresh load on any step other than the confirmation means we
   // are not viewing a committed outcome, so discard any submissionState left in
@@ -210,7 +236,7 @@ function RouteComponent() {
       );
       let response;
       try {
-        response = await postFormSubmission(formMeta, formattedData);
+        response = await postFormSubmission(formMeta, formattedData, preview);
       } catch {
         trackEvent("form-submit-error", {
           form_id: formMeta.formId,
@@ -287,8 +313,9 @@ function RouteComponent() {
       visibleSteps={visibleSteps}
       repeatableStepSettingsRef={repeatableStepSettingsRef}
       submissionState={submissionState}
-      isPreview={isPreview}
+      isDraft={isDraft}
       previewToken={preview}
+      draftToken={draft}
     />
   );
 }

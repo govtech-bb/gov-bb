@@ -85,12 +85,13 @@ describe("fetchContract(<real-id>)", () => {
     mockFetchFormDefinition.mockClear();
   });
 
-  it("calls fetchFormDefinition with the supplied id (no preview)", async () => {
+  it("calls fetchFormDefinition with the supplied id (no preview/draft)", async () => {
     mockFetchFormDefinition.mockResolvedValue(minimalContract);
     await fetchContract("some-real-id");
     expect(mockFetchFormDefinition).toHaveBeenCalledTimes(1);
     expect(mockFetchFormDefinition).toHaveBeenCalledWith(
       "some-real-id",
+      undefined,
       undefined,
     );
   });
@@ -102,6 +103,18 @@ describe("fetchContract(<real-id>)", () => {
     expect(mockFetchFormDefinition).toHaveBeenCalledWith(
       "some-real-id",
       "mytoken",
+      undefined,
+    );
+  });
+
+  it("forwards the draft token to fetchFormDefinition when provided", async () => {
+    mockFetchFormDefinition.mockResolvedValue(minimalContract);
+    await fetchContract("some-real-id", undefined, "dtoken");
+    expect(mockFetchFormDefinition).toHaveBeenCalledTimes(1);
+    expect(mockFetchFormDefinition).toHaveBeenCalledWith(
+      "some-real-id",
+      undefined,
+      "dtoken",
     );
   });
 

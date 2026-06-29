@@ -2,9 +2,9 @@ import type { Mock, Mocked } from "vitest";
 import { Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
-import type { FormDefinitionEntity } from "../../database/entities/form-definition.entity";
+import type { FormDefinitionEntity } from "@/database/entities/form-definition.entity";
 import { FormDefinitionRepository } from "./form-definition.repository";
-import { RegistryService } from "../../registry/registry.service";
+import { RegistryService } from "@/registry/registry.service";
 import { RecipeFileLoaderService } from "./recipe-file-loader.service";
 import { FormConfigService } from "../form-config/form-config.service";
 import { FormDefinitionsService } from "./form-definitions.service";
@@ -43,6 +43,7 @@ function makeFindAllMocks(entities: FormDefinitionEntity[]) {
   const fileLoader = {
     findAll: vi.fn(),
     findByFormId: vi.fn(),
+    findMaintenanceFormIds: vi.fn(),
   } as unknown as Mocked<RecipeFileLoaderService>;
 
   // Force "db" mode (NODE_ENV=development) so these tests, which target the
@@ -132,6 +133,7 @@ function makeMocks(
   const fileLoader = {
     findAll: vi.fn(),
     findByFormId: vi.fn(),
+    findMaintenanceFormIds: vi.fn(),
   } as unknown as Mocked<RecipeFileLoaderService>;
 
   const config = {
@@ -279,26 +281,6 @@ describe("FormDefinitionsService", () => {
         expect(result).toEqual(MOCK_HYDRATED_STRIPPED);
       });
 
-      it("returns a specific version when version is given", async () => {
-        const { repo, registry, service } = makeMocks({
-          source: "db",
-          nodeEnv: "development",
-        });
-        (repo.findOne as Mock).mockResolvedValue(makeEntity());
-
-        const result = await service.findByFormId({
-          formId: "passport-renewal",
-          version: "1.0.0",
-        });
-
-        expect(repo.findOne).toHaveBeenCalledWith({
-          where: { formId: "passport-renewal", version: "1.0.0" },
-          order: { createdAt: "DESC" },
-        });
-        expect(registry.hydrateForm).toHaveBeenCalled();
-        expect(result).toEqual(MOCK_HYDRATED_STRIPPED);
-      });
-
       it("throws NotFoundException when formId is not found", async () => {
         const { repo, service } = makeMocks({
           source: "db",
@@ -309,18 +291,6 @@ describe("FormDefinitionsService", () => {
         await expect(service.findByFormId({ formId: "ghost" })).rejects.toThrow(
           NotFoundException,
         );
-      });
-
-      it("throws NotFoundException when formId + version is not found", async () => {
-        const { repo, service } = makeMocks({
-          source: "db",
-          nodeEnv: "development",
-        });
-        (repo.findOne as Mock).mockResolvedValue(null);
-
-        await expect(
-          service.findByFormId({ formId: "ghost", version: "9.9.9" }),
-        ).rejects.toThrow(NotFoundException);
       });
     });
 
@@ -611,26 +581,10 @@ describe("FormDefinitionsService", () => {
 
       expect(fileLoader.findByFormId).toHaveBeenCalledWith({
         formId: "passport-renewal",
-        version: undefined,
       });
       expect(repo.findOne).not.toHaveBeenCalled();
       expect(registry.hydrateForm).toHaveBeenCalledWith(MOCK_RECIPE);
       expect(result).toEqual(MOCK_HYDRATED_STRIPPED);
-    });
-
-    it("findByFormId delegates to the file loader with a specific version", async () => {
-      const { fileLoader, service } = makeMocks({ source: "files" });
-      (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
-
-      await service.findByFormId({
-        formId: "passport-renewal",
-        version: "1.0.0",
-      });
-
-      expect(fileLoader.findByFormId).toHaveBeenCalledWith({
-        formId: "passport-renewal",
-        version: "1.0.0",
-      });
     });
 
     it("throws NotFoundException when the file loader returns null", async () => {
@@ -642,7 +596,7 @@ describe("FormDefinitionsService", () => {
       );
     });
 
-    it("findAll delegates to the file loader (passes version through)", async () => {
+    it("findAll delegates to the file loader", async () => {
       const { fileLoader, service } = makeMocks({ source: "files" });
       (fileLoader.findAll as Mock).mockReturnValue([
         {
@@ -662,6 +616,18 @@ describe("FormDefinitionsService", () => {
           version: "1.0.0",
         },
       ]);
+    });
+
+    it("findMaintenanceFormIds delegates to the file loader", async () => {
+      const { fileLoader, service } = makeMocks({ source: "files" });
+      (fileLoader.findMaintenanceFormIds as Mock).mockReturnValue([
+        "post-office-redirection-individual",
+      ]);
+
+      const result = await service.findMaintenanceFormIds();
+
+      expect(fileLoader.findMaintenanceFormIds).toHaveBeenCalled();
+      expect(result).toEqual(["post-office-redirection-individual"]);
     });
   });
 
@@ -720,29 +686,37 @@ describe("FormDefinitionsService", () => {
       });
     });
 
-    describe("getRecipe with version supplied", () => {
-      it("returns the DB schema when DB has the formId+version (even if files also has it)", async () => {
+    // #1196: the both path is the preview resolver — DB scratch draft (keyed by
+    // formId, no version) wins when present, else the canonical flat file. No
+    // version dimension, no semver comparison.
+    describe("getRecipe (both / preview path)", () => {
+      it("returns the DB draft when present, not touching files", async () => {
         const { fileLoader, repo, service } = makeMocks({
           source: "both",
           nodeEnv: "development",
         });
         const dbRecipe = { ...MOCK_RECIPE, title: "DB" };
-        const fileRecipe = { ...MOCK_RECIPE, title: "File" };
         (repo.findOne as Mock).mockResolvedValue(
           makeEntity({ schema: dbRecipe as unknown as ServiceContractRecipe }),
         );
-        (fileLoader.findByFormId as Mock).mockReturnValue(fileRecipe);
+        (fileLoader.findByFormId as Mock).mockReturnValue({
+          ...MOCK_RECIPE,
+          title: "File",
+        });
 
         const result = await service.getRecipe({
           formId: "passport-renewal",
-          version: "1.0.0",
         });
 
         expect(result).toEqual(dbRecipe);
+        // Keyed by formId only.
+        expect(repo.findOne).toHaveBeenCalledWith(
+          expect.objectContaining({ where: { formId: "passport-renewal" } }),
+        );
         expect(fileLoader.findByFormId).not.toHaveBeenCalled();
       });
 
-      it("falls through to the file loader when DB has no matching row", async () => {
+      it("falls back to the canonical file when no DB draft exists", async () => {
         const { fileLoader, repo, service } = makeMocks({
           source: "both",
           nodeEnv: "development",
@@ -750,111 +724,15 @@ describe("FormDefinitionsService", () => {
         (repo.findOne as Mock).mockResolvedValue(null);
         (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
 
-        const result = await service.getRecipe({
-          formId: "passport-renewal",
-          version: "1.0.0",
-        });
+        const result = await service.getRecipe({ formId: "passport-renewal" });
 
         expect(fileLoader.findByFormId).toHaveBeenCalledWith({
           formId: "passport-renewal",
-          version: "1.0.0",
         });
         expect(result).toBe(MOCK_RECIPE);
       });
-    });
 
-    describe("getRecipe without version", () => {
-      it("returns the file recipe when files have the higher semver", async () => {
-        const { fileLoader, repo, service } = makeMocks({
-          source: "both",
-          nodeEnv: "development",
-        });
-        const dbRecipe = { ...MOCK_RECIPE, version: "1.1.0", title: "DB" };
-        const fileRecipe = { ...MOCK_RECIPE, version: "1.2.0", title: "File" };
-        (repo.findOne as Mock).mockResolvedValue(
-          makeEntity({
-            version: "1.1.0",
-            schema: dbRecipe as unknown as ServiceContractRecipe,
-          }),
-        );
-        (fileLoader.findByFormId as Mock).mockReturnValue(fileRecipe);
-
-        const result = await service.getRecipe({ formId: "passport-renewal" });
-
-        expect(result).toEqual(fileRecipe);
-      });
-
-      it("returns the DB recipe when DB has the higher semver", async () => {
-        const { fileLoader, repo, service } = makeMocks({
-          source: "both",
-          nodeEnv: "development",
-        });
-        const dbRecipe = { ...MOCK_RECIPE, version: "1.2.0", title: "DB" };
-        const fileRecipe = { ...MOCK_RECIPE, version: "1.0.0", title: "File" };
-        (repo.findOne as Mock).mockResolvedValue(
-          makeEntity({
-            version: "1.2.0",
-            schema: dbRecipe as unknown as ServiceContractRecipe,
-          }),
-        );
-        (fileLoader.findByFormId as Mock).mockReturnValue(fileRecipe);
-
-        const result = await service.getRecipe({ formId: "passport-renewal" });
-
-        expect(result).toEqual(dbRecipe);
-      });
-
-      it("DB wins when DB and file versions tie", async () => {
-        const { fileLoader, repo, service } = makeMocks({
-          source: "both",
-          nodeEnv: "development",
-        });
-        const dbRecipe = { ...MOCK_RECIPE, version: "1.0.0", title: "DB" };
-        const fileRecipe = { ...MOCK_RECIPE, version: "1.0.0", title: "File" };
-        (repo.findOne as Mock).mockResolvedValue(
-          makeEntity({
-            version: "1.0.0",
-            schema: dbRecipe as unknown as ServiceContractRecipe,
-          }),
-        );
-        (fileLoader.findByFormId as Mock).mockReturnValue(fileRecipe);
-
-        const result = await service.getRecipe({ formId: "passport-renewal" });
-
-        expect(result).toEqual(dbRecipe);
-      });
-
-      it("returns the DB recipe when only DB has it", async () => {
-        const { fileLoader, repo, service } = makeMocks({
-          source: "both",
-          nodeEnv: "development",
-        });
-        const dbRecipe = { ...MOCK_RECIPE, title: "DB-only" };
-        (repo.findOne as Mock).mockResolvedValue(
-          makeEntity({ schema: dbRecipe as unknown as ServiceContractRecipe }),
-        );
-        (fileLoader.findByFormId as Mock).mockReturnValue(null);
-
-        const result = await service.getRecipe({ formId: "db-only" });
-
-        expect(result).toEqual(dbRecipe);
-      });
-
-      it("returns the file recipe when only files has it", async () => {
-        const { fileLoader, repo, service } = makeMocks({
-          source: "both",
-          nodeEnv: "development",
-        });
-        const fileRecipe = { ...MOCK_RECIPE, title: "File-only" };
-        (repo.findOne as Mock).mockResolvedValue(null);
-        (fileLoader.findByFormId as Mock).mockReturnValue(fileRecipe);
-
-        const result = await service.getRecipe({ formId: "file-only" });
-
-        expect(result).toBe(fileRecipe);
-      });
-
-      it("returns null when neither source has a recipe", async () => {
+      it("returns null when neither the DB draft nor the canonical file exists", async () => {
         const { fileLoader, repo, service } = makeMocks({
           source: "both",
           nodeEnv: "development",
@@ -881,12 +759,10 @@ describe("FormDefinitionsService", () => {
 
       const result = await service.getRecipe({
         formId: "passport-renewal",
-        version: "1.0.0",
       });
 
       expect(fileLoader.findByFormId).toHaveBeenCalledWith({
         formId: "passport-renewal",
-        version: "1.0.0",
       });
       // Raw recipe — no hydration when called via getRecipe directly.
       expect(registry.hydrateForm).not.toHaveBeenCalled();
@@ -932,9 +808,88 @@ describe("FormDefinitionsService", () => {
     });
   });
 
-  describe("preview flag", () => {
-    describe("valid preview resolves via DB/both even in prod files mode", () => {
-      it("getRecipe with preview:true consults DB (both path) even when source=files/prod", async () => {
+  describe("visibility gate (#1646)", () => {
+    const PREVIEW_RECIPE = {
+      ...MOCK_RECIPE,
+      meta: { visibility: "preview" as const },
+    };
+
+    it("getRecipe returns null for a non-public recipe with no preview token", async () => {
+      const { fileLoader, service } = makeMocks({ source: "files" });
+      (fileLoader.findByFormId as Mock).mockReturnValue(PREVIEW_RECIPE);
+
+      const result = await service.getRecipe({ formId: "passport-renewal" });
+
+      expect(result).toBeNull();
+    });
+
+    it("getRecipe returns the non-public recipe when bypassVisibility (serves the published file, gate skipped)", async () => {
+      const { fileLoader, repo, service } = makeMocks({ source: "files" });
+      (fileLoader.findByFormId as Mock).mockReturnValue(PREVIEW_RECIPE);
+
+      const result = await service.getRecipe({
+        formId: "passport-renewal",
+        bypassVisibility: true,
+      });
+
+      // bypassVisibility serves the PUBLISHED file — the DB is never consulted.
+      expect(result).toBe(PREVIEW_RECIPE);
+      expect(repo.findOne).not.toHaveBeenCalled();
+    });
+
+    it("getRecipe returns the non-public recipe when draft (DB path also bypasses the gate)", async () => {
+      const { fileLoader, repo, service } = makeMocks({ source: "files" });
+      // draft forces the "both" path; DB miss → falls back to the file loader.
+      (repo.findOne as Mock).mockResolvedValue(null);
+      (fileLoader.findByFormId as Mock).mockReturnValue(PREVIEW_RECIPE);
+
+      const result = await service.getRecipe({
+        formId: "passport-renewal",
+        draft: true,
+      });
+
+      expect(result).toBe(PREVIEW_RECIPE);
+      expect(repo.findOne).toHaveBeenCalled();
+    });
+
+    it("getRecipe still returns a public recipe", async () => {
+      const { fileLoader, service } = makeMocks({ source: "files" });
+      (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
+
+      const result = await service.getRecipe({ formId: "passport-renewal" });
+
+      expect(result).toBe(MOCK_RECIPE);
+    });
+
+    it("findByFormId throws NotFound for a non-public recipe (404 to the public)", async () => {
+      const { fileLoader, service } = makeMocks({ source: "files" });
+      (fileLoader.findByFormId as Mock).mockReturnValue(PREVIEW_RECIPE);
+
+      await expect(
+        service.findByFormId({ formId: "passport-renewal" }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("findAll (db mode) hides non-public forms from the list", async () => {
+      const { service } = makeFindAllMocks([
+        makeEntityWithTitle("public-form", "Public Form"),
+        makeEntityWithTitle("preview-form", "Preview Form", {
+          schema: {
+            title: "Preview Form",
+            meta: { visibility: "preview" },
+          } as unknown as FormDefinitionEntity["schema"],
+        }),
+      ]);
+
+      const list = await service.findAll();
+
+      expect(list.map((e) => e.formId)).toEqual(["public-form"]);
+    });
+  });
+
+  describe("draft flag", () => {
+    describe("draft resolves via DB/both even in prod files mode", () => {
+      it("getRecipe with draft:true consults DB (both path) even when source=files/prod", async () => {
         const { repo, fileLoader, service } = makeMocks({
           source: "files",
           nodeEnv: "production",
@@ -951,7 +906,7 @@ describe("FormDefinitionsService", () => {
 
         const result = await service.getRecipe({
           formId: "passport-renewal",
-          preview: true,
+          draft: true,
         });
 
         // The both path must have run — DB consulted
@@ -960,7 +915,7 @@ describe("FormDefinitionsService", () => {
         expect(result).toMatchObject({ title: "DB" });
       });
 
-      it("findByFormId with preview:true consults DB (both path) even when source=files/prod", async () => {
+      it("findByFormId with draft:true consults DB (both path) even when source=files/prod", async () => {
         const { repo, fileLoader, registry, service } = makeMocks({
           source: "files",
           nodeEnv: "production",
@@ -977,7 +932,7 @@ describe("FormDefinitionsService", () => {
 
         await service.findByFormId({
           formId: "passport-renewal",
-          preview: true,
+          draft: true,
         });
 
         // DB was consulted — both path ran despite source=files/prod
@@ -989,21 +944,37 @@ describe("FormDefinitionsService", () => {
       });
     });
 
-    describe("preview=false or omitted leaves existing source resolution unchanged", () => {
-      it("getRecipe with preview:false delegates to fileLoader only (no DB)", async () => {
+    describe("draft=false or omitted leaves existing source resolution unchanged", () => {
+      it("getRecipe with draft:false delegates to fileLoader only (no DB)", async () => {
         const { fileLoader, repo, service } = makeMocks({
           source: "files",
           nodeEnv: "production",
         });
         (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
 
-        await service.getRecipe({ formId: "passport-renewal", preview: false });
+        await service.getRecipe({ formId: "passport-renewal", draft: false });
 
         expect(fileLoader.findByFormId).toHaveBeenCalled();
         expect(repo.findOne).not.toHaveBeenCalled();
       });
 
-      it("getRecipe with preview omitted delegates to fileLoader only (no DB)", async () => {
+      it("bypassVisibility alone does NOT consult the DB (serves the published file)", async () => {
+        const { fileLoader, repo, service } = makeMocks({
+          source: "files",
+          nodeEnv: "production",
+        });
+        (fileLoader.findByFormId as Mock).mockReturnValue(MOCK_RECIPE);
+
+        await service.getRecipe({
+          formId: "passport-renewal",
+          bypassVisibility: true,
+        });
+
+        expect(fileLoader.findByFormId).toHaveBeenCalled();
+        expect(repo.findOne).not.toHaveBeenCalled();
+      });
+
+      it("getRecipe with draft omitted delegates to fileLoader only (no DB)", async () => {
         const { fileLoader, repo, service } = makeMocks({
           source: "files",
           nodeEnv: "production",
@@ -1017,8 +988,8 @@ describe("FormDefinitionsService", () => {
       });
     });
 
-    describe("preview takes the version-aware both path when version supplied", () => {
-      it("DB is tried first and result returned when DB has a match", async () => {
+    describe("draft resolves the DB scratch (#1196)", () => {
+      it("returns the DB draft (keyed by formId)", async () => {
         const { repo, fileLoader, service } = makeMocks({
           source: "files",
           nodeEnv: "production",
@@ -1031,21 +1002,17 @@ describe("FormDefinitionsService", () => {
 
         const result = await service.getRecipe({
           formId: "passport-renewal",
-          version: "1.0.0",
-          preview: true,
+          draft: true,
         });
 
         expect(repo.findOne).toHaveBeenCalledWith(
-          expect.objectContaining({
-            where: expect.objectContaining({ version: "1.0.0" }),
-          }),
+          expect.objectContaining({ where: { formId: "passport-renewal" } }),
         );
         expect(result).toEqual(dbRecipe);
-        // DB returned a result, so files should not have been consulted
         expect(fileLoader.findByFormId).not.toHaveBeenCalled();
       });
 
-      it("falls through to files when DB misses on the version", async () => {
+      it("falls back to the canonical file when there is no DB draft", async () => {
         const { repo, fileLoader, service } = makeMocks({
           source: "files",
           nodeEnv: "production",
@@ -1055,68 +1022,13 @@ describe("FormDefinitionsService", () => {
 
         const result = await service.getRecipe({
           formId: "passport-renewal",
-          version: "1.0.0",
-          preview: true,
+          draft: true,
         });
 
-        expect(repo.findOne).toHaveBeenCalledWith(
-          expect.objectContaining({
-            where: expect.objectContaining({ version: "1.0.0" }),
-          }),
-        );
         expect(fileLoader.findByFormId).toHaveBeenCalledWith({
           formId: "passport-renewal",
-          version: "1.0.0",
         });
         expect(result).toBe(MOCK_RECIPE);
-      });
-    });
-
-    describe("preview no-version path uses semver comparison (source=files, prod)", () => {
-      it("DB wins when DB and file versions tie (1.0.0 vs 1.0.0)", async () => {
-        const { repo, fileLoader, service } = makeMocks({
-          source: "files",
-          nodeEnv: "production",
-        });
-        const dbRecipe = { ...MOCK_RECIPE, version: "1.0.0", title: "DB" };
-        const fileRecipe = { ...MOCK_RECIPE, version: "1.0.0", title: "File" };
-        (repo.findOne as Mock).mockResolvedValue(
-          makeEntity({
-            version: "1.0.0",
-            schema: dbRecipe as unknown as ServiceContractRecipe,
-          }),
-        );
-        (fileLoader.findByFormId as Mock).mockReturnValue(fileRecipe);
-
-        const result = await service.getRecipe({
-          formId: "passport-renewal",
-          preview: true,
-        });
-
-        expect(result).toMatchObject({ title: "DB" });
-      });
-
-      it("file wins when file semver is higher than DB (1.0.0 vs 1.1.0)", async () => {
-        const { repo, fileLoader, service } = makeMocks({
-          source: "files",
-          nodeEnv: "production",
-        });
-        const dbRecipe = { ...MOCK_RECIPE, version: "1.0.0", title: "DB" };
-        const fileRecipe = { ...MOCK_RECIPE, version: "1.1.0", title: "File" };
-        (repo.findOne as Mock).mockResolvedValue(
-          makeEntity({
-            version: "1.0.0",
-            schema: dbRecipe as unknown as ServiceContractRecipe,
-          }),
-        );
-        (fileLoader.findByFormId as Mock).mockReturnValue(fileRecipe);
-
-        const result = await service.getRecipe({
-          formId: "passport-renewal",
-          preview: true,
-        });
-
-        expect(result).toMatchObject({ title: "File" });
       });
     });
   });

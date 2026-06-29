@@ -7,7 +7,7 @@ import { AnyFieldApi } from "@tanstack/react-form";
  * fields, a structured { message, parts } object for date fields (so the
  * renderer can highlight the failing day/month/year inputs).
  */
-export type FieldError = string | DateValidationError;
+type FieldError = string | DateValidationError;
 
 interface FieldValidationContext<TValue = unknown, TFieldApi = unknown> {
   value: TValue;

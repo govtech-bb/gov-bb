@@ -110,6 +110,60 @@ describe("files API client", () => {
     );
   });
 
+  it("presignUpload sets the X-Recipe-Draft header when a draft token is passed", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({}));
+
+    await presignUpload(presignReq, undefined, "draft-tok");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${API_URL}/files/presign-upload`,
+      expect.objectContaining({
+        headers: {
+          "Content-Type": "application/json",
+          "X-Recipe-Draft": "draft-tok",
+        },
+      }),
+    );
+  });
+
+  it("uploadFile threads the draft token to both presign and confirm", async () => {
+    const presign = {
+      uploadUrl: "https://s3/put?sig=1",
+      key: "uploads/k",
+      expiresIn: 900,
+      maxSize: 10485760,
+    };
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(presign)) // presign
+      .mockResolvedValueOnce({ ok: true, status: 200 } as Response) // PUT
+      .mockResolvedValueOnce(jsonResponse({})); // confirm
+
+    const file = new File(["x"], "a.pdf", { type: "application/pdf" });
+    await uploadFile({
+      file,
+      formId: "f",
+      formVersion: "1.0.0",
+      stepId: "s",
+      fieldId: "fld",
+      draftToken: "draft-tok",
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      `${API_URL}/files/presign-upload`,
+      expect.objectContaining({
+        headers: expect.objectContaining({ "X-Recipe-Draft": "draft-tok" }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      `${API_URL}/files/confirm-upload`,
+      expect.objectContaining({
+        headers: expect.objectContaining({ "X-Recipe-Draft": "draft-tok" }),
+      }),
+    );
+  });
+
   it("uploadFile threads the preview token to both presign and confirm", async () => {
     const presign = {
       uploadUrl: "https://s3/put?sig=1",

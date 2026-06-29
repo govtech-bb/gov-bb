@@ -5,12 +5,12 @@
 
 import type { PlannedChunk, PlannedDocument, PlannedEntity } from "./chunker";
 
-export interface ExistingDocument {
+interface ExistingDocument {
   id: string;
   payloadHash: string;
   embeddingModel: string;
 }
-export interface ExistingChunk {
+interface ExistingChunk {
   id: string;
   documentId: string;
   embedHash: string;

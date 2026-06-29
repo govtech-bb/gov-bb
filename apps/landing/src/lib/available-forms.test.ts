@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   parseFormIds,
+  parseMaintenanceIds,
   resolveAvailableForms,
   type CacheRef,
 } from './available-forms'
@@ -30,6 +31,40 @@ describe('parseFormIds', () => {
   it('throws on a form ID that is not kebab-case', () => {
     expect(() =>
       parseFormIds({ status: 'success', data: [{ formId: 'Bad_Id' }] }),
+    ).toThrow(/failed validation/)
+  })
+})
+
+describe('parseMaintenanceIds', () => {
+  it('extracts the bare-string ID list from a success payload', () => {
+    expect(
+      parseMaintenanceIds({
+        status: 'success',
+        data: [
+          'post-office-redirection-individual',
+          'apply-for-conductor-licence',
+        ],
+      }),
+    ).toEqual([
+      'post-office-redirection-individual',
+      'apply-for-conductor-licence',
+    ])
+  })
+
+  it('returns an empty list when nothing is under maintenance', () => {
+    expect(parseMaintenanceIds({ status: 'success', data: [] })).toEqual([])
+  })
+
+  it('throws on an unexpected response shape', () => {
+    expect(() => parseMaintenanceIds({ status: 'error' })).toThrow(
+      /response shape/,
+    )
+    expect(() => parseMaintenanceIds(null)).toThrow(/response shape/)
+  })
+
+  it('throws on a form ID that is not kebab-case', () => {
+    expect(() =>
+      parseMaintenanceIds({ status: 'success', data: ['Bad_Id'] }),
     ).toThrow(/failed validation/)
   })
 })

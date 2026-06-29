@@ -1,6 +1,8 @@
 import {
   contactDetailsSchema,
   dateTimeFormatSchema,
+  getRecipeVisibility,
+  recipeMetaSchema,
   serviceContractRecipeSchema,
   serviceContractSchema,
 } from "./service-contract.type";
@@ -171,6 +173,18 @@ describe("serviceContractSchema with contactDetails", () => {
   it("accepts a valid kebab formId with a non-empty title", () => {
     expect(serviceContractSchema.safeParse(baseContract).success).toBe(true);
   });
+
+  it("accepts a contract without a version (now optional, #1196)", () => {
+    const { version: _v, ...noVersion } = baseContract;
+    expect(serviceContractSchema.safeParse(noVersion).success).toBe(true);
+  });
+
+  it("still rejects a present-but-malformed version", () => {
+    expect(
+      serviceContractSchema.safeParse({ ...baseContract, version: "1.0" })
+        .success,
+    ).toBe(false);
+  });
 });
 
 describe("serviceContractRecipeSchema", () => {
@@ -261,5 +275,62 @@ describe("serviceContractRecipeSchema", () => {
         createdAt: "2026-01-01",
       }).success,
     ).toBe(false);
+  });
+
+  it("accepts a recipe without a version (now optional, #1196)", () => {
+    const { version: _v, ...noVersion } = baseRecipe;
+    expect(serviceContractRecipeSchema.safeParse(noVersion).success).toBe(true);
+  });
+
+  it("still rejects a present-but-malformed version", () => {
+    expect(
+      serviceContractRecipeSchema.safeParse({ ...baseRecipe, version: "1.0" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("accepts a recipe with meta.visibility (#1646)", () => {
+    const recipe = { ...baseRecipe, meta: { visibility: "preview" } };
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
+  });
+
+  it("rejects a recipe with an unknown visibility value", () => {
+    const recipe = { ...baseRecipe, meta: { visibility: "secret" } };
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(false);
+  });
+});
+
+describe("recipeMetaSchema (#1646)", () => {
+  it("defaults visibility to public when meta is present but empty", () => {
+    const parsed = recipeMetaSchema.parse({});
+    expect(parsed.visibility).toBe("public");
+  });
+
+  it("accepts each visibility level", () => {
+    for (const visibility of ["public", "preview", "draft", "maintenance"]) {
+      expect(recipeMetaSchema.safeParse({ visibility }).success).toBe(true);
+    }
+  });
+});
+
+describe("getRecipeVisibility (#1646)", () => {
+  it("returns public when the recipe carries no meta", () => {
+    expect(getRecipeVisibility({})).toBe("public");
+  });
+
+  it("returns public when meta is present but has no visibility", () => {
+    expect(getRecipeVisibility({ meta: {} as never })).toBe("public");
+  });
+
+  it("returns the explicit visibility when set", () => {
+    expect(getRecipeVisibility({ meta: { visibility: "preview" } })).toBe(
+      "preview",
+    );
+    expect(getRecipeVisibility({ meta: { visibility: "draft" } })).toBe(
+      "draft",
+    );
+    expect(getRecipeVisibility({ meta: { visibility: "maintenance" } })).toBe(
+      "maintenance",
+    );
   });
 });

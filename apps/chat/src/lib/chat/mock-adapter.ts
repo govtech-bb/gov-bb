@@ -1,3 +1,4 @@
+import { emitTextTurn } from "@govtech-bb/ai-bedrock";
 import {
   EventType,
   type Modality,
@@ -5,9 +6,6 @@ import {
   type RunFinishedEvent,
   type RunStartedEvent,
   type StreamChunk,
-  type TextMessageContentEvent,
-  type TextMessageEndEvent,
-  type TextMessageStartEvent,
   type TextOptions,
   type ToolCallArgsEvent,
   type ToolCallEndEvent,
@@ -17,6 +15,7 @@ import {
   BaseTextAdapter,
   type StructuredOutputResult,
 } from "@tanstack/ai/adapters";
+import { humanise } from "./labels";
 
 // A scripted stand-in for the Bedrock chat adapter, gated by env.LLM_MOCK. It
 // is NOT a model: it derives the next action purely from the message history —
@@ -267,29 +266,15 @@ const counter = (): string => (_seq++).toString(36);
 const uid = (prefix: string): string => `mock-${prefix}-${counter()}`;
 
 function* textTurn(text: string, c: Ctx): Generator<StreamChunk> {
-  const messageId = uid("msg");
-  yield runStarted(c);
-  yield {
-    type: EventType.TEXT_MESSAGE_START,
-    messageId,
-    role: "assistant",
+  // Delegates to @govtech-bb/ai-bedrock's canonical text-turn builder so the
+  // mock can't drift from the adapter's text-turn shape; the mock keeps its own
+  // messageId scheme. (toolTurn below stays mock-only — see the toolTurn note.)
+  yield* emitTextTurn(text, {
+    runId: c.runId,
+    threadId: c.threadId,
+    messageId: uid("msg"),
     model: c.model,
-    timestamp: Date.now(),
-  } satisfies TextMessageStartEvent;
-  yield {
-    type: EventType.TEXT_MESSAGE_CONTENT,
-    messageId,
-    delta: text,
-    model: c.model,
-    timestamp: Date.now(),
-  } satisfies TextMessageContentEvent;
-  yield {
-    type: EventType.TEXT_MESSAGE_END,
-    messageId,
-    model: c.model,
-    timestamp: Date.now(),
-  } satisfies TextMessageEndEvent;
-  yield runFinished(c, "stop");
+  });
 }
 
 function* toolTurn(
@@ -351,11 +336,6 @@ function runFinished(
     timestamp: Date.now(),
     finishReason,
   };
-}
-
-function humanise(fieldId: string): string {
-  const s = fieldId.replace(/[-_]+/g, " ").trim();
-  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function summaryLine(collected: Map<string, string>): string {

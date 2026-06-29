@@ -1,28 +1,30 @@
 import { parseAddedRecipePaths, archiveDrafts } from "./archive-merged-drafts";
 
+const RECIPES = "apps/api/src/forms/form-definitions/recipes";
+
 describe("parseAddedRecipePaths", () => {
-  it("extracts {formId, version} from valid recipe paths", () => {
+  it("extracts {formId} from flat canonical recipe paths", () => {
     const paths = [
-      "recipes/passport-renewal/1.2.0.json",
-      "recipes/drivers-licence/2.0.0.json",
+      `${RECIPES}/passport-renewal.json`,
+      `${RECIPES}/drivers-licence.json`,
     ];
     expect(parseAddedRecipePaths(paths)).toEqual([
-      { formId: "passport-renewal", version: "1.2.0" },
-      { formId: "drivers-licence", version: "2.0.0" },
+      { formId: "passport-renewal" },
+      { formId: "drivers-licence" },
     ]);
   });
 
-  it("ignores paths not under recipes/ or with the wrong shape", () => {
+  it("ignores non-recipe paths and the retained legacy versioned files", () => {
     const paths = [
-      "recipes/passport-renewal/1.2.0.json",
+      `${RECIPES}/passport-renewal.json`,
       "README.md",
-      "recipes/.gitkeep",
-      "recipes/passport-renewal/notes.txt",
-      "recipes/passport-renewal/sub/1.0.0.json",
+      `${RECIPES}/.gitkeep`,
+      // Legacy versioned fallback files are frozen — never re-archived.
+      `${RECIPES}/passport-renewal/1.2.0.json`,
       "src/foo.ts",
     ];
     expect(parseAddedRecipePaths(paths)).toEqual([
-      { formId: "passport-renewal", version: "1.2.0" },
+      { formId: "passport-renewal" },
     ]);
   });
 
@@ -32,17 +34,14 @@ describe("parseAddedRecipePaths", () => {
 });
 
 describe("archiveDrafts", () => {
-  it("POSTs to /admin/drafts/{formId}/{version}/archive for each entry", async () => {
+  it("POSTs to /admin/drafts/{formId}/archive for each entry", async () => {
     const fetchMock = jest
       .fn()
       .mockResolvedValue(new Response(null, { status: 204 }));
     const log: string[] = [];
 
     await archiveDrafts(
-      [
-        { formId: "passport-renewal", version: "1.2.0" },
-        { formId: "drivers-licence", version: "2.0.0" },
-      ],
+      [{ formId: "passport-renewal" }, { formId: "drivers-licence" }],
       {
         apiUrl: "https://api.example.com",
         token: "secret",
@@ -53,10 +52,10 @@ describe("archiveDrafts", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.example.com/admin/drafts/passport-renewal/1.2.0/archive",
+      "https://api.example.com/admin/drafts/passport-renewal/archive",
       expect.objectContaining({
         method: "POST",
-        headers: expect.objectContaining({ Authorization: "Bearer secret" }),
+        headers: expect.objectContaining({ "x-admin-token": "secret" }),
       }),
     );
     expect(log.some((m) => m.includes("204"))).toBe(true);
@@ -69,7 +68,7 @@ describe("archiveDrafts", () => {
     const log: string[] = [];
 
     await expect(
-      archiveDrafts([{ formId: "ghost", version: "1.0.0" }], {
+      archiveDrafts([{ formId: "ghost" }], {
         apiUrl: "https://api.example.com",
         token: "secret",
         fetch: fetchMock as unknown as typeof fetch,
@@ -87,7 +86,7 @@ describe("archiveDrafts", () => {
     const log: string[] = [];
 
     await expect(
-      archiveDrafts([{ formId: "passport-renewal", version: "1.2.0" }], {
+      archiveDrafts([{ formId: "passport-renewal" }], {
         apiUrl: "https://api.example.com",
         token: "secret",
         fetch: fetchMock as unknown as typeof fetch,

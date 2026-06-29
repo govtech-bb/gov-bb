@@ -137,9 +137,9 @@ function fakeDataSource(
   const query = vi.fn(async (sql: string) => {
     if (/DISTINCT ON \(form_id\)/i.test(sql)) return [];
     if (/SELECT 1 FROM form_definitions WHERE form_id/i.test(sql)) return [];
-    // PUT latest-version lookup
-    if (/SELECT id, version, published_at/i.test(sql))
-      return [{ id: 7, version: "1.0.0", published_at: null }];
+    // PUT row lookup (#1196: one row per form, keyed by formId)
+    if (/SELECT id FROM form_definitions WHERE form_id/i.test(sql))
+      return [{ id: 7 }];
     return [];
   });
 

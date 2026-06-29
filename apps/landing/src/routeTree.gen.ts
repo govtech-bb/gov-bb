@@ -10,9 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TellUsRouteImport } from './routes/tell-us'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ServicesRouteImport } from './routes/services'
 import { Route as ServiceUnavailableRouteImport } from './routes/service-unavailable'
 import { Route as SearchResultsRouteImport } from './routes/search-results'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as PreviewStartPageRouteImport } from './routes/preview-start-page'
 import { Route as JavascriptRequiredRouteImport } from './routes/javascript-required'
 import { Route as FeedbackRouteImport } from './routes/feedback'
@@ -35,6 +37,11 @@ const TellUsRoute = TellUsRouteImport.update({
   path: '/tell-us',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ServicesRoute = ServicesRouteImport.update({
   id: '/services',
   path: '/services',
@@ -48,6 +55,11 @@ const ServiceUnavailableRoute = ServiceUnavailableRouteImport.update({
 const SearchResultsRoute = SearchResultsRouteImport.update({
   id: '/search-results',
   path: '/search-results',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PreviewStartPageRoute = PreviewStartPageRouteImport.update({
@@ -151,9 +163,11 @@ export interface FileRoutesByFullPath {
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
   '/preview-start-page': typeof PreviewStartPageRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/search-results': typeof SearchResultsRoute
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tell-us': typeof TellUsRoute
   '/health-and-emergency-services/find-an-emergency-shelter': typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren
   '/health-and-emergency-services/stormready': typeof HealthAndEmergencyServicesStormreadyRouteRouteWithChildren
@@ -173,9 +187,11 @@ export interface FileRoutesByTo {
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
   '/preview-start-page': typeof PreviewStartPageRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/search-results': typeof SearchResultsRoute
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tell-us': typeof TellUsRoute
   '/bank-holiday-calendar': typeof BankHolidayCalendarIndexRoute
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
@@ -194,9 +210,11 @@ export interface FileRoutesById {
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
   '/preview-start-page': typeof PreviewStartPageRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/search-results': typeof SearchResultsRoute
   '/service-unavailable': typeof ServiceUnavailableRoute
   '/services': typeof ServicesRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tell-us': typeof TellUsRoute
   '/health-and-emergency-services/find-an-emergency-shelter': typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren
   '/health-and-emergency-services/stormready': typeof HealthAndEmergencyServicesStormreadyRouteRouteWithChildren
@@ -218,9 +236,11 @@ export interface FileRouteTypes {
     | '/feedback'
     | '/javascript-required'
     | '/preview-start-page'
+    | '/robots.txt'
     | '/search-results'
     | '/service-unavailable'
     | '/services'
+    | '/sitemap.xml'
     | '/tell-us'
     | '/health-and-emergency-services/find-an-emergency-shelter'
     | '/health-and-emergency-services/stormready'
@@ -240,9 +260,11 @@ export interface FileRouteTypes {
     | '/feedback'
     | '/javascript-required'
     | '/preview-start-page'
+    | '/robots.txt'
     | '/search-results'
     | '/service-unavailable'
     | '/services'
+    | '/sitemap.xml'
     | '/tell-us'
     | '/bank-holiday-calendar'
     | '/business-trade/crop-over-permits/form'
@@ -260,9 +282,11 @@ export interface FileRouteTypes {
     | '/feedback'
     | '/javascript-required'
     | '/preview-start-page'
+    | '/robots.txt'
     | '/search-results'
     | '/service-unavailable'
     | '/services'
+    | '/sitemap.xml'
     | '/tell-us'
     | '/health-and-emergency-services/find-an-emergency-shelter'
     | '/health-and-emergency-services/stormready'
@@ -283,9 +307,11 @@ export interface RootRouteChildren {
   FeedbackRoute: typeof FeedbackRoute
   JavascriptRequiredRoute: typeof JavascriptRequiredRoute
   PreviewStartPageRoute: typeof PreviewStartPageRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
   SearchResultsRoute: typeof SearchResultsRoute
   ServiceUnavailableRoute: typeof ServiceUnavailableRoute
   ServicesRoute: typeof ServicesRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TellUsRoute: typeof TellUsRoute
   HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute: typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren
   HealthAndEmergencyServicesStormreadyRouteRoute: typeof HealthAndEmergencyServicesStormreadyRouteRouteWithChildren
@@ -302,6 +328,13 @@ declare module '@tanstack/react-router' {
       path: '/tell-us'
       fullPath: '/tell-us'
       preLoaderRoute: typeof TellUsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/services': {
@@ -323,6 +356,13 @@ declare module '@tanstack/react-router' {
       path: '/search-results'
       fullPath: '/search-results'
       preLoaderRoute: typeof SearchResultsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/preview-start-page': {
@@ -485,9 +525,11 @@ const rootRouteChildren: RootRouteChildren = {
   FeedbackRoute: FeedbackRoute,
   JavascriptRequiredRoute: JavascriptRequiredRoute,
   PreviewStartPageRoute: PreviewStartPageRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
   SearchResultsRoute: SearchResultsRoute,
   ServiceUnavailableRoute: ServiceUnavailableRoute,
   ServicesRoute: ServicesRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TellUsRoute: TellUsRoute,
   HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute:
     HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren,

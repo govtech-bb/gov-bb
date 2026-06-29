@@ -15,16 +15,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (with enough history to diff before..after)
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
+          persist-credentials: false
           # We need both the `before` and `after` SHAs of the push reachable.
           # fetch-depth: 0 fetches all history. Cheaper alternatives like
           # fetch-depth: 50 could miss merges of long-lived branches, so we
           # pay the cost.
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
@@ -33,5 +34,8 @@ jobs:
       - name: Archive drafts via admin endpoint
         env:
           API_URL: ${{ secrets.ARCHIVE_DRAFTS_API_URL }}
+          # Sent as the `x-admin-token` header, checked by AdminTokenGuard (#286).
+          # ARCHIVE_DRAFTS_TOKEN MUST equal the API's ADMIN_API_TOKEN env var or
+          # the endpoint returns 403 — rotate the two together.
           ARCHIVE_DRAFTS_TOKEN: ${{ secrets.ARCHIVE_DRAFTS_TOKEN }}
         run: pnpm tsx scripts/archive-merged-drafts.ts

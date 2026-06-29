@@ -33,7 +33,6 @@ export class PaymentRequiredListener {
     try {
       const contract = await this.formDefs.findByFormId({
         formId: event.formId,
-        version: event.formVersion,
       });
       const formTitle = contract.title;
 

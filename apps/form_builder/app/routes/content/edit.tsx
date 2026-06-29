@@ -348,6 +348,9 @@ function StartPagesEditor() {
                 : []),
             ]}
           />
+          {!success && !ed.loadingPage && ed.deployBlockReason && (
+            <span className={s.deployHint}>{ed.deployBlockReason}</span>
+          )}
           {!success && (
             <button
               type="button"
