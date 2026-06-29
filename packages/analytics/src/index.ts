@@ -10,6 +10,15 @@ export interface TrackingData {
   "form-start": { form: string; category: string };
   "form-step-back": { form: string; category: string; step: string };
   "form-step-edit": { form: string; category: string; step: string };
+  "form-step-view": { form: string; category: string; step: string };
+  "form-file-select": {
+    form: string;
+    category: string;
+    step: string;
+    field: string;
+    mime: string;
+    size_kb: number;
+  };
   "form-submit": { form: string; category: string; duration_seconds: number };
   "form-submit-error": { form: string; category: string; errors: string };
   "form-review": { form: string; category: string; duration_seconds: number };

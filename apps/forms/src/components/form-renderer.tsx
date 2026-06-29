@@ -175,12 +175,11 @@ export default function FormRenderer({
   React.useEffect(() => {
     if (!currentStep) return;
     trackEvent("form-step-view", {
-      form_id: formMeta.formId,
-      step_id: currentStep.stepId,
-      step_index: stepIndex,
-      step_count: visibleSteps.length,
+      form: formMeta.formId,
+      category: formCategory(formMeta.formId),
+      step: currentStep.stepId,
     });
-  }, [currentStep?.stepId, formMeta.formId, stepIndex, visibleSteps.length]);
+  }, [currentStep?.stepId, formMeta.formId]);
 
   // submissionState is rehydrated from session storage, so a refresh on the
   // confirmation step normally keeps the committed outcome. If it is still
