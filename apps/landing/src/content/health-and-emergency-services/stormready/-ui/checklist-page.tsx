@@ -141,7 +141,7 @@ export function StormReadyChecklistPage() {
       <div className="flex flex-col gap-m">
         {STORMREADY_CHECKLIST.map((section) => (
           <fieldset
-            className="flex flex-col gap-s border-0 p-0"
+            className="flex flex-col gap-s border-0 p-0 print:break-inside-avoid"
             key={section.id}
           >
             <legend className="w-full border-grey-00 border-b pb-xs">
