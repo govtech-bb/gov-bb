@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Heading, Text } from '@govtech-bb/react'
-import { format } from 'date-fns'
 import type { Frontmatter } from '../../lib/frontmatter'
+import { formatPublishDate } from '../../lib/format-date'
 import { Muted } from './Muted'
 
 /**
@@ -23,7 +23,7 @@ export function MdxArticle({
         {frontmatter.publish_date ? (
           <div className="border-blue-10 border-b-4 pb-4 text-mid-grey-00">
             <Text as="p" size="caption">
-              Last updated on {format(frontmatter.publish_date, 'PPP')}
+              Last updated on {formatPublishDate(frontmatter.publish_date)}
             </Text>
           </div>
         ) : null}
