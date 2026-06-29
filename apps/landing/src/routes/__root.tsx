@@ -150,7 +150,7 @@ function ServerErrorPage() {
 function RootLayout() {
   return (
     <div
-      className={`${textVariants({ size: 'body' })} grid min-h-screen grid-rows-[auto_1fr_auto] font-sans antialiased text-black-00 bg-white-00`}
+      className={`${textVariants({ size: 'body' })} grid min-h-screen grid-rows-[auto_1fr_auto] font-sans antialiased text-black-00 bg-white-00 print:block print:min-h-0 print:h-auto`}
     >
       <div className="print:hidden">
         <Header />

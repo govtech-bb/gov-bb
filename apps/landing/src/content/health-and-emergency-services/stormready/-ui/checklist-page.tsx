@@ -85,7 +85,7 @@ export function StormReadyChecklistPage() {
   }, [autoPrint, hydrated])
 
   return (
-    <div className="mb-l flex max-w-176 flex-col gap-m print:mb-0">
+    <div className="mb-l flex max-w-176 flex-col gap-m print:mb-0 print:block">
       {/* Print-only sheet header. */}
       <div className="hidden border-black-00 border-b-2 pb-xs print:block">
         <Heading as="h1" size="h2">
