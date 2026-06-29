@@ -1,9 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import {
-  buildFormCategories,
-  loadContent,
-} from "../packages/content/src/index.ts";
+import { buildFormCategories, loadContent } from "@govtech-bb/content";
 
 async function main() {
   const { services, warnings } = await loadContent();
