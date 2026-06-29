@@ -20,7 +20,7 @@ Use this checklist to make sure your household is ready for a hurricane. It cove
 <link-button href="/health-and-emergency-services/stormready/checklist?print=1" variant="secondary">Save checklist as PDF</link-button>
 </buttons>
 
-<muted>The checklist lets you tick items off and saves your progress on this device. &ldquo;Save checklist as PDF&rdquo; opens the checklist and prompts your browser to save or print a copy.</muted>
+<muted caption>The checklist lets you tick items off and saves your progress on this device. &ldquo;Save checklist as PDF&rdquo; opens the checklist and prompts your browser to save or print a copy.</muted>
 
 ### Highlights from the checklist
 

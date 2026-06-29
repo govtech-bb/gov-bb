@@ -1,10 +1,26 @@
 import type { ReactNode } from 'react'
+import { Text } from '@govtech-bb/react'
 
 /**
- * A muted (grey) block — a section intro or a note. Renders a wrapper so the
- * markdown inside keeps its own paragraph, inheriting the grey colour rather
- * than nesting a second `<p>`.
+ * A muted (grey) paragraph. `caption` (a bare tag flag) renders it at the
+ * smaller caption size — e.g. a footnote under a call to action.
  */
-export function Muted({ children }: { children: ReactNode }) {
-  return <div className="text-mid-grey-00">{children}</div>
+export function Muted({
+  caption,
+  children,
+}: {
+  caption?: boolean | string
+  children: ReactNode
+}) {
+  const isCaption =
+    caption !== undefined && caption !== false && caption !== 'false'
+  return (
+    <Text
+      as="p"
+      size={isCaption ? 'caption' : undefined}
+      className="text-mid-grey-00"
+    >
+      {children}
+    </Text>
+  )
 }
