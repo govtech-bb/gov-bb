@@ -13,6 +13,7 @@ import { loadContent } from "@govtech-bb/content";
 import { getDb, hasDatabase, schema } from "#/lib/db";
 import { MODEL_ID } from "#/lib/rag/embed";
 import { chunkService, type PlannedEntity } from "./chunker";
+import { loadCodePages } from "./code-pages";
 import { planIngest, summarise, withoutPruning } from "./plan";
 import { applyDeletes, applyPlan, fetchExistingState } from "./write";
 
@@ -22,6 +23,7 @@ interface Args {
   resetEmbeddings: boolean;
   force: boolean;
   contentDir?: string;
+  landingUrl?: string;
   limit?: number;
 }
 
@@ -33,6 +35,7 @@ function parseArgs(argv: string[]): Args {
     resetEmbeddings: argv.includes("--reset-embeddings"),
     force: argv.includes("--force"),
     contentDir: argv.find((a) => a.startsWith("--content-dir="))?.split("=")[1],
+    landingUrl: argv.find((a) => a.startsWith("--landing-url="))?.split("=")[1],
     limit: limitStr ? Number(limitStr) : undefined,
   };
 }
@@ -130,7 +133,20 @@ async function main() {
   for (const w of content.warnings) console.warn(`[content] ${w}`);
   console.log(`[ingest] loaded ${content.services.length} services`);
 
-  let planned: PlannedEntity[] = content.services.map(chunkService);
+  // Code-driven pages (data-bound / interactive `.tsx`) can't live as markdown,
+  // so ingest their rendered text from the running/deployed landing site.
+  // Without a landing URL they're simply skipped (a content-only ingest).
+  const landingUrl = args.landingUrl ?? process.env.LANDING_URL;
+  const codePages = landingUrl ? await loadCodePages(landingUrl) : [];
+  if (landingUrl) {
+    console.log(
+      `[ingest] loaded ${codePages.length} code-driven page(s) from ${landingUrl}`,
+    );
+  }
+
+  let planned: PlannedEntity[] = [...content.services, ...codePages].map(
+    chunkService,
+  );
   if (args.limit !== undefined) {
     planned = planned.slice(0, args.limit);
     console.log(`[ingest] --limit=${args.limit} → ${planned.length} entities`);
