@@ -7,6 +7,8 @@ import {
   processorSchema,
   type ServiceContractRecipe,
   type Processor,
+  type PublicFormSummary,
+  type BuilderFormSummary,
 } from "@govtech-bb/form-types";
 import { getDataSource } from "../db.js";
 import {
@@ -183,12 +185,10 @@ export async function listDisabledHandler(
 }
 formsRouter.get("/disabled", listDisabledHandler);
 
-// A published form as exposed by apps/api's recipe index.
-interface PublishedForm {
-  formId: string;
-  title: string;
-  version: string;
-}
+// A published form as exposed by apps/api's recipe index — the public-index
+// subset of PublicFormSummary, single-sourced in @govtech-bb/form-types (#1403 /
+// ARCH-01) so this consumer can't drift from apps/api's producer shape.
+type PublishedForm = Pick<PublicFormSummary, "formId" | "title" | "version">;
 
 // Result of consulting the upstream published set. Callers decide how to react:
 // the proxy surfaces `config` as 500 and `upstream` as 502; the write path
@@ -329,7 +329,7 @@ formsRouter.get("/", async (_req, res) => {
         "id, form_id, schema->>'title' AS title, version, schema",
       ),
     );
-    const forms = rows.map((r: any) => ({
+    const forms: BuilderFormSummary[] = rows.map((r: any) => ({
       id: r.id,
       formId: r.form_id,
       title: r.title ?? r.form_id,

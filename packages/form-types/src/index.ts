@@ -185,3 +185,8 @@ export type {
   MdaContactAddress,
   CreateMdaContactInput,
 } from "./mda-contact.type";
+
+export type {
+  PublicFormSummary,
+  BuilderFormSummary,
+} from "./form-summary.type";

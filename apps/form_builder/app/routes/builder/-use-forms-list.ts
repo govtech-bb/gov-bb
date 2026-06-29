@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { listForms } from "../../server/forms";
-import type { FormDefinitionSummary } from "../../types/index";
+import type { BuilderFormSummary } from "../../types/index";
 
 export interface FormsListState {
   /** The published/draft forms, or `null` while the mount fetch is in flight. */
-  forms: FormDefinitionSummary[] | null;
+  forms: BuilderFormSummary[] | null;
   /** A message if the mount fetch failed, otherwise `null`. */
   loadError: string | null;
   /**
@@ -22,7 +22,7 @@ export interface FormsListState {
    * is `null`): there is nothing to patch, and the pending fetch will bring the
    * authoritative list.
    */
-  upsertForm: (summary: FormDefinitionSummary) => void;
+  upsertForm: (summary: BuilderFormSummary) => void;
 }
 
 /**
@@ -34,7 +34,7 @@ export interface FormsListState {
  * picker, which by the time it opens usually finds the list already loaded.
  */
 export function useFormsList(): FormsListState {
-  const [forms, setForms] = useState<FormDefinitionSummary[] | null>(null);
+  const [forms, setForms] = useState<BuilderFormSummary[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // `isActive` lets the mount effect drop a resolution that lands after unmount;
@@ -52,7 +52,7 @@ export function useFormsList(): FormsListState {
       });
   }, []);
 
-  const upsertForm = useCallback((summary: FormDefinitionSummary) => {
+  const upsertForm = useCallback((summary: BuilderFormSummary) => {
     setForms((current) => {
       if (current === null) return current;
       const index = current.findIndex((f) => f.formId === summary.formId);

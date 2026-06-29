@@ -1,4 +1,4 @@
-import type { FormDefinitionSummary } from "../../types/index";
+import type { BuilderFormSummary } from "../../types/index";
 
 /**
  * Client-side mirror of the API's form-level uniqueness checks (issue #545):
@@ -27,7 +27,7 @@ export interface FormUniquenessResult {
 }
 
 export function checkFormUniqueness(
-  forms: FormDefinitionSummary[],
+  forms: BuilderFormSummary[],
   draft: { formId: string; title: string },
   loadedFromId: string | null,
 ): FormUniquenessResult {
@@ -69,7 +69,7 @@ export function checkFormUniqueness(
  * surface, or `null` when the save isn't a blocked re-key.
  */
 export function checkRekeyPublished(
-  forms: FormDefinitionSummary[],
+  forms: BuilderFormSummary[],
   draft: { formId: string },
   loadedFromId: string | null,
 ): string | null {

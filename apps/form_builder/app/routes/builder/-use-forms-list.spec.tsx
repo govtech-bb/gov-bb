@@ -4,7 +4,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useFormsList } from "./-use-forms-list";
 import { listForms } from "../../server/forms";
-import type { FormDefinitionSummary } from "../../types/index";
+import type { BuilderFormSummary } from "../../types/index";
 
 vi.mock("../../server/forms", () => ({
   listForms: vi.fn(),
@@ -12,7 +12,7 @@ vi.mock("../../server/forms", () => ({
 
 const mockListForms = vi.mocked(listForms);
 
-const FORMS: FormDefinitionSummary[] = [
+const FORMS: BuilderFormSummary[] = [
   { id: "passport", formId: "passport", title: "Passport", version: "1.0.0", isPublished: true },
 ];
 
@@ -23,7 +23,7 @@ describe("useFormsList", () => {
 
   it("starts loading: forms is null and there is no error", () => {
     // A promise that never settles keeps the hook in its initial state.
-    mockListForms.mockReturnValue(new Promise<FormDefinitionSummary[]>(() => {}));
+    mockListForms.mockReturnValue(new Promise<BuilderFormSummary[]>(() => {}));
     const { result } = renderHook(() => useFormsList());
     expect(result.current.forms).toBeNull();
     expect(result.current.loadError).toBeNull();
@@ -44,9 +44,9 @@ describe("useFormsList", () => {
   });
 
   it("does not apply a late resolution after unmount", async () => {
-    let resolve!: (v: FormDefinitionSummary[]) => void;
+    let resolve!: (v: BuilderFormSummary[]) => void;
     mockListForms.mockReturnValue(
-      new Promise<FormDefinitionSummary[]>((r) => {
+      new Promise<BuilderFormSummary[]>((r) => {
         resolve = r;
       }),
     );
@@ -60,7 +60,7 @@ describe("useFormsList", () => {
   });
 
   it("calls listForms exactly once on mount", () => {
-    mockListForms.mockReturnValue(new Promise<FormDefinitionSummary[]>(() => {}));
+    mockListForms.mockReturnValue(new Promise<BuilderFormSummary[]>(() => {}));
     renderHook(() => useFormsList());
     expect(mockListForms).toHaveBeenCalledTimes(1);
   });
@@ -71,7 +71,7 @@ describe("useFormsList", () => {
       const { result } = renderHook(() => useFormsList());
       await waitFor(() => expect(result.current.forms).toEqual(FORMS));
 
-      const updated: FormDefinitionSummary = {
+      const updated: BuilderFormSummary = {
         id: "passport",
         formId: "passport",
         title: "Passport (renamed)",
@@ -90,7 +90,7 @@ describe("useFormsList", () => {
       const { result } = renderHook(() => useFormsList());
       await waitFor(() => expect(result.current.forms).toEqual(FORMS));
 
-      const added: FormDefinitionSummary = {
+      const added: BuilderFormSummary = {
         id: "licence",
         formId: "licence",
         title: "Driving Licence",
@@ -103,7 +103,7 @@ describe("useFormsList", () => {
     });
 
     it("no-ops while the list is still loading (forms is null)", () => {
-      mockListForms.mockReturnValue(new Promise<FormDefinitionSummary[]>(() => {}));
+      mockListForms.mockReturnValue(new Promise<BuilderFormSummary[]>(() => {}));
       const { result } = renderHook(() => useFormsList());
       expect(result.current.forms).toBeNull();
 
