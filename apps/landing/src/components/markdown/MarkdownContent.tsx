@@ -1,7 +1,6 @@
 import { Heading, Text } from '@govtech-bb/react'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
-import type { ReactNode } from 'react'
 import type { Root } from 'hast'
 import type { Frontmatter } from '../../lib/frontmatter'
 import { hideStartLinks, sectionise } from '../../utils/markdown/plugins'
@@ -42,12 +41,10 @@ export function MarkdownBody({
 
 type MarkdownContentProps = {
   frontmatter: Frontmatter
-  /** Compiled `.md` body. Omit when passing a pre-rendered `children` body. */
+  /** Compiled `.md` body. */
   hast?: Root
   availableForms?: ReadonlySet<string>
   hideStartLink?: boolean
-  /** Pre-rendered body (an MDX component), rendered instead of `hast`. */
-  children?: ReactNode
 }
 
 export function MarkdownContent({
@@ -55,7 +52,6 @@ export function MarkdownContent({
   hast,
   availableForms,
   hideStartLink = false,
-  children,
 }: MarkdownContentProps) {
   return (
     <div className="mb-xm lg:grid lg:grid-cols-3 lg:gap-16">
@@ -87,14 +83,13 @@ export function MarkdownContent({
             </div>
           ) : null}
         </div>
-        {children ??
-          (hast ? (
-            <MarkdownBody
-              hast={hast}
-              availableForms={availableForms}
-              hideStartLink={hideStartLink}
-            />
-          ) : null)}
+        {hast ? (
+          <MarkdownBody
+            hast={hast}
+            availableForms={availableForms}
+            hideStartLink={hideStartLink}
+          />
+        ) : null}
       </div>
     </div>
   )

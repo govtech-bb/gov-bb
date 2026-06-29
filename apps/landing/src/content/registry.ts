@@ -17,9 +17,7 @@ export interface ContentPage {
   /** Build-time compiled body (see `vite-plugin-markdown.ts`). Empty root for feature pages. */
   hast: Root
   /** For a co-located `.tsx` page: its component, rendered instead of `hast`. */
-  Component?: import('react').ComponentType<{
-    components?: Record<string, unknown>
-  }>
+  Component?: import('react').ComponentType
   /**
    * A co-located page `.tsx` renders its own title/layout, so the catch-all
    * renders it bare inside the shell rather than through the markdown chrome.
