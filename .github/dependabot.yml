@@ -1,0 +1,18 @@
+# Keeps pinned GitHub Actions current so zizmor's stale-action-refs audit
+# doesn't fail CI when an action's floating major tag (e.g. v6) moves to a new
+# patch. Dependabot bumps the SHA + version comment together in a PR.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: sandbox
+    schedule:
+      interval: weekly
+    # Wait before adopting brand-new releases so a compromised/yanked version
+    # isn't pulled in the moment it ships (also satisfies zizmor's cooldown audit).
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns:
+          - "*"
