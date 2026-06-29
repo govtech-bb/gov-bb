@@ -1,21 +1,10 @@
 import type { ReactNode } from 'react'
-import { Text } from '@govtech-bb/react'
 
 /**
- * A muted (grey) paragraph — page lede, section intro, or `size="caption"` note.
- * Keep its content on one line in `.mdx`: a multi-line block would be wrapped in
- * MDX's own `<p>`, nesting it inside this one.
+ * A muted (grey) block — a section intro or a note. Renders a wrapper so the
+ * markdown inside keeps its own paragraph, inheriting the grey colour rather
+ * than nesting a second `<p>`.
  */
-export function Muted({
-  size,
-  children,
-}: {
-  size?: 'caption'
-  children: ReactNode
-}) {
-  return (
-    <Text as="p" size={size} className="text-mid-grey-00">
-      {children}
-    </Text>
-  )
+export function Muted({ children }: { children: ReactNode }) {
+  return <div className="text-mid-grey-00">{children}</div>
 }
