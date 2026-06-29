@@ -353,7 +353,6 @@ export default function FormRenderer({
   };
 
   const handleSubmit = async () => {
-    trackEvent("form-submit", { form_id: formMeta.formId });
     await form.handleSubmit();
     // handleSubmit resolves even when validation fails, so only advance when the
     // form is valid — otherwise the user would be moved past their own errors.
