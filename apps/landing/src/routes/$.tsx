@@ -4,6 +4,8 @@ import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { MaintenanceNotice } from '../components/MaintenanceNotice'
 import { MarkdownContent } from '../components/markdown'
+import { MdxArticle } from '../components/content/MdxArticle'
+import { mdxComponents } from '../components/content/mdx-components'
 import {
   categoryServices,
   findPage,
@@ -35,8 +37,12 @@ const toListItem = (p: ContentPage): CategoryListItem => ({
 
 type LoaderData =
   | {
+      // Only the URL crosses the loader→client serialization boundary; the
+      // full page (incl. its component function, which seroval can't serialize)
+      // is re-resolved from the registry — a module constant on both sides — at
+      // render time.
       kind: 'page'
-      page: ContentPage
+      url: string
       availableForms: string[]
       underMaintenance: boolean
     }
@@ -108,7 +114,7 @@ export const Route = createFileRoute('/$')({
       const underMaintenance = formId
         ? (await getMaintenanceForms()).includes(formId)
         : false
-      return { kind: 'page', page, availableForms, underMaintenance }
+      return { kind: 'page', url: page.url, availableForms, underMaintenance }
     }
 
     if (segments.length === 2) {
@@ -128,7 +134,8 @@ export const Route = createFileRoute('/$')({
   head: ({ loaderData }) => {
     if (!loaderData) return {}
     if (loaderData.kind === 'page') {
-      const { page } = loaderData
+      const page = findPage(loaderData.url)
+      if (!page) return {}
       const title = page.frontmatter.title
       const isPublic = pageLevel(page) === 'public'
       // Canonical/OG only for indexable pages — a gated page is noindex.
@@ -173,15 +180,18 @@ export const Route = createFileRoute('/$')({
 function ContentRoute() {
   const data = Route.useLoaderData()
   const { level } = Route.useRouteContext()
-  if (data.kind === 'page')
+  if (data.kind === 'page') {
+    const page = findPage(data.url)
+    if (!page) throw notFound()
     return (
       <PageView
-        page={data.page}
+        page={page}
         availableForms={data.availableForms}
         viewerLevel={level}
         underMaintenance={data.underMaintenance}
       />
     )
+  }
   if (data.kind === 'subcategory-index')
     return (
       <SubcategoryIndexView
@@ -225,16 +235,31 @@ function PageView({
     availableForms,
   })
   const level = pageLevel(page)
+  // `.mdx` content pages compile to a React component; render it through the
+  // same chrome as a `.md` page (H1, last-updated, grid) instead of the hast.
+  const Body = page.Component
   return (
     <Shell>
       {level !== 'public' ? <ReviewBanner level={level} /> : null}
       {underMaintenance ? <MaintenanceNotice /> : null}
-      <MarkdownContent
-        hast={page.hast}
-        frontmatter={page.frontmatter}
-        availableForms={new Set(availableForms)}
-        hideStartLink={hideStartLink}
-      />
+      {Body ? (
+        page.selfRendered ? (
+          // A co-located `.tsx` page renders its own title + layout.
+          <Body />
+        ) : (
+          // `.mdx` content renders through the single-column article chrome.
+          <MdxArticle frontmatter={page.frontmatter}>
+            <Body components={mdxComponents} />
+          </MdxArticle>
+        )
+      ) : (
+        <MarkdownContent
+          hast={page.hast}
+          frontmatter={page.frontmatter}
+          availableForms={new Set(availableForms)}
+          hideStartLink={hideStartLink}
+        />
+      )}
     </Shell>
   )
 }

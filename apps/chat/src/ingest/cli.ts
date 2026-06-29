@@ -10,6 +10,7 @@
 import { randomUUID } from "node:crypto";
 import { count, sql } from "drizzle-orm";
 import { loadContent } from "@govtech-bb/content";
+import { extractMdxText } from "./mdx-text";
 import { getDb, hasDatabase, schema } from "#/lib/db";
 import { MODEL_ID } from "#/lib/rag/embed";
 import { chunkService, type PlannedEntity } from "./chunker";
@@ -126,7 +127,10 @@ async function main() {
   console.log(`[ingest] embedding_model=${MODEL_ID}`);
   await preflight(args.resetEmbeddings, args.force);
 
-  const content = await loadContent({ contentDir: args.contentDir });
+  const content = await loadContent({
+    contentDir: args.contentDir,
+    mdxToText: extractMdxText,
+  });
   for (const w of content.warnings) console.warn(`[content] ${w}`);
   console.log(`[ingest] loaded ${content.services.length} services`);
 

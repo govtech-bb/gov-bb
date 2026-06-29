@@ -16,6 +16,15 @@ export interface ContentPage {
   body: string
   /** Build-time compiled body (see `vite-plugin-markdown.ts`). Empty root for feature pages. */
   hast: Root
+  /** For `.mdx` content pages: the compiled React component, rendered instead of `hast`. */
+  Component?: import('react').ComponentType<{
+    components?: Record<string, unknown>
+  }>
+  /**
+   * A co-located page `.tsx` renders its own title/layout, so the catch-all
+   * renders it bare inside the shell rather than through the markdown chrome.
+   */
+  selfRendered?: boolean
 }
 
 /** Shape each `*.md` file is compiled to by `vite-plugin-markdown.ts`. */
@@ -30,8 +39,8 @@ const EMPTY_HAST: Root = { type: 'root', children: [] }
 function slugFromPath(path: string): string {
   return path
     .replace(/^\.\//, '')
-    .replace(/\/index\.md$/, '')
-    .replace(/\.md$/, '')
+    .replace(/\/index\.(mdx?|tsx)$/, '')
+    .replace(/\.(mdx?|tsx)$/, '')
 }
 
 /** The slug one level up (`a/b/c` → `a/b`), or undefined at the top level. */
@@ -63,67 +72,144 @@ function leafFromSlug(
 
 const modules = import.meta.glob<MarkdownModule>('./**/*.md', { eager: true })
 
+/**
+ * Validate a page's raw frontmatter and derive its slug, canonical URL and
+ * typed Frontmatter. Shared by `.md` (hast body) and `.mdx` (React component)
+ * pages so both reach listings, search, breadcrumbs and the visibility gate
+ * through identical rules.
+ */
+function buildBasePage(
+  path: string,
+  rawFrontmatter: unknown,
+): { slug: string; url: string; frontmatter: Frontmatter; formId?: string } {
+  const slug = slugFromPath(path)
+  const parsed = FrontmatterSchema.safeParse(rawFrontmatter)
+  if (!parsed.success) {
+    throw new Error(
+      `Invalid frontmatter in src/content/${path.replace(/^\.\//, '')}: ${parsed.error.message}`,
+    )
+  }
+  const raw = parsed.data
+  const categories = Array.from(
+    new Set([
+      ...(raw.category ? [raw.category] : []),
+      ...(raw.categories ?? []),
+    ]),
+  )
+  for (const catSlug of categories) {
+    if (!CATEGORY_BY_SLUG[catSlug]) {
+      throw new Error(
+        `Page "${slug}" references unknown category "${catSlug}". Add it to src/content/categories.ts.`,
+      )
+    }
+  }
+  if (raw.subcategory) {
+    const owningCategory = categories.find((catSlug) =>
+      Boolean(getSubcategory(catSlug, raw.subcategory!)),
+    )
+    if (!owningCategory) {
+      throw new Error(
+        `Page "${slug}" sets subcategory "${raw.subcategory}" but none of its categories declare it. Add the sub-category to src/content/categories.ts or remove the field.`,
+      )
+    }
+  }
+  const frontmatter: Frontmatter = {
+    title: raw.title ?? titleFromSlug(slug),
+    description: raw.description,
+    lede: raw.lede,
+    categories,
+    subcategory: raw.subcategory,
+    publish_date: raw.publish_date,
+    source_url: raw.source_url,
+    stage: raw.stage,
+    visibility: raw.visibility,
+    featured: raw.featured,
+    section: raw.section,
+    service_type: raw.service_type,
+    form_id: raw.form_id,
+  }
+  /** Canonical URL: category + optional subcategory + leaf; uncategorised pages live at the root. */
+  const primaryCategory = categories[0]
+  const leaf = leafFromSlug(slug, primaryCategory, raw.subcategory)
+  const urlParts = [primaryCategory, raw.subcategory, leaf].filter(
+    (part): part is string => Boolean(part),
+  )
+  const url = urlParts.join('/')
+  return { slug, url, frontmatter, formId: raw.form_id }
+}
+
 const markdownPages: Array<ContentPage> = Object.entries(modules).map(
   ([path, mod]) => {
-    const slug = slugFromPath(path)
-    const parsed = FrontmatterSchema.safeParse(mod.frontmatter)
-    if (!parsed.success) {
-      throw new Error(
-        `Invalid frontmatter in src/content/${path.replace(/^\.\//, '')}: ${parsed.error.message}`,
-      )
-    }
-    const raw = parsed.data
-    const categories = Array.from(
-      new Set([
-        ...(raw.category ? [raw.category] : []),
-        ...(raw.categories ?? []),
-      ]),
+    const { slug, url, frontmatter, formId } = buildBasePage(
+      path,
+      mod.frontmatter,
     )
-    for (const catSlug of categories) {
-      if (!CATEGORY_BY_SLUG[catSlug]) {
-        throw new Error(
-          `Page "${slug}" references unknown category "${catSlug}". Add it to src/content/categories.ts.`,
-        )
-      }
-    }
-    if (raw.subcategory) {
-      const owningCategory = categories.find((catSlug) =>
-        Boolean(getSubcategory(catSlug, raw.subcategory!)),
-      )
-      if (!owningCategory) {
-        throw new Error(
-          `Page "${slug}" sets subcategory "${raw.subcategory}" but none of its categories declare it. Add the sub-category to src/content/categories.ts or remove the field.`,
-        )
-      }
-    }
-    const frontmatter: Frontmatter = {
-      title: raw.title ?? titleFromSlug(slug),
-      description: raw.description,
-      categories,
-      subcategory: raw.subcategory,
-      publish_date: raw.publish_date,
-      source_url: raw.source_url,
-      stage: raw.stage,
-      visibility: raw.visibility,
-      featured: raw.featured,
-      section: raw.section,
-      service_type: raw.service_type,
-      form_id: raw.form_id,
-    }
-    /** Canonical URL: category + optional subcategory + leaf; uncategorised pages live at the root. */
-    const primaryCategory = categories[0]
-    const leaf = leafFromSlug(slug, primaryCategory, raw.subcategory)
-    const urlParts = [primaryCategory, raw.subcategory, leaf].filter(
-      (part): part is string => Boolean(part),
-    )
-    const url = urlParts.join('/')
-    bakeStartLinkFormId(mod.hast, raw.form_id)
+    bakeStartLinkFormId(mod.hast, formId)
+    return { slug, url, frontmatter, body: mod.body, hast: mod.hast }
+  },
+)
+
+/** Shape each `*.mdx` content file compiles to (vite @mdx-js/rollup + frontmatter). */
+interface MdxModule {
+  default: import('react').ComponentType<{
+    components?: Record<string, unknown>
+  }>
+  frontmatter: Record<string, unknown>
+}
+
+const mdxModules = import.meta.glob<MdxModule>('./**/*.mdx', { eager: true })
+
+const mdxPages: Array<ContentPage> = Object.entries(mdxModules).map(
+  ([path, mod]) => {
+    const { slug, url, frontmatter } = buildBasePage(path, mod.frontmatter)
     return {
       slug,
       url,
       frontmatter,
-      body: mod.body,
-      hast: mod.hast,
+      body: '',
+      hast: EMPTY_HAST,
+      Component: mod.default,
+    }
+  },
+)
+
+/**
+ * A service folder can also hold a co-located page `.tsx` — an interactive page
+ * (e.g. a checklist) sitting beside its `index.mdx` and its `-ui`/`-data`. It
+ * exports `default` (the page component) and `meta` (validated like
+ * frontmatter). The page renders its own layout, so `selfRendered` tells the
+ * catch-all to render it bare inside the shell. `.tsx` inside dash-prefixed
+ * dirs (`-ui`/`-data`/…) are the service's private modules, NOT pages.
+ */
+// Exclude dash-prefixed dirs in the PATTERN (not a post-filter): the glob emits
+// a static `import { default }`/`import { meta }` for every match, so a `-ui`
+// component lacking those exports would be a build-time MISSING_EXPORT.
+const tsxPageDefaults = import.meta.glob(['./**/*.tsx', '!./**/-*/**'], {
+  eager: true,
+  import: 'default',
+})
+const tsxPageMetas = import.meta.glob(['./**/*.tsx', '!./**/-*/**'], {
+  eager: true,
+  import: 'meta',
+})
+
+const tsxPages: Array<ContentPage> = Object.keys(tsxPageDefaults).map(
+  (path) => {
+    const meta = tsxPageMetas[path]
+    if (!meta) {
+      throw new Error(
+        `Content page ${path.replace(/^\.\//, 'src/content/')} must "export const meta = { … }".`,
+      )
+    }
+    const { slug, url, frontmatter } = buildBasePage(path, meta)
+    return {
+      slug,
+      url,
+      frontmatter,
+      body: '',
+      hast: EMPTY_HAST,
+      Component: tsxPageDefaults[path] as ContentPage['Component'],
+      selfRendered: true,
     }
   },
 )
@@ -187,7 +273,24 @@ const featurePages: Array<ContentPage> = Object.entries(featureMetaModules).map(
   },
 )
 
-const ownUrlPages: Array<ContentPage> = [...markdownPages, ...featurePages]
+// A `.md` and a `.mdx` resolving to the same slug would silently shadow one
+// another, so fail fast — like every other content-config mistake here.
+const contentSlugs = new Set<string>()
+for (const page of [...markdownPages, ...mdxPages, ...tsxPages]) {
+  if (contentSlugs.has(page.slug)) {
+    throw new Error(
+      `Duplicate content slug "${page.slug}" — two content files resolve to the same page.`,
+    )
+  }
+  contentSlugs.add(page.slug)
+}
+
+const ownUrlPages: Array<ContentPage> = [
+  ...markdownPages,
+  ...mdxPages,
+  ...tsxPages,
+  ...featurePages,
+]
 const pageBySlug = new Map(ownUrlPages.map((p) => [p.slug, p]))
 
 /**

@@ -10,6 +10,12 @@ export interface LoadContentOptions {
    * or `apps/landing/src/content` resolved from CWD.
    */
   contentDir?: string;
+  /**
+   * Extract searchable text from an `.mdx` body (frontmatter already stripped).
+   * Injected by the caller so this package stays free of an MDX parser; when
+   * omitted, `.mdx` files are skipped.
+   */
+  mdxToText?: (source: string) => string;
 }
 
 async function findWorkspaceRoot(start: string): Promise<string | null> {
@@ -55,6 +61,8 @@ function parseService(
   slug: string,
   filePath: string,
   warnings: string[],
+  // `.mdx` bodies pass the injected MDX extractor; `.md` uses the identity default.
+  transformBody: (source: string) => string = (s) => s,
 ): ServiceEntity | null {
   const { data, content } = matter(raw);
   const parsed = serviceFrontmatterSchema.safeParse(data);
@@ -67,7 +75,7 @@ function parseService(
   return {
     ...parsed.data,
     slug,
-    body: content.trim(),
+    body: transformBody(content).trim(),
     filePath,
   };
 }
@@ -86,6 +94,7 @@ async function loadDir(
   relPrefix: string,
   warnings: string[],
   out: ServiceEntity[],
+  mdxToText?: (source: string) => string,
 ): Promise<void> {
   let entries: string[];
   try {
@@ -103,7 +112,7 @@ async function loadDir(
       const indexPath = join(path, "index.md");
       const raw = await readFileSafe(indexPath);
       if (raw === null) {
-        await loadDir(path, `${relPrefix}${name}/`, warnings, out);
+        await loadDir(path, `${relPrefix}${name}/`, warnings, out, mdxToText);
         continue;
       }
       const entity = parseService(
@@ -129,6 +138,19 @@ async function loadDir(
       continue;
     }
 
+    if (name.endsWith(".mdx")) {
+      if (!mdxToText) continue;
+      const raw = await readFile(path, "utf8");
+      const entity = parseService(
+        raw,
+        `${relPrefix}${name.slice(0, -4)}`,
+        path,
+        warnings,
+        mdxToText,
+      );
+      if (entity) out.push(entity);
+      continue;
+    }
     if (!name.endsWith(".md")) continue;
     if (name === "index.md" || name === "start.md") continue; // handled above
     const raw = await readFile(path, "utf8");
@@ -145,9 +167,10 @@ async function loadDir(
 async function loadServices(
   rootDir: string,
   warnings: string[],
+  mdxToText?: (source: string) => string,
 ): Promise<ServiceEntity[]> {
   const out: ServiceEntity[] = [];
-  await loadDir(rootDir, "", warnings, out);
+  await loadDir(rootDir, "", warnings, out, mdxToText);
   return out;
 }
 
@@ -156,6 +179,6 @@ export async function loadContent(
 ): Promise<ContentArtifact> {
   const rootDir = await resolveContentDir(opts);
   const warnings: string[] = [];
-  const services = await loadServices(rootDir, warnings);
+  const services = await loadServices(rootDir, warnings, opts.mdxToText);
   return { services, warnings };
 }
