@@ -29,9 +29,11 @@ import {
   storeSubmissionState,
   getSubmissionState,
   clearSubmissionState,
+  persistFormStartTime,
 } from "../../../lib/session-storage";
 import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
+import { formCategory } from "../../../lib/form-category";
 import {
   resolveSubmissionOutcome,
   applyPaymentReturn,
@@ -125,7 +127,11 @@ function RouteComponent() {
   });
 
   React.useEffect(() => {
-    trackEvent("form-open", { form_id: formMeta.formId });
+    trackEvent("form-start", {
+      form: formMeta.formId,
+      category: formCategory(formMeta.formId),
+    });
+    persistFormStartTime(formMeta.formId);
   }, [formMeta.formId]);
 
   // Secret hygiene: once a `?preview=` token has unlocked the form, drop it from

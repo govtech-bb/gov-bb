@@ -126,6 +126,21 @@ export function getFirstIncompleteActiveStep(
   return activeSteps.find((s) => !completedSteps.includes(s.stepId)) ?? null;
 }
 
+// Duration tracking: stamp the start at form-open so form-submit can report
+// elapsed seconds (legacy-parity duration_seconds).
+export function persistFormStartTime(formId: string) {
+  sessionStorage.setItem(`formStart_${formId}`, String(Date.now()));
+}
+
+export function getFormStartTime(formId: string): number | null {
+  const raw = sessionStorage.getItem(`formStart_${formId}`);
+  return raw ? Number(raw) : null;
+}
+
+export function clearFormStartTime(formId: string) {
+  sessionStorage.removeItem(`formStart_${formId}`);
+}
+
 /**
  * Returns true when every step that precedes `targetStepId` inside
  * `activeSteps` has already been completed.

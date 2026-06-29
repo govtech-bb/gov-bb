@@ -67,6 +67,11 @@ vi.mock("../../../lib/session-storage", () => ({
   getSubmissionState: vi.fn(() => null),
   storeSubmissionState: vi.fn(),
   clearSubmissionState: vi.fn(),
+  persistFormStartTime: vi.fn(),
+}));
+
+vi.mock("../../../lib/form-category", () => ({
+  formCategory: vi.fn(() => "test-category"),
 }));
 
 vi.mock("@forms/form-api", () => ({
