@@ -4,6 +4,7 @@ import { z } from "zod";
 import { FormDefinitionEntity, FormConfigEntity } from "@govtech-bb/database";
 import {
   serviceContractRecipeSchema,
+  draftRecipeSchema,
   processorSchema,
   type ServiceContractRecipe,
   type Processor,
@@ -161,6 +162,30 @@ async function upsertFormConfigBlob(
   // — matching the file's existing `err: any` style.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await repo.upsert({ formId, config: blob as any }, ["formId"]);
+}
+
+// Defense-in-depth structural gate shared by the three write handlers (#1499):
+// the recipe blob must parse against draftRecipeSchema before it can be
+// persisted to form_definitions.schema. Draft rows aren't served to citizens,
+// but the DB should never hold a structurally-invalid `schema`. Uses the
+// lenient draft schema (createdAt/updatedAt relaxed to optional) so it's never
+// stricter than the publish backstop and can't reject a legitimate mid-edit
+// draft. Returns the (unmodified) recipe so the write persists exactly what the
+// caller sent — not Zod's stripped copy; otherwise it has already written the
+// 400 with the Zod issues and returns null.
+function parseDraftRecipe(
+  recipe: unknown,
+  res: Response,
+): ServiceContractRecipe | null {
+  const parsed = draftRecipeSchema.safeParse(recipe);
+  if (!parsed.success) {
+    const detail = parsed.error.issues
+      .map((i) => `${i.path.join(".") || "recipe"}: ${i.message}`)
+      .join("; ");
+    res.status(400).json({ error: detail || "Invalid recipe" });
+    return null;
+  }
+  return recipe as ServiceContractRecipe;
 }
 
 // Upstream apps/api base URL for the published-recipe proxy. Falls back to the
@@ -430,12 +455,9 @@ export async function createFormHandler(
   res: Response,
 ): Promise<void> {
   try {
-    const recipe = req.body.recipe as ServiceContractRecipe;
+    const recipe = parseDraftRecipe(req.body.recipe, res);
+    if (!recipe) return;
     const isNew = req.body.isNew === true;
-    if (!recipe?.formId) {
-      res.status(400).json({ error: "recipe must have a formId" });
-      return;
-    }
     const ds = await getDataSource();
     // Read-only lock (#874): an *existing* form may only be saved by the current
     // claim holder. A brand-new form (isNew) has no prior claim and isn't in
@@ -548,7 +570,8 @@ export async function updateFormHandler(
   res: Response,
 ): Promise<void> {
   try {
-    const recipe = req.body.recipe as ServiceContractRecipe;
+    const recipe = parseDraftRecipe(req.body.recipe, res);
+    if (!recipe) return;
     const ds = await getDataSource();
     // Read-only lock (#874): only the current claim holder may save.
     if (!(await enforcePresence(ds, String(req.params.formId), req.body, res)))
@@ -642,11 +665,8 @@ export async function rekeyFormHandler(
 ): Promise<void> {
   try {
     const oldFormId = String(req.params.formId);
-    const recipe = req.body.recipe as ServiceContractRecipe;
-    if (!recipe?.formId) {
-      res.status(400).json({ error: "recipe must have a formId" });
-      return;
-    }
+    const recipe = parseDraftRecipe(req.body.recipe, res);
+    if (!recipe) return;
     const newFormId = recipe.formId;
     const ds = await getDataSource();
     // Read-only lock (#874): a re-key moves an existing form (an identity change
