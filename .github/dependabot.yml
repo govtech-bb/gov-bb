@@ -33,6 +33,10 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
+    # Stay on current majors; adopt new base-image majors by hand.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       docker:
         patterns:
