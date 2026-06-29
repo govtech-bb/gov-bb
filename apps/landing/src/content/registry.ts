@@ -16,7 +16,7 @@ export interface ContentPage {
   body: string
   /** Build-time compiled body (see `vite-plugin-markdown.ts`). Empty root for feature pages. */
   hast: Root
-  /** For `.mdx` content pages: the compiled React component, rendered instead of `hast`. */
+  /** For a co-located `.tsx` page: its component, rendered instead of `hast`. */
   Component?: import('react').ComponentType<{
     components?: Record<string, unknown>
   }>
@@ -116,7 +116,6 @@ function buildBasePage(
   const frontmatter: Frontmatter = {
     title: raw.title ?? titleFromSlug(slug),
     description: raw.description,
-    lede: raw.lede,
     categories,
     subcategory: raw.subcategory,
     publish_date: raw.publish_date,
@@ -149,33 +148,9 @@ const markdownPages: Array<ContentPage> = Object.entries(modules).map(
   },
 )
 
-/** Shape each `*.mdx` content file compiles to (vite @mdx-js/rollup + frontmatter). */
-interface MdxModule {
-  default: import('react').ComponentType<{
-    components?: Record<string, unknown>
-  }>
-  frontmatter: Record<string, unknown>
-}
-
-const mdxModules = import.meta.glob<MdxModule>('./**/*.mdx', { eager: true })
-
-const mdxPages: Array<ContentPage> = Object.entries(mdxModules).map(
-  ([path, mod]) => {
-    const { slug, url, frontmatter } = buildBasePage(path, mod.frontmatter)
-    return {
-      slug,
-      url,
-      frontmatter,
-      body: '',
-      hast: EMPTY_HAST,
-      Component: mod.default,
-    }
-  },
-)
-
 /**
  * A service folder can also hold a co-located page `.tsx` — an interactive page
- * (e.g. a checklist) sitting beside its `index.mdx` and its `-ui`/`-data`. It
+ * (e.g. a checklist) sitting beside its `index.md` and its `-ui`/`-data`. It
  * exports `default` (the page component) and `meta` (validated like
  * frontmatter). The page renders its own layout, so `selfRendered` tells the
  * catch-all to render it bare inside the shell. `.tsx` inside dash-prefixed
@@ -273,10 +248,10 @@ const featurePages: Array<ContentPage> = Object.entries(featureMetaModules).map(
   },
 )
 
-// A `.md` and a `.mdx` resolving to the same slug would silently shadow one
-// another, so fail fast — like every other content-config mistake here.
+// A `.md` and a co-located `.tsx` resolving to the same slug would silently
+// shadow one another, so fail fast — like every other content-config mistake.
 const contentSlugs = new Set<string>()
-for (const page of [...markdownPages, ...mdxPages, ...tsxPages]) {
+for (const page of [...markdownPages, ...tsxPages]) {
   if (contentSlugs.has(page.slug)) {
     throw new Error(
       `Duplicate content slug "${page.slug}" — two content files resolve to the same page.`,
@@ -287,7 +262,6 @@ for (const page of [...markdownPages, ...mdxPages, ...tsxPages]) {
 
 const ownUrlPages: Array<ContentPage> = [
   ...markdownPages,
-  ...mdxPages,
   ...tsxPages,
   ...featurePages,
 ]

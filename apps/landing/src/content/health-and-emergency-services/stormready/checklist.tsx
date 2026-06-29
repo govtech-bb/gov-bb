@@ -6,7 +6,7 @@ import {
 
 /**
  * Interactive household checklist — a co-located content page in the StormReady
- * service folder, beside index.mdx and its -ui/-data. It renders its own title
+ * service folder, beside index.md and its -ui/-data. It renders its own title
  * and layout, so the catch-all route renders it bare inside the page shell (see
  * registry `selfRendered`). Visibility is gated by the catch-all like any
  * content page; document head comes from `meta`.

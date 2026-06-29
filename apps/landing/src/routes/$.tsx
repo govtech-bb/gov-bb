@@ -4,12 +4,6 @@ import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { MaintenanceNotice } from '../components/MaintenanceNotice'
 import { MarkdownContent } from '../components/markdown'
-import { MdxArticle } from '../components/content/MdxArticle'
-import { mdxComponents } from '../components/content/mdx-components'
-import {
-  AvailableFormsContext,
-  FormIdContext,
-} from '../components/markdown/StartLink'
 import {
   categoryServices,
   findPage,
@@ -239,29 +233,15 @@ function PageView({
     availableForms,
   })
   const level = pageLevel(page)
-  // `.mdx` content pages compile to a React component; render it through the
-  // same chrome as a `.md` page (H1, last-updated, grid) instead of the hast.
-  const Body = page.Component
+  // A co-located `.tsx` page renders its own title/layout; everything else is
+  // a `.md` page rendered through the markdown article chrome.
+  const Body = page.selfRendered ? page.Component : undefined
   return (
     <Shell>
       {level !== 'public' ? <ReviewBanner level={level} /> : null}
       {underMaintenance ? <MaintenanceNotice /> : null}
       {Body ? (
-        page.selfRendered ? (
-          // A co-located `.tsx` page renders its own title + layout.
-          <Body />
-        ) : (
-          // `.mdx` content renders through the shared article chrome; the form
-          // contexts let an MDX `<StartLink>` resolve its id and gate the button
-          // exactly as the `.md` hast path does.
-          <MdxArticle frontmatter={page.frontmatter}>
-            <AvailableFormsContext.Provider value={new Set(availableForms)}>
-              <FormIdContext.Provider value={page.frontmatter.form_id}>
-                <Body components={mdxComponents} />
-              </FormIdContext.Provider>
-            </AvailableFormsContext.Provider>
-          </MdxArticle>
-        )
+        <Body />
       ) : (
         <MarkdownContent
           hast={page.hast}

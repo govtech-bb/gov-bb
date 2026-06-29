@@ -10,12 +10,6 @@ export interface LoadContentOptions {
    * or `apps/landing/src/content` resolved from CWD.
    */
   contentDir?: string;
-  /**
-   * Extract searchable text from an `.mdx` body (frontmatter already stripped).
-   * Injected by the caller so this package stays free of an MDX parser; when
-   * omitted, `.mdx` files are skipped.
-   */
-  mdxToText?: (source: string) => string;
 }
 
 async function findWorkspaceRoot(start: string): Promise<string | null> {
@@ -61,8 +55,6 @@ function parseService(
   slug: string,
   filePath: string,
   warnings: string[],
-  // `.mdx` bodies pass the injected MDX extractor; `.md` uses the identity default.
-  transformBody: (source: string) => string = (s) => s,
 ): ServiceEntity | null {
   const { data, content } = matter(raw);
   const parsed = serviceFrontmatterSchema.safeParse(data);
@@ -75,7 +67,7 @@ function parseService(
   return {
     ...parsed.data,
     slug,
-    body: transformBody(content).trim(),
+    body: content.trim(),
     filePath,
   };
 }
@@ -94,7 +86,6 @@ async function loadDir(
   relPrefix: string,
   warnings: string[],
   out: ServiceEntity[],
-  mdxToText?: (source: string) => string,
 ): Promise<void> {
   let entries: string[];
   try {
@@ -109,15 +100,10 @@ async function loadDir(
     const s = await stat(path);
 
     if (s.isDirectory()) {
-      // A service index may be `.mdx` (migrated) or `.md` (legacy).
-      const mdxIndexRaw = mdxToText
-        ? await readFileSafe(join(path, "index.mdx"))
-        : null;
-      const indexIsMdx = mdxIndexRaw !== null;
-      const indexPath = join(path, indexIsMdx ? "index.mdx" : "index.md");
-      const raw = mdxIndexRaw ?? (await readFileSafe(indexPath));
+      const indexPath = join(path, "index.md");
+      const raw = await readFileSafe(indexPath);
       if (raw === null) {
-        await loadDir(path, `${relPrefix}${name}/`, warnings, out, mdxToText);
+        await loadDir(path, `${relPrefix}${name}/`, warnings, out);
         continue;
       }
       const entity = parseService(
@@ -125,23 +111,14 @@ async function loadDir(
         `${relPrefix}${name}`,
         indexPath,
         warnings,
-        indexIsMdx ? mdxToText : undefined,
       );
       if (!entity) continue;
-      const startMdxRaw = mdxToText
-        ? await readFileSafe(join(path, "start.mdx"))
-        : null;
-      const startIsMdx = startMdxRaw !== null;
-      const startRaw =
-        startMdxRaw ?? (await readFileSafe(join(path, "start.md")));
+      const startRaw = await readFileSafe(join(path, "start.md"));
       if (startRaw) {
         entity.hasStartPage = true;
-        const startContent = matter(startRaw).content;
-        const startBody = (
-          startIsMdx && mdxToText
-            ? mdxToText(startContent)
-            : startContent.replace(START_LINK_RE, "")
-        ).trim();
+        const startBody = matter(startRaw)
+          .content.replace(START_LINK_RE, "")
+          .trim();
         if (startBody) {
           // A synthetic heading keeps the start page's lead-in prose from
           // bleeding into whatever section happens to end the index body.
@@ -152,19 +129,6 @@ async function loadDir(
       continue;
     }
 
-    if (name.endsWith(".mdx")) {
-      if (!mdxToText) continue;
-      const raw = await readFile(path, "utf8");
-      const entity = parseService(
-        raw,
-        `${relPrefix}${name.slice(0, -4)}`,
-        path,
-        warnings,
-        mdxToText,
-      );
-      if (entity) out.push(entity);
-      continue;
-    }
     if (!name.endsWith(".md")) continue;
     if (name === "index.md" || name === "start.md") continue; // handled above
     const raw = await readFile(path, "utf8");
@@ -181,10 +145,9 @@ async function loadDir(
 async function loadServices(
   rootDir: string,
   warnings: string[],
-  mdxToText?: (source: string) => string,
 ): Promise<ServiceEntity[]> {
   const out: ServiceEntity[] = [];
-  await loadDir(rootDir, "", warnings, out, mdxToText);
+  await loadDir(rootDir, "", warnings, out);
   return out;
 }
 
@@ -193,6 +156,6 @@ export async function loadContent(
 ): Promise<ContentArtifact> {
   const rootDir = await resolveContentDir(opts);
   const warnings: string[] = [];
-  const services = await loadServices(rootDir, warnings, opts.mdxToText);
+  const services = await loadServices(rootDir, warnings);
   return { services, warnings };
 }

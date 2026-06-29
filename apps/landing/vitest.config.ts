@@ -1,7 +1,6 @@
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
-import { mdxPlugin } from './vite-plugin-mdx'
 import { markdown } from './vite-plugin-markdown'
 
 // Deliberately NOT the app vite.config.ts: booting nitro (an SSR server)
@@ -13,12 +12,11 @@ import { markdown } from './vite-plugin-markdown'
 export default defineConfig({
   resolve: {
     tsconfigPaths: true,
-    extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json', '.mdx'],
+    extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
   },
   plugins: [
-    mdxPlugin(),
     markdown(),
     tanstackStart(),
-    viteReact({ include: /\.(mdx|js|jsx|ts|tsx)$/ }),
+    viteReact({ include: /\.(js|jsx|ts|tsx)$/ }),
   ],
 })

@@ -4,18 +4,14 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import { nitro } from 'nitro/vite'
 import tailwindcss from '@tailwindcss/vite'
-import { mdxPlugin } from './vite-plugin-mdx'
 import { markdown } from './vite-plugin-markdown'
 
 export default defineConfig({
   resolve: {
     tsconfigPaths: true,
-    extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json', '.mdx'],
+    extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
   },
   plugins: [
-    // `.mdx` content pages compile to React components; `.md` stays on the
-    // custom hast pipeline (markdown()). enforce:'pre' so MDX runs first.
-    mdxPlugin(),
     tailwindcss(),
     devtools(),
     markdown(),
@@ -59,6 +55,6 @@ export default defineConfig({
       },
     }),
     tanstackStart(),
-    viteReact({ include: /\.(mdx|js|jsx|ts|tsx)$/ }),
+    viteReact({ include: /\.(js|jsx|ts|tsx)$/ }),
   ],
 })
