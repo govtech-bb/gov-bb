@@ -179,7 +179,7 @@ export default function FormRenderer({
       category: formCategory(formMeta.formId),
       step: currentStep.stepId,
     });
-  }, [currentStep?.stepId, formMeta.formId]);
+  }, [currentStep?.stepId, formMeta.formId, stepIndex, visibleSteps.length]);
 
   // submissionState is rehydrated from session storage, so a refresh on the
   // confirmation step normally keeps the committed outcome. If it is still
