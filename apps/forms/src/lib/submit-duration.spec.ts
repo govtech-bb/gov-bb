@@ -6,6 +6,9 @@ describe("elapsedSeconds", () => {
     expect(elapsedSeconds(null)).toBe(0);
   });
   it("rounds elapsed time to whole seconds", () => {
-    expect(elapsedSeconds(Date.now() - 3000)).toBeGreaterThanOrEqual(2);
+    vi.useFakeTimers();
+    vi.setSystemTime(1500);
+    expect(elapsedSeconds(0)).toBe(2); // Math.round(1500/1000) = 2
+    vi.useRealTimers();
   });
 });

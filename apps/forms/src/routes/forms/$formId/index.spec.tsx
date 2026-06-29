@@ -558,7 +558,11 @@ describe("RouteComponent onSubmit handler", () => {
     await expect(onSubmit({ value: {} })).resolves.not.toThrow();
     expect(mockTrackEvent).toHaveBeenCalledWith(
       "form-submit",
-      expect.objectContaining({ form: "test-form" }),
+      expect.objectContaining({
+        form: "test-form",
+        category: "test-category",
+        duration_seconds: 0,
+      }),
     );
   });
 
