@@ -28,6 +28,7 @@ import {
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
+import { reviewDwellSeconds } from "./review-dwell";
 import { buildValidationErrorPayload } from "./validation-error-event";
 import { stepCompleteEventName } from "./step-events";
 import { StatusBanner } from "@govtech-bb/react";
@@ -191,6 +192,22 @@ export default function FormRenderer({
       navigateToStep("check-your-answers");
     }
   }, [currentStep?.stepId, submissionState, navigateToStep]);
+
+  const reviewEnteredAt = React.useRef<number | null>(null);
+  React.useEffect(() => {
+    if (currentStep?.stepId === "check-your-answers") {
+      reviewEnteredAt.current = Date.now();
+      return () => {
+        // Fires when the user leaves the review step (advance or back).
+        trackEvent("form-review", {
+          form: formMeta.formId,
+          category: formCategory(formMeta.formId),
+          duration_seconds: reviewDwellSeconds(reviewEnteredAt.current),
+        });
+        reviewEnteredAt.current = null;
+      };
+    }
+  }, [currentStep?.stepId, formMeta.formId]);
 
   if (!currentStep) return null;
 
