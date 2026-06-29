@@ -697,6 +697,9 @@ importers:
       '@govtech-bb/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
+      '@govtech-bb/content':
+        specifier: workspace:*
+        version: link:../../packages/content
       '@govtech-bb/design':
         specifier: ^1.0.0-alpha.16
         version: 1.0.0-alpha.16
