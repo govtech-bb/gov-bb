@@ -28,6 +28,7 @@ import {
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
+import { buildValidationErrorPayload } from "./validation-error-event";
 import { stepCompleteEventName } from "./step-events";
 import { StatusBanner } from "@govtech-bb/react";
 import { resolveStepTitle } from "@govtech-bb/form-conditions";
@@ -273,15 +274,18 @@ export default function FormRenderer({
 
     const hasError = results.some((r) => r.length > 0);
     if (hasError) {
-      results.forEach((fieldErrors, i) => {
-        if (fieldErrors.length === 0) return;
-        trackEvent("form-field-error", {
-          form_id: formMeta.formId,
-          step_id: currentStep.stepId,
-          field_id: currentFields[i].fieldId,
-          reason: "validation",
-        });
-      });
+      trackEvent(
+        "form-validation-error",
+        buildValidationErrorPayload(
+          formMeta.formId,
+          formCategory(formMeta.formId),
+          currentStep.stepId,
+          currentFields.map((field, i) => ({
+            fieldId: field.fieldId,
+            errors: results[i],
+          })),
+        ),
+      );
       scrollToTop();
       return;
     }
