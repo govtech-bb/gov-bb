@@ -1,5 +1,6 @@
 import { LinkButton } from '@govtech-bb/react'
 import { markdownComponents } from '../markdown/MdComponents'
+import { StartLink } from '../markdown/StartLink'
 import { Highlights, Highlight } from './Highlights'
 import { Contacts, Contact } from './Contacts'
 import { Notice } from './Notice'
@@ -14,6 +15,7 @@ import { Muted } from './Muted'
 export const mdxComponents = {
   ...markdownComponents,
   LinkButton,
+  StartLink,
   Highlights,
   Highlight,
   Contacts,

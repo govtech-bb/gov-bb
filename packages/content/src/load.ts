@@ -109,8 +109,13 @@ async function loadDir(
     const s = await stat(path);
 
     if (s.isDirectory()) {
-      const indexPath = join(path, "index.md");
-      const raw = await readFileSafe(indexPath);
+      // A service index may be `.mdx` (migrated) or `.md` (legacy).
+      const mdxIndexRaw = mdxToText
+        ? await readFileSafe(join(path, "index.mdx"))
+        : null;
+      const indexIsMdx = mdxIndexRaw !== null;
+      const indexPath = join(path, indexIsMdx ? "index.mdx" : "index.md");
+      const raw = mdxIndexRaw ?? (await readFileSafe(indexPath));
       if (raw === null) {
         await loadDir(path, `${relPrefix}${name}/`, warnings, out, mdxToText);
         continue;
@@ -120,14 +125,23 @@ async function loadDir(
         `${relPrefix}${name}`,
         indexPath,
         warnings,
+        indexIsMdx ? mdxToText : undefined,
       );
       if (!entity) continue;
-      const startRaw = await readFileSafe(join(path, "start.md"));
+      const startMdxRaw = mdxToText
+        ? await readFileSafe(join(path, "start.mdx"))
+        : null;
+      const startIsMdx = startMdxRaw !== null;
+      const startRaw =
+        startMdxRaw ?? (await readFileSafe(join(path, "start.md")));
       if (startRaw) {
         entity.hasStartPage = true;
-        const startBody = matter(startRaw)
-          .content.replace(START_LINK_RE, "")
-          .trim();
+        const startContent = matter(startRaw).content;
+        const startBody = (
+          startIsMdx && mdxToText
+            ? mdxToText(startContent)
+            : startContent.replace(START_LINK_RE, "")
+        ).trim();
         if (startBody) {
           // A synthetic heading keeps the start page's lead-in prose from
           // bleeding into whatever section happens to end the index body.
