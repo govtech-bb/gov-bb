@@ -40,9 +40,20 @@ RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
 
 WORKDIR /app
 
-# Download AWS RDS CA bundle for TLS connections
-RUN wget -O /app/rds-ca-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem && \
-    chown app:app /app/rds-ca-bundle.pem
+# `script` is required for ECS Exec session logging (issue #217). ECS Exec
+# uploads the session to CloudWatch/S3 only if `script` and `cat` are present in
+# the image; node:alpine ships busybox `cat` but NOT `script` (it lives in
+# util-linux-misc). Without it, exec works but nothing is ever logged.
+RUN apk add --no-cache util-linux-misc
+
+# AWS RDS CA bundle for TLS connections to RDS (issue #304). Committed to the
+# repo (certs/rds-global-bundle.pem) and COPYed in rather than fetched at build
+# time — no unverified network download, and the build no longer depends on the
+# truststore endpoint being reachable. It's the global-bundle.pem of RDS root
+# CAs; RDS auto-rotates the DB *server* cert under the same roots, so this is
+# stable for years. Refresh only on a new RDS root-CA generation (rare):
+#   curl -fsSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o certs/rds-global-bundle.pem
+COPY --chown=app:app certs/rds-global-bundle.pem /app/rds-ca-bundle.pem
 
 RUN chown app:app /app
 USER app

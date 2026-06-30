@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { CustomComponent } from "@govtech-bb/database";
 import { getDataSource } from "../db.js";
 import { getSystemPrompt } from "../ai/system-prompt.js";
+import { formatCustomComponentList } from "../ai/custom-component-prompt.js";
 import { getContentSystemPrompt } from "../ai/content-prompt.js";
 import { chat, isAvailable } from "../ai/client.js";
 import {
@@ -26,12 +27,9 @@ export const aiRouter = Router();
 async function buildSystemPrompt(): Promise<string> {
   const ds = await getDataSource();
   const customs = await ds.getRepository(CustomComponent).find();
-  const componentList = customs
-    .map((c) => {
-      const def = c.definition as Record<string, unknown>;
-      return `- \`components/${c.namespace}/${c.type}\` — ${def?.htmlType ?? "unknown"} (${def?.label ?? "no label"})`;
-    })
-    .join("\n");
+  // Sanitize-on-read: custom_components rows are untrusted input to the prompt
+  // that every AI action reuses (#292).
+  const componentList = formatCustomComponentList(customs);
 
   const basePrompt = getSystemPrompt();
   return componentList
