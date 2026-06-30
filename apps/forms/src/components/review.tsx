@@ -6,6 +6,8 @@ import { getInstanceMarker, getVisibleFields } from "@forms/lib";
 import { DateValue } from "@govtech-bb/form-types";
 import { resolveStepTitle } from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
+import { trackEvent } from "../lib/analytics";
+import { formCategory } from "../lib/form-category";
 
 export default function Review({
   formMeta,
@@ -39,6 +41,11 @@ export default function Review({
   const handleChangeClick =
     (stepId: string) => (event: React.MouseEvent<HTMLAnchorElement>) => {
       event.preventDefault();
+      trackEvent("form-step-edit", {
+        form: formMeta.formId,
+        category: formCategory(formMeta.formId),
+        step: stepId,
+      });
       void navigate({
         search: (prev: Record<string, unknown>) => ({
           ...prev,

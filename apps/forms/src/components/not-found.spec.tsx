@@ -26,9 +26,9 @@ describe("NotFound", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders 'Go to Homepage' link pointing to the landing site", () => {
+  it("renders 'Return to homepage' link pointing to the landing site", () => {
     render(<NotFound />);
-    const link = screen.getByRole("link", { name: /go to homepage/i });
+    const link = screen.getByRole("link", { name: /^return to homepage$/i });
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute("href", LANDING_URL);
   });

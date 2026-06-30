@@ -2,7 +2,7 @@ import { LANDING_CATEGORIES, VISIBILITY_LEVELS, type ViewLevel, type StartLinkTy
 import { BodyEditor } from "./-body-editor";
 import { FormCombobox } from "./-form-combobox";
 import type { EditorState } from "./-editor-state";
-import type { FormDefinitionSummary } from "../../types/index";
+import type { BuilderFormSummary } from "../../types/index";
 import s from "./-styles.module.css";
 
 /**
@@ -16,7 +16,7 @@ export function PageFields({
   layout,
 }: {
   ed: EditorState;
-  formOptions: FormDefinitionSummary[];
+  formOptions: BuilderFormSummary[];
   layout: "stacked" | "wide";
 }) {
   const { state, set, setState } = ed;
