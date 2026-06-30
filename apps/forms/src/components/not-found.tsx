@@ -1,21 +1,35 @@
+import React from "react";
 import { LANDING_URL } from "../config/landing";
-import { ErrorPage } from "./error-page";
 
 export default function NotFound() {
   return (
-    <ErrorPage
-      title="We couldn't find that page"
-      intro="The page you're looking for may have been moved, removed, or the address may have been typed incorrectly."
-      suggestions={[
-        "Check the web address for typos",
-        "Return to the homepage",
-        "Browse our service directory",
-      ]}
-      secondary={{
-        label: "Browse our service directory",
-        href: `${LANDING_URL}/services`,
-      }}
-      primary={{ label: "Return to homepage", href: LANDING_URL }}
-    />
+    <div className="container py-8 lg:py-16">
+      <div className="form-page form-page__message form-width">
+        {/* Header */}
+        <div>
+          <h1 className="govbb-text-h1">We couldn&lsquo;t find that page</h1>
+          <p>
+            The page you’re looking for may have been moved, removed, or the
+            address may have been typed incorrectly.
+          </p>
+        </div>
+
+        {/* Suggestions */}
+        <div>
+          <h3 className="govbb-text-h3">Suggestions:</h3>
+          <ul className="govbb-list govbb-list--bullet">
+            <li>Check the web address for typos</li>
+            <li>Return to the homepage</li>
+          </ul>
+        </div>
+
+        {/* Quick Link Buttons */}
+        <div>
+          <a className="govbb-btn" href={LANDING_URL}>
+            Go to Homepage
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }

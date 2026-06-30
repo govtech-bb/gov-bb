@@ -29,14 +29,9 @@ import {
   storeSubmissionState,
   getSubmissionState,
   clearSubmissionState,
-  persistFormStartTime,
-  getFormStartTime,
-  clearFormStartTime,
 } from "../../../lib/session-storage";
-import { elapsedSeconds } from "../../../lib/submit-duration";
 import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
-import { formCategory } from "../../../lib/form-category";
 import {
   resolveSubmissionOutcome,
   applyPaymentReturn,
@@ -130,11 +125,7 @@ function RouteComponent() {
   });
 
   React.useEffect(() => {
-    trackEvent("form-start", {
-      form: formMeta.formId,
-      category: formCategory(formMeta.formId),
-    });
-    persistFormStartTime(formMeta.formId);
+    trackEvent("form-open", { form_id: formMeta.formId });
   }, [formMeta.formId]);
 
   // Secret hygiene: once a `?preview=` token has unlocked the form, drop it from
@@ -248,9 +239,8 @@ function RouteComponent() {
         response = await postFormSubmission(formMeta, formattedData, preview);
       } catch {
         trackEvent("form-submit-error", {
-          form: formMeta.formId,
-          category: formCategory(formMeta.formId),
-          errors: "network",
+          form_id: formMeta.formId,
+          reason: "network",
         });
         // Commit a failed state so the confirmation step shows the
         // "Something went wrong" panel with a retry, instead of leaving the
@@ -274,17 +264,14 @@ function RouteComponent() {
         // starts fresh. Gated on the success event (not submissionSuccess) so
         // the payment-init error path keeps the answers for its Try again flow.
         clearFormState(formMeta.formId);
-        trackEvent("form-submit", {
-          form: formMeta.formId,
-          category: formCategory(formMeta.formId),
-          duration_seconds: elapsedSeconds(getFormStartTime(formMeta.formId)),
+        trackEvent(event.name, {
+          form_id: formMeta.formId,
+          step_count: visibleSteps.length,
         });
-        clearFormStartTime(formMeta.formId);
       } else if (event) {
-        trackEvent("form-submit-error", {
-          form: formMeta.formId,
-          category: formCategory(formMeta.formId),
-          errors: event.reason ?? event.name,
+        trackEvent(event.name, {
+          form_id: formMeta.formId,
+          reason: event.reason,
         });
       }
     },

@@ -14,7 +14,7 @@ import {
   type StartLinkType,
 } from "./-lib";
 import type { ContentPageSummary } from "./-server";
-import type { BuilderFormSummary } from "../../types/index";
+import type { FormDefinitionSummary } from "../../types/index";
 import { draftKeyFor, readDraft, writeDraft, clearDraft } from "./-draft-store";
 
 /**
@@ -95,7 +95,7 @@ function catSlug(title: string): string {
 }
 
 export function useEditorState(
-  forms: BuilderFormSummary[],
+  forms: FormDefinitionSummary[],
   search: EditSearch,
   contentPages: ContentPageSummary[] | null,
 ) {

@@ -1,15 +1,5 @@
 import type { Mock } from "vitest";
-import {
-  authHeaders,
-  ghError,
-  createPublishClient,
-  createdAtFromContents,
-} from "./index";
-
-/** Base64-encode a UTF-8 string the way the Contents API returns file content. */
-function b64(text: string): string {
-  return Buffer.from(text, "utf8").toString("base64");
-}
+import { authHeaders, ghError, createPublishClient } from "./index";
 
 const REPO = { owner: "acme", repo: "widgets" };
 
@@ -272,37 +262,5 @@ describe("createPublishClient", () => {
         "/pulls?state=open&base=dev&per_page=100&page=1",
       );
     });
-  });
-});
-
-describe("createdAtFromContents", () => {
-  it("returns the createdAt decoded from the base64 file content", () => {
-    const content = b64(
-      JSON.stringify({
-        formId: "passport-renewal",
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-05-22T00:00:00.000Z",
-      }),
-    );
-    expect(createdAtFromContents({ content })).toBe("2026-01-01T00:00:00.000Z");
-  });
-
-  it("returns undefined when there is no inline content", () => {
-    // GitHub omits inline content for files over 1MB; treat as first publish.
-    expect(createdAtFromContents({})).toBeUndefined();
-  });
-
-  it("returns undefined when the content is not valid JSON", () => {
-    expect(createdAtFromContents({ content: b64("not json") })).toBeUndefined();
-  });
-
-  it("returns undefined when the recipe has no createdAt", () => {
-    const content = b64(JSON.stringify({ formId: "x", steps: [] }));
-    expect(createdAtFromContents({ content })).toBeUndefined();
-  });
-
-  it("returns undefined when createdAt is not a string", () => {
-    const content = b64(JSON.stringify({ createdAt: 12345 }));
-    expect(createdAtFromContents({ content })).toBeUndefined();
   });
 });

@@ -27,10 +27,6 @@ import {
   buildFieldValidationProperties,
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
-import { formCategory } from "../lib/form-category";
-import { reviewDwellSeconds } from "./review-dwell";
-import { buildValidationErrorPayload } from "./validation-error-event";
-import { stepCompleteEventName } from "./step-events";
 import { StatusBanner } from "@govtech-bb/react";
 import { resolveStepTitle } from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
@@ -175,9 +171,10 @@ export default function FormRenderer({
   React.useEffect(() => {
     if (!currentStep) return;
     trackEvent("form-step-view", {
-      form: formMeta.formId,
-      category: formCategory(formMeta.formId),
-      step: currentStep.stepId,
+      form_id: formMeta.formId,
+      step_id: currentStep.stepId,
+      step_index: stepIndex,
+      step_count: visibleSteps.length,
     });
   }, [currentStep?.stepId, formMeta.formId, stepIndex, visibleSteps.length]);
 
@@ -191,22 +188,6 @@ export default function FormRenderer({
       navigateToStep("check-your-answers");
     }
   }, [currentStep?.stepId, submissionState, navigateToStep]);
-
-  const reviewEnteredAt = React.useRef<number | null>(null);
-  React.useEffect(() => {
-    if (currentStep?.stepId === "check-your-answers") {
-      reviewEnteredAt.current = Date.now();
-      return () => {
-        // Fires when the user leaves the review step (advance or back).
-        trackEvent("form-review", {
-          form: formMeta.formId,
-          category: formCategory(formMeta.formId),
-          duration_seconds: reviewDwellSeconds(reviewEnteredAt.current),
-        });
-        reviewEnteredAt.current = null;
-      };
-    }
-  }, [currentStep?.stepId, formMeta.formId]);
 
   if (!currentStep) return null;
 
@@ -229,9 +210,9 @@ export default function FormRenderer({
     const prevStep = visibleSteps[stepIndex - 1];
     if (prevStep) {
       trackEvent("form-step-back", {
-        form: formMeta.formId,
-        category: formCategory(formMeta.formId),
-        step: currentStep.stepId,
+        form_id: formMeta.formId,
+        from_step: currentStep.stepId,
+        to_step: prevStep.stepId,
       });
       navigateToStep(prevStep.stepId);
     }
@@ -290,18 +271,15 @@ export default function FormRenderer({
 
     const hasError = results.some((r) => r.length > 0);
     if (hasError) {
-      trackEvent(
-        "form-validation-error",
-        buildValidationErrorPayload(
-          formMeta.formId,
-          formCategory(formMeta.formId),
-          currentStep.stepId,
-          currentFields.map((field, i) => ({
-            fieldId: field.fieldId,
-            errors: results[i],
-          })),
-        ),
-      );
+      results.forEach((fieldErrors, i) => {
+        if (fieldErrors.length === 0) return;
+        trackEvent("form-field-error", {
+          form_id: formMeta.formId,
+          step_id: currentStep.stepId,
+          field_id: currentFields[i].fieldId,
+          reason: "validation",
+        });
+      });
       scrollToTop();
       return;
     }
@@ -318,9 +296,8 @@ export default function FormRenderer({
       const anotherFieldId = getFullFieldId(currentStep.stepId, "addAnother");
 
       const anotherFieldValue = form.getFieldValue(anotherFieldId);
-      // Per-step completion events (<formId>:form-step-<word>) are not fired for
-      // repeatable add/remove transitions — out of v1 analytics scope. The next
-      // form-step-view still fires.
+      // form-step-advance is not fired for repeatable add/remove transitions —
+      // out of v1 analytics scope. The next form-step-view still fires.
       if (anotherFieldValue === "yes") {
         const updatedSteps = addRepeatableStep({
           currentStep,
@@ -359,17 +336,17 @@ export default function FormRenderer({
     }
     const nextStep = visibleSteps[stepIndex + 1];
     if (nextStep) {
-      // Pre-qualified name (contains ":") so trackEvent forwards it as-is.
-      trackEvent(stepCompleteEventName(formMeta.formId, stepIndex), {
-        form: formMeta.formId,
-        category: formCategory(formMeta.formId),
-        step: currentStep.stepId,
+      trackEvent("form-step-advance", {
+        form_id: formMeta.formId,
+        from_step: currentStep.stepId,
+        to_step: nextStep.stepId,
       });
     }
     completeAndContinue(currentStep.stepId);
   };
 
   const handleSubmit = async () => {
+    trackEvent("form-submit", { form_id: formMeta.formId });
     await form.handleSubmit();
     // handleSubmit resolves even when validation fails, so only advance when the
     // form is valid — otherwise the user would be moved past their own errors.

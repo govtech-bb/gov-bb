@@ -289,15 +289,6 @@
   border-bottom-color: var(--el-1000);
   color: var(--txt);
 }
-/* The control itself is transparent over the toolbar, but the open option
-   popup is painted by the OS. On Windows/Chrome that popup ignores
-   color-scheme, so in dark mode it fell back to a white box with the light
-   --el-800 option text → light-on-light (#1739). Give the options an explicit
-   surface + text colour from the tokens so they read in both themes. */
-.toolbar select.visibilitySelect option {
-  background-color: var(--el-0);
-  color: var(--txt);
-}
 
 .headerActions {
   display: flex;

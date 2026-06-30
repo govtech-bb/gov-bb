@@ -74,13 +74,6 @@ export function createDataSource(
   } as DataSourceOptions);
 }
 
-// Shared env→DataSource helpers
-export {
-  buildSslConfig,
-  dbOptionsFromEnv,
-  createDataSourceFromEnv,
-} from "./data-source-env";
-
 // Re-export all entities and migration classes
 export * from "./entities/index";
 export * from "./migrations/index";

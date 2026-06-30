@@ -1,7 +1,7 @@
 import React from "react";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { fetchFormDefinitions } from "@forms/form-api";
-import type { PublicFormSummary } from "@forms/types";
+import type { FormDefinitionSummary } from "@forms/types";
 import { LANDING_URL } from "../config/landing";
 import { isDevMode } from "../lib/env";
 
@@ -32,9 +32,9 @@ const UNKNOWN_CATEGORY = "Unknown Category";
  * Categories are sorted alphabetically with that bucket always last.
  */
 export function groupFormsByCategory(
-  forms: PublicFormSummary[],
-): { category: string; forms: PublicFormSummary[] }[] {
-  const groups = new Map<string, PublicFormSummary[]>();
+  forms: FormDefinitionSummary[],
+): { category: string; forms: FormDefinitionSummary[] }[] {
+  const groups = new Map<string, FormDefinitionSummary[]>();
   for (const form of forms) {
     const category = form.category?.trim() || UNKNOWN_CATEGORY;
     const bucket = groups.get(category);

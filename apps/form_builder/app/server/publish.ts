@@ -19,7 +19,6 @@ import {
   createBranchFrom,
   deleteBranch,
   getContents,
-  createdAtFromContents,
   putFile,
   openPullRequest,
 } from "./github";
@@ -154,31 +153,18 @@ export const publishRecipe = createServerFn({ method: "POST" })
     try {
       // Overwrite the canonical flat recipe file in place. It already exists on
       // the base branch (and so on this branch), so fetch its blob SHA — the
-      // Contents API requires `sha` to update an existing file. The same
-      // response carries the committed file's content, so preserve its original
-      // `createdAt` rather than restamping it (#1720); `updatedAt` stays at the
-      // freshly-serialized value. On first publish (no existing file) the recipe
-      // is written verbatim with both stamps minted.
+      // Contents API requires `sha` to update an existing file.
       const recipePath = `apps/api/src/forms/form-definitions/recipes/${recipe.formId}.json`;
       const existing = await getContents(token, recipePath, branch);
-      let existingSha: string | undefined;
-      let preservedCreatedAt: string | undefined;
-      if (existing.status === 200) {
-        const body = (await existing.json()) as {
-          sha?: string;
-          content?: string;
-        };
-        existingSha = body.sha;
-        preservedCreatedAt = createdAtFromContents(body);
-      }
-      const recipeToPublish = preservedCreatedAt
-        ? { ...recipe, createdAt: preservedCreatedAt }
-        : recipe;
+      const existingSha =
+        existing.status === 200
+          ? ((await existing.json()) as { sha?: string }).sha
+          : undefined;
 
       const putRes = await putFile(token, {
         path: recipePath,
         message: `Publish ${recipe.formId}`,
-        content: JSON.stringify(recipeToPublish, null, 2) + "\n",
+        content: JSON.stringify(recipe, null, 2) + "\n",
         branch,
         ...(existingSha ? { sha: existingSha } : {}),
       });

@@ -159,7 +159,7 @@ describe('$ route loader gating', () => {
     })
     expect(data).toEqual({
       kind: 'page',
-      url: fakePage.url,
+      page: fakePage,
       availableForms: ['get-birth-certificate'],
       underMaintenance: false,
     })

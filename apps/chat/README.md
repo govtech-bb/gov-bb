@@ -1,77 +1,265 @@
-# @govtech-bb/chat — "Ask alpha.gov.bb"
+Welcome to your new TanStack Start app! 
 
-A server-rendered conversational assistant that answers questions about
-Government of Barbados services and can fill simple forms conversationally.
-Every factual answer is grounded in content retrieved from the official site
-(**strict RAG**); the language model runs on **AWS Bedrock** (Claude,
-`claude-haiku-4-5` by default), with **Postgres + pgvector** behind retrieval.
+# Getting Started
 
-For the full system design — funnel state machine, retrieval pipeline, form
-handoff, feedback flow — see [SPEC.md](./SPEC.md). Before changing code here,
-read [CLAUDE.md](./CLAUDE.md): these TanStack libraries move fast, so verify
-APIs against installed `.d.ts` files rather than from memory.
-
-## Stack
-
-TanStack Start + TanStack Router (SSR) · TanStack AI (streaming + tool calls) ·
-AWS Bedrock (`@govtech-bb/ai-bedrock`) · Postgres + pgvector via Drizzle ORM ·
-react-markdown + remark-gfm.
-
-## Running
+To run this application:
 
 ```bash
-pnpm dev        # vite dev on port 3000
+pnpm install
+pnpm dev
 ```
 
-Needs a Postgres (pgvector) instance and AWS credentials. Local `.env`:
+# Building For Production
+
+To build this application for production:
+
+```bash
+pnpm build
+```
+
+## Testing
+
+This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
+
+```bash
+pnpm test
+```
+
+## Styling
+
+This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
+
+### Removing Tailwind CSS
+
+If you prefer not to use Tailwind CSS:
+
+1. Remove the demo pages in `src/routes/demo/`
+2. Replace the Tailwind import in `src/styles.css` with your own styles
+3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
+4. Uninstall the packages: `pnpm remove @tailwindcss/vite tailwindcss`
+
+
+# TanStack Chat Application
+
+Am example chat application built with TanStack Start, TanStack Store, and Claude AI.
+
+## .env Updates
 
 ```env
-RAG_URL=http://localhost:3000/api
-DATABASE_URL=postgres://...        # pgvector-enabled
-AWS_PROFILE=...                    # credentials via the AWS SDK default chain
-AWS_REGION=ca-central-1
+# AWS Bedrock. Credentials come from the AWS SDK default chain
+# (AWS_PROFILE / env / instance role).
+BEDROCK_REGION=us-east-1
+LLM_MODEL=claude-haiku-4-5   # short alias resolved by @govtech-bb/ai-bedrock
 ```
 
-Bedrock requires `bedrock:InvokeModel` and
-`bedrock:InvokeModelWithResponseStream` on the inference-profile ARN for the
-chosen model. The adapter falls back to non-streaming `Converse` if streaming
-is denied, so streaming permission is recommended but not required.
+Bedrock requires `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream`
+on the inference-profile ARN for the model you select. The adapter falls back
+to non-streaming `Converse` if `InvokeModelWithResponseStream` is denied, so
+streaming permission is recommended but not strictly required.
 
-## Database & content ingestion
+## Production env vars (Amplify Console)
 
-```bash
-pnpm db:generate    # drizzle-kit: generate a migration from schema changes
-pnpm db:migrate     # apply migrations
-pnpm db:studio      # drizzle studio
-pnpm db:reset       # drop + recreate (destructive)
-pnpm ingest         # crawl/chunk/embed official content into pgvector
+Env vars are read at request time from `process.env`. Set them in
+Amplify Console → your app → App settings → Environment variables.
+No build-time baking, no `.env.production` generation — Amplify injects
+them into the SSR Lambda's runtime environment.
+
+Required:
+
+- `RAG_URL` — usually `https://<your-chat-domain>/api`
+- `DATABASE_URL` — Postgres (pgvector RDS)
+- `FORM_API_URL` — forms submission API base URL
+
+Optional (have defaults):
+
+- `BEDROCK_REGION` — defaults to `AWS_REGION`, else `ca-central-1`
+- `LLM_MODEL` — defaults to `claude-haiku-4-5`
+- `REWRITE_MODEL` — defaults to `claude-haiku-4-5`
+
+## Re-ingest after chunker changes
+
+The chunker now appends `chunkIndex` to each chunk's slug to prevent collisions
+on duplicate headings. Existing rows ingested before this change have the old
+slug scheme. After pulling this branch, run `pnpm db:reset && pnpm ingest` to
+rebuild — old + new chunks will not dedupe against each other otherwise.
+
+## ✨ Features
+
+### AI Capabilities
+- 🤖 Powered by Claude 3.5 Sonnet 
+- 📝 Rich markdown formatting with syntax highlighting
+- 🎯 Customizable system prompts for tailored AI behavior
+- 🔄 Real-time message updates and streaming responses (coming soon)
+
+### User Experience
+- 🎨 Modern UI with Tailwind CSS and Lucide icons
+- 🔍 Conversation management and history
+- 🔐 Secure API key management
+- 📋 Markdown rendering with code highlighting
+
+### Technical Features
+- 📦 Centralized state management with TanStack Store
+- 🔌 Extensible architecture for multiple AI providers
+- 🛠️ TypeScript for type safety
+
+## Architecture
+
+### Tech Stack
+- **Frontend Framework**: TanStack Start
+- **Routing**: TanStack Router
+- **State Management**: TanStack Store
+- **Styling**: Tailwind CSS
+- **AI Integration**: Anthropic's Claude API
+
+
+## Routing
+
+This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
+
+### Adding A Route
+
+To add a new route to your application just add a new file in the `./src/routes` directory.
+
+TanStack will automatically generate the content of the route file for you.
+
+Now that you have two routes you can use a `Link` component to navigate between them.
+
+### Adding Links
+
+To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
+
+```tsx
+import { Link } from "@tanstack/react-router";
 ```
 
-> After chunker changes, re-ingest: the chunker appends `chunkIndex` to each
-> chunk's slug, so old rows won't dedupe against new ones. Run
-> `pnpm db:reset && pnpm ingest` to rebuild.
+Then anywhere in your JSX you can use it like so:
 
-## Evaluation
-
-```bash
-pnpm eval:sweep       # retrieval sweep over the eval set
-pnpm eval:responses   # end-to-end response eval
+```tsx
+<Link to="/about">About</Link>
 ```
 
-## Tests
+This will create a link that will navigate to the `/about` route.
 
-```bash
-pnpm test   # Node test runner via tsx (src/**/*.test.ts)
+More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
+
+### Using A Layout
+
+In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
+
+Here is an example layout that includes a header:
+
+```tsx
+import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+
+export const Route = createRootRoute({
+  head: () => ({
+    meta: [
+      { charSet: 'utf-8' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { title: 'My App' },
+    ],
+  }),
+  shellComponent: ({ children }) => (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <header>
+          <nav>
+            <Link to="/">Home</Link>
+            <Link to="/about">About</Link>
+          </nav>
+        </header>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  ),
+})
 ```
 
-## Deployment
+More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
 
-Deployed as SSR on **AWS Amplify Compute** (not Docker in prod). Env vars are
-read from `process.env` at request time — set them in Amplify Console → App
-settings → Environment variables (no build-time baking):
+## Server Functions
 
-- **Required:** `RAG_URL` (usually `https://<chat-domain>/api`), `DATABASE_URL`
-  (pgvector RDS), `FORM_API_URL` (forms submission API base)
-- **Optional (defaulted):** `BEDROCK_REGION` (→ `AWS_REGION`, else
-  `ca-central-1`), `LLM_MODEL` (`claude-haiku-4-5`), `REWRITE_MODEL`
-  (`claude-haiku-4-5`)
+TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
+
+```tsx
+import { createServerFn } from '@tanstack/react-start'
+
+const getServerTime = createServerFn({
+  method: 'GET',
+}).handler(async () => {
+  return new Date().toISOString()
+})
+
+// Use in a component
+function MyComponent() {
+  const [time, setTime] = useState('')
+  
+  useEffect(() => {
+    getServerTime().then(setTime)
+  }, [])
+  
+  return <div>Server time: {time}</div>
+}
+```
+
+## API Routes
+
+You can create API routes by using the `server` property in your route definitions:
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { json } from '@tanstack/react-start'
+
+export const Route = createFileRoute('/api/hello')({
+  server: {
+    handlers: {
+      GET: () => json({ message: 'Hello, World!' }),
+    },
+  },
+})
+```
+
+## Data Fetching
+
+There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
+
+For example:
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/people')({
+  loader: async () => {
+    const response = await fetch('https://swapi.dev/api/people')
+    return response.json()
+  },
+  component: PeopleComponent,
+})
+
+function PeopleComponent() {
+  const data = Route.useLoaderData()
+  return (
+    <ul>
+      {data.results.map((person) => (
+        <li key={person.name}>{person.name}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
+
+# Demo files
+
+Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
+
+# Learn More
+
+You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
+
+For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).

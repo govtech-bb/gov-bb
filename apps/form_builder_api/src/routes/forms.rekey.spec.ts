@@ -114,7 +114,6 @@ function recipe(over: Record<string, unknown> = {}) {
     formId: "birth-registration",
     version: "1.0.0",
     title: "Birth Registration",
-    steps: [],
     ...over,
   };
 }

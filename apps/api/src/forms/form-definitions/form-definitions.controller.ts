@@ -17,10 +17,7 @@ import { GetFormDefinitionDocs } from "./form-definitions.docs";
 import { ApiResponse as AppApiResponse } from "@/common/response";
 import { isValidSecretToken } from "@/common/secret-token";
 import type { ApiResponseShape } from "@/common/response";
-import type {
-  PublicFormSummary,
-  ServiceContract,
-} from "@govtech-bb/form-types";
+import type { ServiceContract } from "@govtech-bb/form-types";
 
 /**
  * Cross-app shared preview cookie (#1646 Phase 3, ADR 0058). Byte-identical to
@@ -69,7 +66,11 @@ export class FormDefinitionsController {
   ) {}
 
   @Get()
-  async getAll(): Promise<ApiResponseShape<PublicFormSummary[]>> {
+  async getAll(): Promise<
+    ApiResponseShape<
+      { formId: string; title: string; version: string; category?: string }[]
+    >
+  > {
     // Exclude disabled (tombstoned) forms so the public list matches the 410
     // Gone the single-form GET returns for them — otherwise a disabled form
     // still shows on the forms index and as a landing "Start now" button

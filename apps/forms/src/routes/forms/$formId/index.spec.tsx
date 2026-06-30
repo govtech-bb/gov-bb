@@ -67,17 +67,6 @@ vi.mock("../../../lib/session-storage", () => ({
   getSubmissionState: vi.fn(() => null),
   storeSubmissionState: vi.fn(),
   clearSubmissionState: vi.fn(),
-  persistFormStartTime: vi.fn(),
-  getFormStartTime: vi.fn(() => null),
-  clearFormStartTime: vi.fn(),
-}));
-
-vi.mock("../../../lib/submit-duration", () => ({
-  elapsedSeconds: vi.fn(() => 0),
-}));
-
-vi.mock("../../../lib/form-category", () => ({
-  formCategory: vi.fn(() => "test-category"),
 }));
 
 vi.mock("@forms/form-api", () => ({
@@ -557,12 +546,8 @@ describe("RouteComponent onSubmit handler", () => {
     });
     await expect(onSubmit({ value: {} })).resolves.not.toThrow();
     expect(mockTrackEvent).toHaveBeenCalledWith(
-      "form-submit",
-      expect.objectContaining({
-        form: "test-form",
-        category: "test-category",
-        duration_seconds: 0,
-      }),
+      "form-submit-success",
+      expect.objectContaining({ form_id: "test-form" }),
     );
   });
 
@@ -598,12 +583,12 @@ describe("RouteComponent onSubmit handler", () => {
     // Payment could not be initiated — this must not register as a success
     // in analytics (issue #318); it reports a payment-init error instead.
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
-      "form-submit",
+      "form-submit-success",
       expect.anything(),
     );
     expect(mockTrackEvent).toHaveBeenCalledWith(
       "form-submit-error",
-      expect.objectContaining({ form: "test-form", errors: "payment-init" }),
+      expect.objectContaining({ form_id: "test-form", reason: "payment-init" }),
     );
   });
 
@@ -627,9 +612,8 @@ describe("RouteComponent onSubmit handler", () => {
       expect.objectContaining({ submissionSuccess: false }),
     );
     expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
-      form: "test-form",
-      category: "test-category",
-      errors: "server",
+      form_id: "test-form",
+      reason: "server",
     });
   });
 
@@ -678,7 +662,7 @@ describe("RouteComponent onSubmit handler", () => {
     // Stays silent on analytics: a 'processing' replay is a duplicate of an
     // already-tracked submit, so neither a success nor an error event fires.
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
-      "form-submit",
+      "form-submit-success",
       expect.anything(),
     );
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
@@ -699,7 +683,7 @@ describe("RouteComponent onSubmit handler", () => {
     });
     await onSubmit({ value: {} });
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
-      "form-submit",
+      "form-submit-success",
       expect.anything(),
     );
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
@@ -730,12 +714,11 @@ describe("RouteComponent onSubmit handler", () => {
       await onSubmit({ value: {} });
     });
     expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
-      form: "test-form",
-      category: "test-category",
-      errors: "network",
+      form_id: "test-form",
+      reason: "network",
     });
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
-      "form-submit",
+      "form-submit-success",
       expect.anything(),
     );
     // The catch must still commit a failed state so the confirmation step
