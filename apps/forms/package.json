@@ -6,6 +6,7 @@
   "dependencies": {
     "@fontsource/figtree": "^5.2.10",
     "@govtech-bb/analytics": "workspace:*",
+    "@govtech-bb/content": "workspace:*",
     "@govtech-bb/design": "^1.0.0-alpha.16",
     "@govtech-bb/form-conditions": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
