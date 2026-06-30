@@ -6,6 +6,7 @@ import {
   buildFunnel,
   buildPageRows,
   buildSearchReport,
+  buildSources,
   parseEventName,
   tallyFields,
   weightedAverage,
@@ -109,8 +110,26 @@ describe("buildPageRows", () => {
       2,
     );
     expect(rows).toEqual([
-      { path: "/b", pageviews: 50, visitors: 30 },
-      { path: "/c", pageviews: 20, visitors: 15 },
+      { path: "/b", pageviews: 50, visitors: 30, topSources: [] },
+      { path: "/c", pageviews: 20, visitors: 15, topSources: [] },
+    ]);
+  });
+});
+
+describe("buildSources", () => {
+  it("normalises empty referrer to (direct), keeps order, and slices", () => {
+    expect(
+      buildSources(
+        [
+          { x: "google.com", y: 10 },
+          { x: "", y: 4 },
+          { x: "t.co", y: 2 },
+        ],
+        2,
+      ),
+    ).toEqual([
+      { referrer: "google.com", count: 10 },
+      { referrer: "(direct)", count: 4 },
     ]);
   });
 });

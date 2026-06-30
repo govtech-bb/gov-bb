@@ -13,6 +13,7 @@ import {
   buildFormRows,
   buildPageRows,
   buildSearchReport,
+  buildSources,
   type FormDetailSource,
 } from "./metrics";
 import { renderReport } from "./render";
@@ -75,6 +76,16 @@ async function buildPresetReport(
   const pageRowsRaw = await client.metricsUrls(landingId, range);
   const eventRows = await client.metricsEvents(formsId, range);
   const pages = buildPageRows(pageRowsRaw, top);
+
+  // Per-page top referrers (one filtered call per shown page).
+  for (const page of pages) {
+    const referrers = await client.metricsReferrers(
+      landingId,
+      page.path,
+      range,
+    );
+    page.topSources = buildSources(referrers, 3);
+  }
 
   const agg = aggregateFormEvents(eventRows);
   // Pick the top forms by starts, then pull their event-data for the detail.

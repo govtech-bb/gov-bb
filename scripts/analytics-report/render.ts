@@ -67,12 +67,20 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;"
 let activeForm = null;
 function presetByKey(key) { return DATA.presets.find((p) => p.key === key); }
 
+function renderSource(sources) {
+  if (!sources || !sources.length) return '<td class="muted">—</td>';
+  const title = sources.map((s) => s.referrer + " · " + fmtInt(s.count)).join(", ");
+  const extra = sources.length > 1 ? ' <span class="muted">+' + (sources.length - 1) + '</span>' : '';
+  return '<td title="' + esc(title) + '">' + esc(sources[0].referrer) +
+    ' <span class="muted">(' + fmtInt(sources[0].count) + ')</span>' + extra + '</td>';
+}
+
 function renderPages(p) {
   if (!p.pages.length) return '<div class="empty">No page data for this range.</div>';
   const rows = p.pages.map((r) =>
-    '<tr><td>' + esc(r.path) + '</td><td class="num">' + fmtInt(r.pageviews) + '</td><td class="num">' + fmtInt(r.visitors) + '</td></tr>'
+    '<tr><td>' + esc(r.path) + '</td><td class="num">' + fmtInt(r.pageviews) + '</td><td class="num">' + fmtInt(r.visitors) + '</td>' + renderSource(r.topSources) + '</tr>'
   ).join("");
-  return '<div class="scroll"><table><thead><tr><th>Path</th><th class="num">Pageviews</th><th class="num">Visitors</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  return '<div class="scroll"><table><thead><tr><th>Path</th><th class="num">Pageviews</th><th class="num">Visitors</th><th>Top source</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
 
 function renderForms(p) {

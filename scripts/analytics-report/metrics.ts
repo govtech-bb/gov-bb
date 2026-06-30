@@ -12,6 +12,7 @@ import type {
   MetricRow,
   PageRow,
   SearchReport,
+  SourceRow,
 } from "./types";
 
 const NUMBER_WORDS = [
@@ -136,8 +137,19 @@ export function buildPageRows(rows: ExpandedRow[], topN: number): PageRow[] {
       path: r.x ?? r.name ?? "(unknown)",
       pageviews: r.pageviews ?? r.y ?? 0,
       visitors: r.visitors ?? 0,
+      topSources: [] as SourceRow[],
     }))
     .sort((a, b) => b.pageviews - a.pageviews)
+    .slice(0, topN);
+}
+
+/**
+ * Top referrers for a page, from `/metrics?type=referrer&path=…`. An empty
+ * referrer (`x`) is direct traffic. Already descending; just normalise + slice.
+ */
+export function buildSources(rows: MetricRow[], topN: number): SourceRow[] {
+  return rows
+    .map((r) => ({ referrer: r.x?.trim() ? r.x : "(direct)", count: r.y }))
     .slice(0, topN);
 }
 

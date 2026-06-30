@@ -9,7 +9,17 @@ const model: ReportModel = {
     {
       key: "last-7-days",
       label: "Last 7 days",
-      pages: [{ path: "/get-birth-certificate", pageviews: 120, visitors: 90 }],
+      pages: [
+        {
+          path: "/get-birth-certificate",
+          pageviews: 120,
+          visitors: 90,
+          topSources: [
+            { referrer: "google.com", count: 40 },
+            { referrer: "(direct)", count: 30 },
+          ],
+        },
+      ],
       forms: [
         {
           formId: "get-birth-certificate",
@@ -62,6 +72,11 @@ describe("renderReport", () => {
     expect(html).toContain("Last 7 days");
     expect(html).toContain("Get a birth certificate");
     expect(html).toContain("Funnel");
+  });
+
+  it("shows a Top source column and per-page referrers", () => {
+    expect(html).toContain("Top source");
+    expect(html).toContain('"google.com"'); // embedded in DATA
   });
 
   it("renders the enriched drill-down (field-error frequency + error types)", () => {

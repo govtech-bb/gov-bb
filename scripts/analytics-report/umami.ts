@@ -63,6 +63,20 @@ export class UmamiClient {
     });
   }
 
+  /** Top referrers for a single page (`path` is Umami's URL filter param). */
+  metricsReferrers(
+    websiteId: string,
+    pagePath: string,
+    range: Range,
+  ): Promise<MetricRow[]> {
+    return this.get<MetricRow[]>(`/websites/${websiteId}/metrics`, {
+      type: "referrer",
+      path: pagePath,
+      ...range,
+      limit: 10,
+    });
+  }
+
   /** Event-name counts (forms site). Aligned events are `<form_id>:<event>`. */
   metricsEvents(websiteId: string, range: Range): Promise<MetricRow[]> {
     return this.get<MetricRow[]>(`/websites/${websiteId}/metrics`, {

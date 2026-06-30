@@ -28,10 +28,17 @@ export interface FormMeta {
   category: string;
 }
 
+export interface SourceRow {
+  referrer: string;
+  count: number;
+}
+
 export interface PageRow {
   path: string;
   pageviews: number;
   visitors: number;
+  /** top referrers driving traffic to this page (descending), empty if none. */
+  topSources: SourceRow[];
 }
 
 export interface FormRow {
