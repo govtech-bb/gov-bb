@@ -30,6 +30,9 @@ import {
   storeSubmissionState,
   getSubmissionState,
   clearSubmissionState,
+  clearFormStartTime,
+  getFormStartTime,
+  persistFormStartTime,
 } from "./session-storage";
 import type { SubmissionState } from "@forms/types";
 
@@ -289,6 +292,26 @@ describe("isStepAccessible", () => {
 
   it("returns false for any step when activeSteps is empty", () => {
     expect(isStepAccessible(FORM_ID, "step1", [])).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// form start time
+// ---------------------------------------------------------------------------
+
+describe("form start time", () => {
+  it("persists and reads back a numeric start time", () => {
+    persistFormStartTime("form_abc");
+    const t = getFormStartTime("form_abc");
+    expect(typeof t).toBe("number");
+  });
+  it("returns null when absent", () => {
+    expect(getFormStartTime("never-started")).toBeNull();
+  });
+  it("clears the start time", () => {
+    persistFormStartTime("form_abc");
+    clearFormStartTime("form_abc");
+    expect(getFormStartTime("form_abc")).toBeNull();
   });
 });
 

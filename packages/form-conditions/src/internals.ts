@@ -112,8 +112,15 @@ export function evaluateCondition(
     case "notEqual":
       return coerce(target) !== coerce(behaviour.value);
     case "in": {
-      const list = behaviour.value as Array<string | number>;
-      if (!Array.isArray(list)) return false;
+      // Tolerate a non-array value: builder-authored recipes from before #1738
+      // stored a bare scalar, so coerce one into a one-element list. An
+      // empty/absent value yields an empty list that matches nothing.
+      const raw = behaviour.value;
+      const list = Array.isArray(raw)
+        ? raw
+        : raw === undefined || raw === null || raw === ""
+          ? []
+          : [raw];
       const coercedList = list.map(coerce);
       // A multi-select checkbox target is a string[] of selected options;
       // match when any selected option is in the list (set intersection).

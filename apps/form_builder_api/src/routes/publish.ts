@@ -4,7 +4,11 @@ import {
   deployBranchName,
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
-import { createPublishClient, type GitHubRepo } from "@govtech-bb/git-publish";
+import {
+  createPublishClient,
+  createdAtFromContents,
+  type GitHubRepo,
+} from "@govtech-bb/git-publish";
 import { getDataSource } from "../db.js";
 import { holdsFreshClaim } from "./presence.js";
 import { validateRecipeFully } from "./validate-recipe.js";
@@ -85,15 +89,29 @@ export async function publishHandler(req: Request, res: Response) {
       // validateRecipeFully; for valid input this is a no-op (#935).
       const contentsPath = `recipes/${encodeURIComponent(typedRecipe.formId)}.json`;
       // The flat file already exists on the base branch, so fetch its blob SHA
-      // to update in place (the Contents API requires `sha` to overwrite).
+      // to update in place (the Contents API requires `sha` to overwrite). The
+      // same response carries the committed file's content, so preserve its
+      // original `createdAt` rather than restamping it (#1720); `updatedAt`
+      // stays at the value the recipe arrived with. On first publish (no
+      // existing file) the recipe is written verbatim with its minted stamps.
       const existing = await gh.getContents(token, contentsPath, branch);
-      const existingSha = existing.ok
-        ? ((await existing.json()) as { sha?: string }).sha
-        : undefined;
+      let existingSha: string | undefined;
+      let preservedCreatedAt: string | undefined;
+      if (existing.ok) {
+        const body = (await existing.json()) as {
+          sha?: string;
+          content?: string;
+        };
+        existingSha = body.sha;
+        preservedCreatedAt = createdAtFromContents(body);
+      }
+      const recipeToPublish = preservedCreatedAt
+        ? { ...typedRecipe, createdAt: preservedCreatedAt }
+        : typedRecipe;
       const putRes = await gh.putFile(token, {
         path: contentsPath,
         message: `Publish ${typedRecipe.formId}`,
-        content: JSON.stringify(typedRecipe, null, 2) + "\n",
+        content: JSON.stringify(recipeToPublish, null, 2) + "\n",
         branch,
         ...(existingSha ? { sha: existingSha } : {}),
       });
