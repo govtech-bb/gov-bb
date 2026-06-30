@@ -83,9 +83,11 @@ describe("renderReport", () => {
     expect(html).toContain("Funnel");
   });
 
-  it("shows a Top source column and per-page referrers", () => {
+  it("shows a Top source column with a hover popover of all sources", () => {
     expect(html).toContain("Top source");
     expect(html).toContain('"google.com"'); // embedded in DATA
+    expect(html).toContain("data-sources="); // cell carries the full list
+    expect(html).toContain('id="srcpop"'); // fixed hover popover element
   });
 
   it("renders the enriched drill-down (field-error frequency + humanised reasons)", () => {

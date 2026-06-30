@@ -15,13 +15,19 @@ const STYLE = `
 }
 * { box-sizing: border-box; }
 body { margin: 0; font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--ink); background: var(--bg); }
-header { background: var(--teal); color: var(--white); padding: 20px 24px; }
+header { background: var(--teal); color: var(--white); padding: 16px 0; position: sticky; top: 0; z-index: 30; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.header-inner { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
 header h1 { margin: 0 0 4px; font-size: 20px; }
 header .meta { font-size: 13px; opacity: .85; }
 .controls { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
 .controls label { font-size: 13px; }
 select { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,.4); background: var(--white); color: var(--ink); }
 main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+#search-body { padding: 4px 18px 20px; }
+#srcpop { display: none; position: fixed; z-index: 60; background: var(--white); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 8px 11px; min-width: 210px; max-width: 320px; }
+#srcpop .srctitle { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); margin-bottom: 4px; }
+.srcrow { display: flex; justify-content: space-between; gap: 20px; padding: 3px 0; font-size: 13px; }
+td.src[data-sources] { cursor: help; }
 section { background: var(--white); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 24px; overflow: hidden; }
 section h2 { margin: 0; padding: 14px 18px; font-size: 16px; border-bottom: 1px solid var(--line); background: var(--teal-10); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .howto-btn { cursor: pointer; border: 1px solid var(--line); background: var(--white); color: var(--teal); border-radius: 999px; padding: 3px 11px; font-size: 12px; font-weight: 600; }
@@ -93,10 +99,13 @@ function presetByKey(key) { return DATA.presets.find((p) => p.key === key); }
 
 function renderSource(sources) {
   if (!sources || !sources.length) return '<td class="muted">—</td>';
-  const title = sources.map((s) => s.referrer + " · " + fmtInt(s.count)).join(", ");
+  const top = sources[0];
   const extra = sources.length > 1 ? ' <span class="muted">+' + (sources.length - 1) + '</span>' : '';
-  return '<td title="' + esc(title) + '">' + esc(sources[0].referrer) +
-    ' <span class="muted">(' + fmtInt(sources[0].count) + ')</span>' + extra + '</td>';
+  // Carry the full list so the fixed popover can show every source on hover
+  // (a data attribute escapes overflow clipping that a nested element can't).
+  const data = sources.length > 1 ? ' data-sources="' + esc(JSON.stringify(sources)) + '"' : '';
+  return '<td class="src"' + data + '>' + esc(top.referrer) +
+    ' <span class="muted">(' + fmtInt(top.count) + ')</span>' + extra + '</td>';
 }
 
 function renderPages(p) {
@@ -243,6 +252,26 @@ document.addEventListener("click", (e) => {
 document.getElementById("overlay").addEventListener("click", closeDetail);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDetail(); });
 document.getElementById("preset").addEventListener("change", () => { render(); });
+
+// Top-source hover popover: a single fixed element positioned at the cell, so
+// it escapes the table's overflow clipping and lists every referrer.
+const srcpop = document.getElementById("srcpop");
+document.addEventListener("mouseover", (e) => {
+  const td = e.target.closest("td.src[data-sources]");
+  if (!td) return;
+  const list = JSON.parse(td.dataset.sources);
+  srcpop.innerHTML = '<div class="srctitle">All sources</div>' + list.map((s) =>
+    '<div class="srcrow"><span>' + esc(s.referrer) + '</span><span class="muted">' + fmtInt(s.count) + '</span></div>'
+  ).join("");
+  const r = td.getBoundingClientRect();
+  srcpop.style.display = "block";
+  const w = srcpop.offsetWidth;
+  srcpop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + "px";
+  srcpop.style.top = (r.bottom + 4) + "px";
+});
+document.addEventListener("mouseout", (e) => {
+  if (e.target.closest("td.src[data-sources]")) srcpop.style.display = "none";
+});
 render();
 `;
 
@@ -260,11 +289,13 @@ export function renderReport(model: ReportModel): string {
 </head>
 <body>
 <header>
-  <h1>Umami Analytics Report</h1>
-  <div class="meta">Generated ${model.generatedAt} · ${model.timezone}</div>
-  <div class="controls">
-    <label for="preset">Date range</label>
-    <select id="preset">${options}</select>
+  <div class="header-inner">
+    <h1>Umami Analytics Report</h1>
+    <div class="meta">Generated ${model.generatedAt} · ${model.timezone}</div>
+    <div class="controls">
+      <label for="preset">Date range</label>
+      <select id="preset">${options}</select>
+    </div>
   </div>
 </header>
 <main>
@@ -281,6 +312,7 @@ export function renderReport(model: ReportModel): string {
     <div id="search-body"></div>
   </section>
 </main>
+<div id="srcpop"></div>
 <div id="howto-pages" popover class="howto">
   <h3>Top pages — how it works</h3>
   <p>The most-visited landing pages over the selected range, from Umami <code>/metrics/expanded?type=url</code>, ranked by pageviews (top 10).</p>
