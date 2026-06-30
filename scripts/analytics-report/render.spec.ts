@@ -47,6 +47,15 @@ const model: ReportModel = {
         },
       },
       search: {
+        submitTotal: 161,
+        submitTopQueries: [
+          { query: "conductor", count: 10 },
+          { query: "textbook", count: 6 },
+        ],
+        submitBySource: [
+          { source: "home", count: 75 },
+          { source: "results", count: 59 },
+        ],
         total: 60,
         zeroResults: 9,
         zeroResultsPct: 15,
@@ -86,12 +95,21 @@ describe("renderReport", () => {
     expect(html).toContain("Total field errors");
   });
 
-  it("renders the search section with queries and a CTR caveat", () => {
+  it("renders both search sources (search-submit + search) and a CTR caveat", () => {
     expect(html).toContain("Search queries");
-    expect(html).toContain("Top search queries");
-    expect(html).toContain('"birth certificate"'); // embedded in DATA
+    expect(html).toContain("Search submissions (search-submit)");
+    expect(html).toContain("Results-page searches (search)");
+    expect(html).toContain("By source");
+    expect(html).toContain('"conductor"'); // search-submit query in DATA
     expect(html).toContain("Returned no results");
     expect(html).toContain("Click-through rate is not shown");
+  });
+
+  it("adds a 'How it works' popover to each section", () => {
+    expect(html).toContain('popovertarget="howto-pages"');
+    expect(html).toContain('popovertarget="howto-forms"');
+    expect(html).toContain('popovertarget="howto-search"');
+    expect(html).toContain('id="howto-search" popover');
   });
 
   it("embeds the model as JSON without breaking out of the script tag", () => {

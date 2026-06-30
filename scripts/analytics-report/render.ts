@@ -23,7 +23,16 @@ header .meta { font-size: 13px; opacity: .85; }
 select { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,.4); background: var(--white); color: var(--ink); }
 main { max-width: 1100px; margin: 0 auto; padding: 24px; }
 section { background: var(--white); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 24px; overflow: hidden; }
-section h2 { margin: 0; padding: 14px 18px; font-size: 16px; border-bottom: 1px solid var(--line); background: var(--teal-10); }
+section h2 { margin: 0; padding: 14px 18px; font-size: 16px; border-bottom: 1px solid var(--line); background: var(--teal-10); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.howto-btn { cursor: pointer; border: 1px solid var(--line); background: var(--white); color: var(--teal); border-radius: 999px; padding: 3px 11px; font-size: 12px; font-weight: 600; }
+.howto-btn:hover { background: var(--teal); color: var(--white); }
+[popover].howto { max-width: min(460px, 92vw); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; box-shadow: 0 16px 48px rgba(0,0,0,.22); font-size: 14px; line-height: 1.55; color: var(--ink); }
+[popover].howto h3 { margin: 0 0 8px; font-size: 15px; }
+[popover].howto p { margin: 0 0 8px; }
+[popover].howto ul { margin: 0; padding-left: 18px; }
+[popover].howto li { margin: 4px 0; }
+[popover].howto code { background: var(--teal-10); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+[popover].howto::backdrop { background: rgba(0,0,0,.3); }
 .scroll { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
@@ -144,21 +153,39 @@ function renderDetail(p, formId) {
     '<h4>Error types</h4>' + types;
 }
 
+function queryTable(rows) {
+  if (!rows.length) return '<div class="empty">No queries recorded.</div>';
+  return '<div class="scroll"><table class="mini"><thead><tr><th>Query</th><th class="num">Searches</th></tr></thead><tbody>' +
+    rows.map((q) => '<tr><td>' + esc(q.query) + '</td><td class="num">' + fmtInt(q.count) + '</td></tr>').join("") +
+    '</tbody></table></div>';
+}
+
 function renderSearch(p) {
   const s = p.search;
-  if (!s || !s.total) return '<div class="empty">No search activity for this range.</div>';
-  const stats =
-    '<div class="stats">' +
-      '<div>Total searches<b>' + fmtInt(s.total) + '</b></div>' +
-      '<div>Returned no results<b>' + fmtInt(s.zeroResults) + ' <span class="muted">(' + fmtPct(s.zeroResultsPct) + ')</span></b></div>' +
-    '</div>';
-  const queries = s.topQueries.length
-    ? '<div class="scroll"><table class="mini"><thead><tr><th>Query</th><th class="num">Searches</th></tr></thead><tbody>' +
-      s.topQueries.map((q) => '<tr><td>' + esc(q.query) + '</td><td class="num">' + fmtInt(q.count) + '</td></tr>').join("") +
-      '</tbody></table></div>'
-    : '<div class="empty">No queries recorded.</div>';
-  const note = '<div class="banner">Click-through rate is not shown: result clicks are not tracked yet. The zero-results rate above is the closest search-quality signal. Add a <code>search-result-click</code> event to enable true CTR.</div>';
-  return stats + '<h4>Top search queries</h4>' + queries + note;
+  if (!s || (!s.submitTotal && !s.total)) return '<div class="empty">No search activity for this range.</div>';
+
+  // 1) search-submit — every search-box submission.
+  const sourceChips = s.submitBySource.length
+    ? '<div class="chips">' + s.submitBySource.map((b) => '<span class="chip">' + esc(b.source) + ' · ' + fmtInt(b.count) + '</span>').join("") + '</div>'
+    : '';
+  const submitBlock =
+    '<div class="stats"><div>Search submissions<b>' + fmtInt(s.submitTotal) + '</b></div></div>' +
+    (sourceChips ? '<h4>By source</h4>' + sourceChips : '') +
+    '<h4>Top search queries (submitted)</h4>' + queryTable(s.submitTopQueries);
+
+  // 2) search — results-page event (search quality).
+  const resultsBlock = s.total
+    ? '<div class="stats">' +
+        '<div>Searches with results page<b>' + fmtInt(s.total) + '</b></div>' +
+        '<div>Returned no results<b>' + fmtInt(s.zeroResults) + ' <span class="muted">(' + fmtPct(s.zeroResultsPct) + ')</span></b></div>' +
+      '</div>' +
+      '<h4>Top queries (results page)</h4>' + queryTable(s.topQueries)
+    : '<div class="empty">No results-page <code>search</code> events in this range (only submissions above).</div>';
+
+  const note = '<div class="banner">Click-through rate is not shown: result clicks are not tracked yet. The no-results rate is the closest search-quality signal. Add a <code>search-result-click</code> event to enable true CTR.</div>';
+
+  return '<h4>Search submissions (search-submit)</h4>' + submitBlock +
+    '<h4 style="margin-top:22px">Results-page searches (search)</h4>' + resultsBlock + note;
 }
 
 function render() {
@@ -221,13 +248,48 @@ export function renderReport(model: ReportModel): string {
   </div>
 </header>
 <main>
-  <section><h2>Top pages</h2><div id="pages-body"></div></section>
   <section>
-    <h2>Top forms</h2>
+    <h2>Top pages <button class="howto-btn" type="button" popovertarget="howto-pages">How it works</button></h2>
+    <div id="pages-body"></div>
+  </section>
+  <section>
+    <h2>Top forms <button class="howto-btn" type="button" popovertarget="howto-forms">How it works</button></h2>
     <div id="forms-body"></div>
   </section>
-  <section><h2>Search queries</h2><div id="search-body"></div></section>
+  <section>
+    <h2>Search queries <button class="howto-btn" type="button" popovertarget="howto-search">How it works</button></h2>
+    <div id="search-body"></div>
+  </section>
 </main>
+<div id="howto-pages" popover class="howto">
+  <h3>Top pages — how it works</h3>
+  <p>The most-visited landing pages over the selected range, from Umami <code>/metrics/expanded?type=url</code>, ranked by pageviews (top 10).</p>
+  <ul>
+    <li><b>Pageviews</b> — total page loads.</li>
+    <li><b>Visitors</b> — unique visitors.</li>
+    <li><b>Top source</b> — the leading referrers that drove traffic <em>to that page</em> (Umami referrer metric, filtered by <code>path</code>). <code>(direct)</code> = no referrer; <code>+N</code> means more sources (hover to see all).</li>
+  </ul>
+</div>
+<div id="howto-forms" popover class="howto">
+  <h3>Top forms — how it works</h3>
+  <p>Per form over the range, ranked by starts (top 10). Counts are unique visitors who fired each form event.</p>
+  <ul>
+    <li><b>Starts</b> — visitors who began the form (<code>&lt;form&gt;:form-start</code>).</li>
+    <li><b>Completion</b> — successful submits ÷ starts.</li>
+    <li><b>Avg field errors</b> — total validation <code>errorCount</code> ÷ starts.</li>
+    <li><b>Avg time</b> — mean of <code>duration_seconds</code> on successful submits (completers only; wall-clock incl. idle time; mean, so outlier-sensitive).</li>
+  </ul>
+  <p>Click a row for the step funnel, the fields that fail most, and error types.</p>
+</div>
+<div id="howto-search" popover class="howto">
+  <h3>Search queries — how it works</h3>
+  <p>Two complementary signals:</p>
+  <ul>
+    <li><b>Search submissions</b> (<code>search-submit</code>) — every search-box submission, with the top queries and a breakdown by where the search ran (home / services / results). Empty submissions are excluded from the query list.</li>
+    <li><b>Results-page searches</b> (<code>search</code>) — fired on the results page; gives the <b>no-results rate</b>. May be empty in ranges where only submissions fired.</li>
+  </ul>
+  <p>Click-through rate isn't available yet — result clicks aren't tracked.</p>
+</div>
 <div id="overlay"></div>
 <aside id="drawer" aria-hidden="true"></aside>
 <script>const DATA = ${embedJson(model)};</script>

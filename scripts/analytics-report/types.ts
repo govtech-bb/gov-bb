@@ -84,14 +84,27 @@ export interface SearchQueryRow {
   count: number;
 }
 
+export interface SearchSourceRow {
+  source: string;
+  count: number;
+}
+
 export interface SearchReport {
+  // --- `search-submit`: every search-box submission (home/services/results) ---
+  /** total `search-submit` events in range (incl. empty submissions). */
+  submitTotal: number;
+  /** top non-empty queries from `search-submit`, by count. */
+  submitTopQueries: SearchQueryRow[];
+  /** `search-submit` breakdown by where the search ran, by count. */
+  submitBySource: SearchSourceRow[];
+  // --- `search`: fired on the results page (search-quality / no-results) ---
   /** total `search` events in range. */
   total: number;
   /** searches that returned zero results. */
   zeroResults: number;
   /** zeroResults / total * 100, rounded 1dp; 0 when no searches. */
   zeroResultsPct: number;
-  /** top queries by search count. */
+  /** top queries by `search` count. */
   topQueries: SearchQueryRow[];
 }
 

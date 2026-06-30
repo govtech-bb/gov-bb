@@ -259,7 +259,7 @@ describe("buildFormDetail", () => {
 });
 
 describe("buildSearchReport", () => {
-  it("ranks queries by count and computes the zero-results rate", () => {
+  it("summarises search-submit (queries + by source) and search (no-results)", () => {
     const report = buildSearchReport(
       [
         { value: "passport", total: 30 },
@@ -270,8 +270,19 @@ describe("buildSearchReport", () => {
         { value: 0, total: 25 },
         { value: 3, total: 75 },
       ],
+      [
+        { value: "conductor", total: 10 },
+        { value: "", total: 23 }, // empty submission — excluded from queries
+        { value: "textbook", total: 6 },
+      ],
+      [
+        { value: "home", total: 75 },
+        { value: "results", total: 59 },
+        { value: "services", total: 27 },
+      ],
       2,
     );
+    // search (results page)
     expect(report.total).toBe(100);
     expect(report.zeroResults).toBe(25);
     expect(report.zeroResultsPct).toBe(25);
@@ -279,11 +290,25 @@ describe("buildSearchReport", () => {
       { query: "birth certificate", count: 50 },
       { query: "passport", count: 30 },
     ]);
+    // search-submit
+    expect(report.submitTotal).toBe(161); // 75 + 59 + 27
+    expect(report.submitBySource).toEqual([
+      { source: "home", count: 75 },
+      { source: "results", count: 59 },
+      { source: "services", count: 27 },
+    ]);
+    expect(report.submitTopQueries).toEqual([
+      { query: "conductor", count: 10 },
+      { query: "textbook", count: 6 },
+    ]);
   });
 
   it("is safe with no search activity", () => {
-    const report = buildSearchReport([], [], 10);
+    const report = buildSearchReport([], [], [], [], 10);
     expect(report).toEqual({
+      submitTotal: 0,
+      submitTopQueries: [],
+      submitBySource: [],
       total: 0,
       zeroResults: 0,
       zeroResultsPct: 0,

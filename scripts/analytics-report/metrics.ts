@@ -224,14 +224,31 @@ export function buildFormDetail(
   };
 }
 
+function topNonEmptyQueries(
+  values: EventDataValue[],
+  topN: number,
+): { query: string; count: number }[] {
+  return values
+    .filter((v) => String(v.value).trim() !== "")
+    .map((v) => ({ query: String(v.value), count: v.total }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, topN);
+}
+
 /**
- * Summarise landing search from the `search` event's `query` and `results`
- * property distributions. CTR is not derivable — there is no search-result
- * click event — so we report query frequency and the zero-results rate.
+ * Summarise landing search from two events:
+ *  - `search-submit` (every search-box submission): query frequency + a
+ *    breakdown by where the search ran (home/services/results). This is the
+ *    primary "what are people searching" signal and is always populated.
+ *  - `search` (fired on the results page): the zero-results rate. May be empty
+ *    in ranges where only `search-submit` is firing.
+ * CTR is not derivable (no search-result click event).
  */
 export function buildSearchReport(
   queryValues: EventDataValue[],
   resultsValues: EventDataValue[],
+  submitQueryValues: EventDataValue[],
+  submitSourceValues: EventDataValue[],
   topN: number,
 ): SearchReport {
   let total = 0;
@@ -240,14 +257,17 @@ export function buildSearchReport(
     total += t;
     if (Number(value) === 0) zeroResults += t;
   }
-  const topQueries = queryValues
-    .map((v) => ({ query: String(v.value), count: v.total }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, topN);
+  const submitBySource = submitSourceValues
+    .map((v) => ({ source: String(v.value), count: v.total }))
+    .sort((a, b) => b.count - a.count);
+  const submitTotal = submitBySource.reduce((acc, s) => acc + s.count, 0);
   return {
+    submitTotal,
+    submitTopQueries: topNonEmptyQueries(submitQueryValues, topN),
+    submitBySource,
     total,
     zeroResults,
     zeroResultsPct: total === 0 ? 0 : round((zeroResults / total) * 100, 1),
-    topQueries,
+    topQueries: topNonEmptyQueries(queryValues, topN),
   };
 }

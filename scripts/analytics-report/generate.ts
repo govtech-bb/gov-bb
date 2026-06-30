@@ -134,8 +134,8 @@ async function buildPresetReport(
       );
   }
 
-  // Search (landing): query frequency + zero-results rate from the `search`
-  // event's property distributions.
+  // Search (landing): `search-submit` is every search-box submission (always
+  // populated); `search` is the results-page event (gives the no-results rate).
   const searchQueries = await client.eventDataValues(
     landingId,
     "search",
@@ -148,7 +148,25 @@ async function buildPresetReport(
     "results",
     range,
   );
-  const search = buildSearchReport(searchQueries, searchResults, top);
+  const submitQueries = await client.eventDataValues(
+    landingId,
+    "search-submit",
+    "query",
+    range,
+  );
+  const submitSources = await client.eventDataValues(
+    landingId,
+    "search-submit",
+    "source",
+    range,
+  );
+  const search = buildSearchReport(
+    searchQueries,
+    searchResults,
+    submitQueries,
+    submitSources,
+    top,
+  );
 
   return {
     key: preset.key,
