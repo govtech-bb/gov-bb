@@ -6,6 +6,9 @@
     "prettier.config.js",
     "vite.config.js"
   ],
+  // Node build scripts (run via tsx, not bundled) — typed against Node, not the
+  // browser `types: [vite/client]` program above.
+  "exclude": ["scripts"],
 
   "compilerOptions": {
     "target": "ES2022",
@@ -24,6 +27,7 @@
 
     /* Bundler mode */
     "moduleResolution": "bundler",
+    "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "noEmit": true,
