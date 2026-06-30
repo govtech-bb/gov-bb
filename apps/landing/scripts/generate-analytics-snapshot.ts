@@ -13,7 +13,7 @@
 // Resilience: analytics must never break the landing deploy. With no Umami
 // credentials (local dev, CI) or on any fetch error, we leave the committed
 // placeholder snapshot in place and exit 0.
-import { writeFileSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import {
   UmamiClient,
@@ -35,6 +35,15 @@ const TOP_SOURCES = 3
 const OUT = fileURLToPath(
   new URL('../src/content/analytics-snapshot.json', import.meta.url),
 )
+
+// Local convenience: load the repo-root .env so `pnpm run generate:analytics`
+// works without manually exporting UMAMI_*. Skipped when the vars are already
+// in the environment (Amplify build) or no .env exists (CI).
+function loadLocalEnv() {
+  if (process.env.UMAMI_API_KEY) return
+  const envFile = fileURLToPath(new URL('../../../.env', import.meta.url))
+  if (existsSync(envFile)) process.loadEnvFile(envFile)
+}
 
 function readEnv() {
   const apiKey = process.env.UMAMI_API_KEY
@@ -164,6 +173,7 @@ async function buildPreset(
 }
 
 async function main() {
+  loadLocalEnv()
   const cfg = readEnv()
   if (!cfg) {
     console.warn(
