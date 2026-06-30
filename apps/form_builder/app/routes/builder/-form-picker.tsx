@@ -3,13 +3,13 @@ import { getRecipe, getFormConfig } from "../../server/forms";
 import { deserializeRecipe, mergeDbProcessors } from "@govtech-bb/form-builder";
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe, Processor } from "@govtech-bb/form-types";
-import type { FormDefinitionSummary } from "../../types/index";
+import type { BuilderFormSummary } from "../../types/index";
 import styles from "../../styles/builder.module.css";
 import { useEscClose } from "./-use-esc-close";
 
 interface FormPickerProps {
   /** The forms to choose from, or `null` while the background fetch is in flight. */
-  forms: FormDefinitionSummary[] | null;
+  forms: BuilderFormSummary[] | null;
   /** A message if the background fetch failed, otherwise `null`. */
   loadError: string | null;
   isDirty: boolean;
@@ -17,13 +17,13 @@ interface FormPickerProps {
   onLoad: (draft: RecipeDraft, formId: string) => void;
   onClose: () => void;
   /** Draft-only forms: hard-delete the draft rows (formId freed for reuse). */
-  onRequestDelete: (form: FormDefinitionSummary) => void;
+  onRequestDelete: (form: BuilderFormSummary) => void;
   /** Live published forms: write the tombstone (public site -> 410), reversible. */
-  onRequestDisable: (form: FormDefinitionSummary) => void;
+  onRequestDisable: (form: BuilderFormSummary) => void;
   /** Live published forms: permanently erase the on-disk recipe folder via PR. */
-  onRequestErase: (form: FormDefinitionSummary) => void;
+  onRequestErase: (form: BuilderFormSummary) => void;
   /** Disabled published forms: clear the tombstone and restore the service. */
-  onEnable: (form: FormDefinitionSummary) => void;
+  onEnable: (form: BuilderFormSummary) => void;
   /** Open the chosen form's recipe as a new unsaved "Copy of …" draft. */
   onDuplicate: (draft: RecipeDraft) => void;
 }
@@ -43,7 +43,7 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
   // empty list for filtering so the loading/empty states below own the messaging.
   const filtered = (forms ?? []).filter((form) => matches(query, form.title, form.formId));
 
-  async function handleSelect(form: FormDefinitionSummary) {
+  async function handleSelect(form: BuilderFormSummary) {
     if (isDirty && !window.confirm("Unsaved changes will be lost. Continue?")) return;
     setError(null);
     setLoadingId(form.formId);
@@ -91,7 +91,7 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
   // mutable with the source. The "-copy" formId / "Copy of" title seed unique
   // identifiers; the builder's live uniqueness check flags them if they collide
   // (e.g. duplicating the same form twice) so the author renames before saving.
-  async function handleDuplicate(form: FormDefinitionSummary) {
+  async function handleDuplicate(form: BuilderFormSummary) {
     if (isDirty && !window.confirm("Unsaved changes will be lost. Continue?")) return;
     setError(null);
     setLoadingId(form.formId);
@@ -102,6 +102,9 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
         ...draft,
         formId: `${draft.formId}-copy`,
         title: `Copy of ${draft.title}`,
+        // A duplicate is a brand-new, unpublished form — start it hidden so it
+        // can't inherit a `public` source's launch state by accident (#1682).
+        meta: { visibility: "draft" },
       });
       onClose();
     } catch (e) {

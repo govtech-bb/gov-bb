@@ -22,6 +22,7 @@ import type {
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import { FormConfigService } from "@/forms/form-config/form-config.service";
 import { NonRetryableError } from "./non-retryable-error";
+import { redactPii } from "./log-sanitize";
 
 // The detailed reviewer/MDA email: full field-by-field summary of the
 // submission. Used for every recipient kind except the citizen.
@@ -145,7 +146,6 @@ export class EmailProcessor implements ISubmissionProcessor {
         } else {
           const contract = await this.emailBodyBuilder.resolveContract(
             payload.formId,
-            payload.formVersion,
           );
           subject = `A new submission has been received for ${contract.title}`;
         }
@@ -210,7 +210,7 @@ export class EmailProcessor implements ISubmissionProcessor {
       );
 
       this.logger.log(
-        `[email] Confirmation sent to ${recipient} for submission ${payload.submissionId}`,
+        `[email] Confirmation sent to ${redactPii(recipient)} for submission ${payload.submissionId}`,
       );
     } catch (err) {
       // A config error (unresolved recipient) is non-retryable — rethrow it
@@ -304,7 +304,6 @@ export class EmailProcessor implements ISubmissionProcessor {
   }> {
     const contract = await this.emailBodyBuilder.resolveContract(
       payload.formId,
-      payload.formVersion,
     );
     const entries = FilesService.collectFileEntries(
       FilesService.collectFileFieldsByStep(contract),

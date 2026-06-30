@@ -14,7 +14,11 @@ vi.mock("@aws-sdk/client-secrets-manager", () => ({
   },
 }));
 
-import { getCachedSecretJson, getCachedSecretString } from "./secrets";
+import {
+  getCachedSecretJson,
+  getCachedSecretString,
+  getSecretJson,
+} from "./secrets";
 
 beforeEach(() => {
   sendMock.mockReset();
@@ -95,5 +99,41 @@ describe("getCachedSecretJson", () => {
     await getCachedSecretString("arn:json:shared");
     expect(await getCachedSecretJson("arn:json:shared")).toEqual({ k: "v" });
     expect(sendMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("getSecretJson", () => {
+  it("parses the SecretString as JSON", async () => {
+    sendMock.mockResolvedValue({
+      SecretString: JSON.stringify({ username: "u", password: "p" }),
+    });
+    expect(await getSecretJson("arn:fresh:basic")).toEqual({
+      username: "u",
+      password: "p",
+    });
+  });
+
+  it("bypasses the cache — every call re-fetches the current value", async () => {
+    sendMock
+      .mockResolvedValueOnce({
+        SecretString: JSON.stringify({ password: "v1" }),
+      })
+      .mockResolvedValueOnce({
+        SecretString: JSON.stringify({ password: "v2" }),
+      });
+    expect(
+      await getSecretJson<{ password: string }>("arn:fresh:rotates"),
+    ).toEqual({ password: "v1" });
+    expect(
+      await getSecretJson<{ password: string }>("arn:fresh:rotates"),
+    ).toEqual({ password: "v2" });
+    expect(sendMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("throws when the secret has no SecretString", async () => {
+    sendMock.mockResolvedValue({});
+    await expect(getSecretJson("arn:fresh:empty")).rejects.toThrow(
+      /no SecretString/,
+    );
   });
 });

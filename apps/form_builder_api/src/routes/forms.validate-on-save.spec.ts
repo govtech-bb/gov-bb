@@ -109,14 +109,16 @@ describe("recipe validation on save (#281)", () => {
     expect(getDataSourceMock).not.toHaveBeenCalled();
   });
 
-  it("allows a partial recipe with no processors (does not 400 at the processor gate)", async () => {
+  it("allows a recipe with no processors (does not 400 at the processor gate)", async () => {
     const res = mockRes();
-    // Only formId/title here — no createdAt/updatedAt/steps/processors. The
-    // processor gate must not reject it (partial drafts still save); it proceeds
-    // to the DB layer (#281 fallback B — processors-only validation).
+    // A schema-valid recipe with no `processors` key. The processor gate must
+    // not reject it (nothing to validate); it proceeds to the DB layer
+    // (#281 fallback B — processors-only validation). Note: the draft must
+    // still satisfy draftRecipeSchema (the save-path schema gate), so this uses
+    // BASE rather than a bare formId/title.
     await createFormHandler(
       mockReq({
-        recipe: { formId: "partial-form", title: "Partial" },
+        recipe: BASE,
         isNew: true,
       }),
       res,

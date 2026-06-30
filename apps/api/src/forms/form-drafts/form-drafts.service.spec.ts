@@ -60,55 +60,33 @@ function makeRecipe(version = "1.0.0"): ServiceContractRecipe {
 
 describe("FormDraftsService", () => {
   describe("create", () => {
-    it("pins the form version from the latest recipe returned by FormDefinitionsService", async () => {
+    it("creates a draft with a null formVersion once the form is confirmed published (#1196)", async () => {
       const draftRepo = makeDraftRepo();
       const formDefinitionsService = makeFormDefinitionsService();
       const service = new FormDraftsService(draftRepo, formDefinitionsService);
 
       draftRepo.findOne.mockResolvedValue(null);
-      formDefinitionsService.getRecipe.mockResolvedValue(makeRecipe("2.0.0"));
-      draftRepo.create.mockReturnValue(makeDraft({ formVersion: "2.0.0" }));
-      draftRepo.save.mockResolvedValue(makeDraft({ formVersion: "2.0.0" }));
+      formDefinitionsService.getRecipe.mockResolvedValue(makeRecipe());
+      draftRepo.create.mockReturnValue(makeDraft({ formVersion: null }));
+      draftRepo.save.mockResolvedValue(makeDraft({ formVersion: null }));
 
       const result = await service.create({
         draftId: "my-draft",
         formId: "passport-renewal",
       });
 
+      // Resolution is keyed by formId only — versioning is retired.
       expect(formDefinitionsService.getRecipe).toHaveBeenCalledWith({
         formId: "passport-renewal",
-        version: undefined,
       });
       expect(draftRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           draftId: "my-draft",
           formId: "passport-renewal",
-          formVersion: "2.0.0",
+          formVersion: null,
         }),
       );
-      expect(result.formVersion).toBe("2.0.0");
-    });
-
-    it("pins the specified version when version is provided", async () => {
-      const draftRepo = makeDraftRepo();
-      const formDefinitionsService = makeFormDefinitionsService();
-      const service = new FormDraftsService(draftRepo, formDefinitionsService);
-
-      draftRepo.findOne.mockResolvedValue(null);
-      formDefinitionsService.getRecipe.mockResolvedValue(makeRecipe("1.0.0"));
-      draftRepo.create.mockReturnValue(makeDraft());
-      draftRepo.save.mockResolvedValue(makeDraft());
-
-      await service.create({
-        draftId: "my-draft",
-        formId: "passport-renewal",
-        version: "1.0.0",
-      });
-
-      expect(formDefinitionsService.getRecipe).toHaveBeenCalledWith({
-        formId: "passport-renewal",
-        version: "1.0.0",
-      });
+      expect(result.formVersion).toBeNull();
     });
 
     it("returns the existing draft without creating a duplicate when draftId already exists", async () => {

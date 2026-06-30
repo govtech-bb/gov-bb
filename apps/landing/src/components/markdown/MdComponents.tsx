@@ -1,7 +1,11 @@
-import { Heading, Text } from '@govtech-bb/react'
+import { Heading, LinkButton, Text } from '@govtech-bb/react'
 import type { ReactNode } from 'react'
 import type { Components } from 'hast-util-to-jsx-runtime'
 import { MarkdownLink } from './MarkdownLink'
+import { Notice } from '../content/Notice'
+import { Highlights, Highlight } from '../content/Highlights'
+import { Contacts, Contact } from '../content/Contacts'
+import { Muted } from '../content/Muted'
 
 const PHONE_SLASH_RE = /^\((\d{3})\)\s*(\d{3})-(\d{4})\s*\/\s*(\d{4})$/
 const PHONE_RE = /^\((\d{3})\)\s*(\d{3})-(\d{4})$/
@@ -151,4 +155,21 @@ export const markdownComponents: Partial<Components> = {
       </td>
     )
   },
+  // Curated content palette, authored as `remark-directive` blocks
+  // (`:::notice`, `::contact{…}`, …). Valid names/attributes are enforced by
+  // the content lint; directive children stay markdown.
+  notice: Notice,
+  highlights: Highlights,
+  highlight: Highlight,
+  contacts: Contacts,
+  contact: Contact,
+  muted: Muted,
+  buttons: ({ children }: { children?: ReactNode }) => (
+    <div className="flex flex-col gap-s sm:flex-row">{children}</div>
+  ),
+  'link-button': ({ node: _node, children, ...props }) => (
+    <LinkButton {...(props as { href: string; variant?: 'secondary' })}>
+      {children}
+    </LinkButton>
+  ),
 }

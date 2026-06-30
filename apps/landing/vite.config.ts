@@ -7,7 +7,10 @@ import tailwindcss from '@tailwindcss/vite'
 import { markdown } from './vite-plugin-markdown'
 
 export default defineConfig({
-  resolve: { tsconfigPaths: true },
+  resolve: {
+    tsconfigPaths: true,
+    extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
+  },
   plugins: [
     tailwindcss(),
     devtools(),
@@ -38,6 +41,11 @@ export default defineConfig({
         runtimeConfig: {
           previewSecret: process.env.PREVIEW_SECRET ?? '',
           draftSecret: process.env.DRAFT_SECRET ?? '',
+          // Parent domain the shared `preview` cookie is scoped to, so landing,
+          // forms and the API share ONE grant (#1646 Phase 3). Build-baked like
+          // the secrets above (the SSR Lambda never sees Console env vars). Empty
+          // → host-only cookie; must byte-match the API's PREVIEW_COOKIE_DOMAIN.
+          previewCookieDomain: process.env.PREVIEW_COOKIE_DOMAIN ?? '',
           // Forms API base URL for the server-side feedback POST
           // (src/lib/send-feedback.ts). Same build-time-only constraint as the
           // secrets above: the SSR Lambda never sees Console env vars, so we
@@ -47,6 +55,6 @@ export default defineConfig({
       },
     }),
     tanstackStart(),
-    viteReact(),
+    viteReact({ include: /\.(js|jsx|ts|tsx)$/ }),
   ],
 })

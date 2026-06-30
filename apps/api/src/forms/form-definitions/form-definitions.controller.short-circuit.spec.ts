@@ -41,6 +41,7 @@ describe("FormDefinitionsController — kill switch short-circuit", () => {
     const result = await controller.get(
       "passport-renewal",
       undefined,
+      undefined,
       res as never,
     );
 
@@ -49,7 +50,8 @@ describe("FormDefinitionsController — kill switch short-circuit", () => {
     );
     expect(mockFormDefinitionsService.findByFormId).toHaveBeenCalledWith({
       formId: "passport-renewal",
-      preview: false,
+      bypassVisibility: false,
+      draft: false,
     });
     expect(result).toMatchObject({ status: "success", data: contract });
   });
@@ -63,7 +65,7 @@ describe("FormDefinitionsController — kill switch short-circuit", () => {
     });
 
     await expect(
-      controller.get("passport-renewal", undefined, res as never),
+      controller.get("passport-renewal", undefined, undefined, res as never),
     ).rejects.toMatchObject({
       status: HttpStatus.GONE,
       response: { disabled: true, reason: "Step 3 is broken" },

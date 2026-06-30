@@ -3,6 +3,7 @@ import {
   createPublishClient,
   authHeaders as ghAuthHeaders,
   ghError as ghErrorImpl,
+  createdAtFromContents as createdAtFromContentsImpl,
   type OpenPRHead,
   type PutFileOptions,
   type OpenPullRequestOptions,
@@ -34,6 +35,10 @@ export function repoUrl(suffix: string): string {
 
 export const authHeaders = ghAuthHeaders;
 export const ghError = ghErrorImpl;
+// Pure helper (no repo binding) — re-exported so publish flows read every
+// GitHub-Contents helper from this one facade. Used to preserve a recipe's
+// committed createdAt on re-publish (#1720).
+export const createdAtFromContents = createdAtFromContentsImpl;
 
 export function createBranchFrom(
   token: string,

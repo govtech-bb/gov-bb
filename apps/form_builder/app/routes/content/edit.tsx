@@ -26,7 +26,7 @@ import { useEditorState, type EditSearch } from "./-editor-state";
 import { PageFields } from "./-fields";
 import { AiModal, DeleteModal, DeployModal, ErrorBanner } from "./-modals";
 import { SuccessCard } from "./-success-card";
-import type { FormDefinitionSummary } from "../../types/index";
+import type { BuilderFormSummary } from "../../types/index";
 import s from "./-styles.module.css";
 
 function todayIso(): string {
@@ -73,8 +73,8 @@ function StartPagesEditor() {
   // Combobox options = the builder's forms ∪ any form referenced by a content
   // page, so the picker is populated even when the forms API is unavailable
   // (e.g. local dev, where the content list reads the local checkout).
-  const formOptions = useMemo<FormDefinitionSummary[]>(() => {
-    const map = new Map<string, FormDefinitionSummary>();
+  const formOptions = useMemo<BuilderFormSummary[]>(() => {
+    const map = new Map<string, BuilderFormSummary>();
     for (const f of forms) map.set(f.formId, f);
     for (const p of contentList.pages ?? []) {
       if (p.formId && !map.has(p.formId)) {
@@ -348,6 +348,9 @@ function StartPagesEditor() {
                 : []),
             ]}
           />
+          {!success && !ed.loadingPage && ed.deployBlockReason && (
+            <span className={s.deployHint}>{ed.deployBlockReason}</span>
+          )}
           {!success && (
             <button
               type="button"

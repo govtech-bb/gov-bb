@@ -14,7 +14,7 @@ import {
   type StartLinkType,
 } from "./-lib";
 import type { ContentPageSummary } from "./-server";
-import type { FormDefinitionSummary } from "../../types/index";
+import type { BuilderFormSummary } from "../../types/index";
 import { draftKeyFor, readDraft, writeDraft, clearDraft } from "./-draft-store";
 
 /**
@@ -95,7 +95,7 @@ function catSlug(title: string): string {
 }
 
 export function useEditorState(
-  forms: FormDefinitionSummary[],
+  forms: BuilderFormSummary[],
   search: EditSearch,
   contentPages: ContentPageSummary[] | null,
 ) {
@@ -324,6 +324,26 @@ export function useEditorState(
     (!creatingCategory || !!newCatSlug) &&
     (fixedPath ? true : isValidSlug(slug));
 
+  // The first unmet `canDeploy` condition, in the same order, so the disabled
+  // deploy button can say *why*. Null exactly when `canDeploy` is true.
+  const deployBlockReason: string | null = !state.title.trim()
+    ? "Add a title"
+    : !state.body.trim()
+      ? "Add page content"
+      : !hrefValid
+        ? "Add a valid Start link"
+        : collision === "exists"
+          ? "A page already exists at this path"
+          : collision !== null
+            ? "Slug collides with an existing page's URL"
+            : state.linkType === "form" && !state.formId
+              ? "Choose the form the Start button opens"
+              : creatingCategory && !newCatSlug
+                ? "Name the new category"
+                : !fixedPath && !isValidSlug(slug)
+                  ? "Slug must be kebab-case"
+                  : null;
+
   const formMissing =
     state.linkType === "form" &&
     !!state.formId &&
@@ -390,6 +410,7 @@ export function useEditorState(
     hrefValid,
     collision,
     canDeploy,
+    deployBlockReason,
     formMissing,
     url,
     previewBody,

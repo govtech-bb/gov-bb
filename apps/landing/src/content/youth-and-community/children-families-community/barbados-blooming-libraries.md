@@ -6,7 +6,7 @@ publish_date: 2026-05-20
 category: youth-and-community
 subcategory: children-families-community
 visibility: preview
-service_type: information
+service_type: digital
 form_id: youth-opportunity-barbados-blooming-libraries
 ---
 

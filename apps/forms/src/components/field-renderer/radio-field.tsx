@@ -19,6 +19,7 @@ export function renderRadioField(ctx: FieldRenderContext): JSX.Element {
     insetFieldsByOption,
     formId,
     previewToken,
+    draftToken,
   } = ctx;
 
   const value: string = (f.state.value as string | undefined) ?? "";
@@ -74,6 +75,7 @@ export function renderRadioField(ctx: FieldRenderContext): JSX.Element {
                         validationProperties={insetValidation}
                         formId={formId}
                         previewToken={previewToken}
+                        draftToken={draftToken}
                       />
                     ),
                   )}

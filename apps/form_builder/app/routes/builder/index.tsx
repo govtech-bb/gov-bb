@@ -7,8 +7,16 @@ import { createMdaContact } from "../../server/mda-contacts";
 import { publishRecipe, getPublishBaseBranch, eraseRecipe } from "../../server/publish";
 import { validateRecipe, previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds, extractDbProcessors, firstIncompletePaymentProcessor } from "@govtech-bb/form-builder";
-import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
-import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "@govtech-bb/form-types";
+import type {
+  ServiceContract,
+  ServiceContractRecipe,
+  RecipeVisibility,
+} from "@govtech-bb/form-types";
+import {
+  KEBAB_ID_PATTERN,
+  KEBAB_ID_ERROR,
+  getRecipeVisibility,
+} from "@govtech-bb/form-types";
 import type { RecipeDraft, ValidationResult, RecipeValidateResponse, ValidationIssue, UnknownRef } from "@govtech-bb/form-builder";
 
 import { Layers01Icon, Moon02Icon, Sun03Icon } from "hugeicons-react";
@@ -48,7 +56,7 @@ import type { CreateMdaContactInput, MdaContact } from "../../types/index";
 import { DeleteModal } from "./-delete-modal";
 import { DisableModal } from "./-disable-modal";
 import { EraseModal } from "./-erase-modal";
-import type { FormDefinitionSummary } from "../../types/index";
+import type { BuilderFormSummary } from "../../types/index";
 
 import styles from "../../styles/builder.module.css";
 
@@ -124,13 +132,13 @@ function BuilderPage() {
   >(null);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [lastSaveStatus, setLastSaveStatus] = useState<"idle" | "success" | "error" | "submitted">("idle");
-  const [deleteTarget, setDeleteTarget] = useState<FormDefinitionSummary | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<BuilderFormSummary | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [disableTarget, setDisableTarget] = useState<FormDefinitionSummary | null>(null);
+  const [disableTarget, setDisableTarget] = useState<BuilderFormSummary | null>(null);
   const [isDisabling, setIsDisabling] = useState(false);
   const [disableError, setDisableError] = useState<string | null>(null);
-  const [eraseTarget, setEraseTarget] = useState<FormDefinitionSummary | null>(null);
+  const [eraseTarget, setEraseTarget] = useState<BuilderFormSummary | null>(null);
   const [isErasing, setIsErasing] = useState(false);
   const [eraseError, setEraseError] = useState<string | null>(null);
   const [eraseSuccess, setEraseSuccess] = useState<
@@ -397,7 +405,29 @@ function BuilderPage() {
     setIsSubmitOpen(true);
   };
 
+  // Hard gate for Deploy ONLY (#1682 follow-up): a form whose visibility is
+  // still `draft` is not ready to publish — only `preview`/`public` recipes may
+  // deploy. Lights the validation panel and returns true when blocked. Save
+  // draft is intentionally NOT gated: scratch-saving a draft is exactly what
+  // draft visibility is for.
+  const blockedByDraftVisibility = (): boolean => {
+    if (getRecipeVisibility(draft) !== "draft") return false;
+    setValidateResult({
+      valid: false,
+      issues: [
+        {
+          path: "meta.visibility",
+          message:
+            "This form's visibility is Draft. Set it to Preview or Public in the toolbar before deploying.",
+        },
+      ],
+    });
+    setLastSaveStatus("error");
+    return true;
+  };
+
   const handleDeployClick = async () => {
+    if (blockedByDraftVisibility()) return;
     if (blockedByUniqueness()) return;
     if (blockedByIncompletePayment()) return;
     const result = await runValidation();
@@ -759,7 +789,7 @@ function BuilderPage() {
     setLastSaveStatus("idle");
   };
 
-  const handleRequestDelete = (form: FormDefinitionSummary) => {
+  const handleRequestDelete = (form: BuilderFormSummary) => {
     setDeleteError(null);
     setDeleteTarget(form);
     setIsPickerOpen(false);
@@ -790,7 +820,7 @@ function BuilderPage() {
     setDeleteError(null);
   };
 
-  const handleRequestDisable = (form: FormDefinitionSummary) => {
+  const handleRequestDisable = (form: BuilderFormSummary) => {
     setDisableError(null);
     setDisableTarget(form);
     setIsPickerOpen(false);
@@ -818,7 +848,7 @@ function BuilderPage() {
     setDisableError(null);
   };
 
-  const handleRequestErase = (form: FormDefinitionSummary) => {
+  const handleRequestErase = (form: BuilderFormSummary) => {
     setEraseError(null);
     setEraseSuccess(null);
     setEraseTarget(form);
@@ -856,7 +886,7 @@ function BuilderPage() {
 
   // Enable is a direct action (no modal) with an inline confirm: clearing a
   // tombstone restores the public service, so a single confirm is enough.
-  const handleEnable = async (form: FormDefinitionSummary) => {
+  const handleEnable = async (form: BuilderFormSummary) => {
     if (
       !window.confirm(
         `Re-enable ${form.title || form.formId}? The public service will be restored.`,
@@ -880,6 +910,10 @@ function BuilderPage() {
 
   const handleTitleChange = (title: string) => {
     dispatch({ type: "SET_FORM_META", formId: draft.formId, title, description: draft.description });
+  };
+
+  const handleVisibilityChange = (visibility: RecipeVisibility) => {
+    dispatch({ type: "SET_VISIBILITY", visibility });
   };
 
   // Create an MDA contact via the API, patch it into the local directory so the
@@ -977,6 +1011,8 @@ function BuilderPage() {
         isPublishing={isPublishing}
         isReadOnly={isReadOnly}
         lastSaveStatus={lastSaveStatus}
+        visibility={getRecipeVisibility(draft)}
+        onVisibilityChange={handleVisibilityChange}
         onFormIdChange={handleFormIdChange}
         onTitleChange={handleTitleChange}
         onNew={handleNew}

@@ -25,6 +25,7 @@ export default function FieldRenderer({
   insetFieldsByOption,
   formId,
   previewToken,
+  draftToken,
 }: {
   form: any;
   field: ClientPrimitive;
@@ -33,8 +34,12 @@ export default function FieldRenderer({
   insetFieldsByOption?: Map<string, InsetFieldEntry[]>;
   /** Form ID, forwarded to FileUpload for analytics + presigned uploads. */
   formId?: string;
-  /** Preview token, forwarded to FileUpload so draft uploads resolve. */
+  /** `?preview=` token, forwarded to FileUpload so non-public published file
+   *  fields resolve. */
   previewToken?: string;
+  /** `?draft=` token, forwarded to FileUpload so DB-scratch file fields resolve
+   *  during draft review (#1682). */
+  draftToken?: string;
 }) {
   if (field.hidden) return null;
 
@@ -78,6 +83,7 @@ export default function FieldRenderer({
           insetFieldsByOption,
           formId,
           previewToken,
+          draftToken,
         });
 
         switch (field.htmlType) {
@@ -107,6 +113,7 @@ export default function FieldRenderer({
                 errorId={ctx.errorId}
                 formId={formId}
                 previewToken={previewToken}
+                draftToken={draftToken}
               />
             );
           case "show-hide":
