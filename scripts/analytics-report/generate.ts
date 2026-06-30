@@ -1,10 +1,12 @@
 // Entry point for the Umami analytics HTML report.
 //   pnpm analytics:report                 # live: reads env, fetches Umami, writes HTML
 //   pnpm analytics:report -- --fixture f.json   # offline: render a prebuilt ReportModel
-//   pnpm analytics:report -- --out path.html --top 25
+//   pnpm analytics:report -- --out path.html --top 10
+//   pnpm analytics:report -- --debug            # also dump raw Umami responses for the first preset
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { loadContent } from "@govtech-bb/content";
+import { buildPresets } from "./dates";
 import {
   aggregateFormEvents,
   buildFormDetail,
@@ -21,18 +23,21 @@ interface Args {
   fixture?: string;
   out: string;
   top: number;
+  debug: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
   const args: Args = {
     out: join("scripts", "analytics-report", "output", "analytics-report.html"),
-    top: 20,
+    top: 10,
+    debug: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--fixture") args.fixture = argv[++i];
     else if (a === "--out") args.out = argv[++i];
     else if (a === "--top") args.top = Number(argv[++i]) || args.top;
+    else if (a === "--debug") args.debug = true;
   }
   return args;
 }
@@ -42,63 +47,6 @@ function requireEnv(name: string): string {
   if (!v)
     throw new Error(`Missing required env var ${name} (see .env.example)`);
   return v;
-}
-
-/** ms that `timeZone` is ahead of UTC at the given instant. */
-function tzOffsetMs(timeZone: string, date: Date): number {
-  const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hourCycle: "h23",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-  const p = Object.fromEntries(
-    dtf.formatToParts(date).map((part) => [part.type, part.value]),
-  );
-  const asUTC = Date.UTC(
-    +p.year,
-    +p.month - 1,
-    +p.day,
-    +p.hour,
-    +p.minute,
-    +p.second,
-  );
-  return asUTC - date.getTime();
-}
-
-function startOfTodayInTz(timeZone: string, now: Date): number {
-  const off = tzOffsetMs(timeZone, now);
-  const tzNow = new Date(now.getTime() + off);
-  const wallMidnight = Date.UTC(
-    tzNow.getUTCFullYear(),
-    tzNow.getUTCMonth(),
-    tzNow.getUTCDate(),
-  );
-  return wallMidnight - off;
-}
-
-function buildPresets(
-  timeZone: string,
-  now: Date,
-): { key: string; label: string; range: Range }[] {
-  const end = now.getTime();
-  const day = 86_400_000;
-  const rolling = (n: number) => ({ startAt: end - n * day, endAt: end });
-  return [
-    {
-      key: "today",
-      label: "Today",
-      range: { startAt: startOfTodayInTz(timeZone, now), endAt: end },
-    },
-    { key: "last-7-days", label: "Last 7 days", range: rolling(7) },
-    { key: "last-30-days", label: "Last 30 days", range: rolling(30) },
-    { key: "last-60-days", label: "Last 60 days", range: rolling(60) },
-    { key: "last-90-days", label: "Last 90 days", range: rolling(90) },
-  ];
 }
 
 /** form_id → { title, category } from landing content frontmatter. */
@@ -212,6 +160,24 @@ async function buildLiveModel(args: Args): Promise<ReportModel> {
   const meta = await loadFormMeta();
   const now = new Date();
   const presets = buildPresets(timezone, now);
+
+  // --debug: dump the raw Umami responses (and /stats totals) for the first
+  // preset so the numbers can be compared directly against the dashboard for
+  // the same range, to pin down any metric-semantics mismatch.
+  if (args.debug) {
+    const p0 = presets[0];
+    const debug = {
+      note: "Raw Umami responses for the first preset. Compare /stats + metrics to the Umami dashboard for the SAME date range. Note: /metrics `y` is visitor count, not pageviews/total-events.",
+      preset: p0,
+      landingStats: await client.stats(landingId, p0.range),
+      formsStats: await client.stats(formsId, p0.range),
+      pagesRaw: await client.metricsUrls(landingId, p0.range),
+      eventsRaw: await client.metricsEvents(formsId, p0.range),
+    };
+    await mkdir(dirname(args.out), { recursive: true });
+    await writeFile(`${args.out}.debug.json`, JSON.stringify(debug, null, 2));
+    process.stderr.write(`  wrote raw diagnostics to ${args.out}.debug.json\n`);
+  }
 
   const reports: PresetReport[] = [];
   for (const preset of presets) {

@@ -72,6 +72,11 @@ export class UmamiClient {
     });
   }
 
+  /** Summarised site stats (pageviews, visitors, visits, …) — for diagnostics. */
+  stats(websiteId: string, range: Range): Promise<unknown> {
+    return this.get<unknown>(`/websites/${websiteId}/stats`, { ...range });
+  }
+
   /** Distinct values + counts for one event's numeric/string property. */
   eventDataValues(
     websiteId: string,
