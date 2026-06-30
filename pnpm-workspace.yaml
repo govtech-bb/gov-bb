@@ -74,3 +74,6 @@ minimumReleaseAgeExclude:
   - multer@2.2.0
   - undici@7.28.0
   - nodemailer@9.0.1
+  - '@govtech-bb/design@1.0.0-alpha.17'
+  - '@govtech-bb/react@1.0.0-alpha.17'
+  - '@govtech-bb/styles@1.0.0-alpha.17'
