@@ -40,6 +40,12 @@ RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
 
 WORKDIR /app
 
+# `script` is required for ECS Exec session logging (issue #217). ECS Exec
+# uploads the session to CloudWatch/S3 only if `script` and `cat` are present in
+# the image; node:alpine ships busybox `cat` but NOT `script` (it lives in
+# util-linux-misc). Without it, exec works but nothing is ever logged.
+RUN apk add --no-cache util-linux-misc
+
 # Download AWS RDS CA bundle for TLS connections
 RUN wget -O /app/rds-ca-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem && \
     chown app:app /app/rds-ca-bundle.pem
