@@ -34,9 +34,12 @@ tbody tr.form-row:hover { background: var(--teal-10); }
 tbody tr.form-row.active { background: var(--teal-10); }
 .cat { color: var(--muted); font-size: 12px; }
 .empty { padding: 18px; color: var(--muted); }
-#detail { padding: 18px; border-top: 2px solid var(--teal); }
-#detail h3 { margin: 0 0 4px; font-size: 16px; }
-#detail .sub { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+#overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .2s ease; z-index: 40; }
+#overlay.open { opacity: 1; pointer-events: auto; }
+#drawer { position: fixed; top: 0; right: 0; height: 100%; width: min(580px, 94vw); background: var(--white); box-shadow: -8px 0 28px rgba(0,0,0,.18); transform: translateX(100%); transition: transform .25s ease; z-index: 50; overflow-y: auto; padding: 20px 22px; }
+#drawer.open { transform: translateX(0); }
+#drawer h3 { margin: 0 8px 4px 0; font-size: 18px; }
+#drawer .sub { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
 .funnel { display: flex; flex-direction: column; gap: 6px; max-width: 560px; }
 .stage { display: grid; grid-template-columns: 90px 1fr 120px; align-items: center; gap: 10px; font-size: 13px; }
 .bar { height: 22px; background: var(--teal); border-radius: 4px; min-width: 2px; }
@@ -51,7 +54,7 @@ tbody tr.form-row.active { background: var(--teal-10); }
 table.mini { max-width: 600px; }
 table.mini th, table.mini td { padding: 7px 12px; }
 .banner { padding: 10px 14px; margin: 8px 0 0; background: #fdf3e7; border: 1px solid #f0d9bd; border-radius: 8px; color: var(--warn); font-size: 13px; }
-.close { float: right; cursor: pointer; border: 1px solid var(--line); background: var(--white); border-radius: 6px; padding: 4px 10px; font-size: 13px; }
+.close { position: sticky; top: -20px; float: right; cursor: pointer; border: 1px solid var(--line); background: var(--white); border-radius: 6px; padding: 4px 10px; font-size: 13px; }
 h4 { margin: 16px 0 6px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
 `;
 
@@ -156,14 +159,20 @@ function render() {
   document.getElementById("pages-body").innerHTML = renderPages(p);
   document.getElementById("forms-body").innerHTML = renderForms(p);
   document.getElementById("search-body").innerHTML = renderSearch(p);
-  const detail = document.getElementById("detail");
+  const drawer = document.getElementById("drawer");
+  const overlay = document.getElementById("overlay");
   if (activeForm && p.details[activeForm]) {
-    detail.hidden = false;
-    detail.innerHTML = renderDetail(p, activeForm);
+    drawer.innerHTML = renderDetail(p, activeForm);
+    drawer.scrollTop = 0;
+    drawer.classList.add("open");
+    overlay.classList.add("open");
+    drawer.setAttribute("aria-hidden", "false");
     const tr = document.querySelector('tr.form-row[data-form="' + activeForm + '"]');
     if (tr) tr.classList.add("active");
   } else {
-    detail.hidden = true;
+    drawer.classList.remove("open");
+    overlay.classList.remove("open");
+    drawer.setAttribute("aria-hidden", "true");
     activeForm = null;
   }
 }
@@ -176,6 +185,8 @@ document.addEventListener("click", (e) => {
   activeForm = activeForm === tr.dataset.form ? null : tr.dataset.form;
   render();
 });
+document.getElementById("overlay").addEventListener("click", closeDetail);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDetail(); });
 document.getElementById("preset").addEventListener("change", () => { render(); });
 render();
 `;
@@ -206,10 +217,11 @@ export function renderReport(model: ReportModel): string {
   <section>
     <h2>Top forms</h2>
     <div id="forms-body"></div>
-    <div id="detail" hidden></div>
   </section>
   <section><h2>Search queries</h2><div id="search-body"></div></section>
 </main>
+<div id="overlay"></div>
+<aside id="drawer" aria-hidden="true"></aside>
 <script>const DATA = ${embedJson(model)};</script>
 <script>${CLIENT_JS}</script>
 </body>
