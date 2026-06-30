@@ -5,6 +5,7 @@ import {
   buildFormRows,
   buildFunnel,
   buildPageRows,
+  buildSearchReport,
   parseEventName,
   tallyFields,
   weightedAverage,
@@ -141,6 +142,7 @@ describe("buildFormRows", () => {
         ], // avg 180s
         errorCount: [{ value: 2, total: 50 }], // total 100 field errors
         fields: [],
+        errorTypes: [],
       },
     ],
   ]);
@@ -212,6 +214,10 @@ describe("buildFormDetail", () => {
       duration: [],
       errorCount: [],
       fields: [{ value: "email,phone", total: 2 }],
+      errorTypes: [
+        { value: "Required", total: 5 },
+        { value: "Invalid email", total: 2 },
+      ],
     };
     const detail = buildFormDetail("x", entry, source);
     expect(detail.stepBack).toBe(3);
@@ -221,10 +227,48 @@ describe("buildFormDetail", () => {
       { field: "email", count: 2 },
       { field: "phone", count: 2 },
     ]);
+    expect(detail.errorTypes).toEqual([
+      { field: "Required", count: 5 },
+      { field: "Invalid email", count: 2 },
+    ]);
     expect(detail.funnel.map((s) => s.label)).toEqual([
       "Start",
       "Step 1",
       "Submit",
     ]);
+  });
+});
+
+describe("buildSearchReport", () => {
+  it("ranks queries by count and computes the zero-results rate", () => {
+    const report = buildSearchReport(
+      [
+        { value: "passport", total: 30 },
+        { value: "birth certificate", total: 50 },
+        { value: "tax", total: 20 },
+      ],
+      [
+        { value: 0, total: 25 },
+        { value: 3, total: 75 },
+      ],
+      2,
+    );
+    expect(report.total).toBe(100);
+    expect(report.zeroResults).toBe(25);
+    expect(report.zeroResultsPct).toBe(25);
+    expect(report.topQueries).toEqual([
+      { query: "birth certificate", count: 50 },
+      { query: "passport", count: 30 },
+    ]);
+  });
+
+  it("is safe with no search activity", () => {
+    const report = buildSearchReport([], [], 10);
+    expect(report).toEqual({
+      total: 0,
+      zeroResults: 0,
+      zeroResultsPct: 0,
+      topQueries: [],
+    });
   });
 });

@@ -66,7 +66,26 @@ export interface FormDetail {
   stepBack: number;
   stepEdit: number;
   review: number;
+  /** fields that fail validation, by descending error count. */
   fieldErrors: FieldErrorRow[];
+  /** kinds of validation error (the `errorTypes` messages), by descending count. */
+  errorTypes: FieldErrorRow[];
+}
+
+export interface SearchQueryRow {
+  query: string;
+  count: number;
+}
+
+export interface SearchReport {
+  /** total `search` events in range. */
+  total: number;
+  /** searches that returned zero results. */
+  zeroResults: number;
+  /** zeroResults / total * 100, rounded 1dp; 0 when no searches. */
+  zeroResultsPct: number;
+  /** top queries by search count. */
+  topQueries: SearchQueryRow[];
 }
 
 export interface PresetReport {
@@ -75,6 +94,7 @@ export interface PresetReport {
   pages: PageRow[];
   forms: FormRow[];
   details: Record<string, FormDetail>;
+  search: SearchReport;
 }
 
 export interface ReportModel {

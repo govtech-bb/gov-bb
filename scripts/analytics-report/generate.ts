@@ -10,6 +10,7 @@ import {
   buildFormDetail,
   buildFormRows,
   buildPageRows,
+  buildSearchReport,
   type FormDetailSource,
 } from "./metrics";
 import { renderReport } from "./render";
@@ -139,27 +140,27 @@ async function buildPresetReport(
 
   const details = new Map<string, FormDetailSource>();
   for (const formId of topFormIds) {
-    const [duration, errorCount, fields] = [
-      await client.eventDataValues(
-        formsId,
-        `${formId}:form-submit`,
-        "duration_seconds",
-        range,
-      ),
-      await client.eventDataValues(
-        formsId,
-        `${formId}:form-validation-error`,
-        "errorCount",
-        range,
-      ),
-      await client.eventDataValues(
-        formsId,
-        `${formId}:form-validation-error`,
-        "fields",
-        range,
-      ),
-    ];
-    details.set(formId, { duration, errorCount, fields });
+    const ve = `${formId}:form-validation-error`;
+    const duration = await client.eventDataValues(
+      formsId,
+      `${formId}:form-submit`,
+      "duration_seconds",
+      range,
+    );
+    const errorCount = await client.eventDataValues(
+      formsId,
+      ve,
+      "errorCount",
+      range,
+    );
+    const fields = await client.eventDataValues(formsId, ve, "fields", range);
+    const errorTypes = await client.eventDataValues(
+      formsId,
+      ve,
+      "errorTypes",
+      range,
+    );
+    details.set(formId, { duration, errorCount, fields, errorTypes });
   }
 
   const forms = buildFormRows(agg, meta, details, top);
@@ -174,12 +175,29 @@ async function buildPresetReport(
       );
   }
 
+  // Search (landing): query frequency + zero-results rate from the `search`
+  // event's property distributions.
+  const searchQueries = await client.eventDataValues(
+    landingId,
+    "search",
+    "query",
+    range,
+  );
+  const searchResults = await client.eventDataValues(
+    landingId,
+    "search",
+    "results",
+    range,
+  );
+  const search = buildSearchReport(searchQueries, searchResults, top);
+
   return {
     key: preset.key,
     label: preset.label,
     pages,
     forms,
     details: detailRecord,
+    search,
   };
 }
 

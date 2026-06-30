@@ -33,7 +33,17 @@ const model: ReportModel = {
           stepEdit: 2,
           review: 30,
           fieldErrors: [{ field: "email", count: 12 }],
+          errorTypes: [{ field: "Invalid email", count: 9 }],
         },
+      },
+      search: {
+        total: 60,
+        zeroResults: 9,
+        zeroResultsPct: 15,
+        topQueries: [
+          { query: "birth certificate", count: 22 },
+          { query: "passport", count: 14 },
+        ],
       },
     },
   ],
@@ -52,6 +62,21 @@ describe("renderReport", () => {
     expect(html).toContain("Last 7 days");
     expect(html).toContain("Get a birth certificate");
     expect(html).toContain("Funnel");
+  });
+
+  it("renders the enriched drill-down (field-error frequency + error types)", () => {
+    expect(html).toContain("Field errors — which fields fail and how often");
+    expect(html).toContain("% of starts");
+    expect(html).toContain("Error types");
+    expect(html).toContain("Total field errors");
+  });
+
+  it("renders the search section with queries and a CTR caveat", () => {
+    expect(html).toContain("Search queries");
+    expect(html).toContain("Top search queries");
+    expect(html).toContain('"birth certificate"'); // embedded in DATA
+    expect(html).toContain("Returned no results");
+    expect(html).toContain("Click-through rate is not shown");
   });
 
   it("embeds the model as JSON without breaking out of the script tag", () => {

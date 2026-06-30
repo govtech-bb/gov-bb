@@ -11,6 +11,7 @@ import type {
   FunnelStage,
   MetricRow,
   PageRow,
+  SearchReport,
 } from "./types";
 
 const NUMBER_WORDS = [
@@ -144,6 +145,7 @@ export interface FormDetailSource {
   duration: EventDataValue[];
   errorCount: EventDataValue[];
   fields: EventDataValue[];
+  errorTypes: EventDataValue[];
 }
 
 /**
@@ -206,5 +208,34 @@ export function buildFormDetail(
     stepEdit: entry.counts["form-step-edit"] ?? 0,
     review: entry.counts["form-review"] ?? 0,
     fieldErrors: source ? tallyFields(source.fields) : [],
+    errorTypes: source ? tallyFields(source.errorTypes) : [],
+  };
+}
+
+/**
+ * Summarise landing search from the `search` event's `query` and `results`
+ * property distributions. CTR is not derivable — there is no search-result
+ * click event — so we report query frequency and the zero-results rate.
+ */
+export function buildSearchReport(
+  queryValues: EventDataValue[],
+  resultsValues: EventDataValue[],
+  topN: number,
+): SearchReport {
+  let total = 0;
+  let zeroResults = 0;
+  for (const { value, total: t } of resultsValues) {
+    total += t;
+    if (Number(value) === 0) zeroResults += t;
+  }
+  const topQueries = queryValues
+    .map((v) => ({ query: String(v.value), count: v.total }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, topN);
+  return {
+    total,
+    zeroResults,
+    zeroResultsPct: total === 0 ? 0 : round((zeroResults / total) * 100, 1),
+    topQueries,
   };
 }

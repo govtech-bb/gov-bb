@@ -44,8 +44,13 @@ tbody tr.form-row.active { background: var(--teal-10); }
 .drop { color: var(--warn); font-size: 12px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .chip { background: var(--teal-10); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12px; }
-.friction { display: flex; gap: 24px; margin: 14px 0; font-size: 14px; }
-.friction b { display: block; font-size: 18px; }
+.friction, .stats { display: flex; flex-wrap: wrap; gap: 24px; margin: 14px 0; font-size: 14px; }
+.friction b, .stats b { display: block; font-size: 18px; }
+.stats { padding: 12px 14px; background: var(--teal-10); border-radius: 8px; }
+.muted { color: var(--muted); font-weight: 400; font-size: 13px; }
+table.mini { max-width: 600px; }
+table.mini th, table.mini td { padding: 7px 12px; }
+.banner { padding: 10px 14px; margin: 8px 0 0; background: #fdf3e7; border: 1px solid #f0d9bd; border-radius: 8px; color: var(--warn); font-size: 13px; }
 .close { float: right; cursor: pointer; border: 1px solid var(--line); background: var(--white); border-radius: 6px; padding: 4px 10px; font-size: 13px; }
 h4 { margin: 16px 0 6px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
 `;
@@ -91,19 +96,58 @@ function renderDetail(p, formId) {
     '<span class="bar-wrap"><span class="bar" style="width:' + (100 * s.count / max) + '%"></span></span>' +
     '<span class="num">' + fmtInt(s.count) + (s.dropoffPct ? ' <span class="drop">-' + fmtPct(s.dropoffPct) + '</span>' : '') + '</span></div>'
   ).join("");
+  const totalFieldErrors = d.fieldErrors.reduce((a, f) => a + f.count, 0);
+  const ofStarts = (n) => row.starts ? fmtPct(Math.round(n / row.starts * 1000) / 10) : "—";
+
+  const stats =
+    '<div class="stats">' +
+      '<div>Starts<b>' + fmtInt(row.starts) + '</b></div>' +
+      '<div>Completed<b>' + fmtInt(row.completes) + ' <span class="muted">(' + fmtPct(row.completionPct) + ')</span></b></div>' +
+      '<div>Avg time to complete<b>' + fmtDur(row.avgDurationSeconds) + '</b></div>' +
+      '<div>Field errors / start<b>' + row.avgFieldErrors + '</b></div>' +
+      '<div>Total field errors<b>' + fmtInt(totalFieldErrors) + '</b></div>' +
+    '</div>';
+
   const fields = d.fieldErrors.length
-    ? '<div class="chips">' + d.fieldErrors.map((f) => '<span class="chip">' + esc(f.field) + ' · ' + fmtInt(f.count) + '</span>').join("") + '</div>'
+    ? '<div class="scroll"><table class="mini"><thead><tr><th>Field</th><th class="num">Errors</th><th class="num">% of starts</th><th class="num">Share</th></tr></thead><tbody>' +
+      d.fieldErrors.map((f) =>
+        '<tr><td>' + esc(f.field) + '</td><td class="num">' + fmtInt(f.count) + '</td><td class="num">' + ofStarts(f.count) + '</td><td class="num">' + fmtPct(totalFieldErrors ? Math.round(f.count / totalFieldErrors * 1000) / 10 : 0) + '</td></tr>'
+      ).join("") + '</tbody></table></div>'
     : '<div class="empty">No field validation errors recorded.</div>';
+
+  const types = d.errorTypes && d.errorTypes.length
+    ? '<div class="chips">' + d.errorTypes.map((t) => '<span class="chip">' + esc(t.field) + ' · ' + fmtInt(t.count) + '</span>').join("") + '</div>'
+    : '<div class="empty">No error types recorded.</div>';
+
   return '<button class="close" onclick="closeDetail()">Close ✕</button>' +
     '<h3>' + esc(row.title) + '</h3>' +
     '<div class="sub">' + esc(formId) + ' · ' + esc(row.category) + '</div>' +
+    stats +
     '<div class="friction">' +
       '<div>Step back<b>' + fmtInt(d.stepBack) + '</b></div>' +
       '<div>Step edit<b>' + fmtInt(d.stepEdit) + '</b></div>' +
       '<div>Reviewed<b>' + fmtInt(d.review) + '</b></div>' +
     '</div>' +
     '<h4>Funnel</h4><div class="funnel">' + funnel + '</div>' +
-    '<h4>Most error-prone fields</h4>' + fields;
+    '<h4>Field errors — which fields fail and how often</h4>' + fields +
+    '<h4>Error types</h4>' + types;
+}
+
+function renderSearch(p) {
+  const s = p.search;
+  if (!s || !s.total) return '<div class="empty">No search activity for this range.</div>';
+  const stats =
+    '<div class="stats">' +
+      '<div>Total searches<b>' + fmtInt(s.total) + '</b></div>' +
+      '<div>Returned no results<b>' + fmtInt(s.zeroResults) + ' <span class="muted">(' + fmtPct(s.zeroResultsPct) + ')</span></b></div>' +
+    '</div>';
+  const queries = s.topQueries.length
+    ? '<div class="scroll"><table class="mini"><thead><tr><th>Query</th><th class="num">Searches</th></tr></thead><tbody>' +
+      s.topQueries.map((q) => '<tr><td>' + esc(q.query) + '</td><td class="num">' + fmtInt(q.count) + '</td></tr>').join("") +
+      '</tbody></table></div>'
+    : '<div class="empty">No queries recorded.</div>';
+  const note = '<div class="banner">Click-through rate is not shown: result clicks are not tracked yet. The zero-results rate above is the closest search-quality signal. Add a <code>search-result-click</code> event to enable true CTR.</div>';
+  return stats + '<h4>Top search queries</h4>' + queries + note;
 }
 
 function render() {
@@ -111,6 +155,7 @@ function render() {
   const p = presetByKey(key);
   document.getElementById("pages-body").innerHTML = renderPages(p);
   document.getElementById("forms-body").innerHTML = renderForms(p);
+  document.getElementById("search-body").innerHTML = renderSearch(p);
   const detail = document.getElementById("detail");
   if (activeForm && p.details[activeForm]) {
     detail.hidden = false;
@@ -163,6 +208,7 @@ export function renderReport(model: ReportModel): string {
     <div id="forms-body"></div>
     <div id="detail" hidden></div>
   </section>
+  <section><h2>Search queries</h2><div id="search-body"></div></section>
 </main>
 <script>const DATA = ${embedJson(model)};</script>
 <script>${CLIENT_JS}</script>
