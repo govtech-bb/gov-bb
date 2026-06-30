@@ -82,9 +82,14 @@ WORKDIR /app
 # util-linux-misc). Without it, exec works but nothing is ever logged.
 RUN apk add --no-cache util-linux-misc
 
-# Download AWS RDS CA bundle for TLS connections to RDS (must run before USER app)
-RUN wget -O /app/rds-ca-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem && \
-    chown app:app /app/rds-ca-bundle.pem
+# AWS RDS CA bundle for TLS connections to RDS (issue #304). Committed to the
+# repo (certs/rds-global-bundle.pem) and COPYed in rather than fetched at build
+# time — no unverified network download, and the build no longer depends on the
+# truststore endpoint being reachable. It's the global-bundle.pem of RDS root
+# CAs; RDS auto-rotates the DB *server* cert under the same roots, so this is
+# stable for years. Refresh only on a new RDS root-CA generation (rare):
+#   curl -fsSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o certs/rds-global-bundle.pem
+COPY --chown=app:app certs/rds-global-bundle.pem /app/rds-ca-bundle.pem
 
 RUN chown app:app /app
 USER app
