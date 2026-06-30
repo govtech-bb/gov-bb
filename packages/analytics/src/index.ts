@@ -29,6 +29,13 @@ export interface TrackingData {
     errorCount: number;
     fields: string;
     errorTypes: string;
+    /**
+     * Field-paired errors: one `fieldId::message` entry per failing
+     * validation, joined by ` || `. Unlike `fields`/`errorTypes` (two
+     * independent lists), this preserves which message belongs to which
+     * field so a report can show them together, un-aggregated.
+     */
+    fieldErrors: string;
   };
   "page-service-view": { form: string; category: string };
   "page-start-view": { form: string; category: string };
