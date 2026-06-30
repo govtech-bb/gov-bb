@@ -41,11 +41,10 @@ The workspace is declared in `pnpm-workspace.yaml` with the globs `apps/*` and `
 
 | Concern | Tool |
 |---|---|
-| Package manager | **pnpm v11.6.0** (enforced via `packageManager` in `package.json`) |
+| Package manager | **pnpm v10.30.0** (enforced via `packageManager` in `package.json`) |
 | Workspace layout | **pnpm workspaces** |
 | Task orchestration & caching | **Nx v22.6.5** |
 | Type checking | TypeScript project references (`tsc -b`) |
-| Testing | **Vitest 4** is the standard runner across the monorepo (Jest has been removed); `apps/chat` uses the Node test runner (`tsx --test`) |
 | Linting | **ESLint** (flat config, `eslint.config.mts`) with `typescript-eslint`, `@eslint/json`, `@eslint/css` |
 | Formatting | **Prettier** — double quotes, trailing commas, semicolons, 80-column width, 2-space tabs |
 | Secret scanning | **gitleaks** (optional pre-commit) |
@@ -73,19 +72,7 @@ The workspace is declared in `pnpm-workspace.yaml` with the globs `apps/*` and `
 
 Each app is an independently deployable TypeScript project with its own `project.json` (Nx) and, where applicable, a `Dockerfile`. Apps consume the shared `@govtech-bb/*` packages via the `workspace:*` protocol.
 
-Current apps (see each app's own README/SPEC for detail):
-
-| App | Role | Stack | Port |
-|---|---|---|---|
-| `api` | Form definitions, submissions, processor dispatch (email/payment/spreadsheet) | NestJS + TypeORM | 3001 |
-| `forms` | Public multi-step forms SPA | Vite + TanStack Router/Form | 3000 (Docker host 4200) |
-| `landing` | Public service-discovery site | TanStack Start + Nitro (SSR) | 3000 |
-| `chat` | "Ask alpha.gov.bb" RAG assistant | TanStack Start + AWS Bedrock + pgvector | 3000 |
-| `form_builder` | Form recipe authoring tool | Vite + TanStack Start (Nitro) | — |
-| `form_builder_api` | Backend for the form builder (recipe CRUD, validation, AI conversion) | Express 5 | 3003 |
-
-> `apps/cms` and `apps/web` are empty stubs (no `package.json` or source) and
-> are candidates for removal.
+> The contents of this directory evolve as services are added or removed; see each app's own README/package.json for current details. A snapshot at the time of writing includes a NestJS API, a Next.js/Vite forms frontend, a landing site, a form-builder authoring tool, and an AI chat assistant.
 
 Shared app conventions:
 - TypeScript everywhere, with each app pinning its own `tsconfig.json` that extends `tsconfig.base.json`.
@@ -108,18 +95,11 @@ All packages are **workspace-internal** (`"private": true`), namespaced under `@
 | `@govtech-bb/registry` | Component/form registry with runtime type information |
 | `@govtech-bb/expressions` | JSON Logic + Luxon-based expression evaluation engine |
 | `@govtech-bb/database` | TypeORM-backed persistence layer |
-| `@govtech-bb/content` | Browser-safe Markdown/YAML content loading with Zod schema validation |
-| `@govtech-bb/analytics` | Shared Umami analytics helper (forms, landing) |
-| `@govtech-bb/ai-bedrock` | AWS Bedrock / Claude adapter (chat, form_builder_api) |
-| `@govtech-bb/aws-secrets` | Shared AWS Secrets Manager helper |
-| `@govtech-bb/git-publish` | Shared GitHub publish client for recipe deploys |
-
-> `packages/preview-comments` is an empty stub (no `package.json` or source)
-> and is a candidate for removal.
+| `@govtech-bb/content` | Markdown/YAML content loading with Zod schema validation |
 
 Conventions:
 - Entry points exposed via `main`/`types` (or `exports`) pointing at `./src/index`.
-- Each package owns its own `vitest.config.ts` for unit tests (Vitest 4).
+- Each package owns its own `jest.config.ts` for unit tests.
 - Linting and formatting are uniform across all packages via shared root config.
 
 ---
@@ -131,10 +111,9 @@ Conventions:
 Services:
 - **postgres** — `pgvector/pgvector:pg16` on port `5432` (PostgreSQL with vector extension).
 - **api** — NestJS backend on port `3001`, health-gated on Postgres.
-- **forms** — Forms frontend on host port `4200` (container `3000`).
+- **forms** — Forms frontend on host port `4200`.
 - **landing** — Public landing site on port `3000`.
-- **chat** — RAG/LLM assistant (Claude on AWS Bedrock + pgvector embeddings).
-- **form_builder** — Form recipe authoring tool.
+- **chat** — RAG/LLM assistant on port `3002` (Anthropic Claude + AWS Bedrock embeddings).
 
 Environment variables are templated in `.env.docker.example` and cover database credentials, CORS origins, Anthropic/AWS keys, the EzPay payment integration, and a `SEED_ON_BOOT` flag that pre-populates example form definitions.
 
@@ -162,13 +141,9 @@ Two distinct AI capabilities are integrated into the monorepo:
 
 ### GitHub Actions (`.github/workflows/`)
 
-- `ci.yml` — Build + test on PRs targeting `sandbox`/`dev` (no deploys).
-- `pr-preview.yml` — Spins up an Amplify preview per PR; guards against dotted branch names.
-- `forms-smoke.yml` — Reusable workflow that drives real form submissions against a deployed environment.
-- `deploy-sandbox.yml` — Sandbox deployment; runs the live forms smoke jobs post-deploy.
-- `deploy-prod.yml` — Production deployment.
-- `zizmor.yml` — GitHub Actions security analysis.
-- `assign-author-to-issues.yml`, `archive-merged-drafts.yml`, `project-automation.yml` — repo/project automation.
+- `ci.yml` — Type checks PRs targeting `sandbox`/`dev` via `pnpm exec tsc -b`.
+- `deploy-sandbox.yml` — Sandbox environment deployment.
+- `deploy-prod.yml` — Production environment deployment.
 
 ### Deployment targets
 

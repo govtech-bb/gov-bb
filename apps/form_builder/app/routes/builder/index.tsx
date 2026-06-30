@@ -56,7 +56,7 @@ import type { CreateMdaContactInput, MdaContact } from "../../types/index";
 import { DeleteModal } from "./-delete-modal";
 import { DisableModal } from "./-disable-modal";
 import { EraseModal } from "./-erase-modal";
-import type { BuilderFormSummary } from "../../types/index";
+import type { FormDefinitionSummary } from "../../types/index";
 
 import styles from "../../styles/builder.module.css";
 
@@ -132,13 +132,13 @@ function BuilderPage() {
   >(null);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [lastSaveStatus, setLastSaveStatus] = useState<"idle" | "success" | "error" | "submitted">("idle");
-  const [deleteTarget, setDeleteTarget] = useState<BuilderFormSummary | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<FormDefinitionSummary | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [disableTarget, setDisableTarget] = useState<BuilderFormSummary | null>(null);
+  const [disableTarget, setDisableTarget] = useState<FormDefinitionSummary | null>(null);
   const [isDisabling, setIsDisabling] = useState(false);
   const [disableError, setDisableError] = useState<string | null>(null);
-  const [eraseTarget, setEraseTarget] = useState<BuilderFormSummary | null>(null);
+  const [eraseTarget, setEraseTarget] = useState<FormDefinitionSummary | null>(null);
   const [isErasing, setIsErasing] = useState(false);
   const [eraseError, setEraseError] = useState<string | null>(null);
   const [eraseSuccess, setEraseSuccess] = useState<
@@ -789,7 +789,7 @@ function BuilderPage() {
     setLastSaveStatus("idle");
   };
 
-  const handleRequestDelete = (form: BuilderFormSummary) => {
+  const handleRequestDelete = (form: FormDefinitionSummary) => {
     setDeleteError(null);
     setDeleteTarget(form);
     setIsPickerOpen(false);
@@ -820,7 +820,7 @@ function BuilderPage() {
     setDeleteError(null);
   };
 
-  const handleRequestDisable = (form: BuilderFormSummary) => {
+  const handleRequestDisable = (form: FormDefinitionSummary) => {
     setDisableError(null);
     setDisableTarget(form);
     setIsPickerOpen(false);
@@ -848,7 +848,7 @@ function BuilderPage() {
     setDisableError(null);
   };
 
-  const handleRequestErase = (form: BuilderFormSummary) => {
+  const handleRequestErase = (form: FormDefinitionSummary) => {
     setEraseError(null);
     setEraseSuccess(null);
     setEraseTarget(form);
@@ -886,7 +886,7 @@ function BuilderPage() {
 
   // Enable is a direct action (no modal) with an inline confirm: clearing a
   // tombstone restores the public service, so a single confirm is enough.
-  const handleEnable = async (form: BuilderFormSummary) => {
+  const handleEnable = async (form: FormDefinitionSummary) => {
     if (
       !window.confirm(
         `Re-enable ${form.title || form.formId}? The public service will be restored.`,

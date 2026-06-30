@@ -10,7 +10,7 @@ import {
   ApiResponse,
   FormDefinitionResponse,
   FormDefinitionsListResponse,
-  PublicFormSummary,
+  FormDefinitionSummary,
   FormDraft,
   FormDraftResponseBody,
   formDraftResponseBodySchema,
@@ -125,7 +125,9 @@ export const fetchFormDefinition = async (
   }
 };
 
-export const fetchFormDefinitions = async (): Promise<PublicFormSummary[]> => {
+export const fetchFormDefinitions = async (): Promise<
+  FormDefinitionSummary[]
+> => {
   const { body } = await makeFetch<FormDefinitionsListResponse>(
     `/form-definitions`,
     { not_found: "Form definitions could not be found." },

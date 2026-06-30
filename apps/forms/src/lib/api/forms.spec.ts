@@ -233,10 +233,10 @@ describe("fetchFormDefinition", () => {
 // ---------------------------------------------------------------------------
 
 describe("fetchFormDefinitions", () => {
-  it("returns an array of PublicFormSummary objects on success", async () => {
+  it("returns an array of FormDefinitionSummary objects on success", async () => {
     const data = [
-      { formId: "form-1", title: "Form One", version: "1.0.0" },
-      { formId: "form-2", title: "Form Two", version: "2.1.0" },
+      { formId: "form-1", title: "Form One" },
+      { formId: "form-2", title: "Form Two" },
     ];
     mockFetch.mockResolvedValue(makeOkResponse(data));
     const result = await fetchFormDefinitions();

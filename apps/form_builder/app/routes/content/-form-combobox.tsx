@@ -1,11 +1,11 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { BuilderFormSummary } from "../../types/index";
+import type { FormDefinitionSummary } from "../../types/index";
 import { useTransitionPresence } from "./-use-transition";
 import s from "./-styles.module.css";
 
 interface FormComboboxProps {
-  forms: BuilderFormSummary[];
+  forms: FormDefinitionSummary[];
   /** Selected form id ("" = no linked form). */
   value: string;
   onChange: (formId: string) => void;

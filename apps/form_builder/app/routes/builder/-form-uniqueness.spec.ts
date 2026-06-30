@@ -1,7 +1,7 @@
 import { checkFormUniqueness, checkRekeyPublished } from "./-form-uniqueness";
-import type { BuilderFormSummary } from "../../types/index";
+import type { FormDefinitionSummary } from "../../types/index";
 
-function form(over: Partial<BuilderFormSummary>): BuilderFormSummary {
+function form(over: Partial<FormDefinitionSummary>): FormDefinitionSummary {
   return {
     id: "x",
     formId: "x",
@@ -12,7 +12,7 @@ function form(over: Partial<BuilderFormSummary>): BuilderFormSummary {
   };
 }
 
-const forms: BuilderFormSummary[] = [
+const forms: FormDefinitionSummary[] = [
   form({ formId: "birth-registration", title: "Birth Registration" }),
   form({ formId: "death-certificate", title: "Death Certificate" }),
 ];
@@ -103,7 +103,7 @@ describe("checkFormUniqueness — title", () => {
 });
 
 describe("checkRekeyPublished", () => {
-  const publishedForms: BuilderFormSummary[] = [
+  const publishedForms: FormDefinitionSummary[] = [
     form({
       formId: "birth-registration",
       title: "Birth Registration",

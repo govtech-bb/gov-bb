@@ -2,7 +2,7 @@ import type { Mock } from "vitest";
 /**
  * @vitest-environment node
  */
-import type { BuilderFormSummary } from "../types/index";
+import type { FormDefinitionSummary } from "../types/index";
 
 // Mock the auth surface before importing the SUT — the requireSession
 // middleware reads SESSION_SECRET + a session cookie and would otherwise
@@ -87,7 +87,7 @@ describe("listForms", () => {
   });
 
   it("merges drafts and published, returning one entry per formId", async () => {
-    const drafts: BuilderFormSummary[] = [
+    const drafts: FormDefinitionSummary[] = [
       {
         id: "uuid-1",
         formId: "passport-renewal",
@@ -269,7 +269,7 @@ describe("listForms", () => {
   });
 
   it("drops a disabled non-published (draft-only) formId", async () => {
-    const drafts: BuilderFormSummary[] = [
+    const drafts: FormDefinitionSummary[] = [
       {
         id: "uuid-1",
         formId: "orphan-draft",
@@ -367,7 +367,7 @@ describe("listForms", () => {
   });
 
   it("leaves isDisabled falsy on entries not in the disabled list", async () => {
-    const drafts: BuilderFormSummary[] = [
+    const drafts: FormDefinitionSummary[] = [
       {
         id: "uuid-1",
         formId: "passport-renewal",

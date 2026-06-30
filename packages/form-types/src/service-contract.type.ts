@@ -103,19 +103,6 @@ export const serviceContractRecipeSchema = z.object({
 });
 export type ServiceContractRecipe = z.infer<typeof serviceContractRecipeSchema>;
 
-// Lenient draft-save gate (#1499). The /builder/forms write surfaces persist a
-// raw recipe blob to form_definitions.schema; this schema lets those handlers
-// reject a structurally-invalid blob without being stricter than the publish
-// backstop. It relaxes only `createdAt`/`updatedAt` to optional — a mid-edit
-// draft may not yet carry stamped timestamps, and the normal save path stamps
-// them via serializeRecipeDraft anyway. Everything else (formId, title, steps,
-// version, meta) stays exactly as strict as the recipe schema.
-export const draftRecipeSchema = serviceContractRecipeSchema.extend({
-  createdAt: dateTimeFormatSchema.optional(),
-  updatedAt: dateTimeFormatSchema.optional(),
-});
-export type DraftRecipe = z.infer<typeof draftRecipeSchema>;
-
 /**
  * Resolve a recipe's effective visibility. An absent `meta` (every recipe
  * predating #1646) or absent `visibility` defaults to `public`.

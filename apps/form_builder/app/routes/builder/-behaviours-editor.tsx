@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { BEHAVIOUR_TYPE_DESCRIPTORS } from "@govtech-bb/form-builder";
 import type { Behaviour } from "@govtech-bb/form-types";
 import type { FieldRef, StepRef } from "./-recipe-refs";
@@ -58,49 +57,6 @@ function targetFieldIsBoolean(
     (f) => f.fieldId === fieldId && (stepId == null || f.stepId === stepId),
   );
   return ref?.isBoolean ?? false;
-}
-
-// Value control for the `in` operator, whose evaluator is array-only. A local
-// text buffer keeps the raw typed string (commas and all) visible while the
-// user edits; the normalized `string[]` is committed on blur. Deriving the
-// displayed value straight from the stored array instead would strip a
-// trailing comma on every keystroke, making a second value impossible to
-// type. (#1738)
-function InValueInput({
-  label,
-  value,
-  onCommit,
-}: {
-  label: string;
-  value: unknown;
-  onCommit: (next: string[]) => void;
-}) {
-  const [text, setText] = useState(
-    Array.isArray(value)
-      ? value.join(", ")
-      : ((value as string | undefined) ?? ""),
-  );
-  return (
-    <div className={styles.formGroup}>
-      <label>{label}</label>
-      <input
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() =>
-          onCommit(
-            text
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean),
-          )
-        }
-      />
-      <small className={styles.fieldHint}>
-        Enter multiple values separated by commas
-      </small>
-    </div>
-  );
 }
 
 export function BehavioursEditor({
@@ -210,25 +166,6 @@ export function BehavioursEditor({
         !NUMERIC_OPERATORS.has(value as string)
       ) {
         delete next.transform;
-      }
-      // Reshape the value when the operator switches to/from `in`: the `in`
-      // evaluator is array-only, every other operator scalar. Boolean targets
-      // keep their boolean (the `in` control is never shown for them). (#1738)
-      if (
-        operatorParam &&
-        valueParam &&
-        paramName === operatorParam.name &&
-        !targetFieldIsBoolean(next, descriptor, fieldRefs)
-      ) {
-        const current = next[valueParam.name];
-        if (value === "in" && !Array.isArray(current)) {
-          next[valueParam.name] =
-            current === undefined || current === null || current === ""
-              ? []
-              : [String(current)];
-        } else if (value !== "in" && Array.isArray(current)) {
-          next[valueParam.name] = (current as string[]).join(", ");
-        }
       }
       // When a number param changes, raise any sibling number param whose
       // `atLeastParam` points at this one and is now below it. Mirrors the
@@ -423,26 +360,6 @@ export function BehavioursEditor({
                         <option value="false">false</option>
                       </select>
                     </div>
-                  );
-                }
-                // `in` target ⇒ comma-separated entry stored as a string[],
-                // since the `in` evaluator is array-only. Entry is buffered and
-                // committed on blur (see InValueInput). (#1738)
-                if ((bRecord["operator"] as string | undefined) === "in") {
-                  // Key on the stored value so a committed change remounts the
-                  // input — re-seeding its local buffer from the canonical array
-                  // (normalizes display, avoids a stale buffer). Prefixed with
-                  // the param name so a typed value can't collide with a sibling
-                  // control's key. (#1738)
-                  return (
-                    <InValueInput
-                      key={`${param.name}:${String(bRecord[param.name])}`}
-                      label={param.label}
-                      value={bRecord[param.name]}
-                      onCommit={(next) =>
-                        handleParamChange(index, param.name, next)
-                      }
-                    />
                   );
                 }
                 return (

@@ -16,10 +16,6 @@
 /* Tokens live on :root (not just .shell) so portaled UI — the form combobox
    dropdown renders into document.body, outside .shell — still resolves them. */
 :global(:root) {
-  /* Theme native controls (the <select> option popup, scrollbars) so the
-     open dropdown matches the page instead of falling back to the UA light
-     default. See #1739. */
-  color-scheme: light;
   --el-0: #ffffff;
   --el-50: #fbfbfa;
   --el-100: #f7f7f5;
@@ -45,7 +41,6 @@
 /* Dark mode — the blueprint palette proper: #1C1C1C background, #E5E5E5
    text, #A1A1A1 subtle. Same elevation semantics, inverted. */
 :global([data-theme="dark"]) {
-  color-scheme: dark;
   --el-0: #232323;
   --el-50: #202020;
   --el-100: #1c1c1c;

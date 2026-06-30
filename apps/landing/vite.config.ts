@@ -7,10 +7,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { markdown } from './vite-plugin-markdown'
 
 export default defineConfig({
-  resolve: {
-    tsconfigPaths: true,
-    extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
-  },
+  resolve: { tsconfigPaths: true },
   plugins: [
     tailwindcss(),
     devtools(),
@@ -55,6 +52,6 @@ export default defineConfig({
       },
     }),
     tanstackStart(),
-    viteReact({ include: /\.(js|jsx|ts|tsx)$/ }),
+    viteReact(),
   ],
 })

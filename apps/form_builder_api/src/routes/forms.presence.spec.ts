@@ -36,12 +36,7 @@ function mockRes() {
 }
 
 function recipe() {
-  return {
-    formId: "marriage-license",
-    version: "1.0.0",
-    title: "Marriage",
-    steps: [],
-  };
+  return { formId: "marriage-license", version: "1.0.0", title: "Marriage" };
 }
 
 beforeEach(() => {

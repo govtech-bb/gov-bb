@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getCatalog, ttlCache } from "@govtech-bb/form-builder";
+import { getCatalog } from "@govtech-bb/form-builder";
 import type {
   RegistryCatalog,
   ValidationResult,
@@ -12,24 +12,31 @@ import { requireSession } from "./auth/require-session";
 
 // 60s SSR-side cache. The API has its own cache too; this saves a network
 // round-trip on hot routes (e.g. catalog reads in the recipe-edit UI).
-const loadCatalog = ttlCache(async (): Promise<RegistryCatalog> => {
-  try {
-    return await api.get<RegistryCatalog>("/builder/registry/catalog");
-  } catch (err) {
-    // Local dev fallback: no BUILDER_API_URL/ADMIN_API_TOKEN configured —
-    // serve the package's built-in registry catalog (no `custom` entries)
-    // so /builder renders without a running API. Prod still throws.
-    if (!import.meta.env.DEV) throw err;
-    return getCatalog();
-  }
-}, 60_000);
+let _catalogCache: { data: RegistryCatalog; expiresAt: number } | null = null;
 
 export const getCatalogFn = createServerFn({
   method: "GET",
   strict: false,
 })
   .middleware([requireSession])
-  .handler((): Promise<RegistryCatalog> => loadCatalog());
+  .handler(async (): Promise<RegistryCatalog> => {
+    const now = Date.now();
+    if (_catalogCache && _catalogCache.expiresAt > now) {
+      return _catalogCache.data;
+    }
+    let catalog: RegistryCatalog;
+    try {
+      catalog = await api.get<RegistryCatalog>("/builder/registry/catalog");
+    } catch (err) {
+      // Local dev fallback: no BUILDER_API_URL/ADMIN_API_TOKEN configured —
+      // serve the package's built-in registry catalog (no `custom` entries)
+      // so /builder renders without a running API. Prod still throws.
+      if (!import.meta.env.DEV) throw err;
+      catalog = getCatalog();
+    }
+    _catalogCache = { data: catalog, expiresAt: now + 60_000 };
+    return catalog;
+  });
 
 export const validateRecipe = createServerFn({ method: "POST", strict: false })
   .middleware([requireSession])

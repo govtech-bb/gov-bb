@@ -8,7 +8,6 @@ import { AppError } from "@/common/errors";
 import { getRecipeVisibility } from "@govtech-bb/form-types";
 import type {
   Processor,
-  PublicFormSummary,
   ServiceContract,
   ServiceContractRecipe,
 } from "@govtech-bb/form-types";
@@ -46,7 +45,9 @@ export class FormDefinitionsService {
     return "files";
   }
 
-  async findAll(): Promise<PublicFormSummary[]> {
+  async findAll(): Promise<
+    { formId: string; title: string; version: string; category?: string }[]
+  > {
     const source = this.source();
     if (source === "files") {
       return this.recipeFileLoader.findAll();
@@ -105,12 +106,19 @@ export class FormDefinitionsService {
     return result;
   }
 
-  private async findAllFromDb(): Promise<PublicFormSummary[]> {
+  private async findAllFromDb(): Promise<
+    { formId: string; title: string; version: string; category?: string }[]
+  > {
     const entities = await this.formDefRepo.find({
       order: { createdAt: "DESC" },
     });
     const seen = new Set<string>();
-    const result: PublicFormSummary[] = [];
+    const result: {
+      formId: string;
+      title: string;
+      version: string;
+      category?: string;
+    }[] = [];
     for (const entity of entities) {
       if (!seen.has(entity.formId)) {
         seen.add(entity.formId);

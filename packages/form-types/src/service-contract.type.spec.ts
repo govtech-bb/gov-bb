@@ -1,7 +1,6 @@
 import {
   contactDetailsSchema,
   dateTimeFormatSchema,
-  draftRecipeSchema,
   getRecipeVisibility,
   recipeMetaSchema,
   serviceContractRecipeSchema,
@@ -311,97 +310,6 @@ describe("recipeMetaSchema (#1646)", () => {
     for (const visibility of ["public", "preview", "draft", "maintenance"]) {
       expect(recipeMetaSchema.safeParse({ visibility }).success).toBe(true);
     }
-  });
-});
-
-// The lenient draft-save gate (#1499). Same structural shape as
-// serviceContractRecipeSchema, but `createdAt`/`updatedAt` are relaxed to
-// optional so a raw mid-edit draft (which may not yet carry stamped timestamps)
-// is never rejected by a check that's stricter than the publish backstop.
-// Everything else — formId, title, steps, version, meta — stays as strict as
-// the recipe schema.
-describe("draftRecipeSchema (#1499)", () => {
-  const baseDraft = {
-    formId: "test-form",
-    title: "Test Form",
-    createdAt: "2026-01-01T00:00:00Z",
-    updatedAt: "2026-01-01T00:00:00Z",
-    steps: [],
-  };
-
-  it("accepts a full draft with both timestamps present", () => {
-    expect(draftRecipeSchema.safeParse(baseDraft).success).toBe(true);
-  });
-
-  it("accepts a draft missing both createdAt and updatedAt", () => {
-    const { createdAt: _c, updatedAt: _u, ...noTimestamps } = baseDraft;
-    expect(draftRecipeSchema.safeParse(noTimestamps).success).toBe(true);
-  });
-
-  it("accepts a draft missing only updatedAt", () => {
-    const { updatedAt: _u, ...noUpdatedAt } = baseDraft;
-    expect(draftRecipeSchema.safeParse(noUpdatedAt).success).toBe(true);
-  });
-
-  it("accepts a draft missing only createdAt", () => {
-    const { createdAt: _c, ...noCreatedAt } = baseDraft;
-    expect(draftRecipeSchema.safeParse(noCreatedAt).success).toBe(true);
-  });
-
-  it("rejects a present-but-malformed createdAt", () => {
-    expect(
-      draftRecipeSchema.safeParse({ ...baseDraft, createdAt: "2026-01-01" })
-        .success,
-    ).toBe(false);
-  });
-
-  it("rejects a present-but-malformed updatedAt", () => {
-    expect(
-      draftRecipeSchema.safeParse({ ...baseDraft, updatedAt: "not-a-date" })
-        .success,
-    ).toBe(false);
-  });
-
-  it("still requires steps to be an array", () => {
-    expect(
-      draftRecipeSchema.safeParse({ ...baseDraft, steps: "nope" }).success,
-    ).toBe(false);
-  });
-
-  it("still requires a formId", () => {
-    const { formId: _f, ...noFormId } = baseDraft;
-    expect(draftRecipeSchema.safeParse(noFormId).success).toBe(false);
-  });
-
-  it("still rejects an empty title", () => {
-    expect(
-      draftRecipeSchema.safeParse({ ...baseDraft, title: "" }).success,
-    ).toBe(false);
-  });
-
-  it("still rejects a present-but-malformed version", () => {
-    expect(
-      draftRecipeSchema.safeParse({ ...baseDraft, version: "1.0" }).success,
-    ).toBe(false);
-  });
-
-  it("still validates nested recipe steps (rejects plain primitives)", () => {
-    const draft = {
-      ...baseDraft,
-      steps: [
-        {
-          stepId: "step-1",
-          title: "Step One",
-          elements: [{ fieldId: "first-name", htmlType: "text", label: "X" }],
-        },
-      ],
-    };
-    expect(draftRecipeSchema.safeParse(draft).success).toBe(false);
-  });
-
-  it("accepts meta.visibility (inherited from the recipe schema)", () => {
-    const draft = { ...baseDraft, meta: { visibility: "preview" } };
-    expect(draftRecipeSchema.safeParse(draft).success).toBe(true);
   });
 });
 

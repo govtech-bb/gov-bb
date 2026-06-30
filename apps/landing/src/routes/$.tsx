@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { Heading, Text, linkVariants } from '@govtech-bb/react'
 import { Breadcrumbs } from '../components/Breadcrumbs'
@@ -21,8 +20,6 @@ import { getAvailableForms, getMaintenanceForms } from '../lib/available-forms'
 import { shouldHideStartLink } from '../lib/hide-start-link'
 import { checkFormAccessible } from '../lib/preview-form-access'
 import { seoTags } from '../lib/page-head'
-import { trackEvent } from '../lib/analytics'
-import { pageViewEvent } from './-page-view-event'
 
 interface CategoryListItem {
   title: string
@@ -38,12 +35,8 @@ const toListItem = (p: ContentPage): CategoryListItem => ({
 
 type LoaderData =
   | {
-      // Only the URL crosses the loader→client serialization boundary; the
-      // full page (incl. its component function, which seroval can't serialize)
-      // is re-resolved from the registry — a module constant on both sides — at
-      // render time.
       kind: 'page'
-      url: string
+      page: ContentPage
       availableForms: string[]
       underMaintenance: boolean
     }
@@ -115,7 +108,7 @@ export const Route = createFileRoute('/$')({
       const underMaintenance = formId
         ? (await getMaintenanceForms()).includes(formId)
         : false
-      return { kind: 'page', url: page.url, availableForms, underMaintenance }
+      return { kind: 'page', page, availableForms, underMaintenance }
     }
 
     if (segments.length === 2) {
@@ -135,8 +128,7 @@ export const Route = createFileRoute('/$')({
   head: ({ loaderData }) => {
     if (!loaderData) return {}
     if (loaderData.kind === 'page') {
-      const page = findPage(loaderData.url)
-      if (!page) return {}
+      const { page } = loaderData
       const title = page.frontmatter.title
       const isPublic = pageLevel(page) === 'public'
       // Canonical/OG only for indexable pages — a gated page is noindex.
@@ -181,18 +173,15 @@ export const Route = createFileRoute('/$')({
 function ContentRoute() {
   const data = Route.useLoaderData()
   const { level } = Route.useRouteContext()
-  if (data.kind === 'page') {
-    const page = findPage(data.url)
-    if (!page) throw notFound()
+  if (data.kind === 'page')
     return (
       <PageView
-        page={page}
+        page={data.page}
         availableForms={data.availableForms}
         viewerLevel={level}
         underMaintenance={data.underMaintenance}
       />
     )
-  }
   if (data.kind === 'subcategory-index')
     return (
       <SubcategoryIndexView
@@ -230,33 +219,22 @@ function PageView({
   // for the public; a reviewer keeps the Start button (the loader adds a
   // token-accessible form back to the list) so they can still test it.
   // `maintenance` differs only in also rendering the notice (below).
-  useEffect(() => {
-    const event = pageViewEvent(page)
-    if (event) trackEvent(event.name, event.data)
-  }, [page])
   const hideStartLink = shouldHideStartLink({
     startSubPageVisible: isStartSubPageVisible(page, viewerLevel),
     formId: page.frontmatter.form_id,
     availableForms,
   })
   const level = pageLevel(page)
-  // A co-located `.tsx` page renders its own title/layout; everything else is
-  // a `.md` page rendered through the markdown article chrome.
-  const Body = page.selfRendered ? page.Component : undefined
   return (
     <Shell>
       {level !== 'public' ? <ReviewBanner level={level} /> : null}
       {underMaintenance ? <MaintenanceNotice /> : null}
-      {Body ? (
-        <Body />
-      ) : (
-        <MarkdownContent
-          hast={page.hast}
-          frontmatter={page.frontmatter}
-          availableForms={new Set(availableForms)}
-          hideStartLink={hideStartLink}
-        />
-      )}
+      <MarkdownContent
+        hast={page.hast}
+        frontmatter={page.frontmatter}
+        availableForms={new Set(availableForms)}
+        hideStartLink={hideStartLink}
+      />
     </Shell>
   )
 }
@@ -386,11 +364,11 @@ function ReviewBanner({ level }: { level: Exclude<ViewLevel, 'public'> }) {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <div className="container py-4 lg:py-6 print:hidden">
+      <div className="container py-4 lg:py-6">
         <Breadcrumbs />
       </div>
       <div className="container pt-4 pb-8 lg:py-8">{children}</div>
-      <div className="container print:hidden">
+      <div className="container">
         <HelpfulBox className="mb-4 lg:mb-16" />
       </div>
     </>
