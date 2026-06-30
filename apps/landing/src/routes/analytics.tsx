@@ -480,8 +480,16 @@ function FormDetailBody({
             </span>
             <span className={NUM}>
               {fmtInt(s.count)}
+              {/* dropoffPct > 0 = fewer than the previous step (drop-off, red);
+                  < 0 = more than the previous step (increase, green). */}
               {s.dropoffPct ? (
-                <span className="text-red-00"> -{fmtPct(s.dropoffPct)}</span>
+                <span
+                  className={s.dropoffPct < 0 ? 'text-green-00' : 'text-red-00'}
+                >
+                  {' '}
+                  {s.dropoffPct < 0 ? '+' : '-'}
+                  {fmtPct(Math.abs(s.dropoffPct))}
+                </span>
               ) : null}
             </span>
           </div>
