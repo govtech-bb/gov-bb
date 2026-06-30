@@ -1,0 +1,13 @@
+{
+  "name": "analytics-report",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "scripts/analytics-report",
+  "projectType": "library",
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": { "command": "vitest run", "cwd": "scripts/analytics-report" }
+    }
+  },
+  "tags": []
+}

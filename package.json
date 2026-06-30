@@ -23,6 +23,7 @@
     "format:check": "prettier --check .",
     "validate-recipes": "tsx scripts/validate-recipes.ts",
     "dump-recipes": "tsx --env-file-if-exists=.env packages/database/scripts/dump-recipes-to-files.ts",
+    "analytics:report": "tsx --env-file-if-exists=.env scripts/analytics-report/generate.ts",
     "migration:create": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:create",
     "migration:create:help": "node -e \"console.log('Usage: pnpm migration:create -- <path/to/migrations>/<migration-name>'); console.log('Example: pnpm migration:create -- apps/api/src/database/migrations/AddFormSubmissionIndexes'); console.log('This creates an empty migration file; use migration:generate for diff-based migrations.');\"",
     "migration:generate": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:generate -d apps/api/typeorm.config.ts",
