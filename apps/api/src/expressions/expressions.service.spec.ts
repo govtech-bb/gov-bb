@@ -85,6 +85,7 @@ describe("ExpressionsService", () => {
             phone: "contact-details.parent-mobile-phone",
           },
           excludeSteps: ["declaration"],
+          groupByStep: false,
         },
       },
     };
