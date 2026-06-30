@@ -24,7 +24,13 @@ export class UmamiClient {
 
   constructor({ apiKey, baseUrl }: UmamiClientOptions) {
     this.apiKey = apiKey;
-    this.baseUrl = (baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
+    // Trim trailing slashes with an index walk rather than `/\/+$/` — that
+    // pattern is polynomial-ReDoS (js/polynomial-redos) on inputs with many
+    // repeated trailing slashes.
+    const base = baseUrl ?? DEFAULT_BASE_URL;
+    let end = base.length;
+    while (end > 0 && base[end - 1] === "/") end--;
+    this.baseUrl = base.slice(0, end);
   }
 
   private async throttle(): Promise<void> {
