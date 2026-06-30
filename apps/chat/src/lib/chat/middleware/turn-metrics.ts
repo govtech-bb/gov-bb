@@ -63,3 +63,48 @@ export function emitTurnMetrics(rec: TurnRecord): void {
   if (process.env.NODE_ENV !== "production") return;
   console.log(JSON.stringify(buildTurnMetrics(rec, Date.now())));
 }
+
+// The query-rewrite call (rewrite.ts) is a separate, capped LLM call whose
+// tokens the per-turn record above does not cover (#1116). It's metered as its
+// own EMF document — same namespace, dimensioned by Model (the REWRITE_MODEL,
+// which differs from the turn model) — with distinct metric names so it never
+// muddles the per-turn PromptTokens/CompletionTokens.
+export interface RewriteMetricsDoc {
+  _aws: TurnMetricsDoc["_aws"];
+  Model: string;
+  RewritePromptTokens: number;
+  RewriteCompletionTokens: number;
+}
+
+export function buildRewriteMetrics(
+  model: string,
+  usage: { promptTokens: number; completionTokens: number },
+  now: number,
+): RewriteMetricsDoc {
+  return {
+    _aws: {
+      Timestamp: now,
+      CloudWatchMetrics: [
+        {
+          Namespace: NAMESPACE,
+          Dimensions: [["Model"]],
+          Metrics: [
+            { Name: "RewritePromptTokens", Unit: "Count" },
+            { Name: "RewriteCompletionTokens", Unit: "Count" },
+          ],
+        },
+      ],
+    },
+    Model: model,
+    RewritePromptTokens: usage.promptTokens,
+    RewriteCompletionTokens: usage.completionTokens,
+  };
+}
+
+export function emitRewriteMetrics(
+  model: string,
+  usage: { promptTokens: number; completionTokens: number },
+): void {
+  if (process.env.NODE_ENV !== "production") return;
+  console.log(JSON.stringify(buildRewriteMetrics(model, usage, Date.now())));
+}
