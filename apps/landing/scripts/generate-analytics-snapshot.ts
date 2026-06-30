@@ -1,18 +1,17 @@
-// Build-time generator for the /analytics page snapshot.
+// Generator for the committed /analytics snapshot.
 //
-// The /analytics page renders STATIC data baked in at build time — it never
-// calls Umami at request time (that fanned out to ~30 calls per view and made
-// the page slow). This script does all the Umami work once, during the Amplify
-// build, and writes a ReportModel JSON the route imports directly.
+// The /analytics page renders STATIC data from a JSON that is COMMITTED to the
+// repo (src/content/analytics-snapshot.json) and bundled at build time — it
+// never calls Umami at request time (that fanned out to ~30 calls per view and
+// made the page slow), and the build does no fetching either, so deploys need
+// no UMAMI_* env vars and previews are stable.
 //
-// It is wired into `apps/landing` build (see package.json). Refreshing the live
-// data is a redeploy: the scheduled `refresh-analytics.yml` workflow triggers an
-// Amplify RELEASE, which re-runs this generator with the app's UMAMI_* build
-// env and reships the page with fresh numbers.
+// To refresh the data: run `pnpm run generate:analytics` (it auto-loads the
+// repo-root .env for UMAMI_* creds), then COMMIT the updated snapshot JSON.
 //
-// Resilience: analytics must never break the landing deploy. With no Umami
-// credentials (local dev, CI) or on any fetch error, we leave the committed
-// placeholder snapshot in place and exit 0.
+// Resilience: if the creds are absent or any fetch fails, the existing
+// committed snapshot is left untouched and the script exits 0 — running it
+// without creds can never blank out the committed data.
 import { existsSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import {

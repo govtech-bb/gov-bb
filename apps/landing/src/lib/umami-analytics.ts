@@ -1,7 +1,7 @@
-// Static analytics data for the /analytics page. The numbers are generated at
-// build time by scripts/generate-analytics-snapshot.ts (which does the Umami
-// fetching) and baked into this JSON — the page never calls Umami at request
-// time. Refreshing the data is a redeploy (see refresh-analytics.yml).
+// Static analytics data for the /analytics page. The numbers live in a JSON
+// COMMITTED to the repo (analytics-snapshot.json) and bundled at build time —
+// the page never calls Umami at request time, and deploys need no UMAMI_* env.
+// Refresh by running `pnpm run generate:analytics` and committing the result.
 import type {
   FormDetail,
   FormRow,

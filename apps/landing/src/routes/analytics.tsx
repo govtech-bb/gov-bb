@@ -125,9 +125,8 @@ function AnalyticsPage() {
           Umami Analytics
         </Heading>
         <Text as="p" className="mt-s text-mid-grey-00">
-          The analytics snapshot has not been generated yet. It is produced at
-          build time and refreshed on a schedule — check back after the next
-          deploy.
+          The analytics snapshot is empty. Regenerate it with{' '}
+          <code>pnpm run generate:analytics</code> and commit the result.
         </Text>
       </div>
     )

@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "generate:analytics": "tsx scripts/generate-analytics-snapshot.ts",
-    "build": "tsx scripts/generate-analytics-snapshot.ts && vite build && node scripts/check-no-secret-leak.mjs",
+    "build": "vite build && node scripts/check-no-secret-leak.mjs",
     "preview": "nitro preview",
     "start": "node .amplify-hosting/compute/default/server.js",
     "test": "vitest run",
