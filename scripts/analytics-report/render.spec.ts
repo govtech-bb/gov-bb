@@ -88,10 +88,11 @@ describe("renderReport", () => {
     expect(html).toContain('"google.com"'); // embedded in DATA
   });
 
-  it("renders the enriched drill-down (field-error frequency + error types)", () => {
+  it("renders the enriched drill-down (field-error frequency + humanised reasons)", () => {
     expect(html).toContain("Field errors — which fields fail and how often");
     expect(html).toContain("% of starts");
-    expect(html).toContain("Error types");
+    expect(html).toContain("Why fields fail — validation reasons");
+    expect(html).toContain("Required field left blank"); // reason code → human label
     expect(html).toContain("Total field errors");
   });
 

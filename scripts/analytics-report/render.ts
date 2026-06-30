@@ -73,6 +73,21 @@ const fmtPct = (n) => n.toFixed(1).replace(/\\.0$/, "") + "%";
 const fmtDur = (s) => s == null ? "—" : (s >= 60 ? Math.floor(s/60) + "m " + (s%60) + "s" : s + "s");
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 
+// Maps validation reason codes (Zod-style) to a plain-English explanation.
+const REASONS = {
+  required: "Required field left blank",
+  invalid_format: "Invalid format (e.g. email, date, number)",
+  invalid_type: "Wrong type of value",
+  invalid_string: "Invalid text",
+  invalid_enum_value: "Not one of the allowed options",
+  too_small: "Too short / below the minimum",
+  too_big: "Too long / above the maximum",
+  not_multiple_of: "Not an allowed increment",
+  pattern: "Doesn't match the required pattern",
+  custom: "Failed a custom validation rule",
+};
+const reasonLabel = (code) => REASONS[code] || code;
+
 let activeForm = null;
 function presetByKey(key) { return DATA.presets.find((p) => p.key === key); }
 
@@ -135,9 +150,13 @@ function renderDetail(p, formId) {
       ).join("") + '</tbody></table></div>'
     : '<div class="empty">No field validation errors recorded.</div>';
 
+  const totalReasons = d.errorTypes.reduce((a, t) => a + t.count, 0);
   const types = d.errorTypes && d.errorTypes.length
-    ? '<div class="chips">' + d.errorTypes.map((t) => '<span class="chip">' + esc(t.field) + ' · ' + fmtInt(t.count) + '</span>').join("") + '</div>'
-    : '<div class="empty">No error types recorded.</div>';
+    ? '<div class="scroll"><table class="mini"><thead><tr><th>Why it failed</th><th>Reason code</th><th class="num">Occurrences</th><th class="num">Share</th></tr></thead><tbody>' +
+      d.errorTypes.map((t) =>
+        '<tr><td>' + esc(reasonLabel(t.field)) + '</td><td><code>' + esc(t.field) + '</code></td><td class="num">' + fmtInt(t.count) + '</td><td class="num">' + fmtPct(totalReasons ? Math.round(t.count / totalReasons * 1000) / 10 : 0) + '</td></tr>'
+      ).join("") + '</tbody></table></div>'
+    : '<div class="empty">No validation-error reasons recorded.</div>';
 
   return '<button class="close" onclick="closeDetail()">Close ✕</button>' +
     '<h3>' + esc(row.title) + '</h3>' +
@@ -150,7 +169,8 @@ function renderDetail(p, formId) {
     '</div>' +
     '<h4>Funnel</h4><div class="funnel">' + funnel + '</div>' +
     '<h4>Field errors — which fields fail and how often</h4>' + fields +
-    '<h4>Error types</h4>' + types;
+    '<h4>Why fields fail — validation reasons</h4>' + types +
+    '<p class="muted" style="margin-top:8px">Reasons are the validation type for the attempt (the event records the set of failing fields and the set of reasons, not a per-field message).</p>';
 }
 
 function queryTable(rows) {
@@ -279,7 +299,7 @@ export function renderReport(model: ReportModel): string {
     <li><b>Avg field errors</b> — total validation <code>errorCount</code> ÷ starts.</li>
     <li><b>Avg time</b> — mean of <code>duration_seconds</code> on successful submits (completers only; wall-clock incl. idle time; mean, so outlier-sensitive).</li>
   </ul>
-  <p>Click a row for the step funnel, the fields that fail most, and error types.</p>
+  <p>Click a row for the step funnel, the fields that fail most, and <em>why</em> they fail (validation reasons such as required / invalid format / too short).</p>
 </div>
 <div id="howto-search" popover class="howto">
   <h3>Search queries — how it works</h3>
