@@ -7,8 +7,16 @@ import { markdown } from './vite-plugin-markdown'
 // and devtools for unit tests leaks hundreds of file handles, so vitest
 // can't exit ("something prevents Vite server from exiting"). Only the
 // plugins the suites actually exercise are loaded — markdown (registry's
-// import.meta.glob of *.md), Start (server-fn transform), react (JSX).
+// import.meta.glob of *.md), mdx (its *.mdx glob), Start (server-fn
+// transform), react (JSX).
 export default defineConfig({
-  resolve: { tsconfigPaths: true },
-  plugins: [markdown(), tanstackStart(), viteReact()],
+  resolve: {
+    tsconfigPaths: true,
+    extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
+  },
+  plugins: [
+    markdown(),
+    tanstackStart(),
+    viteReact({ include: /\.(js|jsx|ts|tsx)$/ }),
+  ],
 })

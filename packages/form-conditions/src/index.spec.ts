@@ -258,6 +258,54 @@ describe("evaluateCondition", () => {
         }),
       ).toBe(true);
     });
+
+    // ─── lenient non-array value (#1738) ─────────────────────────────────────
+    // Recipes saved by the builder before #1738 stored a bare string `value`
+    // for `in`. Coerce a scalar into a one-element list so those conditions
+    // start firing again with no recipe re-save.
+    it("matches a scalar target when value is a bare string (#1738)", () => {
+      const scalar: FieldConditionalOnBehaviour = {
+        type: "fieldConditionalOn",
+        targetFieldId: "condition",
+        operator: "in",
+        value: "other" as unknown as string[],
+      };
+      expect(
+        evaluateCondition(scalar, EMPTY_VALUES, { condition: "other" }),
+      ).toBe(true);
+      expect(
+        evaluateCondition(scalar, EMPTY_VALUES, { condition: "asthma" }),
+      ).toBe(false);
+    });
+
+    it("matches a multi-select array target when value is a bare string (#1738)", () => {
+      const scalar: FieldConditionalOnBehaviour = {
+        type: "fieldConditionalOn",
+        targetFieldId: "conditions",
+        operator: "in",
+        value: "other" as unknown as string[],
+      };
+      expect(
+        evaluateCondition(scalar, EMPTY_VALUES, {
+          conditions: ["asthma", "other"],
+        }),
+      ).toBe(true);
+    });
+
+    it("a bare empty-string value matches nothing (#1738)", () => {
+      const empty: FieldConditionalOnBehaviour = {
+        type: "fieldConditionalOn",
+        targetFieldId: "condition",
+        operator: "in",
+        value: "" as unknown as string[],
+      };
+      expect(evaluateCondition(empty, EMPTY_VALUES, { condition: "" })).toBe(
+        false,
+      );
+      expect(
+        evaluateCondition(empty, EMPTY_VALUES, { condition: "other" }),
+      ).toBe(false);
+    });
   });
 
   describe("operator: exists", () => {

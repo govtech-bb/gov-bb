@@ -5,10 +5,11 @@ import {
   processorSchema,
   type ServiceContractRecipe,
   type Processor,
+  type PublicFormSummary,
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
 import { getPublishedRecipe } from "./github-recipes";
-import type { FormDefinitionSummary } from "../types/index";
+import type { BuilderFormSummary } from "../types/index";
 import { requireSession } from "./auth/require-session";
 import {
   redactRecipeSecrets,
@@ -19,10 +20,10 @@ import {
 
 export const listForms = createServerFn({ method: "GET" })
   .middleware([requireSession])
-  .handler(async (): Promise<FormDefinitionSummary[]> => {
+  .handler(async (): Promise<BuilderFormSummary[]> => {
     const [drafts, published, disabled] = await Promise.all([
-      api.get<FormDefinitionSummary[]>("/builder/forms"),
-      api.get<{ formId: string; title: string; version: string }[]>(
+      api.get<BuilderFormSummary[]>("/builder/forms"),
+      api.get<Pick<PublicFormSummary, "formId" | "title" | "version">[]>(
         "/builder/forms/published",
       ),
       api.get<string[]>("/builder/forms/disabled"),
@@ -40,7 +41,7 @@ export const listForms = createServerFn({ method: "GET" })
       published.map((p) => [p.formId, p.version] as const),
     );
 
-    const byFormId = new Map<string, FormDefinitionSummary>();
+    const byFormId = new Map<string, BuilderFormSummary>();
     for (const d of drafts) byFormId.set(d.formId, d);
     for (const p of published) {
       // #1196: a draft row is the current working copy — always prefer it over
