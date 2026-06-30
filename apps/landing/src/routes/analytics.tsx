@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { Heading, Select, Text } from '@govtech-bb/react'
 import * as React from 'react'
 import {
   getAnalytics,
@@ -39,6 +40,37 @@ const REASONS: Record<string, string> = {
   custom: 'Failed a custom validation rule',
 }
 const reasonLabel = (code: string) => REASONS[code] ?? code
+
+// --- shared class fragments (design-system tokens) ---
+const TH = 'px-s py-s text-left text-caption font-bold uppercase tracking-wide text-mid-grey-00'
+const TD = 'px-s py-s align-top text-caption border-t border-grey-00'
+const NUM = 'text-right tabular-nums'
+const CARD = 'overflow-x-auto rounded-lg border border-grey-00'
+
+function SubHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <Text
+      as="span"
+      size="caption"
+      weight="bold"
+      className="mt-m mb-xs block uppercase tracking-wide text-mid-grey-00"
+    >
+      {children}
+    </Text>
+  )
+}
+
+function HowToButton({ target }: { target: string }) {
+  return (
+    <button
+      type="button"
+      popoverTarget={target}
+      className="rounded-full border border-grey-00 px-s py-xs text-caption font-bold text-teal-00"
+    >
+      How it works
+    </button>
+  )
+}
 
 interface SrcPop {
   sources: { referrer: string; count: number }[]
@@ -83,141 +115,165 @@ function AnalyticsPage() {
   const activeRow = view.forms.find((f) => f.formId === activeForm) ?? null
 
   return (
-    <div className="uar">
-      <style>{CSS}</style>
-      <div className="uar-head">
-        <div className="uar-inner">
-          <h1>Umami Analytics</h1>
-          <div className="uar-meta">
-            Generated {view.generatedAt} · {view.timezone}
-          </div>
-          <div className="uar-controls">
-            <label htmlFor="uar-preset">Date range</label>
-            <select
-              id="uar-preset"
-              value={view.presetKey}
-              disabled={loadingPreset}
-              onChange={(e) => changePreset(e.target.value)}
-            >
-              {view.presets.map((p) => (
-                <option key={p.key} value={p.key}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-            {loadingPreset ? <span className="uar-muted">loading…</span> : null}
-          </div>
+    <div className="container py-8">
+      <style>{POPOVER_CSS}</style>
+
+      <header className="mb-l">
+        <Heading as="h1" size="h1">
+          Umami Analytics
+        </Heading>
+        <Text as="p" size="caption" className="text-mid-grey-00">
+          Generated {view.generatedAt} · {view.timezone}
+        </Text>
+        <div className="mt-s max-w-[220px]">
+          <Select
+            label="Date range"
+            value={view.presetKey}
+            disabled={loadingPreset}
+            onChange={(e) => changePreset(e.target.value)}
+          >
+            {view.presets.map((p) => (
+              <option key={p.key} value={p.key}>
+                {p.label}
+              </option>
+            ))}
+          </Select>
         </div>
-      </div>
+      </header>
 
-      <main className="uar-main">
-        <section>
-          <h2>
+      {/* Top pages */}
+      <section className="mb-l">
+        <div className="mb-s flex items-center justify-between gap-s">
+          <Heading as="h2" size="h3">
             Top pages
-            <button type="button" className="uar-howto-btn" popoverTarget="uar-howto-pages">
-              How it works
-            </button>
-          </h2>
-          <div className="uar-scroll">
-            <table>
-              <thead>
+          </Heading>
+          <HowToButton target="uar-howto-pages" />
+        </div>
+        <div className={CARD}>
+          <table className="min-w-full">
+            <thead>
+              <tr>
+                <th className={TH}>Path</th>
+                <th className={`${TH} ${NUM}`}>Pageviews</th>
+                <th className={`${TH} ${NUM}`}>Visitors</th>
+                <th className={TH}>Top source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {view.pages.length === 0 ? (
                 <tr>
-                  <th>Path</th>
-                  <th className="num">Pageviews</th>
-                  <th className="num">Visitors</th>
-                  <th>Top source</th>
+                  <td className={`${TD} text-mid-grey-00`} colSpan={4}>
+                    No page data for this range.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {view.pages.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="uar-empty">
-                      No page data for this range.
-                    </td>
+              ) : (
+                view.pages.map((p) => (
+                  <tr key={p.path}>
+                    <td className={TD}>{p.path}</td>
+                    <td className={`${TD} ${NUM}`}>{fmtInt(p.pageviews)}</td>
+                    <td className={`${TD} ${NUM}`}>{fmtInt(p.visitors)}</td>
+                    <SourceCell sources={p.topSources} onShow={setSrcPop} />
                   </tr>
-                ) : (
-                  view.pages.map((p) => (
-                    <tr key={p.path}>
-                      <td>{p.path}</td>
-                      <td className="num">{fmtInt(p.pageviews)}</td>
-                      <td className="num">{fmtInt(p.visitors)}</td>
-                      <SourceCell sources={p.topSources} onShow={setSrcPop} />
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-        <section>
-          <h2>
+      {/* Top forms */}
+      <section className="mb-l">
+        <div className="mb-s flex items-center justify-between gap-s">
+          <Heading as="h2" size="h3">
             Top forms
-            <button type="button" className="uar-howto-btn" popoverTarget="uar-howto-forms">
-              How it works
-            </button>
-          </h2>
-          <div className="uar-scroll">
-            <table>
-              <thead>
+          </Heading>
+          <HowToButton target="uar-howto-forms" />
+        </div>
+        <div className={CARD}>
+          <table className="min-w-full">
+            <thead>
+              <tr>
+                <th className={TH}>Form</th>
+                <th className={`${TH} ${NUM}`}>Starts</th>
+                <th className={`${TH} ${NUM}`}>Completion</th>
+              </tr>
+            </thead>
+            <tbody>
+              {view.forms.length === 0 ? (
                 <tr>
-                  <th>Form</th>
-                  <th className="num">Starts</th>
-                  <th className="num">Completion</th>
+                  <td className={`${TD} text-mid-grey-00`} colSpan={3}>
+                    No form data for this range.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {view.forms.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="uar-empty">
-                      No form data for this range.
-                    </td>
-                  </tr>
-                ) : (
-                  view.forms.map((f) => (
-                    <tr
-                      key={f.formId}
-                      className={`uar-form-row${activeForm === f.formId ? ' active' : ''}`}
-                      onClick={() => openForm(f.formId)}
-                    >
-                      <td>
+              ) : (
+                view.forms.map((f) => (
+                  <tr
+                    key={f.formId}
+                    tabIndex={0}
+                    onClick={() => openForm(f.formId)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        openForm(f.formId)
+                      }
+                    }}
+                    className={`cursor-pointer hover:bg-teal-10 ${activeForm === f.formId ? 'bg-teal-10' : ''}`}
+                  >
+                    <td className={TD}>
+                      <Text as="span" size="caption" weight="bold">
                         {f.title}
-                        <div className="uar-cat">{f.category}</div>
-                      </td>
-                      <td className="num">{fmtInt(f.starts)}</td>
-                      <td className="num">{fmtPct(f.completionPct)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                      </Text>
+                      <Text as="span" size="small-caption" className="block text-mid-grey-00">
+                        {f.category}
+                      </Text>
+                    </td>
+                    <td className={`${TD} ${NUM}`}>{fmtInt(f.starts)}</td>
+                    <td className={`${TD} ${NUM}`}>{fmtPct(f.completionPct)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-        <section>
-          <h2>
+      {/* Search */}
+      <section className="mb-l">
+        <div className="mb-s flex items-center justify-between gap-s">
+          <Heading as="h2" size="h3">
             Search queries
-            <button type="button" className="uar-howto-btn" popoverTarget="uar-howto-search">
-              How it works
-            </button>
-          </h2>
-          <SearchSection view={view} />
-        </section>
-      </main>
+          </Heading>
+          <HowToButton target="uar-howto-search" />
+        </div>
+        <SearchSection view={view} />
+      </section>
 
       {activeForm ? (
         <>
-          <div className="uar-overlay" onClick={() => setActiveForm(null)} />
-          <aside className="uar-drawer">
-            <button className="uar-close" onClick={() => setActiveForm(null)}>
+          <button
+            type="button"
+            aria-label="Close details"
+            className="fixed inset-0 z-40 bg-black-00/40"
+            onClick={() => setActiveForm(null)}
+          />
+          <aside className="fixed top-0 right-0 z-50 h-full w-[min(580px,94vw)] overflow-y-auto border-l border-grey-00 bg-white-00 p-l shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setActiveForm(null)}
+              className="float-right rounded-md border border-grey-00 px-s py-xs text-caption"
+            >
               Close ✕
             </button>
-            <h3>{activeRow?.title ?? activeForm}</h3>
-            <div className="uar-sub">
+            <Heading as="h3" size="h4">
+              {activeRow?.title ?? activeForm}
+            </Heading>
+            <Text as="p" size="small-caption" className="mb-s text-mid-grey-00">
               {activeForm} · {activeRow?.category}
-            </div>
+            </Text>
             {loadingDetail || !detail ? (
-              <p className="uar-muted">Loading details…</p>
+              <Text as="p" className="text-mid-grey-00">
+                Loading details…
+              </Text>
             ) : (
               <FormDetailBody row={activeRow} detail={detail} />
             )}
@@ -226,18 +282,40 @@ function AnalyticsPage() {
       ) : null}
 
       {srcPop ? (
-        <div className="uar-srcpop" style={{ left: srcPop.x, top: srcPop.y }}>
-          <div className="uar-srctitle">All sources</div>
+        <div
+          className="fixed z-[60] min-w-[210px] rounded-lg border border-grey-00 bg-white-00 p-s shadow-xl"
+          style={{ left: srcPop.x, top: srcPop.y }}
+        >
+          <Text as="span" size="small-caption" className="mb-xs block uppercase text-mid-grey-00">
+            All sources
+          </Text>
           {srcPop.sources.map((s) => (
-            <div key={s.referrer} className="uar-srcrow">
+            <div key={s.referrer} className="flex justify-between gap-m py-xs text-caption">
               <span>{s.referrer}</span>
-              <span className="uar-muted">{fmtInt(s.count)}</span>
+              <span className="text-mid-grey-00">{fmtInt(s.count)}</span>
             </div>
           ))}
         </div>
       ) : null}
 
       <HowToPopovers />
+    </div>
+  )
+}
+
+function StatGrid({ items }: { items: { label: string; value: React.ReactNode }[] }) {
+  return (
+    <div className="flex flex-wrap gap-m rounded-lg bg-teal-10 p-s">
+      {items.map((it) => (
+        <div key={it.label}>
+          <Text as="span" size="small-caption" className="block text-mid-grey-00">
+            {it.label}
+          </Text>
+          <Text as="span" size="body" weight="bold">
+            {it.value}
+          </Text>
+        </div>
+      ))}
     </div>
   )
 }
@@ -249,13 +327,12 @@ function SourceCell({
   sources: { referrer: string; count: number }[]
   onShow: (p: SrcPop | null) => void
 }) {
-  if (!sources.length) return <td className="uar-muted">—</td>
+  if (!sources.length) return <td className={`${TD} text-mid-grey-00`}>—</td>
   const top = sources[0]
   const hasMore = sources.length > 1
   return (
     <td
-      className="uar-src"
-      style={hasMore ? { cursor: 'help' } : undefined}
+      className={`${TD} ${hasMore ? 'cursor-help' : ''}`}
       onMouseEnter={
         hasMore
           ? (e) => {
@@ -266,8 +343,8 @@ function SourceCell({
       }
       onMouseLeave={hasMore ? () => onShow(null) : undefined}
     >
-      {top.referrer} <span className="uar-muted">({fmtInt(top.count)})</span>
-      {hasMore ? <span className="uar-muted"> +{sources.length - 1}</span> : null}
+      {top.referrer} <span className="text-mid-grey-00">({fmtInt(top.count)})</span>
+      {hasMore ? <span className="text-mid-grey-00"> +{sources.length - 1}</span> : null}
     </td>
   )
 }
@@ -286,74 +363,80 @@ function FormDetailBody({
   const totalReasons = d.errorTypes.reduce((a, t) => a + t.count, 0)
   return (
     <>
-      <div className="uar-stats">
-        <div>
-          Starts<b>{fmtInt(starts)}</b>
-        </div>
-        <div>
-          Completed
-          <b>
-            {fmtInt(row?.completes ?? 0)}{' '}
-            <span className="uar-muted">({fmtPct(row?.completionPct ?? 0)})</span>
-          </b>
-        </div>
-        <div>
-          Avg time to complete<b>{fmtDur(detail.avgDurationSeconds)}</b>
-        </div>
-        <div>
-          Field errors / start<b>{detail.avgFieldErrors}</b>
-        </div>
-        <div>
-          Total field errors<b>{fmtInt(detail.totalFieldErrors)}</b>
-        </div>
-      </div>
-      <div className="uar-friction">
-        <div>
-          Step back<b>{fmtInt(d.stepBack)}</b>
-        </div>
-        <div>
-          Step edit<b>{fmtInt(d.stepEdit)}</b>
-        </div>
-        <div>
-          Reviewed<b>{fmtInt(d.review)}</b>
-        </div>
+      <StatGrid
+        items={[
+          { label: 'Starts', value: fmtInt(starts) },
+          {
+            label: 'Completed',
+            value: (
+              <>
+                {fmtInt(row?.completes ?? 0)}{' '}
+                <span className="text-mid-grey-00">({fmtPct(row?.completionPct ?? 0)})</span>
+              </>
+            ),
+          },
+          { label: 'Avg time to complete', value: fmtDur(detail.avgDurationSeconds) },
+          { label: 'Field errors / start', value: detail.avgFieldErrors },
+          { label: 'Total field errors', value: fmtInt(detail.totalFieldErrors) },
+        ]}
+      />
+      <div className="mt-s flex flex-wrap gap-m">
+        {[
+          { label: 'Step back', value: d.stepBack },
+          { label: 'Step edit', value: d.stepEdit },
+          { label: 'Reviewed', value: d.review },
+        ].map((it) => (
+          <div key={it.label}>
+            <Text as="span" size="small-caption" className="block text-mid-grey-00">
+              {it.label}
+            </Text>
+            <Text as="span" size="body" weight="bold">
+              {fmtInt(it.value)}
+            </Text>
+          </div>
+        ))}
       </div>
 
-      <h4>Funnel</h4>
-      <div className="uar-funnel">
+      <SubHeading>Funnel</SubHeading>
+      <div className="flex max-w-[560px] flex-col gap-xs">
         {d.funnel.map((s) => (
-          <div className="uar-stage" key={s.label}>
+          <div key={s.label} className="grid grid-cols-[90px_1fr_130px] items-center gap-s text-caption">
             <span>{s.label}</span>
-            <span className="uar-barwrap">
-              <span className="uar-bar" style={{ width: `${(100 * s.count) / max}%` }} />
+            <span className="rounded bg-teal-10">
+              <span
+                className="block h-[22px] min-w-[2px] rounded bg-teal-00"
+                style={{ width: `${(100 * s.count) / max}%` }}
+              />
             </span>
-            <span className="num">
+            <span className={NUM}>
               {fmtInt(s.count)}
-              {s.dropoffPct ? <span className="uar-drop"> -{fmtPct(s.dropoffPct)}</span> : null}
+              {s.dropoffPct ? <span className="text-red-00"> -{fmtPct(s.dropoffPct)}</span> : null}
             </span>
           </div>
         ))}
       </div>
 
-      <h4>Field errors — which fields fail and how often</h4>
+      <SubHeading>Field errors — which fields fail and how often</SubHeading>
       {d.fieldErrors.length === 0 ? (
-        <div className="uar-empty">No field validation errors recorded.</div>
+        <Text as="p" size="caption" className="text-mid-grey-00">
+          No field validation errors recorded.
+        </Text>
       ) : (
-        <div className="uar-scroll">
-          <table className="uar-mini">
+        <div className="max-w-[600px] overflow-x-auto rounded-lg border border-grey-00">
+          <table className="min-w-full">
             <thead>
               <tr>
-                <th>Field</th>
-                <th className="num">Errors</th>
-                <th className="num">% of starts</th>
+                <th className={TH}>Field</th>
+                <th className={`${TH} ${NUM}`}>Errors</th>
+                <th className={`${TH} ${NUM}`}>% of starts</th>
               </tr>
             </thead>
             <tbody>
               {d.fieldErrors.map((f) => (
                 <tr key={f.field}>
-                  <td>{f.field}</td>
-                  <td className="num">{fmtInt(f.count)}</td>
-                  <td className="num">{ofStarts(f.count)}</td>
+                  <td className={TD}>{f.field}</td>
+                  <td className={`${TD} ${NUM}`}>{fmtInt(f.count)}</td>
+                  <td className={`${TD} ${NUM}`}>{ofStarts(f.count)}</td>
                 </tr>
               ))}
             </tbody>
@@ -361,29 +444,31 @@ function FormDetailBody({
         </div>
       )}
 
-      <h4>Why fields fail — validation reasons</h4>
+      <SubHeading>Why fields fail — validation reasons</SubHeading>
       {d.errorTypes.length === 0 ? (
-        <div className="uar-empty">No validation-error reasons recorded.</div>
+        <Text as="p" size="caption" className="text-mid-grey-00">
+          No validation-error reasons recorded.
+        </Text>
       ) : (
-        <div className="uar-scroll">
-          <table className="uar-mini">
+        <div className="max-w-[600px] overflow-x-auto rounded-lg border border-grey-00">
+          <table className="min-w-full">
             <thead>
               <tr>
-                <th>Why it failed</th>
-                <th>Reason code</th>
-                <th className="num">Occurrences</th>
-                <th className="num">Share</th>
+                <th className={TH}>Why it failed</th>
+                <th className={TH}>Reason code</th>
+                <th className={`${TH} ${NUM}`}>Occurrences</th>
+                <th className={`${TH} ${NUM}`}>Share</th>
               </tr>
             </thead>
             <tbody>
               {d.errorTypes.map((t) => (
                 <tr key={t.field}>
-                  <td>{reasonLabel(t.field)}</td>
-                  <td>
-                    <code>{t.field}</code>
+                  <td className={TD}>{reasonLabel(t.field)}</td>
+                  <td className={TD}>
+                    <code className="rounded bg-teal-10 px-xs text-small-caption">{t.field}</code>
                   </td>
-                  <td className="num">{fmtInt(t.count)}</td>
-                  <td className="num">
+                  <td className={`${TD} ${NUM}`}>{fmtInt(t.count)}</td>
+                  <td className={`${TD} ${NUM}`}>
                     {fmtPct(totalReasons ? Math.round((t.count / totalReasons) * 1000) / 10 : 0)}
                   </td>
                 </tr>
@@ -399,25 +484,31 @@ function FormDetailBody({
 function SearchSection({ view }: { view: AnalyticsView }) {
   const s = view.search
   if (!s || (!s.submitTotal && !s.total)) {
-    return <div className="uar-empty">No search activity for this range.</div>
+    return (
+      <Text as="p" size="caption" className="text-mid-grey-00">
+        No search activity for this range.
+      </Text>
+    )
   }
   const QueryTable = ({ rows }: { rows: { query: string; count: number }[] }) =>
     rows.length === 0 ? (
-      <div className="uar-empty">No queries recorded.</div>
+      <Text as="p" size="caption" className="text-mid-grey-00">
+        No queries recorded.
+      </Text>
     ) : (
-      <div className="uar-scroll">
-        <table className="uar-mini">
+      <div className="max-w-[600px] overflow-x-auto rounded-lg border border-grey-00">
+        <table className="min-w-full">
           <thead>
             <tr>
-              <th>Query</th>
-              <th className="num">Searches</th>
+              <th className={TH}>Query</th>
+              <th className={`${TH} ${NUM}`}>Searches</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((q) => (
               <tr key={q.query}>
-                <td>{q.query}</td>
-                <td className="num">{fmtInt(q.count)}</td>
+                <td className={TD}>{q.query}</td>
+                <td className={`${TD} ${NUM}`}>{fmtInt(q.count)}</td>
               </tr>
             ))}
           </tbody>
@@ -425,54 +516,56 @@ function SearchSection({ view }: { view: AnalyticsView }) {
       </div>
     )
   return (
-    <div className="uar-searchbody">
-      <h4>Search submissions (search-submit)</h4>
-      <div className="uar-stats">
-        <div>
-          Search submissions<b>{fmtInt(s.submitTotal)}</b>
-        </div>
-      </div>
+    <div>
+      <SubHeading>Search submissions (search-submit)</SubHeading>
+      <StatGrid items={[{ label: 'Search submissions', value: fmtInt(s.submitTotal) }]} />
       {s.submitBySource.length ? (
         <>
-          <h4>By source</h4>
-          <div className="uar-chips">
+          <SubHeading>By source</SubHeading>
+          <div className="flex flex-wrap gap-xs">
             {s.submitBySource.map((b) => (
-              <span className="uar-chip" key={b.source}>
+              <span
+                key={b.source}
+                className="rounded-full border border-grey-00 bg-teal-10 px-s py-xs text-small-caption"
+              >
                 {b.source} · {fmtInt(b.count)}
               </span>
             ))}
           </div>
         </>
       ) : null}
-      <h4>Top search queries (submitted)</h4>
+      <SubHeading>Top search queries (submitted)</SubHeading>
       <QueryTable rows={s.submitTopQueries} />
 
-      <h4 style={{ marginTop: 22 }}>Results-page searches (search)</h4>
+      <SubHeading>Results-page searches (search)</SubHeading>
       {s.total ? (
         <>
-          <div className="uar-stats">
-            <div>
-              Searches with results page<b>{fmtInt(s.total)}</b>
-            </div>
-            <div>
-              Returned no results
-              <b>
-                {fmtInt(s.zeroResults)} <span className="uar-muted">({fmtPct(s.zeroResultsPct)})</span>
-              </b>
-            </div>
-          </div>
-          <h4>Top queries (results page)</h4>
+          <StatGrid
+            items={[
+              { label: 'Searches with results page', value: fmtInt(s.total) },
+              {
+                label: 'Returned no results',
+                value: (
+                  <>
+                    {fmtInt(s.zeroResults)}{' '}
+                    <span className="text-mid-grey-00">({fmtPct(s.zeroResultsPct)})</span>
+                  </>
+                ),
+              },
+            ]}
+          />
+          <SubHeading>Top queries (results page)</SubHeading>
           <QueryTable rows={s.topQueries} />
         </>
       ) : (
-        <div className="uar-empty">
+        <Text as="p" size="caption" className="text-mid-grey-00">
           No results-page <code>search</code> events in this range (only submissions above).
-        </div>
+        </Text>
       )}
-      <div className="uar-banner">
+      <Text as="p" size="small-caption" className="mt-s text-mid-grey-00">
         Click-through rate is not shown: result clicks are not tracked yet. The no-results rate is the
         closest search-quality signal.
-      </div>
+      </Text>
     </div>
   )
 }
@@ -480,97 +573,43 @@ function SearchSection({ view }: { view: AnalyticsView }) {
 function HowToPopovers() {
   return (
     <>
-      <div id="uar-howto-pages" popover="auto" className="uar-howto">
-        <h3>Top pages — how it works</h3>
-        <p>Most-visited landing pages over the selected range (Umami pageviews), top 10.</p>
-        <ul>
-          <li>
-            <b>Pageviews</b> / <b>Visitors</b> — total loads and unique visitors.
-          </li>
-          <li>
-            <b>Top source</b> — leading referrers to that page; hover to see all. <code>(direct)</code>{' '}
-            = no referrer.
-          </li>
-        </ul>
+      <div id="uar-howto-pages" popover="auto" className="uar-pop">
+        <Heading as="h3" size="h5">
+          Top pages — how it works
+        </Heading>
+        <Text as="p" size="caption" className="mt-xs">
+          Most-visited landing pages over the selected range (Umami pageviews), top 10. <b>Top source</b>{' '}
+          lists the leading referrers to each page — hover to see all; <code>(direct)</code> = no referrer.
+        </Text>
       </div>
-      <div id="uar-howto-forms" popover="auto" className="uar-howto">
-        <h3>Top forms — how it works</h3>
-        <p>Per form over the range, by starts (top 10). Click a row for the full breakdown.</p>
-        <ul>
-          <li>
-            <b>Starts</b> — visitors who began the form; <b>Completion</b> — successful submits ÷ starts.
-          </li>
-          <li>
-            The drawer adds avg time, field errors per start, the step funnel, the fields that fail most,
-            and <em>why</em> they fail.
-          </li>
-        </ul>
+      <div id="uar-howto-forms" popover="auto" className="uar-pop">
+        <Heading as="h3" size="h5">
+          Top forms — how it works
+        </Heading>
+        <Text as="p" size="caption" className="mt-xs">
+          Per form over the range, by starts (top 10). <b>Completion</b> = successful submits ÷ starts.
+          Click a row for avg time, field errors per start, the step funnel, the fields that fail most, and{' '}
+          <em>why</em> they fail.
+        </Text>
       </div>
-      <div id="uar-howto-search" popover="auto" className="uar-howto">
-        <h3>Search queries — how it works</h3>
-        <ul>
-          <li>
-            <b>Search submissions</b> (<code>search-submit</code>) — every search-box submission, with top
-            queries and a breakdown by where the search ran.
-          </li>
-          <li>
-            <b>Results-page searches</b> (<code>search</code>) — the no-results rate; may be empty when only
-            submissions fired.
-          </li>
-        </ul>
+      <div id="uar-howto-search" popover="auto" className="uar-pop">
+        <Heading as="h3" size="h5">
+          Search queries — how it works
+        </Heading>
+        <Text as="p" size="caption" className="mt-xs">
+          <b>Search submissions</b> (<code>search-submit</code>) is every search-box submission, with top
+          queries and a breakdown by where the search ran. <b>Results-page searches</b> (<code>search</code>)
+          gives the no-results rate; it may be empty when only submissions fired.
+        </Text>
       </div>
     </>
   )
 }
 
-const CSS = `
-.uar { --teal:#0b6b6b; --teal10:#e6f2f2; --ink:#1a1a1a; --muted:#5a6a6a; --line:#d7e0e0; --warn:#b3541e; color:var(--ink); }
-.uar * { box-sizing:border-box; }
-.uar-head { background:var(--teal); color:#fff; padding:16px 0; position:sticky; top:0; z-index:30; box-shadow:0 2px 8px rgba(0,0,0,.12); }
-.uar-inner { max-width:1100px; margin:0 auto; padding:0 24px; }
-.uar-head h1 { margin:0 0 4px; font-size:20px; }
-.uar-meta { font-size:13px; opacity:.85; }
-.uar-controls { display:flex; align-items:center; gap:10px; margin-top:14px; font-size:13px; }
-.uar-controls select { font:inherit; padding:6px 10px; border-radius:6px; border:1px solid rgba(255,255,255,.4); background:#fff; color:var(--ink); }
-.uar-main { max-width:1100px; margin:0 auto; padding:24px; }
-.uar section { background:#fff; border:1px solid var(--line); border-radius:10px; margin-bottom:24px; overflow:hidden; }
-.uar section h2 { margin:0; padding:14px 18px; font-size:16px; border-bottom:1px solid var(--line); background:var(--teal10); display:flex; align-items:center; justify-content:space-between; gap:12px; }
-.uar-howto-btn { cursor:pointer; border:1px solid var(--line); background:#fff; color:var(--teal); border-radius:999px; padding:3px 11px; font-size:12px; font-weight:600; }
-.uar-scroll { overflow-x:auto; }
-.uar table { width:100%; border-collapse:collapse; font-size:14px; }
-.uar th, .uar td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--line); white-space:nowrap; }
-.uar th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.03em; }
-.uar td.num, .uar th.num { text-align:right; font-variant-numeric:tabular-nums; }
-.uar-form-row { cursor:pointer; }
-.uar-form-row:hover, .uar-form-row.active { background:var(--teal10); }
-.uar-cat { color:var(--muted); font-size:12px; }
-.uar-empty { padding:18px; color:var(--muted); }
-.uar-muted { color:var(--muted); font-weight:400; font-size:13px; }
-.uar-searchbody { padding:4px 18px 20px; }
-.uar-stats, .uar-friction { display:flex; flex-wrap:wrap; gap:24px; margin:14px 0; font-size:14px; }
-.uar-stats b, .uar-friction b { display:block; font-size:18px; }
-.uar-stats { padding:12px 14px; background:var(--teal10); border-radius:8px; }
-.uar-chips { display:flex; flex-wrap:wrap; gap:8px; }
-.uar-chip { background:var(--teal10); border:1px solid var(--line); border-radius:999px; padding:3px 10px; font-size:12px; }
-.uar-mini { max-width:600px; }
-.uar h4 { margin:16px 0 6px; font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
-.uar-banner { padding:10px 14px; margin:14px 0 0; background:#fdf3e7; border:1px solid #f0d9bd; border-radius:8px; color:var(--warn); font-size:13px; }
-.uar code { background:var(--teal10); padding:1px 5px; border-radius:4px; font-size:12px; }
-.uar-funnel { display:flex; flex-direction:column; gap:6px; max-width:560px; }
-.uar-stage { display:grid; grid-template-columns:90px 1fr 130px; align-items:center; gap:10px; font-size:13px; }
-.uar-bar { display:block; height:22px; background:var(--teal); border-radius:4px; min-width:2px; }
-.uar-barwrap { background:var(--teal10); border-radius:4px; }
-.uar-drop { color:var(--warn); font-size:12px; }
-.uar-overlay { position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:40; }
-.uar-drawer { position:fixed; top:0; right:0; height:100%; width:min(580px,94vw); background:#fff; box-shadow:-8px 0 28px rgba(0,0,0,.18); z-index:50; overflow-y:auto; padding:20px 22px; }
-.uar-drawer h3 { margin:0 8px 4px 0; font-size:18px; }
-.uar-sub { color:var(--muted); font-size:13px; margin-bottom:14px; }
-.uar-close { float:right; cursor:pointer; border:1px solid var(--line); background:#fff; border-radius:6px; padding:4px 10px; font-size:13px; }
-.uar-srcpop { position:fixed; z-index:60; background:#fff; border:1px solid var(--line); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.18); padding:8px 11px; min-width:210px; }
-.uar-srctitle { font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin-bottom:4px; }
-.uar-srcrow { display:flex; justify-content:space-between; gap:20px; padding:3px 0; font-size:13px; }
-.uar-howto { max-width:min(460px,92vw); border:1px solid var(--line); border-radius:12px; padding:18px 20px; box-shadow:0 16px 48px rgba(0,0,0,.22); font-size:14px; line-height:1.55; }
-.uar-howto h3 { margin:0 0 8px; font-size:15px; }
-.uar-howto ul { margin:0; padding-left:18px; }
-.uar-howto li { margin:4px 0; }
+// Only the native popover needs raw CSS (it's a top-layer element with a
+// backdrop); the rest of the page is design-system components + Tailwind tokens.
+const POPOVER_CSS = `
+.uar-pop { max-width: min(460px, 92vw); border: 1px solid var(--color-grey-00); border-radius: 12px; padding: 18px 20px; box-shadow: 0 16px 48px rgba(0,0,0,.22); background: #fff; }
+.uar-pop::backdrop { background: rgba(0,0,0,.3); }
+.uar-pop code { background: var(--color-teal-10); padding: 1px 5px; border-radius: 4px; }
 `
