@@ -150,18 +150,22 @@ function ServerErrorPage() {
 function RootLayout() {
   return (
     <div
-      className={`${textVariants({ size: 'body' })} grid min-h-screen grid-rows-[auto_1fr_auto] font-sans antialiased text-black-00 bg-white-00`}
+      className={`${textVariants({ size: 'body' })} grid min-h-screen grid-rows-[auto_1fr_auto] font-sans antialiased text-black-00 bg-white-00 print:block print:min-h-0 print:h-auto`}
     >
-      <Header />
+      <div className="print:hidden">
+        <Header />
+      </div>
       <main id="main">
         <Outlet />
       </main>
-      <Footer
-        links={FOOTER_LINKS}
-        logoSrc="/images/coat-of-arms.png"
-        logoAlt="Barbados Coat of Arms"
-        copyrightText={`© ${new Date().getFullYear()} Government of Barbados`}
-      />
+      <div className="print:hidden">
+        <Footer
+          links={FOOTER_LINKS}
+          logoSrc="/images/coat-of-arms.png"
+          logoAlt="Barbados Coat of Arms"
+          copyrightText={`© ${new Date().getFullYear()} Government of Barbados`}
+        />
+      </div>
     </div>
   )
 }

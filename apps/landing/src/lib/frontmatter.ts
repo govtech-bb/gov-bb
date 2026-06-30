@@ -18,6 +18,8 @@ export type ViewLevel = (typeof VIEW_LEVELS)[number]
 export const FrontmatterSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
+  /** Grey intro line shown under the title, before the body. */
+  lede: z.string().optional(),
   category: z.string().optional(),
   categories: z.array(z.string()).optional(),
   subcategory: z.string().optional(),

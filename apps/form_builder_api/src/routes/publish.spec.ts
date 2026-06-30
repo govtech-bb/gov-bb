@@ -169,6 +169,117 @@ describe("POST /builder/publish — validation backstop", () => {
     );
   });
 
+  it("preserves the committed createdAt on re-publish; only updatedAt advances", async () => {
+    // The flat file already on the base branch was created earlier; the incoming
+    // recipe carries a freshly-stamped createdAt. The published file must keep
+    // the original creation date (#1720).
+    const committedCreatedAt = "2025-03-03T00:00:00Z";
+    const committed = Buffer.from(
+      JSON.stringify({ ...validRecipe(), createdAt: committedCreatedAt }),
+      "utf8",
+    ).toString("base64");
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.includes("/git/ref/heads/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ object: { sha: "base-sha" } }),
+        });
+      }
+      if (init?.method === "PUT") {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      }
+      if (url.includes("/contents/")) {
+        // getContents — committed file carries its blob sha + base64 content.
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ sha: "blob-sha", content: committed }),
+        });
+      }
+      if (url.endsWith("/pulls")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({ number: 42, html_url: "https://pr/42" }),
+        });
+      }
+      // /git/refs create
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+    (global as { fetch?: unknown }).fetch = fetchMock;
+
+    const res = mockRes();
+    await publishHandler(
+      mockReq({
+        recipe: validRecipe(),
+        githubToken: "ghtok",
+        userLogin: "tester",
+      }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(200);
+    const putCall = fetchMock.mock.calls.find(
+      ([, init]) => (init as RequestInit | undefined)?.method === "PUT",
+    );
+    const putBody = JSON.parse((putCall?.[1] as RequestInit).body as string);
+    const written = JSON.parse(
+      Buffer.from(putBody.content, "base64").toString("utf8"),
+    );
+    expect(written.createdAt).toBe(committedCreatedAt);
+    expect(written.updatedAt).toBe(validRecipe().updatedAt);
+    // The committed blob sha is carried so the Contents API updates in place.
+    expect(putBody.sha).toBe("blob-sha");
+  });
+
+  it("stamps a fresh createdAt on first publish (no existing file)", async () => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.includes("/git/ref/heads/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ object: { sha: "base-sha" } }),
+        });
+      }
+      if (init?.method === "PUT") {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      }
+      if (url.includes("/contents/")) {
+        // getContents — the flat file is absent on the base branch.
+        return Promise.resolve({ ok: false, status: 404 });
+      }
+      if (url.endsWith("/pulls")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({ number: 42, html_url: "https://pr/42" }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+    (global as { fetch?: unknown }).fetch = fetchMock;
+
+    const res = mockRes();
+    await publishHandler(
+      mockReq({
+        recipe: validRecipe(),
+        githubToken: "ghtok",
+        userLogin: "tester",
+      }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(200);
+    const putCall = fetchMock.mock.calls.find(
+      ([, init]) => (init as RequestInit | undefined)?.method === "PUT",
+    );
+    const putBody = JSON.parse((putCall?.[1] as RequestInit).body as string);
+    const written = JSON.parse(
+      Buffer.from(putBody.content, "base64").toString("utf8"),
+    );
+    // No existing file → createdAt minted (the incoming value), no sha carried.
+    expect(written.createdAt).toBe(validRecipe().createdAt);
+    expect(putBody.sha).toBeUndefined();
+  });
+
   it("cleans up via the encoded branch DELETE URL when the file PUT fails", async () => {
     const fetchMock = vi.fn((url: string, init?: RequestInit) => {
       if (url.includes("/git/ref/heads/")) {
