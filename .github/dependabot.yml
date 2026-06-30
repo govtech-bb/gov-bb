@@ -12,7 +12,29 @@ updates:
     # isn't pulled in the moment it ships (also satisfies zizmor's cooldown audit).
     cooldown:
       default-days: 7
+    # Majors are a manual decision; adopt by hand (temporarily drop this to let
+    # one through). Minor/patch flow automatically, grouped into one PR.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directories:
+      - /apps/*
+    target-branch: sandbox
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    # Majors are a manual decision; adopt new base-image majors by hand.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      docker:
         patterns:
           - "*"

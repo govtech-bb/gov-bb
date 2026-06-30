@@ -78,8 +78,8 @@ importers:
         specifier: ^3.1041.0
         version: 3.1073.0
       '@govtech-bb/design':
-        specifier: ^1.0.0-alpha.16
-        version: 1.0.0-alpha.16
+        specifier: ^1.0.0-alpha.17
+        version: 1.0.0-alpha.17
       '@nestjs/event-emitter':
         specifier: ^3.0.1
         version: 3.1.0(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)
@@ -111,6 +111,9 @@ importers:
       '@eslint/json':
         specifier: ^1.2.0
         version: 1.2.0
+      '@govtech-bb/content':
+        specifier: workspace:*
+        version: link:packages/content
       '@govtech-bb/form-types':
         specifier: workspace:*
         version: link:packages/form-types
@@ -395,8 +398,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/content
       '@govtech-bb/design':
-        specifier: ^1.0.0-alpha.16
-        version: 1.0.0-alpha.16
+        specifier: ^1.0.0-alpha.17
+        version: 1.0.0-alpha.17
       '@govtech-bb/form-conditions':
         specifier: workspace:*
         version: link:../../packages/form-conditions
@@ -407,8 +410,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/form-validation
       '@govtech-bb/react':
-        specifier: ^1.0.0-alpha.16
-        version: 1.0.0-alpha.16(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)
+        specifier: ^1.0.0-alpha.17
+        version: 1.0.0-alpha.17(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)
       '@tailwindcss/vite':
         specifier: ^4.3.0
         version: 4.3.1(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -694,9 +697,12 @@ importers:
       '@govtech-bb/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
+      '@govtech-bb/content':
+        specifier: workspace:*
+        version: link:../../packages/content
       '@govtech-bb/design':
-        specifier: ^1.0.0-alpha.16
-        version: 1.0.0-alpha.16
+        specifier: ^1.0.0-alpha.17
+        version: 1.0.0-alpha.17
       '@govtech-bb/form-conditions':
         specifier: workspace:*
         version: link:../../packages/form-conditions
@@ -707,11 +713,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/form-validation
       '@govtech-bb/react':
-        specifier: ^1.0.0-alpha.16
-        version: 1.0.0-alpha.16(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)
+        specifier: ^1.0.0-alpha.17
+        version: 1.0.0-alpha.17(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)
       '@govtech-bb/styles':
-        specifier: ^1.0.0-alpha.16
-        version: 1.0.0-alpha.16
+        specifier: ^1.0.0-alpha.17
+        version: 1.0.0-alpha.17
       '@maskito/core':
         specifier: ^5.2.2
         version: 5.3.1
@@ -825,11 +831,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/content
       '@govtech-bb/design':
-        specifier: ^1.0.0-alpha.16
-        version: 1.0.0-alpha.16
+        specifier: ^1.0.0-alpha.17
+        version: 1.0.0-alpha.17
       '@govtech-bb/react':
-        specifier: ^1.0.0-alpha.16
-        version: 1.0.0-alpha.16(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)
+        specifier: ^1.0.0-alpha.17
+        version: 1.0.0-alpha.17(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)
       '@govtech-bb/umami-analytics':
         specifier: workspace:*
         version: link:../../packages/umami-analytics
@@ -2174,18 +2180,18 @@ packages:
   '@fontsource/inter@5.2.8':
     resolution: {integrity: sha512-P6r5WnJoKiNVV+zvW2xM13gNdFhAEpQ9dQJHt3naLvfg+LkF2ldgSLiF4T41lf1SQCM9QmkqPTn4TH568IRagg==}
 
-  '@govtech-bb/design@1.0.0-alpha.16':
-    resolution: {integrity: sha512-hLeuj+kiFp6v8QMLaunvOjoz7WsHKU7JuAMQ6H4d6g+2ESvIWTuvP6JPnwwxIeD9S7HWRq1F2ZLGTQdHJ1QcxQ==}
+  '@govtech-bb/design@1.0.0-alpha.17':
+    resolution: {integrity: sha512-hJ0VtPN+XaUWYCxKCZaCFdRpRf9Hd2vJGyH8gJ/AMKzd2AKQ6P2WnYAxL0W1b7tv9bSbJSK73k8NtLEYgtVL9A==}
 
-  '@govtech-bb/react@1.0.0-alpha.16':
-    resolution: {integrity: sha512-WB3lFcjJtOQHWs6PIUX6OTD7yncMweYdbFdAs7SXgmh62WAcueI0rj9eQMROe9u/JKXV/QHjuqVCnQa/HXkM9g==}
+  '@govtech-bb/react@1.0.0-alpha.17':
+    resolution: {integrity: sha512-CWb/7ntU51gmGLalvgFFedfyT4OYUyvVWWx4+4+rARYLp/aHd1anOeM2vEzTWUZYZHsdrCF7R7LDdE/qyxeafQ==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
       tailwindcss: ^4.0.0
 
-  '@govtech-bb/styles@1.0.0-alpha.16':
-    resolution: {integrity: sha512-Ny8tgqjGuL48Z0DWvpBZe+PP+K2xJI+JJybQUDiFWSzQgYc/P7ovJ4CVFvBGBj07mYMWJE9cD7UY96TaHl36PQ==}
+  '@govtech-bb/styles@1.0.0-alpha.17':
+    resolution: {integrity: sha512-4klEF5AgbhXyIE11pdQQhqLH2dCWqZDLINcL516cpjMBzobkVqK5Jb41KvfSysUYUSGTEiv+XQrTzq+joHRM6Q==}
 
   '@grpc/grpc-js@1.14.4':
     resolution: {integrity: sha512-k9Dj3DV/itK9D06Y8f190Qgop7/Ui+D0njFV3LHMPwPT75DpXLQohE9Wmz0QElrJnzsjB7KPWiKJbOl7IPDArQ==}
@@ -10395,11 +10401,11 @@ snapshots:
 
   '@fontsource/inter@5.2.8': {}
 
-  '@govtech-bb/design@1.0.0-alpha.16': {}
+  '@govtech-bb/design@1.0.0-alpha.17': {}
 
-  '@govtech-bb/react@1.0.0-alpha.16(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)':
+  '@govtech-bb/react@1.0.0-alpha.17(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)':
     dependencies:
-      '@govtech-bb/design': 1.0.0-alpha.16
+      '@govtech-bb/design': 1.0.0-alpha.17
       '@radix-ui/react-checkbox': 1.3.5(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-radio-group': 1.4.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-slot': 1.3.0(@types/react@19.2.17)(react@19.2.7)
@@ -10413,7 +10419,7 @@ snapshots:
       - '@types/react'
       - '@types/react-dom'
 
-  '@govtech-bb/styles@1.0.0-alpha.16': {}
+  '@govtech-bb/styles@1.0.0-alpha.17': {}
 
   '@grpc/grpc-js@1.14.4':
     dependencies:

@@ -6,11 +6,14 @@
     {
       "type": "email",
       "config": {
-        "recipientField": "address-contact.applicant-email",
-        "subject": "Your application for Home Care Programme Services has been received"
+        "subject": "Your application for Home Care Programme Services has been received",
+        "recipientField": "address-contact.applicant-email"
       }
     }
   ],
+  "meta": {
+    "visibility": "preview"
+  },
   "steps": [
     {
       "stepId": "applicant-details",
@@ -22,8 +25,8 @@
             "fieldId": "applicant-first-name",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter a first name"
+                "error": "Enter a first name",
+                "value": true
               }
             }
           }
@@ -31,8 +34,8 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "fieldId": "applicant-middle-name",
-            "hint": "Optional"
+            "hint": "Optional",
+            "fieldId": "applicant-middle-name"
           }
         },
         {
@@ -41,8 +44,8 @@
             "fieldId": "applicant-last-name",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter a last name"
+                "error": "Enter a last name",
+                "value": true
               }
             }
           }
@@ -53,8 +56,8 @@
             "fieldId": "applicant-date-of-birth",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter a date of birth"
+                "error": "Enter a date of birth",
+                "value": true
               }
             }
           }
@@ -62,12 +65,12 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "fieldId": "applicant-national-id",
             "label": "National registration number",
+            "fieldId": "applicant-national-id",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter a national registration number"
+                "error": "Enter a national registration number",
+                "value": true
               }
             }
           }
@@ -85,8 +88,8 @@
             "fieldId": "applicant-sex",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Select a gender"
+                "error": "Select a gender",
+                "value": true
               }
             }
           }
@@ -94,14 +97,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "marital-status",
             "label": "Marital status",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select your marital status"
-              }
-            },
+            "fieldId": "marital-status",
             "options": [
               {
                 "label": "Single",
@@ -123,28 +120,34 @@
                 "label": "Widowed",
                 "value": "widowed"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select your marital status",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "place-of-birth",
-            "label": "Place of birth"
+            "label": "Place of birth",
+            "fieldId": "place-of-birth"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "religion",
-            "label": "Religion"
+            "label": "Religion",
+            "fieldId": "religion"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "church-social-group",
-            "label": "Church or social group"
+            "label": "Church or social group",
+            "fieldId": "church-social-group"
           }
         }
       ],
@@ -157,12 +160,12 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "applicant-address-line-1",
             "label": "Address line 1",
+            "fieldId": "applicant-address-line-1",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter an address"
+                "error": "Enter an address",
+                "value": true
               }
             }
           }
@@ -170,22 +173,22 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "applicant-address-line-2",
+            "hint": "Optional",
             "label": "Address line 2",
+            "fieldId": "applicant-address-line-2",
             "validations": {
               "required": {
                 "value": false
               }
-            },
-            "hint": "Optional"
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "location-of-house",
+            "hint": "For example, rural area, town centre, near landmarks",
             "label": "Location of house",
-            "hint": "For example, rural area, town centre, near landmarks"
+            "fieldId": "location-of-house"
           }
         },
         {
@@ -194,8 +197,8 @@
             "fieldId": "applicant-parish",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Select a parish"
+                "error": "Select a parish",
+                "value": true
               }
             }
           }
@@ -212,8 +215,8 @@
             "fieldId": "applicant-telephone",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter a telephone number"
+                "error": "Enter a telephone number",
+                "value": true
               }
             }
           }
@@ -237,14 +240,32 @@
       "title": "Emergency contact or next of kin",
       "elements": [
         {
-          "ref": "components/name",
+          "ref": "components/first-name",
           "overrides": {
-            "fieldId": "emergency-contact-name",
-            "label": "Full name",
+            "fieldId": "emergency-contact-first-name",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter a name"
+                "error": "Enter a first name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "hint": "Optional",
+            "fieldId": "emergency-contact-middle-name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "emergency-contact-last-name",
+            "validations": {
+              "required": {
+                "error": "Enter a last name",
+                "value": true
               }
             }
           }
@@ -252,41 +273,11 @@
         {
           "ref": "components/generic-checkbox",
           "overrides": {
-            "fieldId": "same-address-as-applicant",
             "label": "Is this person's address the same as yours?",
+            "fieldId": "same-address-as-applicant",
             "options": [
               {
-                "label": "Yes, same address",
-                "value": "yes"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/address",
-          "overrides": {
-            "fieldId": "emergency-contact-address-line-1",
-            "label": "Address line 1",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "same-address-as-applicant",
-                "operator": "notEqual",
-                "value": "yes"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/address",
-          "overrides": {
-            "fieldId": "emergency-contact-address-line-2",
-            "label": "Address line 2",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "same-address-as-applicant",
-                "operator": "notEqual",
+                "label": "Yes, the same address",
                 "value": "yes"
               }
             ],
@@ -294,8 +285,43 @@
               "required": {
                 "value": false
               }
-            },
-            "hint": "Optional"
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "emergency-contact-address-line-1",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "notEqual",
+                "targetFieldId": "same-address-as-applicant"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "hint": "Optional",
+            "label": "Address line 2",
+            "fieldId": "emergency-contact-address-line-2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "notEqual",
+                "targetFieldId": "same-address-as-applicant"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -305,9 +331,9 @@
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "same-address-as-applicant",
+                "value": "yes",
                 "operator": "notEqual",
-                "value": "yes"
+                "targetFieldId": "same-address-as-applicant"
               }
             ]
           }
@@ -319,9 +345,9 @@
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "same-address-as-applicant",
+                "value": "yes",
                 "operator": "notEqual",
-                "value": "yes"
+                "targetFieldId": "same-address-as-applicant"
               }
             ]
           }
@@ -332,8 +358,8 @@
             "fieldId": "emergency-contact-telephone",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter a telephone number"
+                "error": "Enter a telephone number",
+                "value": true
               }
             }
           }
@@ -359,8 +385,8 @@
         {
           "ref": "components/generic-checkbox",
           "overrides": {
-            "fieldId": "income-types",
             "label": "Which of the following do you receive? Select all that apply.",
+            "fieldId": "income-types",
             "options": [
               {
                 "label": "Welfare grant",
@@ -388,16 +414,16 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "former-occupation",
-            "label": "Former or current occupation"
+            "label": "Former or current occupation",
+            "fieldId": "former-occupation"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "social-interests",
+            "hint": "For example, sports, hobbies, clubs, volunteer work",
             "label": "Social interests",
-            "hint": "For example, sports, hobbies, clubs, volunteer work"
+            "fieldId": "social-interests"
           }
         }
       ],
@@ -410,12 +436,12 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "other-income-source-name",
             "label": "Source name",
+            "fieldId": "other-income-source-name",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter a source name"
+                "error": "Enter a source name",
+                "value": true
               }
             }
           }
@@ -423,15 +449,15 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "fieldId": "other-income-source-amount",
-            "label": "Amount",
             "ui": {
               "width": "short"
             },
+            "label": "Amount",
+            "fieldId": "other-income-source-amount",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter an amount"
+                "error": "Enter an amount",
+                "value": true
               }
             }
           }
@@ -439,19 +465,17 @@
       ],
       "behaviours": [
         {
-          "type": "repeatable",
-          "min": 1,
           "max": 10,
+          "min": 1,
+          "type": "repeatable",
           "addAnotherLabel": "Add another source of income?"
         },
         {
           "type": "stepConditionalOn",
-          "targetStepId": "income-sources",
-          "targetFieldId": "income-types",
+          "value": "other-income",
           "operator": "in",
-          "value": [
-            "other-income"
-          ]
+          "targetStepId": "income-sources",
+          "targetFieldId": "income-types"
         }
       ]
     },
@@ -460,27 +484,33 @@
       "title": "Household members",
       "elements": [
         {
-          "ref": "components/name",
+          "ref": "components/first-name",
           "overrides": {
-            "fieldId": "household-member-full-name",
-            "label": "Full name",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Enter a name"
-              }
-            }
+            "fieldId": "house-first-name"
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "hint": "Optional",
+            "fieldId": "house-middle-name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "house-last-name"
           }
         },
         {
           "ref": "components/relationship",
           "overrides": {
-            "fieldId": "household-member-relationship",
             "label": "Relationship to you",
+            "fieldId": "household-member-relationship",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Select a relationship"
+                "error": "Select a relationship",
+                "value": true
               }
             }
           }
@@ -488,23 +518,23 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "fieldId": "household-member-age",
-            "label": "Age"
+            "label": "Age",
+            "fieldId": "household-member-age"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "household-member-sources-of-income",
-            "label": "Sources of income"
+            "label": "Sources of income",
+            "fieldId": "household-member-sources-of-income"
           }
         }
       ],
       "behaviours": [
         {
-          "type": "repeatable",
-          "min": 1,
           "max": 20,
+          "min": 1,
+          "type": "repeatable",
           "addAnotherLabel": "Add another household member?"
         }
       ]
@@ -516,8 +546,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "sight",
             "label": "Sight",
+            "fieldId": "sight",
             "options": [
               {
                 "label": "Normal",
@@ -541,20 +571,20 @@
         {
           "ref": "components/generic-textarea",
           "overrides": {
-            "fieldId": "sight-description",
-            "label": "Please give a brief description",
             "ui": {
               "width": "long"
             },
+            "label": "Please give a brief description",
+            "fieldId": "sight-description",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "sight",
-                "operator": "in",
                 "value": [
                   "blind",
                   "visual-impairment"
-                ]
+                ],
+                "operator": "in",
+                "targetFieldId": "sight"
               }
             ]
           }
@@ -562,8 +592,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "hearing",
             "label": "Hearing",
+            "fieldId": "hearing",
             "options": [
               {
                 "label": "Normal",
@@ -587,21 +617,21 @@
         {
           "ref": "components/generic-textarea",
           "overrides": {
-            "fieldId": "hearing-description",
-            "label": "Please give a brief description",
             "ui": {
               "width": "long"
             },
+            "label": "Please give a brief description",
+            "fieldId": "hearing-description",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "hearing",
-                "operator": "in",
                 "value": [
                   "hearing-impairment",
                   "deaf",
                   "abnormal"
-                ]
+                ],
+                "operator": "in",
+                "targetFieldId": "hearing"
               }
             ]
           }
@@ -609,8 +639,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "speech",
             "label": "Speech",
+            "fieldId": "speech",
             "options": [
               {
                 "label": "Normal",
@@ -634,21 +664,21 @@
         {
           "ref": "components/generic-textarea",
           "overrides": {
-            "fieldId": "speech-description",
-            "label": "Please give a brief description",
             "ui": {
               "width": "long"
             },
+            "label": "Please give a brief description",
+            "fieldId": "speech-description",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "speech",
-                "operator": "in",
                 "value": [
                   "speech-impairment",
                   "unable-to-speak",
                   "abnormal"
-                ]
+                ],
+                "operator": "in",
+                "targetFieldId": "speech"
               }
             ]
           }
@@ -663,8 +693,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "behaviour",
             "label": "Behaviour",
+            "fieldId": "behaviour",
             "options": [
               {
                 "label": "Normal",
@@ -680,17 +710,17 @@
         {
           "ref": "components/generic-textarea",
           "overrides": {
-            "fieldId": "behaviour-description",
-            "label": "Please give a brief description",
             "ui": {
               "width": "long"
             },
+            "label": "Please give a brief description",
+            "fieldId": "behaviour-description",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "behaviour",
+                "value": "abnormal",
                 "operator": "equal",
-                "value": "abnormal"
+                "targetFieldId": "behaviour"
               }
             ]
           }
@@ -698,8 +728,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "memory",
             "label": "Memory",
+            "fieldId": "memory",
             "options": [
               {
                 "label": "Normal",
@@ -715,17 +745,17 @@
         {
           "ref": "components/generic-textarea",
           "overrides": {
-            "fieldId": "memory-description",
-            "label": "Please give a brief description",
             "ui": {
               "width": "long"
             },
+            "label": "Please give a brief description",
+            "fieldId": "memory-description",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "memory",
+                "value": "fair",
                 "operator": "equal",
-                "value": "fair"
+                "targetFieldId": "memory"
               }
             ]
           }
@@ -740,8 +770,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "height",
             "label": "Height",
+            "fieldId": "height",
             "options": [
               {
                 "label": "Short",
@@ -761,8 +791,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "size-build",
             "label": "Size or build",
+            "fieldId": "size-build",
             "options": [
               {
                 "label": "Slim",
@@ -782,8 +812,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "mobility",
             "label": "Mobility",
+            "fieldId": "mobility",
             "options": [
               {
                 "label": "Wheelchair",
@@ -800,6 +830,10 @@
               {
                 "label": "Normal",
                 "value": "normal"
+              },
+              {
+                "label": "Other",
+                "value": "other"
               }
             ]
           }
@@ -807,10 +841,25 @@
         {
           "ref": "components/generic-textarea",
           "overrides": {
-            "fieldId": "disability-details",
-            "label": "Give details of any disabilities",
             "ui": {
               "width": "long"
+            },
+            "hint": "Optional",
+            "label": "Give details of any other disabilities",
+            "fieldId": "disability-details",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "other",
+                "operator": "equal",
+                "targetStepId": "physical-attributes",
+                "targetFieldId": "mobility"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
             }
           }
         }
@@ -824,8 +873,8 @@
         {
           "ref": "components/generic-checkbox",
           "overrides": {
-            "fieldId": "health-conditions-list",
             "label": "Is the applicant affected by any of the following? Select all that apply.",
+            "fieldId": "health-conditions-list",
             "options": [
               {
                 "label": "Hypertension",
@@ -859,28 +908,29 @@
           }
         },
         {
-          "ref": "components/generic-textarea",
+          "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "health-condition-details",
-            "label": "Give details of any additional health conditions or disabilities",
             "ui": {
               "width": "long"
             },
+            "label": "Please tell us a bit more about your health",
+            "fieldId": "health-condition-details",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "health-conditions-list",
-                "operator": "in",
                 "value": [
-                  "hypertension",
-                  "diabetes",
-                  "arthritis",
-                  "heart-condition",
-                  "visual-impairment",
                   "other"
-                ]
+                ],
+                "operator": "in",
+                "targetStepId": "health-conditions",
+                "targetFieldId": "health-conditions-list"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -893,8 +943,8 @@
         {
           "ref": "components/generic-checkbox",
           "overrides": {
-            "fieldId": "areas-of-assistance",
             "label": "In which of the following areas is assistance needed? Select all that apply.",
+            "fieldId": "areas-of-assistance",
             "options": [
               {
                 "label": "Cleaning",
@@ -930,18 +980,26 @@
         {
           "ref": "components/generic-text",
           "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "label": "Please explain further the areas assistance is needed",
             "fieldId": "areas-of-assistance-other",
-            "label": "Please specify the other area",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "areas-of-assistance",
+                "value": "other",
                 "operator": "in",
-                "value": [
-                  "other"
-                ]
+                "targetStepId": "assistance-required",
+                "targetFieldId": "areas-of-assistance"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter details of the other area of assistance",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -954,20 +1012,20 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "referred-by",
+            "hint": "For example, a hospital, doctor, social worker, or friend",
             "label": "Who referred the applicant?",
-            "hint": "For example, a hospital, doctor, social worker, or friend"
+            "fieldId": "referred-by"
           }
         },
         {
           "ref": "components/generic-date",
           "overrides": {
+            "hint": "Optional",
+            "label": "Date of referral",
             "fieldId": "application-date",
-            "label": "Date of application",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the date of application"
+                "value": false
               }
             }
           }
@@ -989,8 +1047,8 @@
         {
           "ref": "components/confirmation",
           "overrides": {
-            "fieldId": "declaration-confirmed",
             "label": "Declaration",
+            "fieldId": "declaration-confirmed",
             "options": [
               {
                 "label": "I confirm that the information provided in this application is true and correct to the best of my knowledge.",
@@ -999,8 +1057,8 @@
             ],
             "validations": {
               "required": {
-                "value": true,
-                "error": "You must confirm the declaration to continue"
+                "error": "You must confirm the declaration to continue",
+                "value": true
               }
             }
           }
@@ -1022,5 +1080,5 @@
     }
   ],
   "createdAt": "2026-06-17T12:49:57.495Z",
-  "updatedAt": "2026-06-17T12:49:57.495Z"
+  "updatedAt": "2026-06-30T09:54:39.523Z"
 }

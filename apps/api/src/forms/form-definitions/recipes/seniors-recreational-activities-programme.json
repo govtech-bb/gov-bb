@@ -11,6 +11,9 @@
       }
     }
   ],
+  "meta": {
+    "visibility": "preview"
+  },
   "steps": [
     {
       "stepId": "filling-out-form",
@@ -19,7 +22,7 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Are you registering for yourself, or for someone else? ",
+            "label": "Are you registering for yourself, or for someone else?",
             "fieldId": "filling-out-on-behalf",
             "options": [
               {
@@ -151,10 +154,7 @@
           "ref": "components/parish"
         },
         {
-          "ref": "components/postcode",
-          "overrides": {
-            "hint": "Optional"
-          }
+          "ref": "components/postcode"
         },
         {
           "ref": "components/telephone"
@@ -162,12 +162,12 @@
         {
           "ref": "components/email",
           "overrides": {
+            "hint": "Optional",
             "validations": {
               "required": {
                 "value": false
               }
-            },
-            "hint": "Optional"
+            }
           }
         }
       ],
@@ -178,23 +178,7 @@
       "title": "Tell us about any health conditions or a disability you may have",
       "elements": [
         {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "label": "Do you have any health conditions or a disability we should know about? ",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-radio",
+          "ref": "components/generic-checkbox",
           "overrides": {
             "label": "Tell us about your current health status",
             "fieldId": "health-status",
@@ -230,41 +214,41 @@
               {
                 "label": "Other",
                 "value": "other"
+              },
+              {
+                "label": "Healthy",
+                "value": "healthy"
               }
             ],
             "validations": {
               "required": {
-                "value": false
+                "value": true
               }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetStepId": "health-status",
-                "targetFieldId": "generic-radio",
-                "operator": "equal",
-                "value": "yes"
-              }
-            ]
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
+            "ui": {
+              "width": "long"
+            },
             "label": "Could you describe the health condition or disability?",
             "fieldId": "type-of-disability",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "value": "other",
-                "operator": "equal",
-                "targetFieldId": "health-status",
-                "targetStepId": "health-status"
+                "value": [
+                  "other"
+                ],
+                "operator": "in",
+                "targetStepId": "health-status",
+                "targetFieldId": "health-status"
               }
             ],
             "validations": {
               "required": {
-                "value": false
+                "value": true
               }
             }
           }
@@ -400,13 +384,13 @@
         {
           "ref": "components/email",
           "overrides": {
+            "hint": "Optional",
+            "fieldId": "some-email",
             "validations": {
               "required": {
                 "value": false
               }
-            },
-            "hint": "Optional",
-            "fieldId": "some-email"
+            }
           }
         },
         {
@@ -460,13 +444,13 @@
         {
           "ref": "components/email",
           "overrides": {
+            "hint": "Optional",
+            "fieldId": "emer-email",
             "validations": {
               "required": {
                 "value": false
               }
-            },
-            "hint": "Optional",
-            "fieldId": "emer-email"
+            }
           }
         },
         {
@@ -534,5 +518,5 @@
     }
   ],
   "createdAt": "2026-06-26T10:57:46.815Z",
-  "updatedAt": "2026-06-26T10:57:46.815Z"
+  "updatedAt": "2026-06-30T10:03:42.916Z"
 }

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { Heading, Text, linkVariants } from '@govtech-bb/react'
 import { Breadcrumbs } from '../components/Breadcrumbs'
@@ -20,6 +21,8 @@ import { getAvailableForms, getMaintenanceForms } from '../lib/available-forms'
 import { shouldHideStartLink } from '../lib/hide-start-link'
 import { checkFormAccessible } from '../lib/preview-form-access'
 import { seoTags } from '../lib/page-head'
+import { trackEvent } from '../lib/analytics'
+import { pageViewEvent } from './-page-view-event'
 
 interface CategoryListItem {
   title: string
@@ -227,6 +230,10 @@ function PageView({
   // for the public; a reviewer keeps the Start button (the loader adds a
   // token-accessible form back to the list) so they can still test it.
   // `maintenance` differs only in also rendering the notice (below).
+  useEffect(() => {
+    const event = pageViewEvent(page)
+    if (event) trackEvent(event.name, event.data)
+  }, [page])
   const hideStartLink = shouldHideStartLink({
     startSubPageVisible: isStartSubPageVisible(page, viewerLevel),
     formId: page.frontmatter.form_id,
