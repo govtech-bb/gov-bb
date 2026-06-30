@@ -7,11 +7,13 @@ import {
   HttpStatus,
   Param,
   Post,
+  UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { FormDisabledOverridesService } from "./form-disabled-overrides.service";
 import { DisableFormDto } from "./dto";
+import { AdminTokenGuard } from "@/common/guards/admin-token.guard";
 import { ApiResponse } from "@/common/response";
 import type { ApiResponseShape } from "@/common/response";
 
@@ -26,12 +28,13 @@ interface DisabledStatusResponse {
 /**
  * Admin endpoints for the per-form kill switch.
  *
- * SECURITY: This controller does NOT implement authentication. Until
- * issue #11 lands, access is restricted at the load balancer (network ACL).
- * Do not expose to the public internet.
+ * SECURITY: Authenticated by `AdminTokenGuard` — every request must carry a
+ * valid `Authorization: Bearer <ARCHIVE_DRAFTS_TOKEN>` (dev-bypass policy per
+ * ADR 0061). The network ACL remains as defence in depth.
  */
 @ApiTags("Admin — Form Disabled Overrides")
 @ApiBearerAuth()
+@UseGuards(AdminTokenGuard)
 @Controller("admin/form-definitions")
 @Throttle({
   short: { limit: 5, ttl: 10_000 },
