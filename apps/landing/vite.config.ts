@@ -51,6 +51,18 @@ export default defineConfig({
           // secrets above: the SSR Lambda never sees Console env vars, so we
           // snapshot VITE_FORMS_API_URL here and read it via useRuntimeConfig().
           formsApiUrl: process.env.VITE_FORMS_API_URL ?? '',
+          // Umami Cloud reporting credentials for the server-only /analytics
+          // data (src/lib/umami-analytics.ts). Build-baked like the secrets
+          // above — the SSR Lambda reads them via useRuntimeConfig(); the API
+          // key never reaches the browser. Distinct from VITE_UMAMI_* (the
+          // public client-side tracking script).
+          umami: {
+            apiKey: process.env.UMAMI_API_KEY ?? '',
+            landingWebsiteId: process.env.UMAMI_LANDING_WEBSITE_ID ?? '',
+            formsWebsiteId: process.env.UMAMI_FORMS_WEBSITE_ID ?? '',
+            apiUrl: process.env.UMAMI_API_URL ?? '',
+            timezone: process.env.UMAMI_TIMEZONE ?? '',
+          },
         },
       },
     }),
