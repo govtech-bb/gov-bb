@@ -20,6 +20,22 @@ describe("buildValidationErrorPayload", () => {
       errorCount: 2,
       fields: "first-name,email",
       errorTypes: "Required,Invalid email",
+      fieldErrors: "first-name::Required || email::Invalid email",
     });
+  });
+
+  it("pairs every message with its field, un-aggregated (a field may repeat)", () => {
+    const payload = buildValidationErrorPayload("f", "c", "s", [
+      { fieldId: "email", errors: ["Required", "Invalid email"] },
+    ]);
+    // one entry per (field, message), so the same field appears twice
+    expect(payload.fieldErrors).toBe("email::Required || email::Invalid email");
+  });
+
+  it("strips the delimiters from messages so entries stay parseable", () => {
+    const payload = buildValidationErrorPayload("f", "c", "s", [
+      { fieldId: "x", errors: ["a || b :: c"] },
+    ]);
+    expect(payload.fieldErrors).toBe("x::a / b : c");
   });
 });
