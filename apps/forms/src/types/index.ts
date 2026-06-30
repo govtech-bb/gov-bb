@@ -36,7 +36,7 @@ export type {
   FormSubmissionResponse,
   FormDefinitionResponse,
   FormDefinitionsListResponse,
-  FormDefinitionSummary,
+  PublicFormSummary,
 } from "./api/index.ts";
 export {
   formDraftResponseBodySchema,

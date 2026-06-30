@@ -11,6 +11,7 @@ import * as path from "node:path";
 import {
   serviceContractRecipeSchema,
   getRecipeVisibility,
+  type PublicFormSummary,
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
 
@@ -202,18 +203,8 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
     return result.data;
   }
 
-  findAll(): {
-    formId: string;
-    title: string;
-    version: string;
-    category?: string;
-  }[] {
-    const out: {
-      formId: string;
-      title: string;
-      version: string;
-      category?: string;
-    }[] = [];
+  findAll(): PublicFormSummary[] {
+    const out: PublicFormSummary[] = [];
     for (const [formId, recipe] of this.recipes) {
       // Hide non-public forms from the list (#1646) — the list carries no
       // preview token, so preview/draft forms are unlisted for everyone,

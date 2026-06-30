@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import type { Mock } from "vitest";
 import { FormPicker } from "./-form-picker";
 import { getRecipe } from "../../server/forms";
-import type { FormDefinitionSummary } from "../../types/index";
+import type { BuilderFormSummary } from "../../types/index";
 import type { RegistryCatalog } from "@govtech-bb/form-builder";
 
 // getRecipe is only invoked when a row is clicked; render-only tests never hit
@@ -17,25 +17,25 @@ vi.mock("../../server/forms", () => ({
 }));
 
 const CATALOG = {} as RegistryCatalog;
-const FORMS: FormDefinitionSummary[] = [
+const FORMS: BuilderFormSummary[] = [
   { id: "passport", formId: "passport", title: "Passport Application", version: "1.2.0", isPublished: true },
 ];
 
-const DRAFT: FormDefinitionSummary = {
+const DRAFT: BuilderFormSummary = {
   id: "draft-form",
   formId: "draft-form",
   title: "Draft Form",
   version: "1.0.0",
   isPublished: false,
 };
-const LIVE_PUBLISHED: FormDefinitionSummary = {
+const LIVE_PUBLISHED: BuilderFormSummary = {
   id: "live",
   formId: "live",
   title: "Live Service",
   version: "1.0.0",
   isPublished: true,
 };
-const DISABLED_PUBLISHED: FormDefinitionSummary = {
+const DISABLED_PUBLISHED: BuilderFormSummary = {
   id: "killed",
   formId: "killed",
   title: "Killed Service",

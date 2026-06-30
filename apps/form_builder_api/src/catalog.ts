@@ -1,4 +1,4 @@
-import { getCatalog } from "@govtech-bb/form-builder";
+import { getCatalog, ttlCache } from "@govtech-bb/form-builder";
 import type {
   RegistryCatalog,
   CustomComponentEntry,
@@ -6,19 +6,13 @@ import type {
 import { CustomComponent } from "@govtech-bb/database";
 import { getDataSource } from "./db.js";
 
-let _catalogCache: { data: RegistryCatalog; expiresAt: number } | null = null;
-
 /**
  * Builtin catalog merged with the custom components stored in the DB, cached
  * for 60s. Shared by every route that needs catalog-aware resolution (the
  * registry routes and the AI publish backstop) so id-uniqueness checks resolve
  * the same defaults the live forms API sees.
  */
-export async function getFullCatalog(): Promise<RegistryCatalog> {
-  const now = Date.now();
-  if (_catalogCache && _catalogCache.expiresAt > now) {
-    return _catalogCache.data;
-  }
+export const getFullCatalog = ttlCache(async (): Promise<RegistryCatalog> => {
   const builtinCatalog = getCatalog();
   const ds = await getDataSource();
   const repo = ds.getRepository(CustomComponent);
@@ -30,7 +24,5 @@ export async function getFullCatalog(): Promise<RegistryCatalog> {
     type: c.type,
     definition: c.definition,
   }));
-  const catalog = { ...builtinCatalog, custom: customEntries };
-  _catalogCache = { data: catalog, expiresAt: now + 60_000 };
-  return catalog;
-}
+  return { ...builtinCatalog, custom: customEntries };
+}, 60_000);
