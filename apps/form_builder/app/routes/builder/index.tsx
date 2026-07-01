@@ -2,9 +2,8 @@ import "../../styles/builder.global.css";
 import { createFileRoute } from "@tanstack/react-router";
 import { useReducer, useState, useMemo, useEffect } from "react";
 import { getCatalogFn } from "../../server/registry";
-import { deleteForm, disableForm, enableForm } from "../../server/forms";
 import { createMdaContact } from "../../server/mda-contacts";
-import { getPublishBaseBranch, eraseRecipe } from "../../server/publish";
+import { getPublishBaseBranch } from "../../server/publish";
 import { previewRecipe } from "../../server/registry";
 import { serializeRecipeDraft, findRecipeIdCollisions, resolveFieldIds } from "@govtech-bb/form-builder";
 import type {
@@ -53,11 +52,9 @@ import { useMdaContacts } from "./-use-mda-contacts";
 import { useRecipeValidation } from "./-use-recipe-validation";
 import { useRecipeSave } from "./-use-recipe-save";
 import { useDraftLifecycle } from "./-use-draft-lifecycle";
+import { useFormManagement } from "./-use-form-management";
+import { FormManagementModals } from "./-form-management-modals";
 import type { CreateMdaContactInput, MdaContact } from "../../types/index";
-import { DeleteModal } from "./-delete-modal";
-import { DisableModal } from "./-disable-modal";
-import { EraseModal } from "./-erase-modal";
-import type { BuilderFormSummary } from "../../types/index";
 
 import styles from "../../styles/builder.module.css";
 
@@ -121,18 +118,6 @@ function BuilderPage() {
   const [previewRecipeJson, setPreviewRecipeJson] = useState<ServiceContractRecipe | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<BuilderFormSummary | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [disableTarget, setDisableTarget] = useState<BuilderFormSummary | null>(null);
-  const [isDisabling, setIsDisabling] = useState(false);
-  const [disableError, setDisableError] = useState<string | null>(null);
-  const [eraseTarget, setEraseTarget] = useState<BuilderFormSummary | null>(null);
-  const [isErasing, setIsErasing] = useState(false);
-  const [eraseError, setEraseError] = useState<string | null>(null);
-  const [eraseSuccess, setEraseSuccess] = useState<
-    { prUrl: string; prNumber: number } | null
-  >(null);
 
   // Derived
   const selectedStep = draft.steps.find((s) => s.stepId === selectedStepId) ?? null;
@@ -295,6 +280,35 @@ function BuilderPage() {
     setIsPreviewOpen,
   });
 
+  // Form management: delete / disable / erase / enable, off the Open picker.
+  const {
+    deleteTarget,
+    isDeleting,
+    deleteError,
+    disableTarget,
+    isDisabling,
+    disableError,
+    eraseTarget,
+    isErasing,
+    eraseError,
+    eraseSuccess,
+    handleRequestDelete,
+    handleConfirmDelete,
+    handleCloseDelete,
+    handleRequestDisable,
+    handleConfirmDisable,
+    handleCloseDisable,
+    handleRequestErase,
+    handleConfirmErase,
+    handleCloseErase,
+    handleEnable,
+  } = useFormManagement({
+    loadedFromId,
+    onClearEditor: handleNew,
+    refetchForms,
+    setIsPickerOpen,
+  });
+
   // Handlers
   // Save draft / Deploy validate the current draft on click, then open their
   // modal only if it's valid. One click, not two — and because every click
@@ -345,121 +359,6 @@ function BuilderPage() {
       setPreviewError(e instanceof Error ? e.message : "Preview request failed");
     } finally {
       setIsPreviewing(false);
-    }
-  };
-
-  const handleRequestDelete = (form: BuilderFormSummary) => {
-    setDeleteError(null);
-    setDeleteTarget(form);
-    setIsPickerOpen(false);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deleteTarget) return;
-    setIsDeleting(true);
-    setDeleteError(null);
-    try {
-      await deleteForm({ data: { formId: deleteTarget.formId } });
-      // If the deleted draft is the one open in the editor, clear it.
-      if (loadedFromId === deleteTarget.formId) handleNew();
-      setDeleteTarget(null);
-      // The forms list lives in useFormsList (no longer route-loader data), so
-      // refetch it directly to drop the deleted entry from the Open picker.
-      refetchForms();
-    } catch (e) {
-      setDeleteError(e instanceof Error ? e.message : "Delete failed");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleCloseDelete = () => {
-    if (isDeleting) return;
-    setDeleteTarget(null);
-    setDeleteError(null);
-  };
-
-  const handleRequestDisable = (form: BuilderFormSummary) => {
-    setDisableError(null);
-    setDisableTarget(form);
-    setIsPickerOpen(false);
-  };
-
-  const handleConfirmDisable = async (reason: string) => {
-    if (!disableTarget) return;
-    setIsDisabling(true);
-    setDisableError(null);
-    try {
-      await disableForm({ data: { formId: disableTarget.formId, reason } });
-      setDisableTarget(null);
-      // Refetch so the row flips to the Disabled badge + Enable button.
-      refetchForms();
-    } catch (e) {
-      setDisableError(e instanceof Error ? e.message : "Disable failed");
-    } finally {
-      setIsDisabling(false);
-    }
-  };
-
-  const handleCloseDisable = () => {
-    if (isDisabling) return;
-    setDisableTarget(null);
-    setDisableError(null);
-  };
-
-  const handleRequestErase = (form: BuilderFormSummary) => {
-    setEraseError(null);
-    setEraseSuccess(null);
-    setEraseTarget(form);
-    setIsPickerOpen(false);
-  };
-
-  const handleConfirmErase = async (reason: string) => {
-    if (!eraseTarget) return;
-    setIsErasing(true);
-    setEraseError(null);
-    try {
-      const result = await eraseRecipe({
-        data: {
-          formId: eraseTarget.formId,
-          title: eraseTarget.title,
-          reason,
-        },
-      });
-      // The recipe stays on disk until the PR merges, so the picker row is left
-      // as-is — we surface the PR link in the modal instead of refetching.
-      setEraseSuccess(result);
-    } catch (e) {
-      setEraseError(e instanceof Error ? e.message : "Erase failed");
-    } finally {
-      setIsErasing(false);
-    }
-  };
-
-  const handleCloseErase = () => {
-    if (isErasing) return;
-    setEraseTarget(null);
-    setEraseError(null);
-    setEraseSuccess(null);
-  };
-
-  // Enable is a direct action (no modal) with an inline confirm: clearing a
-  // tombstone restores the public service, so a single confirm is enough.
-  const handleEnable = async (form: BuilderFormSummary) => {
-    if (
-      !window.confirm(
-        `Re-enable ${form.title || form.formId}? The public service will be restored.`,
-      )
-    ) {
-      return;
-    }
-    try {
-      await enableForm({ data: { formId: form.formId } });
-      refetchForms();
-    } catch (e) {
-      // Surface in the picker's load-error slot via the forms list is overkill;
-      // a window.alert keeps the inline action simple and visible.
-      window.alert(e instanceof Error ? e.message : "Enable failed");
     }
   };
 
@@ -721,39 +620,24 @@ function BuilderPage() {
         />
       )}
 
-      {deleteTarget && (
-        <DeleteModal
-          formId={deleteTarget.formId}
-          title={deleteTarget.title}
-          isDeleting={isDeleting}
-          deleteError={deleteError}
-          onConfirm={handleConfirmDelete}
-          onClose={handleCloseDelete}
-        />
-      )}
-
-      {disableTarget && (
-        <DisableModal
-          formId={disableTarget.formId}
-          title={disableTarget.title}
-          isDisabling={isDisabling}
-          disableError={disableError}
-          onConfirm={handleConfirmDisable}
-          onClose={handleCloseDisable}
-        />
-      )}
-
-      {eraseTarget && (
-        <EraseModal
-          formId={eraseTarget.formId}
-          title={eraseTarget.title}
-          isErasing={isErasing}
-          eraseSuccess={eraseSuccess}
-          eraseError={eraseError}
-          onConfirm={handleConfirmErase}
-          onClose={handleCloseErase}
-        />
-      )}
+      <FormManagementModals
+        deleteTarget={deleteTarget}
+        isDeleting={isDeleting}
+        deleteError={deleteError}
+        onConfirmDelete={handleConfirmDelete}
+        onCloseDelete={handleCloseDelete}
+        disableTarget={disableTarget}
+        isDisabling={isDisabling}
+        disableError={disableError}
+        onConfirmDisable={handleConfirmDisable}
+        onCloseDisable={handleCloseDisable}
+        eraseTarget={eraseTarget}
+        isErasing={isErasing}
+        eraseError={eraseError}
+        eraseSuccess={eraseSuccess}
+        onConfirmErase={handleConfirmErase}
+        onCloseErase={handleCloseErase}
+      />
       </div>
 
       <AiSidebar
