@@ -116,6 +116,23 @@ export interface StartPageInput {
   publishDate: string;
 }
 
+/**
+ * The start-page editor's draft fields — the manually-authored content before
+ * it becomes a {@link StartPageInput} payload. Held by `useEditorState`.
+ */
+export interface FormState {
+  formId: string;
+  slug: string;
+  title: string;
+  description: string;
+  category: string;
+  subcategory: string;
+  body: string;
+  linkType: StartLinkType;
+  linkHref: string;
+  visibility: ViewLevel;
+}
+
 /** Frontmatter values are untyped; coerce to a string ("" when absent). */
 export function asString(v: unknown): string {
   return typeof v === "string" ? v : "";
@@ -267,4 +284,124 @@ export function placeStartLinkAt(
   const head = before ? `${before}\n\n` : "";
   const tail = after ? `\n\n${after}` : "\n";
   return { body: `${head}${tag}${tail}`, cursor: head.length + tag.length };
+}
+
+/**
+ * Merge an AI-proposed page object onto the current draft, keeping only known
+ * keys with valid values — the model's prose and any extra fields are ignored.
+ * The slug is skipped when the path is fixed (edit / fixed-create) since it
+ * can't move; choosing a new category resets the subcategory. Pure: the editor
+ * wraps it in `setState`.
+ */
+export function applyAiPagePatch(
+  cur: FormState,
+  page: Record<string, unknown>,
+  opts: { fixedPath: boolean },
+): FormState {
+  const next = { ...cur };
+  for (const key of ["title", "description", "body", "linkHref"] as const) {
+    const v = page[key];
+    if (typeof v === "string") next[key] = v;
+  }
+  if (
+    typeof page.slug === "string" &&
+    !opts.fixedPath &&
+    isValidSlug(page.slug)
+  ) {
+    next.slug = page.slug;
+  }
+  if (typeof page.category === "string") {
+    next.category = page.category;
+    next.subcategory = "";
+  }
+  if (typeof page.subcategory === "string") {
+    next.subcategory = page.subcategory;
+  }
+  if (
+    page.linkType === "form" ||
+    page.linkType === "slug" ||
+    page.linkType === "external" ||
+    page.linkType === "none"
+  ) {
+    next.linkType = page.linkType;
+  }
+  if (
+    page.visibility === "draft" ||
+    page.visibility === "preview" ||
+    page.visibility === "public"
+  ) {
+    next.visibility = page.visibility;
+  }
+  return next;
+}
+
+export interface DeployPayloadInput {
+  state: FormState;
+  /** The resolved slug (`ed.slug`). Omitted from the payload when fixed-path. */
+  slug: string;
+  prDescription: string;
+  /** A category being created alongside this page (`ed.creatingCategory`). */
+  creatingCategory: boolean;
+  newCatSlug: string;
+  newCatTitle: string;
+  newCatDesc: string;
+  /** Edit mode: repo path + blob sha + loaded frontmatter of the page. */
+  editPath: string | null;
+  editSha: string | null;
+  baseFrontmatter: Record<string, unknown> | null;
+  /** Fixed-create mode: the target repo path for a new entry/start page. */
+  createPath: string | null;
+}
+
+/**
+ * Build the `publishStartPage` request payload from the editor's draft + mode.
+ * Blank optional fields collapse to `undefined`; the button label is read back
+ * from the body's start-link marker. A fixed path (edit / fixed-create) omits
+ * the slug and carries the path (plus sha + baseFrontmatter for edits).
+ */
+export function buildDeployPayload(input: DeployPayloadInput) {
+  const {
+    state,
+    slug,
+    prDescription,
+    creatingCategory,
+    newCatSlug,
+    newCatTitle,
+    newCatDesc,
+    editPath,
+    editSha,
+    baseFrontmatter,
+    createPath,
+  } = input;
+  const fixedPath = editPath ?? createPath;
+  return {
+    formId: state.formId,
+    slug: fixedPath ? undefined : slug,
+    title: state.title.trim(),
+    description: state.description.trim() || undefined,
+    category: state.category,
+    subcategory: state.subcategory,
+    body: state.body,
+    buttonLabel: parseStartLink(state.body)?.label || "Start now",
+    linkType: state.linkType,
+    linkHref: state.linkHref.trim() || undefined,
+    visibility: state.visibility,
+    prDescription,
+    newCategory: creatingCategory
+      ? {
+          slug: newCatSlug,
+          title: newCatTitle.trim(),
+          description: newCatDesc.trim() || undefined,
+        }
+      : undefined,
+    ...(editPath
+      ? {
+          path: editPath,
+          sha: editSha ?? undefined,
+          baseFrontmatter: baseFrontmatter ?? undefined,
+        }
+      : createPath
+        ? { path: createPath }
+        : {}),
+  };
 }
