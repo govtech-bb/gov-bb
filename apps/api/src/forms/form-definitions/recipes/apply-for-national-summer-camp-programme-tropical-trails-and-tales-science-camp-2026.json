@@ -42,8 +42,7 @@
             "check-your-answers",
             "declaration",
             "submission-confirmation"
-          ],
-          "groupByStep": true
+          ]
         }
       }
     }
