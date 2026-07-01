@@ -6,18 +6,16 @@ import { submitRecipe, updateRecipe, rekeyRecipe, deleteForm, disableForm, enabl
 import { createMdaContact } from "../../server/mda-contacts";
 import { publishRecipe, getPublishBaseBranch, eraseRecipe } from "../../server/publish";
 import { validateRecipe, previewRecipe } from "../../server/registry";
-import { serializeRecipeDraft, findRecipeIdCollisions, formatCollisionIssues, resolveFieldIds, extractDbProcessors, firstIncompletePaymentProcessor } from "@govtech-bb/form-builder";
+import { serializeRecipeDraft, findRecipeIdCollisions, resolveFieldIds, extractDbProcessors } from "@govtech-bb/form-builder";
 import type {
   ServiceContract,
   ServiceContractRecipe,
   RecipeVisibility,
 } from "@govtech-bb/form-types";
 import {
-  KEBAB_ID_PATTERN,
-  KEBAB_ID_ERROR,
   getRecipeVisibility,
 } from "@govtech-bb/form-types";
-import type { RecipeDraft, ValidationResult, RecipeValidateResponse, ValidationIssue, UnknownRef } from "@govtech-bb/form-builder";
+import type { RecipeDraft, ValidationResult, ValidationIssue, UnknownRef } from "@govtech-bb/form-builder";
 
 import { Layers01Icon, Moon02Icon, Sun03Icon } from "hugeicons-react";
 
@@ -35,7 +33,7 @@ import { Tip } from "../content/-sliding-tabs";
 import { useTheme } from "../content/-use-theme";
 import { buildLoadArgs, draftsEqual } from "./-apply-recipe";
 import { AiSidebar, type ApplyRecipeResult } from "./-ai-sidebar";
-import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS, isRequiredStep, firstStepId } from "./-recipe-reducer";
+import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS, firstStepId } from "./-recipe-reducer";
 import { Toolbar } from "./-toolbar";
 import { usePresence } from "./-use-presence";
 import { PresenceBanner } from "./-presence-banner";
@@ -52,6 +50,7 @@ import { FormPicker } from "./-form-picker";
 import { checkFormUniqueness, checkRekeyPublished } from "./-form-uniqueness";
 import { useFormsList } from "./-use-forms-list";
 import { useMdaContacts } from "./-use-mda-contacts";
+import { useRecipeValidation } from "./-use-recipe-validation";
 import type { CreateMdaContactInput, MdaContact } from "../../types/index";
 import { DeleteModal } from "./-delete-modal";
 import { DisableModal } from "./-disable-modal";
@@ -110,8 +109,6 @@ function BuilderPage() {
     "step" | "processors" | "contactDetails"
   >("step");
   const [loadedFromId, setLoadedFromId] = useState<string | null>(null);
-  const [isValidating, setIsValidating] = useState(false);
-  const [validateResult, setValidateResult] = useState<RecipeValidateResponse | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -131,7 +128,6 @@ function BuilderPage() {
     { prUrl: string; prNumber: number } | null
   >(null);
   const [publishError, setPublishError] = useState<string | null>(null);
-  const [lastSaveStatus, setLastSaveStatus] = useState<"idle" | "success" | "error" | "submitted">("idle");
   const [deleteTarget, setDeleteTarget] = useState<BuilderFormSummary | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -161,8 +157,6 @@ function BuilderPage() {
     savedDraft === null
       ? isDirty
       : !draftsEqual(draft, savedDraft, { comparePayments: true });
-  const editableSteps = draft.steps.filter((s) => !isRequiredStep(s.stepId));
-  const hasEditableSteps = editableSteps.length > 0;
 
   // Any draft edit invalidates the last validate/save verdict in the header —
   // otherwise "✓ Valid" sits beside "● Unsaved changes" and lies. Validation
@@ -226,115 +220,29 @@ function BuilderPage() {
   // and the banner names the current editor.
   const { isReadOnly, holder: presenceHolder } = usePresence(loadedFromId);
 
+  // Recipe validation verdict + pre-flight gates (isValidating / validateResult
+  // / lastSaveStatus). Setters are exposed so the draft-change effect above, the
+  // save flow, and the lifecycle handlers can reset the verdict they share.
+  const {
+    isValidating,
+    validateResult,
+    lastSaveStatus,
+    setValidateResult,
+    setLastSaveStatus,
+    runValidation,
+    blockedByUniqueness,
+    blockedByIncompletePayment,
+    blockedByDraftVisibility,
+    dismiss,
+  } = useRecipeValidation({
+    draft,
+    catalog,
+    uniqueness,
+    rekeyError,
+    onFocusProcessors: () => setMainView("processors"),
+  });
+
   // Handlers
-  // Runs the full validation flow (pre-flight checks + server validate), sets
-  // all the state it always has, AND returns the computed result. Returning it
-  // lets the Save draft / Deploy click handlers act on a fresh validation
-  // synchronously — React state updates are async, so they can't read
-  // validateResult right after triggering it.
-  const runValidation = async (): Promise<RecipeValidateResponse> => {
-    setIsValidating(true);
-    try {
-      // Pre-flight checks that the server schema would also fail, but with friendlier messages.
-      if (!hasEditableSteps) {
-        const result: RecipeValidateResponse = {
-          valid: false,
-          issues: [
-            {
-              path: "steps",
-              message:
-                "Add at least one step before the required Declaration and Submission Confirmation steps.",
-            },
-          ],
-        };
-        setValidateResult(result);
-        setLastSaveStatus("error");
-        return result;
-      }
-      // A content-only step (intro/information page) carries markdownContent
-      // and no fields — that is valid. A step with neither is the empty step.
-      const emptyStep = editableSteps.find(
-        (s) => s.fields.length === 0 && !s.markdownContent,
-      );
-      if (emptyStep) {
-        const result: RecipeValidateResponse = {
-          valid: false,
-          issues: [
-            {
-              path: `steps[${emptyStep.stepId}].fields`,
-              message: `Step "${emptyStep.title || emptyStep.stepId}" has no fields.`,
-            },
-          ],
-        };
-        setValidateResult(result);
-        setLastSaveStatus("error");
-        return result;
-      }
-
-      // Pre-flight: surface duplicate resolved fieldIds / stepIds in the panel.
-      // (The server contract validator can't resolve catalog defaults, so this
-      // is the client's job — same pattern as the empty-step pre-flight above.)
-      const collisions = findRecipeIdCollisions(draft, catalog);
-      if (
-        collisions.fieldIdCollisions.length > 0 ||
-        collisions.stepIdCollisions.length > 0
-      ) {
-        const result: RecipeValidateResponse = {
-          valid: false,
-          issues: formatCollisionIssues(collisions),
-        };
-        setValidateResult(result);
-        setLastSaveStatus("error");
-        return result;
-      }
-
-      // Pre-flight: Form ID and Title identify the form before deploy. The
-      // schema rejects an empty/malformed formId or empty title too, but a
-      // friendly message beats Zod's raw "String must contain at least 1
-      // character(s)". Reported together so the author fixes both at once.
-      const identityIssues: ValidationIssue[] = [];
-      if (draft.formId.trim() === "") {
-        identityIssues.push({ path: "formId", message: "Form ID is required" });
-      } else if (!KEBAB_ID_PATTERN.test(draft.formId)) {
-        identityIssues.push({ path: "formId", message: KEBAB_ID_ERROR });
-      }
-      if (draft.title.trim() === "") {
-        identityIssues.push({ path: "title", message: "Title is required" });
-      }
-      if (identityIssues.length > 0) {
-        const result: RecipeValidateResponse = {
-          valid: false,
-          issues: identityIssues,
-        };
-        setValidateResult(result);
-        setLastSaveStatus("error");
-        return result;
-      }
-
-      const recipe = serializeRecipeDraft(draft);
-      const raw = (await validateRecipe({ data: { recipe } })) as ValidationResult;
-      const result: RecipeValidateResponse = {
-        valid: raw.ok,
-        issues: raw.ok ? [] : raw.issues,
-      };
-      setValidateResult(result);
-      setLastSaveStatus(raw.ok ? "success" : "error");
-      return result;
-    } catch (e) {
-      const result: RecipeValidateResponse = {
-        valid: false,
-        issues: [
-          { path: "", message: e instanceof Error ? e.message : "Validation request failed" },
-        ],
-      };
-      setValidateResult(result);
-      setLastSaveStatus("error");
-      return result;
-    } finally {
-      setIsValidating(false);
-    }
-  };
-
   // Save draft / Deploy validate the current draft on click, then open their
   // modal only if it's valid. One click, not two — and because every click
   // re-validates the live draft, a stale validateResult can never green-light a
@@ -344,50 +252,6 @@ function BuilderPage() {
   // user confirms, so an in-progress form can be shared for review. The errors
   // stay lit in the validation panel either way; the SubmitModal still collects
   // (and semver-validates) the version. Deploy stays hard-gated on validity.
-  // Hard gate for both Save draft and Deploy: form-level formId/title
-  // collisions can never be saved (unlike contract errors, which Save draft can
-  // override). Lights the always-visible validation panel and returns true when
-  // blocked. The API re-checks draft collisions on save (it does not yet see
-  // published forms — see -form-uniqueness.ts).
-  const blockedByUniqueness = (): boolean => {
-    const issues = [
-      uniqueness.idError && { path: "formId", message: uniqueness.idError },
-      rekeyError && { path: "formId", message: rekeyError },
-      uniqueness.titleError && { path: "title", message: uniqueness.titleError },
-    ].filter((i): i is { path: string; message: string } => Boolean(i));
-    if (issues.length === 0) return false;
-    setValidateResult({ valid: false, issues });
-    setLastSaveStatus("error");
-    return true;
-  };
-
-  // Hard gate for both Save draft and Deploy: a payment processor with an
-  // incomplete config (e.g. the empty strings makeDefaultProcessor seeds) is
-  // sent as the DB `processors` sibling, where the builder API 400s the WHOLE
-  // save with an opaque error (#716 follow-up). Pre-flight the same author-time
-  // payment schema the API enforces and surface a friendly, targeted message in
-  // the always-visible validation panel instead, blocking the save so no request
-  // is sent. Lights the panel and returns true when blocked. This is a hard gate
-  // even on Save draft (unlike contract errors, which Save draft can override),
-  // because an incomplete payment config can never be persisted.
-  const blockedByIncompletePayment = (): boolean => {
-    const index = firstIncompletePaymentProcessor(draft.processors);
-    if (index === null) return false;
-    setMainView("processors");
-    setValidateResult({
-      valid: false,
-      issues: [
-        {
-          path: "processors",
-          message:
-            "A payment processor is incomplete. Open the Processors panel and fill in every payment field before saving.",
-        },
-      ],
-    });
-    setLastSaveStatus("error");
-    return true;
-  };
-
   const handleSaveDraftClick = async () => {
     if (blockedByUniqueness()) return;
     if (blockedByIncompletePayment()) return;
@@ -405,38 +269,12 @@ function BuilderPage() {
     setIsSubmitOpen(true);
   };
 
-  // Hard gate for Deploy ONLY (#1682 follow-up): a form whose visibility is
-  // still `draft` is not ready to publish — only `preview`/`public` recipes may
-  // deploy. Lights the validation panel and returns true when blocked. Save
-  // draft is intentionally NOT gated: scratch-saving a draft is exactly what
-  // draft visibility is for.
-  const blockedByDraftVisibility = (): boolean => {
-    if (getRecipeVisibility(draft) !== "draft") return false;
-    setValidateResult({
-      valid: false,
-      issues: [
-        {
-          path: "meta.visibility",
-          message:
-            "This form's visibility is Draft. Set it to Preview or Public in the toolbar before deploying.",
-        },
-      ],
-    });
-    setLastSaveStatus("error");
-    return true;
-  };
-
   const handleDeployClick = async () => {
     if (blockedByDraftVisibility()) return;
     if (blockedByUniqueness()) return;
     if (blockedByIncompletePayment()) return;
     const result = await runValidation();
     if (result.valid) handleOpenPublish();
-  };
-
-  const handleDismissValidation = () => {
-    setValidateResult(null);
-    setLastSaveStatus("idle");
   };
 
   const handlePreview = async () => {
@@ -1106,7 +944,7 @@ function BuilderPage() {
         </div>
       )}
 
-      <ValidationPanel result={validateResult} onDismiss={handleDismissValidation} />
+      <ValidationPanel result={validateResult} onDismiss={dismiss} />
       </div>
 
       {isPickerOpen && (
