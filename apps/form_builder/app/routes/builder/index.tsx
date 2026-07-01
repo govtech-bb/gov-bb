@@ -16,17 +16,8 @@ import {
 } from "@govtech-bb/form-types";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 
-import { Layers01Icon, Moon02Icon, Sun03Icon } from "hugeicons-react";
+import { Moon02Icon, Sun03Icon } from "hugeicons-react";
 
-/** Collapse repeated identical locations ("Declaration › Name; Declaration ›
- *  Name; …") into one entry with a count ("Declaration › Name ×4"). */
-function formatCollisionLocations(items: string[]): string {
-  const counts = new Map<string, number>();
-  for (const item of items) counts.set(item, (counts.get(item) ?? 0) + 1);
-  return [...counts]
-    .map(([text, n]) => (n > 1 ? `${text} ×${n}` : text))
-    .join(", ");
-}
 import { SectionSwitch } from "../../components/section-switch";
 import { Tip } from "../content/-sliding-tabs";
 import { useTheme } from "../content/-use-theme";
@@ -37,15 +28,10 @@ import { Toolbar } from "./-toolbar";
 import { usePresence } from "./-use-presence";
 import { PresenceBanner } from "./-presence-banner";
 import { StepList } from "./-step-list";
-import { StepEditor } from "./-step-editor";
-import { ProcessorsEditor } from "./-processors-editor";
-import { ContactDetailsEditor } from "./-contact-details-editor";
+import { BuilderPanel } from "./-builder-panel";
+import { CollisionBanner } from "./-collision-banner";
+import { BuilderModals } from "./-builder-modals";
 import { ValidationPanel } from "./-validation-panel";
-import { PreviewModal } from "./-preview-modal";
-import { formPreviewUrl } from "../../lib/form-url";
-import { SubmitModal } from "./-submit-modal";
-import { PublishModal } from "./-publish-modal";
-import { FormPicker } from "./-form-picker";
 import { checkFormUniqueness, checkRekeyPublished } from "./-form-uniqueness";
 import { useFormsList } from "./-use-forms-list";
 import { useMdaContacts } from "./-use-mda-contacts";
@@ -53,7 +39,6 @@ import { useRecipeValidation } from "./-use-recipe-validation";
 import { useRecipeSave } from "./-use-recipe-save";
 import { useDraftLifecycle } from "./-use-draft-lifecycle";
 import { useFormManagement } from "./-use-form-management";
-import { FormManagementModals } from "./-form-management-modals";
 import type { CreateMdaContactInput, MdaContact } from "../../types/index";
 
 import styles from "../../styles/builder.module.css";
@@ -161,9 +146,6 @@ function BuilderPage() {
     () => findRecipeIdCollisions(draft, catalog),
     [draft, catalog],
   );
-  const hasIdCollisions =
-    idCollisions.fieldIdCollisions.length > 0 ||
-    idCollisions.stepIdCollisions.length > 0;
 
   // Resolved field paths (stepId.fieldId, blocks expanded) for the processor
   // config path-pickers. Same memo shape as idCollisions above.
@@ -501,126 +483,63 @@ function BuilderPage() {
           onSelectContactDetails={handleSelectContactDetails}
         />
 
-        {mainView === "contactDetails" ? (
-          <ContactDetailsEditor
-            draft={draft}
-            dispatch={dispatch}
-            contacts={mdaContacts}
-            contactsLoadError={mdaContactsLoadError}
-            onCreateContact={handleCreateMdaContact}
-          />
-        ) : mainView === "processors" ? (
-          <ProcessorsEditor
-            draft={draft}
-            dispatch={dispatch}
-            fields={resolvedFieldIds}
-          />
-        ) : selectedStep !== null ? (
-          <StepEditor
-            step={selectedStep}
-            draft={draft}
-            dispatch={dispatch}
-            catalog={catalog}
-            onStepIdChange={handleStepIdChange}
-          />
-        ) : (
-          <div className={styles.noStepSelected}>
-            <div className={styles.emptyState}>
-              <Layers01Icon size={28} />
-              <p>Select or add a step to begin</p>
-            </div>
-          </div>
-        )}
+        <BuilderPanel
+          mainView={mainView}
+          draft={draft}
+          dispatch={dispatch}
+          catalog={catalog}
+          selectedStep={selectedStep}
+          mdaContacts={mdaContacts}
+          mdaContactsLoadError={mdaContactsLoadError}
+          resolvedFieldIds={resolvedFieldIds}
+          onCreateContact={handleCreateMdaContact}
+          onStepIdChange={handleStepIdChange}
+        />
       </div>
 
       {/* Floating over the canvas (not in-flow) so appearing/dismissing never
           reflows the editor underneath. */}
       <div className={styles.bannerStack}>
-      {hasIdCollisions && (
-        <div className={styles.errorBanner} role="alert">
-          <strong>Duplicate IDs must be fixed before saving or deploying</strong>
-          <ul className={styles.bannerList}>
-            {idCollisions.fieldIdCollisions.map((c) => (
-              <li key={`field-${c.id}`}>
-                Field ID <code>{c.id}</code> is used by {c.locations.length}{" "}
-                fields:{" "}
-                {formatCollisionLocations(
-                  c.locations.map(
-                    (l) => `${l.stepTitle || l.stepId} › ${l.display}`,
-                  ),
-                )}
-              </li>
-            ))}
-            {idCollisions.stepIdCollisions.map((c) => (
-              <li key={`step-${c.stepId}`}>
-                Step ID <code>{c.stepId}</code> is used by {c.locations.length}{" "}
-                steps:{" "}
-                {formatCollisionLocations(
-                  c.locations.map((l) => l.stepTitle || l.stepId),
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <CollisionBanner idCollisions={idCollisions} />
 
       <ValidationPanel result={validateResult} onDismiss={dismiss} />
       </div>
 
-      {isPickerOpen && (
-        <FormPicker
-          forms={forms}
-          loadError={formsLoadError}
-          isDirty={isDirty}
-          catalog={catalog}
-          onLoad={handleLoad}
-          onClose={() => setIsPickerOpen(false)}
-          onRequestDelete={handleRequestDelete}
-          onRequestDisable={handleRequestDisable}
-          onRequestErase={handleRequestErase}
-          onEnable={handleEnable}
-          onDuplicate={handleDuplicate}
-        />
-      )}
-
-      {isPreviewOpen && (
-        <PreviewModal
-          contract={previewData}
-          isLoading={isPreviewing}
-          error={previewError}
-          previewUrl={loadedFromId ? formPreviewUrl(loadedFromId) : null}
-          recipe={previewRecipeJson}
-          onClose={() => { setIsPreviewOpen(false); setPreviewData(null); setPreviewError(null); setPreviewRecipeJson(null); }}
-        />
-      )}
-
-      {isSubmitOpen && (
-        <SubmitModal
-          draft={draft}
-          loadedFromId={loadedFromId}
-          isSubmitting={isSubmitting}
-          submitSuccess={submitSuccess}
-          submitError={submitError}
-          isReadOnly={isReadOnly}
-          onSubmit={handleSubmit}
-          onClose={() => setIsSubmitOpen(false)}
-        />
-      )}
-
-      {isPublishOpen && (
-        <PublishModal
-          draft={draft}
-          baseBranch={baseBranch}
-          isPublishing={isPublishing}
-          publishSuccess={publishSuccess}
-          publishError={publishError}
-          isReadOnly={isReadOnly}
-          onPublish={handlePublish}
-          onClose={handleClosePublish}
-        />
-      )}
-
-      <FormManagementModals
+      <BuilderModals
+        isPickerOpen={isPickerOpen}
+        forms={forms}
+        formsLoadError={formsLoadError}
+        isDirty={isDirty}
+        catalog={catalog}
+        onLoad={handleLoad}
+        onClosePicker={() => setIsPickerOpen(false)}
+        onRequestDelete={handleRequestDelete}
+        onRequestDisable={handleRequestDisable}
+        onRequestErase={handleRequestErase}
+        onEnable={handleEnable}
+        onDuplicate={handleDuplicate}
+        isPreviewOpen={isPreviewOpen}
+        previewData={previewData}
+        isPreviewing={isPreviewing}
+        previewError={previewError}
+        loadedFromId={loadedFromId}
+        previewRecipeJson={previewRecipeJson}
+        onClosePreview={() => { setIsPreviewOpen(false); setPreviewData(null); setPreviewError(null); setPreviewRecipeJson(null); }}
+        isSubmitOpen={isSubmitOpen}
+        draft={draft}
+        isSubmitting={isSubmitting}
+        submitSuccess={submitSuccess}
+        submitError={submitError}
+        isReadOnly={isReadOnly}
+        onSubmit={handleSubmit}
+        onCloseSubmit={() => setIsSubmitOpen(false)}
+        isPublishOpen={isPublishOpen}
+        baseBranch={baseBranch}
+        isPublishing={isPublishing}
+        publishSuccess={publishSuccess}
+        publishError={publishError}
+        onPublish={handlePublish}
+        onClosePublish={handleClosePublish}
         deleteTarget={deleteTarget}
         isDeleting={isDeleting}
         deleteError={deleteError}
