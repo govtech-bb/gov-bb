@@ -474,13 +474,17 @@ describe("RecipeFileLoaderService", () => {
       expect(loader.findAll().map((f) => f.formId)).toEqual(["public-form"]);
     });
 
-    it("treats a recipe with no meta as public (listed)", async () => {
+    it("treats a recipe with no meta as preview (hidden from the list)", async () => {
       const root = await newRoot({});
-      await writeFlatRecipe(root, "legacy-form");
+      // `meta: undefined` overrides the helper's public default, so the written
+      // file carries no `meta` at all — exercising the metaless default.
+      await writeFlatRecipe(root, "legacy-form", { meta: undefined });
       const loader = new RecipeFileLoaderService(root);
       await loader.loadAll();
 
-      expect(loader.findAll().map((f) => f.formId)).toContain("legacy-form");
+      expect(loader.findAll().map((f) => f.formId)).not.toContain(
+        "legacy-form",
+      );
     });
 
     it("still resolves a non-public recipe via findByFormId (gate is applied by the service, not the loader)", async () => {

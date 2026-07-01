@@ -690,5 +690,8 @@
       }
     }
   ],
-  "description": "Register your interest in a community sports training programme."
+  "description": "Register your interest in a community sports training programme.",
+  "meta": {
+    "visibility": "public"
+  }
 }
