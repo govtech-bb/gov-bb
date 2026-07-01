@@ -9,6 +9,7 @@ import { NotFound } from "@forms/components";
 import type { QueryClient } from "@tanstack/react-query";
 import { LANDING_URL } from "../config/landing";
 import { SiteHeader } from "../components/site-header";
+import { StageBanner } from "../components/stage-banner";
 
 /**
  * Router context shape.  The QueryClient is injected here from main.tsx so
@@ -41,6 +42,14 @@ const RootLayout = () => (
       imageAlt=""
       showLearnMore={false}
     />
+    <div className="bg-blue-10">
+      <div className="container">
+        <StageBanner
+          stage="alpha"
+          url={`${LANDING_URL}/what-we-mean-by-alpha`}
+        />
+      </div>
+    </div>
     <SiteHeader />
     <main id="main-content" className="flex-1">
       <Outlet />
