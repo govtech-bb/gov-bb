@@ -11,6 +11,7 @@ vi.mock("@govtech-bb/database", () => ({
 vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
 
 import { getDataSource } from "../db.js";
+import { HttpError } from "../lib/http-error";
 import {
   listMdaContactsHandler,
   createMdaContactHandler,
@@ -87,12 +88,11 @@ describe("listMdaContactsHandler", () => {
     expect(repo.find).toHaveBeenCalled();
   });
 
-  it("returns 500 on a DB error", async () => {
+  it("propagates a DB error (the central handler maps it to 500)", async () => {
     getDataSourceMock.mockRejectedValue(new Error("db down"));
-    const res = mockRes();
-    await listMdaContactsHandler(mockReq({}), res);
-    expect(res.statusCode).toBe(500);
-    expect((res.body as { error: string }).error).toBe("db down");
+    await expect(
+      listMdaContactsHandler(mockReq({}), mockRes()),
+    ).rejects.toThrow("db down");
   });
 });
 
@@ -133,40 +133,41 @@ describe("createMdaContactHandler", () => {
     );
   });
 
-  it("rejects a body missing a required field with 400", async () => {
+  it("throws a 400 HttpError for a body missing a required field", async () => {
     const { ds } = fakeDataSource();
     getDataSourceMock.mockResolvedValue(ds);
 
-    const res = mockRes();
     const { mdaEmail, ...incomplete } = validBody();
-    await createMdaContactHandler(mockReq(incomplete), res);
+    const err = await createMdaContactHandler(
+      mockReq(incomplete),
+      mockRes(),
+    ).catch((e: unknown) => e);
 
-    expect(res.statusCode).toBe(400);
-    expect((res.body as { error: string }).error).toBeTruthy();
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(400);
+    expect((err as HttpError).message).toBeTruthy();
   });
 
-  it("rejects a non-email email field with 400", async () => {
+  it("throws a 400 HttpError for a non-email email field", async () => {
     const { ds } = fakeDataSource();
     getDataSourceMock.mockResolvedValue(ds);
 
-    const res = mockRes();
-    await createMdaContactHandler(
+    const err = await createMdaContactHandler(
       mockReq(validBody({ email: "not-an-email" })),
-      res,
-    );
+      mockRes(),
+    ).catch((e: unknown) => e);
 
-    expect(res.statusCode).toBe(400);
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(400);
   });
 
-  it("returns 500 on a DB error", async () => {
+  it("propagates a DB error (the central handler maps it to 500)", async () => {
     const { ds, repo } = fakeDataSource();
     repo.save.mockRejectedValue(new Error("insert failed"));
     getDataSourceMock.mockResolvedValue(ds);
 
-    const res = mockRes();
-    await createMdaContactHandler(mockReq(validBody()), res);
-
-    expect(res.statusCode).toBe(500);
-    expect((res.body as { error: string }).error).toBe("insert failed");
+    await expect(
+      createMdaContactHandler(mockReq(validBody()), mockRes()),
+    ).rejects.toThrow("insert failed");
   });
 });

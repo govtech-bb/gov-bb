@@ -12,6 +12,7 @@ vi.mock("@govtech-bb/database", () => ({
 vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
 
 import { getDataSource } from "../db.js";
+import { HttpError } from "../lib/http-error";
 import { deleteFormVersionHandler } from "./forms";
 
 const getDataSourceMock = getDataSource as Mock;
@@ -64,35 +65,35 @@ function sqlsOf(ds: { query: Mock }): string[] {
 describe("DELETE /builder/forms/:formId/versions/:version", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("returns 404 and deletes nothing when no row matches form_id + version", async () => {
+  it("throws a 404 HttpError and deletes nothing when no row matches form_id + version", async () => {
     const { ds } = fakeDataSource({ select: [] });
     getDataSourceMock.mockResolvedValue(ds);
-    const res = mockRes();
 
-    await deleteFormVersionHandler(
+    const err = await deleteFormVersionHandler(
       mockReq({ formId: "apply-for-conductor-licence", version: "1.1.0" }),
-      res,
-    );
+      mockRes(),
+    ).catch((e: unknown) => e);
 
-    expect(res.statusCode).toBe(404);
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(404);
     expect(
       sqlsOf(ds).some((s) => /DELETE FROM form_definitions/i.test(s)),
     ).toBe(false);
   });
 
-  it("refuses to delete a published row with 400, matching the PUT guard", async () => {
+  it("throws a 400 HttpError when refusing to delete a published row, matching the PUT guard", async () => {
     const { ds } = fakeDataSource({
       select: [{ id: "v1", published_at: "2026-01-01T00:00:00Z" }],
     });
     getDataSourceMock.mockResolvedValue(ds);
-    const res = mockRes();
 
-    await deleteFormVersionHandler(
+    const err = await deleteFormVersionHandler(
       mockReq({ formId: "apply-for-conductor-licence", version: "1.3.0" }),
-      res,
-    );
+      mockRes(),
+    ).catch((e: unknown) => e);
 
-    expect(res.statusCode).toBe(400);
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(400);
     expect(
       sqlsOf(ds).some((s) => /DELETE FROM form_definitions/i.test(s)),
     ).toBe(false);
