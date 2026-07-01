@@ -5,9 +5,9 @@ import type { ContactDetails } from "@govtech-bb/form-types";
 import type { RecipeAction } from "./-recipe-reducer";
 
 // A validation issue joins its (dotted) path with its message, or shows the
-// bare message for a top-level issue.
+// bare message for a top-level issue. `path` is Zod's `PropertyKey[]`.
 function formatIssues(
-  issues: { path: (string | number)[]; message: string }[],
+  issues: { path: PropertyKey[]; message: string }[],
 ): string[] {
   return issues.map((issue) => {
     const path = issue.path.join(".");
