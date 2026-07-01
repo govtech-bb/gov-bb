@@ -10,9 +10,11 @@ import {
   startPageContentPath,
   startPageUrl,
   LANDING_CATEGORIES,
+  linkableForms,
   type StartPageInput,
 } from "./-lib";
 import { renderStartPageMarkdown, parseContentMarkdown } from "./-render";
+import type { BuilderFormSummary } from "../../types/index";
 
 const base: StartPageInput = {
   formId: "get-birth-certificate",
@@ -25,6 +27,57 @@ const base: StartPageInput = {
   visibility: "preview",
   publishDate: "2026-06-10",
 };
+
+describe("linkableForms", () => {
+  const form = (
+    over: Partial<BuilderFormSummary>,
+  ): BuilderFormSummary => ({
+    id: "x",
+    formId: "x",
+    title: "X",
+    version: "1.0.0",
+    isPublished: false,
+    ...over,
+  });
+
+  it("keeps a live published form and a plain (not disabled) draft", () => {
+    const published = form({ formId: "live", isPublished: true });
+    const draft = form({ formId: "draft", isPublished: false });
+    expect(linkableForms([published, draft]).map((f) => f.formId)).toEqual([
+      "live",
+      "draft",
+    ]);
+  });
+
+  it("keeps a disabled published form (unchanged from before #1658)", () => {
+    const disabledPublished = form({
+      formId: "ghost",
+      isPublished: true,
+      isDisabled: true,
+    });
+    expect(linkableForms([disabledPublished]).map((f) => f.formId)).toEqual([
+      "ghost",
+    ]);
+  });
+
+  it("drops a disabled draft-only form and an orphan override (no live recipe to link)", () => {
+    const disabledDraft = form({
+      formId: "draft-disabled",
+      isPublished: false,
+      isDisabled: true,
+    });
+    const orphan = form({
+      formId: "lost",
+      isPublished: false,
+      isDisabled: true,
+      isOrphanOverride: true,
+    });
+    const live = form({ formId: "live", isPublished: true });
+    expect(
+      linkableForms([disabledDraft, orphan, live]).map((f) => f.formId),
+    ).toEqual(["live"]);
+  });
+});
 
 describe("isValidSlug", () => {
   it("accepts kebab-case", () => {

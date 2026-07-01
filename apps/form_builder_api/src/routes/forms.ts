@@ -705,8 +705,10 @@ export async function rekeyFormHandler(
     // exists, so this can't trip the UNIQUE(form_id) constraint.
     // Deliberately leaves any old-ID form_disabled_overrides tombstone in
     // place (the old ID stays claimed) — a re-key only moves the draft rows.
-    // This is unreachable in practice: listForms drops disabled-and-
-    // unpublished drafts, so a disabled draft can't be opened to re-key.
+    // Reachable as of #1658: a disabled draft-only form is now openable from
+    // the builder picker, so it can be re-keyed while disabled. The leftover
+    // old-ID tombstone then surfaces as an orphan-override row whose Enable
+    // clears it, so the old ID isn't trapped.
     await manager.query(
       `UPDATE form_definitions SET form_id = $1 WHERE form_id = $2`,
       [newFormId, oldFormId],
