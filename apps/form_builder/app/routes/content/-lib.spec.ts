@@ -11,7 +11,10 @@ import {
   startPageUrl,
   LANDING_CATEGORIES,
   linkableForms,
+  applyAiPagePatch,
+  buildDeployPayload,
   type StartPageInput,
+  type FormState,
 } from "./-lib";
 import { renderStartPageMarkdown, parseContentMarkdown } from "./-render";
 import type { BuilderFormSummary } from "../../types/index";
@@ -29,9 +32,7 @@ const base: StartPageInput = {
 };
 
 describe("linkableForms", () => {
-  const form = (
-    over: Partial<BuilderFormSummary>,
-  ): BuilderFormSummary => ({
+  const form = (over: Partial<BuilderFormSummary>): BuilderFormSummary => ({
     id: "x",
     formId: "x",
     title: "X",
@@ -445,5 +446,167 @@ describe("parseContentMarkdown", () => {
     expect(frontmatter.title).toBe(base.title);
     expect(body).toContain("What you will need");
     expect(body).toContain("<a data-start-link>Start now</a>");
+  });
+});
+
+const baseForm: FormState = {
+  formId: "get-birth-certificate",
+  slug: "get-birth-certificate",
+  title: "Get a birth certificate",
+  description: "Apply online.",
+  category: "family-birth-relationships",
+  subcategory: "",
+  body: "## Body\n\n<a data-start-link>Start now</a>",
+  linkType: "form",
+  linkHref: "",
+  visibility: "preview",
+};
+
+describe("applyAiPagePatch", () => {
+  it("applies known string fields, ignoring unknown keys and non-strings", () => {
+    const next = applyAiPagePatch(
+      baseForm,
+      { title: "New", description: "D", body: "B", linkHref: "/x", extra: 1 },
+      { fixedPath: false },
+    );
+    expect(next.title).toBe("New");
+    expect(next.description).toBe("D");
+    expect(next.body).toBe("B");
+    expect(next.linkHref).toBe("/x");
+    expect(next).not.toHaveProperty("extra");
+  });
+
+  it("applies a valid slug only when the path is not fixed", () => {
+    expect(
+      applyAiPagePatch(baseForm, { slug: "new-slug" }, { fixedPath: false })
+        .slug,
+    ).toBe("new-slug");
+    expect(
+      applyAiPagePatch(baseForm, { slug: "new-slug" }, { fixedPath: true })
+        .slug,
+    ).toBe(baseForm.slug);
+  });
+
+  it("ignores a malformed slug", () => {
+    expect(
+      applyAiPagePatch(baseForm, { slug: "Not Valid" }, { fixedPath: false })
+        .slug,
+    ).toBe(baseForm.slug);
+  });
+
+  it("resets the subcategory when the category changes", () => {
+    const next = applyAiPagePatch(
+      { ...baseForm, subcategory: "old" },
+      { category: "housing-and-land" },
+      { fixedPath: false },
+    );
+    expect(next.category).toBe("housing-and-land");
+    expect(next.subcategory).toBe("");
+  });
+
+  it("accepts only valid linkType and visibility enums", () => {
+    expect(
+      applyAiPagePatch(baseForm, { linkType: "external" }, { fixedPath: false })
+        .linkType,
+    ).toBe("external");
+    expect(
+      applyAiPagePatch(baseForm, { linkType: "bogus" }, { fixedPath: false })
+        .linkType,
+    ).toBe(baseForm.linkType);
+    expect(
+      applyAiPagePatch(baseForm, { visibility: "public" }, { fixedPath: false })
+        .visibility,
+    ).toBe("public");
+    expect(
+      applyAiPagePatch(baseForm, { visibility: "bogus" }, { fixedPath: false })
+        .visibility,
+    ).toBe(baseForm.visibility);
+  });
+
+  it("does not mutate the input draft", () => {
+    const input = { ...baseForm };
+    applyAiPagePatch(input, { title: "X" }, { fixedPath: false });
+    expect(input.title).toBe(baseForm.title);
+  });
+});
+
+describe("buildDeployPayload", () => {
+  const baseInput = {
+    state: baseForm,
+    slug: "get-birth-certificate",
+    prDescription: "why",
+    creatingCategory: false,
+    newCatSlug: "",
+    newCatTitle: "",
+    newCatDesc: "",
+    editPath: null,
+    editSha: null,
+    baseFrontmatter: null,
+    createPath: null,
+  };
+
+  it("builds a create payload with the slug and body-derived button label", () => {
+    const p = buildDeployPayload(baseInput);
+    expect(p.slug).toBe("get-birth-certificate");
+    expect(p.title).toBe("Get a birth certificate");
+    expect(p.buttonLabel).toBe("Start now");
+    expect(p.prDescription).toBe("why");
+    expect(p.newCategory).toBeUndefined();
+    expect(p).not.toHaveProperty("path");
+  });
+
+  it("omits the slug and carries path + sha + baseFrontmatter in edit mode", () => {
+    const p = buildDeployPayload({
+      ...baseInput,
+      editPath: "apps/landing/src/content/x.md",
+      editSha: "abc",
+      baseFrontmatter: { keep: 1 },
+    });
+    expect(p.slug).toBeUndefined();
+    expect(p.path).toBe("apps/landing/src/content/x.md");
+    expect(p.sha).toBe("abc");
+    expect(p.baseFrontmatter).toEqual({ keep: 1 });
+  });
+
+  it("carries the createPath without a sha in fixed-create mode", () => {
+    const p = buildDeployPayload({
+      ...baseInput,
+      createPath: "apps/landing/src/content/y/start.md",
+    });
+    expect(p.slug).toBeUndefined();
+    expect(p.path).toBe("apps/landing/src/content/y/start.md");
+    expect(p).not.toHaveProperty("sha");
+  });
+
+  it("collapses blank description and linkHref to undefined", () => {
+    const p = buildDeployPayload({
+      ...baseInput,
+      state: { ...baseForm, description: "   ", linkHref: "  " },
+    });
+    expect(p.description).toBeUndefined();
+    expect(p.linkHref).toBeUndefined();
+  });
+
+  it("includes a trimmed new category when one is being created", () => {
+    const p = buildDeployPayload({
+      ...baseInput,
+      creatingCategory: true,
+      newCatSlug: "new-cat",
+      newCatTitle: " New Cat ",
+      newCatDesc: " desc ",
+    });
+    expect(p.newCategory).toEqual({
+      slug: "new-cat",
+      title: "New Cat",
+      description: "desc",
+    });
+  });
+
+  it("reads the button label from an existing start-link marker", () => {
+    const p = buildDeployPayload({
+      ...baseInput,
+      state: { ...baseForm, body: "<a data-start-link>Begin application</a>" },
+    });
+    expect(p.buttonLabel).toBe("Begin application");
   });
 });
