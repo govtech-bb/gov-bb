@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { getDataSource } from "../db.js";
 import { readUserLogin } from "../utils/request.js";
+import { badRequest } from "../lib/http-error.js";
 
 export const presenceRouter = Router();
 
@@ -74,12 +75,10 @@ export async function claimPresenceHandler(
   const formId = String(req.params.formId);
   const userLogin = readUserLogin(req.body);
   if (!userLogin) {
-    res.status(400).json({ error: "userLogin is required" });
-    return;
+    throw badRequest("userLogin is required");
   }
-  try {
-    const ds = await getDataSource();
-    const upsertSql = `INSERT INTO form_editing_session (form_id, user_login, claimed_at, last_activity_at)
+  const ds = await getDataSource();
+  const upsertSql = `INSERT INTO form_editing_session (form_id, user_login, claimed_at, last_activity_at)
        VALUES ($1, $2, NOW(), NOW())
        ON CONFLICT (form_id) DO UPDATE
          SET user_login = EXCLUDED.user_login,
@@ -93,35 +92,32 @@ export async function claimPresenceHandler(
             OR form_editing_session.last_activity_at <= NOW() - INTERVAL '${PRESENCE_TTL_MINUTES} minutes'
        RETURNING user_login, claimed_at, last_activity_at`;
 
-    // Up to two attempts. The conditional upsert can be filtered (a different
-    // user holds a fresh claim) yet the follow-up holder read can come back
-    // empty if that claim lapsed in the gap between the two statements — in
-    // which case the claim is now free, so we retry the upsert and take it over
-    // rather than locking the caller read-only against a holder that's gone.
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const claimed = await ds.query(upsertSql, [formId, userLogin]);
-      if (claimed.length > 0) {
-        res.json({ held: true, holder: toHolder(claimed[0]) });
-        return;
-      }
-      const current = await ds.query(
-        `SELECT user_login, claimed_at, last_activity_at FROM form_editing_session
+  // Up to two attempts. The conditional upsert can be filtered (a different
+  // user holds a fresh claim) yet the follow-up holder read can come back
+  // empty if that claim lapsed in the gap between the two statements — in
+  // which case the claim is now free, so we retry the upsert and take it over
+  // rather than locking the caller read-only against a holder that's gone.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const claimed = await ds.query(upsertSql, [formId, userLogin]);
+    if (claimed.length > 0) {
+      res.json({ held: true, holder: toHolder(claimed[0]) });
+      return;
+    }
+    const current = await ds.query(
+      `SELECT user_login, claimed_at, last_activity_at FROM form_editing_session
          WHERE form_id = $1 AND ${FRESH}
          LIMIT 1`,
-        [formId],
-      );
-      if (current.length > 0) {
-        res.json({ held: false, holder: toHolder(current[0]) });
-        return;
-      }
-      // No fresh holder despite the filtered upsert → retry to take it over.
+      [formId],
+    );
+    if (current.length > 0) {
+      res.json({ held: false, holder: toHolder(current[0]) });
+      return;
     }
-    // Still unclaimed after the retry (lost a race to yet another claimant, or
-    // a transient): report free-but-not-held; the client re-syncs next tick.
-    res.json({ held: false, holder: null });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    // No fresh holder despite the filtered upsert → retry to take it over.
   }
+  // Still unclaimed after the retry (lost a race to yet another claimant, or
+  // a transient): report free-but-not-held; the client re-syncs next tick.
+  res.json({ held: false, holder: null });
 }
 presenceRouter.put("/:formId/presence", claimPresenceHandler);
 
@@ -131,18 +127,14 @@ export async function getPresenceHandler(
   res: Response,
 ): Promise<void> {
   const formId = String(req.params.formId);
-  try {
-    const ds = await getDataSource();
-    const rows = await ds.query(
-      `SELECT user_login, claimed_at, last_activity_at FROM form_editing_session
+  const ds = await getDataSource();
+  const rows = await ds.query(
+    `SELECT user_login, claimed_at, last_activity_at FROM form_editing_session
        WHERE form_id = $1 AND ${FRESH}
        LIMIT 1`,
-      [formId],
-    );
-    res.json({ holder: rows.length > 0 ? toHolder(rows[0]) : null });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+    [formId],
+  );
+  res.json({ holder: rows.length > 0 ? toHolder(rows[0]) : null });
 }
 presenceRouter.get("/:formId/presence", getPresenceHandler);
 
@@ -156,18 +148,13 @@ export async function releasePresenceHandler(
   const formId = String(req.params.formId);
   const userLogin = readUserLogin(req.body);
   if (!userLogin) {
-    res.status(400).json({ error: "userLogin is required" });
-    return;
+    throw badRequest("userLogin is required");
   }
-  try {
-    const ds = await getDataSource();
-    await ds.query(
-      `DELETE FROM form_editing_session WHERE form_id = $1 AND user_login = $2`,
-      [formId, userLogin],
-    );
-    res.json({ released: true });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+  const ds = await getDataSource();
+  await ds.query(
+    `DELETE FROM form_editing_session WHERE form_id = $1 AND user_login = $2`,
+    [formId, userLogin],
+  );
+  res.json({ released: true });
 }
 presenceRouter.delete("/:formId/presence", releasePresenceHandler);

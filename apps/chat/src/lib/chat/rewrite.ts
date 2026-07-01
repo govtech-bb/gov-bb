@@ -1,10 +1,28 @@
-import { chat } from "@tanstack/ai";
+import { chat, type ChatMiddleware } from "@tanstack/ai";
 import { bedrockText, type BedrockConverseModels } from "@tanstack/ai-bedrock";
 import { resolveBedrockModelId } from "@govtech-bb/ai-bedrock";
 import { z } from "zod";
 import { getServerEnv } from "#/config/env";
 import { childController } from "./abort";
 import { lastUserText, recentHistory, type ChatMessage } from "./messages";
+import {
+  emitRewriteMetrics,
+  type RewriteUsage,
+} from "./middleware/turn-metrics";
+
+// Capture the rewrite call's token usage and meter it as its own EMF document
+// (#1116). Only an onUsage hook: on timeout/failure chat() throws before usage
+// is reported, so nothing is emitted — exactly the behaviour we want. The sink
+// is injectable for tests; it defaults to the prod-gated EMF emitter.
+export function rewriteMetricsMiddleware(
+  model: string,
+  sink: (model: string, usage: RewriteUsage) => void = emitRewriteMetrics,
+): ChatMiddleware {
+  return {
+    name: "rewrite-metrics",
+    onUsage: (_ctx, usage) => sink(model, usage),
+  };
+}
 
 // Fold the conversation into ONE standalone search query. The question-answering
 // path only needs the query — there's no apply/info intent classification here.
@@ -51,6 +69,7 @@ export async function rewriteRetrievalQuery(
       outputSchema: Schema,
       modelOptions: { max_completion_tokens: 100, temperature: 0 },
       abortController: childController(signal, 3000),
+      middleware: [rewriteMetricsMiddleware(env.REWRITE_MODEL)],
     });
     const out = result.query?.trim() ?? "";
     return out.length > 2 ? out : latest;

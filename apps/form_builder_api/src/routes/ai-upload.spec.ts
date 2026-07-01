@@ -26,6 +26,7 @@ import {
   blocksToText,
 } from "../ai/textract.js";
 import { presignUpload } from "../storage/s3-uploads.js";
+import { HttpError } from "../lib/http-error";
 import { presignHandler, processHandler, statusHandler } from "./ai-upload";
 
 const chatMock = chat as Mock;
@@ -94,10 +95,13 @@ describe("presignHandler", () => {
 });
 
 describe("processHandler", () => {
-  it("400s when s3Key shape is wrong", async () => {
-    const res = mockRes();
-    await processHandler(mockReq({ s3Key: "../../etc/passwd" }), res);
-    expect(res.statusCode).toBe(400);
+  it("throws a 400 HttpError when s3Key shape is wrong", async () => {
+    const err = await processHandler(
+      mockReq({ s3Key: "../../etc/passwd" }),
+      mockRes(),
+    ).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(400);
   });
 
   it("calls startAnalysis and returns jobId", async () => {
@@ -127,17 +131,17 @@ describe("processHandler", () => {
     expect(res.body).toEqual({ jobId: "job-ctx-1" });
   });
 
-  it("400s when context exceeds the length cap", async () => {
+  it("throws a 400 HttpError when context exceeds the length cap", async () => {
     startAnalysisMock.mockResolvedValue({ jobId: "job-ctx-toolong" });
-    const res = mockRes();
-    await processHandler(
+    const err = await processHandler(
       mockReq({
         s3Key: "uploads/abc-12345678-1234-1234-1234-1234567890ab.pdf",
         context: "x".repeat(2001),
       }),
-      res,
-    );
-    expect(res.statusCode).toBe(400);
+      mockRes(),
+    ).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(400);
     expect(startAnalysisMock).not.toHaveBeenCalled();
   });
 

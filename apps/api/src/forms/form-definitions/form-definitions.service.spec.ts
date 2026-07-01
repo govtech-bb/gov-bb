@@ -22,7 +22,10 @@ function makeEntityWithTitle(
     id: `uuid-${formId}`,
     formId,
     version: "1.0.0",
-    schema: { title } as unknown as Record<string, unknown>,
+    schema: {
+      title,
+      meta: { visibility: "public" },
+    } as unknown as Record<string, unknown>,
     publishedAt: null,
     createdAt: new Date("2026-01-01"),
     updatedAt: new Date("2026-01-01"),
@@ -79,6 +82,7 @@ const MOCK_RECIPE = {
   updatedAt: new Date("2026-01-01"),
   steps: [],
   processors: [],
+  meta: { visibility: "public" },
 };
 
 const MOCK_HYDRATED = {
@@ -1132,6 +1136,7 @@ describe("FormDefinitionsService.findAll", () => {
         schema: {
           title: "Passport Renewal",
           contactDetails: { title: "Immigration Department" },
+          meta: { visibility: "public" },
         } as unknown as ServiceContractRecipe,
       }),
     ];
