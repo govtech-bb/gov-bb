@@ -1377,5 +1377,8 @@
     }
   ],
   "createdAt": "2026-06-12T02:10:42.714Z",
-  "updatedAt": "2026-06-12T02:10:42.714Z"
+  "updatedAt": "2026-06-12T02:10:42.714Z",
+  "meta": {
+    "visibility": "public"
+  }
 }
