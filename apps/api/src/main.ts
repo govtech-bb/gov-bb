@@ -14,6 +14,12 @@ import { runSeed } from "./database/seed";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
+
+  // Enable NestJS lifecycle shutdown hooks so onApplicationShutdown() fires on
+  // SIGTERM/SIGINT (e.g. on deploy). Without this the SQS consumer can't drain
+  // in-flight submissions gracefully — the process is just killed.
+  app.enableShutdownHooks();
+
   const config = app.get(ConfigService);
   const metricsService = app.get(MetricsService);
   const port = config.get<number>("app.port") ?? 3001;
