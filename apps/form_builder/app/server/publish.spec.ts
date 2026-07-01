@@ -185,7 +185,10 @@ describe("publishRecipe", () => {
       ); // POST pulls
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-    await publishRecipe({ data: { recipe: RECIPE, description: "" } });
+    await publishRecipe({
+      data: { recipe: RECIPE, description: "" },
+      context: { session: SESSION },
+    });
 
     const putBody = JSON.parse(
       (fetchMock.mock.calls[3][1] as RequestInit).body as string,
@@ -214,7 +217,10 @@ describe("publishRecipe", () => {
       ); // POST pulls
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-    await publishRecipe({ data: { recipe: RECIPE, description: "" } });
+    await publishRecipe({
+      data: { recipe: RECIPE, description: "" },
+      context: { session: SESSION },
+    });
 
     const putBody = JSON.parse(
       (fetchMock.mock.calls[3][1] as RequestInit).body as string,
