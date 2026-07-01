@@ -123,6 +123,13 @@ const baseSchema = z
     // Smoke submission (empty disables the processor-drop escape hatch, #1252)
     SMOKE_SUBMISSION_TOKEN: z.string().default(""),
 
+    // Bearer token the AdminTokenGuard validates on the /admin/* endpoints
+    // (kill switch + draft archive). OPTIONAL on purpose: the guard reads it
+    // per-request, so an unset value only disables auth outside production (it
+    // fails closed in prod). Never make this `.required()` — a boot-time
+    // required var would crash-loop ECS on a missing value (ADR 0061).
+    ARCHIVE_DRAFTS_TOKEN: z.string().optional(),
+
     // S3 file uploads (optional — required only when a form uses file fields)
     S3_BUCKET: z.string().default(""),
     S3_REGION: z.string().optional(),
