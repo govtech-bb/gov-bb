@@ -1,10 +1,13 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+
+// Per-process random key — see the twin in apps/api/src/common/secret-token.ts.
+const COMPARE_KEY = randomBytes(32);
 
 /**
- * Constant-time, fail-closed token compare. Both tokens are hashed to a
- * fixed-length SHA-256 digest before comparison so `timingSafeEqual` never
- * throws on a length mismatch and the configured token's length is not leaked
- * via timing.
+ * Constant-time, fail-closed token compare. Both tokens are HMAC-ed through a
+ * per-process random key to fixed-length (32-byte) digests before comparison,
+ * so `timingSafeEqual` never throws on a length mismatch and the configured
+ * token's length is not leaked via timing.
  *
  * DELIBERATELY DUPLICATED from apps/api/src/common/secret-token.ts
  * (`isValidSecretToken`) — see ADR 0061. The two backend services keep their
@@ -18,8 +21,8 @@ function isValidSecretToken(
   if (!configuredToken) return false;
   if (!providedToken) return false;
 
-  const a = createHash("sha256").update(configuredToken).digest();
-  const b = createHash("sha256").update(providedToken).digest();
+  const a = createHmac("sha256", COMPARE_KEY).update(configuredToken).digest();
+  const b = createHmac("sha256", COMPARE_KEY).update(providedToken).digest();
   return timingSafeEqual(a, b);
 }
 

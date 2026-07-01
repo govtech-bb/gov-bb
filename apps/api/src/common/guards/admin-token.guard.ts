@@ -51,6 +51,14 @@ export class AdminTokenGuard implements CanActivate {
 
 function extractBearerToken(header: string | undefined): string | undefined {
   if (!header) return undefined;
-  const match = /^Bearer\s+(.+)$/i.exec(header.trim());
-  return match ? match[1].trim() : undefined;
+  const trimmed = header.trim();
+  // Match the "Bearer" scheme (case-insensitive) followed by a whitespace
+  // separator, then take the remainder as the token. Parsed without a
+  // `\s+(.+)` regex, whose overlapping quantifiers backtrack polynomially on a
+  // crafted "Bearer" + long whitespace run (ReDoS).
+  if (!/^bearer/i.test(trimmed)) return undefined;
+  const rest = trimmed.slice("bearer".length);
+  if (!/^\s/.test(rest)) return undefined;
+  const token = rest.trim();
+  return token || undefined;
 }
