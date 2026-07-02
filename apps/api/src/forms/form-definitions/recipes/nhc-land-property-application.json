@@ -76,13 +76,23 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "hint": "Enter your valid National ID Number (for example, 450702-0130)"
+            "hint": "Enter your valid National ID Number (for example, 450702-0130)",
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/tamis-number",
           "overrides": {
-            "hint": "Enter your Taxpayer Identification Number from the Barbados Revenue Authority (for example 10000000000004)"
+            "hint": "Enter your Taxpayer Identification Number from the Barbados Revenue Authority (for example 10000000000004)",
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -102,24 +112,21 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "address-line-2",
+            "hint": "Optional",
             "label": "Address line 2",
+            "fieldId": "address-line-2",
             "validations": {
               "required": {
                 "value": false
               }
-            },
-            "hint": "Optional"
+            }
           }
         },
         {
           "ref": "components/parish"
         },
         {
-          "ref": "components/postcode",
-          "overrides": {
-            "hint": "Optional"
-          }
+          "ref": "components/postcode"
         },
         {
           "ref": "components/country"
@@ -168,11 +175,11 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "fieldId": "salary",
-            "label": "Salary",
             "ui": {
               "width": "short"
-            }
+            },
+            "label": "Salary",
+            "fieldId": "salary"
           }
         },
         {
@@ -343,10 +350,9 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/nationality",
           "overrides": {
-            "label": "Citizenship",
-            "fieldId": "co-applicant-citizenship"
+            "fieldId": "co-citizen"
           }
         },
         {
@@ -354,7 +360,12 @@
           "overrides": {
             "hint": "Enter your valid National ID Number (for example, 450702-0130)",
             "label": "National Registration Number",
-            "fieldId": "co-applicant-national-id-number"
+            "fieldId": "co-applicant-national-id-number",
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
           }
         },
         {
@@ -388,21 +399,21 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "co-applicantaddress-line-1",
-            "label": "Address line 1"
+            "label": "Address line 1",
+            "fieldId": "co-applicantaddress-line-1"
           }
         },
         {
           "ref": "components/address",
           "overrides": {
+            "hint": "Optional",
             "label": "Address line 2",
+            "fieldId": "co-applicant-address-line-2",
             "validations": {
               "required": {
                 "value": false
               }
-            },
-            "hint": "Optional",
-            "fieldId": "co-applicant-address-line-2"
+            }
           }
         },
         {
@@ -415,9 +426,8 @@
         {
           "ref": "components/postcode",
           "overrides": {
-            "fieldId": "co-applicant-postcode",
             "label": "Postcode",
-            "hint": "Optional"
+            "fieldId": "co-applicant-postcode"
           }
         },
         {
@@ -444,7 +454,15 @@
           }
         }
       ],
-      "behaviours": []
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "value": "yes",
+          "operator": "equal",
+          "targetStepId": "co-applicant-question",
+          "targetFieldId": "has-co-applicant"
+        }
+      ]
     },
     {
       "stepId": "co-applicant-employment",
@@ -474,11 +492,11 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "fieldId": "co-applicant-salary",
-            "label": "Salary",
             "ui": {
               "width": "short"
-            }
+            },
+            "label": "Salary",
+            "fieldId": "co-applicant-salary"
           }
         },
         {
@@ -800,14 +818,59 @@
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/generic-radio",
           "overrides": {
-            "hint": "Optional",
+            "label": "Pay period",
+            "fieldId": "pay-period-extra",
+            "options": [
+              {
+                "label": "Weekly",
+                "value": "weekly"
+              },
+              {
+                "label": "Bi-monthly",
+                "value": "bi-monthly"
+              },
+              {
+                "label": "Monthly",
+                "value": "monthly"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Add another source of income?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
             "label": "Income source 2",
             "fieldId": "income-source-2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetStepId": "other-income-details",
+                "targetFieldId": "generic-radio"
+              }
+            ],
             "validations": {
               "required": {
-                "value": false
+                "value": true
               }
             }
           }
@@ -821,11 +884,50 @@
             "hint": "Optional",
             "label": "Amount",
             "fieldId": "income-source-2-amount",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetStepId": "other-income-details",
+                "targetFieldId": "generic-radio"
+              }
+            ],
             "validations": {
               "required": {
-                "value": false
+                "value": true
               }
             }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Pay period",
+            "fieldId": "pay-period-extra1",
+            "options": [
+              {
+                "label": "Weekly",
+                "value": "weekly"
+              },
+              {
+                "label": "Bi-monthly",
+                "value": "bi-monthly"
+              },
+              {
+                "label": "Monthly",
+                "value": "monthly"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetStepId": "other-income-details",
+                "targetFieldId": "generic-radio"
+              }
+            ]
           }
         }
       ],
@@ -1162,5 +1264,5 @@
     }
   ],
   "createdAt": "2026-06-17T13:00:42.221Z",
-  "updatedAt": "2026-06-17T13:00:42.221Z"
+  "updatedAt": "2026-06-30T10:08:35.271Z"
 }

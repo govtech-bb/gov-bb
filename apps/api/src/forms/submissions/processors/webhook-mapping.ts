@@ -45,16 +45,20 @@ function readName(values: SubmissionValues, name: string | string[]): string {
 }
 
 /**
- * Flattens step-scoped values into a flat `form_data` object:
+ * Builds the `form_data` object from step-scoped values:
  *  - steps in `excludeSteps` are dropped (process steps),
  *  - the fields already surfaced under `applicant` are dropped (no duplication),
- *  - repeatable steps (arrays) pass through under their stepId,
- *  - other content fields are hoisted to the top level.
+ *  - repeatable steps (arrays) pass through under their stepId.
+ *
+ * Non-repeatable content fields are either hoisted to the top level (default)
+ * or, when `groupByStep` is set, kept nested under their step id (empty groups
+ * omitted).
  */
 function buildFormData(
   values: SubmissionValues,
   excludeSteps: string[],
   applicantPaths: string[],
+  groupByStep: boolean,
 ): Record<string, unknown> {
   const excluded = new Set(excludeSteps);
   const dropped = new Set(applicantPaths); // "stepId.fieldId"
@@ -68,9 +72,17 @@ function buildFormData(
       continue;
     }
 
+    const group: Record<string, unknown> = {};
     for (const [fieldId, fieldValue] of Object.entries(stepValue)) {
       if (dropped.has(`${stepId}.${fieldId}`)) continue;
-      result[fieldId] = fieldValue;
+      if (groupByStep) {
+        group[fieldId] = fieldValue;
+      } else {
+        result[fieldId] = fieldValue;
+      }
+    }
+    if (groupByStep && Object.keys(group).length > 0) {
+      result[stepId] = group;
     }
   }
 
@@ -108,11 +120,12 @@ export function buildMappedCasePayload(args: {
       email: readPath(values, mapping.applicant.email),
       phone: readPath(values, mapping.applicant.phone),
     },
-    form_data: buildFormData(values, mapping.excludeSteps ?? [], [
-      ...namePaths,
-      mapping.applicant.email,
-      mapping.applicant.phone,
-    ]),
+    form_data: buildFormData(
+      values,
+      mapping.excludeSteps ?? [],
+      [...namePaths, mapping.applicant.email, mapping.applicant.phone],
+      mapping.groupByStep ?? false,
+    ),
     submitted_at: submittedAt,
   };
 }

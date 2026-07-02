@@ -9,6 +9,7 @@ import { NotFound } from "@forms/components";
 import type { QueryClient } from "@tanstack/react-query";
 import { LANDING_URL } from "../config/landing";
 import { SiteHeader } from "../components/site-header";
+import { StageBanner } from "../components/stage-banner";
 
 /**
  * Router context shape.  The QueryClient is injected here from main.tsx so
@@ -36,17 +37,16 @@ const RootLayout = () => (
     <a href="#main-content" className="govbb-visually-hidden-focusable">
       Skip to main content
     </a>
-    {/* Align the banner content to the page container, matching the rest of
-        the layout. OfficialBanner's inner row carries a fixed px-4; the
-        `[&>div]:px-0` override zeroes it so the container provides the gutter
-        instead (mirrors landing's Header.tsx). */}
-    <div className="bg-blue-100">
+    <OfficialBanner
+      imageSrc="/images/coat-of-arms.png"
+      imageAlt=""
+      showLearnMore={false}
+    />
+    <div className="bg-blue-10">
       <div className="container">
-        <OfficialBanner
-          imageSrc="/images/coat-of-arms.png"
-          className="[&>div]:px-0"
-          imageAlt=""
-          showLearnMore={false}
+        <StageBanner
+          stage="alpha"
+          url={`${LANDING_URL}/what-we-mean-by-alpha`}
         />
       </div>
     </div>

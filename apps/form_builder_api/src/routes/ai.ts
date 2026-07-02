@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { CustomComponent } from "@govtech-bb/database";
 import { getDataSource } from "../db.js";
 import { getSystemPrompt } from "../ai/system-prompt.js";
+import { formatCustomComponentList } from "../ai/custom-component-prompt.js";
 import { getContentSystemPrompt } from "../ai/content-prompt.js";
 import { chat, isAvailable } from "../ai/client.js";
 import {
@@ -12,6 +13,7 @@ import {
 import { createJobStore, toStatusResponse } from "../ai/job-store.js";
 import { extractFirstJsonBlock } from "../ai/recipe-extractor.js";
 import { presignHandler, processHandler, statusHandler } from "./ai-upload.js";
+import { badRequest, notFound } from "../lib/http-error.js";
 
 export const aiRouter = Router();
 
@@ -26,12 +28,9 @@ export const aiRouter = Router();
 async function buildSystemPrompt(): Promise<string> {
   const ds = await getDataSource();
   const customs = await ds.getRepository(CustomComponent).find();
-  const componentList = customs
-    .map((c) => {
-      const def = c.definition as Record<string, unknown>;
-      return `- \`components/${c.namespace}/${c.type}\` — ${def?.htmlType ?? "unknown"} (${def?.label ?? "no label"})`;
-    })
-    .join("\n");
+  // Sanitize-on-read: custom_components rows are untrusted input to the prompt
+  // that every AI action reuses (#292).
+  const componentList = formatCustomComponentList(customs);
 
   const basePrompt = getSystemPrompt();
   return componentList
@@ -115,28 +114,21 @@ export async function startEditHandler(
   req: Request,
   res: Response,
 ): Promise<void> {
-  try {
-    if (!(await isAvailable())) {
-      res.status(503).json({ error: "AI service not configured" });
-      return;
-    }
-
-    const { message, recipeJson } = req.body ?? {};
-    if (!message && !recipeJson) {
-      res.status(400).json({
-        error: "Provide at least one of message, recipeJson",
-      });
-      return;
-    }
-
-    const jobId = randomUUID();
-    editStore.set(jobId, { kind: "running", startedAt: Date.now() });
-    // Fire-and-forget. runEditBedrock catches its own errors into the map.
-    void runEditBedrock(jobId, message, recipeJson);
-    res.json({ jobId });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  if (!(await isAvailable())) {
+    res.status(503).json({ error: "AI service not configured" });
+    return;
   }
+
+  const { message, recipeJson } = req.body ?? {};
+  if (!message && !recipeJson) {
+    throw badRequest("Provide at least one of message, recipeJson");
+  }
+
+  const jobId = randomUUID();
+  editStore.set(jobId, { kind: "running", startedAt: Date.now() });
+  // Fire-and-forget. runEditBedrock catches its own errors into the map.
+  void runEditBedrock(jobId, message, recipeJson);
+  res.json({ jobId });
 }
 
 // GET /builder/ai/edit/status/:jobId — { status: "generating" | "done" |
@@ -146,10 +138,7 @@ export function statusEditHandler(req: Request, res: Response): void {
   const state = typeof jobId === "string" ? editStore.get(jobId) : undefined;
 
   if (!state) {
-    res
-      .status(404)
-      .json({ error: "This edit session expired — please try again." });
-    return;
+    throw notFound("This edit session expired — please try again.");
   }
   res.json(toStatusResponse(state));
 }
@@ -182,31 +171,26 @@ export async function contentHandler(
   req: Request,
   res: Response,
 ): Promise<void> {
-  try {
-    if (!(await isAvailable())) {
-      res.status(503).json({ error: "AI service not configured" });
-      return;
-    }
-
-    const { message, pageJson } = req.body ?? {};
-    if (!message || typeof message !== "string" || !message.trim()) {
-      res.status(400).json({ error: "Provide a message" });
-      return;
-    }
-
-    const userText = pageJson
-      ? `Here is the current page as JSON:\n\n\`\`\`json\n${pageJson}\n\`\`\`\n\n${message.trim()}`
-      : message.trim();
-
-    const reply = await chat(getContentSystemPrompt(), [
-      { role: "user", content: userText },
-    ]);
-    const page = extractContentPage(reply);
-
-    res.json({ page, reply });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  if (!(await isAvailable())) {
+    res.status(503).json({ error: "AI service not configured" });
+    return;
   }
+
+  const { message, pageJson } = req.body ?? {};
+  if (!message || typeof message !== "string" || !message.trim()) {
+    throw badRequest("Provide a message");
+  }
+
+  const userText = pageJson
+    ? `Here is the current page as JSON:\n\n\`\`\`json\n${pageJson}\n\`\`\`\n\n${message.trim()}`
+    : message.trim();
+
+  const reply = await chat(getContentSystemPrompt(), [
+    { role: "user", content: userText },
+  ]);
+  const page = extractContentPage(reply);
+
+  res.json({ page, reply });
 }
 aiRouter.post("/content", contentHandler);
 

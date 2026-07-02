@@ -19,6 +19,7 @@ import {
 } from "./form-uniqueness.js";
 import { holdsFreshClaim } from "./presence.js";
 import { readUserLogin } from "../utils/request.js";
+import { badRequest, notFound, formatZodError } from "../lib/http-error.js";
 
 // Defense-in-depth presence gate shared by create/update: the caller must send
 // a non-empty userLogin (400) and must hold the current fresh editing claim on
@@ -125,10 +126,10 @@ function readProcessors(body: unknown): ReadProcessorsResult {
   if (raw === null) return { kind: "clear" };
   const parsed = processorsSchema.safeParse(raw);
   if (!parsed.success) {
-    const detail = parsed.error.issues
-      .map((i) => `${i.path.join(".") || "processors"}: ${i.message}`)
-      .join("; ");
-    return { kind: "invalid", message: detail || "Invalid processors" };
+    return {
+      kind: "invalid",
+      message: formatZodError(parsed.error, "processors"),
+    };
   }
   if (parsed.data.length === 0) return { kind: "clear" };
   return { kind: "set", processors: parsed.data };
@@ -201,10 +202,7 @@ function parseDraftRecipe(
 ): ServiceContractRecipe | null {
   const parsed = draftRecipeSchema.safeParse(recipe);
   if (!parsed.success) {
-    const detail = parsed.error.issues
-      .map((i) => `${i.path.join(".") || "recipe"}: ${i.message}`)
-      .join("; ");
-    res.status(400).json({ error: detail || "Invalid recipe" });
+    res.status(400).json({ error: formatZodError(parsed.error, "recipe") });
     return null;
   }
   return recipe as ServiceContractRecipe;
@@ -222,13 +220,9 @@ export async function listDisabledHandler(
   _req: Request,
   res: Response,
 ): Promise<void> {
-  try {
-    const ds = await getDataSource();
-    const rows = await ds.query(`SELECT form_id FROM form_disabled_overrides`);
-    res.json(rows.map((r: { form_id: string }) => r.form_id));
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+  const ds = await getDataSource();
+  const rows = await ds.query(`SELECT form_id FROM form_disabled_overrides`);
+  res.json(rows.map((r: { form_id: string }) => r.form_id));
 }
 formsRouter.get("/disabled", listDisabledHandler);
 
@@ -369,45 +363,34 @@ formsRouter.get("/published", listPublishedHandler);
 
 // GET /builder/forms — list all forms (latest version per formId)
 formsRouter.get("/", async (_req, res) => {
-  try {
-    const ds = await getDataSource();
-    const rows = await ds.query(
-      latestVersionPerFormSql(
-        "id, form_id, schema->>'title' AS title, version, schema",
-      ),
-    );
-    const forms: BuilderFormSummary[] = rows.map((r: any) => ({
-      id: r.id,
-      formId: r.form_id,
-      title: r.title ?? r.form_id,
-      version: r.version,
-      isPublished: false,
-    }));
-    res.json(forms);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+  const ds = await getDataSource();
+  const rows = await ds.query(
+    latestVersionPerFormSql(
+      "id, form_id, schema->>'title' AS title, version, schema",
+    ),
+  );
+  const forms: BuilderFormSummary[] = rows.map((r: any) => ({
+    id: r.id,
+    formId: r.form_id,
+    title: r.title ?? r.form_id,
+    version: r.version,
+    isPublished: false,
+  }));
+  res.json(forms);
 });
 
 // GET /builder/forms/:formId — get latest recipe for a form
 formsRouter.get("/:formId", async (req, res) => {
-  try {
-    const ds = await getDataSource();
-    // One scratch row per form (#1196); no version ordering needed.
-    const rows = await ds.query(
-      `SELECT schema FROM form_definitions WHERE form_id = $1 LIMIT 1`,
-      [req.params.formId],
-    );
-    if (!rows.length) {
-      res
-        .status(404)
-        .json({ error: `No recipe found for formId: ${req.params.formId}` });
-      return;
-    }
-    res.json(rows[0].schema);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  const ds = await getDataSource();
+  // One scratch row per form (#1196); no version ordering needed.
+  const rows = await ds.query(
+    `SELECT schema FROM form_definitions WHERE form_id = $1 LIMIT 1`,
+    [req.params.formId],
+  );
+  if (!rows.length) {
+    throw notFound(`No recipe found for formId: ${req.params.formId}`);
   }
+  res.json(rows[0].schema);
 });
 
 // GET /builder/forms/:formId/config — the per-form config (form_config): the
@@ -420,19 +403,15 @@ export async function getFormConfigHandler(
   req: Request,
   res: Response,
 ): Promise<void> {
-  try {
-    const ds = await getDataSource();
-    const row = await ds.getRepository(FormConfigEntity).findOne({
-      where: { formId: String(req.params.formId) },
-    });
-    const processors = row?.config?.processors;
-    res.json({
-      mdaContactId: row?.mdaContactId ?? null,
-      processors: Array.isArray(processors) ? processors : null,
-    });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+  const ds = await getDataSource();
+  const row = await ds.getRepository(FormConfigEntity).findOne({
+    where: { formId: String(req.params.formId) },
+  });
+  const processors = row?.config?.processors;
+  res.json({
+    mdaContactId: row?.mdaContactId ?? null,
+    processors: Array.isArray(processors) ? processors : null,
+  });
 }
 formsRouter.get("/:formId/config", getFormConfigHandler);
 
@@ -593,7 +572,8 @@ export async function createFormHandler(
       });
       return;
     }
-    res.status(500).json({ error: err.message });
+    // Anything else is unexpected — let the central error handler map it to 500.
+    throw err;
   }
 }
 formsRouter.post("/", createFormHandler);
@@ -603,86 +583,75 @@ export async function updateFormHandler(
   req: Request,
   res: Response,
 ): Promise<void> {
-  try {
-    const recipe = parseDraftRecipe(req.body.recipe, res);
-    if (!recipe) return;
-    // #281: validate the recipe's processors before persisting (see
-    // createFormHandler) — guards the SSRF vector without rejecting the rest of
-    // a partial draft.
-    const processorError = validateRecipeProcessors(recipe);
-    if (processorError) {
-      res
-        .status(400)
-        .json({ error: `Invalid processor config: ${processorError}` });
-      return;
-    }
-    const ds = await getDataSource();
-    // Read-only lock (#874): only the current claim holder may save.
-    if (!(await enforcePresence(ds, String(req.params.formId), req.body, res)))
-      return;
-    // #1196: one scratch row per form, keyed by formId. The published artifact
-    // is the committed flat recipe file, so there's no publishedAt gate or
-    // version-match to enforce — the row is simply the current draft.
-    const rows = await ds.query(
-      `SELECT id FROM form_definitions WHERE form_id = $1 LIMIT 1`,
-      [req.params.formId],
-    );
-    if (!rows.length) {
-      res
-        .status(404)
-        .json({ error: `No recipe found for formId: ${req.params.formId}` });
-      return;
-    }
-    // title uniqueness on rename — reject renaming into another form's title
-    // (drafts + published), while keeping this form's own title (excluded by
-    // formId) is allowed. formId is not reassigned on update, so there's no
-    // published-formId check here. Fails open if upstream is down.
-    const publishedForms = await fetchPublishedFormsFailOpen();
-    const titleCollision = await findTitleCollisionInDb(
-      ds,
-      recipe.title ?? "",
-      String(req.params.formId),
-      publishedToTitleRows(publishedForms),
-    );
-    if (titleCollision) {
-      res.status(409).json({
-        error: `A form titled "${recipe.title}" already exists. Choose a different title.`,
-      });
-      return;
-    }
-    // Update the recipe and (when supplied) the per-form config atomically.
-    const mdaContactId = readMdaContactId(req.body);
-    // As in createFormHandler: validate processors before the transaction so an
-    // invalid array 400s without writing anything.
-    const processors = readProcessors(req.body);
-    if (processors.kind === "invalid") {
-      res.status(400).json({ error: processors.message });
-      return;
-    }
-    await ds.transaction(async (manager) => {
-      await manager.query(
-        `UPDATE form_definitions SET schema = $1 WHERE id = $2`,
-        [recipe, rows[0].id],
-      );
-      if (mdaContactId !== undefined) {
-        await upsertFormConfig(
-          manager,
-          String(req.params.formId),
-          mdaContactId,
-        );
-      }
-      if (processors.kind !== "absent") {
-        await upsertFormConfigBlob(
-          manager,
-          String(req.params.formId),
-          processors,
-        );
-      }
-    });
-    res.json({ ok: true });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  const recipe = parseDraftRecipe(req.body.recipe, res);
+  if (!recipe) return;
+  // #281: validate the recipe's processors before persisting (see
+  // createFormHandler) — guards the SSRF vector without rejecting the rest of
+  // a partial draft.
+  const processorError = validateRecipeProcessors(recipe);
+  if (processorError) {
+    res
+      .status(400)
+      .json({ error: `Invalid processor config: ${processorError}` });
+    return;
   }
+  const ds = await getDataSource();
+  // Read-only lock (#874): only the current claim holder may save.
+  if (!(await enforcePresence(ds, String(req.params.formId), req.body, res)))
+    return;
+  // #1196: one scratch row per form, keyed by formId. The published artifact
+  // is the committed flat recipe file, so there's no publishedAt gate or
+  // version-match to enforce — the row is simply the current draft.
+  const rows = await ds.query(
+    `SELECT id FROM form_definitions WHERE form_id = $1 LIMIT 1`,
+    [req.params.formId],
+  );
+  if (!rows.length) {
+    throw notFound(`No recipe found for formId: ${req.params.formId}`);
+  }
+  // title uniqueness on rename — reject renaming into another form's title
+  // (drafts + published), while keeping this form's own title (excluded by
+  // formId) is allowed. formId is not reassigned on update, so there's no
+  // published-formId check here. Fails open if upstream is down.
+  const publishedForms = await fetchPublishedFormsFailOpen();
+  const titleCollision = await findTitleCollisionInDb(
+    ds,
+    recipe.title ?? "",
+    String(req.params.formId),
+    publishedToTitleRows(publishedForms),
+  );
+  if (titleCollision) {
+    res.status(409).json({
+      error: `A form titled "${recipe.title}" already exists. Choose a different title.`,
+    });
+    return;
+  }
+  // Update the recipe and (when supplied) the per-form config atomically.
+  const mdaContactId = readMdaContactId(req.body);
+  // As in createFormHandler: validate processors before the transaction so an
+  // invalid array 400s without writing anything.
+  const processors = readProcessors(req.body);
+  if (processors.kind === "invalid") {
+    res.status(400).json({ error: processors.message });
+    return;
+  }
+  await ds.transaction(async (manager) => {
+    await manager.query(
+      `UPDATE form_definitions SET schema = $1 WHERE id = $2`,
+      [recipe, rows[0].id],
+    );
+    if (mdaContactId !== undefined) {
+      await upsertFormConfig(manager, String(req.params.formId), mdaContactId);
+    }
+    if (processors.kind !== "absent") {
+      await upsertFormConfigBlob(
+        manager,
+        String(req.params.formId),
+        processors,
+      );
+    }
+  });
+  res.json({ ok: true });
 }
 formsRouter.put("/:formId", updateFormHandler);
 
@@ -707,107 +676,105 @@ export async function rekeyFormHandler(
   req: Request,
   res: Response,
 ): Promise<void> {
-  try {
-    const oldFormId = String(req.params.formId);
-    const recipe = parseDraftRecipe(req.body.recipe, res);
-    if (!recipe) return;
-    const newFormId = recipe.formId;
-    const ds = await getDataSource();
-    // Read-only lock (#874): a re-key moves an existing form (an identity change
-    // of a draft), so it's a write only the current claim holder may perform —
-    // gated on the OLD id, like update/publish.
-    if (!(await enforcePresence(ds, oldFormId, req.body, res))) return;
-    const result = await ds.transaction(async (manager) => {
-      // 1. Load the old-ID row (one scratch row per form, #1196).
-      const oldRows: {
-        id: string;
-        published_at: string | null;
-      }[] = await manager.query(
-        `SELECT id, published_at, schema FROM form_definitions WHERE form_id = $1`,
-        [oldFormId],
-      );
-      if (!oldRows.length) {
-        return {
-          status: 404,
-          body: { error: `No recipe found for formId: ${oldFormId}` },
-        };
-      }
-      // Consult the upstream published set once; reuse it for the published
-      // guard and the new-ID/title uniqueness checks. Fails open to [].
-      const publishedForms = await fetchPublishedFormsFailOpen();
-      // 2. Block if published.
-      const dbPublished = oldRows.some((r) => r.published_at !== null);
-      const upstreamPublished = publishedForms.some(
-        (p) => p.formId === oldFormId,
-      );
-      if (dbPublished || upstreamPublished) {
-        return {
-          status: 409,
-          body: { error: "Cannot change the ID of a published form" },
-        };
-      }
-      // 3. New-ID uniqueness against other forms (drafts + published).
-      const idRows = await manager.query(
-        `SELECT 1 FROM form_definitions WHERE form_id = $1 AND form_id <> $2 LIMIT 1`,
-        [newFormId, oldFormId],
-      );
-      const publishedHasNewId = publishedForms.some(
-        (p) => p.formId === newFormId,
-      );
-      if (idRows.length > 0 || publishedHasNewId) {
-        return {
-          status: 409,
-          body: {
-            error: `A form with the ID "${newFormId}" already exists. Choose a different ID.`,
-          },
-        };
-      }
-      // 4. Title uniqueness, excluding the form's own prior record.
-      const titleCollision = await findTitleCollisionInDb(
-        manager,
-        recipe.title ?? "",
-        oldFormId,
-        publishedToTitleRows(publishedForms),
-      );
-      if (titleCollision) {
-        return {
-          status: 409,
-          body: {
-            error: `A form titled "${recipe.title}" already exists. Choose a different title.`,
-          },
-        };
-      }
-      // 5. Move the row to the new ID. Step 3 guarantees no (newId) row
-      // exists, so this can't trip the UNIQUE(form_id) constraint.
-      // Deliberately leaves any old-ID form_disabled_overrides tombstone in
-      // place (the old ID stays claimed) — a re-key only moves the draft rows.
-      // This is unreachable in practice: listForms drops disabled-and-
-      // unpublished drafts, so a disabled draft can't be opened to re-key.
-      await manager.query(
-        `UPDATE form_definitions SET form_id = $1 WHERE form_id = $2`,
-        [newFormId, oldFormId],
-      );
-      // Move the per-form config (the MDA contact link) to the new ID too, so a
-      // re-key keeps its config.mdaEmail recipient instead of orphaning the
-      // form_config row under the old ID (#732). No-op when the form has no
-      // config row. form_config.form_id is unique and step 3 guarantees the new
-      // ID is otherwise unused, so this can't collide.
-      await manager.query(
-        `UPDATE form_config SET form_id = $1 WHERE form_id = $2`,
-        [newFormId, oldFormId],
-      );
-      // 6. Persist the edited content under the new ID. Step 5 already moved the
-      // single row, so update its schema in place.
-      await manager.query(
-        `UPDATE form_definitions SET schema = $1 WHERE form_id = $2`,
-        [recipe, newFormId],
-      );
-      return { status: 200, body: { ok: true } };
-    });
-    res.status(result.status).json(result.body);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+  const oldFormId = String(req.params.formId);
+  const recipe = parseDraftRecipe(req.body.recipe, res);
+  if (!recipe) return;
+  const newFormId = recipe.formId;
+  const ds = await getDataSource();
+  // Read-only lock (#874): a re-key moves an existing form (an identity change
+  // of a draft), so it's a write only the current claim holder may perform —
+  // gated on the OLD id, like update/publish.
+  if (!(await enforcePresence(ds, oldFormId, req.body, res))) return;
+  const result = await ds.transaction(async (manager) => {
+    // 1. Load the old-ID row (one scratch row per form, #1196).
+    const oldRows: {
+      id: string;
+      published_at: string | null;
+    }[] = await manager.query(
+      `SELECT id, published_at, schema FROM form_definitions WHERE form_id = $1`,
+      [oldFormId],
+    );
+    if (!oldRows.length) {
+      return {
+        status: 404,
+        body: { error: `No recipe found for formId: ${oldFormId}` },
+      };
+    }
+    // Consult the upstream published set once; reuse it for the published
+    // guard and the new-ID/title uniqueness checks. Fails open to [].
+    const publishedForms = await fetchPublishedFormsFailOpen();
+    // 2. Block if published.
+    const dbPublished = oldRows.some((r) => r.published_at !== null);
+    const upstreamPublished = publishedForms.some(
+      (p) => p.formId === oldFormId,
+    );
+    if (dbPublished || upstreamPublished) {
+      return {
+        status: 409,
+        body: { error: "Cannot change the ID of a published form" },
+      };
+    }
+    // 3. New-ID uniqueness against other forms (drafts + published).
+    const idRows = await manager.query(
+      `SELECT 1 FROM form_definitions WHERE form_id = $1 AND form_id <> $2 LIMIT 1`,
+      [newFormId, oldFormId],
+    );
+    const publishedHasNewId = publishedForms.some(
+      (p) => p.formId === newFormId,
+    );
+    if (idRows.length > 0 || publishedHasNewId) {
+      return {
+        status: 409,
+        body: {
+          error: `A form with the ID "${newFormId}" already exists. Choose a different ID.`,
+        },
+      };
+    }
+    // 4. Title uniqueness, excluding the form's own prior record.
+    const titleCollision = await findTitleCollisionInDb(
+      manager,
+      recipe.title ?? "",
+      oldFormId,
+      publishedToTitleRows(publishedForms),
+    );
+    if (titleCollision) {
+      return {
+        status: 409,
+        body: {
+          error: `A form titled "${recipe.title}" already exists. Choose a different title.`,
+        },
+      };
+    }
+    // 5. Move the row to the new ID. Step 3 guarantees no (newId) row
+    // exists, so this can't trip the UNIQUE(form_id) constraint.
+    // Deliberately leaves any old-ID form_disabled_overrides tombstone in
+    // place (the old ID stays claimed) — a re-key only moves the draft rows.
+    // Reachable as of #1658: a disabled draft-only form is now openable from
+    // the builder picker, so it can be re-keyed while disabled. The leftover
+    // old-ID tombstone then surfaces as an orphan-override row whose Enable
+    // clears it, so the old ID isn't trapped.
+    await manager.query(
+      `UPDATE form_definitions SET form_id = $1 WHERE form_id = $2`,
+      [newFormId, oldFormId],
+    );
+    // Move the per-form config (the MDA contact link) to the new ID too, so a
+    // re-key keeps its config.mdaEmail recipient instead of orphaning the
+    // form_config row under the old ID (#732). No-op when the form has no
+    // config row. form_config.form_id is unique and step 3 guarantees the new
+    // ID is otherwise unused, so this can't collide.
+    await manager.query(
+      `UPDATE form_config SET form_id = $1 WHERE form_id = $2`,
+      [newFormId, oldFormId],
+    );
+    // 6. Persist the edited content under the new ID. Step 5 already moved the
+    // single row, so update its schema in place.
+    await manager.query(
+      `UPDATE form_definitions SET schema = $1 WHERE form_id = $2`,
+      [recipe, newFormId],
+    );
+    return { status: 200, body: { ok: true } };
+  });
+  res.status(result.status).json(result.body);
 }
 formsRouter.post("/:formId/rekey", rekeyFormHandler);
 
@@ -822,29 +789,21 @@ export async function deleteFormVersionHandler(
   res: Response,
 ): Promise<void> {
   const { formId, version } = req.params;
-  try {
-    const ds = await getDataSource();
-    const rows = await ds.query(
-      `SELECT id, published_at FROM form_definitions
+  const ds = await getDataSource();
+  const rows = await ds.query(
+    `SELECT id, published_at FROM form_definitions
        WHERE form_id = $1 AND version = $2
        LIMIT 1`,
-      [formId, version],
-    );
-    if (!rows.length) {
-      res.status(404).json({
-        error: `No recipe found for formId: ${formId} version: ${version}`,
-      });
-      return;
-    }
-    if (rows[0].published_at !== null) {
-      res.status(400).json({ error: "Cannot delete a published recipe" });
-      return;
-    }
-    await ds.query(`DELETE FROM form_definitions WHERE id = $1`, [rows[0].id]);
-    res.json({ ok: true });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    [formId, version],
+  );
+  if (!rows.length) {
+    throw notFound(`No recipe found for formId: ${formId} version: ${version}`);
   }
+  if (rows[0].published_at !== null) {
+    throw badRequest("Cannot delete a published recipe");
+  }
+  await ds.query(`DELETE FROM form_definitions WHERE id = $1`, [rows[0].id]);
+  res.json({ ok: true });
 }
 // Registered before the catch-all "/:formId" delete so the extra path segments
 // are matched here, not swallowed as a formId.
@@ -868,28 +827,20 @@ export async function disableFormHandler(
 ): Promise<void> {
   const parsed = disableFormBodySchema.safeParse(req.body);
   if (!parsed.success) {
-    const detail = parsed.error.issues
-      .map((i) => `${i.path.join(".") || "body"}: ${i.message}`)
-      .join("; ");
-    res.status(400).json({ error: detail || "Invalid request body" });
-    return;
+    throw badRequest(formatZodError(parsed.error, "body"));
   }
   const { reason, disabledBy } = parsed.data;
   const { formId } = req.params;
 
-  try {
-    const ds = await getDataSource();
-    await ds.query(
-      `INSERT INTO form_disabled_overrides (form_id, reason, disabled_by)
+  const ds = await getDataSource();
+  await ds.query(
+    `INSERT INTO form_disabled_overrides (form_id, reason, disabled_by)
        VALUES ($1, $2, $3)
        ON CONFLICT (form_id) DO UPDATE
        SET reason = EXCLUDED.reason, disabled_by = EXCLUDED.disabled_by`,
-      [formId, reason, disabledBy],
-    );
-    res.json({ ok: true });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+    [formId, reason, disabledBy],
+  );
+  res.json({ ok: true });
 }
 formsRouter.post("/:formId/disable", disableFormHandler);
 
@@ -900,15 +851,11 @@ export async function enableFormHandler(
   res: Response,
 ): Promise<void> {
   const { formId } = req.params;
-  try {
-    const ds = await getDataSource();
-    await ds.query(`DELETE FROM form_disabled_overrides WHERE form_id = $1`, [
-      formId,
-    ]);
-    res.json({ ok: true });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+  const ds = await getDataSource();
+  await ds.query(`DELETE FROM form_disabled_overrides WHERE form_id = $1`, [
+    formId,
+  ]);
+  res.json({ ok: true });
 }
 // Registered before the catch-all "/:formId" delete so the extra "/disabled"
 // path segment is matched here, not swallowed as a formId.
@@ -923,24 +870,19 @@ export async function deleteFormHandler(
   res: Response,
 ): Promise<void> {
   const { formId } = req.params;
-  try {
-    const ds = await getDataSource();
-    const result = await ds.transaction(async (manager) => {
-      const deleted = await manager.query(
-        `DELETE FROM form_definitions WHERE form_id = $1 RETURNING id`,
-        [formId],
-      );
-      return { deletedVersions: deleted.length };
-    });
+  const ds = await getDataSource();
+  const result = await ds.transaction(async (manager) => {
+    const deleted = await manager.query(
+      `DELETE FROM form_definitions WHERE form_id = $1 RETURNING id`,
+      [formId],
+    );
+    return { deletedVersions: deleted.length };
+  });
 
-    // No form_definitions rows -> nothing was deleted -> 404.
-    if (result.deletedVersions === 0) {
-      res.status(404).json({ error: `No form found for formId: ${formId}` });
-      return;
-    }
-    res.json({ ok: true, deletedVersions: result.deletedVersions });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  // No form_definitions rows -> nothing was deleted -> 404.
+  if (result.deletedVersions === 0) {
+    throw notFound(`No form found for formId: ${formId}`);
   }
+  res.json({ ok: true, deletedVersions: result.deletedVersions });
 }
 formsRouter.delete("/:formId", deleteFormHandler);

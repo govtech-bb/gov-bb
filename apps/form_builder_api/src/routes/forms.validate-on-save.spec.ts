@@ -116,37 +116,46 @@ describe("recipe validation on save (#281)", () => {
     // (#281 fallback B — processors-only validation). Note: the draft must
     // still satisfy draftRecipeSchema (the save-path schema gate), so this uses
     // BASE rather than a bare formId/title.
-    await createFormHandler(
-      mockReq({
-        recipe: BASE,
-        isNew: true,
-      }),
-      res,
-    );
+    // getDataSource is mocked to reject ("DB reached"); the save handlers now
+    // re-throw non-duplicate errors for the central error middleware to map, so
+    // the call rejects. Asserting the rejection confirms we got *past* the
+    // validation gate and into the DB layer — the point of this test.
+    await expect(
+      createFormHandler(
+        mockReq({
+          recipe: BASE,
+          isNew: true,
+        }),
+        res,
+      ),
+    ).rejects.toThrow("DB reached");
 
     expect(getDataSourceMock).toHaveBeenCalled();
   });
 
   it("a valid recipe (empty steps, safe processor) passes validation and reaches the DB layer", async () => {
     const res = mockRes();
-    await createFormHandler(
-      mockReq({
-        recipe: {
-          ...BASE,
-          processors: [
-            {
-              type: "opencrvs",
-              config: { endpoint: "https://opencrvs.example.gov.bb/submit" },
-            },
-          ],
-        },
-        isNew: true,
-      }),
-      res,
-    );
-
     // Validation passed → the handler proceeded to getDataSource (which our mock
-    // rejects). The point is it did NOT 400 at the validation gate.
+    // rejects and the handler re-throws). The point is it did NOT 400 at the
+    // validation gate.
+    await expect(
+      createFormHandler(
+        mockReq({
+          recipe: {
+            ...BASE,
+            processors: [
+              {
+                type: "opencrvs",
+                config: { endpoint: "https://opencrvs.example.gov.bb/submit" },
+              },
+            ],
+          },
+          isNew: true,
+        }),
+        res,
+      ),
+    ).rejects.toThrow("DB reached");
+
     expect(getDataSourceMock).toHaveBeenCalled();
   });
 });

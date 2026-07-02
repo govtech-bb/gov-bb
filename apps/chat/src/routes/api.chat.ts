@@ -5,7 +5,8 @@ import {
   maxIterations,
   toServerSentEventsResponse,
 } from "@tanstack/ai";
-import { bedrockText } from "@govtech-bb/ai-bedrock";
+import { bedrockText, type BedrockConverseModels } from "@tanstack/ai-bedrock";
+import { resolveBedrockModelId } from "@govtech-bb/ai-bedrock";
 import { mockTextAdapter } from "#/lib/chat/mock-adapter";
 import { getServerEnv } from "#/config/env";
 import {
@@ -237,12 +238,15 @@ async function handlePost(request: Request): Promise<Response> {
     if (features.offers && !handoffLinkOnly) prompts.push(OFFER_INSTRUCTION);
     const adapter = env.LLM_MOCK
       ? mockTextAdapter(env.LLM_MODEL, env.LLM_MOCK_FORM)
-      : bedrockText(env.LLM_MODEL, { region: env.BEDROCK_REGION });
+      : bedrockText(
+          resolveBedrockModelId(env.LLM_MODEL) as BedrockConverseModels,
+          { region: env.BEDROCK_REGION },
+        );
     const stream = chat({
       adapter,
       messages: params.messages,
       systemPrompts: prompts,
-      modelOptions: { maxTokens: 600, temperature: 0 },
+      modelOptions: { max_completion_tokens: 600, temperature: 0 },
       ...(tools.length ? { tools, agentLoopStrategy: maxIterations(8) } : {}),
       threadId: params.threadId,
       runId: params.runId,

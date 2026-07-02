@@ -47,4 +47,9 @@ export interface BuilderFormSummary {
    */
   publishedVersion?: string;
   isDisabled?: boolean;
+  /**
+   * A disabled override with no underlying draft or published recipe; the
+   * picker renders it Enable-only and not openable (there is no recipe to load).
+   */
+  isOrphanOverride?: boolean;
 }
