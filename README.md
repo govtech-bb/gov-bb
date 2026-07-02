@@ -33,6 +33,7 @@ apps/
   chat/               "Ask alpha.gov.bb" RAG assistant — TanStack Start + AWS Bedrock (port 3000)
   form_builder/       Form recipe authoring tool — Vite + TanStack Start (Nitro/Amplify)
   form_builder_api/   Backend for the builder — Express 5 (port 3003)
+  analytics/          Internal analytics dashboard — Vite + React, renders a committed Umami snapshot (dev 3100)
 
 packages/
   form-types/         Foundational TS + Zod types for the form domain (consumed everywhere)
@@ -68,6 +69,7 @@ Root scripts cover the most-used apps; other apps run via `nx dev <app>` or
 | `pnpm dev:landing` | Start the landing site in dev mode |
 | `pnpm exec nx dev chat` | Start the chat assistant in dev mode |
 | `pnpm exec nx dev form_builder` | Start the form builder in dev mode |
+| `pnpm exec nx dev analytics-app` | Start the analytics dashboard in dev mode |
 | `pnpm build` | Build all apps and packages (`nx run-many -t build`) |
 | `pnpm test:all` | Run the full test suite (`nx run-many -t test`) |
 | `pnpm lint` | Lint all apps and packages |
