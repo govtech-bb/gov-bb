@@ -249,6 +249,87 @@ describe("listForms", () => {
     expect(byId["draft-only"].publishedVersion).toBeUndefined();
   });
 
+  it("carries visibility from the published index, including a non-public form with no DB draft (#1835)", async () => {
+    apiGet.mockImplementation((path: string) => {
+      if (path === "/builder/forms") return Promise.resolve([]);
+      if (path === "/builder/forms/published")
+        return Promise.resolve([
+          {
+            formId: "hidden",
+            title: "Under Maintenance",
+            version: "1.0.0",
+            visibility: "maintenance",
+          },
+          {
+            formId: "live",
+            title: "Live",
+            version: "1.0.0",
+            visibility: "public",
+          },
+        ]);
+      if (path === "/builder/forms/disabled") return Promise.resolve([]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    const result = await listForms();
+    const byId = Object.fromEntries(result.map((f) => [f.formId, f]));
+
+    // The whole point of #1835: a published non-public form with no DB draft
+    // reaches the picker and carries its visibility for the badge.
+    expect(byId["hidden"].visibility).toBe("maintenance");
+    expect(byId["live"].visibility).toBe("public");
+  });
+
+  it("carries the published visibility even when a draft row wins the merge (#1835)", async () => {
+    apiGet.mockImplementation((path: string) => {
+      if (path === "/builder/forms")
+        return Promise.resolve([
+          {
+            id: "uuid-1",
+            formId: "hidden",
+            title: "Hidden (newer draft)",
+            version: "1.1.0",
+            isPublished: false,
+          },
+        ]);
+      if (path === "/builder/forms/published")
+        return Promise.resolve([
+          {
+            formId: "hidden",
+            title: "Hidden",
+            version: "1.0.0",
+            visibility: "preview",
+          },
+        ]);
+      if (path === "/builder/forms/disabled") return Promise.resolve([]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    const result = await listForms();
+    expect(result[0].visibility).toBe("preview");
+  });
+
+  it("leaves visibility undefined for a draft-only form absent from the published index (#1835)", async () => {
+    apiGet.mockImplementation((path: string) => {
+      if (path === "/builder/forms")
+        return Promise.resolve([
+          {
+            id: "uuid-1",
+            formId: "draft-only",
+            title: "Draft Only",
+            version: "1.0.0",
+            isPublished: false,
+          },
+        ]);
+      if (path === "/builder/forms/published") return Promise.resolve([]);
+      if (path === "/builder/forms/disabled") return Promise.resolve([]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    const result = await listForms();
+    expect(result[0].visibility).toBeUndefined();
+  });
+
   it("keeps a disabled published form, marking it isDisabled: true", async () => {
     apiGet.mockImplementation((path: string) => {
       if (path === "/builder/forms") return Promise.resolve([]);
