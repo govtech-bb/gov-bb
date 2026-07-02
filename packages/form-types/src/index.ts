@@ -140,7 +140,7 @@ export {
 } from "./recipient-field";
 export type { RecipientKind } from "./recipient-field";
 
-export { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./id-pattern";
+export { KEBAB_ID_PATTERN, KEBAB_ID_ERROR, kebabIdSchema } from "./id-pattern";
 
 export { SEMVER_PATTERN, SEMVER_ERROR, semverSchema } from "./version-pattern";
 
@@ -159,6 +159,7 @@ export {
   dateTimeFormatSchema,
   serviceContractSchema,
   serviceContractRecipeSchema,
+  draftRecipeSchema,
   contactDetailsSchema,
   recipeVisibilitySchema,
   recipeMetaSchema,
@@ -168,6 +169,7 @@ export {
 export type {
   ServiceContract,
   ServiceContractRecipe,
+  DraftRecipe,
   DateTimeFormat,
   ContactDetails,
   RecipeVisibility,
@@ -185,3 +187,8 @@ export type {
   MdaContactAddress,
   CreateMdaContactInput,
 } from "./mda-contact.type";
+
+export type {
+  PublicFormSummary,
+  BuilderFormSummary,
+} from "./form-summary.type";

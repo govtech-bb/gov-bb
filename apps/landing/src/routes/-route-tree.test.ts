@@ -17,8 +17,9 @@ const FEATURE_URLS = [
   '/health-and-emergency-services/find-an-emergency-shelter',
   '/health-and-emergency-services/find-an-emergency-shelter/find',
   '/health-and-emergency-services/find-an-emergency-shelter/guidance',
-  '/health-and-emergency-services/stormready',
-  '/health-and-emergency-services/stormready/checklist',
+  // StormReady is now fully content-tree — its landing AND its checklist (a
+  // co-located `.tsx` content page) are served by the catch-all route, so
+  // neither appears in the generated route tree.
 ]
 
 describe('co-located feature routes', () => {

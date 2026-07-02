@@ -2,7 +2,7 @@
 # ---- builder ------------------------------------------------------------
 # Compiles the NestJS app + the workspace packages it depends on into
 # /app/dist, using the full monorepo as context.
-FROM node:24-alpine3.23@sha256:7c70d1235c0b4c2bc9eeed5393d19f1bbdde6885ba0d58ba62bb385d7b0f3ff1 AS builder
+FROM node:24-alpine3.23@sha256:595398b0081eacda8e1c4c5b97b76cd1020e4d58a8ebcb4843b9bca1e79e7436 AS builder
 
 # Corepack must run as root — it writes to /usr/local/bin.
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
@@ -67,7 +67,7 @@ CMD ["pnpm", "exec", "nx", "dev", "api"]
 # ---- runner -------------------------------------------------------------
 # Slim runtime image. Includes pnpm so the ECS sandbox migrate-task
 # (deploy-sandbox.yml) can shell into the container and run `pnpm migration:run`.
-FROM node:24-alpine3.23@sha256:7c70d1235c0b4c2bc9eeed5393d19f1bbdde6885ba0d58ba62bb385d7b0f3ff1 AS runner
+FROM node:24-alpine3.23@sha256:595398b0081eacda8e1c4c5b97b76cd1020e4d58a8ebcb4843b9bca1e79e7436 AS runner
 
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 
@@ -76,9 +76,20 @@ RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
 
 WORKDIR /app
 
-# Download AWS RDS CA bundle for TLS connections to RDS (must run before USER app)
-RUN wget -O /app/rds-ca-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem && \
-    chown app:app /app/rds-ca-bundle.pem
+# `script` is required for ECS Exec session logging (issue #217). ECS Exec
+# uploads the session to CloudWatch/S3 only if `script` and `cat` are present in
+# the image; node:alpine ships busybox `cat` but NOT `script` (it lives in
+# util-linux-misc). Without it, exec works but nothing is ever logged.
+RUN apk add --no-cache util-linux-misc
+
+# AWS RDS CA bundle for TLS connections to RDS (issue #304). Committed to the
+# repo (certs/rds-global-bundle.pem) and COPYed in rather than fetched at build
+# time — no unverified network download, and the build no longer depends on the
+# truststore endpoint being reachable. It's the global-bundle.pem of RDS root
+# CAs; RDS auto-rotates the DB *server* cert under the same roots, so this is
+# stable for years. Refresh only on a new RDS root-CA generation (rare):
+#   curl -fsSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o certs/rds-global-bundle.pem
+COPY --chown=app:app certs/rds-global-bundle.pem /app/rds-ca-bundle.pem
 
 RUN chown app:app /app
 USER app

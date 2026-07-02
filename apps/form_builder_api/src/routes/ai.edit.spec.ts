@@ -15,6 +15,7 @@ vi.mock("../ai/recipe-extractor.js", () => ({ extractRecipe: vi.fn() }));
 import { chat, isAvailable } from "../ai/client.js";
 import { extractRecipe } from "../ai/recipe-extractor.js";
 import { getDataSource } from "../db.js";
+import { HttpError } from "../lib/http-error";
 import { mockReq, mockRes } from "../test-helpers/express-mocks";
 import { startEditHandler, statusEditHandler } from "./ai";
 
@@ -62,10 +63,12 @@ describe("POST /builder/ai/edit/start", () => {
     expect(chatMock).not.toHaveBeenCalled();
   });
 
-  it("400s when no message or recipeJson is provided", async () => {
-    const res = mockRes();
-    await startEditHandler(mockReq({}), res);
-    expect(res.statusCode).toBe(400);
+  it("throws a 400 HttpError when no message or recipeJson is provided", async () => {
+    const err = await startEditHandler(mockReq({}), mockRes()).catch(
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(400);
     expect(chatMock).not.toHaveBeenCalled();
   });
 
@@ -117,13 +120,18 @@ describe("GET /builder/ai/edit/status/:jobId", () => {
     mockDataSource([]);
   });
 
-  it("404s with an expired-session message for an unknown jobId", async () => {
-    const res = mockRes();
-    await statusEditHandler(mockReq({}, { jobId: "does-not-exist" }), res);
-    expect(res.statusCode).toBe(404);
-    expect(res.body).toEqual({
-      error: "This edit session expired — please try again.",
-    });
+  it("throws a 404 HttpError with an expired-session message for an unknown jobId", () => {
+    let err: unknown;
+    try {
+      statusEditHandler(mockReq({}, { jobId: "does-not-exist" }), mockRes());
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(404);
+    expect((err as HttpError).message).toBe(
+      "This edit session expired — please try again.",
+    );
   });
 
   it("returns { status: 'generating' } while Bedrock is still running", async () => {

@@ -154,6 +154,77 @@ describe("publishRecipe", () => {
     expect(prBody.body).toContain("@alice");
   });
 
+  it("preserves the committed createdAt on re-publish; only updatedAt advances", async () => {
+    // The file already on the base branch was created earlier; the incoming
+    // RECIPE carries a freshly-stamped createdAt. The published file must keep
+    // the original creation date (#1720).
+    const committedCreatedAt = "2025-06-17T10:50:41.039Z";
+    const committed = JSON.stringify({
+      ...RECIPE,
+      createdAt: committedCreatedAt,
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      ) // GET base ref
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" })) // POST create branch
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          sha: "existing-blob-sha",
+          content: Buffer.from(committed, "utf8").toString("base64"),
+        }),
+      ) // GET existing flat file (sha + content)
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } })) // PUT contents
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          number: 42,
+          html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
+        }),
+      ); // POST pulls
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await publishRecipe({ data: { recipe: RECIPE, description: "" } });
+
+    const putBody = JSON.parse(
+      (fetchMock.mock.calls[3][1] as RequestInit).body as string,
+    );
+    const written = JSON.parse(
+      Buffer.from(putBody.content, "base64").toString("utf8"),
+    );
+    expect(written.createdAt).toBe(committedCreatedAt);
+    expect(written.updatedAt).toBe(RECIPE.updatedAt);
+  });
+
+  it("stamps a fresh createdAt on first publish (no existing file)", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      ) // GET base ref
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" })) // POST create branch
+      .mockResolvedValueOnce(emptyResponse(404)) // GET existing flat file — absent
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } })) // PUT contents
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          number: 42,
+          html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
+        }),
+      ); // POST pulls
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await publishRecipe({ data: { recipe: RECIPE, description: "" } });
+
+    const putBody = JSON.parse(
+      (fetchMock.mock.calls[3][1] as RequestInit).body as string,
+    );
+    // No existing file → no sha, recipe written verbatim with its minted stamps.
+    expect(putBody.sha).toBeUndefined();
+    expect(Buffer.from(putBody.content, "base64").toString("utf8")).toBe(
+      JSON.stringify(RECIPE, null, 2) + "\n",
+    );
+  });
+
   it("validates against the API before touching GitHub or saving", async () => {
     (api.post as Mock).mockResolvedValue({
       ok: false,
@@ -550,5 +621,43 @@ describe("resolveBaseBranch — production fail-fast (#1366)", () => {
   it("throws when nothing is set in a production build", () => {
     vi.stubEnv("DEV", false);
     expect(() => resolveBaseBranch()).toThrow(/PUBLISH_BASE_BRANCH/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formId path-injection guard (#293) — a crafted formId must be rejected before
+// any GitHub/backend call so it can never reach a request path or branch name.
+// ---------------------------------------------------------------------------
+describe("formId validation (#293)", () => {
+  const TRAVERSAL_ID = "../../../.github/workflows/evil";
+
+  it("publishRecipe rejects a traversal formId before any GitHub/API call", async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(
+      publishRecipe({
+        data: { recipe: { ...RECIPE, formId: TRAVERSAL_ID }, description: "" },
+      }),
+    ).rejects.toThrow(/Invalid form ID/);
+
+    // The remote /validate call, the reservation, and every GitHub fetch are
+    // all downstream of the guard — none should have run.
+    expect(api.post).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("eraseRecipe rejects a traversal formId before any GitHub/API call", async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(
+      eraseRecipe({
+        data: { formId: TRAVERSAL_ID, title: "Evil", reason: "because" },
+      }),
+    ).rejects.toThrow(/lowercase letters/i);
+
+    expect(api.get).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

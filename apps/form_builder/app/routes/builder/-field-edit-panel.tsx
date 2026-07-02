@@ -184,67 +184,204 @@ function UiPropertiesEditor({ ui, baseUi, onChange, fg }: UiPropertiesEditorProp
   );
 }
 
-function OverrideForm({
-  overrides,
-  htmlType,
-  fieldRefs,
-  stepRefs,
-  currentStepId,
-  onChange,
-  checkDuplicateFieldId,
-  defaultOptions,
-  defaultMultiple,
-  defaultRequired = false,
-  baseValidations,
-  baseUi,
-}: OverrideFormProps) {
+interface FieldIdOverrideInputProps {
+  value: FieldOverrides["fieldId"];
+  // True when the candidate id duplicates another field's resolved id.
+  duplicate: boolean;
+  onChange: (fieldId: FieldOverrides["fieldId"]) => void;
+  fg: (isOverridden: boolean) => string;
+}
+
+// The Field ID Override input owns the transient format error and the
+// kebab-on-blur normalization; the duplicate error is passed in from the parent
+// (which alone can check the recipe-wide id set).
+function FieldIdOverrideInput({ value, duplicate, onChange, fg }: FieldIdOverrideInputProps) {
   const [fieldIdError, setFieldIdError] = useState("");
-  const fieldIdDuplicate =
-    checkDuplicateFieldId?.(overrides.fieldId ?? "") ?? false;
+  return (
+    <div className={fg(value !== undefined && value !== "")}>
+      <label>Field ID Override</label>
+      <input
+        type="text"
+        value={value ?? ""}
+        onChange={(e) => {
+          const next = e.target.value;
+          onChange(next || undefined);
+          setFieldIdError(
+            next !== "" && !KEBAB_ID_PATTERN.test(next) ? FIELD_ID_ERROR : "",
+          );
+        }}
+        onBlur={(e) => {
+          const next = e.target.value;
+          const normalized = kebabize(next);
+          if (normalized !== next) onChange(normalized || undefined);
+          setFieldIdError("");
+        }}
+        placeholder="Leave blank to use default"
+        aria-invalid={fieldIdError || duplicate ? true : undefined}
+      />
+      {fieldIdError ? (
+        <span role="alert" style={{ fontSize: "0.75rem", color: "red" }}>
+          {fieldIdError}
+        </span>
+      ) : (
+        duplicate && (
+          <span role="alert" style={{ fontSize: "0.75rem", color: "red" }}>
+            {FIELD_ID_DUPLICATE_ERROR}
+          </span>
+        )
+      )}
+    </div>
+  );
+}
 
-  function patch(partial: Partial<FieldOverrides>) {
-    onChange({ ...overrides, ...partial });
-  }
+interface RequiredRuleEditorProps {
+  validations: FieldOverrides["validations"];
+  // Whether the base primitive requires the field (drives the effective state
+  // and whether unchecking must persist an explicit `value: false`).
+  defaultRequired: boolean;
+  baseValidations: ValidationRule | undefined;
+  onChange: (validations: FieldOverrides["validations"]) => void;
+  fg: (isOverridden: boolean) => string;
+}
 
-  function fg(isOverridden: boolean) {
-    return `${styles.formGroup} ${isOverridden ? styles.overrideField : ""}`;
-  }
+// The Required checkbox plus its conditional custom-error input. Both read and
+// write the single `validations.required` rule, reflecting the *effective*
+// required state (registry base merged with the override, #487).
+function RequiredRuleEditor({
+  validations,
+  defaultRequired,
+  baseValidations,
+  onChange,
+  fg,
+}: RequiredRuleEditorProps) {
+  const effectiveRequired =
+    validations?.required !== undefined
+      ? isRequiredRule(validations.required)
+      : defaultRequired;
 
   return (
-    <div>
-      <div className={fg(overrides.fieldId !== undefined && overrides.fieldId !== "")}>
-        <label>Field ID Override</label>
-        <input
-          type="text"
-          value={overrides.fieldId ?? ""}
-          onChange={(e) => {
-            const value = e.target.value;
-            patch({ fieldId: value || undefined });
-            setFieldIdError(
-              value !== "" && !KEBAB_ID_PATTERN.test(value) ? FIELD_ID_ERROR : "",
-            );
-          }}
-          onBlur={(e) => {
-            const value = e.target.value;
-            const normalized = kebabize(value);
-            if (normalized !== value) patch({ fieldId: normalized || undefined });
-            setFieldIdError("");
-          }}
-          placeholder="Leave blank to use default"
-          aria-invalid={fieldIdError || fieldIdDuplicate ? true : undefined}
-        />
-        {fieldIdError ? (
-          <span role="alert" style={{ fontSize: "0.75rem", color: "red" }}>
-            {fieldIdError}
-          </span>
-        ) : (
-          fieldIdDuplicate && (
-            <span role="alert" style={{ fontSize: "0.75rem", color: "red" }}>
-              {FIELD_ID_DUPLICATE_ERROR}
-            </span>
-          )
-        )}
+    <>
+      <div className={`${fg(validations?.required !== undefined)} ${styles.checkRow}`}>
+        <label>
+          <input
+            type="checkbox"
+            checked={effectiveRequired}
+            onChange={(e) => {
+              const next = { ...(validations ?? {}) };
+              if (e.target.checked) {
+                next.required = { value: true };
+              } else if (defaultRequired) {
+                // Base requires the field; write an explicit false to override it.
+                next.required = { value: false };
+              } else {
+                delete next.required;
+              }
+              onChange(Object.keys(next).length > 0 ? next : undefined);
+            }}
+          />
+          {" "}Required
+        </label>
       </div>
+      {effectiveRequired && (
+        <div className={fg(validations?.required?.error !== undefined)}>
+          <label>
+            Required error message
+            <input
+              type="text"
+              value={validations?.required?.error ?? ""}
+              placeholder={baseValidations?.required?.error ?? DEFAULT_REQUIRED_MSG}
+              onChange={(e) => {
+                const text = e.target.value;
+                const next = { ...(validations ?? {}) };
+                if (text) {
+                  // Carry both keys: validations merge shallow at the rule level
+                  // (`shallowMergeDefined`), so a bare `{ error }` would drop `value`.
+                  next.required = { value: true, error: text };
+                } else if (defaultRequired) {
+                  // Base already requires the field — drop the override to restore
+                  // the inherited message rather than persist a redundant rule.
+                  delete next.required;
+                } else {
+                  // Required only because the override says so; keep it required,
+                  // just without a custom message.
+                  next.required = { value: true };
+                }
+                onChange(Object.keys(next).length > 0 ? next : undefined);
+              }}
+            />
+          </label>
+        </div>
+      )}
+    </>
+  );
+}
+
+interface OptionsSectionProps {
+  htmlType: HtmlTypes;
+  multiple: FieldOverrides["multiple"];
+  options: FieldOverrides["options"];
+  defaultMultiple: boolean | undefined;
+  defaultOptions: Option[] | undefined;
+  patch: (partial: Partial<FieldOverrides>) => void;
+  fg: (isOverridden: boolean) => string;
+}
+
+// The Options block for choice fields (select/radio/checkbox): the select-only
+// Multiple toggle and the OptionsEditor. Renders nothing for other html types.
+function OptionsSection({
+  htmlType,
+  multiple,
+  options,
+  defaultMultiple,
+  defaultOptions,
+  patch,
+  fg,
+}: OptionsSectionProps) {
+  if (!OPTIONS_HTML_TYPES.has(htmlType)) return null;
+  return (
+    <>
+      <div className={styles.sectionTitle}>Options</div>
+      {htmlType === "select" && (
+        <div className={`${fg(multiple !== undefined)} ${styles.checkRow}`}>
+          <label>
+            <input
+              type="checkbox"
+              checked={multiple ?? defaultMultiple ?? false}
+              onChange={(e) => patch({ multiple: e.target.checked })}
+            />
+            {" "}Multiple
+          </label>
+        </div>
+      )}
+      <div className={fg(options !== undefined)}>
+        <OptionsEditor
+          value={options ?? []}
+          defaultValue={defaultOptions ?? []}
+          isOverridden={options !== undefined}
+          onChange={(next) => {
+            if (next === undefined) {
+              patch({ options: undefined, multiple: undefined });
+            } else {
+              patch({ options: next });
+            }
+          }}
+        />
+      </div>
+    </>
+  );
+}
+
+interface PlainOverrideFieldsProps {
+  overrides: FieldOverrides;
+  patch: (partial: Partial<FieldOverrides>) => void;
+  fg: (isOverridden: boolean) => string;
+}
+
+// The unconditional override fields: the free-text Label and Hint, and the
+// Disabled / Hidden toggles. No branching beyond the shared override-highlight.
+function PlainOverrideFields({ overrides, patch, fg }: PlainOverrideFieldsProps) {
+  return (
+    <>
       <div className={fg(overrides.label !== undefined && overrides.label !== "")}>
         <label>Label</label>
         <input
@@ -281,69 +418,57 @@ function OverrideForm({
           {" "}Hidden
         </label>
       </div>
+    </>
+  );
+}
+
+function OverrideForm({
+  overrides,
+  htmlType,
+  fieldRefs,
+  stepRefs,
+  currentStepId,
+  onChange,
+  checkDuplicateFieldId,
+  defaultOptions,
+  defaultMultiple,
+  defaultRequired = false,
+  baseValidations,
+  baseUi,
+}: OverrideFormProps) {
+  const fieldIdDuplicate =
+    checkDuplicateFieldId?.(overrides.fieldId ?? "") ?? false;
+
+  function patch(partial: Partial<FieldOverrides>) {
+    onChange({ ...overrides, ...partial });
+  }
+
+  function fg(isOverridden: boolean) {
+    return `${styles.formGroup} ${isOverridden ? styles.overrideField : ""}`;
+  }
+
+  return (
+    <div>
+      <FieldIdOverrideInput
+        value={overrides.fieldId}
+        duplicate={fieldIdDuplicate}
+        onChange={(fieldId) => patch({ fieldId })}
+        fg={fg}
+      />
+      <PlainOverrideFields overrides={overrides} patch={patch} fg={fg} />
       <UiPropertiesEditor
         ui={overrides.ui}
         baseUi={baseUi}
         onChange={(ui) => patch({ ui })}
         fg={fg}
       />
-      <div className={`${fg(overrides.validations?.required !== undefined)} ${styles.checkRow}`}>
-        <label>
-          <input
-            type="checkbox"
-            checked={
-              overrides.validations?.required !== undefined
-                ? isRequiredRule(overrides.validations.required)
-                : defaultRequired
-            }
-            onChange={(e) => {
-              const next = { ...(overrides.validations ?? {}) };
-              if (e.target.checked) {
-                next.required = { value: true };
-              } else if (defaultRequired) {
-                // Base requires the field; write an explicit false to override it.
-                next.required = { value: false };
-              } else {
-                delete next.required;
-              }
-              patch({ validations: Object.keys(next).length > 0 ? next : undefined });
-            }}
-          />
-          {" "}Required
-        </label>
-      </div>
-      {(overrides.validations?.required !== undefined
-        ? isRequiredRule(overrides.validations.required)
-        : defaultRequired) && (
-        <div className={fg(overrides.validations?.required?.error !== undefined)}>
-          <label>
-            Required error message
-            <input
-              type="text"
-              value={overrides.validations?.required?.error ?? ""}
-              placeholder={baseValidations?.required?.error ?? DEFAULT_REQUIRED_MSG}
-              onChange={(e) => {
-                const text = e.target.value;
-                const next = { ...(overrides.validations ?? {}) };
-                if (text) {
-                  // Carry both keys: validations merge shallow at the rule level
-                  // (`shallowMergeDefined`), so a bare `{ error }` would drop `value`.
-                  next.required = { value: true, error: text };
-                } else if (defaultRequired) {
-                  // Base already requires the field — drop the override to restore
-                  // the inherited message rather than persist a redundant rule.
-                  delete next.required;
-                } else {
-                  // Required only because the override says so; keep it required,
-                  // just without a custom message.
-                  next.required = { value: true };
-                }
-                patch({ validations: Object.keys(next).length > 0 ? next : undefined });
-              }}
-            />
-          </label>
-        </div>
-      )}
+      <RequiredRuleEditor
+        validations={overrides.validations}
+        defaultRequired={defaultRequired}
+        baseValidations={baseValidations}
+        onChange={(validations) => patch({ validations })}
+        fg={fg}
+      />
 
       <div className={styles.sectionTitle}>Validation Rules</div>
       <ValidationRulesEditor
@@ -367,37 +492,15 @@ function OverrideForm({
         }
       />
 
-      {OPTIONS_HTML_TYPES.has(htmlType) && (
-        <>
-          <div className={styles.sectionTitle}>Options</div>
-          {htmlType === "select" && (
-            <div className={`${fg(overrides.multiple !== undefined)} ${styles.checkRow}`}>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={overrides.multiple ?? defaultMultiple ?? false}
-                  onChange={(e) => patch({ multiple: e.target.checked })}
-                />
-                {" "}Multiple
-              </label>
-            </div>
-          )}
-          <div className={fg(overrides.options !== undefined)}>
-            <OptionsEditor
-              value={overrides.options ?? []}
-              defaultValue={defaultOptions ?? []}
-              isOverridden={overrides.options !== undefined}
-              onChange={(next) => {
-                if (next === undefined) {
-                  patch({ options: undefined, multiple: undefined });
-                } else {
-                  patch({ options: next });
-                }
-              }}
-            />
-          </div>
-        </>
-      )}
+      <OptionsSection
+        htmlType={htmlType}
+        multiple={overrides.multiple}
+        options={overrides.options}
+        defaultMultiple={defaultMultiple}
+        defaultOptions={defaultOptions}
+        patch={patch}
+        fg={fg}
+      />
     </div>
   );
 }

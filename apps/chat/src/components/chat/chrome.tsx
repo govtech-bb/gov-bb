@@ -1,8 +1,8 @@
 import {
   cn,
+  Header,
   Link as GovLink,
   linkVariants,
-  Logo,
   OfficialBanner,
 } from "@govtech-bb/react";
 import { TridentAvatar } from "#/components/trident-avatar";
@@ -17,13 +17,7 @@ export function SiteHeader() {
         imageAlt=""
         showLearnMore={false}
       />
-      <header className="bg-yellow-100">
-        <div className="container py-s md:py-m">
-          <a href={LANDING_URL} aria-label="Go to the alpha.gov.bb homepage">
-            <Logo aria-hidden="true" width="auto" className="h-7 w-auto md:h-9" />
-          </a>
-        </div>
-      </header>
+      <Header homeHref={LANDING_URL} homeLabel="Go to the alpha.gov.bb homepage" />
     </div>
   );
 }

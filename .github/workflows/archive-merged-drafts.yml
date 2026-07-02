@@ -24,12 +24,15 @@ jobs:
           # pay the cost.
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
-      - run: pnpm install --frozen-lockfile
+      # --ignore-scripts: this workflow only runs `pnpm tsx`, so no dependency
+      # needs a build/lifecycle script. Disable them as defense-in-depth so a
+      # poisoned lifecycle script can't execute on the runner (#307).
+      - run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Archive drafts via admin endpoint
         env:

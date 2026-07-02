@@ -932,7 +932,9 @@ describe("BuilderPage — Open picker freshness after save", () => {
       ([arg]) => arg.data.formId,
     );
     expect(new Set(targetedFormIds).size).toBe(1);
-  });
+    // Heavy: two full save-cycles with many async userEvent waits — exceeds the
+    // 5s default under CI load (#329 flake). Give it room.
+  }, 15000);
 });
 
 describe("BuilderPage — re-key (changing a loaded form's ID)", () => {

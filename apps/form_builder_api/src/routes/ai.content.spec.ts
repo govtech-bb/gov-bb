@@ -12,6 +12,7 @@ vi.mock("../ai/client.js", () => ({
 }));
 
 import { chat, isAvailable } from "../ai/client.js";
+import { HttpError } from "../lib/http-error";
 import { mockReq, mockRes } from "../test-helpers/express-mocks";
 import { contentHandler, extractContentPage } from "./ai";
 
@@ -48,10 +49,13 @@ describe("POST /builder/ai/content", () => {
     expect(chatMock).not.toHaveBeenCalled();
   });
 
-  it("400s when no message is provided", async () => {
-    const res = mockRes();
-    await contentHandler(mockReq({ pageJson: "{}" }), res);
-    expect(res.statusCode).toBe(400);
+  it("throws a 400 HttpError when no message is provided", async () => {
+    const err = await contentHandler(
+      mockReq({ pageJson: "{}" }),
+      mockRes(),
+    ).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(400);
     expect(chatMock).not.toHaveBeenCalled();
   });
 
@@ -89,11 +93,10 @@ describe("POST /builder/ai/content", () => {
     });
   });
 
-  it("500s when chat() throws", async () => {
+  it("propagates a chat() error (the central handler maps it to 500)", async () => {
     chatMock.mockRejectedValue(new Error("bedrock exploded"));
-    const res = mockRes();
-    await contentHandler(mockReq({ message: "hi" }), res);
-    expect(res.statusCode).toBe(500);
-    expect(res.body).toEqual({ error: "bedrock exploded" });
+    await expect(
+      contentHandler(mockReq({ message: "hi" }), mockRes()),
+    ).rejects.toThrow("bedrock exploded");
   });
 });

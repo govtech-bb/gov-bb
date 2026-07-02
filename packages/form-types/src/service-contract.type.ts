@@ -81,10 +81,11 @@ export type RecipeVisibility = z.infer<typeof recipeVisibilitySchema>;
 
 // `meta` is an extensible container for recipe-level metadata. Optional during
 // the #1646 rollout so existing recipes (which carry no `meta`) still validate;
-// an absent `meta` or `visibility` is treated as `public` (see
-// getRecipeVisibility).
+// an absent `meta` or `visibility` is treated as `preview` (see
+// getRecipeVisibility) — recipes are private by default and must opt in to
+// `public` to launch to citizens.
 export const recipeMetaSchema = z.object({
-  visibility: recipeVisibilitySchema.default("public"),
+  visibility: recipeVisibilitySchema.default("preview"),
 });
 export type RecipeMeta = z.infer<typeof recipeMetaSchema>;
 
@@ -103,12 +104,26 @@ export const serviceContractRecipeSchema = z.object({
 });
 export type ServiceContractRecipe = z.infer<typeof serviceContractRecipeSchema>;
 
+// Lenient draft-save gate (#1499). The /builder/forms write surfaces persist a
+// raw recipe blob to form_definitions.schema; this schema lets those handlers
+// reject a structurally-invalid blob without being stricter than the publish
+// backstop. It relaxes only `createdAt`/`updatedAt` to optional — a mid-edit
+// draft may not yet carry stamped timestamps, and the normal save path stamps
+// them via serializeRecipeDraft anyway. Everything else (formId, title, steps,
+// version, meta) stays exactly as strict as the recipe schema.
+export const draftRecipeSchema = serviceContractRecipeSchema.extend({
+  createdAt: dateTimeFormatSchema.optional(),
+  updatedAt: dateTimeFormatSchema.optional(),
+});
+export type DraftRecipe = z.infer<typeof draftRecipeSchema>;
+
 /**
- * Resolve a recipe's effective visibility. An absent `meta` (every recipe
- * predating #1646) or absent `visibility` defaults to `public`.
+ * Resolve a recipe's effective visibility. An absent `meta` or absent
+ * `visibility` defaults to `preview` — recipes are private by default and must
+ * explicitly set `visibility: "public"` to be served to citizens.
  */
 export function getRecipeVisibility(
   recipe: Pick<ServiceContractRecipe, "meta">,
 ): RecipeVisibility {
-  return recipe.meta?.visibility ?? "public";
+  return recipe.meta?.visibility ?? "preview";
 }

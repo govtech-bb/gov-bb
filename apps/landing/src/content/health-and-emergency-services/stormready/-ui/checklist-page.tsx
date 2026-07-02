@@ -85,7 +85,7 @@ export function StormReadyChecklistPage() {
   }, [autoPrint, hydrated])
 
   return (
-    <div className="mb-l flex max-w-176 flex-col gap-m print:mb-0">
+    <div className="mb-l flex max-w-176 flex-col gap-m print:mb-0 print:block">
       {/* Print-only sheet header. */}
       <div className="hidden border-black-00 border-b-2 pb-xs print:block">
         <Heading as="h1" size="h2">
@@ -138,32 +138,39 @@ export function StormReadyChecklistPage() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-m">
+      {/* Block flow in print so each section's break-inside-avoid is honored —
+          Chrome ignores break-inside on flex items, so the wrapper is a plain
+          block, not the flex fieldset. */}
+      <div className="flex flex-col gap-m print:block">
         {STORMREADY_CHECKLIST.map((section) => (
-          <fieldset
-            className="flex flex-col gap-s border-0 p-0"
+          <div
+            className="print:mb-m print:break-inside-avoid"
             key={section.id}
           >
-            <legend className="w-full border-grey-00 border-b pb-xs">
-              <Heading as="h2">{section.title}</Heading>
-            </legend>
-            {section.hint && (
-              <Text as="p" className="text-mid-grey-00">
-                {section.hint}
-              </Text>
-            )}
-            <div className="mt-xs flex flex-col gap-s">
-              {section.items.map((item) => (
-                <Checkbox
-                  checked={state[item.id] ?? false}
-                  id={item.id}
-                  key={item.id}
-                  label={item.label}
-                  onCheckedChange={(checked) => setItem(item.id, checked === true)}
-                />
-              ))}
-            </div>
-          </fieldset>
+            <fieldset className="flex flex-col gap-s border-0 p-0">
+              <legend className="w-full border-grey-00 border-b pb-xs">
+                <Heading as="h2">{section.title}</Heading>
+              </legend>
+              {section.hint && (
+                <Text as="p" className="text-mid-grey-00">
+                  {section.hint}
+                </Text>
+              )}
+              <div className="mt-xs flex flex-col gap-s">
+                {section.items.map((item) => (
+                  <Checkbox
+                    checked={state[item.id] ?? false}
+                    id={item.id}
+                    key={item.id}
+                    label={item.label}
+                    onCheckedChange={(checked) =>
+                      setItem(item.id, checked === true)
+                    }
+                  />
+                ))}
+              </div>
+            </fieldset>
+          </div>
         ))}
       </div>
     </div>
