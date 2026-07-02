@@ -19,7 +19,11 @@ redeploy** — none of these are live-tunable. The only things read at runtime
 | Variable | Required | Purpose | Example |
 |---|---|---|---|
 | `RAG_URL` | **yes** | Retrieval/grounding endpoint (usually this app's own origin + `/api`). | `https://chat.alpha.gov.bb/api` |
-| `CHAT_DATABASE_URL_SECRET_ARN` | **yes** | Secrets Manager ARN of the Postgres (pgvector) connection string. Only the ARN is baked; the value is read at runtime via the compute role. | `arn:aws:secretsmanager:ca-central-1:…:secret:chat-db-xxxx` |
+| `CHAT_DATABASE_CREDENTIALS_SECRET_ARN` | preferred DB path | Secrets Manager ARN of RDS's **master** secret (JSON `{username, password}`). When this **and** `CHAT_DATABASE_HOST`/`PORT`/`NAME` are all set, `db/index.ts` builds the connection string at runtime from them — so the chat self-heals through RDS password rotations without a `tofu apply`. Only the ARN is baked; the value is read at runtime via the compute role. **All four must be set together or the path is skipped.** | `arn:aws:secretsmanager:ca-central-1:…:secret:rds!db-xxxx` |
+| `CHAT_DATABASE_HOST` | with creds ARN | RDS endpoint host (non-secret, baked). | `chat-db.xxxx.ca-central-1.rds.amazonaws.com` |
+| `CHAT_DATABASE_PORT` | with creds ARN | DB port (non-secret, baked). | `5432` |
+| `CHAT_DATABASE_NAME` | with creds ARN | DB name (non-secret, baked). | `chat` |
+| `CHAT_DATABASE_URL_SECRET_ARN` | legacy fallback | Secrets Manager ARN of a derived secret holding a full `postgresql://…` connection string. Used only when the preferred path above is not fully configured. Only the ARN is baked; the value is read at runtime via the compute role. | `arn:aws:secretsmanager:ca-central-1:…:secret:chat-db-xxxx` |
 | `FORM_API_URL` | if forms on | Forms API base (form definitions + submissions). | `https://forms.alpha.gov.bb` |
 | `LANDING_URL` | recommended | Landing-site origin for "go home" links + citation deep-links. **Defaults to prod** (`https://alpha.gov.bb`); set the sandbox origin in non-prod. | `https://landing.sandbox.alpha.gov.bb` |
 | `LLM_MODEL` | recommended | Chat model id. **Set explicitly** — the build default is `claude-sonnet-4-6`. | `claude-sonnet-4-6` |
@@ -40,12 +44,23 @@ Flags use `1`/`true` for on; anything else (incl. unset) is off.
 > no matter what's configured at runtime. To turn forms/feedback/offers on in a
 > deployed env, set them in the **build** env and redeploy.
 
+> **Cache gotcha:** these values are baked at build time, so `chat:build` must
+> rebuild when any of them changes. They're declared as `env` inputs on the
+> build target in `apps/chat/project.json` so nx busts its cache on a value
+> change — without that, nx replays a previously-cached bundle with the old
+> (or empty) baked values even though the Amplify env var was updated. If you
+> add a new baked var to `vite.config.ts`, add it to that `inputs` list too.
+
 ## Database
 
 - **Postgres with the `pgvector` extension.** Stores the chat corpus (documents,
   chunks, embeddings) loaded by the ingest job.
-- The connection string lives in **AWS Secrets Manager**; its ARN is
-  `CHAT_DATABASE_URL_SECRET_ARN`. The SSR Lambda reads the value at runtime.
+- The credentials live in **AWS Secrets Manager**. Two paths, in priority
+  (see `src/lib/db/index.ts`): **preferred** — RDS's master secret via
+  `CHAT_DATABASE_CREDENTIALS_SECRET_ARN` + `CHAT_DATABASE_HOST`/`PORT`/`NAME`
+  (self-heals through rotations); **legacy fallback** — a derived full-URL
+  secret via `CHAT_DATABASE_URL_SECRET_ARN`. Only ARNs are baked; the SSR
+  Lambda reads the secret values at runtime via its compute role.
 - The SSR Lambda needs **network reachability** to the DB (VPC / security group).
 - Local/CI alternative (not for the Lambda): set `DATABASE_URL` (or
   `CHAT_DATABASE_URL`) directly; `DB_SSL=true` forces SSL.

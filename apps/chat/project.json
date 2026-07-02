@@ -7,6 +7,28 @@
     "build": {
       "executor": "nx:run-commands",
       "outputs": ["{projectRoot}/dist", "{projectRoot}/.amplify-hosting"],
+      "inputs": [
+        "production",
+        "^production",
+        { "env": "RAG_URL" },
+        { "env": "CHAT_DATABASE_URL_SECRET_ARN" },
+        { "env": "CHAT_DATABASE_CREDENTIALS_SECRET_ARN" },
+        { "env": "CHAT_DATABASE_HOST" },
+        { "env": "CHAT_DATABASE_PORT" },
+        { "env": "CHAT_DATABASE_NAME" },
+        { "env": "FORM_API_URL" },
+        { "env": "LANDING_URL" },
+        { "env": "BEDROCK_REGION" },
+        { "env": "LLM_MODEL" },
+        { "env": "REWRITE_MODEL" },
+        { "env": "FEATURE_FORMS" },
+        { "env": "FEATURE_FEEDBACK" },
+        { "env": "FEATURE_OFFERS" },
+        { "env": "RAG_ONLY" },
+        { "env": "SUBMIT_LIVE" },
+        { "env": "BEDROCK_PROMPT_CACHE" },
+        { "env": "TURN_TIMEOUT_MS" }
+      ],
       "options": {
         "command": "npm run build",
         "cwd": "apps/chat"
