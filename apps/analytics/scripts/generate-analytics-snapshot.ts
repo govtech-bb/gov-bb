@@ -12,8 +12,8 @@
 // Resilience: if the creds are absent or any fetch fails, the existing
 // committed snapshot is left untouched and the script exits 0 — running it
 // without creds can never blank out the committed data.
-import { existsSync, writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { existsSync, writeFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import {
   UmamiClient,
   aggregateFormEvents,
@@ -27,37 +27,37 @@ import {
   type FormDetailSource,
   type PresetReport,
   type ReportModel,
-} from "@govtech-bb/umami-analytics";
-import { loadContent } from "@govtech-bb/content";
-import type { FormMeta } from "@govtech-bb/umami-analytics";
+} from '@govtech-bb/umami-analytics'
+import { loadContent } from '@govtech-bb/content'
+import type { FormMeta } from '@govtech-bb/umami-analytics'
 
-const TOP_N = 10;
-const TOP_SOURCES = 3;
+const TOP_N = 10
+const TOP_SOURCES = 3
 const OUT = fileURLToPath(
-  new URL("../src/content/analytics-snapshot.json", import.meta.url),
-);
+  new URL('../src/content/analytics-snapshot.json', import.meta.url),
+)
 
 // Local convenience: load the repo-root .env so `pnpm run generate:analytics`
 // works without manually exporting UMAMI_*. Skipped when the vars are already
 // in the environment (Amplify build) or no .env exists (CI).
 function loadLocalEnv() {
-  if (process.env.UMAMI_API_KEY) return;
-  const envFile = fileURLToPath(new URL("../../../.env", import.meta.url));
-  if (existsSync(envFile)) process.loadEnvFile(envFile);
+  if (process.env.UMAMI_API_KEY) return
+  const envFile = fileURLToPath(new URL('../../../.env', import.meta.url))
+  if (existsSync(envFile)) process.loadEnvFile(envFile)
 }
 
 function readEnv() {
-  const apiKey = process.env.UMAMI_API_KEY;
-  const landingWebsiteId = process.env.UMAMI_LANDING_WEBSITE_ID;
-  const formsWebsiteId = process.env.UMAMI_FORMS_WEBSITE_ID;
-  if (!apiKey || !landingWebsiteId || !formsWebsiteId) return null;
+  const apiKey = process.env.UMAMI_API_KEY
+  const landingWebsiteId = process.env.UMAMI_LANDING_WEBSITE_ID
+  const formsWebsiteId = process.env.UMAMI_FORMS_WEBSITE_ID
+  if (!apiKey || !landingWebsiteId || !formsWebsiteId) return null
   return {
     apiKey,
     landingWebsiteId,
     formsWebsiteId,
     apiUrl: process.env.UMAMI_API_URL || undefined,
-    timezone: process.env.UMAMI_TIMEZONE || "America/Barbados",
-  };
+    timezone: process.env.UMAMI_TIMEZONE || 'America/Barbados',
+  }
 }
 
 async function buildPreset(
@@ -65,16 +65,16 @@ async function buildPreset(
   cfg: NonNullable<ReturnType<typeof readEnv>>,
   meta: Map<string, FormMeta>,
   preset: {
-    key: string;
-    label: string;
-    range: { startAt: number; endAt: number };
+    key: string
+    label: string
+    range: { startAt: number; endAt: number }
   },
 ): Promise<PresetReport> {
   // Pages + per-page top referrers.
   const pages = buildPageRows(
     await client.metricsUrls(cfg.landingWebsiteId, preset.range),
     TOP_N,
-  );
+  )
   for (const page of pages) {
     page.topSources = buildSources(
       await client.metricsReferrers(
@@ -83,84 +83,84 @@ async function buildPreset(
         preset.range,
       ),
       TOP_SOURCES,
-    );
+    )
   }
 
   // Forms: rank by starts, then pull drill-down detail only for the top N.
   const agg = aggregateFormEvents(
     await client.metricsEvents(cfg.formsWebsiteId, preset.range),
-  );
+  )
   const topFormIds = [...agg.entries()]
     .sort(
       (a, b) =>
-        (b[1].counts["form-start"] ?? 0) - (a[1].counts["form-start"] ?? 0),
+        (b[1].counts['form-start'] ?? 0) - (a[1].counts['form-start'] ?? 0),
     )
     .slice(0, TOP_N)
-    .map(([formId]) => formId);
+    .map(([formId]) => formId)
 
-  const details = new Map<string, FormDetailSource>();
-  const detailModels: Record<string, FormDetail> = {};
+  const details = new Map<string, FormDetailSource>()
+  const detailModels: Record<string, FormDetail> = {}
   for (const formId of topFormIds) {
-    const ve = `${formId}:form-validation-error`;
+    const ve = `${formId}:form-validation-error`
     const source: FormDetailSource = {
       duration: await client.eventDataValues(
         cfg.formsWebsiteId,
         `${formId}:form-submit`,
-        "duration_seconds",
+        'duration_seconds',
         preset.range,
       ),
       errorCount: await client.eventDataValues(
         cfg.formsWebsiteId,
         ve,
-        "errorCount",
+        'errorCount',
         preset.range,
       ),
       fields: await client.eventDataValues(
         cfg.formsWebsiteId,
         ve,
-        "fields",
+        'fields',
         preset.range,
       ),
       errorTypes: await client.eventDataValues(
         cfg.formsWebsiteId,
         ve,
-        "errorTypes",
+        'errorTypes',
         preset.range,
       ),
-    };
-    details.set(formId, source);
-    detailModels[formId] = buildFormDetail(formId, agg.get(formId)!, source);
+    }
+    details.set(formId, source)
+    detailModels[formId] = buildFormDetail(formId, agg.get(formId)!, source)
   }
 
-  const forms = buildFormRows(agg, meta, details, TOP_N);
+  const forms = buildFormRows(agg, meta, details, TOP_N)
 
   const search = buildSearchReport(
     await client.eventDataValues(
       cfg.landingWebsiteId,
-      "search",
-      "query",
+      'search',
+      'query',
       preset.range,
     ),
     await client.eventDataValues(
       cfg.landingWebsiteId,
-      "search",
-      "results",
+      'search',
+      'results',
       preset.range,
     ),
     await client.eventDataValues(
       cfg.landingWebsiteId,
-      "search-submit",
-      "query",
+      'search-submit',
+      'query',
       preset.range,
     ),
     await client.eventDataValues(
       cfg.landingWebsiteId,
-      "search-submit",
-      "source",
+      'search-submit',
+      'source',
       preset.range,
     ),
     TOP_N,
-  );
+  )
 
   return {
     key: preset.key,
@@ -169,68 +169,69 @@ async function buildPreset(
     forms,
     details: detailModels,
     search,
-  };
+  }
 }
 
 async function main() {
-  loadLocalEnv();
-  const cfg = readEnv();
+  loadLocalEnv()
+  const cfg = readEnv()
   if (!cfg) {
     console.warn(
-      "[analytics-snapshot] UMAMI_* not configured — leaving the committed placeholder snapshot in place.",
-    );
-    return;
+      '[analytics-snapshot] UMAMI_* not configured — leaving the committed placeholder snapshot in place.',
+    )
+    return
   }
 
-  const client = new UmamiClient({ apiKey: cfg.apiKey, baseUrl: cfg.apiUrl });
+  const client = new UmamiClient({ apiKey: cfg.apiKey, baseUrl: cfg.apiUrl })
 
   // Resolve form_id -> { title, category } from the shared content package so
   // the snapshot is self-describing (the page does no enrichment). Reads the
   // landing content dir (LANDING_CONTENT_DIR, else apps/landing/src/content).
-  const { services } = await loadContent({});
-  const meta = new Map<string, FormMeta>();
+  const { services } = await loadContent({})
+  const meta = new Map<string, FormMeta>()
   for (const s of services) {
-    if (!s.form_id || meta.has(s.form_id)) continue;
+    if (!s.form_id || meta.has(s.form_id)) continue
     meta.set(s.form_id, {
       title: s.title,
-      category: s.categories?.[0] ?? "uncategorised",
-    });
+      category: s.categories?.[0] ?? 'uncategorised',
+    })
   }
 
-  const presets = buildPresets(cfg.timezone, new Date());
-  const reports: PresetReport[] = [];
+  const presets = buildPresets(cfg.timezone, new Date())
+  const reports: PresetReport[] = []
   for (const preset of presets) {
     try {
-      reports.push(await buildPreset(client, cfg, meta, preset));
-      console.log(`[analytics-snapshot] built preset "${preset.key}"`);
+      reports.push(await buildPreset(client, cfg, meta, preset))
+      console.log(`[analytics-snapshot] built preset "${preset.key}"`)
     } catch (err) {
       console.warn(
         `[analytics-snapshot] preset "${preset.key}" failed, skipping:`,
         err,
-      );
+      )
     }
   }
 
   if (reports.length === 0) {
     console.warn(
-      "[analytics-snapshot] no presets built — leaving the committed placeholder snapshot in place.",
-    );
-    return;
+      '[analytics-snapshot] no presets built — leaving the committed placeholder snapshot in place.',
+    )
+    return
   }
 
   const model: ReportModel = {
     generatedAt: new Date().toISOString(),
     timezone: cfg.timezone,
     presets: reports,
-  };
-  writeFileSync(OUT, JSON.stringify(model));
-  console.log(`[analytics-snapshot] wrote ${reports.length} presets → ${OUT}`);
+  }
+  writeFileSync(OUT, JSON.stringify(model))
+  console.log(`[analytics-snapshot] wrote ${reports.length} presets → ${OUT}`)
 }
 
 main().catch((err) => {
-  // Never fail the landing build because analytics couldn't be generated.
+  // Manual generator: on any unexpected failure, log and leave the committed
+  // snapshot untouched — never blank it out.
   console.warn(
-    "[analytics-snapshot] generation failed, leaving existing snapshot:",
+    '[analytics-snapshot] generation failed, leaving existing snapshot:',
     err,
-  );
-});
+  )
+})

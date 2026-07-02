@@ -1,18 +1,18 @@
-@import "@fontsource/figtree/400.css";
-@import "@fontsource/figtree/500.css";
-@import "@fontsource/figtree/600.css";
-@import "@fontsource/figtree/700.css";
-@import "@fontsource/figtree/800.css";
-@import "tailwindcss";
+@import '@fontsource/figtree/400.css';
+@import '@fontsource/figtree/500.css';
+@import '@fontsource/figtree/600.css';
+@import '@fontsource/figtree/700.css';
+@import '@fontsource/figtree/800.css';
+@import 'tailwindcss';
 /* Import the design tokens */
-@import "@govtech-bb/design";
+@import '@govtech-bb/design';
 
 /* Scan the design system's compiled output for Tailwind class names */
 @source "../../../node_modules/@govtech-bb/react/dist/**/*.{js,cjs}";
 @plugin "@tailwindcss/typography";
 
 @theme {
-  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
 }
 
 * {

@@ -9,11 +9,12 @@ import type {
   PresetReport,
   ReportModel,
   SearchReport,
-} from "@govtech-bb/umami-analytics";
-import snapshot from "../content/analytics-snapshot.json";
+} from '@govtech-bb/umami-analytics'
+import snapshot from '../content/analytics-snapshot.json'
 
-// The committed snapshot.json is a placeholder (empty presets) the build
-// overwrites; cast through unknown since its literal type is narrower.
-export const REPORT = snapshot as unknown as ReportModel;
+// The committed snapshot.json is real data (5 populated presets), refreshed
+// manually via `pnpm run generate:analytics`. The cast is only needed because
+// resolveJsonModule infers a narrower literal type than ReportModel.
+export const REPORT = snapshot as unknown as ReportModel
 
-export type { FormDetail, FormRow, PageRow, PresetReport, SearchReport };
+export type { FormDetail, FormRow, PageRow, PresetReport, SearchReport }
