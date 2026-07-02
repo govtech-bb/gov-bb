@@ -27,4 +27,19 @@ describe("currency", () => {
   it("falls back to BBD for an undefined code", () => {
     expect(currency(50, undefined)).toBe(currency(50, "BBD"));
   });
+
+  // A malformed non-empty code (wrong length or non-alpha) is rejected by
+  // Intl.NumberFormat with a RangeError. These must also degrade to BBD.
+  it.each(["US", "USDD", "12", "$5"])(
+    "falls back to BBD for a malformed code %j",
+    (code) => {
+      expect(() => currency(50, code)).not.toThrow();
+      expect(currency(50, code)).toBe(currency(50, "BBD"));
+    },
+  );
+
+  it("still formats a valid non-BBD code", () => {
+    expect(currency(50, "USD")).toMatch(/50/);
+    expect(currency(50, "USD")).not.toBe(currency(50, "BBD"));
+  });
 });
