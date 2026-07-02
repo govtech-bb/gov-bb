@@ -49,6 +49,10 @@ export const listForms = createServerFn({ method: "GET" })
       published.map((p) => [p.formId, p.visibility] as const),
     );
 
+    // Every formId that has a draft row — used to flag orphan overrides below
+    // (a disabled form with neither a draft nor a published recipe).
+    const draftIds = new Set(drafts.map((d) => d.formId));
+
     const byFormId = new Map<string, BuilderFormSummary>();
     for (const d of drafts) byFormId.set(d.formId, d);
     for (const p of published) {
@@ -64,22 +68,43 @@ export const listForms = createServerFn({ method: "GET" })
       });
     }
 
-    // Mark disabled forms. A disabled published form is kept so it can be
-    // re-enabled from the UI; a disabled non-published entry is an orphan
-    // tombstone from the old draft-delete behaviour with no UI home, so it's
-    // dropped. OR published-index membership into `isPublished` so a disabled
-    // published form with a newer draft (whose draft entry won the merge with
-    // isPublished=false) stays put with its Disabled badge and Enable button.
+    // The /builder/forms/disabled list is authoritative — it returns every
+    // override formId regardless of whether a draft or published recipe still
+    // exists. Seed a synthetic row for any disabled formId not already present
+    // so a form disabled with no draft and no published recipe still reaches the
+    // picker as an Enable-only orphan override (#1658); without this it would
+    // never enter byFormId at all.
     const disabledIds = new Set(disabled);
-    return Array.from(byFormId.values())
-      .map((f) => ({
-        ...f,
-        isPublished: f.isPublished || publishedIds.has(f.formId),
-        publishedVersion: publishedVersionByFormId.get(f.formId),
-        visibility: visibilityByFormId.get(f.formId),
-        isDisabled: disabledIds.has(f.formId),
-      }))
-      .filter((f) => !f.isDisabled || f.isPublished);
+    for (const formId of disabledIds) {
+      if (byFormId.has(formId)) continue;
+      byFormId.set(formId, {
+        id: formId,
+        formId,
+        title: formId,
+        version: "",
+        isPublished: false,
+      });
+    }
+
+    // Mark disabled forms, keeping every one so any disabled form can be
+    // re-enabled from the UI (#1658). OR published-index membership into
+    // `isPublished` so a disabled published form with a newer draft (whose draft
+    // entry won the merge with isPublished=false) keeps its Published state.
+    // `isOrphanOverride` flags a disabled override with no underlying draft or
+    // published recipe — the picker renders it Enable-only and non-openable.
+    // `visibility` (#1835) rides through from the published index so the picker
+    // can badge a non-public published form (undefined for orphan/draft-only).
+    return Array.from(byFormId.values()).map((f) => ({
+      ...f,
+      isPublished: f.isPublished || publishedIds.has(f.formId),
+      publishedVersion: publishedVersionByFormId.get(f.formId),
+      visibility: visibilityByFormId.get(f.formId),
+      isDisabled: disabledIds.has(f.formId),
+      isOrphanOverride:
+        disabledIds.has(f.formId) &&
+        !draftIds.has(f.formId) &&
+        !publishedIds.has(f.formId),
+    }));
   });
 
 // Resolve the recipe the builder should load for `formId`, using the same

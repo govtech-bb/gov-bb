@@ -127,6 +127,18 @@ a fully offline `build` fails on that package. When verifying locally,
 run `pnpm exec nx run-many -t build --exclude=landing` and let CI build
 everything.
 
+### Pin GitHub Actions with the exact version comment, never a major alias
+
+When SHA-pinning an action, the trailing comment must be the **exact release
+tag** the SHA resolves to (`# v4.36.2`), never a moving major alias (`# v4`).
+zizmor's online `ref-version-mismatch` audit resolves that comment against
+upstream and requires the tag to still point at the pinned SHA — a major tag
+moves on every vendor release, so a `# vN` comment silently drifts and fails
+CI on a later, unrelated PR. Resolve the exact tag with `git ls-remote --tags
+<repo>` (match the pinned SHA). Dependabot already writes exact comments and
+bumps SHA+comment together. The `zizmor.yml` "Enforce exact action version
+comments" step fails fast on any `# vN` comment.
+
 ### Monorepo build gotcha: new packages must be buildable AND referenced
 
 This is an nx + TypeScript project-references monorepo. Packages build with the

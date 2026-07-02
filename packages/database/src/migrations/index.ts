@@ -12,3 +12,4 @@ export { CreateMdaContactAndFormConfig1780520220084 } from "./1780520220084-Crea
 export { CreateFormEditingSessions1780924594196 } from "./1780924594196-CreateFormEditingSessions";
 export { MakeFormVersionNullable1781000000000 } from "./1781000000000-MakeFormVersionNullable";
 export { DedupFormDefinitionsUniqueFormId1781100000000 } from "./1781100000000-DedupFormDefinitionsUniqueFormId";
+export { AddProcessorsFailedToFormSubmissions1781200000000 } from "./1781200000000-AddProcessorsFailedToFormSubmissions";

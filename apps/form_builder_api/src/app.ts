@@ -10,6 +10,7 @@ import { aiRouter } from "./routes/ai";
 import { publishRouter } from "./routes/publish";
 import { presenceRouter } from "./routes/presence";
 import { authMiddleware } from "./middleware/auth";
+import { errorHandler } from "./middleware/error-handler";
 import { getEnv } from "./config/env";
 
 // Fail fast: validate env at boot (after dotenv/config above) so missing or
@@ -66,3 +67,8 @@ app.use("/builder/mda-contacts", mdaContactsRouter);
 app.use("/builder/registry", registryRouter);
 app.use("/builder/ai", aiRouter);
 app.use("/builder/publish", publishRouter);
+
+// Terminal error handler — must be registered last so every router's thrown or
+// rejected error funnels here (#1404). Express 5 auto-forwards rejected async
+// handlers, so no per-handler wrapper is needed.
+app.use(errorHandler);

@@ -62,4 +62,9 @@ export interface BuilderFormSummary {
    * why a published form isn't on the public site. Absent means `public`.
    */
   visibility?: RecipeVisibility;
+  /**
+   * A disabled override with no underlying draft or published recipe; the
+   * picker renders it Enable-only and not openable (there is no recipe to load).
+   */
+  isOrphanOverride?: boolean;
 }

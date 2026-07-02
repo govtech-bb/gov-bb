@@ -92,7 +92,12 @@ export class FilesService {
       throw new BadRequestException(`File exceeds max size (${maxSize} bytes)`);
     }
 
-    const key = this.buildKey(dto.formId, dto.fileName);
+    const key = this.buildKey(
+      dto.formId,
+      dto.stepId,
+      dto.fieldId,
+      dto.fileName,
+    );
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
@@ -112,11 +117,25 @@ export class FilesService {
     draftToken?: string,
   ): Promise<FileAttachmentDto> {
     this.assertConfigured();
-    // TODO(security): the (formId, stepId, fieldId) the client supplies here
-    // is NOT cryptographically bound to the S3 key — a caller could presign
-    // for one field and confirm under another, escaping the stricter policy.
-    // Fix once these endpoints get auth: embed the tuple in the key prefix
-    // (or sign a token at presign and require it here).
+    // Bind confirm to presign (#284): the key embeds the (formId, stepId,
+    // fieldId) it was presigned under. Reject when the client confirms under a
+    // different field than the key was issued for — otherwise a caller could
+    // presign a lenient field and confirm under a stricter one to dodge its
+    // content-type/size policy. A caller can only HeadObject-confirm a key they
+    // actually presigned, so the embedded tuple is authoritative. Legacy
+    // tuple-less keys (in flight across deploy) skip the check and fall back to
+    // the prior client-supplied behaviour.
+    const keyTuple = this.parseKeyTuple(dto.key);
+    if (
+      keyTuple &&
+      (keyTuple.formId !== dto.formId ||
+        keyTuple.stepId !== dto.stepId ||
+        keyTuple.fieldId !== dto.fieldId)
+    ) {
+      throw new BadRequestException(
+        "Upload key does not match the confirmed field",
+      );
+    }
     const field = await this.resolveFileField(
       dto.formId,
       dto.stepId,
@@ -440,13 +459,35 @@ export class FilesService {
       : this.globalMaxSize;
   }
 
-  private buildKey(formId: string, fileName: string): string {
+  // The (formId, stepId, fieldId) tuple is embedded in the key prefix so confirm
+  // can verify the upload was presigned under the same field — closing the
+  // presign↔confirm binding gap (#284). stepId/fieldId are DTO-validated as
+  // path-safe slugs, so they can't inject extra path segments.
+  private buildKey(
+    formId: string,
+    stepId: string,
+    fieldId: string,
+    fileName: string,
+  ): string {
     const now = new Date();
     const yyyy = now.getUTCFullYear();
     const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
-    return `uploads/${formId}/${yyyy}/${mm}/${uuid()}-${this.sanitizeFileName(
+    return `uploads/${formId}/${stepId}/${fieldId}/${yyyy}/${mm}/${uuid()}-${this.sanitizeFileName(
       fileName,
     )}`;
+  }
+
+  // Parse the (formId, stepId, fieldId) tuple embedded by buildKey. Returns the
+  // tuple for a new-format key, or null for a legacy (tuple-less) key still in
+  // flight across deploy. Only the exact buildKey shape matches — a forged key
+  // can't claim a tuple it wasn't presigned with.
+  private parseKeyTuple(
+    key: string,
+  ): { formId: string; stepId: string; fieldId: string } | null {
+    const m = key.match(
+      /^uploads\/([a-z0-9-]+)\/([a-z0-9-]+)\/([A-Za-z0-9_-]+)\/\d{4}\/\d{2}\//i,
+    );
+    return m ? { formId: m[1], stepId: m[2], fieldId: m[3] } : null;
   }
 
   private sanitizeFileName(name: string): string {

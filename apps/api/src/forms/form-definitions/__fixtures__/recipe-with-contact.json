@@ -10,5 +10,8 @@
     "telephoneNumber": "+1 246 555 0100",
     "email": "contact@immigration.gov.bb"
   },
-  "steps": []
+  "steps": [],
+  "meta": {
+    "visibility": "public"
+  }
 }

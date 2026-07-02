@@ -26,6 +26,13 @@ export class SqsConsumerService
   private readonly logger = new Logger(SqsConsumerService.name);
   private readonly client: SQSClient;
   private running = false;
+  /** Handle to the in-flight poll loop, kept so shutdown can await (drain) it. */
+  private loop?: Promise<void>;
+
+  /** Max time to wait for the in-flight iteration to drain on shutdown. Sits
+   *  above the 20 s long-poll window with headroom; bounds the drain so a stuck
+   *  process() can't block shutdown forever. */
+  private static readonly DRAIN_TIMEOUT_MS = 30_000;
 
   constructor(
     @Inject(sqsConfig.KEY)
@@ -45,13 +52,41 @@ export class SqsConsumerService
 
     // Single shared queue — all processor types share one queue.
     // The processorType field inside each message body routes to the correct handler.
-    void this.pollQueue(this.config.queueUrl);
+    // Keep the promise so onApplicationShutdown() can drain the in-flight iteration.
+    this.loop = this.pollQueue(this.config.queueUrl);
 
     this.logger.log("SQS consumer started");
   }
 
-  onApplicationShutdown(): void {
+  async onApplicationShutdown(): Promise<void> {
+    // Stop the loop starting a new iteration, then wait for the current
+    // receive/process/delete cycle to finish (drain), bounded by a timeout so a
+    // stuck process() can't block shutdown forever.
     this.running = false;
+
+    if (this.loop) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<false>((resolve) => {
+        timer = setTimeout(
+          () => resolve(false),
+          SqsConsumerService.DRAIN_TIMEOUT_MS,
+        );
+      });
+
+      const drained = await Promise.race([this.loop.then(() => true), timeout]);
+      // Clear the losing timer so it can't keep the process alive.
+      clearTimeout(timer);
+
+      if (!drained) {
+        this.logger.warn(
+          `SQS consumer drain timed out after ${SqsConsumerService.DRAIN_TIMEOUT_MS} ms — ` +
+            `in-flight messages left for SQS redelivery`,
+        );
+      }
+    }
+
+    // Close the SQS client socket.
+    this.client.destroy();
     this.logger.log("SQS consumer stopped");
   }
 
@@ -74,6 +109,11 @@ export class SqsConsumerService
         );
 
         if (!response?.Messages?.length) continue;
+
+        // Shutdown may have been requested while the long-poll receive was
+        // waiting. Don't start work we can't finish — leave the batch untouched
+        // so its visibility timeout expires and SQS redelivers it.
+        if (!this.running) break;
 
         await Promise.all(
           response.Messages.map((msg) => this.processMessage(queueUrl, msg)),
