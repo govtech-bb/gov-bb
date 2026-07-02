@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
+import { requireEnv } from '@/config/env'
 
 /**
  * Runtime resolution of the available forms list.
@@ -130,9 +131,14 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
   }
 }
 
-/** Base URL of the forms API, trailing slashes trimmed. */
+/** Base URL of the forms API, trailing slashes trimmed. Hardened env handling:
+ * requireEnv fails fast / falls back to DEFAULT_API_URL per #1366. */
 function formsApiBase(): string {
-  return (process.env.VITE_FORMS_API_URL ?? DEFAULT_API_URL).replace(/\/+$/, '')
+  return requireEnv(
+    process.env.VITE_FORMS_API_URL,
+    'VITE_FORMS_API_URL',
+    DEFAULT_API_URL,
+  ).replace(/\/+$/, '')
 }
 
 /** Fetch and validate the canonical list of available form IDs. */

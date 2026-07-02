@@ -16,13 +16,11 @@ const envSchema = z.object({
   // Retrieval service base URL (usually <chat-origin>/api). Required: the
   // grounding stage cannot work without it.
   RAG_URL: z.url(),
-  // Landing frontend origin for citation deep-links back to alpha.gov.bb.
-  // Defaults to prod; non-prod builds set LANDING_URL explicitly (matches
-  // config/landing.ts, which the "go home" affordances use).
-  LANDING_URL: z
-    .url()
-    .default("https://alpha.gov.bb")
-    .transform((s) => s.replace(/\/+$/, "")),
+  // Landing frontend origin for citation deep-links back to the landing site.
+  // REQUIRED in production — an unset value fails fast (#1366) rather than
+  // silently pointing a non-prod build's citations at prod. A dev-only default
+  // is supplied in getServerEnv() below. Trailing slash stripped.
+  LANDING_URL: z.url().transform((s) => s.replace(/\/+$/, "")),
   // Forms API base URL. Only used by the in-chat form tools (features.forms);
   // unset is fine when forms are off. Trailing slash stripped so paths
   // concatenate.
@@ -79,10 +77,22 @@ export type ServerEnv = z.infer<typeof envSchema>;
 const orUndef = (v: string | undefined): string | undefined =>
   v === "" ? undefined : v;
 
+// A dev-only convenience default: kept only outside production. In production an
+// unset value stays undefined so the schema's required check fails fast (#1366)
+// rather than silently pointing at the wrong environment.
+const devOnly = (
+  v: string | undefined,
+  devDefault: string,
+): string | undefined =>
+  v ?? (process.env.NODE_ENV === "production" ? undefined : devDefault);
+
 export const getServerEnv = (): ServerEnv =>
   envSchema.parse({
     RAG_URL: orUndef(process.env.RAG_URL),
-    LANDING_URL: orUndef(process.env.LANDING_URL),
+    LANDING_URL: devOnly(
+      orUndef(process.env.LANDING_URL),
+      "https://alpha.gov.bb",
+    ),
     FORM_API_URL: orUndef(process.env.FORM_API_URL),
     BEDROCK_REGION: orUndef(process.env.BEDROCK_REGION),
     LLM_MODEL: orUndef(process.env.LLM_MODEL),

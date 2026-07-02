@@ -36,7 +36,10 @@ const ALLOWED_ORIGIN = import.meta.env.VITE_START_PAGE_EDITOR_ORIGIN as
 
 function isAllowedOrigin(origin: string): boolean {
   if (import.meta.env.DEV) return true
-  return !ALLOWED_ORIGIN || origin === ALLOWED_ORIGIN
+  // Fail closed (#1366): when VITE_START_PAGE_EDITOR_ORIGIN is unset, accept no
+  // origin at all rather than every origin. Set it to the form_builder origin
+  // in each deployed environment to enable the live preview.
+  return Boolean(ALLOWED_ORIGIN) && origin === ALLOWED_ORIGIN
 }
 
 interface EditorMessage {
