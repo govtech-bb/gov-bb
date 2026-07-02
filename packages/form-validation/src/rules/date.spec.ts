@@ -25,7 +25,21 @@ const cfg = (
 
 const past = "2000-01-01";
 const future = "2099-12-31";
-const todayStr = new Date().toISOString().split("T")[0]!;
+
+// Freeze the clock so "today"-relative assertions are deterministic regardless
+// of when or in which timezone the suite runs. Noon UTC is chosen so the UTC and
+// Barbados (UTC-4) calendar dates coincide — today() (Barbados zone) equals TODAY
+// below. The evening window where the two dates disagree is covered separately.
+const TODAY = "2026-06-15";
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(`${TODAY}T12:00:00Z`));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("parseDate — DateValue object format", () => {
   it("parses a valid DateValue object with string parts", () => {
@@ -90,7 +104,7 @@ describe("pastRunner", () => {
   });
 
   it("fails for today", () => {
-    expect(pastRunner(todayStr, cfg(), {})).toBe("Date must be in the past");
+    expect(pastRunner(TODAY, cfg(), {})).toBe("Date must be in the past");
   });
 
   it("uses custom error", () => {
@@ -112,7 +126,7 @@ describe("pastOrTodayRunner", () => {
   });
 
   it("passes for today", () => {
-    expect(pastOrTodayRunner(todayStr, cfg(), {})).toBeNull();
+    expect(pastOrTodayRunner(TODAY, cfg(), {})).toBeNull();
   });
 
   it("fails for a future date", () => {
@@ -132,9 +146,7 @@ describe("futureRunner", () => {
   });
 
   it("fails for today", () => {
-    expect(futureRunner(todayStr, cfg(), {})).toBe(
-      "Date must be in the future",
-    );
+    expect(futureRunner(TODAY, cfg(), {})).toBe("Date must be in the future");
   });
 });
 
@@ -144,12 +156,39 @@ describe("futureOrTodayRunner", () => {
   });
 
   it("passes for today", () => {
-    expect(futureOrTodayRunner(todayStr, cfg(), {})).toBeNull();
+    expect(futureOrTodayRunner(TODAY, cfg(), {})).toBeNull();
   });
 
   it("fails for a past date", () => {
     expect(futureOrTodayRunner(past, cfg(), {})).toBe(
       "Date must be today or in the future",
+    );
+  });
+});
+
+describe("today() timezone — Barbados vs UTC evening window (#1825)", () => {
+  // 2026-07-01T02:00Z is 2026-06-30 22:00 in America/Barbados (UTC-4): the two
+  // calendar dates disagree. "Today" must follow Barbados (2026-06-30), matching
+  // age-gating / conditional-visibility, not the UTC date (2026-07-01). The
+  // file-level beforeEach already faked timers; override the instant here.
+  beforeEach(() => {
+    vi.setSystemTime(new Date("2026-07-01T02:00:00Z"));
+  });
+
+  it("treats the Barbados calendar date as today, not the UTC date", () => {
+    // Barbados today = 2026-06-30. Under the old UTC logic today() was
+    // 2026-07-01, so this date was wrongly rejected as not-yet-today.
+    expect(futureOrTodayRunner("2026-06-30", cfg(), {})).toBeNull();
+    expect(pastRunner("2026-06-30", cfg(), {})).toBe(
+      "Date must be in the past",
+    );
+  });
+
+  it("treats the UTC-ahead date as the future", () => {
+    // 2026-07-01 is tomorrow in Barbados → future, not today.
+    expect(futureRunner("2026-07-01", cfg(), {})).toBeNull();
+    expect(pastOrTodayRunner("2026-07-01", cfg(), {})).toBe(
+      "Date must be today or in the past",
     );
   });
 });
