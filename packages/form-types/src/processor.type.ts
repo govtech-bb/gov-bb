@@ -76,6 +76,9 @@ const webhookMappingSchema = z.object({
   }),
   // Steps dropped from form_data (process steps that aren't application content).
   excludeSteps: z.array(z.string()).default([]),
+  // When true, form_data keeps fields nested under their step id instead of
+  // hoisting them all to the top level.
+  groupByStep: z.boolean().default(false),
 });
 
 const webhookConfigAuthorSchema = z
