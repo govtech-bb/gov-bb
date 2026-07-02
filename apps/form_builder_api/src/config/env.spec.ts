@@ -65,6 +65,16 @@ describe("parseEnv", () => {
     expect(() => parseEnv(PROD)).not.toThrow();
   });
 
+  it("keeps RECIPE_PREVIEW_TOKEN optional and parses it through (#1835)", () => {
+    // Optional everywhere — unset in prod must NOT fail fast (missing token →
+    // the proxy falls back to the public-only list, never a boot crash).
+    expect(() =>
+      parseEnv({ ...PROD, RECIPE_PREVIEW_TOKEN: undefined }),
+    ).not.toThrow();
+    const env = parseEnv({ ...PROD, RECIPE_PREVIEW_TOKEN: "s3cret" });
+    expect(env.RECIPE_PREVIEW_TOKEN).toBe("s3cret");
+  });
+
   it("fails fast when ADMIN_API_TOKEN is missing in production", () => {
     expect(() => parseEnv({ ...PROD, ADMIN_API_TOKEN: undefined })).toThrow(
       /ADMIN_API_TOKEN/,

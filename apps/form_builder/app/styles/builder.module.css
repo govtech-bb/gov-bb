@@ -848,6 +848,22 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
   margin-left: 4px;
 }
 
+/* Non-public launch-gate visibility (#1835): preview / draft / maintenance.
+   Mirrors the other state badges; text-transform capitalizes the raw value.
+   --el-800 and --el-150 invert together across themes (dark bg + light text in
+   light mode, light bg + dark text in dark mode), so contrast stays legible in
+   both — unlike a hardcoded `white` on the theme-reactive --el-800 (#1739). */
+.visibilityBadge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--el-800);
+  color: var(--el-150);
+  margin-left: 4px;
+  text-transform: capitalize;
+}
+
 /* ── Validation banners ───────────────────────────── */
 /* Inline (in-modal / in-editor) variants of the floating .errorBanner /
    .successBanner: same tokens and shape, no floating margins. */

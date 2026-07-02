@@ -80,17 +80,23 @@ function makeSqsConfig(enabled: boolean) {
   return { enabled };
 }
 
+function makeRepo(): { markProcessorsFailed: Mock } {
+  return { markProcessorsFailed: vi.fn().mockResolvedValue(undefined) };
+}
+
 function makeListener(
   factory: ProcessorFactory,
   producer: Mocked<SqsProducerService>,
   sqsEnabled: boolean,
   exprs: ExpressionsService = expressions,
+  repo: { markProcessorsFailed: Mock } = makeRepo(),
 ): SubmissionProcessorListener {
   return new SubmissionProcessorListener(
     factory,
     producer,
     makeSqsConfig(sqsEnabled) as any,
     exprs,
+    repo as any,
   );
 }
 
@@ -317,6 +323,7 @@ describe("SubmissionProcessorListener — expressions resolution", () => {
       makeProducer(),
       makeSqsConfig(false) as any,
       transformingExpressions,
+      makeRepo() as any,
     );
 
     await l.handleSubmissionCreated({
@@ -352,11 +359,13 @@ describe("SubmissionProcessorListener — expressions resolution", () => {
 
     const email = makeProcessor("email");
     const producer = makeProducer();
+    const repo = makeRepo();
     const l = new SubmissionProcessorListener(
       makeFactory([email]),
       producer,
       makeSqsConfig(false) as any,
       failingExpressions,
+      repo as any,
     );
 
     await expect(
@@ -365,5 +374,75 @@ describe("SubmissionProcessorListener — expressions resolution", () => {
 
     expect(email.process).not.toHaveBeenCalled();
     expect(producer.enqueue).not.toHaveBeenCalled();
+    expect(repo.markProcessorsFailed).not.toHaveBeenCalled();
+  });
+});
+
+/* Tests — dispatch failure signal (#1747) */
+
+describe("SubmissionProcessorListener — dispatch failure signal", () => {
+  it("records the failed index when an enqueue throws (SQS path)", async () => {
+    const email = makeProcessor("email");
+    const spreadsheet = makeProcessor("spreadsheet");
+    const producer = makeProducer();
+    producer.enqueue
+      .mockRejectedValueOnce(new Error("SQS unavailable"))
+      .mockResolvedValueOnce(undefined);
+
+    const repo = makeRepo();
+    const listener = makeListener(
+      makeFactory([email, spreadsheet]),
+      producer,
+      true,
+      expressions,
+      repo,
+    );
+
+    await listener.handleSubmissionCreated(
+      eventWith([entry("email"), entry("spreadsheet")]),
+    );
+
+    expect(repo.markProcessorsFailed).toHaveBeenCalledTimes(1);
+    expect(repo.markProcessorsFailed).toHaveBeenCalledWith("sub-1", [0]);
+  });
+
+  it("records the failed index when a processor throws (direct path)", async () => {
+    const email = makeProcessor(
+      "email",
+      false,
+      vi.fn().mockRejectedValue(new Error("send failed")),
+    );
+    const repo = makeRepo();
+    const listener = makeListener(
+      makeFactory([email]),
+      makeProducer(),
+      false,
+      expressions,
+      repo,
+    );
+
+    await listener.handleSubmissionCreated(eventWith([entry("email")]));
+
+    expect(repo.markProcessorsFailed).toHaveBeenCalledTimes(1);
+    expect(repo.markProcessorsFailed).toHaveBeenCalledWith("sub-1", [0]);
+  });
+
+  it("does not mark when every entry dispatches successfully", async () => {
+    const email = makeProcessor("email");
+    const spreadsheet = makeProcessor("spreadsheet");
+    const repo = makeRepo();
+    const listener = makeListener(
+      makeFactory([email, spreadsheet]),
+      makeProducer(),
+      true,
+      expressions,
+      repo,
+    );
+
+    await listener.handleSubmissionCreated(
+      eventWith([entry("email"), entry("spreadsheet")]),
+    );
+
+    expect(repo.markProcessorsFailed).not.toHaveBeenCalled();
   });
 });

@@ -190,6 +190,14 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
               {form.isPublished && (
                 <span className={styles.publishedBadge}>Published</span>
               )}
+              {/* A non-public published form (#1835): badge its visibility so an
+                  operator sees why it isn't on the public site. Public forms and
+                  the token-less fallback (visibility undefined) show nothing. */}
+              {form.visibility && form.visibility !== "public" && (
+                <span className={styles.visibilityBadge}>
+                  {form.visibility}
+                </span>
+              )}
               {form.isDisabled && (
                 <span className={styles.disabledBadge}>Disabled</span>
               )}

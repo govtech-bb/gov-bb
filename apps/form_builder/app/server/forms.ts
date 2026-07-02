@@ -23,9 +23,9 @@ export const listForms = createServerFn({ method: "GET" })
   .handler(async (): Promise<BuilderFormSummary[]> => {
     const [drafts, published, disabled] = await Promise.all([
       api.get<BuilderFormSummary[]>("/builder/forms"),
-      api.get<Pick<PublicFormSummary, "formId" | "title" | "version">[]>(
-        "/builder/forms/published",
-      ),
+      api.get<
+        Pick<PublicFormSummary, "formId" | "title" | "version" | "visibility">[]
+      >("/builder/forms/published"),
       api.get<string[]>("/builder/forms/disabled"),
     ]);
 
@@ -39,6 +39,14 @@ export const listForms = createServerFn({ method: "GET" })
     // can tell whether the *loaded* version is the published one.
     const publishedVersionByFormId = new Map(
       published.map((p) => [p.formId, p.version] as const),
+    );
+    // Launch-gate visibility from the authoring published index (#1835), keyed
+    // by formId so it survives the draft-wins merge below. Undefined for a
+    // draft-only form (absent from the index) and when the proxy fell back to
+    // the public-only list (no token → no `visibility` field); the picker
+    // badges only non-public values.
+    const visibilityByFormId = new Map(
+      published.map((p) => [p.formId, p.visibility] as const),
     );
 
     // Every formId that has a draft row — used to flag orphan overrides below
@@ -84,10 +92,13 @@ export const listForms = createServerFn({ method: "GET" })
     // entry won the merge with isPublished=false) keeps its Published state.
     // `isOrphanOverride` flags a disabled override with no underlying draft or
     // published recipe — the picker renders it Enable-only and non-openable.
+    // `visibility` (#1835) rides through from the published index so the picker
+    // can badge a non-public published form (undefined for orphan/draft-only).
     return Array.from(byFormId.values()).map((f) => ({
       ...f,
       isPublished: f.isPublished || publishedIds.has(f.formId),
       publishedVersion: publishedVersionByFormId.get(f.formId),
+      visibility: visibilityByFormId.get(f.formId),
       isDisabled: disabledIds.has(f.formId),
       isOrphanOverride:
         disabledIds.has(f.formId) &&
