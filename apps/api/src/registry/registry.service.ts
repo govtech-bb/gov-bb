@@ -17,13 +17,8 @@ import type {
 const CACHE_TTL_SECONDS = 60;
 const CACHE_LOADED_KEY = "__loaded__";
 
-interface IRegistryService {
-  resolve(ref: string): Promise<RegistryEntry | null>;
-  hydrateForm(recipe: ServiceContractRecipe): Promise<ServiceContract>;
-}
-
 @Injectable()
-export class RegistryService implements IRegistryService {
+export class RegistryService {
   private readonly logger = new Logger(RegistryService.name);
 
   private readonly builtins: ReadonlyMap<string, RegistryEntry> = new Map(
