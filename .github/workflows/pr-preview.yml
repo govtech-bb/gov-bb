@@ -47,7 +47,7 @@ jobs:
       chat: ${{ steps.affected.outputs.chat }}
       fb-app: ${{ steps.affected.outputs.fb-app }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
-      term-leave-contract-changed: ${{ steps.affected.outputs.term-leave-contract-changed }}
+      preview-smoke-contract-changed: ${{ steps.affected.outputs.preview-smoke-contract-changed }}
     steps:
       # Defensive mirror of the teardown guard: refuse the whole preview
       # pipeline for a head branch named after a long-lived branch, so a
@@ -117,19 +117,20 @@ jobs:
             echo "amplify-config=false" >> "$GITHUB_OUTPUT"
           fi
 
-          # The per-PR preview smoke drives the term-leave form on the preview
-          # frontend, which fetches contracts from the SANDBOX API — so it can
-          # only validate a recipe already live on sandbox (ADR 0029). When this
-          # PR changes the term-leave recipe (or its smoke spec), the preview
-          # would run the new spec against the OLD sandbox contract and is
-          # guaranteed to fail. Flag that so the preview smoke is skipped; the
-          # post-deploy smoke in deploy-sandbox.yml validates the new recipe once
-          # it ships.
+          # The per-PR preview smoke drives the jobstart-plus-programme form on
+          # the preview frontend, which fetches contracts from the SANDBOX API —
+          # so it can only validate a recipe already live on sandbox (ADR 0029).
+          # (It must be a PUBLIC form: the preview frontend hits the sandbox API,
+          # which 404s non-public forms (#1646).) When this PR changes that recipe
+          # (or its smoke spec), the preview would run the new spec against the
+          # OLD sandbox contract and is guaranteed to fail. Flag that so the
+          # preview smoke is skipped; the post-deploy smoke in deploy-sandbox.yml
+          # validates the new recipe once it ships.
           if git diff --name-only "$NX_BASE" "$NX_HEAD" \
-              | grep -qE '^(apps/api/src/forms/form-definitions/recipes/term-leave-application/|apps/forms/e2e/smoke/term-leave-application\.smoke\.spec\.ts$)'; then
-            echo "term-leave-contract-changed=true" >> "$GITHUB_OUTPUT"
+              | grep -qE '^(apps/api/src/forms/form-definitions/recipes/jobstart-plus-programme\.json$|apps/forms/e2e/smoke/jobstart-plus-programme\.smoke\.spec\.ts$)'; then
+            echo "preview-smoke-contract-changed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "term-leave-contract-changed=false" >> "$GITHUB_OUTPUT"
+            echo "preview-smoke-contract-changed=false" >> "$GITHUB_OUTPUT"
           fi
 
   preview-forms:
@@ -240,32 +241,35 @@ jobs:
           exit 1
 
   # Live end-to-end smoke test of the per-PR forms preview: drives the real
-  # "term-leave-application" form against the branch's own Amplify deployment,
+  # "jobstart-plus-programme" form against the branch's own Amplify deployment,
   # SUBMITS FOR REAL, and asserts the confirmation screen. `needs: preview-forms`
   # and gated on its SUCCEED status, so it runs only once the preview build is
   # live — and is skipped whenever forms wasn't previewed. No AWS creds: it
   # drives a headless browser against the public preview URL. The form has no
-  # uploads, so no presign/S3 flow is exercised. See ADR 0030 — this is the
-  # per-PR-preview counterpart to the post-deploy smoke in deploy-sandbox.yml.
-  # Steps live in .github/workflows/forms-smoke.yml; the preview URL built by
-  # preview-forms is passed as base_url.
+  # uploads, so no presign/S3 flow is exercised. It must be a PUBLIC form —
+  # the preview frontend reads the sandbox API, which 404s non-public forms
+  # (#1646). See ADR 0030 — this is the per-PR-preview counterpart to the
+  # post-deploy smoke in deploy-sandbox.yml. Steps live in
+  # .github/workflows/forms-smoke.yml; the preview URL built by preview-forms is
+  # passed as base_url.
   smoke-test-forms-preview:
-    name: Smoke test forms preview (term-leave)
+    name: Smoke test forms preview (jobstart-plus)
     needs: [setup, preview-forms]
     # Runs only when the preview built AND this PR does NOT change the
-    # term-leave recipe/spec. A contract change can't be preview-smoked — the
-    # preview frontend serves the sandbox API's OLD recipe, so the updated spec
-    # would always fail until the new version ships (ADR 0029). Those PRs are
-    # covered post-deploy by smoke-test-term-leave in deploy-sandbox.yml.
+    # jobstart-plus-programme recipe/spec. A contract change can't be
+    # preview-smoked — the preview frontend serves the sandbox API's OLD recipe,
+    # so the updated spec would always fail until the new version ships (ADR
+    # 0029). Those PRs are covered post-deploy by smoke-test-forms in
+    # deploy-sandbox.yml.
     if: >
       needs.preview-forms.result == 'success'
       && needs.preview-forms.outputs.status == 'SUCCEED'
-      && needs.setup.outputs.term-leave-contract-changed == 'false'
+      && needs.setup.outputs.preview-smoke-contract-changed == 'false'
     uses: ./.github/workflows/forms-smoke.yml
     with:
       base_url: ${{ needs.preview-forms.outputs.url }}
-      spec: term-leave-application.smoke.spec.ts
-      artifact_name: term-leave-preview-smoke-trace
+      spec: jobstart-plus-programme.smoke.spec.ts
+      artifact_name: jobstart-plus-preview-smoke-trace
     secrets:
       smoke_submission_token: ${{ secrets.SMOKE_SUBMISSION_TOKEN }}
 
