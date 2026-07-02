@@ -28,6 +28,7 @@ import { CreateMdaContactAndFormConfig1780520220084 } from "./migrations/1780520
 import { CreateFormEditingSessions1780924594196 } from "./migrations/1780924594196-CreateFormEditingSessions";
 import { MakeFormVersionNullable1781000000000 } from "./migrations/1781000000000-MakeFormVersionNullable";
 import { DedupFormDefinitionsUniqueFormId1781100000000 } from "./migrations/1781100000000-DedupFormDefinitionsUniqueFormId";
+import { AddProcessorsFailedToFormSubmissions1781200000000 } from "./migrations/1781200000000-AddProcessorsFailedToFormSubmissions";
 
 export const entities = [
   FormComponentEntity,
@@ -58,6 +59,7 @@ export const migrations = [
   CreateFormEditingSessions1780924594196,
   MakeFormVersionNullable1781000000000,
   DedupFormDefinitionsUniqueFormId1781100000000,
+  AddProcessorsFailedToFormSubmissions1781200000000,
 ];
 
 /**
