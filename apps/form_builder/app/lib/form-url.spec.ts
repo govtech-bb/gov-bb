@@ -56,7 +56,7 @@ describe("formPreviewUrl", () => {
     vi.stubEnv("VITE_RECIPE_PREVIEW_TOKEN", "");
     // No guessable "demo" fallback — the token is empty, so no preview matches.
     expect(formPreviewUrl("passport")).toBe(
-      "https://forms.example.test/forms/passport?preview=",
+      "https://forms.example.test/forms/passport?draft=",
     );
   });
 });
