@@ -167,3 +167,7 @@ ENV NODE_EXTRA_CA_CERTS=/app/rds-ca-bundle.pem
 EXPOSE 3001
 
 CMD ["node", "dist/src/main.js"]
+
+# Staging bootstrap touch 2026-05-30: force api affected so the image gets pushed to ssb-api ECR
+# (forms-db-staging has never had migrations run; this commit + the migrations/README.md trip
+# both gates so the first deploy populates the DB).
