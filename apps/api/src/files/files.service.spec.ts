@@ -101,8 +101,9 @@ describe("FilesService", () => {
     it("returns a presigned URL + scoped key", async () => {
       const r = await service.presignUpload(dto);
       expect(r.uploadUrl).toMatch(/^https?:\/\//);
+      // Key embeds the (formId/stepId/fieldId) tuple so confirm can bind to it (#284).
       expect(r.key).toMatch(
-        /^uploads\/passport-renewal\/\d{4}\/\d{2}\/[0-9a-f-]+-my_cert\.pdf$/,
+        /^uploads\/passport-renewal\/documents\/policeCertificate\/\d{4}\/\d{2}\/[0-9a-f-]+-my_cert\.pdf$/,
       );
       expect(r.expiresIn).toBe(900);
       expect(r.maxSize).toBe(2 * 1024 * 1024);
@@ -242,6 +243,49 @@ describe("FilesService", () => {
           key: "uploads/passport-renewal/2026/05/abcdef01-2345-6789-abcd-ef0123456789-evil.exe",
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    describe("presign↔confirm binding (#284)", () => {
+      const boundKey =
+        "uploads/passport-renewal/documents/policeCertificate/2026/05/abcdef01-2345-6789-abcd-ef0123456789-x.pdf";
+
+      it("confirms a new-format key whose embedded tuple matches the field", async () => {
+        s3Mock.on(HeadObjectCommand).resolves({
+          ContentLength: 1234,
+          ContentType: "application/pdf",
+        });
+        const r = await service.confirmUpload({ ...confirmDto, key: boundKey });
+        expect(r.size).toBe(1234);
+        expect(r.name).toBe("x.pdf");
+      });
+
+      it("rejects when the confirmed field differs from the key's embedded tuple", async () => {
+        s3Mock.on(HeadObjectCommand).resolves({
+          ContentLength: 1234,
+          ContentType: "application/pdf",
+        });
+        // Key was presigned under documents/policeCertificate; confirming under
+        // a different step must be rejected before any policy check — this is
+        // the escape the binding closes.
+        await expect(
+          service.confirmUpload({
+            ...confirmDto,
+            key: boundKey,
+            stepId: "other-step",
+          }),
+        ).rejects.toThrow("Upload key does not match the confirmed field");
+      });
+
+      it("falls back to the client tuple for a legacy (tuple-less) key", async () => {
+        s3Mock.on(HeadObjectCommand).resolves({
+          ContentLength: 1234,
+          ContentType: "application/pdf",
+        });
+        // The default confirmDto.key is the old format — still accepted during
+        // rollout, no binding check.
+        const r = await service.confirmUpload(confirmDto);
+        expect(r.size).toBe(1234);
+      });
     });
 
     describe("recipe tokens", () => {
