@@ -302,9 +302,9 @@ describe("serviceContractRecipeSchema", () => {
 });
 
 describe("recipeMetaSchema (#1646)", () => {
-  it("defaults visibility to public when meta is present but empty", () => {
+  it("defaults visibility to preview when meta is present but empty", () => {
     const parsed = recipeMetaSchema.parse({});
-    expect(parsed.visibility).toBe("public");
+    expect(parsed.visibility).toBe("preview");
   });
 
   it("accepts each visibility level", () => {
@@ -406,12 +406,12 @@ describe("draftRecipeSchema (#1499)", () => {
 });
 
 describe("getRecipeVisibility (#1646)", () => {
-  it("returns public when the recipe carries no meta", () => {
-    expect(getRecipeVisibility({})).toBe("public");
+  it("returns preview when the recipe carries no meta", () => {
+    expect(getRecipeVisibility({})).toBe("preview");
   });
 
-  it("returns public when meta is present but has no visibility", () => {
-    expect(getRecipeVisibility({ meta: {} as never })).toBe("public");
+  it("returns preview when meta is present but has no visibility", () => {
+    expect(getRecipeVisibility({ meta: {} as never })).toBe("preview");
   });
 
   it("returns the explicit visibility when set", () => {

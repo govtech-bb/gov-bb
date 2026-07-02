@@ -1,3 +1,5 @@
+import { DateTime } from "luxon";
+import { DEFAULT_ZONE } from "@govtech-bb/expressions";
 import type { RuleRunner } from "../types";
 import { resolveReference, MISSING } from "./resolve-reference";
 
@@ -57,11 +59,16 @@ export const parseDate = (v: unknown): Date | null => {
   return isNaN(d.getTime()) ? null : d;
 };
 
+// "Today" as the Barbados calendar date (DEFAULT_ZONE), anchored at UTC midnight
+// so it matches how parseDate stores submitted dates. This keeps the day
+// comparisons below correct and in step with age-gating / conditional-visibility
+// / the today() expression, which all compute "today" in America/Barbados (#1825).
+// Anchoring at UTC midnight — not Barbados midnight — is deliberate: submitted
+// dates are UTC-midnight anchored, so DateTime.startOf("day").toJSDate() (= 04:00
+// UTC) would skew every < / > comparison by 4 hours.
 const today = (): Date => {
-  const now = new Date();
-  return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+  const now = DateTime.now().setZone(DEFAULT_ZONE);
+  return new Date(Date.UTC(now.year, now.month - 1, now.day));
 };
 
 export const pastRunner: RuleRunner = (value, config) => {

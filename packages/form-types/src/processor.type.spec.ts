@@ -152,6 +152,63 @@ describe("processorSchema (author-time)", () => {
     ).toBe(false);
   });
 
+  it("rejects an https opencrvs endpoint pointing at an internal IP (SSRF)", () => {
+    expect(
+      processorSchema.safeParse({
+        type: "opencrvs",
+        config: { endpoint: "https://169.254.169.254/latest/meta-data/" },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a non-https webhook url", () => {
+    expect(
+      processorSchema.safeParse({
+        type: "webhook",
+        config: { url: "http://hooks.example.gov.bb/submissions" },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a webhook url pointing at an internal/private host (SSRF)", () => {
+    for (const url of [
+      "https://169.254.169.254/latest/meta-data/", // link-local / metadata
+      "https://127.0.0.1/hook", // loopback
+      "https://10.0.0.5/hook", // 10/8
+      "https://192.168.1.1/hook", // 192.168/16
+      "https://0.0.0.0/hook", // 0/8 (unspecified)
+      "https://172.16.0.1/hook", // 172.16/12 lower bound
+      "https://172.31.255.1/hook", // 172.16/12 upper bound
+      "https://100.64.0.1/hook", // CGNAT 100.64/10
+      "https://[::1]/hook", // IPv6 loopback
+      "https://[::]/hook", // IPv6 unspecified
+      "https://[fc00::1]/hook", // IPv6 ULA
+      "https://[fe80::1]/hook", // IPv6 link-local
+      "https://localhost/hook",
+      "https://user:pass@169.254.169.254/hook", // userinfo must not mask the host
+    ]) {
+      expect(
+        processorSchema.safeParse({ type: "webhook", config: { url } }).success,
+      ).toBe(false);
+    }
+  });
+
+  it("still accepts a webhook url on a normal public host", () => {
+    for (const url of [
+      "https://hooks.example.gov.bb/submissions",
+      "https://10things.example.com/hook", // domain that starts like an IP
+      "https://172.15.0.1/hook", // just below 172.16/12
+      "https://172.32.0.1/hook", // just above 172.16/12
+      "https://100.63.0.1/hook", // just below CGNAT
+      "https://[2606:2800:220:1:248:1893:25c8:1946]/hook", // public IPv6
+      "https://hooks.example.gov.bb:8443/submissions", // explicit port
+    ]) {
+      expect(
+        processorSchema.safeParse({ type: "webhook", config: { url } }).success,
+      ).toBe(true);
+    }
+  });
+
   it("accepts webhook with literal url and applies defaults", () => {
     const parsed = processorSchema.safeParse({
       type: "webhook",

@@ -7,6 +7,7 @@ import type {
 } from "./submission-processor.interface";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import { sign } from "./webhook-signature";
+import { assertSafeUrl } from "./url-safety";
 import { sanitizeForLog } from "./log-sanitize";
 import { buildMappedCasePayload } from "./webhook-mapping";
 import { idempotencyKey, timedPost } from "./http-post";
@@ -50,8 +51,18 @@ export class WebhookProcessor implements ISubmissionProcessor {
       unknown
     >;
 
-    const url = this.resolveUrl(cfg, payload.submissionId);
-    if (!url) return { kind: "completed" };
+    const resolved = this.resolveUrl(cfg, payload.submissionId);
+    if (!resolved) return { kind: "completed" };
+    const { url, fromRecipe } = resolved;
+
+    // SSRF guard (#287): only a recipe-supplied literal url is attacker-
+    // controllable, so before dispatch we require https and refuse a host that
+    // resolves to an internal address (private/loopback/link-local — notably the
+    // cloud-metadata endpoint 169.254.169.254). Throws on violation: the entry
+    // fails loudly rather than letting a malicious recipe drive an internal
+    // request. An env-sourced endpoint is operator deploy config (may
+    // legitimately be internal), so it is exempt.
+    if (fromRecipe) await assertSafeUrl(url);
 
     const method = (cfg["method"] as string | undefined) ?? "POST";
     const timeoutMs =
@@ -115,12 +126,14 @@ export class WebhookProcessor implements ISubmissionProcessor {
     return { kind: "completed" };
   }
 
-  /** Literal `url`, or `endpoint.env` (base) + optional `path`. Returns null
+  /** Literal `url` (recipe-supplied), or `endpoint.env` (base) + optional
+   * `path` (operator deploy config). `fromRecipe` tells the caller whether the
+   * url is attacker-controllable and so must pass the SSRF guard. Returns null
    * (and skips) when an env-sourced endpoint isn't configured. */
   private resolveUrl(
     cfg: Record<string, unknown>,
     submissionId: string,
-  ): string | null {
+  ): { url: string; fromRecipe: boolean } | null {
     const endpoint = cfg["endpoint"] as WebhookEndpoint | undefined;
     if (endpoint) {
       const base = process.env[endpoint.env];
@@ -131,9 +144,10 @@ export class WebhookProcessor implements ISubmissionProcessor {
         return null;
       }
       const path = (endpoint.path ?? "").replace(/^\/+/, "");
-      return path
+      const url = path
         ? new URL(path, base.endsWith("/") ? base : `${base}/`).toString()
         : base;
+      return { url, fromRecipe: false };
     }
     const url = cfg["url"] as string | undefined;
     if (!url) {
@@ -142,7 +156,7 @@ export class WebhookProcessor implements ISubmissionProcessor {
       );
       return null;
     }
-    return url;
+    return { url, fromRecipe: true };
   }
 
   /** Applies the configured auth to `headers`. Returns false when an env-sourced

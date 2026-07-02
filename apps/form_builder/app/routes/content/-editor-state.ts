@@ -12,6 +12,7 @@ import {
   subcategoriesFor,
   type ViewLevel,
   type StartLinkType,
+  type FormState,
 } from "./-lib";
 import type { ContentPageSummary } from "./-server";
 import type { BuilderFormSummary } from "../../types/index";
@@ -30,19 +31,6 @@ export interface EditSearch {
   formId?: string;
   /** …of this kind (which sets the target file + a starter body). */
   kind?: "entry" | "start";
-}
-
-interface FormState {
-  formId: string;
-  slug: string;
-  title: string;
-  description: string;
-  category: string;
-  subcategory: string;
-  body: string;
-  linkType: StartLinkType;
-  linkHref: string;
-  visibility: ViewLevel;
 }
 
 const EMPTY: FormState = {
