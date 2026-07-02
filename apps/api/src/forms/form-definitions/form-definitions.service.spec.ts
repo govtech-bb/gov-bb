@@ -887,6 +887,48 @@ describe("FormDefinitionsService", () => {
     });
   });
 
+  describe("findAll includeNonPublic authoring mode (#1835)", () => {
+    it("forwards includeNonPublic to the file loader in files mode", async () => {
+      const { fileLoader, service } = makeMocks({ source: "files" });
+      (fileLoader.findAll as Mock).mockReturnValue([]);
+
+      await service.findAll(true);
+
+      expect(fileLoader.findAll).toHaveBeenCalledWith(true);
+    });
+
+    it("includes non-public DB forms and stamps each entry's visibility (db mode)", async () => {
+      const { service } = makeFindAllMocks([
+        makeEntityWithTitle("public-form", "Public Form"),
+        makeEntityWithTitle("preview-form", "Preview Form", {
+          schema: {
+            title: "Preview Form",
+            meta: { visibility: "preview" },
+          } as unknown as FormDefinitionEntity["schema"],
+        }),
+      ]);
+
+      const list = await service.findAll(true);
+      const byId = new Map(list.map((e) => [e.formId, e.visibility]));
+
+      expect(byId.get("public-form")).toBe("public");
+      expect(byId.get("preview-form")).toBe("preview");
+    });
+
+    it("threads includeNonPublic to the file loader on the both path (dev)", async () => {
+      const { fileLoader, repo, service } = makeMocks({
+        source: "both",
+        nodeEnv: "development",
+      });
+      (fileLoader.findAll as Mock).mockReturnValue([]);
+      (repo.find as Mock).mockResolvedValue([]);
+
+      await service.findAll(true);
+
+      expect(fileLoader.findAll).toHaveBeenCalledWith(true);
+    });
+  });
+
   describe("draft flag", () => {
     describe("draft resolves via DB/both even in prod files mode", () => {
       it("getRecipe with draft:true consults DB (both path) even when source=files/prod", async () => {

@@ -213,7 +213,12 @@ formsRouter.get("/disabled", listDisabledHandler);
 // A published form as exposed by apps/api's recipe index — the public-index
 // subset of PublicFormSummary, single-sourced in @govtech-bb/form-types (#1403 /
 // ARCH-01) so this consumer can't drift from apps/api's producer shape.
-type PublishedForm = Pick<PublicFormSummary, "formId" | "title" | "version">;
+// `visibility` is present only on the authoring list (a valid preview token was
+// forwarded, #1835); absent on the public-only fallback.
+type PublishedForm = Pick<
+  PublicFormSummary,
+  "formId" | "title" | "version" | "visibility"
+>;
 
 // Result of consulting the upstream published set. Callers decide how to react:
 // the proxy surfaces `config` as 500 and `upstream` as 502; the write path
@@ -268,11 +273,20 @@ async function fetchPublishedForms(): Promise<FetchPublishedResult> {
     () => controller.abort(),
     PUBLISHED_FETCH_TIMEOUT_MS,
   );
+  // Forward the recipe-preview token so apps/api returns the authoring list
+  // (non-public forms + visibility, #1835). Optional / fail-open: unset → omit
+  // the header and take today's public-only list (never a boot crash, #1627).
+  // Read directly from process.env like the other env reads in this file (env.ts
+  // validates at boot; this token is optional so there is nothing to enforce).
+  const previewToken = process.env.RECIPE_PREVIEW_TOKEN;
   try {
     const upstream = await fetch(
       `${baseUrl.replace(/\/$/, "")}/form-definitions`,
       {
         signal: controller.signal,
+        ...(previewToken && {
+          headers: { "x-recipe-preview": previewToken },
+        }),
       },
     );
     if (!upstream.ok) {

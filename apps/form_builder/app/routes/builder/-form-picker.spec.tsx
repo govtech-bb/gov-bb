@@ -142,6 +142,37 @@ describe("FormPicker", () => {
     expect(onEnable).toHaveBeenCalledWith(DISABLED_PUBLISHED);
   });
 
+  it("renders a visibility badge for a non-public form (#1835)", () => {
+    // Title deliberately free of the word "maintenance" so the assertion below
+    // matches the badge, never the title text.
+    const MAINTENANCE: BuilderFormSummary = {
+      id: "m",
+      formId: "m",
+      title: "Passport Service",
+      version: "1.0.0",
+      isPublished: true,
+      visibility: "maintenance",
+    };
+    renderPicker({ forms: [MAINTENANCE] });
+    expect(screen.getByText(/maintenance/i)).toBeInTheDocument();
+  });
+
+  it("shows no visibility badge for a public form (#1835)", () => {
+    const PUBLIC: BuilderFormSummary = {
+      id: "p",
+      formId: "p",
+      title: "Public Service",
+      version: "1.0.0",
+      isPublished: true,
+      visibility: "public",
+    };
+    renderPicker({ forms: [PUBLIC] });
+    // The visibility badge appears only for non-public forms.
+    expect(
+      screen.queryByText(/^(preview|draft|maintenance)$/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("duplicating a public form starts the copy hidden (visibility: draft, #1682)", async () => {
     (getRecipe as Mock).mockResolvedValue({
       formId: "passport",

@@ -46,13 +46,19 @@ export class FormDefinitionsService {
     return "files";
   }
 
-  async findAll(): Promise<PublicFormSummary[]> {
+  /**
+   * List the published forms. `includeNonPublic` is the token-gated authoring
+   * path (#1835): when set, non-public forms are kept and each entry carries
+   * its `visibility`. Default (the public index) omits non-public forms and
+   * stamps no visibility, so the public list contract is unchanged.
+   */
+  async findAll(includeNonPublic = false): Promise<PublicFormSummary[]> {
     const source = this.source();
     if (source === "files") {
-      return this.recipeFileLoader.findAll();
+      return this.recipeFileLoader.findAll(includeNonPublic);
     }
 
-    const dbEntries = await this.findAllFromDb();
+    const dbEntries = await this.findAllFromDb(includeNonPublic);
 
     if (source === "db") {
       return dbEntries;
@@ -62,7 +68,7 @@ export class FormDefinitionsService {
     // DB wins on collision so a draft can override a published file recipe.
     const dbFormIds = new Set(dbEntries.map((e) => e.formId));
     const fileEntries = this.recipeFileLoader
-      .findAll()
+      .findAll(includeNonPublic)
       .filter((e) => !dbFormIds.has(e.formId));
     return [...dbEntries, ...fileEntries];
   }
@@ -105,7 +111,9 @@ export class FormDefinitionsService {
     return result;
   }
 
-  private async findAllFromDb(): Promise<PublicFormSummary[]> {
+  private async findAllFromDb(
+    includeNonPublic = false,
+  ): Promise<PublicFormSummary[]> {
     const entities = await this.formDefRepo.find({
       order: { createdAt: "DESC" },
     });
@@ -114,10 +122,12 @@ export class FormDefinitionsService {
     for (const entity of entities) {
       if (!seen.has(entity.formId)) {
         seen.add(entity.formId);
-        // Hide non-public forms from the list (#1646) — the list carries no
-        // preview token, so preview/draft forms are unlisted for everyone,
-        // matching the 404 their single-form GET returns to the public.
-        if (getRecipeVisibility(entity.schema) !== "public") continue;
+        const visibility = getRecipeVisibility(entity.schema);
+        // Hide non-public forms from the list (#1646) — the public list carries
+        // no preview token, so preview/draft forms are unlisted for everyone,
+        // matching the 404 their single-form GET returns to the public. The
+        // token-gated authoring path (#1835) keeps them and stamps visibility.
+        if (visibility !== "public" && !includeNonPublic) continue;
         result.push({
           formId: entity.formId,
           // #1196: version is retired on the DB scratch row (nullable); the
@@ -129,6 +139,9 @@ export class FormDefinitionsService {
           ...(entity.schema.contactDetails?.title && {
             category: entity.schema.contactDetails.title,
           }),
+          // Stamp visibility only on the authoring path so the default public
+          // response is byte-for-byte unchanged (#1835).
+          ...(includeNonPublic && { visibility }),
         });
       }
     }

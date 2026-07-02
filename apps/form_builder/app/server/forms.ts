@@ -23,9 +23,9 @@ export const listForms = createServerFn({ method: "GET" })
   .handler(async (): Promise<BuilderFormSummary[]> => {
     const [drafts, published, disabled] = await Promise.all([
       api.get<BuilderFormSummary[]>("/builder/forms"),
-      api.get<Pick<PublicFormSummary, "formId" | "title" | "version">[]>(
-        "/builder/forms/published",
-      ),
+      api.get<
+        Pick<PublicFormSummary, "formId" | "title" | "version" | "visibility">[]
+      >("/builder/forms/published"),
       api.get<string[]>("/builder/forms/disabled"),
     ]);
 
@@ -39,6 +39,14 @@ export const listForms = createServerFn({ method: "GET" })
     // can tell whether the *loaded* version is the published one.
     const publishedVersionByFormId = new Map(
       published.map((p) => [p.formId, p.version] as const),
+    );
+    // Launch-gate visibility from the authoring published index (#1835), keyed
+    // by formId so it survives the draft-wins merge below. Undefined for a
+    // draft-only form (absent from the index) and when the proxy fell back to
+    // the public-only list (no token → no `visibility` field); the picker
+    // badges only non-public values.
+    const visibilityByFormId = new Map(
+      published.map((p) => [p.formId, p.visibility] as const),
     );
 
     const byFormId = new Map<string, BuilderFormSummary>();
@@ -68,6 +76,7 @@ export const listForms = createServerFn({ method: "GET" })
         ...f,
         isPublished: f.isPublished || publishedIds.has(f.formId),
         publishedVersion: publishedVersionByFormId.get(f.formId),
+        visibility: visibilityByFormId.get(f.formId),
         isDisabled: disabledIds.has(f.formId),
       }))
       .filter((f) => !f.isDisabled || f.isPublished);
