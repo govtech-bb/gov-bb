@@ -122,4 +122,20 @@ describe("FormSubmissionRepository", () => {
       await expect(repo.tx(async () => "ok")).rejects.toBe(deadlockError);
     });
   });
+
+  describe("markProcessorsFailed", () => {
+    it("updates the submission with the failed processor indices", async () => {
+      const dataSource = makeDataSource();
+      const repo = new FormSubmissionRepository(dataSource);
+
+      const update = vi.fn().mockResolvedValue(undefined);
+      (repo as unknown as { update: Mock }).update = update;
+
+      await repo.markProcessorsFailed("sub-1", [0, 2]);
+
+      expect(update).toHaveBeenCalledWith("sub-1", {
+        processorsFailed: [0, 2],
+      });
+    });
+  });
 });
