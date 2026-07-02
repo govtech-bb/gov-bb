@@ -36,6 +36,7 @@ function makeEntity(
   return {
     id: "uuid-sub-1",
     idempotencyKey: "key-abc",
+    referenceCode: "TF-2606-ABCDEFG",
     formId: "test-form",
     formVersion: "1.0.0",
     status: FormSubmissionStatus.SUBMITTED,
@@ -186,6 +187,50 @@ describe("SubmissionsService", () => {
           referenceCode: expect.any(String),
         }),
       );
+    });
+
+    it("regenerates and retries the reference on a unique-collision (23505)", async () => {
+      const created = makeEntity();
+      const txRepo = {
+        findOne: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockImplementation((data) => ({ ...data })),
+        save: vi.fn().mockResolvedValue(created),
+      };
+      let attempts = 0;
+      const submissionRepo = {
+        findOne: vi.fn().mockResolvedValue(null),
+        tx: vi.fn().mockImplementation((cb) => {
+          attempts += 1;
+          if (attempts === 1) {
+            return Promise.reject({
+              code: "23505",
+              constraint: "UQ_form_submissions_reference_code",
+            });
+          }
+          return cb(txRepo);
+        }),
+      } as unknown as FormSubmissionRepository;
+
+      const service = new SubmissionsService(
+        submissionRepo,
+        {
+          run: vi.fn().mockResolvedValue({
+            draft: { formVersion: "1.0.0", lastActivePage: 0 },
+            contract: { processors: [] },
+            auditTrail: AUDIT_TRAIL,
+          }),
+        } as unknown as SubmissionPipelineService,
+        { emit: vi.fn() } as unknown as EventEmitter2,
+        {
+          resolveSplit: vi.fn().mockReturnValue({ gating: [], nonGating: [] }),
+        } as unknown as ProcessorFactory,
+        expressions,
+      );
+
+      const result = await service.submit(BASE_DTO);
+
+      expect(attempts).toBe(2); // first tx threw 23505, second succeeded
+      expect(result.outcome).toBe("created");
     });
 
     it("emits the submission event with raw processors (resolution happens in the listener)", async () => {

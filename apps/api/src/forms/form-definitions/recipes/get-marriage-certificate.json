@@ -738,5 +738,8 @@
     }
   ],
   "createdAt": "2026-06-08T21:16:00.486Z",
-  "updatedAt": "2026-06-12T00:00:00.000Z"
+  "updatedAt": "2026-06-12T00:00:00.000Z",
+  "meta": {
+    "visibility": "public"
+  }
 }

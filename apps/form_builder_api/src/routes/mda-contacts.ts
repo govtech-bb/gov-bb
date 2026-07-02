@@ -6,6 +6,7 @@ import type {
   MdaContactAddress,
 } from "@govtech-bb/form-types";
 import { getDataSource } from "../db.js";
+import { badRequest, formatZodError } from "../lib/http-error.js";
 
 export const mdaContactsRouter = Router();
 
@@ -40,24 +41,20 @@ export async function listMdaContactsHandler(
   _req: Request,
   res: Response,
 ): Promise<void> {
-  try {
-    const ds = await getDataSource();
-    const repo = ds.getRepository(MdaContactEntity);
-    const contacts = await repo.find();
-    res.json(
-      contacts.map((c) => ({
-        id: c.id,
-        label: c.label,
-        title: c.title,
-        telephone: c.telephone,
-        email: c.email,
-        address: c.address ?? null,
-        mdaEmail: c.mdaEmail,
-      })),
-    );
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+  const ds = await getDataSource();
+  const repo = ds.getRepository(MdaContactEntity);
+  const contacts = await repo.find();
+  res.json(
+    contacts.map((c) => ({
+      id: c.id,
+      label: c.label,
+      title: c.title,
+      telephone: c.telephone,
+      email: c.email,
+      address: c.address ?? null,
+      mdaEmail: c.mdaEmail,
+    })),
+  );
 }
 mdaContactsRouter.get("/", listMdaContactsHandler);
 
@@ -69,35 +66,27 @@ export async function createMdaContactHandler(
 ): Promise<void> {
   const parsed = createMdaContactSchema.safeParse(req.body);
   if (!parsed.success) {
-    const detail = parsed.error.issues
-      .map((i) => `${i.path.join(".") || "body"}: ${i.message}`)
-      .join("; ");
-    res.status(400).json({ error: detail || "Invalid request body" });
-    return;
+    throw badRequest(formatZodError(parsed.error, "body"));
   }
-  try {
-    const ds = await getDataSource();
-    const repo = ds.getRepository(MdaContactEntity);
-    const entity = repo.create({
-      label: parsed.data.label,
-      title: parsed.data.title,
-      telephone: parsed.data.telephone,
-      email: parsed.data.email,
-      address: parsed.data.address ?? null,
-      mdaEmail: parsed.data.mdaEmail,
-    });
-    const saved = await repo.save(entity);
-    res.status(201).json({
-      id: saved.id,
-      label: saved.label,
-      title: saved.title,
-      telephone: saved.telephone,
-      email: saved.email,
-      address: saved.address ?? null,
-      mdaEmail: saved.mdaEmail,
-    });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+  const ds = await getDataSource();
+  const repo = ds.getRepository(MdaContactEntity);
+  const entity = repo.create({
+    label: parsed.data.label,
+    title: parsed.data.title,
+    telephone: parsed.data.telephone,
+    email: parsed.data.email,
+    address: parsed.data.address ?? null,
+    mdaEmail: parsed.data.mdaEmail,
+  });
+  const saved = await repo.save(entity);
+  res.status(201).json({
+    id: saved.id,
+    label: saved.label,
+    title: saved.title,
+    telephone: saved.telephone,
+    email: saved.email,
+    address: saved.address ?? null,
+    mdaEmail: saved.mdaEmail,
+  });
 }
 mdaContactsRouter.post("/", createMdaContactHandler);

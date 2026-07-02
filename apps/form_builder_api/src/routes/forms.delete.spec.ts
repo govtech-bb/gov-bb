@@ -12,6 +12,7 @@ vi.mock("@govtech-bb/database", () => ({
 vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
 
 import { getDataSource } from "../db.js";
+import { HttpError } from "../lib/http-error";
 import { deleteFormHandler } from "./forms";
 
 const getDataSourceMock = getDataSource as Mock;
@@ -67,14 +68,17 @@ function sqlsOf(manager: { query: Mock }): string[] {
 describe("DELETE /builder/forms/:formId (draft delete)", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("returns 404 and never reads or writes form_disabled_overrides when no versions exist", async () => {
+  it("throws a 404 HttpError and never reads or writes form_disabled_overrides when no versions exist", async () => {
     const { ds, manager } = fakeDataSource({ deleted: [] });
     getDataSourceMock.mockResolvedValue(ds);
-    const res = mockRes();
 
-    await deleteFormHandler(mockReq({ formId: "ghost" }), res);
+    const err = await deleteFormHandler(
+      mockReq({ formId: "ghost" }),
+      mockRes(),
+    ).catch((e: unknown) => e);
 
-    expect(res.statusCode).toBe(404);
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(404);
 
     const sqls = sqlsOf(manager);
     // form_disabled_overrides must never be consulted at all.

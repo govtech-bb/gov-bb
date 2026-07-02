@@ -40,10 +40,6 @@
           "overrides": {
             "fieldId": "deceased-first-name",
             "validations": {
-              "pattern": {
-                "error": "First name must contain only letters, hyphens, or apostrophes",
-                "value": "^[a-zA-Z\\-']+$"
-              },
               "required": {
                 "error": "First name is required",
                 "value": true
@@ -62,10 +58,6 @@
             "label": "Middle name(s)",
             "hint": "Enter all middle names in order",
             "validations": {
-              "pattern": {
-                "error": "Middle name must contain only letters, hyphens, or apostrophes",
-                "value": "^[a-zA-Z\\-']+$"
-              },
               "minLength": {
                 "error": "Middle name must be at least 2 characters",
                 "value": 2
@@ -78,10 +70,6 @@
           "overrides": {
             "fieldId": "deceased-last-name",
             "validations": {
-              "pattern": {
-                "error": "Last name must contain only letters, hyphens, or apostrophes",
-                "value": "^[a-zA-Z\\-']+$"
-              },
               "required": {
                 "error": "Last name is required",
                 "value": true
@@ -244,10 +232,6 @@
           "overrides": {
             "fieldId": "applicant-first-name",
             "validations": {
-              "pattern": {
-                "error": "First name must contain only letters, hyphens, or apostrophes",
-                "value": "^[a-zA-Z\\-']+$"
-              },
               "required": {
                 "error": "First name is required",
                 "value": true
@@ -266,10 +250,6 @@
             "label": "Middle name(s)",
             "hint": "Optional. Enter only if known.",
             "validations": {
-              "pattern": {
-                "error": "Middle name must contain only letters, hyphens, or apostrophes",
-                "value": "^[a-zA-Z\\-']+$"
-              },
               "minLength": {
                 "error": "Middle name must be at least 2 characters",
                 "value": 2
@@ -282,10 +262,6 @@
           "overrides": {
             "fieldId": "applicant-last-name",
             "validations": {
-              "pattern": {
-                "error": "Last name must contain only letters, hyphens, or apostrophes",
-                "value": "^[a-zA-Z\\-']+$"
-              },
               "required": {
                 "error": "Last name is required",
                 "value": true
@@ -586,6 +562,6 @@
   "createdAt": "2026-06-08T17:48:59.149Z",
   "updatedAt": "2026-06-12T00:00:00.000Z",
   "meta": {
-    "visibility": "public"
+    "visibility": "maintenance"
   }
 }

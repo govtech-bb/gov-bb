@@ -14,6 +14,7 @@ import {
   type RecipeResponse,
 } from "../ai/recipe-generation.js";
 import { createJobStore, toStatusResponse } from "../ai/job-store.js";
+import { badRequest } from "../lib/http-error.js";
 
 // Safe S3 key shape: prevents path traversal / arbitrary keys. We accept the
 // canonical uploads/<uuid>.pdf produced by presignUpload, as well as a slightly
@@ -27,16 +28,12 @@ export async function presignHandler(
   _req: Request,
   res: Response,
 ): Promise<void> {
-  try {
-    if (!process.env.S3_BUCKET) {
-      res.status(503).json({ error: "Upload service not configured" });
-      return;
-    }
-    const { url, s3Key } = await presignUpload();
-    res.json({ url, s3Key });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  if (!process.env.S3_BUCKET) {
+    res.status(503).json({ error: "Upload service not configured" });
+    return;
   }
+  const { url, s3Key } = await presignUpload();
+  res.json({ url, s3Key });
 }
 
 // Cap the optional steering context, matching the .max(2000) convention used
@@ -53,13 +50,11 @@ export async function processHandler(
   try {
     const { s3Key, context } = req.body ?? {};
     if (typeof s3Key !== "string" || !KEY_PATTERN.test(s3Key)) {
-      res.status(400).json({ error: "Invalid request" });
-      return;
+      throw badRequest("Invalid request");
     }
     const trimmedContext = typeof context === "string" ? context.trim() : "";
     if (trimmedContext.length > MAX_CONTEXT_LEN) {
-      res.status(400).json({ error: "Invalid request" });
-      return;
+      throw badRequest("Invalid request");
     }
     const { jobId } = await startAnalysis(s3Key);
     // Stash the context so runBedrock — which fires later, during a /status
@@ -81,7 +76,8 @@ export async function processHandler(
       });
       return;
     }
-    res.status(500).json({ error: message });
+    // Unclassified — let the central error handler map it to 500.
+    throw err;
   }
 }
 
@@ -146,8 +142,7 @@ export async function statusHandler(
   try {
     const jobId = req.params.jobId;
     if (typeof jobId !== "string" || !jobId) {
-      res.status(400).json({ error: "Missing jobId" });
-      return;
+      throw badRequest("Missing jobId");
     }
 
     const result = await getAnalysisResult(jobId);
@@ -195,7 +190,8 @@ export async function statusHandler(
         .json({ error: "This upload session expired. Please re-upload." });
       return;
     }
-    res.status(500).json({ error: message });
+    // Unclassified — let the central error handler map it to 500.
+    throw err;
   }
 }
 

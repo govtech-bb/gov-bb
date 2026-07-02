@@ -12,6 +12,7 @@ vi.mock("@govtech-bb/database", () => ({
 vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
 
 import { getDataSource } from "../db.js";
+import { HttpError } from "../lib/http-error";
 import { disableFormHandler } from "./forms";
 
 const getDataSourceMock = getDataSource as Mock;
@@ -58,16 +59,22 @@ describe("POST /builder/forms/:formId/disable", () => {
       ["empty reason", { reason: "", disabledBy: "alice" }],
       ["missing disabledBy", { reason: "cleanup" }],
       ["empty disabledBy", { reason: "cleanup", disabledBy: "" }],
-    ])("rejects %s with 400 and never queries the DB", async (_label, body) => {
-      const { ds } = fakeDataSource();
-      getDataSourceMock.mockResolvedValue(ds);
-      const res = mockRes();
+    ])(
+      "rejects %s by throwing a 400 and never queries the DB",
+      async (_label, body) => {
+        const { ds } = fakeDataSource();
+        getDataSourceMock.mockResolvedValue(ds);
 
-      await disableFormHandler(mockReq({ formId: "passport" }, body), res);
+        const err = await disableFormHandler(
+          mockReq({ formId: "passport" }, body),
+          mockRes(),
+        ).catch((e: unknown) => e);
 
-      expect(res.statusCode).toBe(400);
-      expect(ds.query).not.toHaveBeenCalled();
-    });
+        expect(err).toBeInstanceOf(HttpError);
+        expect((err as HttpError).status).toBe(400);
+        expect(ds.query).not.toHaveBeenCalled();
+      },
+    );
   });
 
   it("upserts a tombstone parameterised as (form_id, reason, disabled_by) and returns ok", async () => {
