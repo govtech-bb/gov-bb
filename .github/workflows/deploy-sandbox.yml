@@ -721,6 +721,7 @@ jobs:
           echo "✅ Pushed chat-ingest $INGEST_URI"
 
       - name: Trigger chatbot RAG ingest
+        id: trigger
         env:
           COMMIT_SHA: ${{ github.sha }}
         run: |
@@ -730,6 +731,14 @@ jobs:
             --query Parameter.Value --output text)
 
           PAYLOAD=$(printf '{"startedBy":"gh-%.36s"}' "$COMMIT_SHA")
+
+          # Capture TRIGGER_TS in this step (not in the wait step below)
+          # so a fast no-op ingest can't start and finish between the two
+          # steps — the wait step would otherwise miss it and time out.
+          # Any run with startedAt >= TRIGGER_TS counts as ours-or-newer.
+          TRIGGER_TS=$(date -u +%s)
+          echo "trigger_ts=$TRIGGER_TS" >> "$GITHUB_OUTPUT"
+          echo "Trigger epoch: $TRIGGER_TS ($(date -u -d "@$TRIGGER_TS" '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date -u -r "$TRIGGER_TS" '+%Y-%m-%dT%H:%M:%SZ'))"
 
           aws lambda invoke \
             --function-name "$INDEXER" \
@@ -750,10 +759,12 @@ jobs:
       # just-pushed image — and fail the job if it failed. The 15-minute
       # EventBridge cron also starts runs; one of those completing counts too.
       - name: Wait for ingest to complete
+        env:
+          TRIGGER_TS: ${{ steps.trigger.outputs.trigger_ts }}
         run: |
           HEALTH_URL="https://chat.sandbox.alpha.gov.bb/api/health"
-          TRIGGER_TS=$(date -u +%s)
           DEADLINE=$(( TRIGGER_TS + 900 ))  # 15 min, > task cold-start + full re-embed
+          echo "Polling for ingest runs started at or after epoch $TRIGGER_TS"
 
           while [ "$(date -u +%s)" -lt "$DEADLINE" ]; do
             sleep 20
