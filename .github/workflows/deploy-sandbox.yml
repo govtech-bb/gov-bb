@@ -493,34 +493,21 @@ jobs:
       max-parallel: 3
       matrix:
         include:
-          - spec: temp-teacher-application.smoke.spec.ts
-            artifact_name: temp-teacher-smoke-trace
-          - spec: vendor-registration.smoke.spec.ts
-            artifact_name: vendor-registration-smoke-trace
-          - spec: duties-performed-exam-claim.smoke.spec.ts
-            artifact_name: duties-performed-smoke-trace
-          # term-leave-application is smoked here post-deploy (not only per-PR
-          # preview): the per-PR preview smoke can't validate a term-leave recipe
-          # change, because the preview frontend reads contracts from the sandbox
-          # API and so serves the PREVIOUS version until the new one ships (ADR
-          # 0029). This runs against deployed sandbox once the API is serving the
-          # new recipe, so a recipe bump is validated end-to-end after it goes live.
-          - spec: term-leave-application.smoke.spec.ts
-            artifact_name: term-leave-smoke-trace
-          - spec: homeschooling-application-2024.smoke.spec.ts
-            artifact_name: homeschooling-smoke-trace
-          - spec: statement-of-travelling-form.smoke.spec.ts
-            artifact_name: statement-of-travelling-smoke-trace
-          - spec: csec-private-candidate-registration.smoke.spec.ts
-            artifact_name: csec-smoke-trace
-          - spec: cape-exam-registration-2024.smoke.spec.ts
-            artifact_name: cape-smoke-trace
-          - spec: barbados-secondary-entrance-exam-choice.smoke.spec.ts
-            artifact_name: barbados-secondary-smoke-trace
-          # Forms added for issue #912 — the protege-mentor / community-sports /
-          # jobstart-plus programmes and the beach/park vendor licence. (The
-          # conductor licence and the three post-office redirections are gated
-          # `visibility: preview` (#1646/#1517) — see the note above.)
+          # Only forms with an explicit `visibility: public` recipe are smoked
+          # here: the post-deploy smoke hits public sandbox, which 404s any
+          # `preview`/private form. #1836 flipped the default visibility to
+          # `preview`, so the exam/education/HR forms (barbados-secondary,
+          # cape/csec registration, homeschooling, temp-teacher, term-leave,
+          # statement-of-travelling) plus duties-performed and the vendor form
+          # are now private and can't be reached here — their specs stay in the
+          # repo; re-add each below once its recipe returns to `public`.
+          # (term-leave has no post-deploy smoke while private: the per-PR
+          # preview smoke can't validate its recipe contract either — see
+          # pr-preview.yml.)
+          #
+          # The four below carry `visibility: public` (issue #912 — the
+          # protege-mentor / community-sports / jobstart-plus programmes and the
+          # beach/park vendor licence).
           - spec: project-protege-mentor.smoke.spec.ts
             artifact_name: project-protege-mentor-smoke-trace
           - spec: sports-training-programme-form-schema.smoke.spec.ts
