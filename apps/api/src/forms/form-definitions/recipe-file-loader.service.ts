@@ -203,13 +203,21 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
     return result.data;
   }
 
-  findAll(): PublicFormSummary[] {
+  /**
+   * List the loaded forms. By default the public index (#1646): non-public
+   * recipes are omitted and no `visibility` is stamped, so the public list
+   * contract is unchanged. When `includeNonPublic` is set — the token-gated
+   * authoring path (#1835) — non-public recipes are kept and every entry
+   * carries its `visibility` so the builder picker can surface and badge them.
+   */
+  findAll(includeNonPublic = false): PublicFormSummary[] {
     const out: PublicFormSummary[] = [];
     for (const [formId, recipe] of this.recipes) {
-      // Hide non-public forms from the list (#1646) — the list carries no
-      // preview token, so preview/draft forms are unlisted for everyone,
+      const visibility = getRecipeVisibility(recipe);
+      // Hide non-public forms from the list (#1646) — the public list carries
+      // no preview token, so preview/draft forms are unlisted for everyone,
       // matching the 404 their single-form GET returns to the public.
-      if (getRecipeVisibility(recipe) !== "public") continue;
+      if (visibility !== "public" && !includeNonPublic) continue;
       out.push({
         formId,
         title: recipe.title,
@@ -222,6 +230,9 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
         ...(recipe.contactDetails?.title && {
           category: recipe.contactDetails.title,
         }),
+        // Stamp visibility only on the authoring path so the default public
+        // response is byte-for-byte unchanged (#1835).
+        ...(includeNonPublic && { visibility }),
       });
     }
     return out;

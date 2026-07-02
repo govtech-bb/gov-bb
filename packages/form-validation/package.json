@@ -11,10 +11,12 @@
     "*.ts": "npx prettier --write"
   },
   "devDependencies": {
+    "@types/luxon": "^3.7.1",
     "lint-staged": "^16.4.0"
   },
   "dependencies": {
     "@govtech-bb/expressions": "workspace:*",
-    "libphonenumber-js": "^1.13.5"
+    "libphonenumber-js": "^1.13.5",
+    "luxon": "^3.7.2"
   }
 }

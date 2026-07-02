@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Injectable, Logger } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import type {
@@ -15,7 +16,6 @@ import type {
 import { EzpayClient } from "./ezpay/ezpay.client";
 import { DepartmentKeyResolver } from "./ezpay/department-keys";
 import { PaymentRepository } from "@/payments/payment.repository";
-import { generatePaymentReference } from "@/payments/payment-reference";
 import {
   PaymentProvider,
   PaymentStatus,
@@ -73,7 +73,7 @@ export class PaymentProcessor implements ISubmissionProcessor {
     }
 
     const draft = this.paymentRepo.create({
-      referenceNumber: generatePaymentReference(),
+      referenceNumber: randomUUID(),
       submissionId: payload.submissionId,
       formId: payload.formId,
       provider: PaymentProvider.EZPAY,
