@@ -1,6 +1,53 @@
 import z from "zod";
 import { dynamic } from "./dynamic";
 
+// Static SSRF guard for author-supplied outbound URLs (#281): require https and
+// reject hosts that are *literal* private/internal IPs — notably the cloud
+// metadata address 169.254.169.254 and the private/loopback ranges. This is the
+// static layer; a hostname that *resolves* to an internal IP is the runtime
+// fetch-time guard's job. Pure JS only (no node:net) — this module is bundled
+// for the browser too.
+const SAFE_URL_ERROR = "must be an https URL to a public host";
+
+function isSafeExternalHttpsUrl(value: string): boolean {
+  // Pure string parse (no URL/global) so this stays browser- and node-safe.
+  // The schema's `.url()` has already confirmed it's a syntactically valid URL.
+  const match = /^https:\/\/([^/?#]+)/i.exec(value);
+  if (!match) return false; // not https (or unparseable authority)
+
+  // `.url()` ran first, so the authority is well-formed. Strip any userinfo,
+  // then the host is either an "[ipv6]" literal or "host:port".
+  const authority = match[1].slice(match[1].lastIndexOf("@") + 1);
+  const host = (
+    authority.startsWith("[")
+      ? authority.slice(1, authority.indexOf("]"))
+      : authority.split(":")[0]
+  ).toLowerCase();
+  if (host === "localhost") return false;
+
+  // IPv6 literals contain ":"; real domains never do.
+  if (host.includes(":")) {
+    if (host === "::1" || host === "::") return false;
+    if (/^f[cd]/.test(host)) return false; // fc00::/7 (unique local)
+    if (/^fe[89ab]/.test(host)) return false; // fe80::/10 (link-local)
+    return true;
+  }
+
+  // Only apply IPv4 rules to true dotted-quad literals, so a domain like
+  // "10things.example.com" is not mistaken for 10.0.0.0/8.
+  const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (v4) {
+    const a = Number(v4[1]);
+    const b = Number(v4[2]);
+    if (a === 0 || a === 10 || a === 127) return false;
+    if (a === 169 && b === 254) return false; // link-local incl. metadata
+    if (a === 172 && b >= 16 && b <= 31) return false;
+    if (a === 192 && b === 168) return false;
+    if (a === 100 && b >= 64 && b <= 127) return false; // CGNAT
+  }
+  return true;
+}
+
 // ---------- Author-time schemas (dynamic() allowed where templatable) ----------
 
 const emailConfigAuthorSchema = z.object({
@@ -15,7 +62,7 @@ const opencrvsConfigAuthorSchema = z
   .object({
     endpoint: z
       .url()
-      .refine((u) => u.startsWith("https://"), "endpoint must use https")
+      .refine(isSafeExternalHttpsUrl, `endpoint ${SAFE_URL_ERROR}`)
       .optional(),
     token: z.string().min(1).optional(),
   })
@@ -84,7 +131,11 @@ const webhookMappingSchema = z.object({
 const webhookConfigAuthorSchema = z
   .object({
     // Either a literal url, or an env-sourced endpoint — exactly one is required.
-    url: dynamic(z.string().url()).optional(),
+    // The literal branch must be a safe https URL (#281); a dynamic expression
+    // (JsonLogic object) bypasses the static check and is resolved at runtime.
+    url: dynamic(
+      z.string().url().refine(isSafeExternalHttpsUrl, `url ${SAFE_URL_ERROR}`),
+    ).optional(),
     endpoint: webhookEndpointSchema.optional(),
     method: z.enum(["POST", "PUT", "PATCH"]).default("POST"),
     headers: z.record(z.string(), dynamic(z.string())).optional(),

@@ -135,6 +135,28 @@ function readProcessors(body: unknown): ReadProcessorsResult {
   return { kind: "set", processors: parsed.data };
 }
 
+// #281: validate the recipe's own `processors[]` before persisting. The stored
+// recipe is executed by the submission pipeline — each processor `fetch`es its
+// configured endpoint/url — so an unvalidated config is a direct SSRF / data
+// exfil vector. `processorSchema` enforces https + a non-internal host on the
+// opencrvs/webhook URLs. NOTE: this is a plain `z.array(processorSchema)`, NOT
+// the `processorsSchema` used for the sibling blob — that one refines to
+// payment-only, whereas the recipe's processors are the non-payment ones.
+// Returns a 400 message on failure, or null when valid (incl. no processors).
+// The rest of the recipe stays unvalidated here so partial drafts still save.
+function validateRecipeProcessors(recipe: unknown): string | null {
+  const raw = (recipe as { processors?: unknown } | null | undefined)
+    ?.processors;
+  if (raw === undefined) return null;
+  const parsed = z.array(processorSchema).safeParse(raw);
+  if (parsed.success) return null;
+  return (
+    parsed.error.issues
+      .map((i) => `${i.path.join(".") || "processors"}: ${i.message}`)
+      .join("; ") || "Invalid processors"
+  );
+}
+
 // Merge the processors change into the per-form `config` JSONB blob within the
 // recipe-save transaction. Reads the current blob first and spreads it so
 // unknown future keys survive (the blob is a shared envelope — ADR 0033); only
@@ -437,6 +459,18 @@ export async function createFormHandler(
     const recipe = parseDraftRecipe(req.body.recipe, res);
     if (!recipe) return;
     const isNew = req.body.isNew === true;
+    if (!recipe?.formId) {
+      res.status(400).json({ error: "recipe must have a formId" });
+      return;
+    }
+    // #281: validate the recipe's processors before persisting (SSRF guard).
+    const processorError = validateRecipeProcessors(recipe);
+    if (processorError) {
+      res
+        .status(400)
+        .json({ error: `Invalid processor config: ${processorError}` });
+      return;
+    }
     const ds = await getDataSource();
     // Read-only lock (#874): an *existing* form may only be saved by the current
     // claim holder. A brand-new form (isNew) has no prior claim and isn't in
@@ -551,6 +585,16 @@ export async function updateFormHandler(
 ): Promise<void> {
   const recipe = parseDraftRecipe(req.body.recipe, res);
   if (!recipe) return;
+  // #281: validate the recipe's processors before persisting (see
+  // createFormHandler) — guards the SSRF vector without rejecting the rest of
+  // a partial draft.
+  const processorError = validateRecipeProcessors(recipe);
+  if (processorError) {
+    res
+      .status(400)
+      .json({ error: `Invalid processor config: ${processorError}` });
+    return;
+  }
   const ds = await getDataSource();
   // Read-only lock (#874): only the current claim holder may save.
   if (!(await enforcePresence(ds, String(req.params.formId), req.body, res)))
