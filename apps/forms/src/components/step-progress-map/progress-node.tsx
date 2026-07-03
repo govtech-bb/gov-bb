@@ -5,6 +5,15 @@
 //   current -> aria-current="step", non-interactive
 //   locked  -> non-interactive, aria-disabled, out of the tab order
 //             (rendered as a span, never a disabled <button>)
+//
+// Marker content (mockup "node anatomy"):
+//   done    -> a bold check
+//   current -> empty (no number) for a main-line node; branch instances show
+//              their ordinal in blue instead (showOrdinalWhenCurrent)
+//   locked  -> the node's 1-based ordinal position (aria-hidden; the
+//              accessible name stays the label text)
+//   variant "review" (the terminal Review & submit node) overrides all of
+//   the above except done: a flag stands in for the ordinal/empty marker.
 
 import React from "react";
 import type { ProgressNodeState } from "./types";
@@ -15,21 +24,48 @@ export function classNames(
   return parts.filter(Boolean).join(" ");
 }
 
+function markerContent(
+  state: ProgressNodeState,
+  ordinal: number,
+  variant: "review" | undefined,
+  showOrdinalWhenCurrent: boolean,
+): React.ReactNode {
+  if (state === "done") return "✓";
+  if (variant === "review") return "🏁";
+  if (state === "current") return showOrdinalWhenCurrent ? ordinal : null;
+  return ordinal;
+}
+
 export interface NodeButtonProps {
   id: string;
   label: string;
   state: ProgressNodeState;
+  // 1-based position of this node among its siblings (main line: the node
+  // list, a repeatable group counting as one slot; branch: among instances).
+  ordinal: number;
+  variant?: "review";
+  // Branch instances show their ordinal even while current; main-line nodes
+  // stay empty when current (design doc "node anatomy").
+  showOrdinalWhenCurrent?: boolean;
   onNavigate: (stepId: string) => void;
 }
 
-export function NodeButton({ id, label, state, onNavigate }: NodeButtonProps) {
+export function NodeButton({
+  id,
+  label,
+  state,
+  ordinal,
+  variant,
+  showOrdinalWhenCurrent = false,
+  onNavigate,
+}: NodeButtonProps) {
   const className = classNames(
     "step-progress-map__node",
     `step-progress-map__node--${state}`,
   );
   const marker = (
     <span className="step-progress-map__marker" aria-hidden="true">
-      {state === "done" ? "✓" : null}
+      {markerContent(state, ordinal, variant, showOrdinalWhenCurrent)}
     </span>
   );
   const labelSpan = <span className="step-progress-map__label">{label}</span>;

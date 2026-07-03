@@ -171,6 +171,15 @@ describe("buildProgressModel review & submit collapse", () => {
       "done",
     );
   });
+
+  it("marks the Review & submit node with variant 'review' so it renders a flag instead of an ordinal", () => {
+    const steps = [makeStep("a"), makeStep("check-your-answers")];
+    const model = buildProgressModel(steps, "a", []);
+    expect(model.find((n) => n.id === "check-your-answers")?.variant).toBe(
+      "review",
+    );
+    expect(model.find((n) => n.id === "a")?.variant).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------------------

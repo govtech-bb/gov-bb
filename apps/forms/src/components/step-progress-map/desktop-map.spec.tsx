@@ -117,7 +117,7 @@ describe("DesktopMap", () => {
     expect(onNavigate).toHaveBeenCalledWith("dependents");
   });
 
-  it("expands a group into its numbered branch sub-nodes when the current step is inside it", () => {
+  it("expands a group into its numbered branch sub-nodes when the current step is inside it, keeping the group's own node as the current-blue anchor on the line", () => {
     const model: ProgressModel = [
       { kind: "step", id: "a", label: "Step A", state: "done" },
       {
@@ -131,14 +131,110 @@ describe("DesktopMap", () => {
         ],
       },
     ];
+    const { container } = render(
+      <DesktopMap model={model} enteringIds={new Set()} onNavigate={vi.fn()} />,
+    );
+
+    // The group's own label appears twice: once as the current-blue anchor
+    // on the main line, once as the (done) first instance in the branch.
+    expect(screen.getAllByText("Dependents")).toHaveLength(2);
+    expect(screen.getByText("Dependents 2")).toBeInTheDocument();
+
+    const anchor = container.querySelector(
+      ".step-progress-map__node-column > [aria-current='step']",
+    );
+    expect(anchor).toBeInTheDocument();
+    // The anchor is the empty current node (no ordinal number inside it).
+    expect(
+      anchor?.querySelector(".step-progress-map__marker"),
+    ).toHaveTextContent("");
+
+    const currentInstance = screen
+      .getByText("Dependents 2")
+      .closest('[aria-current="step"]');
+    expect(currentInstance).toBeInTheDocument();
+    // Unlike the anchor, a current branch instance shows its own ordinal.
+    expect(
+      currentInstance?.querySelector(".step-progress-map__marker"),
+    ).toHaveTextContent("2");
+
+    // The branch hangs off the anchor's own column, not the main list.
+    expect(
+      container.querySelector(
+        ".step-progress-map__node-column .step-progress-map__branch",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a locked node's ordinal as its 1-based position in the node list, with a repeatable group counting as one slot", () => {
+    const model: ProgressModel = [
+      {
+        kind: "group",
+        id: "dependents",
+        label: "Dependents",
+        state: "done",
+        instances: [
+          { stepId: "dependents", label: "Dependents", state: "done" },
+          { stepId: "dependents~1", label: "Dependents 2", state: "done" },
+        ],
+      },
+      { kind: "step", id: "income", label: "Income", state: "current" },
+      { kind: "step", id: "documents", label: "Documents", state: "locked" },
+    ];
     render(
       <DesktopMap model={model} enteringIds={new Set()} onNavigate={vi.fn()} />,
     );
 
-    expect(screen.getByText("Dependents")).toBeInTheDocument();
-    expect(screen.getByText("Dependents 2")).toBeInTheDocument();
+    // "Documents" is the 3rd node — the group counted as a single slot.
+    const locked = screen
+      .getByText("Documents")
+      .closest(".step-progress-map__node");
     expect(
-      screen.getByText("Dependents 2").closest('[aria-current="step"]'),
-    ).toBeInTheDocument();
+      locked?.querySelector(".step-progress-map__marker"),
+    ).toHaveTextContent("3");
+  });
+
+  it("shows a flag instead of an ordinal for the review-variant terminal node, and a check when it's done", () => {
+    const lockedModel: ProgressModel = [
+      { kind: "step", id: "a", label: "Step A", state: "current" },
+      {
+        kind: "step",
+        id: "check-your-answers",
+        label: "Review & submit",
+        state: "locked",
+        variant: "review",
+      },
+    ];
+    const { rerender } = render(
+      <DesktopMap
+        model={lockedModel}
+        enteringIds={new Set()}
+        onNavigate={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("Review & submit").closest(".step-progress-map__node"),
+    ).toHaveTextContent("🏁");
+
+    const doneModel: ProgressModel = [
+      { kind: "step", id: "a", label: "Step A", state: "done" },
+      {
+        kind: "step",
+        id: "check-your-answers",
+        label: "Review & submit",
+        state: "done",
+        variant: "review",
+      },
+    ];
+    rerender(
+      <DesktopMap
+        model={doneModel}
+        enteringIds={new Set()}
+        onNavigate={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("Review & submit").closest(".step-progress-map__node"),
+    ).toHaveTextContent("✓");
   });
 });

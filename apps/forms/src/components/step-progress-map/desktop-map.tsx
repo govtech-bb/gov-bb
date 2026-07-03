@@ -1,8 +1,9 @@
 // Desktop horizontal route map (>=48rem). See the design doc's "Presentation
 // & responsiveness" section: nodes on a horizontal line joined by a metro
 // line connector; a repeatable group collapses to a single counted node
-// unless the current step is inside it, in which case it expands into an
-// indented branch of numbered sub-nodes.
+// unless the current step is inside it, in which case its own node stays on
+// the line as the current-blue anchor, with a branch panel of numbered
+// instances hanging underneath it.
 
 import React from "react";
 import type { ProgressModel } from "./types";
@@ -28,7 +29,17 @@ export function DesktopMap({
         {model.map((node, index) => {
           const isLast = index === model.length - 1;
           const isEntering = enteringIds.has(node.id);
+          const ordinal = index + 1;
           const expanded = node.kind === "group" && node.state === "current";
+          const connector = !isLast && (
+            <span
+              className={classNames(
+                "step-progress-map__connector",
+                node.state === "done" && "step-progress-map__connector--done",
+              )}
+              aria-hidden="true"
+            />
+          );
 
           return (
             <li
@@ -38,35 +49,40 @@ export function DesktopMap({
                 isEntering && "step-progress-map__item--entering",
               )}
             >
-              {node.kind === "group" && expanded ? (
-                // Expanded: the group's own header is dropped so the numbered
-                // instances aren't duplicated against it (the first instance
-                // shares the group's label) — the branch takes the group's
-                // place on the line.
-                <ol className="step-progress-map__branch">
-                  {node.instances?.map((instance) => (
-                    <li
-                      key={instance.stepId}
-                      className="step-progress-map__item"
-                    >
+              <div className="step-progress-map__node-row">
+                {node.kind === "group" ? (
+                  expanded ? (
+                    <div className="step-progress-map__node-column">
                       <NodeButton
-                        id={instance.stepId}
-                        label={instance.label}
-                        state={instance.state}
+                        id={node.id}
+                        label={node.label}
+                        state="current"
+                        ordinal={ordinal}
                         onNavigate={onNavigate}
                       />
-                    </li>
-                  ))}
-                  {!isLast && (
-                    <span
-                      className="step-progress-map__connector"
-                      aria-hidden="true"
-                    />
-                  )}
-                </ol>
-              ) : (
-                <div className="step-progress-map__node-row">
-                  {node.kind === "group" ? (
+                      <span
+                        className="step-progress-map__branch-stem"
+                        aria-hidden="true"
+                      />
+                      <ol className="step-progress-map__branch">
+                        {node.instances?.map((instance, instanceIndex) => (
+                          <li
+                            key={instance.stepId}
+                            className="step-progress-map__item"
+                          >
+                            <NodeButton
+                              id={instance.stepId}
+                              label={instance.label}
+                              state={instance.state}
+                              ordinal={instanceIndex + 1}
+                              showOrdinalWhenCurrent
+                              onNavigate={onNavigate}
+                            />
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  ) : (
                     <GroupHeader
                       id={node.instances?.[0]?.stepId ?? node.id}
                       label={node.label}
@@ -74,26 +90,19 @@ export function DesktopMap({
                       count={node.instances?.length ?? 0}
                       onNavigate={onNavigate}
                     />
-                  ) : (
-                    <NodeButton
-                      id={node.id}
-                      label={node.label}
-                      state={node.state}
-                      onNavigate={onNavigate}
-                    />
-                  )}
-                  {!isLast && (
-                    <span
-                      className={classNames(
-                        "step-progress-map__connector",
-                        node.state === "done" &&
-                          "step-progress-map__connector--done",
-                      )}
-                      aria-hidden="true"
-                    />
-                  )}
-                </div>
-              )}
+                  )
+                ) : (
+                  <NodeButton
+                    id={node.id}
+                    label={node.label}
+                    state={node.state}
+                    ordinal={ordinal}
+                    variant={node.variant}
+                    onNavigate={onNavigate}
+                  />
+                )}
+                {connector}
+              </div>
             </li>
           );
         })}

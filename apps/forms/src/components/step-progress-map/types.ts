@@ -20,6 +20,9 @@ export interface ProgressNode {
   state: ProgressNodeState;
   // Only present when kind is "group".
   instances?: ProgressNodeInstance[];
+  // Marks the terminal "Review & submit" node so it can render a flag/check
+  // instead of an ordinal number. Never set on any other node.
+  variant?: "review";
 }
 
 export type ProgressModel = ProgressNode[];

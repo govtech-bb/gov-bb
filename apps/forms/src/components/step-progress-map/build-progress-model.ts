@@ -114,6 +114,7 @@ const buildReviewNode = (
     id: constituentIds[0] ?? REVIEW_NODE_ID,
     label: "Review & submit",
     state,
+    variant: "review",
   };
 };
 

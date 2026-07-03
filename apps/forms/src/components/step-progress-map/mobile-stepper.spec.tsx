@@ -119,6 +119,51 @@ describe("MobileStepper", () => {
     expect(bar).toHaveAttribute("aria-expanded", "false");
   });
 
+  it("shows a parent anchor row (empty current ring, no header) above the branch when the current step is inside the group", async () => {
+    const model: ProgressModel = [
+      { kind: "step", id: "a", label: "Step A", state: "done" },
+      {
+        kind: "group",
+        id: "dependents",
+        label: "Dependents",
+        state: "current",
+        instances: [
+          { stepId: "dependents", label: "Dependents", state: "done" },
+          { stepId: "dependents~1", label: "Dependents 2", state: "current" },
+        ],
+      },
+    ];
+    render(
+      <MobileStepper
+        model={model}
+        enteringIds={new Set()}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    const bar = screen.getByRole("button", { name: /Dependents/ });
+    await userEvent.click(bar);
+
+    // The anchor row (current, empty ring) plus the first instance both
+    // carry the group's label — two matches.
+    expect(screen.getAllByText("Dependents")).toHaveLength(2);
+    const anchor = screen
+      .getAllByText("Dependents")[0]
+      .closest('[aria-current="step"]');
+    expect(anchor).toBeInTheDocument();
+    expect(
+      anchor?.querySelector(".step-progress-map__marker"),
+    ).toHaveTextContent("");
+
+    // The current instance still shows its own ordinal.
+    expect(
+      screen
+        .getByText("Dependents 2")
+        .closest('[aria-current="step"]')
+        ?.querySelector(".step-progress-map__marker"),
+    ).toHaveTextContent("2");
+  });
+
   it("always shows repeatable instances indented under their parent group once expanded, regardless of where the current step is", () => {
     const model: ProgressModel = [
       { kind: "step", id: "a", label: "Step A", state: "done" },

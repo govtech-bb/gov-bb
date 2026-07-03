@@ -568,6 +568,10 @@
  * `48rem` breakpoint flips visibility to the desktop route map and adds its
  * horizontal layout.
  *
+ * Sizing: `--spm-size` on the marker is the source of truth for a circle's
+ * diameter (and border width scales with it) — set once per context
+ * (mobile/desktop x main/branch) rather than repeated per property.
+ *
  * Class inventory:
  *   .step-progress-map                    block (both layouts)
  *   .step-progress-map--desktop/--mobile   the two layout roots
@@ -575,15 +579,28 @@
  *   .step-progress-map__item               an <li> wrapping one node
  *   .step-progress-map__item--entering     newly-appeared node (animation)
  *   .step-progress-map__node-row           desktop: node + connector pair
+ *   .step-progress-map__node-column        desktop: an expanded group's own
+ *                                           node stacked above its branch
  *   .step-progress-map__node               a station node (button or span)
  *   .step-progress-map__node--done/--current/--locked/--group
  *   .step-progress-map__marker             the circular marker inside a node
  *   .step-progress-map__label              the node's title text
  *   .step-progress-map__connector          metro-line rail segment
  *   .step-progress-map__connector--done    traversed (green) segment
- *   .step-progress-map__branch             indented spur for repeat instances
- *   .step-progress-map__bar                mobile collapsed sticky toggle
+ *   .step-progress-map__branch-stem        desktop: vertical drop from an
+ *                                           expanded group's node to its panel
+ *   .step-progress-map__branch             the repeat-instance list (a tinted
+ *                                           panel on desktop, an indented
+ *                                           rail on mobile)
+ *   .step-progress-map__bar                mobile collapsed/expanded toggle
+ *   .step-progress-map__bar-top            mobile: node + text + chevron row
+ *   .step-progress-map__bar-node           mobile: decorative mini current node
+ *   .step-progress-map__bar-text           mobile: eyebrow + title stack
+ *   .step-progress-map__bar-eyebrow        mobile: "You're on"
  *   .step-progress-map__bar-title          current step title in the bar
+ *   .step-progress-map__bar-hint           mobile: "Tap to see all steps"
+ *   .step-progress-map__bar-header         mobile: expanded "Your progress" row
+ *   .step-progress-map__bar-heading        mobile: "Your progress" text
  *   .step-progress-map__chevron            expand/collapse indicator
  *   .step-progress-map__meter              mobile segmented progress meter
  *   .step-progress-map__meter-segment      one meter segment per node
@@ -597,7 +614,10 @@
   outline-offset: 2px;
 }
 
-/* ---- Shared node styling (marker + label; both layouts) ------------------ */
+/* ---- Shared node styling (marker + label; both layouts) -------------------
+ * Mobile-first default is the "main" (not-in-a-branch) size; branch instances
+ * are scaled down. Locked is the visual default (grey border, ordinal number)
+ * since it needs no state class of its own — done/current override it. */
 .step-progress-map__node {
   display: flex;
   flex-direction: column;
@@ -618,53 +638,63 @@ span.step-progress-map__node {
 }
 
 .step-progress-map__marker {
+  --spm-size: 1.625rem; /* 26px — mobile main node */
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 1.5rem;
-  height: 1.5rem;
-  min-width: 1.5rem;
+  box-sizing: border-box;
+  width: var(--spm-size);
+  height: var(--spm-size);
+  min-width: var(--spm-size);
   border-radius: 999px;
-  border: 2px solid var(--color-grey-00);
+  border: 0.25rem solid var(--color-grey-00);
   background-color: var(--color-white-00);
-  color: var(--color-white-00);
+  color: var(--color-mid-grey-00);
+  font-size: var(--font-size-caption);
+  font-weight: 700;
+}
+
+.step-progress-map__branch .step-progress-map__marker {
+  --spm-size: 1.375rem; /* 22px — mobile branch instance */
+  border-width: 0.1875rem;
   font-size: var(--font-size-caption-sm);
 }
 
 .step-progress-map__node--done .step-progress-map__marker {
   background-color: var(--color-green-00);
   border-color: var(--color-green-00);
+  color: var(--color-white-00);
 }
 
 .step-progress-map__node--current .step-progress-map__marker {
-  width: 1.75rem;
-  height: 1.75rem;
-  min-width: 1.75rem;
-  border: 3px solid var(--color-blue-100);
   background-color: var(--color-white-00);
+  border-color: var(--color-blue-100);
+  color: var(--color-blue-100);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-blue-100) 16%, transparent);
 }
 
-.step-progress-map__node--locked .step-progress-map__marker {
-  background-color: var(--color-white-00);
-  border-color: var(--color-grey-00);
+/* No glow on the smaller branch circles — the mockup reserves it for the
+ * main-line current node. */
+.step-progress-map__branch .step-progress-map__node--current .step-progress-map__marker {
+  box-shadow: none;
 }
 
 .step-progress-map__node--group .step-progress-map__marker {
   width: auto;
-  min-width: 1.5rem;
+  min-width: var(--spm-size);
   padding-inline: var(--spacing-xxs);
-  color: var(--color-black-00);
-}
-
-.step-progress-map__node--group.step-progress-map__node--done .step-progress-map__marker {
-  color: var(--color-white-00);
 }
 
 .step-progress-map__label {
-  font-size: var(--font-size-caption);
+  font-size: 0.875rem; /* 14px */
   line-height: 1.2;
   color: var(--color-mid-grey-00);
+}
+
+.step-progress-map__branch .step-progress-map__label {
+  font-size: var(--font-size-caption-sm);
+  white-space: nowrap;
 }
 
 .step-progress-map__node--done .step-progress-map__label {
@@ -672,12 +702,8 @@ span.step-progress-map__node {
 }
 
 .step-progress-map__node--current .step-progress-map__label {
-  font-weight: 600;
-  color: var(--color-black-00);
-}
-
-.step-progress-map__node--locked .step-progress-map__label {
-  color: var(--color-mid-grey-00);
+  font-weight: 700;
+  color: var(--color-blue-100);
 }
 
 /* ---- Entering animation ---------------------------------------------------
@@ -718,12 +744,16 @@ span.step-progress-map__node {
   }
 }
 
-/* ---- Mobile collapsible stepper (default; <48rem) ------------------------- */
+/* ---- Mobile collapsible stepper (default; <48rem) -------------------------
+ * The whole card is one <button> (the mockup's "tap anywhere" bar): a top
+ * row (mini node + eyebrow/title + chevron), a segmented meter, and a hint
+ * line while collapsed; a single "Your progress" heading row once expanded. */
 .step-progress-map--mobile {
   position: sticky;
   top: 0;
   z-index: 1;
   background-color: var(--color-white-00);
+  padding: var(--spacing-s) 0;
 }
 
 .step-progress-map--desktop {
@@ -731,32 +761,90 @@ span.step-progress-map__node {
 }
 
 .step-progress-map__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: block;
   width: 100%;
-  gap: var(--spacing-s);
-  padding: var(--spacing-s) 0;
-  background: none;
-  border: none;
-  border-bottom: 1px solid var(--color-grey-00);
+  padding: var(--spacing-s);
+  background-color: var(--color-white-00);
+  border: 1px solid var(--color-grey-00);
+  border-radius: 0.625rem;
   font: inherit;
   color: var(--color-black-00);
   cursor: pointer;
   text-align: left;
 }
 
+.step-progress-map__bar[aria-expanded="true"] {
+  border-color: var(--color-blue-40);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-black-00) 8%, transparent);
+}
+
+.step-progress-map__bar-top {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.step-progress-map__bar-node {
+  flex-shrink: 0;
+  width: 1.625rem;
+  height: 1.625rem;
+  border-radius: 999px;
+  box-sizing: border-box;
+  background-color: var(--color-white-00);
+  border: 0.25rem solid var(--color-blue-100);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-blue-100) 16%, transparent);
+}
+
+.step-progress-map__bar-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.step-progress-map__bar-eyebrow {
+  font-size: 0.6875rem; /* 11px */
+  text-transform: uppercase;
+  letter-spacing: 0.025rem;
+  color: var(--color-mid-grey-00);
+}
+
 .step-progress-map__bar-title {
-  font-size: var(--font-size-caption);
-  font-weight: 600;
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 700;
+  color: var(--color-blue-100);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.step-progress-map__bar-hint {
+  display: block;
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-size-caption-sm);
+  color: var(--color-mid-grey-00);
+}
+
+.step-progress-map__bar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.step-progress-map__bar-heading {
+  font-size: 0.8125rem; /* 13px */
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.025rem;
+  color: var(--color-black-00);
 }
 
 .step-progress-map__chevron {
   flex-shrink: 0;
   width: 0.5rem;
   height: 0.5rem;
-  border-right: 2px solid var(--color-black-00);
-  border-bottom: 2px solid var(--color-black-00);
+  border-right: 2px solid var(--color-mid-grey-00);
+  border-bottom: 2px solid var(--color-mid-grey-00);
   transform: rotate(45deg);
   transition: transform 0.2s ease;
 }
@@ -767,14 +855,14 @@ span.step-progress-map__node {
 
 .step-progress-map__meter {
   display: flex;
-  gap: 2px;
-  padding-bottom: var(--spacing-xs);
+  gap: 0.25rem;
+  margin-top: var(--spacing-s);
 }
 
 .step-progress-map__meter-segment {
   flex: 1 1 0;
-  height: 4px;
-  border-radius: 999px;
+  height: 0.3125rem; /* 5px */
+  border-radius: 0.1875rem;
   background-color: var(--color-grey-00);
 }
 
@@ -789,27 +877,28 @@ span.step-progress-map__node {
 .step-progress-map--mobile .step-progress-map__list {
   list-style: none;
   margin: 0;
-  padding: var(--spacing-s) 0;
+  padding: var(--spacing-s) 0 0;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-s);
+  gap: var(--spacing-xs);
 }
 
 .step-progress-map--mobile .step-progress-map__node {
   flex-direction: row;
   justify-content: flex-start;
   gap: var(--spacing-xs);
+  padding-block: var(--spacing-xxs);
   text-align: left;
 }
 
 .step-progress-map--mobile .step-progress-map__branch {
   list-style: none;
-  margin: var(--spacing-xs) 0 0;
-  padding-left: var(--spacing-m);
-  border-left: 2px solid var(--color-grey-00);
+  margin: var(--spacing-xxs) 0 0;
+  padding-left: var(--spacing-xm);
+  border-left: 3px solid var(--color-blue-40);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-xxs);
 }
 
 /* ---- Desktop horizontal route map (>=48rem) -------------------------------
@@ -824,6 +913,15 @@ span.step-progress-map__node {
     display: block;
   }
 
+  .step-progress-map--desktop .step-progress-map__marker {
+    --spm-size: 2.125rem; /* 34px — desktop main node */
+  }
+
+  .step-progress-map--desktop .step-progress-map__branch .step-progress-map__marker {
+    --spm-size: 1.5rem; /* 24px — desktop branch instance */
+    border-width: 0.1875rem;
+  }
+
   .step-progress-map--desktop .step-progress-map__list {
     display: flex;
     align-items: flex-start;
@@ -834,10 +932,7 @@ span.step-progress-map__node {
   }
 
   .step-progress-map--desktop .step-progress-map__item {
-    position: relative;
     flex: 1 0 auto;
-    min-width: 7rem;
-    padding-inline: var(--spacing-xs);
   }
 
   .step-progress-map--desktop .step-progress-map__node-row {
@@ -845,17 +940,31 @@ span.step-progress-map__node {
     align-items: flex-start;
   }
 
-  .step-progress-map--desktop .step-progress-map__node {
+  .step-progress-map--desktop .step-progress-map__node,
+  .step-progress-map--desktop .step-progress-map__node-column {
     flex-shrink: 0;
+    width: 5.75rem; /* 92px column, per the mockup */
   }
 
-  /* The rail: a 2px line running through the vertical centre of the marker,
-   * spanning to the next item. Segments behind done nodes render green. */
+  .step-progress-map--desktop .step-progress-map__node-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .step-progress-map--desktop .step-progress-map__label {
+    font-size: 0.8125rem; /* 13px */
+  }
+
+  /* The rail: a 4px line running through the vertical centre of the 34px
+   * marker, spanning to the next item. Segments behind done nodes render
+   * green, the rest grey. */
   .step-progress-map--desktop .step-progress-map__connector {
     flex: 1 1 auto;
     align-self: flex-start;
-    margin-top: 0.6875rem; /* centres on the 1.5rem marker */
-    height: 2px;
+    margin-top: 0.9375rem; /* centres on the 34px marker */
+    height: 0.25rem;
+    border-radius: 0.125rem;
     background-color: var(--color-grey-00);
   }
 
@@ -863,18 +972,38 @@ span.step-progress-map__node {
     background-color: var(--color-green-00);
   }
 
+  /* The vertical drop from an expanded group's own node to its branch panel. */
+  .step-progress-map--desktop .step-progress-map__branch-stem {
+    width: 0.25rem;
+    height: 1rem;
+    margin-top: var(--spacing-xxs);
+    border-radius: 0.125rem;
+    background-color: var(--color-blue-100);
+  }
+
   .step-progress-map--desktop .step-progress-map__branch {
     list-style: none;
-    margin: var(--spacing-xs) 0 0;
-    padding-left: var(--spacing-m);
-    border-left: 2px solid var(--color-grey-00);
+    margin: 0;
+    padding: var(--spacing-xs) var(--spacing-s);
+    background-color: var(--color-blue-10);
+    border: 1px solid var(--color-blue-40);
+    border-radius: 0.5rem;
     display: flex;
+    flex-direction: column;
     align-items: flex-start;
-    gap: var(--spacing-s);
+    gap: var(--spacing-xs);
+    width: max-content;
+    max-width: 12rem;
   }
 
   .step-progress-map--desktop .step-progress-map__branch .step-progress-map__item {
-    min-width: 0;
-    padding-inline: 0;
+    width: auto;
+  }
+
+  .step-progress-map--desktop .step-progress-map__branch .step-progress-map__node {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-xs);
+    width: auto;
   }
 }
