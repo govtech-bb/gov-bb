@@ -21,10 +21,11 @@ import type { Mock } from "vitest";
  */
 
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
+import { markStepCompleted } from "../lib/session-storage";
 
 vi.mock("@tanstack/react-form", () => ({
   useStore: vi.fn(),
@@ -62,9 +63,18 @@ vi.mock("./field-renderer", () => ({
   ),
 }));
 
+// Renders a marker only when an error actually exists, so the step-progress-
+// map integration tests can assert the surfaced-errors effect worked without
+// needing the real ErrorSummary's markup. Every other existing test's mocked
+// `errors` stays `{}`, so this still renders null for them exactly as before.
 vi.mock("./error-summary", () => ({
   __esModule: true,
-  default: () => null,
+  default: (props: { errors: Record<string, string[]> }) => {
+    const hasErrors = Object.values(props.errors ?? {}).some(
+      (messages) => messages.length > 0,
+    );
+    return hasErrors ? <div data-testid="error-summary" /> : null;
+  },
 }));
 
 vi.mock("./review", () => ({
@@ -1355,5 +1365,228 @@ describe("FormRenderer", () => {
     expect(heading).toContainElement(caption);
     // No em-dash suffix in the labelled case — the caption carries the marker.
     expect(heading.textContent).not.toContain("—");
+  });
+
+  // #1864 phase 2: the step progress map is mounted between the header and
+  // ErrorSummary, hidden on intro/check-your-answers/submission-confirmation,
+  // and its node clicks drive the forward-jump validation walk.
+  describe("step progress map integration", () => {
+    beforeEach(() => {
+      sessionStorage.clear();
+    });
+
+    it("renders the map on a normal content step", () => {
+      const step1 = makeStep("step-1");
+      const step2 = makeStep("step-2");
+      render(
+        <FormRenderer
+          form={mockForm}
+          formMeta={makeMeta() as any}
+          stepId="step-1"
+          visibleSteps={[step1, step2]}
+          repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+          submissionState={mockSubmissionState as any}
+        />,
+      );
+      expect(
+        screen.getAllByRole("navigation", { name: "Form progress" }),
+      ).toHaveLength(2);
+    });
+
+    it("does not render the map on the intro step", () => {
+      const intro = makeStep("intro");
+      const step2 = makeStep("step-2");
+      render(
+        <FormRenderer
+          form={mockForm}
+          formMeta={makeMeta() as any}
+          stepId="intro"
+          visibleSteps={[intro, step2]}
+          repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+          submissionState={mockSubmissionState as any}
+        />,
+      );
+      expect(
+        screen.queryByRole("navigation", { name: "Form progress" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not render the map on check-your-answers", () => {
+      mockUseStepGuard.mockReturnValue({
+        navigateToStep: mockNavigateToStep,
+        completeAndContinue: mockCompleteAndContinue,
+        currentIndex: 1,
+      });
+      const step1 = makeStep("step-1");
+      const cya = makeStep("check-your-answers");
+      render(
+        <FormRenderer
+          form={mockForm}
+          formMeta={makeMeta() as any}
+          stepId="check-your-answers"
+          visibleSteps={[step1, cya]}
+          repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+          submissionState={mockSubmissionState as any}
+        />,
+      );
+      expect(
+        screen.queryByRole("navigation", { name: "Form progress" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("clicking a done node for an earlier step navigates to it without validating intermediates", async () => {
+      const user = userEvent.setup();
+      const step1 = makeStep("step-1");
+      const step2 = makeStep("step-2");
+      const step3 = makeStep("step-3");
+      markStepCompleted("test-form", "step-1");
+      markStepCompleted("test-form", "step-2");
+      mockUseStepGuard.mockReturnValue({
+        navigateToStep: mockNavigateToStep,
+        completeAndContinue: mockCompleteAndContinue,
+        currentIndex: 2,
+      });
+      render(
+        <FormRenderer
+          form={mockForm}
+          formMeta={makeMeta() as any}
+          stepId="step-3"
+          visibleSteps={[step1, step2, step3]}
+          repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+          submissionState={mockSubmissionState as any}
+        />,
+      );
+      const doneButton = screen.getByRole("button", { name: "Step step-1" });
+      await user.click(doneButton);
+      expect(mockNavigateToStep).toHaveBeenCalledWith("step-1");
+      expect(mockForm.validateField).not.toHaveBeenCalled();
+      expect(mockForm.getFieldValue).not.toHaveBeenCalled();
+    });
+
+    it("forward jump with all intermediates valid lands on the target", async () => {
+      const user = userEvent.setup();
+      const fieldA = makePlainField("step-1_a", "a", "step-1");
+      const fieldB = makePlainField("step-2_b", "b", "step-2");
+      const step1 = makeStep("step-1", [fieldA]);
+      const step2 = makeStep("step-2", [fieldB]);
+      const step3 = makeStep("step-3");
+      markStepCompleted("test-form", "step-3");
+      mockForm.validateField.mockResolvedValue([]);
+      render(
+        <FormRenderer
+          form={mockForm}
+          formMeta={
+            makeMeta({
+              validationProperties: {
+                "step-2_b": { onDynamic: () => undefined },
+              },
+            }) as any
+          }
+          stepId="step-1"
+          visibleSteps={[step1, step2, step3]}
+          repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+          submissionState={mockSubmissionState as any}
+        />,
+      );
+      const doneButton = screen.getByRole("button", { name: "Step step-3" });
+      await user.click(doneButton);
+      expect(mockNavigateToStep).toHaveBeenCalledWith("step-3");
+    });
+
+    it("forward jump with an invalid intermediate lands on the failing step and then surfaces its errors", async () => {
+      const user = userEvent.setup();
+      const fieldA = makePlainField("step-1_a", "a", "step-1");
+      const fieldB = makePlainField("step-2_b", "b", "step-2");
+      const step1 = makeStep("step-1", [fieldA]);
+      const step2 = makeStep("step-2", [fieldB]);
+      const step3 = makeStep("step-3");
+      markStepCompleted("test-form", "step-3");
+
+      // A mutable stand-in for the form's real fieldMeta store: the mocked
+      // useStore below reads from it directly (there is no real subscription
+      // to react to the mutation), so the test manually re-renders after the
+      // mutation to observe the update — see the second rerender below.
+      const fieldMetaState: Record<string, { errors: string[] }> = {};
+      mockForm.validateField.mockImplementation(async (fieldId: unknown) => {
+        const errors = fieldId === "step-2_b" ? ["Required"] : [];
+        fieldMetaState[fieldId as string] = { errors };
+        return errors;
+      });
+      mockUseStore.mockImplementation(
+        (_store: unknown, selector: (state: any) => any) =>
+          selector({ values: {}, fieldMeta: fieldMetaState }),
+      );
+
+      const formMeta = makeMeta({
+        validationProperties: {
+          "step-2_b": { onDynamic: () => ["Required"] },
+        },
+      });
+
+      const { rerender } = render(
+        <FormRenderer
+          form={mockForm}
+          formMeta={formMeta as any}
+          stepId="step-1"
+          visibleSteps={[step1, step2, step3]}
+          repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+          submissionState={mockSubmissionState as any}
+        />,
+      );
+
+      const doneButton = screen.getByRole("button", { name: "Step step-3" });
+      await user.click(doneButton);
+
+      // Blocked at step-2, not the requested target.
+      expect(mockNavigateToStep).toHaveBeenCalledWith("step-2");
+      // The walk validated step-2 via the unmounted (formMeta) fallback, not
+      // form.validateField — so no errors exist for it yet (the spike
+      // finding: TanStack wipes/no-ops validation for unmounted fields).
+      expect(mockForm.validateField).not.toHaveBeenCalledWith(
+        "step-2_b",
+        "submit",
+      );
+
+      // Simulate the app's router landing on the blocked step.
+      mockUseStepGuard.mockReturnValue({
+        navigateToStep: mockNavigateToStep,
+        completeAndContinue: mockCompleteAndContinue,
+        currentIndex: 1,
+      });
+      rerender(
+        <FormRenderer
+          form={mockForm}
+          formMeta={formMeta as any}
+          stepId="step-2"
+          visibleSteps={[step1, step2, step3]}
+          repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+          submissionState={mockSubmissionState as any}
+        />,
+      );
+
+      // step-2's fields are mounted now, so the pending-validate effect runs
+      // the mounted path — the same one handleContinue always has.
+      await waitFor(() =>
+        expect(mockForm.validateField).toHaveBeenCalledWith(
+          "step-2_b",
+          "submit",
+        ),
+      );
+
+      // Re-render once more so the mocked useStore recomputes `errors` from
+      // the now-populated fieldMeta stand-in.
+      rerender(
+        <FormRenderer
+          form={mockForm}
+          formMeta={formMeta as any}
+          stepId="step-2"
+          visibleSteps={[step1, step2, step3]}
+          repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+          submissionState={mockSubmissionState as any}
+        />,
+      );
+
+      expect(screen.getByTestId("error-summary")).toBeInTheDocument();
+    });
   });
 });

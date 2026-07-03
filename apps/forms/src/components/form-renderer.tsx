@@ -1,4 +1,5 @@
 import {
+  ClientFormStep,
   ClientPrimitive,
   FieldValidationErrors,
   FormRendererProps,
@@ -35,6 +36,9 @@ import { StatusBanner } from "@govtech-bb/react";
 import { resolveStepTitle } from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
 import { validateStep } from "../lib/form-builder/helpers/validate-step";
+import { walkToStep } from "../lib/form-builder/helpers/jump-walk";
+import { getCompletedSteps } from "../lib/session-storage";
+import { StepProgressMap } from "./step-progress-map";
 
 // The feedback form citizens are sent to from a confirmation page, and its
 // first step. A root-relative path (not the absolute sandbox URL) so the link
@@ -42,6 +46,16 @@ import { validateStep } from "../lib/form-builder/helpers/validate-step";
 // local. The originating form id is appended as `?source=` at render time.
 const EXIT_SURVEY_FORM_ID = "exit-survey";
 const EXIT_SURVEY_FIRST_STEP = "difficulty-rating";
+
+// The step progress map is hidden on screens that aren't part of the linear
+// walk it's meant to help navigate: the intro has nothing to jump from/to,
+// check-your-answers/submission-confirmation are terminal review/outcome
+// screens. `declaration` deliberately stays visible.
+const HIDE_MAP_STEP_IDS = [
+  "intro",
+  "check-your-answers",
+  "submission-confirmation",
+];
 
 // ---------------------------------------------------------------------------
 // Field grouping (show-hide + radio/select conditional reveal)
@@ -209,6 +223,25 @@ export default function FormRenderer({
     }
   }, [currentStep?.stepId, formMeta.formId]);
 
+  // Set by handleJumpToStep when a step-progress-map click lands short of its
+  // target (a blocked forward jump). A blocked step's errors don't exist yet
+  // at that point — TanStack wipes a field's recorded errors (and no-ops
+  // validateField) the instant its <form.Field> unmounts, so the walk's own
+  // unmounted-path check can prove the step is invalid but can't leave errors
+  // behind for it. Once the blocked step becomes the mounted currentStep,
+  // re-run validateStep's normal mounted path — the same one handleContinue
+  // always has — so the errors actually appear.
+  const pendingJumpValidateStepId = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (
+      !currentStep ||
+      pendingJumpValidateStepId.current !== currentStep.stepId
+    )
+      return;
+    pendingJumpValidateStepId.current = null;
+    void validateStep(form, currentStep);
+  }, [currentStep?.stepId]);
+
   if (!currentStep) return null;
 
   const currentFields = [...currentStep.fields];
@@ -236,6 +269,22 @@ export default function FormRenderer({
       });
       navigateToStep(prevStep.stepId);
     }
+  };
+
+  // Step-progress-map node click: backward jumps and jumps to already-done
+  // steps navigate straight there; a forward jump walks every step in
+  // between (see jump-walk.ts) and lands on the first one that fails
+  // validation instead, flagging it for the pending-validate effect above.
+  const handleJumpToStep = async (targetStepId: string) => {
+    const result = await walkToStep(
+      form,
+      formMeta,
+      visibleSteps,
+      stepIndex,
+      targetStepId,
+    );
+    if (result.blocked) pendingJumpValidateStepId.current = result.targetStepId;
+    navigateToStep(result.targetStepId);
   };
 
   const repeatableStepValues = useStore(
@@ -432,6 +481,19 @@ export default function FormRenderer({
     ),
   );
 
+  // resolvedStepTitle is intentionally a dependency: it re-creates the
+  // callback (and thus rebuilds the memoized map model) when the CURRENT
+  // step's own conditional title resolves differently mid-step; other steps'
+  // titles refresh on navigation re-renders.
+  const resolveTitleForMap = React.useCallback(
+    (step: ClientFormStep) =>
+      resolveStepTitle(
+        step,
+        buildStepScopedValues(form.state.values as Record<string, unknown>),
+      ),
+    [form, resolvedStepTitle],
+  );
+
   // A content-only step carries `markdownContent` and no fields (e.g. an intro
   // page). Its markdown supplies its own headings, so we suppress the default
   // step `<h1>` to avoid a duplicate heading.
@@ -502,6 +564,15 @@ export default function FormRenderer({
             </p>
           )}
         </div>
+        {!HIDE_MAP_STEP_IDS.includes(currentStep.stepId) && (
+          <StepProgressMap
+            visibleSteps={visibleSteps}
+            currentStepId={currentStep.stepId}
+            completedStepIds={getCompletedSteps(formMeta.formId)}
+            resolveTitle={resolveTitleForMap}
+            onNavigate={handleJumpToStep}
+          />
+        )}
         <ErrorSummary errors={errors} />
 
         <div className="form-page__step">
