@@ -3,7 +3,7 @@ import { OnEvent } from "@nestjs/event-emitter";
 import type { SubmissionCreatedEvent } from "../forms/submissions/submissions.types";
 import { generateApplicationCodeForService } from "./application-code";
 import { buildWebhookFormData, extractApplicant } from "./applicant-extractor";
-import { sanitizeForLog } from "./log-sanitize";
+import { sanitizeForLog } from "@/common/log-sanitize";
 import { resolveServiceCodeFromFormId } from "./youth-opportunity-codes";
 import { YouthOpportunityWebhookService } from "./youth-opportunity-webhook.service";
 

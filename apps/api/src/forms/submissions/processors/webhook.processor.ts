@@ -8,7 +8,7 @@ import type {
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import { sign } from "./webhook-signature";
 import { assertSafeUrl } from "./url-safety";
-import { sanitizeForLog } from "./log-sanitize";
+import { sanitizeForLog } from "@/common/log-sanitize";
 import { buildMappedCasePayload } from "./webhook-mapping";
 import { idempotencyKey, timedPost } from "./http-post";
 

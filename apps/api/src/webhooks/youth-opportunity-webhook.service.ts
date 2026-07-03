@@ -3,7 +3,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
 import { firstValueFrom } from "rxjs";
 import webhooksConfig from "../config/webhooks.config";
-import { sanitizeForLog } from "./log-sanitize";
+import { sanitizeForLog } from "@/common/log-sanitize";
 
 /**
  * Body posted to the case-management webhook. Field names are snake_case to
