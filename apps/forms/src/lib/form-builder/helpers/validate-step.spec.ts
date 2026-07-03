@@ -90,4 +90,62 @@ describe("validateStep", () => {
 
     expect(result).toEqual({ ok: true, results: [] });
   });
+
+  // Phase 2 (#1864): the jump-walk needs to validate steps that are NOT the
+  // currently-mounted step. form.validateField is a no-op for an unmounted
+  // field (see jump-walk.spike.spec.tsx), so passing `formMeta` switches to a
+  // fallback that resolves each field's validator the same way
+  // form-renderer.tsx's `resolveValidators` does and runs it directly against
+  // the live form values via `form.getFieldValue` — never touching
+  // `form.validateField`.
+  describe("formMeta fallback (unmounted steps)", () => {
+    it("resolves validators from formMeta.validationProperties and runs them against getFieldValue, without calling form.validateField", async () => {
+      const step = makeStep("step-1", ["name"]);
+      const onDynamic = vi.fn(({ value }: { value: unknown }) =>
+        value ? undefined : ["Required"],
+      );
+      const formMeta = {
+        validationProperties: { "step-1_name": { onDynamic } },
+      } as any;
+      const form = {
+        validateField: vi.fn(),
+        getFieldValue: vi.fn(() => ""),
+      } as any;
+
+      const result = await validateStep(form, step, formMeta);
+
+      expect(result).toEqual({ ok: false, results: [["Required"]] });
+      expect(onDynamic).toHaveBeenCalledWith(
+        expect.objectContaining({ value: "" }),
+      );
+      expect(form.getFieldValue).toHaveBeenCalledWith("step-1_name");
+      expect(form.validateField).not.toHaveBeenCalled();
+    });
+
+    it("falls back to buildFieldValidationProperties when formMeta has no entry for the field", async () => {
+      // makeField sets no `validations`, so buildFieldValidationProperties
+      // returns a passthrough (always-valid) validator for it.
+      const step = makeStep("step-1", ["name"]);
+      const formMeta = { validationProperties: {} } as any;
+      const form = {
+        validateField: vi.fn(),
+        getFieldValue: vi.fn(() => ""),
+      } as any;
+
+      const result = await validateStep(form, step, formMeta);
+
+      expect(result).toEqual({ ok: true, results: [[]] });
+      expect(form.validateField).not.toHaveBeenCalled();
+    });
+
+    it("returns ok:true for a formMeta-validated step with no fields", async () => {
+      const step = makeStep("step-1", []);
+      const formMeta = { validationProperties: {} } as any;
+      const form = { validateField: vi.fn(), getFieldValue: vi.fn() } as any;
+
+      const result = await validateStep(form, step, formMeta);
+
+      expect(result).toEqual({ ok: true, results: [] });
+    });
+  });
 });
