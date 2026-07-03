@@ -72,7 +72,6 @@ export function DesktopMap({
                       label={node.label}
                       state={node.state}
                       count={node.instances?.length ?? 0}
-                      expanded={false}
                       onNavigate={onNavigate}
                     />
                   ) : (

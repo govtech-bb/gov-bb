@@ -132,6 +132,15 @@ describe("buildProgressModel review & submit collapse", () => {
     expect(model.map((n) => n.id)).toEqual(["a", "check-your-answers"]);
   });
 
+  it("targets the first present review step when check-your-answers is absent", () => {
+    const steps = [makeStep("a"), makeStep("declaration")];
+    const model = buildProgressModel(steps, "a", []);
+    const reviewNode = model.find((n) => n.label === "Review & submit");
+    // The node's id is the navigation target — it must be a step that is
+    // actually in visibleSteps, never the hardcoded check-your-answers.
+    expect(reviewNode?.id).toBe("declaration");
+  });
+
   it("is current when currentStepId is declaration", () => {
     const steps = [
       makeStep("a"),

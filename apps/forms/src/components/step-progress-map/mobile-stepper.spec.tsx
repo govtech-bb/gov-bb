@@ -50,15 +50,23 @@ describe("MobileStepper", () => {
     );
 
     const bar = screen.getByRole("button", { name: /Step B/ });
+    // The list stays in the DOM (so the bar's aria-controls always resolves)
+    // but is `hidden` — and therefore out of the accessibility tree — while
+    // collapsed.
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    expect(screen.getByText("Step A")).not.toBeVisible();
 
     await userEvent.click(bar);
     expect(bar).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText("Step A")).toBeInTheDocument();
+    expect(bar).toHaveAttribute(
+      "aria-controls",
+      screen.getByRole("list").getAttribute("id"),
+    );
+    expect(screen.getByText("Step A")).toBeVisible();
 
     await userEvent.click(bar);
     expect(bar).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByText("Step A")).not.toBeInTheDocument();
+    expect(screen.getByText("Step A")).not.toBeVisible();
   });
 
   it("renders one meter segment per node with a class matching each node's state", () => {

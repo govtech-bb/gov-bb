@@ -657,8 +657,7 @@ span.step-progress-map__node {
   color: var(--color-black-00);
 }
 
-.step-progress-map__node--group.step-progress-map__node--done .step-progress-map__marker,
-.step-progress-map__node--group.step-progress-map__node--current .step-progress-map__marker {
+.step-progress-map__node--group.step-progress-map__node--done .step-progress-map__marker {
   color: var(--color-white-00);
 }
 

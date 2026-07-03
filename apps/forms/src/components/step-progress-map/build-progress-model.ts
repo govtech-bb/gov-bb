@@ -108,7 +108,10 @@ const buildReviewNode = (
 
   return {
     kind: "step",
-    id: REVIEW_NODE_ID,
+    // Target the first review step actually present so navigation never aims
+    // at a step outside visibleSteps (e.g. a form whose check-your-answers is
+    // conditionally hidden but declaration is not).
+    id: constituentIds[0] ?? REVIEW_NODE_ID,
     label: "Review & submit",
     state,
   };

@@ -64,17 +64,15 @@ export function NodeButton({ id, label, state, onNavigate }: NodeButtonProps) {
   );
 }
 
-// The header node for a repeatable group. Collapsed (expanded=false) shows
-// an instance count and is clickable (to the first instance) when done.
-// Expanded (the current step is inside the group) drops the count — the
-// individual branch instances carry the state/navigation instead — and is
-// never itself a button or aria-current, since it isn't a distinct step.
+// The header node for a collapsed repeatable group: shows the instance count
+// and is clickable (to the first instance) when done. When the current step
+// is inside a group the layouts render the branch instances directly instead
+// of this header, so it is never itself current.
 export interface GroupHeaderProps {
   id: string;
   label: string;
   state: ProgressNodeState;
   count: number;
-  expanded: boolean;
   onNavigate: (stepId: string) => void;
 }
 
@@ -83,7 +81,6 @@ export function GroupHeader({
   label,
   state,
   count,
-  expanded,
   onNavigate,
 }: GroupHeaderProps) {
   const className = classNames(
@@ -93,12 +90,20 @@ export function GroupHeader({
   );
   const marker = (
     <span className="step-progress-map__marker" aria-hidden="true">
-      {expanded ? null : count}
+      {count}
     </span>
   );
-  const labelSpan = <span className="step-progress-map__label">{label}</span>;
+  // The count badge is aria-hidden, so repeat it as visually-hidden text —
+  // otherwise assistive tech never hears that this node stands for multiple
+  // repeatable entries.
+  const labelSpan = (
+    <span className="step-progress-map__label">
+      {label}
+      <span className="govbb-visually-hidden">, {count} entries</span>
+    </span>
+  );
 
-  if (!expanded && state === "done") {
+  if (state === "done") {
     return (
       <button
         type="button"

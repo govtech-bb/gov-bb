@@ -233,13 +233,16 @@ export default function FormRenderer({
   // always has — so the errors actually appear.
   const pendingJumpValidateStepId = React.useRef<string | null>(null);
   React.useEffect(() => {
-    if (
-      !currentStep ||
-      pendingJumpValidateStepId.current !== currentStep.stepId
-    )
-      return;
+    if (!currentStep || pendingJumpValidateStepId.current === null) return;
+    // Consume the pending id on the first navigation after it was set — a
+    // landing elsewhere means the jump was superseded, and a stale id left
+    // behind would trigger a spurious errors-on-arrival validation the next
+    // time that step is visited normally.
+    const pendingStepId = pendingJumpValidateStepId.current;
     pendingJumpValidateStepId.current = null;
-    void validateStep(form, currentStep);
+    if (pendingStepId === currentStep.stepId) {
+      void validateStep(form, currentStep);
+    }
   }, [currentStep?.stepId]);
 
   if (!currentStep) return null;
@@ -494,6 +497,15 @@ export default function FormRenderer({
     [form, resolvedStepTitle],
   );
 
+  // Completing a step always navigates, so re-reading session storage per
+  // step change is enough — and a stable array keeps StepProgressMap's
+  // memoized model from being rebuilt by unrelated re-renders (session
+  // storage returns a fresh array on every call).
+  const completedStepIds = React.useMemo(
+    () => getCompletedSteps(formMeta.formId),
+    [formMeta.formId, currentStep.stepId],
+  );
+
   // A content-only step carries `markdownContent` and no fields (e.g. an intro
   // page). Its markdown supplies its own headings, so we suppress the default
   // step `<h1>` to avoid a duplicate heading.
@@ -568,7 +580,7 @@ export default function FormRenderer({
           <StepProgressMap
             visibleSteps={visibleSteps}
             currentStepId={currentStep.stepId}
-            completedStepIds={getCompletedSteps(formMeta.formId)}
+            completedStepIds={completedStepIds}
             resolveTitle={resolveTitleForMap}
             onNavigate={handleJumpToStep}
           />

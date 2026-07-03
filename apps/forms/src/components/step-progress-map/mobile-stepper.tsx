@@ -5,7 +5,7 @@
 // to a count here — the list is already vertical, so all instances show,
 // indented under their parent, whenever the list itself is open.
 
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import type { ProgressModel } from "./types";
 import { NodeButton, classNames } from "./progress-node";
 
@@ -35,6 +35,7 @@ export function MobileStepper({
   onNavigate,
 }: MobileStepperProps) {
   const [expanded, setExpanded] = useState(false);
+  const listId = useId();
 
   const handleNavigate = (stepId: string) => {
     onNavigate(stepId);
@@ -50,6 +51,7 @@ export function MobileStepper({
         type="button"
         className="step-progress-map__bar"
         aria-expanded={expanded}
+        aria-controls={listId}
         onClick={() => setExpanded((prev) => !prev)}
       >
         <span className="step-progress-map__bar-title">
@@ -68,52 +70,52 @@ export function MobileStepper({
           />
         ))}
       </div>
-      {expanded && (
-        <ol className="step-progress-map__list">
-          {model.map((node) => {
-            const isEntering = enteringIds.has(node.id);
+      {/* Rendered collapsed (hidden) rather than unmounted so the toggle's
+          aria-controls always references an element that exists. */}
+      <ol id={listId} className="step-progress-map__list" hidden={!expanded}>
+        {model.map((node) => {
+          const isEntering = enteringIds.has(node.id);
 
-            return (
-              <li
-                key={node.id}
-                className={classNames(
-                  "step-progress-map__item",
-                  isEntering && "step-progress-map__item--entering",
-                )}
-              >
-                {node.kind === "group" ? (
-                  // Repeatable groups are always shown as their full,
-                  // indented instance list on mobile (never collapsed to a
-                  // count) — there is no separate group header node, since
-                  // it would duplicate the first instance's label.
-                  <ol className="step-progress-map__branch">
-                    {node.instances?.map((instance) => (
-                      <li
-                        key={instance.stepId}
-                        className="step-progress-map__item"
-                      >
-                        <NodeButton
-                          id={instance.stepId}
-                          label={instance.label}
-                          state={instance.state}
-                          onNavigate={handleNavigate}
-                        />
-                      </li>
-                    ))}
-                  </ol>
-                ) : (
-                  <NodeButton
-                    id={node.id}
-                    label={node.label}
-                    state={node.state}
-                    onNavigate={handleNavigate}
-                  />
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      )}
+          return (
+            <li
+              key={node.id}
+              className={classNames(
+                "step-progress-map__item",
+                isEntering && "step-progress-map__item--entering",
+              )}
+            >
+              {node.kind === "group" ? (
+                // Repeatable groups are always shown as their full,
+                // indented instance list on mobile (never collapsed to a
+                // count) — there is no separate group header node, since
+                // it would duplicate the first instance's label.
+                <ol className="step-progress-map__branch">
+                  {node.instances?.map((instance) => (
+                    <li
+                      key={instance.stepId}
+                      className="step-progress-map__item"
+                    >
+                      <NodeButton
+                        id={instance.stepId}
+                        label={instance.label}
+                        state={instance.state}
+                        onNavigate={handleNavigate}
+                      />
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <NodeButton
+                  id={node.id}
+                  label={node.label}
+                  state={node.state}
+                  onNavigate={handleNavigate}
+                />
+              )}
+            </li>
+          );
+        })}
+      </ol>
     </nav>
   );
 }
