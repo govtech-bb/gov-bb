@@ -98,7 +98,12 @@ vi.mock("@forms/lib", () => ({
   })),
 }));
 
+vi.mock("../lib/analytics", () => ({
+  trackEvent: vi.fn(),
+}));
+
 import FormRenderer from "./form-renderer";
+import { trackEvent } from "../lib/analytics";
 
 const mockUseStore = useStore as Mock;
 const mockUseStepGuard = useStepGuard as Mock;
@@ -1007,7 +1012,7 @@ describe("FormRenderer", () => {
     expect(mockCompleteAndContinue).toHaveBeenCalledWith("check-your-answers");
   });
 
-  it("clicking Continue with validation errors does NOT call completeAndContinue", async () => {
+  it("clicking Continue with validation errors does NOT call completeAndContinue, and fires form-validation-error", async () => {
     const user = userEvent.setup();
     Object.defineProperty(window, "scrollTo", {
       value: vi.fn(),
@@ -1028,6 +1033,14 @@ describe("FormRenderer", () => {
     );
     await user.click(screen.getByRole("button", { name: /continue/i }));
     expect(mockCompleteAndContinue).not.toHaveBeenCalled();
+    expect(trackEvent).toHaveBeenCalledWith(
+      "form-validation-error",
+      expect.objectContaining({
+        step: "step-1",
+        fields: "name",
+        errorCount: 1,
+      }),
+    );
   });
 
   it("clicking Continue on a repeatable step with addAnother=yes calls addRepeatableStep", async () => {

@@ -34,6 +34,7 @@ import { stepCompleteEventName } from "./step-events";
 import { StatusBanner } from "@govtech-bb/react";
 import { resolveStepTitle } from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
+import { validateStep } from "../lib/form-builder/helpers/validate-step";
 
 // The feedback form citizens are sent to from a confirmation page, and its
 // first step. A root-relative path (not the absolute sandbox URL) so the link
@@ -277,9 +278,7 @@ export default function FormRenderer({
   const repeatableStepSettings = repeatableStepSettingsRef.current;
   const handleContinue = async () => {
     // Validate current step fields
-    const results = await Promise.all(
-      currentFields.map((field) => form.validateField(field.id, "submit")),
-    );
+    const { ok, results } = await validateStep(form, currentStep);
 
     const scrollToTop = () => {
       window.scrollTo({
@@ -288,8 +287,7 @@ export default function FormRenderer({
       });
     };
 
-    const hasError = results.some((r) => r.length > 0);
-    if (hasError) {
+    if (!ok) {
       trackEvent(
         "form-validation-error",
         buildValidationErrorPayload(
