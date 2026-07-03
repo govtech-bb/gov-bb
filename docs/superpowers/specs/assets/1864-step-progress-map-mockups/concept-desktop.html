@@ -1,0 +1,98 @@
+<h2>The core idea — a form "route map" (desktop)</h2>
+<p class="subtitle">A realistic journey for a benefits-style form. Node labels are step titles (no "3 of 7"), and the map reflects the live visible steps. Below is what the map looks like mid-journey — you're partway through a <strong>repeatable</strong> step, one step ahead is <strong>conditional</strong>.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Desktop — top of the form page</div>
+  <div class="mockup-body" style="background:#fff;color:#0b0c0c;padding:40px 28px 32px;">
+
+    <!-- primary line -->
+    <div style="display:flex;align-items:flex-start;font-family:system-ui,sans-serif;">
+
+      <!-- About you : done -->
+      <div style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;width:92px;">
+        <div style="width:34px;height:34px;border-radius:50%;background:#00703c;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">✓</div>
+        <div style="margin-top:8px;font-size:13px;text-align:center;color:#0b0c0c;">About you</div>
+      </div>
+      <div style="flex:1;height:4px;background:#00703c;margin-top:15px;border-radius:2px;"></div>
+
+      <!-- Contact : done -->
+      <div style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;width:92px;">
+        <div style="width:34px;height:34px;border-radius:50%;background:#00703c;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">✓</div>
+        <div style="margin-top:8px;font-size:13px;text-align:center;color:#0b0c0c;">Contact</div>
+      </div>
+      <div style="flex:1;height:4px;background:#00703c;margin-top:15px;border-radius:2px;"></div>
+
+      <!-- Address : done -->
+      <div style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;width:92px;">
+        <div style="width:34px;height:34px;border-radius:50%;background:#00703c;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">✓</div>
+        <div style="margin-top:8px;font-size:13px;text-align:center;color:#0b0c0c;">Address</div>
+      </div>
+      <div style="flex:1;height:4px;background:#00703c;margin-top:15px;border-radius:2px;"></div>
+
+      <!-- Dependents : CURRENT, repeatable branch expanded -->
+      <div style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;width:92px;">
+        <div style="width:34px;height:34px;border-radius:50%;background:#fff;border:4px solid #1d70b8;box-shadow:0 0 0 4px rgba(29,112,184,.18);display:flex;align-items:center;justify-content:center;"></div>
+        <div style="margin-top:8px;font-size:13px;text-align:center;font-weight:700;color:#1d70b8;">Dependents</div>
+        <!-- branch drop -->
+        <div style="width:4px;height:16px;background:#1d70b8;margin-top:6px;border-radius:2px;"></div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start;background:#f3f7fb;border:1px solid #c6d9ea;border-radius:8px;padding:10px 12px;margin-top:2px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:24px;height:24px;border-radius:50%;background:#00703c;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;">✓</div>
+            <span style="font-size:12px;white-space:nowrap;">Dependent 1</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:24px;height:24px;border-radius:50%;background:#fff;border:3px solid #1d70b8;font-size:12px;color:#1d70b8;display:flex;align-items:center;justify-content:center;font-weight:700;">2</div>
+            <span style="font-size:12px;white-space:nowrap;font-weight:700;color:#1d70b8;">Dependent 2</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;color:#505a5f;">
+            <div style="width:24px;height:24px;border-radius:50%;border:2px dashed #b1b4b6;font-size:14px;display:flex;align-items:center;justify-content:center;">+</div>
+            <span style="font-size:12px;white-space:nowrap;">Add another</span>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1;height:4px;background:#b1b4b6;margin-top:15px;border-radius:2px;"></div>
+
+      <!-- Income : locked + conditional -->
+      <div style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;width:92px;">
+        <div style="width:34px;height:34px;border-radius:50%;background:#fff;border:4px solid #b1b4b6;color:#505a5f;display:flex;align-items:center;justify-content:center;font-weight:700;">5</div>
+        <div style="margin-top:8px;font-size:13px;text-align:center;color:#505a5f;">Income</div>
+        <div style="margin-top:4px;font-size:10px;color:#505a5f;background:#f3f2f1;border-radius:4px;padding:1px 5px;">appears if employed</div>
+      </div>
+      <div style="flex:1;height:4px;background:#b1b4b6;margin-top:15px;border-radius:2px;"></div>
+
+      <!-- Documents : locked -->
+      <div style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;width:92px;">
+        <div style="width:34px;height:34px;border-radius:50%;background:#fff;border:4px solid #b1b4b6;color:#505a5f;display:flex;align-items:center;justify-content:center;font-weight:700;">6</div>
+        <div style="margin-top:8px;font-size:13px;text-align:center;color:#505a5f;">Documents</div>
+      </div>
+      <div style="flex:1;height:4px;background:#b1b4b6;margin-top:15px;border-radius:2px;"></div>
+
+      <!-- Review & submit : locked -->
+      <div style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;width:92px;">
+        <div style="width:34px;height:34px;border-radius:50%;background:#fff;border:4px solid #b1b4b6;color:#505a5f;display:flex;align-items:center;justify-content:center;">🏁</div>
+        <div style="margin-top:8px;font-size:13px;text-align:center;color:#505a5f;">Review &amp; submit</div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:28px;height:1px;background:#e6e6e6;"></div>
+    <div style="margin-top:16px;color:#505a5f;font-size:13px;font-style:italic;">↓ the actual form fields for “Dependent 2” render below the map …</div>
+  </div>
+</div>
+
+<div style="display:flex;gap:22px;flex-wrap:wrap;margin:18px 2px 6px;font-size:13px;">
+  <span style="display:flex;align-items:center;gap:8px;"><span style="width:18px;height:18px;border-radius:50%;background:#00703c;display:inline-block;"></span> Done — tap to revisit</span>
+  <span style="display:flex;align-items:center;gap:8px;"><span style="width:18px;height:18px;border-radius:50%;border:4px solid #1d70b8;display:inline-block;box-sizing:border-box;"></span> Where you are</span>
+  <span style="display:flex;align-items:center;gap:8px;"><span style="width:18px;height:18px;border-radius:50%;border:4px solid #b1b4b6;display:inline-block;box-sizing:border-box;"></span> Locked — not reachable yet</span>
+</div>
+
+<div class="section">
+  <p class="label">What this mockup is encoding</p>
+  <ul style="line-height:1.6;">
+    <li><strong>Titles, not counts</strong> — each node is the step title, so branching never makes a "3 of 7" lurch.</li>
+    <li><strong>Repeatable = a branch line</strong> — "Dependents" drops into numbered instances (1, 2, + Add another). Here it's expanded because you're inside it; when you're elsewhere it collapses to a single node with a count.</li>
+    <li><strong>Conditional steps</strong> — "Income" is greyed with an "appears if employed" tag; it slides in/out with a mini animation when the answer changes.</li>
+    <li><strong>Three states</strong> — done (green, clickable), current (blue), locked (grey, not clickable — no skip-ahead).</li>
+    <li><strong>Hidden on Review</strong> — the map disappears on the check-your-answers page (that page is the overview).</li>
+  </ul>
+</div>

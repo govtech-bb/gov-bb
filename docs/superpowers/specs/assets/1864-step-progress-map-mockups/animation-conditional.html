@@ -1,0 +1,91 @@
+<h2>Conditional steps — the slide in / out</h2>
+<p class="subtitle">Flip the answer below and watch the <strong>Income</strong> step appear or disappear from the map. This is the live behaviour, not a video — click the buttons.</p>
+
+<style>
+  .rm-demo { font-family:system-ui,sans-serif; }
+  .rm-controls button {
+    font:inherit; font-size:15px; padding:10px 16px; border:2px solid #1d70b8;
+    background:#fff; color:#1d70b8; border-radius:6px; cursor:pointer; font-weight:700;
+  }
+  .rm-controls button.active { background:#1d70b8; color:#fff; }
+  .rm-line { display:flex; align-items:flex-start; margin-top:30px; }
+  .rm-node { display:flex; flex-direction:column; align-items:center; flex:0 0 auto; width:92px; }
+  .rm-dot { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; box-sizing:border-box; }
+  .rm-dot.done { background:#00703c; color:#fff; }
+  .rm-dot.current { background:#fff; border:4px solid #1d70b8; box-shadow:0 0 0 4px rgba(29,112,184,.18); }
+  .rm-dot.locked { background:#fff; border:4px solid #b1b4b6; color:#505a5f; }
+  .rm-cap { margin-top:8px; font-size:13px; text-align:center; }
+  .rm-cap.cur { font-weight:700; color:#1d70b8; }
+  .rm-cap.lock { color:#505a5f; }
+  .rm-conn { flex:1; height:4px; background:#b1b4b6; margin-top:15px; border-radius:2px; }
+  .rm-conn.done { background:#00703c; }
+
+  /* the collapsible wrapper holding Income + its trailing connector */
+  .rm-wrap {
+    display:flex; align-items:flex-start; flex:0 0 auto;
+    width:184px; opacity:1; overflow:hidden;
+    transition: width .45s cubic-bezier(.2,.75,.25,1), opacity .3s ease;
+  }
+  .rm-wrap.hidden { width:0; opacity:0; }
+  .rm-wrap .rm-node { transition: transform .45s cubic-bezier(.2,.75,.25,1); }
+  .rm-wrap.hidden .rm-node { transform: translateY(-8px); }
+  .rm-tag { margin-top:4px; font-size:10px; color:#505a5f; background:#f3f2f1; border-radius:4px; padding:1px 5px; white-space:nowrap; }
+
+  @keyframes rm-pulse { 0%{ box-shadow:0 0 0 0 rgba(29,112,184,.45);} 100%{ box-shadow:0 0 0 14px rgba(29,112,184,0);} }
+  .rm-pulse { animation: rm-pulse .7s ease-out; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rm-wrap { transition: opacity .12s linear; }
+    .rm-pulse { animation: none; }
+  }
+</style>
+
+<div class="rm-demo">
+  <div class="rm-controls" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <span style="font-size:15px;color:#0b0c0c;font-weight:700;">Are you currently employed?</span>
+    <button id="rm-yes" class="active" onclick="rmToggle(true)">Employed</button>
+    <button id="rm-no" onclick="rmToggle(false)">Not employed</button>
+  </div>
+
+  <div class="rm-line">
+    <div class="rm-node"><div class="rm-dot done">✓</div><div class="rm-cap">Address</div></div>
+    <div class="rm-conn done"></div>
+    <div class="rm-node"><div class="rm-dot current"></div><div class="rm-cap cur">Dependents</div></div>
+    <div class="rm-conn"></div>
+
+    <!-- collapsible: Income + trailing connector -->
+    <div id="rm-wrap" class="rm-wrap">
+      <div class="rm-node"><div id="rm-incomedot" class="rm-dot locked">5</div><div class="rm-cap lock">Income</div><div class="rm-tag">if employed</div></div>
+      <div class="rm-conn"></div>
+    </div>
+
+    <div class="rm-node"><div class="rm-dot locked">6</div><div class="rm-cap lock">Documents</div></div>
+    <div class="rm-conn"></div>
+    <div class="rm-node"><div class="rm-dot locked">🏁</div><div class="rm-cap lock">Review</div></div>
+  </div>
+</div>
+
+<script>
+  function rmToggle(employed){
+    var wrap=document.getElementById('rm-wrap');
+    var dot=document.getElementById('rm-incomedot');
+    document.getElementById('rm-yes').classList.toggle('active', employed);
+    document.getElementById('rm-no').classList.toggle('active', !employed);
+    if(employed){
+      wrap.classList.remove('hidden');
+      dot.classList.remove('rm-pulse'); void dot.offsetWidth; dot.classList.add('rm-pulse');
+    } else {
+      wrap.classList.add('hidden');
+    }
+  }
+</script>
+
+<div class="section" style="margin-top:30px;">
+  <p class="label">The rules behind the motion</p>
+  <ul style="line-height:1.6;">
+    <li><strong>Width + fade, ~450ms, eased.</strong> The node (and its connector) collapse to zero width so the line closes the gap smoothly; a soft pulse marks a newly-inserted step.</li>
+    <li><strong>Respects <code>prefers-reduced-motion</code>.</strong> With it on, the node just cross-fades near-instantly, no slide, no pulse (try your OS setting).</li>
+    <li><strong>Never yanks the current node.</strong> Here Income inserts <em>after</em> "Dependents" (the current step), so your position doesn't move. If a step inserts <em>before</em> the current one, we keep the current node anchored in view rather than letting the map jump under you.</li>
+    <li><strong>Mobile equivalent:</strong> the vertical list does the same thing as a height expand/collapse instead of width.</li>
+  </ul>
+</div>

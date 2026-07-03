@@ -1,0 +1,134 @@
+<h2>Mobile — the collapsible vertical stepper</h2>
+<p class="subtitle">Same route map, but on a phone it starts <strong>collapsed</strong> as a slim "where am I" bar and expands to the full vertical list on tap. Left = default state, right = after tapping.</p>
+
+<div style="display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start;font-family:system-ui,sans-serif;">
+
+  <!-- ============ COLLAPSED ============ -->
+  <div style="flex:0 0 auto;">
+    <p class="label">Collapsed (default)</p>
+    <div style="width:300px;border:10px solid #111;border-radius:28px;overflow:hidden;background:#fff;">
+      <div style="height:22px;background:#111;"></div>
+      <div style="padding:14px;background:#fff;color:#0b0c0c;">
+
+        <!-- sticky progress bar -->
+        <div style="border:1px solid #d3d8db;border-radius:10px;padding:12px 14px;background:#f8f9fa;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+              <div style="width:26px;height:26px;flex:0 0 auto;border-radius:50%;background:#fff;border:4px solid #1d70b8;box-shadow:0 0 0 3px rgba(29,112,184,.16);"></div>
+              <div style="min-width:0;">
+                <div style="font-size:11px;color:#505a5f;text-transform:uppercase;letter-spacing:.4px;">You're on</div>
+                <div style="font-size:15px;font-weight:700;color:#1d70b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Dependent 2</div>
+              </div>
+            </div>
+            <div style="font-size:22px;color:#505a5f;flex:0 0 auto;">⌄</div>
+          </div>
+          <!-- segmented meter, one seg per visible step, no numbers -->
+          <div style="display:flex;gap:4px;margin-top:12px;">
+            <div style="flex:1;height:5px;border-radius:3px;background:#00703c;"></div>
+            <div style="flex:1;height:5px;border-radius:3px;background:#00703c;"></div>
+            <div style="flex:1;height:5px;border-radius:3px;background:#00703c;"></div>
+            <div style="flex:1;height:5px;border-radius:3px;background:#1d70b8;"></div>
+            <div style="flex:1;height:5px;border-radius:3px;background:#dfe3e5;"></div>
+            <div style="flex:1;height:5px;border-radius:3px;background:#dfe3e5;"></div>
+            <div style="flex:1;height:5px;border-radius:3px;background:#dfe3e5;"></div>
+          </div>
+          <div style="font-size:12px;color:#505a5f;margin-top:8px;">Tap to see all steps</div>
+        </div>
+
+        <!-- form content peeking below -->
+        <div style="margin-top:16px;">
+          <div style="font-size:17px;font-weight:700;">Dependent 2</div>
+          <div style="height:12px;"></div>
+          <div style="font-size:13px;color:#505a5f;">Full name</div>
+          <div style="height:38px;border:2px solid #0b0c0c;border-radius:4px;margin-top:4px;"></div>
+          <div style="height:14px;"></div>
+          <div style="font-size:13px;color:#505a5f;">Date of birth</div>
+          <div style="height:38px;border:2px solid #0b0c0c;border-radius:4px;margin-top:4px;width:60%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ EXPANDED ============ -->
+  <div style="flex:0 0 auto;">
+    <p class="label">Expanded (after tap)</p>
+    <div style="width:300px;border:10px solid #111;border-radius:28px;overflow:hidden;background:#fff;">
+      <div style="height:22px;background:#111;"></div>
+      <div style="padding:14px;background:#fff;color:#0b0c0c;">
+
+        <div style="border:1px solid #c6d9ea;border-radius:10px;padding:14px;background:#fff;box-shadow:0 6px 20px rgba(0,0,0,.08);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#0b0c0c;">Your progress</div>
+            <div style="font-size:22px;color:#505a5f;">⌃</div>
+          </div>
+
+          <!-- vertical list -->
+          <div style="position:relative;">
+
+            <!-- row helper: circle + label -->
+            <!-- Done -->
+            <div style="display:flex;align-items:center;gap:12px;padding:7px 0;">
+              <div style="width:26px;height:26px;flex:0 0 auto;border-radius:50%;background:#00703c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;">✓</div>
+              <span style="font-size:14px;">About you</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:7px 0;">
+              <div style="width:26px;height:26px;flex:0 0 auto;border-radius:50%;background:#00703c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;">✓</div>
+              <span style="font-size:14px;">Contact</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:7px 0;">
+              <div style="width:26px;height:26px;flex:0 0 auto;border-radius:50%;background:#00703c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;">✓</div>
+              <span style="font-size:14px;">Address</span>
+            </div>
+
+            <!-- Current: Dependents (repeatable) with indented instances -->
+            <div style="display:flex;align-items:center;gap:12px;padding:7px 0;">
+              <div style="width:26px;height:26px;flex:0 0 auto;border-radius:50%;background:#fff;border:4px solid #1d70b8;box-sizing:border-box;"></div>
+              <span style="font-size:14px;font-weight:700;color:#1d70b8;">Dependents</span>
+            </div>
+            <div style="margin-left:13px;border-left:3px solid #c6d9ea;padding-left:20px;">
+              <div style="display:flex;align-items:center;gap:10px;padding:5px 0;">
+                <div style="width:22px;height:22px;flex:0 0 auto;border-radius:50%;background:#00703c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;">✓</div>
+                <span style="font-size:13px;">Dependent 1</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:5px 0;">
+                <div style="width:22px;height:22px;flex:0 0 auto;border-radius:50%;background:#fff;border:3px solid #1d70b8;box-sizing:border-box;color:#1d70b8;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">2</div>
+                <span style="font-size:13px;font-weight:700;color:#1d70b8;">Dependent 2</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:5px 0;color:#505a5f;">
+                <div style="width:22px;height:22px;flex:0 0 auto;border-radius:50%;border:2px dashed #b1b4b6;display:flex;align-items:center;justify-content:center;font-size:14px;">+</div>
+                <span style="font-size:13px;">Add another</span>
+              </div>
+            </div>
+
+            <!-- Locked + conditional -->
+            <div style="display:flex;align-items:center;gap:12px;padding:7px 0;">
+              <div style="width:26px;height:26px;flex:0 0 auto;border-radius:50%;background:#fff;border:4px solid #b1b4b6;box-sizing:border-box;color:#505a5f;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">5</div>
+              <span style="font-size:14px;color:#505a5f;">Income</span>
+              <span style="font-size:10px;color:#505a5f;background:#f3f2f1;border-radius:4px;padding:1px 5px;">if employed</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:7px 0;">
+              <div style="width:26px;height:26px;flex:0 0 auto;border-radius:50%;background:#fff;border:4px solid #b1b4b6;box-sizing:border-box;color:#505a5f;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">6</div>
+              <span style="font-size:14px;color:#505a5f;">Documents</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:7px 0;">
+              <div style="width:26px;height:26px;flex:0 0 auto;border-radius:50%;background:#fff;border:4px solid #b1b4b6;box-sizing:border-box;color:#505a5f;display:flex;align-items:center;justify-content:center;font-size:13px;">🏁</div>
+              <span style="font-size:14px;color:#505a5f;">Review &amp; submit</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:22px;">
+  <p class="label">Notes / open questions</p>
+  <ul style="line-height:1.6;">
+    <li><strong>Collapsed bar</strong> shows the current step title + a slim segmented meter (one segment per visible step, greens = done, blue = current) — ambient position, still no "N" number. It'd be sticky at the top as you scroll.</li>
+    <li><strong>Expanded</strong> is the full vertical map, repeatable instances indented under their parent, tap a green node to jump back.</li>
+    <li>Should the collapsed bar keep the <strong>segmented meter</strong>, or is that too close to a count — just current title + chevron?</li>
+    <li>On expand: <strong>inline accordion</strong> (pushes form down, shown here) or <strong>overlay</strong> that floats above the form? Inline is simpler + more accessible.</li>
+  </ul>
+</div>
