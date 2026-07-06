@@ -22,16 +22,26 @@ name: Deploy Staging
 #     `staging` in the Amplify console with auto-build set per app IaC.
 
 on:
-  push:
-    branches: [staging]
+  # TRUNK: staging is NOT pushed to directly. It's dispatched by deploy-sandbox's
+  # `promote-to-staging` job once sandbox is fully green (the sequential gate),
+  # or manually from the Actions tab. This job fast-forwards the `staging` branch
+  # to the commit being deployed so Amplify (which builds the `staging` branch)
+  # stays consistent with the ECS deploys.
   workflow_dispatch:
+    inputs:
+      promoted_sha:
+        description: "Commit sandbox proved (for the audit log; the run deploys main's HEAD)."
+        required: false
+        type: string
 
 permissions:
   # Single-purpose deploy workflow: every job assumes the AWS deploy role via
   # OIDC, so a workflow-level id-token grant is intentional. Per-job scoping
   # tracked in #1462.
   id-token: write # zizmor: ignore[excessive-permissions]
-  contents: read
+  # `contents: write` — the `advance-staging` job fast-forwards the `staging`
+  # branch to the deployed commit.
+  contents: write
 
 # Queue deploys; never cancel one mid-flight. A half-applied deploy must
 # finish before the next starts.
@@ -57,8 +67,24 @@ env:
   AMPLIFY_FORM_BUILDER_URL: https://builder.staging.alpha.gov.bb
 
 jobs:
+  # Move the `staging` deploy pointer to the commit being deployed BEFORE any
+  # Amplify job runs (Amplify builds the `staging` branch). force=false →
+  # fast-forward only; staging is always behind main, so this always ff's.
+  advance-staging:
+    name: Advance staging branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fast-forward staging → ${{ github.sha }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Promoted from sandbox: ${{ inputs.promoted_sha || 'manual dispatch' }}"
+          gh api -X PATCH "repos/${{ github.repository }}/git/refs/heads/staging" \
+            -f sha="${{ github.sha }}" -F force=false
+
   setup:
     name: Detect affected targets
+    needs: advance-staging
     runs-on: ubuntu-latest
     outputs:
       api: ${{ steps.affected.outputs.api }}
@@ -86,7 +112,10 @@ jobs:
       - name: Derive base/head SHAs
         uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
         with:
-          main-branch-name: staging
+          # Runs are dispatched with --ref main now, so the affected base is the
+          # last successful deploy-staging run on main. (Was `staging` when this
+          # triggered on push:staging.)
+          main-branch-name: main
           workflow-id: deploy-staging.yml
 
       - name: Compute affected deploy targets
@@ -294,37 +323,6 @@ jobs:
           URL: ${{ env.FORM_BUILDER_API_SMOKE_URL }}
           LABEL: form-builder
         run: bash .github/scripts/smoke-test-url.sh
-
-  deploy-payload-cms:
-    # STUB. gov-bb has no apps/payload_cms source — see Part D of
-    # docs/plans/staging-cicd-reliability-first.md.
-    # Surfaces the gap loudly in the run summary, but does NOT fail the
-    # workflow: continue-on-error keeps the overall deploy GREEN when the real
-    # apps succeed, so a red staging deploy means something ACTUALLY broke
-    # (instead of every run being red on this known stub → alarm fatigue that
-    # masks real failures like the 2026-05-31 landing outage).
-    name: Build, Push & Deploy payload-cms (STUB)
-    needs: setup
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - name: Inform on missing source
-        run: |
-          {
-            echo "## ⚠️ payload-cms not yet deployable from gov-bb"
-            echo ""
-            echo "The staging IaC provisions a payload-cms ECS service, RDS, and"
-            echo "S3 media bucket, but gov-bb has no \`apps/payload_cms\` source."
-            echo "Image \`gov-bb-payload-cms:latest\` has never been pushed →"
-            echo "\`payload-cms-staging\` ECS service stays in CircuitBreaker FAILED."
-            echo ""
-            echo "See docs/plans/staging-cicd-reliability-first.md (Part D) for the"
-            echo "decision required: add \`apps/payload_cms\` to gov-bb monorepo,"
-            echo "use upstream \`payloadcms/payload\` image, or extract to a"
-            echo "separate repo."
-          } >> $GITHUB_STEP_SUMMARY
-          echo "❌ payload-cms source not yet in gov-bb — see workflow summary."
-          exit 1
 
   deploy-chat-ingest:
     # Chatbot RAG ingest one-shot Fargate task. Build image, push to staging
@@ -701,7 +699,7 @@ jobs:
 
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-form-builder, deploy-payload-cms, deploy-chat-ingest, ssr-smoke, amplify-forms, amplify-landing, amplify-chat, amplify-form-builder]
+    needs: [setup, deploy-api, deploy-form-builder, deploy-chat-ingest, ssr-smoke, amplify-forms, amplify-landing, amplify-chat, amplify-form-builder]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -728,7 +726,6 @@ jobs:
             row "SSR smoke (pre-deploy)" "${{ needs.ssr-smoke.result }}"
             row "API"                  "${{ needs.deploy-api.result }}"
             row "form-builder API"     "${{ needs.deploy-form-builder.result }}"
-            row "payload-cms"          "${{ needs.deploy-payload-cms.result }}"
             row "chat-ingest"          "${{ needs.deploy-chat-ingest.result }}"
             row "Amplify forms"        "${{ needs.amplify-forms.result }}"
             row "Amplify landing"      "${{ needs.amplify-landing.result }}"

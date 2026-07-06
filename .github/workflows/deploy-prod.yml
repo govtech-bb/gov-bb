@@ -34,12 +34,20 @@ name: Deploy Production
 #     Amplify console, auto-build OFF.
 
 on:
-  push:
-    branches: [prod]
+  # TRUNK: production is NEVER automatic. This is the manual, windowed
+  # "Deploy Production" button — run it from the `staging` branch (Actions →
+  # Deploy Production → Run workflow → Branch: staging) so prod ships exactly
+  # the commit staging proved. The `advance-prod` job fast-forwards the `prod`
+  # branch to that commit and a guard blocks running from any branch but
+  # `staging` (unless explicitly overridden for a rollback/hotfix).
   workflow_dispatch:
     inputs:
       deploy_all:
         description: "Force-deploy all targets (bootstrap / full redeploy), ignoring affected detection"
+        type: boolean
+        default: false
+      allow_non_staging:
+        description: "Override the staging-only guard (rollback/hotfix from another ref). Leave off for normal releases."
         type: boolean
         default: false
 
@@ -48,7 +56,9 @@ permissions:
   # OIDC, so a workflow-level id-token grant is intentional. Per-job scoping
   # tracked in #1462.
   id-token: write # zizmor: ignore[excessive-permissions]
-  contents: read
+  # `contents: write` — the `advance-prod` job fast-forwards the `prod` branch
+  # to the deployed commit.
+  contents: write
 
 # Queue deploys; never cancel one mid-flight. A half-applied deploy must
 # finish before the next starts.
@@ -75,8 +85,32 @@ env:
   AMPLIFY_CHAT_HEALTH_URL: https://prod.d3dc75921xrndn.amplifyapp.com/api/health
 
 jobs:
+  # Guard + move the `prod` pointer to the commit being deployed BEFORE any
+  # Amplify job runs (Amplify builds the `prod` branch). The guard blocks any
+  # ref but `staging`, so production only ever ships staging-proven code —
+  # override only for a deliberate rollback/hotfix.
+  advance-prod:
+    name: Guard + advance prod branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Guard — prod ships staging-proven code only
+        run: |
+          if [ "${{ github.ref_name }}" != "staging" ] && [ "${{ inputs.allow_non_staging }}" != "true" ]; then
+            echo "❌ Deploy Production must be run from the 'staging' branch (the proven code)."
+            echo "   Re-run: Actions → Deploy Production → Run workflow → Branch: staging."
+            echo "   For a deliberate rollback/hotfix from another ref, set allow_non_staging=true."
+            exit 1
+          fi
+      - name: Fast-forward prod → ${{ github.sha }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api -X PATCH "repos/${{ github.repository }}/git/refs/heads/prod" \
+            -f sha="${{ github.sha }}" -F force=false
+
   setup:
     name: Detect affected targets
+    needs: advance-prod
     runs-on: ubuntu-latest
     outputs:
       api: ${{ steps.affected.outputs.api }}
@@ -102,7 +136,11 @@ jobs:
       - name: Derive base/head SHAs
         uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
         with:
-          main-branch-name: prod
+          # Prod is run from the `staging` ref (the proven code), so the affected
+          # base is the last successful deploy-prod run on staging. (Was `prod`
+          # when this triggered on push:prod.) First run after cutover marks
+          # nothing affected → use the deploy_all input to bootstrap.
+          main-branch-name: staging
           workflow-id: deploy-prod.yml
 
       - name: Compute affected deploy targets
