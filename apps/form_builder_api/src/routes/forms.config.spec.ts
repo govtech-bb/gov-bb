@@ -342,11 +342,11 @@ describe("getFormConfigHandler", () => {
     expect(res.body).toEqual({ mdaContactId: "c-1", processors: null });
   });
 
-  it("returns 500 on a DB error", async () => {
+  it("propagates a DB error (the central handler maps it to 500)", async () => {
     getDataSourceMock.mockRejectedValue(new Error("db down"));
-    const res = mockRes();
-    await getFormConfigHandler(mockReq({}, { formId: "x" }), res);
-    expect(res.statusCode).toBe(500);
+    await expect(
+      getFormConfigHandler(mockReq({}, { formId: "x" }), mockRes()),
+    ).rejects.toThrow("db down");
   });
 });
 

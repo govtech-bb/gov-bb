@@ -20,6 +20,7 @@ import {
   CONTENT_ROOT,
   LANDING_CATEGORIES,
   VISIBILITY_WORD,
+  linkableForms,
   type ViewLevel,
 } from "./-lib";
 import type { ContentPageSummary, OpenContentPR } from "./-server";
@@ -34,7 +35,9 @@ import s from "./-styles.module.css";
 export const Route = createFileRoute("/content/")({
   loader: async () => {
     const [forms, baseBranch] = await Promise.all([
-      listForms().catch(() => []),
+      // Hide disabled draft-only / orphan-override rows the picker uses for
+      // re-enable (#1658) — they have no live recipe to link content to.
+      listForms().then(linkableForms).catch(() => []),
       getPublishBaseBranch().catch(() => "dev"),
     ]);
     return { forms, baseBranch };

@@ -1,3 +1,5 @@
+import type { RecipeVisibility } from "./service-contract.type";
+
 /**
  * The two "a form in the list" contracts, single-sourced here so producer and
  * consumer can't drift and the same name can't describe two incompatible shapes
@@ -24,6 +26,12 @@ export interface PublicFormSummary {
    * those under "Unknown".
    */
   category?: string;
+  /**
+   * The form's launch-gate visibility (#1835). Present only on the authoring
+   * list (a valid preview token was supplied); omitted on the public index, so
+   * the default no-token response is unchanged. Absent is treated as `public`.
+   */
+  visibility?: RecipeVisibility;
 }
 
 /**
@@ -47,4 +55,16 @@ export interface BuilderFormSummary {
    */
   publishedVersion?: string;
   isDisabled?: boolean;
+  /**
+   * The form's launch-gate visibility (#1835), carried through from the
+   * authoring published index. Non-public values (`preview`/`draft`/
+   * `maintenance`) drive the picker's visibility badge so an operator can see
+   * why a published form isn't on the public site. Absent means `public`.
+   */
+  visibility?: RecipeVisibility;
+  /**
+   * A disabled override with no underlying draft or published recipe; the
+   * picker renders it Enable-only and not openable (there is no recipe to load).
+   */
+  isOrphanOverride?: boolean;
 }

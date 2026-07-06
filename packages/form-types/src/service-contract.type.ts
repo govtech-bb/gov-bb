@@ -81,10 +81,11 @@ export type RecipeVisibility = z.infer<typeof recipeVisibilitySchema>;
 
 // `meta` is an extensible container for recipe-level metadata. Optional during
 // the #1646 rollout so existing recipes (which carry no `meta`) still validate;
-// an absent `meta` or `visibility` is treated as `public` (see
-// getRecipeVisibility).
+// an absent `meta` or `visibility` is treated as `preview` (see
+// getRecipeVisibility) — recipes are private by default and must opt in to
+// `public` to launch to citizens.
 export const recipeMetaSchema = z.object({
-  visibility: recipeVisibilitySchema.default("public"),
+  visibility: recipeVisibilitySchema.default("preview"),
 });
 export type RecipeMeta = z.infer<typeof recipeMetaSchema>;
 
@@ -117,11 +118,12 @@ export const draftRecipeSchema = serviceContractRecipeSchema.extend({
 export type DraftRecipe = z.infer<typeof draftRecipeSchema>;
 
 /**
- * Resolve a recipe's effective visibility. An absent `meta` (every recipe
- * predating #1646) or absent `visibility` defaults to `public`.
+ * Resolve a recipe's effective visibility. An absent `meta` or absent
+ * `visibility` defaults to `preview` — recipes are private by default and must
+ * explicitly set `visibility: "public"` to be served to citizens.
  */
 export function getRecipeVisibility(
   recipe: Pick<ServiceContractRecipe, "meta">,
 ): RecipeVisibility {
-  return recipe.meta?.visibility ?? "public";
+  return recipe.meta?.visibility ?? "preview";
 }

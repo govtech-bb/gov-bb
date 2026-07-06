@@ -10,7 +10,6 @@ function renderToolbar(overrides: Partial<Parameters<typeof Toolbar>[0]> = {}) {
   const props = {
     formId: "",
     title: "",
-    version: "1.0.0",
     idError: null,
     isDirty: false,
     hasUnsavedChanges: false,

@@ -622,3 +622,40 @@ describe("eraseRecipe", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+// ---------------------------------------------------------------------------
+// formId path-injection guard (#293) — a crafted formId must be rejected before
+// any GitHub/backend call so it can never reach a request path or branch name.
+// ---------------------------------------------------------------------------
+describe("formId validation (#293)", () => {
+  const TRAVERSAL_ID = "../../../.github/workflows/evil";
+
+  it("publishRecipe rejects a traversal formId before any GitHub/API call", async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(
+      publishRecipe({
+        data: { recipe: { ...RECIPE, formId: TRAVERSAL_ID }, description: "" },
+      }),
+    ).rejects.toThrow(/Invalid form ID/);
+
+    // The remote /validate call, the reservation, and every GitHub fetch are
+    // all downstream of the guard — none should have run.
+    expect(api.post).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("eraseRecipe rejects a traversal formId before any GitHub/API call", async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(
+      eraseRecipe({
+        data: { formId: TRAVERSAL_ID, title: "Evil", reason: "because" },
+      }),
+    ).rejects.toThrow(/lowercase letters/i);
+
+    expect(api.get).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

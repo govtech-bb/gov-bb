@@ -173,16 +173,30 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
           <div
             key={form.id}
             className={styles.fieldRow}
-            style={{ cursor: loadingId ? "not-allowed" : "pointer" }}
+            style={{
+              cursor:
+                loadingId || form.isOrphanOverride ? "not-allowed" : "pointer",
+            }}
             onClick={() => {
-              if (!loadingId) handleSelect(form);
+              // An orphan override has no recipe to load — Enable-only, not openable.
+              if (!loadingId && !form.isOrphanOverride) handleSelect(form);
             }}
           >
             <span style={{ flex: 1 }}>
               <strong>{form.title || form.formId}</strong>{" "}
-              <span className={styles.badge}>v{form.version}</span>
+              {!form.isOrphanOverride && (
+                <span className={styles.badge}>v{form.version}</span>
+              )}
               {form.isPublished && (
                 <span className={styles.publishedBadge}>Published</span>
+              )}
+              {/* A non-public published form (#1835): badge its visibility so an
+                  operator sees why it isn't on the public site. Public forms and
+                  the token-less fallback (visibility undefined) show nothing. */}
+              {form.visibility && form.visibility !== "public" && (
+                <span className={styles.visibilityBadge}>
+                  {form.visibility}
+                </span>
               )}
               {form.isDisabled && (
                 <span className={styles.disabledBadge}>Disabled</span>
@@ -192,23 +206,39 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
             {loadingId === form.formId && <span> Loading…</span>}
             {/* Duplicate is non-destructive and works on any form (a published
                 form makes a fine template), so it sits ahead of the
-                publish-state danger cluster below. */}
-            <button
-              type="button"
-              style={{ marginLeft: 8 }}
-              disabled={!!loadingId}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDuplicate(form);
-              }}
-            >
-              Duplicate
-            </button>
-            {/* Per-row action follows intent: drafts delete (id freed),
-                disabled forms enable, and live published forms get both
-                Disable (reversible 410 tombstone) and Erase (permanent on-disk
-                recipe removal via PR). */}
-            {!form.isPublished ? (
+                publish-state danger cluster below. An orphan override has no
+                recipe to copy, so it offers no Duplicate. */}
+            {!form.isOrphanOverride && (
+              <button
+                type="button"
+                style={{ marginLeft: 8 }}
+                disabled={!!loadingId}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDuplicate(form);
+                }}
+              >
+                Duplicate
+              </button>
+            )}
+            {/* Per-row action follows intent. A disabled form enables — this
+                wins over publish state, so a disabled draft-only or orphan form
+                shows Enable, not Delete (#1658). Otherwise a draft deletes (id
+                freed) and a live published form gets both Disable (reversible
+                410 tombstone) and Erase (permanent on-disk recipe removal). */}
+            {form.isDisabled ? (
+              <button
+                type="button"
+                style={{ marginLeft: 8 }}
+                disabled={!!loadingId}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEnable(form);
+                }}
+              >
+                Enable
+              </button>
+            ) : !form.isPublished ? (
               <button
                 type="button"
                 className={styles.btnDanger}
@@ -220,18 +250,6 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
                 }}
               >
                 Delete
-              </button>
-            ) : form.isDisabled ? (
-              <button
-                type="button"
-                style={{ marginLeft: 8 }}
-                disabled={!!loadingId}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEnable(form);
-                }}
-              >
-                Enable
               </button>
             ) : (
               <>

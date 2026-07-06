@@ -16,6 +16,7 @@ vi.mock("./presence.js", () => ({
 }));
 
 import { getFullCatalog } from "../catalog.js";
+import { HttpError } from "../lib/http-error";
 import { publishHandler } from "./publish";
 
 const getFullCatalogMock = getFullCatalog as Mock;
@@ -296,17 +297,19 @@ describe("POST /builder/publish — validation backstop", () => {
     });
     (global as { fetch?: unknown }).fetch = fetchMock;
 
-    const res = mockRes();
-    await publishHandler(
-      mockReq({
-        recipe: validRecipe(),
-        githubToken: "ghtok",
-        userLogin: "tester",
-      }),
-      res,
-    );
+    // The PUT failure propagates after cleanup; the central error handler maps
+    // it to 500. The cleanup DELETE must still have fired before the re-throw.
+    await expect(
+      publishHandler(
+        mockReq({
+          recipe: validRecipe(),
+          githubToken: "ghtok",
+          userLogin: "tester",
+        }),
+        mockRes(),
+      ),
+    ).rejects.toThrow("Failed to write recipe: 422");
 
-    expect(res.statusCode).toBe(500);
     const deleteCall = fetchMock.mock.calls.find(
       ([, init]) => (init as RequestInit | undefined)?.method === "DELETE",
     );
@@ -343,11 +346,14 @@ describe("POST /builder/publish — validation backstop", () => {
   it("still rejects a missing recipe/token before validating", async () => {
     const fetchMock = vi.fn();
     (global as { fetch?: unknown }).fetch = fetchMock;
-    const res = mockRes();
 
-    await publishHandler(mockReq({ githubToken: "ghtok" }), res);
+    const err = await publishHandler(
+      mockReq({ githubToken: "ghtok" }),
+      mockRes(),
+    ).catch((e: unknown) => e);
 
-    expect(res.statusCode).toBe(400);
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(400);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

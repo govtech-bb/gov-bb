@@ -474,13 +474,17 @@ describe("RecipeFileLoaderService", () => {
       expect(loader.findAll().map((f) => f.formId)).toEqual(["public-form"]);
     });
 
-    it("treats a recipe with no meta as public (listed)", async () => {
+    it("treats a recipe with no meta as preview (hidden from the list)", async () => {
       const root = await newRoot({});
-      await writeFlatRecipe(root, "legacy-form");
+      // `meta: undefined` overrides the helper's public default, so the written
+      // file carries no `meta` at all — exercising the metaless default.
+      await writeFlatRecipe(root, "legacy-form", { meta: undefined });
       const loader = new RecipeFileLoaderService(root);
       await loader.loadAll();
 
-      expect(loader.findAll().map((f) => f.formId)).toContain("legacy-form");
+      expect(loader.findAll().map((f) => f.formId)).not.toContain(
+        "legacy-form",
+      );
     });
 
     it("still resolves a non-public recipe via findByFormId (gate is applied by the service, not the loader)", async () => {
@@ -492,6 +496,42 @@ describe("RecipeFileLoaderService", () => {
       await loader.loadAll();
 
       expect(loader.findByFormId({ formId: "preview-form" })).not.toBeNull();
+    });
+  });
+
+  describe("findAll includeNonPublic authoring mode (#1835)", () => {
+    it("includes non-public forms and stamps each entry's visibility when includeNonPublic is true", async () => {
+      const root = await newRoot({});
+      await writeFlatRecipe(root, "public-form");
+      await writeFlatRecipe(root, "preview-form", {
+        meta: { visibility: "preview" },
+      });
+      await writeFlatRecipe(root, "maintenance-form", {
+        meta: { visibility: "maintenance" },
+      });
+      const loader = new RecipeFileLoaderService(root);
+      await loader.loadAll();
+
+      const byId = new Map(
+        loader.findAll(true).map((f) => [f.formId, f.visibility]),
+      );
+      expect(byId.get("public-form")).toBe("public");
+      expect(byId.get("preview-form")).toBe("preview");
+      expect(byId.get("maintenance-form")).toBe("maintenance");
+    });
+
+    it("still omits non-public forms and stamps no visibility by default (includeNonPublic absent)", async () => {
+      const root = await newRoot({});
+      await writeFlatRecipe(root, "public-form");
+      await writeFlatRecipe(root, "preview-form", {
+        meta: { visibility: "preview" },
+      });
+      const loader = new RecipeFileLoaderService(root);
+      await loader.loadAll();
+
+      const list = loader.findAll();
+      expect(list.map((f) => f.formId)).toEqual(["public-form"]);
+      expect(list[0]).not.toHaveProperty("visibility");
     });
   });
 

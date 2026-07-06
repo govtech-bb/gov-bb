@@ -29,10 +29,6 @@
               "minLength": {
                 "value": 2,
                 "error": "First name must be at least 2 characters"
-              },
-              "pattern": {
-                "value": "^[a-zA-Z\\-']+$",
-                "error": "First name must contain only letters, hyphens, or apostrophes"
               }
             }
           }
@@ -49,10 +45,6 @@
               "minLength": {
                 "value": 2,
                 "error": "Last name must be at least 2 characters"
-              },
-              "pattern": {
-                "value": "^[a-zA-Z\\-']+$",
-                "error": "Last name must contain only letters, hyphens, or apostrophes"
               }
             }
           }

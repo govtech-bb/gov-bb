@@ -140,7 +140,7 @@ export {
 } from "./recipient-field";
 export type { RecipientKind } from "./recipient-field";
 
-export { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./id-pattern";
+export { KEBAB_ID_PATTERN, KEBAB_ID_ERROR, kebabIdSchema } from "./id-pattern";
 
 export { SEMVER_PATTERN, SEMVER_ERROR, semverSchema } from "./version-pattern";
 
