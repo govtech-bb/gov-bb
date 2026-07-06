@@ -162,17 +162,12 @@ jobs:
             --output text)
           echo "Registered migration task def: $TASK_DEF_ARN"
 
-          # --config.verify-deps-before-run=false: the runner image is a
-          # deliberately-pruned workspace (api + only the packages it builds),
-          # so pnpm's pre-run deps-status check fails resolving workspace deps
-          # api never builds in (e.g. @govtech-bb/content). Skip it; the image
-          # already has node_modules from the builder. Fixes #1878.
           TASK_ARN=$(aws ecs run-task \
             --cluster $ECS_CLUSTER \
             --task-definition "$TASK_DEF_ARN" \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[subnet-0c795b1b09ca96841,subnet-0c9b367709d716236],securityGroups=[sg-0cf036942a6f7affc],assignPublicIp=DISABLED}" \
-            --overrides '{"containerOverrides":[{"name":"api","command":["pnpm","--config.verify-deps-before-run=false","migration:run"]}]}' \
+            --overrides '{"containerOverrides":[{"name":"api","command":["pnpm","migration:run"]}]}' \
             --region $AWS_REGION \
             --query tasks[0].taskArn \
             --output text)
