@@ -13,3 +13,4 @@ export { CreateFormEditingSessions1780924594196 } from "./1780924594196-CreateFo
 export { MakeFormVersionNullable1781000000000 } from "./1781000000000-MakeFormVersionNullable";
 export { DedupFormDefinitionsUniqueFormId1781100000000 } from "./1781100000000-DedupFormDefinitionsUniqueFormId";
 export { AddProcessorsFailedToFormSubmissions1781200000000 } from "./1781200000000-AddProcessorsFailedToFormSubmissions";
+export { CreateServiceStatusTables1783356461699 } from "./1783356461699-CreateServiceStatusTables";
