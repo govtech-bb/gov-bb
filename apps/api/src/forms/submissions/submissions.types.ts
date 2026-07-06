@@ -146,6 +146,14 @@ export interface SubmitDto {
    * exercise the real submit path without firing real side-effects (#1252).
    */
   isSmokeSubmission?: boolean;
+  /**
+   * Set by the controller only when a request carries a valid
+   * `X-Recipe-Preview` token (see RECIPE_PREVIEW_TOKEN). When true the
+   * submission bypasses the #1646 visibility gate so a published-but-flagged
+   * (non-public) form resolves and submits normally for a reviewer — today's
+   * `?preview=` link (#1682). Fail-closed: absent/invalid token → undefined.
+   */
+  bypassVisibility?: boolean;
 }
 
 type SubmitOutcome = "created" | "duplicate" | "in_progress";

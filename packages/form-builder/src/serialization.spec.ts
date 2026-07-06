@@ -56,6 +56,36 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     expect(result.description).toBe("A useful form");
   });
 
+  it("omits meta when not present on draft (legacy draft → public)", () => {
+    const draft = makeBaseDraft();
+    const recipe = serializeRecipeDraft(draft);
+
+    expect(recipe.meta).toBeUndefined();
+    expect(Object.keys(recipe)).not.toContain("meta");
+    const result = deserializeRecipe(recipe);
+    expect(result.meta).toBeUndefined();
+    expect(Object.keys(result)).not.toContain("meta");
+  });
+
+  it("preserves meta.visibility on the draft when present", () => {
+    const draft = makeBaseDraft({ meta: { visibility: "draft" } });
+    const recipe = serializeRecipeDraft(draft);
+
+    expect(recipe.meta).toEqual({ visibility: "draft" });
+    const result = deserializeRecipe(recipe);
+    expect(result.meta).toEqual({ visibility: "draft" });
+  });
+
+  it("round-trips each visibility level and validates against the recipe schema", () => {
+    for (const visibility of ["public", "preview", "draft"] as const) {
+      const draft = makeBaseDraft({ meta: { visibility } });
+      const recipe = serializeRecipeDraft(draft);
+      // The serialized recipe must be a valid ServiceContractRecipe.
+      expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
+      expect(deserializeRecipe(recipe).meta).toEqual({ visibility });
+    }
+  });
+
   it("does not assert exact createdAt/updatedAt — only that they are strings", () => {
     const draft = makeBaseDraft();
     const recipe = serializeRecipeDraft(draft);

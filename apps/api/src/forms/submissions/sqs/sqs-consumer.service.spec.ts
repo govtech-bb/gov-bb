@@ -559,19 +559,16 @@ describe("SqsConsumerService", () => {
 
     it("processes messages when they arrive in the poll response", async () => {
       factory.resolveByType.mockReturnValue(makeProcessor());
-      let callCount = 0;
+      let receiveCount = 0;
 
       sendMock.mockImplementation(async (cmd: any) => {
-        // First ReceiveMessageCommand call returns a message, then stop
-        if (
-          cmd.constructor?.name === "ReceiveMessageCommand" ||
-          callCount === 0
-        ) {
-          callCount++;
-          if (callCount === 1) {
-            (service as any).running = false;
-            return { Messages: [sqsMessage()] };
-          }
+        if (cmd instanceof ReceiveMessageCommand) {
+          receiveCount++;
+          // First receive delivers a message (running still true → it is
+          // processed); second receive stops the loop.
+          if (receiveCount === 1) return { Messages: [sqsMessage()] };
+          (service as any).running = false;
+          return { Messages: [] };
         }
         return {}; // DeleteMessageCommand response
       });
@@ -604,15 +601,95 @@ describe("SqsConsumerService", () => {
   });
 
   describe("onApplicationShutdown", () => {
-    it("sets running to false to stop polling loops", () => {
+    it("sets running to false to stop polling loops", async () => {
       // Mock pollQueue so onApplicationBootstrap does not start a real loop
       // (which would create a dangling sleep timer and leak the worker process).
       vi.spyOn(service as any, "pollQueue").mockResolvedValue(undefined);
 
       service.onApplicationBootstrap();
-      service.onApplicationShutdown();
+      await service.onApplicationShutdown();
 
       expect((service as any).running).toBe(false);
+    });
+
+    it("awaits the in-flight poll loop before resolving (drain)", async () => {
+      // A deferred loop we control: shutdown must not resolve until it settles.
+      let finishLoop!: () => void;
+      const loopPromise = new Promise<void>((resolve) => {
+        finishLoop = resolve;
+      });
+      vi.spyOn(service as any, "pollQueue").mockReturnValue(loopPromise);
+
+      service.onApplicationBootstrap();
+
+      let shutdownResolved = false;
+      const shutdown = service.onApplicationShutdown().then(() => {
+        shutdownResolved = true;
+      });
+
+      // Give microtasks a chance to run — shutdown should still be draining.
+      await Promise.resolve();
+      expect(shutdownResolved).toBe(false);
+
+      // In-flight iteration completes → shutdown drains and resolves.
+      finishLoop();
+      await shutdown;
+      expect(shutdownResolved).toBe(true);
+    });
+
+    it("destroys the SQS client on shutdown", async () => {
+      vi.spyOn(service as any, "pollQueue").mockResolvedValue(undefined);
+      const destroySpy = vi.spyOn((service as any).client, "destroy");
+
+      service.onApplicationBootstrap();
+      await service.onApplicationShutdown();
+
+      expect(destroySpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("resolves even if the poll loop never settles (drain bounded by timeout)", async () => {
+      vi.useFakeTimers();
+      try {
+        // A loop that never resolves — the timeout must win so shutdown still returns.
+        vi.spyOn(service as any, "pollQueue").mockReturnValue(
+          new Promise<void>(() => {}),
+        );
+        const warnSpy = vi
+          .spyOn((service as any).logger, "warn")
+          .mockImplementation(() => {});
+
+        service.onApplicationBootstrap();
+
+        const shutdown = service.onApplicationShutdown();
+        // Advance past the drain timeout so the bounding timer fires.
+        await vi.advanceTimersByTimeAsync(30_000);
+        await shutdown;
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("drain timed out"),
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("does not process a batch received after shutdown was requested", async () => {
+      // receive returns a message, but running is already false by the time the
+      // batch arrives — the loop must break without processing (left for redelivery).
+      factory.resolveByType.mockReturnValue(makeProcessor());
+      sendMock.mockImplementation(async () => {
+        (service as any).running = false;
+        return { Messages: [sqsMessage()] };
+      });
+
+      (service as any).running = true;
+      await (service as any).pollQueue(QUEUE_URL);
+
+      expect(factory.resolveByType).not.toHaveBeenCalled();
+      const deleteCalls = sendMock.mock.calls.filter(
+        ([cmd]) => cmd instanceof DeleteMessageCommand,
+      );
+      expect(deleteCalls).toHaveLength(0);
     });
   });
 });

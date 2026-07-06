@@ -45,6 +45,11 @@ export async function timedPost(
       data: body,
       headers: opts.headers,
       timeout: opts.timeoutMs,
+      // Don't follow redirects (#287): assertSafeUrl validates the request URL
+      // once, but a 3xx to an internal host (e.g. the metadata endpoint) would
+      // otherwise be followed unchecked. A webhook target shouldn't redirect, so
+      // a 3xx surfaces as a non-2xx HttpPostError below.
+      maxRedirects: 0,
       validateStatus: () => true,
     }),
   );

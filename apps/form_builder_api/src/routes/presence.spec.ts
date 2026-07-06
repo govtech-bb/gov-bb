@@ -4,6 +4,7 @@ import type { Request, Response } from "express";
 vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
 
 import { getDataSource } from "../db.js";
+import { HttpError } from "../lib/http-error";
 import {
   claimPresenceHandler,
   getPresenceHandler,
@@ -119,26 +120,29 @@ describe("claimPresenceHandler", () => {
     expect(query).toHaveBeenCalledTimes(4);
   });
 
-  it("rejects a missing/empty userLogin with 400 and never touches the DB", async () => {
+  it("throws a 400 HttpError for a missing/empty userLogin and never touches the DB", async () => {
     const query = vi.fn();
     getDataSourceMock.mockResolvedValue({ query });
 
     for (const body of [{}, { userLogin: "" }, { userLogin: "   " }]) {
-      const res = mockRes();
-      await claimPresenceHandler(mockReq(body, { formId: "f1" }), res);
-      expect(res.statusCode).toBe(400);
+      const err = await claimPresenceHandler(
+        mockReq(body, { formId: "f1" }),
+        mockRes(),
+      ).catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(HttpError);
+      expect((err as HttpError).status).toBe(400);
     }
     expect(query).not.toHaveBeenCalled();
   });
 
-  it("returns 500 on a DB error", async () => {
+  it("propagates a DB error (the central handler maps it to 500)", async () => {
     getDataSourceMock.mockRejectedValue(new Error("db down"));
-    const res = mockRes();
-    await claimPresenceHandler(
-      mockReq({ userLogin: "alice" }, { formId: "f1" }),
-      res,
-    );
-    expect(res.statusCode).toBe(500);
+    await expect(
+      claimPresenceHandler(
+        mockReq({ userLogin: "alice" }, { formId: "f1" }),
+        mockRes(),
+      ),
+    ).rejects.toThrow("db down");
   });
 });
 
@@ -163,11 +167,11 @@ describe("getPresenceHandler", () => {
     expect(res.body).toEqual({ holder: null });
   });
 
-  it("returns 500 on a DB error", async () => {
+  it("propagates a DB error (the central handler maps it to 500)", async () => {
     getDataSourceMock.mockRejectedValue(new Error("db down"));
-    const res = mockRes();
-    await getPresenceHandler(mockReq({}, { formId: "f1" }), res);
-    expect(res.statusCode).toBe(500);
+    await expect(
+      getPresenceHandler(mockReq({}, { formId: "f1" }), mockRes()),
+    ).rejects.toThrow("db down");
   });
 });
 
@@ -189,25 +193,28 @@ describe("releasePresenceHandler", () => {
     ]);
   });
 
-  it("rejects a missing userLogin with 400 and never touches the DB", async () => {
+  it("throws a 400 HttpError for a missing userLogin and never touches the DB", async () => {
     const query = vi.fn();
     getDataSourceMock.mockResolvedValue({ query });
 
-    const res = mockRes();
-    await releasePresenceHandler(mockReq({}, { formId: "f1" }), res);
+    const err = await releasePresenceHandler(
+      mockReq({}, { formId: "f1" }),
+      mockRes(),
+    ).catch((e: unknown) => e);
 
-    expect(res.statusCode).toBe(400);
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(400);
     expect(query).not.toHaveBeenCalled();
   });
 
-  it("returns 500 on a DB error", async () => {
+  it("propagates a DB error (the central handler maps it to 500)", async () => {
     getDataSourceMock.mockRejectedValue(new Error("db down"));
-    const res = mockRes();
-    await releasePresenceHandler(
-      mockReq({ userLogin: "alice" }, { formId: "f1" }),
-      res,
-    );
-    expect(res.statusCode).toBe(500);
+    await expect(
+      releasePresenceHandler(
+        mockReq({ userLogin: "alice" }, { formId: "f1" }),
+        mockRes(),
+      ),
+    ).rejects.toThrow("db down");
   });
 });
 

@@ -2,7 +2,7 @@
 # ---- builder ------------------------------------------------------------
 # Compiles the NestJS app + the workspace packages it depends on into
 # /app/dist, using the full monorepo as context.
-FROM node:24-alpine3.23@sha256:7c70d1235c0b4c2bc9eeed5393d19f1bbdde6885ba0d58ba62bb385d7b0f3ff1 AS builder
+FROM node:24-alpine3.23@sha256:595398b0081eacda8e1c4c5b97b76cd1020e4d58a8ebcb4843b9bca1e79e7436 AS builder
 
 # Corepack must run as root — it writes to /usr/local/bin.
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
@@ -28,6 +28,11 @@ COPY --chown=app:app packages/form-conditions/package.json packages/form-conditi
 COPY --chown=app:app packages/form-types/package.json packages/form-types/
 COPY --chown=app:app packages/form-validation/package.json packages/form-validation/
 COPY --chown=app:app packages/registry/package.json packages/registry/
+# content is never imported by the api, but the ROOT package.json devDeps pin
+# it (workspace:*) — without its manifest any non-frozen `pnpm install` in the
+# image fails with ERR_PNPM_WORKSPACE_PKG_NOT_FOUND (broke the migrate task
+# after 47f73422 made it a root dep).
+COPY --chown=app:app packages/content/package.json packages/content/
 
 # BuildKit cache mount keeps the pnpm content-addressable store across builds,
 # so a cache-invalidating change to the lockfile or any package.json re-installs
@@ -67,7 +72,7 @@ CMD ["pnpm", "exec", "nx", "dev", "api"]
 # ---- runner -------------------------------------------------------------
 # Slim runtime image. Includes pnpm so the ECS sandbox migrate-task
 # (deploy-sandbox.yml) can shell into the container and run `pnpm migration:run`.
-FROM node:24-alpine3.23@sha256:7c70d1235c0b4c2bc9eeed5393d19f1bbdde6885ba0d58ba62bb385d7b0f3ff1 AS runner
+FROM node:24-alpine3.23@sha256:595398b0081eacda8e1c4c5b97b76cd1020e4d58a8ebcb4843b9bca1e79e7436 AS runner
 
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 
@@ -76,9 +81,20 @@ RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
 
 WORKDIR /app
 
-# Download AWS RDS CA bundle for TLS connections to RDS (must run before USER app)
-RUN wget -O /app/rds-ca-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem && \
-    chown app:app /app/rds-ca-bundle.pem
+# `script` is required for ECS Exec session logging (issue #217). ECS Exec
+# uploads the session to CloudWatch/S3 only if `script` and `cat` are present in
+# the image; node:alpine ships busybox `cat` but NOT `script` (it lives in
+# util-linux-misc). Without it, exec works but nothing is ever logged.
+RUN apk add --no-cache util-linux-misc
+
+# AWS RDS CA bundle for TLS connections to RDS (issue #304). Committed to the
+# repo (certs/rds-global-bundle.pem) and COPYed in rather than fetched at build
+# time — no unverified network download, and the build no longer depends on the
+# truststore endpoint being reachable. It's the global-bundle.pem of RDS root
+# CAs; RDS auto-rotates the DB *server* cert under the same roots, so this is
+# stable for years. Refresh only on a new RDS root-CA generation (rare):
+#   curl -fsSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o certs/rds-global-bundle.pem
+COPY --chown=app:app certs/rds-global-bundle.pem /app/rds-ca-bundle.pem
 
 RUN chown app:app /app
 USER app
@@ -98,7 +114,22 @@ COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
 #   - database: imported by data-source.ts since #721
 COPY --from=builder --chown=app:app /app/packages/form-types/src/ ./packages/form-types/src/
 COPY --from=builder --chown=app:app /app/packages/database/src/ ./packages/database/src/
+# content is source-only (no build target) so it isn't in dist/packages/, but
+# the ROOT package.json devDeps pin it (workspace:*) — keep the runtime
+# workspace self-consistent so a non-frozen `pnpm install` can't die on
+# ERR_PNPM_WORKSPACE_PKG_NOT_FOUND. The manifest alone is enough: nothing in
+# the api imports it.
+COPY --from=builder --chown=app:app /app/packages/content/package.json ./packages/content/
 COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
+
+# Drop esbuild from the runtime image (#1567). esbuild ships a Go-compiled
+# binary (@esbuild/<platform>/bin/esbuild) that AWS Inspector flags as
+# go/stdlib CVE-2025-68121 (+ other go/stdlib CVEs). This image deliberately
+# keeps devDeps (in-container `pnpm migration:run`), but migrations run via
+# typeorm-ts-node-commonjs (ts-node, not tsx/esbuild) and the runtime CMD is
+# `node dist/src/main.js` — nothing here loads esbuild, so removing it closes
+# the finding with no runtime impact.
+RUN rm -rf node_modules/@esbuild node_modules/esbuild
 
 # pnpm (hoisted mode) keeps workspace-package symlinks in the consumer's
 # own node_modules (apps/api/node_modules/@govtech-bb/*). The runtime
@@ -130,6 +161,14 @@ RUN ln -sfn ../dist/src node_modules/@
 COPY --from=builder --chown=app:app /app/package.json ./
 COPY --from=builder --chown=app:app /app/pnpm-lock.yaml ./
 COPY --from=builder --chown=app:app /app/pnpm-workspace.yaml ./
+# pnpm 11's verify-deps-before-run intercepts any in-container `pnpm run` (the
+# migrate task runs `pnpm migration:run`): the runner's trimmed workspace never
+# matches the builder's install state, so the check re-resolves everything —
+# needing registry egress at deploy time and failing hard on any workspace
+# drift. This image is immutable: always run against the baked node_modules.
+# Appended to pnpm-workspace.yaml because pnpm 11 ignores the .npmrc and
+# npm_config_* env forms of this setting — image-only, local dev keeps it on.
+RUN printf '\n# image-only (see Dockerfile): never re-install at runtime\nverifyDepsBeforeRun: false\n' >> pnpm-workspace.yaml
 COPY --from=builder --chown=app:app /app/tsconfig.base.json ./
 COPY --from=builder --chown=app:app /app/apps/api/package.json ./apps/api/
 COPY --from=builder --chown=app:app /app/apps/api/tsconfig.json ./apps/api/
@@ -147,3 +186,7 @@ ENV NODE_EXTRA_CA_CERTS=/app/rds-ca-bundle.pem
 EXPOSE 3001
 
 CMD ["node", "dist/src/main.js"]
+
+# Staging bootstrap touch 2026-05-30: force api affected so the image gets pushed to ssb-api ECR
+# (forms-db-staging has never had migrations run; this commit + the migrations/README.md trip
+# both gates so the first deploy populates the DB).

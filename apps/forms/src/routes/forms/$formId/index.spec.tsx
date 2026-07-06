@@ -23,6 +23,8 @@ vi.mock("@tanstack/react-router", () => ({
     useLoaderData: vi.fn(),
     useSearch: vi.fn(),
   }),
+  // RouteComponent calls useNavigate to strip the ?preview= token after load.
+  useNavigate: () => vi.fn(),
 }));
 
 vi.mock("@tanstack/react-form", () => ({
@@ -65,6 +67,17 @@ vi.mock("../../../lib/session-storage", () => ({
   getSubmissionState: vi.fn(() => null),
   storeSubmissionState: vi.fn(),
   clearSubmissionState: vi.fn(),
+  persistFormStartTime: vi.fn(),
+  getFormStartTime: vi.fn(() => null),
+  clearFormStartTime: vi.fn(),
+}));
+
+vi.mock("../../../lib/submit-duration", () => ({
+  elapsedSeconds: vi.fn(() => 0),
+}));
+
+vi.mock("../../../lib/form-category", () => ({
+  formCategory: vi.fn(() => "test-category"),
 }));
 
 vi.mock("@forms/form-api", () => ({
@@ -278,19 +291,30 @@ describe("RouteComponent", () => {
     });
   });
 
-  it("passes isPreview=true to FormRenderer when a preview token is in search", () => {
+  it("passes isDraft=true to FormRenderer when a draft token is in search", () => {
+    vi.spyOn(Route, "useSearch").mockReturnValue({
+      step: "step1",
+      draft: "tok",
+    });
+    render(<Route.component />);
+    expect(mockFormRendererProps.current.isDraft).toBe(true);
+  });
+
+  it("does NOT set isDraft for a preview token — preview is submittable (#1682)", () => {
     vi.spyOn(Route, "useSearch").mockReturnValue({
       step: "step1",
       preview: "tok",
     });
     render(<Route.component />);
-    expect(mockFormRendererProps.current.isPreview).toBe(true);
+    expect(mockFormRendererProps.current.isDraft).toBe(false);
+    // The preview token is still forwarded for file uploads.
+    expect(mockFormRendererProps.current.previewToken).toBe("tok");
   });
 
-  it("passes isPreview=false to FormRenderer when no preview token is in search", () => {
+  it("passes isDraft=false to FormRenderer when no draft token is in search", () => {
     vi.spyOn(Route, "useSearch").mockReturnValue({ step: "step1" });
     render(<Route.component />);
-    expect(mockFormRendererProps.current.isPreview).toBe(false);
+    expect(mockFormRendererProps.current.isDraft).toBe(false);
   });
 
   it("ignores and clears any persisted submissionState on a fresh non-confirmation load", () => {
@@ -320,13 +344,13 @@ describe("Route.loader", () => {
     const result = await Route.loader({
       params: { formId: "test-form" },
       context: { queryClient: mockQueryClient },
-      deps: { preview: undefined },
+      deps: { preview: undefined, draft: undefined },
     } as any);
     expect(mockQueryClient.ensureQueryData).toHaveBeenCalledTimes(2);
     expect(result).toBe(mockFormMeta);
   });
 
-  it("passes formId and undefined preview to contractQueryOptions on first call", async () => {
+  it("passes formId and undefined preview/draft to contractQueryOptions on first call", async () => {
     const { contractQueryOptions } = vi.mocked(formsLibMock);
     const mockQueryClient = {
       ensureQueryData: vi.fn().mockResolvedValue(mockFormMeta),
@@ -334,12 +358,16 @@ describe("Route.loader", () => {
     await Route.loader({
       params: { formId: "test-form" },
       context: { queryClient: mockQueryClient },
-      deps: { preview: undefined },
+      deps: { preview: undefined, draft: undefined },
     } as any);
-    expect(contractQueryOptions).toHaveBeenCalledWith("test-form", undefined);
+    expect(contractQueryOptions).toHaveBeenCalledWith(
+      "test-form",
+      undefined,
+      undefined,
+    );
   });
 
-  it("passes formId, contract result, and undefined preview to formMetaQueryOptions on second call", async () => {
+  it("passes formId, contract result, and undefined preview/draft to formMetaQueryOptions on second call", async () => {
     const { formMetaQueryOptions } = vi.mocked(formsLibMock);
     const mockQueryClient = {
       ensureQueryData: vi.fn().mockResolvedValue(mockFormMeta),
@@ -347,55 +375,76 @@ describe("Route.loader", () => {
     await Route.loader({
       params: { formId: "test-form" },
       context: { queryClient: mockQueryClient },
-      deps: { preview: undefined },
+      deps: { preview: undefined, draft: undefined },
     } as any);
     expect(formMetaQueryOptions).toHaveBeenCalledWith(
       "test-form",
       mockFormMeta,
       undefined,
+      undefined,
     );
   });
 
-  it("forwards the preview token to formMetaQueryOptions when deps.preview is set", async () => {
-    const { formMetaQueryOptions } = vi.mocked(formsLibMock);
+  it("forwards the preview token to both query options when deps.preview is set", async () => {
+    const { contractQueryOptions, formMetaQueryOptions } =
+      vi.mocked(formsLibMock);
     const mockQueryClient = {
       ensureQueryData: vi.fn().mockResolvedValue(mockFormMeta),
     };
     await Route.loader({
       params: { formId: "test-form" },
       context: { queryClient: mockQueryClient },
-      deps: { preview: "s3cret" },
+      deps: { preview: "s3cret", draft: undefined },
     } as any);
+    expect(contractQueryOptions).toHaveBeenCalledWith(
+      "test-form",
+      "s3cret",
+      undefined,
+    );
     expect(formMetaQueryOptions).toHaveBeenCalledWith(
       "test-form",
       mockFormMeta,
       "s3cret",
+      undefined,
     );
   });
 
-  it("forwards the preview token to contractQueryOptions when deps.preview is set", async () => {
-    const { contractQueryOptions } = vi.mocked(formsLibMock);
+  it("forwards the draft token to both query options when deps.draft is set", async () => {
+    const { contractQueryOptions, formMetaQueryOptions } =
+      vi.mocked(formsLibMock);
     const mockQueryClient = {
       ensureQueryData: vi.fn().mockResolvedValue(mockFormMeta),
     };
     await Route.loader({
       params: { formId: "test-form" },
       context: { queryClient: mockQueryClient },
-      deps: { preview: "s3cret" },
+      deps: { preview: undefined, draft: "d-s3cret" },
     } as any);
-    expect(contractQueryOptions).toHaveBeenCalledWith("test-form", "s3cret");
+    expect(contractQueryOptions).toHaveBeenCalledWith(
+      "test-form",
+      undefined,
+      "d-s3cret",
+    );
+    expect(formMetaQueryOptions).toHaveBeenCalledWith(
+      "test-form",
+      mockFormMeta,
+      undefined,
+      "d-s3cret",
+    );
   });
 });
 
 describe("Route.loaderDeps", () => {
-  it("extracts the preview token from search when present", () => {
-    const result = Route.loaderDeps({ search: { preview: "s3cret" } } as any);
-    expect(result).toEqual({ preview: "s3cret" });
+  it("extracts the preview and draft tokens from search when present", () => {
+    const result = Route.loaderDeps({
+      search: { preview: "s3cret", draft: "d-s3cret" },
+    } as any);
+    expect(result).toEqual({ preview: "s3cret", draft: "d-s3cret" });
   });
 
-  it("returns preview as undefined when not present in search", () => {
+  it("returns preview and draft as undefined when not present in search", () => {
     const result = Route.loaderDeps({ search: {} } as any);
-    expect(result).toEqual({ preview: undefined });
+    expect(result).toEqual({ preview: undefined, draft: undefined });
   });
 });
 
@@ -508,8 +557,12 @@ describe("RouteComponent onSubmit handler", () => {
     });
     await expect(onSubmit({ value: {} })).resolves.not.toThrow();
     expect(mockTrackEvent).toHaveBeenCalledWith(
-      "form-submit-success",
-      expect.objectContaining({ form_id: "test-form" }),
+      "form-submit",
+      expect.objectContaining({
+        form: "test-form",
+        category: "test-category",
+        duration_seconds: 0,
+      }),
     );
   });
 
@@ -545,12 +598,12 @@ describe("RouteComponent onSubmit handler", () => {
     // Payment could not be initiated — this must not register as a success
     // in analytics (issue #318); it reports a payment-init error instead.
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
-      "form-submit-success",
+      "form-submit",
       expect.anything(),
     );
     expect(mockTrackEvent).toHaveBeenCalledWith(
       "form-submit-error",
-      expect.objectContaining({ form_id: "test-form", reason: "payment-init" }),
+      expect.objectContaining({ form: "test-form", errors: "payment-init" }),
     );
   });
 
@@ -574,8 +627,9 @@ describe("RouteComponent onSubmit handler", () => {
       expect.objectContaining({ submissionSuccess: false }),
     );
     expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
-      form_id: "test-form",
-      reason: "server",
+      form: "test-form",
+      category: "test-category",
+      errors: "server",
     });
   });
 
@@ -624,7 +678,7 @@ describe("RouteComponent onSubmit handler", () => {
     // Stays silent on analytics: a 'processing' replay is a duplicate of an
     // already-tracked submit, so neither a success nor an error event fires.
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
-      "form-submit-success",
+      "form-submit",
       expect.anything(),
     );
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
@@ -645,7 +699,7 @@ describe("RouteComponent onSubmit handler", () => {
     });
     await onSubmit({ value: {} });
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
-      "form-submit-success",
+      "form-submit",
       expect.anything(),
     );
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
@@ -676,11 +730,12 @@ describe("RouteComponent onSubmit handler", () => {
       await onSubmit({ value: {} });
     });
     expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
-      form_id: "test-form",
-      reason: "network",
+      form: "test-form",
+      category: "test-category",
+      errors: "network",
     });
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
-      "form-submit-success",
+      "form-submit",
       expect.anything(),
     );
     // The catch must still commit a failed state so the confirmation step

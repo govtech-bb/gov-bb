@@ -36,6 +36,7 @@ function makeEntity(
   return {
     id: "uuid-sub-1",
     idempotencyKey: "key-abc",
+    referenceCode: "TF-2606-ABCDEFG",
     formId: "test-form",
     formVersion: "1.0.0",
     status: FormSubmissionStatus.SUBMITTED,
@@ -64,10 +65,19 @@ interface MakeMocksOptions {
   existingEntity?: FormSubmissionEntity | null;
   gating?: ISubmissionProcessor[];
   nonGating?: ISubmissionProcessor[];
+  // The raw processor configs the contract carries — what `rawProcessors`
+  // resolves to. Defaults to [] (the previous hardcoded shape). Set this when a
+  // test needs the service to inspect a config, e.g. the payment amount guard.
+  processors?: Array<{ type: string; config: Record<string, unknown> }>;
 }
 
 function makeMocks(options: MakeMocksOptions = {}) {
-  const { existingEntity = null, gating = [], nonGating = [] } = options;
+  const {
+    existingEntity = null,
+    gating = [],
+    nonGating = [],
+    processors = [],
+  } = options;
 
   const txRepo = {
     findOne: vi.fn().mockResolvedValue(null),
@@ -84,7 +94,7 @@ function makeMocks(options: MakeMocksOptions = {}) {
   const pipeline = {
     run: vi.fn().mockResolvedValue({
       draft: { formVersion: "1.0.0", lastActivePage: 0 },
-      contract: { processors: [] },
+      contract: { processors },
       auditTrail: AUDIT_TRAIL,
     }),
   } as unknown as SubmissionPipelineService;
@@ -177,6 +187,50 @@ describe("SubmissionsService", () => {
           referenceCode: expect.any(String),
         }),
       );
+    });
+
+    it("regenerates and retries the reference on a unique-collision (23505)", async () => {
+      const created = makeEntity();
+      const txRepo = {
+        findOne: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockImplementation((data) => ({ ...data })),
+        save: vi.fn().mockResolvedValue(created),
+      };
+      let attempts = 0;
+      const submissionRepo = {
+        findOne: vi.fn().mockResolvedValue(null),
+        tx: vi.fn().mockImplementation((cb) => {
+          attempts += 1;
+          if (attempts === 1) {
+            return Promise.reject({
+              code: "23505",
+              constraint: "UQ_form_submissions_reference_code",
+            });
+          }
+          return cb(txRepo);
+        }),
+      } as unknown as FormSubmissionRepository;
+
+      const service = new SubmissionsService(
+        submissionRepo,
+        {
+          run: vi.fn().mockResolvedValue({
+            draft: { formVersion: "1.0.0", lastActivePage: 0 },
+            contract: { processors: [] },
+            auditTrail: AUDIT_TRAIL,
+          }),
+        } as unknown as SubmissionPipelineService,
+        { emit: vi.fn() } as unknown as EventEmitter2,
+        {
+          resolveSplit: vi.fn().mockReturnValue({ gating: [], nonGating: [] }),
+        } as unknown as ProcessorFactory,
+        expressions,
+      );
+
+      const result = await service.submit(BASE_DTO);
+
+      expect(attempts).toBe(2); // first tx threw 23505, second succeeded
+      expect(result.outcome).toBe("created");
     });
 
     it("emits the submission event with raw processors (resolution happens in the listener)", async () => {
@@ -580,6 +634,111 @@ describe("SubmissionsService", () => {
       const { service } = makeMocks({ gating: [failing] });
 
       await expect(service.submit(BASE_DTO)).rejects.toThrow("boom");
+    });
+  });
+
+  describe("zero-amount payment is a no-op (#1449)", () => {
+    // A gating payment handler that WOULD defer if invoked. The guard's job is
+    // that it is never invoked when the resolved fee is 0.
+    function makePaymentHandler(): ISubmissionProcessor {
+      return {
+        type: "payment",
+        gatesPipeline: true,
+        process: vi.fn().mockResolvedValue({
+          kind: "deferred",
+          data: {
+            paymentUrl: "u",
+            paymentId: "p",
+            amount: 0,
+            description: "d",
+          },
+        }),
+      } as unknown as ISubmissionProcessor;
+    }
+
+    const paymentConfig = (amount: number) => ({
+      type: "payment",
+      config: { amount, paymentCode: "X", department: "D", description: "Fee" },
+    });
+
+    it("treats amount 0 as no payment: SUBMITTED, emits submission.created, never gates", async () => {
+      const payment = makePaymentHandler();
+      const { service, txRepo, eventEmitter } = makeMocks({
+        gating: [payment],
+        processors: [paymentConfig(0)],
+      });
+
+      const result = await service.submit(BASE_DTO);
+
+      // Saved as a normal submission, not PENDING_PAYMENT.
+      expect(txRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ status: FormSubmissionStatus.SUBMITTED }),
+      );
+      const createArg = txRepo.create.mock.calls[0][0] as Record<
+        string,
+        unknown
+      >;
+      expect(createArg.submittedAt).toBeInstanceOf(Date);
+
+      // Normal async path runs; the payment gate never fires.
+      expect(eventEmitter.emit as Mock).toHaveBeenCalledWith(
+        "submission.created",
+        expect.any(Object),
+      );
+      expect(payment.process).not.toHaveBeenCalled();
+
+      // No payment outcome surfaced to the caller.
+      expect(result.statusCode).toBe(HttpStatus.CREATED);
+      expect(result.message).toBe("Submission created");
+      expect(result.deferred).toBeUndefined();
+    });
+
+    it("still gates when the fee resolves to > 0", async () => {
+      const payment = makePaymentHandler();
+      const { service, txRepo, eventEmitter } = makeMocks({
+        gating: [payment],
+        processors: [paymentConfig(1000)],
+      });
+
+      await service.submit(BASE_DTO);
+
+      expect(txRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: FormSubmissionStatus.PENDING_PAYMENT,
+        }),
+      );
+      expect(payment.process).toHaveBeenCalledTimes(1);
+      expect(eventEmitter.emit as Mock).not.toHaveBeenCalled();
+    });
+
+    it("drops only the zero-amount payment, leaving any other gating processor intact", async () => {
+      // A hypothetical second gating processor type. The zero-amount guard must
+      // remove only the payment from the gating set, not clear all gating — so
+      // this one still runs and still gates the pipeline.
+      const otherGate = {
+        type: "spreadsheet",
+        gatesPipeline: true,
+        process: vi.fn().mockResolvedValue({ kind: "completed" }),
+      } as unknown as ISubmissionProcessor;
+      const payment = makePaymentHandler();
+      const { service, txRepo, eventEmitter } = makeMocks({
+        gating: [otherGate, payment],
+        processors: [paymentConfig(0)],
+      });
+
+      await service.submit(BASE_DTO);
+
+      // Still gated by the other processor.
+      expect(txRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: FormSubmissionStatus.PENDING_PAYMENT,
+        }),
+      );
+      expect(otherGate.process).toHaveBeenCalledTimes(1);
+      // The zero-amount payment was dropped — never invoked.
+      expect(payment.process).not.toHaveBeenCalled();
+      // Gating path does not emit submission.created.
+      expect(eventEmitter.emit as Mock).not.toHaveBeenCalled();
     });
   });
 });

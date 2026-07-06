@@ -30,13 +30,13 @@ function renderModal(props: Partial<React.ComponentProps<typeof SubmitModal>> = 
 }
 
 describe("SubmitModal preview link", () => {
-  it("shows a Preview form link to VITE_FORMS_URL/forms/{id} with the preview token after a successful save", () => {
+  it("shows a Preview form link to VITE_FORMS_URL/forms/{id} with the draft token after a successful save", () => {
     renderModal({ submitSuccess: true });
 
     const link = screen.getByRole("link", { name: /preview form/i });
     expect(link).toHaveAttribute(
       "href",
-      "https://forms.example.test/forms/passport?preview=stub-token",
+      "https://forms.example.test/forms/passport?draft=stub-token",
     );
     expect(link).toHaveAttribute("target", "_blank");
   });

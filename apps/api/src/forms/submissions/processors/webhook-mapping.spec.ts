@@ -24,6 +24,7 @@ const MAPPING: WebhookMapping = {
     phone: "contact-details.parent-mobile-phone",
   },
   excludeSteps: ["declaration"],
+  groupByStep: false,
 };
 
 describe("webhook-mapping", () => {
@@ -53,6 +54,7 @@ describe("webhook-mapping", () => {
             phone: "contact-details.parent-mobile-phone",
           },
           excludeSteps: [],
+          groupByStep: false,
         },
         values: VALUES,
         referenceCode: "X-1",
@@ -111,6 +113,44 @@ describe("webhook-mapping", () => {
       expect(payload.form_data).not.toHaveProperty("child-first-name");
       expect(payload.form_data).not.toHaveProperty("parent-email");
       expect(payload.form_data).not.toHaveProperty("parent-mobile-phone");
+    });
+  });
+
+  describe("buildMappedCasePayload — groupByStep", () => {
+    const payload = buildMappedCasePayload({
+      mapping: { ...MAPPING, groupByStep: true },
+      values: {
+        ...VALUES,
+        "collection-persons": [{ "collection-person-first-name": "Bob" }],
+      },
+      referenceCode: "SCIENCE2026-2606-Y5RPJEP",
+      submittedAt: "2026-06-18T09:00:00.000Z",
+    });
+
+    it("nests content fields under their step id instead of hoisting", () => {
+      expect(payload.form_data).toMatchObject({
+        "child-details": { "child-dob": "2015-01-01" },
+        "your-interest": { motivation: "Robots" },
+      });
+      // not hoisted to the top level
+      expect(payload.form_data).not.toHaveProperty("child-dob");
+      expect(payload.form_data).not.toHaveProperty("motivation");
+    });
+
+    it("still drops excluded steps and applicant fields, omitting empty groups", () => {
+      expect(payload.form_data).not.toHaveProperty("declaration");
+      // contact-details only held applicant email/phone → group is empty → omitted
+      expect(payload.form_data).not.toHaveProperty("contact-details");
+      // applicant name fields removed from their step group
+      expect(payload.form_data["child-details"]).not.toHaveProperty(
+        "child-first-name",
+      );
+    });
+
+    it("passes repeatable steps through under their stepId unchanged", () => {
+      expect(payload.form_data["collection-persons"]).toEqual([
+        { "collection-person-first-name": "Bob" },
+      ]);
     });
   });
 });

@@ -330,6 +330,22 @@ describe("BuilderPage — validate on Save draft click", () => {
     expect(confirmSpy).not.toHaveBeenCalled();
   });
 
+  it("carries the draft's meta.visibility into the serialized recipe sent to the server (#1682)", async () => {
+    // serializeRecipeDraft is real here, so this proves the builder's visibility
+    // selection round-trips all the way to the save/validate wire.
+    mockEmptyDraft = { ...VALID_DRAFT, meta: { visibility: "preview" } };
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+
+    expect(validateRecipe).toHaveBeenCalledTimes(1);
+    const arg = validateRecipe.mock.calls[0][0] as {
+      data: { recipe: { meta?: { visibility?: string } } };
+    };
+    expect(arg.data.recipe.meta).toEqual({ visibility: "preview" });
+  });
+
   it(
     "hard-gates Save draft on a title collision: error shown, modal closed, no save-anyway",
     async () => {
@@ -540,6 +556,49 @@ describe("BuilderPage — unsaved changes + Discard", () => {
     renderBuilder();
 
     expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
+  });
+
+  it("disables Deploy for a clean form whose visibility is draft (#1682)", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockForms = [
+      { id: "wip", formId: "wip-form", title: "WIP Form", version: "1.0.0", isPublished: false },
+    ];
+    // Loaded clean (no edits) so the ONLY thing blocking Deploy is the draft
+    // visibility — proves the gate, not the unsaved-changes gate.
+    getRecipe.mockResolvedValue({
+      formId: "wip-form",
+      title: "WIP Form",
+      version: "1.0.0",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/first-name" }],
+          behaviours: [],
+        },
+        { stepId: "check-your-answers", title: "Check your answers", elements: [], behaviours: [] },
+        { stepId: "declaration", title: "Declaration", elements: [], behaviours: [] },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+      meta: { visibility: "draft" },
+    });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(await screen.findByText("WIP Form"));
+    expect(await screen.findByDisplayValue("wip-form")).toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
+    expect(
+      screen.getByText(/set visibility to preview or public to deploy/i),
+    ).toBeInTheDocument();
   });
 
   it("clears the form when Discard is confirmed and there is no saved baseline", () => {
@@ -873,7 +932,9 @@ describe("BuilderPage — Open picker freshness after save", () => {
       ([arg]) => arg.data.formId,
     );
     expect(new Set(targetedFormIds).size).toBe(1);
-  });
+    // Heavy: two full save-cycles with many async userEvent waits — exceeds the
+    // 5s default under CI load (#329 flake). Give it room.
+  }, 15000);
 });
 
 describe("BuilderPage — re-key (changing a loaded form's ID)", () => {
