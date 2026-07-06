@@ -249,7 +249,10 @@ export function AiSidebar({ draft, onApplyRecipe }: AiSidebarProps) {
           status.unresolvableRefs,
         );
       } catch {
-        setError("Couldn't apply the recipe to the editor — try refreshing.");
+        // Don't advise a page refresh: the staged PDF and the generated recipe
+        // live only in memory, so refreshing loses both and forces a wasteful
+        // re-upload (another Textract + Bedrock run). See #<retry-apply follow-up>.
+        setError("Couldn't apply the recipe to the editor. Please try again.");
       }
       return;
     } catch (err) {
