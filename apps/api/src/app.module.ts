@@ -12,6 +12,7 @@ import { FilesModule } from "./files/files.module";
 import { PaymentsModule } from "./payments/payments.module";
 import { WebhooksModule } from "./webhooks/webhooks.module";
 import { FeedbackModule } from "./feedback/feedback.module";
+import { ServiceStatusModule } from "./services/service-status.module";
 import { TelemetryModule } from "./telemetry/telemetry.module";
 import { configs } from "./config";
 import { envValidationSchema } from "./config/env.validation";
@@ -48,6 +49,7 @@ import { envValidationSchema } from "./config/env.validation";
     PaymentsModule,
     WebhooksModule,
     FeedbackModule,
+    ServiceStatusModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
