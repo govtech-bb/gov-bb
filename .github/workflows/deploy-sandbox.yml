@@ -33,14 +33,11 @@ on:
 permissions:
   # Single-purpose deploy workflow: every job assumes the AWS deploy role via
   # OIDC, so a workflow-level id-token grant is intentional. Per-job scoping
-  # tracked in #1462.
+  # tracked in #1462. The write scopes needed for branch-advance / dispatch are
+  # granted at the JOB level (advance-sandbox, promote-to-staging) so the deploy
+  # jobs stay read-only.
   id-token: write # zizmor: ignore[excessive-permissions]
-  # `contents: write` — the `advance-sandbox` job fast-forwards the `sandbox`
-  # branch to the merged commit. `actions: write` — the `promote-to-staging`
-  # job dispatches deploy-staging via the built-in GITHUB_TOKEN (workflow_dispatch
-  # is exempt from the token's no-recursion guard, so no PAT is needed).
-  contents: write
-  actions: write
+  contents: read
 
 # Queue deploys; never cancel one mid-flight. A half-applied deploy (migrations
 # run, ECS rolling, Amplify building) must finish before the next starts.
@@ -62,6 +59,8 @@ jobs:
   advance-sandbox:
     name: Advance sandbox branch to trunk
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # fast-forward the sandbox branch ref
     steps:
       - name: Fast-forward sandbox → ${{ github.sha }}
         env:
@@ -963,6 +962,9 @@ jobs:
     needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, deploy-chat-ingest, amplify-form-builder]
     if: ${{ github.event_name == 'push' && !failure() && !cancelled() }}
     runs-on: ubuntu-latest
+    permissions:
+      actions: write # dispatch deploy-staging via the built-in token
+      contents: read
     steps:
       - name: Dispatch deploy-staging for ${{ github.sha }}
         env:

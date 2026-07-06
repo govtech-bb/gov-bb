@@ -39,9 +39,9 @@ permissions:
   # OIDC, so a workflow-level id-token grant is intentional. Per-job scoping
   # tracked in #1462.
   id-token: write # zizmor: ignore[excessive-permissions]
-  # `contents: write` — the `advance-staging` job fast-forwards the `staging`
-  # branch to the deployed commit.
-  contents: write
+  # Branch-advance write is granted at the JOB level (advance-staging) so the
+  # deploy jobs stay read-only.
+  contents: read
 
 # Queue deploys; never cancel one mid-flight. A half-applied deploy must
 # finish before the next starts.
@@ -73,12 +73,17 @@ jobs:
   advance-staging:
     name: Advance staging branch
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # fast-forward the staging branch ref
     steps:
       - name: Fast-forward staging → ${{ github.sha }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Via env, not inline ${{ }}, so the user-supplied input can't expand
+          # into the shell (zizmor template-injection).
+          PROMOTED_SHA: ${{ inputs.promoted_sha }}
         run: |
-          echo "Promoted from sandbox: ${{ inputs.promoted_sha || 'manual dispatch' }}"
+          echo "Promoted from sandbox: ${PROMOTED_SHA:-manual dispatch}"
           gh api -X PATCH "repos/${{ github.repository }}/git/refs/heads/staging" \
             -f sha="${{ github.sha }}" -F force=false
 
