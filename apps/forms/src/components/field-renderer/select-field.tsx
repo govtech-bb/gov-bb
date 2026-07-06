@@ -19,6 +19,7 @@ export function renderSelectField(ctx: FieldRenderContext): JSX.Element {
     insetFieldsByOption,
     formId,
     previewToken,
+    draftToken,
   } = ctx;
 
   const isMultiple = field.multiple ?? false;
@@ -76,6 +77,7 @@ export function renderSelectField(ctx: FieldRenderContext): JSX.Element {
                 validationProperties={insetValidation}
                 formId={formId}
                 previewToken={previewToken}
+                draftToken={draftToken}
               />
             ),
           )}

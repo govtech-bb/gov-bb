@@ -26,24 +26,28 @@ import {
 const FIXTURES_ROOT = path.join(__dirname, "__fixtures__");
 
 /**
- * Build a temporary recipes-root tree of the shape
- *   recipes/{formId}/{version}.json
- * by copying named fixtures into it. Returns the root path; the caller
- * is responsible for cleaning it up.
+ * Build a temporary recipes-root tree of flat canonical files
+ *   recipes/{formId}.json
+ * by copying named fixtures into it. The recipe's `formId` is set to the
+ * layout key and any `version` field is stripped, to mimic a real canonical
+ * file (#1196: recipe versioning was removed — there is one flat file per
+ * form and no versioned dirs). Returns the root path; the caller is
+ * responsible for cleaning it up.
  */
 async function buildTempRecipesRoot(
-  layout: Record<string, string[]>,
+  layout: Record<string, string>,
 ): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "recipes-test-"));
-  for (const [formId, fixtureNames] of Object.entries(layout)) {
-    const dir = path.join(root, formId);
-    await fs.mkdir(dir, { recursive: true });
-    for (const name of fixtureNames) {
-      const src = path.join(FIXTURES_ROOT, name);
-      const contents = JSON.parse(await fs.readFile(src, "utf8"));
-      const dest = path.join(dir, `${contents.version}.json`);
-      await fs.writeFile(dest, JSON.stringify(contents, null, 2) + "\n");
-    }
+  for (const [formId, fixtureName] of Object.entries(layout)) {
+    const src = path.join(FIXTURES_ROOT, fixtureName);
+    const { version: _version, ...contents } = JSON.parse(
+      await fs.readFile(src, "utf8"),
+    );
+    const recipe = { ...contents, formId };
+    await fs.writeFile(
+      path.join(root, `${formId}.json`),
+      JSON.stringify(recipe, null, 2) + "\n",
+    );
   }
   return root;
 }
@@ -105,7 +109,7 @@ describe("RecipeFileLoaderService", () => {
     }
   });
 
-  async function newRoot(layout: Record<string, string[]>): Promise<string> {
+  async function newRoot(layout: Record<string, string>): Promise<string> {
     const r = await buildTempRecipesRoot(layout);
     tempRoots.push(r);
     return r;
@@ -114,7 +118,7 @@ describe("RecipeFileLoaderService", () => {
   describe("loadAll", () => {
     it("loads a single valid recipe", async () => {
       const root = await newRoot({
-        "passport-renewal": ["valid-recipe.json"],
+        "passport-renewal": "valid-recipe.json",
       });
       const loader = new RecipeFileLoaderService(root);
 
@@ -124,15 +128,15 @@ describe("RecipeFileLoaderService", () => {
         {
           formId: "passport-renewal",
           title: "Passport Renewal",
-          version: "1.0.0",
+          version: "",
         },
       ]);
     });
 
     it("loads multiple forms and lists them via findAll", async () => {
       const root = await newRoot({
-        "passport-renewal": ["valid-recipe.json"],
-        "drivers-licence": ["other-form.json"],
+        "passport-renewal": "valid-recipe.json",
+        "drivers-licence": "other-form.json",
       });
       const loader = new RecipeFileLoaderService(root);
 
@@ -145,12 +149,12 @@ describe("RecipeFileLoaderService", () => {
           {
             formId: "passport-renewal",
             title: "Passport Renewal",
-            version: "1.0.0",
+            version: "",
           },
           {
             formId: "drivers-licence",
             title: "Drivers Licence",
-            version: "1.0.0",
+            version: "",
           },
         ]),
       );
@@ -158,7 +162,7 @@ describe("RecipeFileLoaderService", () => {
 
     it("surfaces contactDetails.title as the form category", async () => {
       const root = await newRoot({
-        "passport-renewal": ["recipe-with-contact.json"],
+        "passport-renewal": "recipe-with-contact.json",
       });
       const loader = new RecipeFileLoaderService(root);
 
@@ -168,7 +172,7 @@ describe("RecipeFileLoaderService", () => {
         {
           formId: "passport-renewal",
           title: "Passport Renewal",
-          version: "1.0.0",
+          version: "",
           category: "Immigration Department",
         },
       ]);
@@ -176,7 +180,7 @@ describe("RecipeFileLoaderService", () => {
 
     it("omits category when the recipe has no contactDetails", async () => {
       const root = await newRoot({
-        "passport-renewal": ["valid-recipe.json"],
+        "passport-renewal": "valid-recipe.json",
       });
       const loader = new RecipeFileLoaderService(root);
 
@@ -185,27 +189,12 @@ describe("RecipeFileLoaderService", () => {
       expect(loader.findAll()[0]).not.toHaveProperty("category");
     });
 
-    it("uses the latest version when a form has multiple versions", async () => {
-      const root = await newRoot({
-        "passport-renewal": ["valid-recipe.json", "valid-recipe-v2.json"],
-      });
-      const loader = new RecipeFileLoaderService(root);
-
-      await loader.loadAll();
-
-      expect(loader.findAll()).toEqual([
-        {
-          formId: "passport-renewal",
-          title: "Passport Renewal",
-          version: "1.1.0",
-        },
-      ]);
-    });
-
     it("skips a recipe that fails zod validation and logs the cause", async () => {
-      const root = await newRoot({
-        "broken-form": ["invalid-recipe.json"],
-      });
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), "recipes-test-"));
+      tempRoots.push(root);
+      // Empty title fails the recipe schema (#1196: version is now optional,
+      // so the invalid-recipe fixture is no longer the source of invalidity).
+      await writeFlatRecipe(root, "broken-form", { title: "" });
       const loader = new RecipeFileLoaderService(root);
 
       await loader.loadAll();
@@ -215,62 +204,12 @@ describe("RecipeFileLoaderService", () => {
       expect(logged).toMatch(/broken-form/);
     });
 
-    it("skips a recipe when filename version does not match recipe.version and logs the cause", async () => {
-      const root = await fs.mkdtemp(path.join(os.tmpdir(), "recipes-test-"));
-      tempRoots.push(root);
-      const formDir = path.join(root, "passport-renewal");
-      await fs.mkdir(formDir);
-      const recipe = JSON.parse(
-        await fs.readFile(
-          path.join(FIXTURES_ROOT, "valid-recipe.json"),
-          "utf8",
-        ),
-      );
-      await fs.writeFile(
-        path.join(formDir, "9.9.9.json"),
-        JSON.stringify(recipe),
-      );
-
-      const loader = new RecipeFileLoaderService(root);
-
-      await loader.loadAll();
-
-      expect(loader.findAll()).toEqual([]);
-      const logged = errorSpy.mock.calls.map((c) => String(c[0])).join("\n");
-      expect(logged).toMatch(/9\.9\.9\.json/);
-      expect(logged).toMatch(/passport-renewal/);
-    });
-
-    it("skips a recipe when directory name does not match recipe.formId and logs the cause", async () => {
-      const root = await fs.mkdtemp(path.join(os.tmpdir(), "recipes-test-"));
-      tempRoots.push(root);
-      const formDir = path.join(root, "wrong-directory-name");
-      await fs.mkdir(formDir);
-      const recipe = JSON.parse(
-        await fs.readFile(
-          path.join(FIXTURES_ROOT, "valid-recipe.json"),
-          "utf8",
-        ),
-      );
-      await fs.writeFile(
-        path.join(formDir, `${recipe.version}.json`),
-        JSON.stringify(recipe),
-      );
-
-      const loader = new RecipeFileLoaderService(root);
-
-      await loader.loadAll();
-
-      expect(loader.findAll()).toEqual([]);
-      const logged = errorSpy.mock.calls.map((c) => String(c[0])).join("\n");
-      expect(logged).toMatch(/wrong-directory-name/);
-    });
-
     it("loads the good recipe and skips the bad one when both are present", async () => {
       const root = await newRoot({
-        "passport-renewal": ["valid-recipe.json"],
-        "broken-form": ["invalid-recipe.json"],
+        "passport-renewal": "valid-recipe.json",
       });
+      // Empty title fails the recipe schema (see the zod-validation test).
+      await writeFlatRecipe(root, "broken-form", { title: "" });
       const loader = new RecipeFileLoaderService(root);
 
       await loader.loadAll();
@@ -279,7 +218,7 @@ describe("RecipeFileLoaderService", () => {
         {
           formId: "passport-renewal",
           title: "Passport Renewal",
-          version: "1.0.0",
+          version: "",
         },
       ]);
       const logged = errorSpy.mock.calls.map((c) => String(c[0])).join("\n");
@@ -319,135 +258,65 @@ describe("RecipeFileLoaderService", () => {
   });
 
   describe("findByFormId", () => {
-    it("returns the latest version when no version is given", async () => {
+    it("returns the recipe for a known formId", async () => {
       const root = await newRoot({
-        "passport-renewal": ["valid-recipe.json", "valid-recipe-v2.json"],
+        "passport-renewal": "valid-recipe.json",
       });
       const loader = new RecipeFileLoaderService(root);
       await loader.loadAll();
 
       const recipe = loader.findByFormId({ formId: "passport-renewal" });
 
-      expect(recipe?.version).toBe("1.1.0");
-    });
-
-    it("returns a specific version when version is given", async () => {
-      const root = await newRoot({
-        "passport-renewal": ["valid-recipe.json", "valid-recipe-v2.json"],
-      });
-      const loader = new RecipeFileLoaderService(root);
-      await loader.loadAll();
-
-      const recipe = loader.findByFormId({
-        formId: "passport-renewal",
-        version: "1.0.0",
-      });
-
-      expect(recipe?.version).toBe("1.0.0");
+      expect(recipe?.formId).toBe("passport-renewal");
+      expect(recipe?.title).toBe("Passport Renewal");
     });
 
     it("returns null for an unknown formId", async () => {
       const root = await newRoot({
-        "passport-renewal": ["valid-recipe.json"],
+        "passport-renewal": "valid-recipe.json",
       });
       const loader = new RecipeFileLoaderService(root);
       await loader.loadAll();
 
       expect(loader.findByFormId({ formId: "ghost" })).toBeNull();
     });
+  });
 
-    it("returns null for an unknown version", async () => {
-      const root = await newRoot({
-        "passport-renewal": ["valid-recipe.json"],
+  describe("findMaintenanceFormIds (#1694)", () => {
+    it("returns only the IDs of maintenance recipes", async () => {
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), "recipes-test-"));
+      tempRoots.push(root);
+      await writeFlatRecipe(root, "public-form");
+      await writeFlatRecipe(root, "preview-form", {
+        meta: { visibility: "preview" },
+      });
+      await writeFlatRecipe(root, "maintenance-form", {
+        meta: { visibility: "maintenance" },
       });
       const loader = new RecipeFileLoaderService(root);
       await loader.loadAll();
 
-      expect(
-        loader.findByFormId({ formId: "passport-renewal", version: "9.9.9" }),
-      ).toBeNull();
+      expect(loader.findMaintenanceFormIds()).toEqual(["maintenance-form"]);
+    });
+
+    it("excludes maintenance forms from the public findAll list", async () => {
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), "recipes-test-"));
+      tempRoots.push(root);
+      await writeFlatRecipe(root, "maintenance-form", {
+        meta: { visibility: "maintenance" },
+      });
+      const loader = new RecipeFileLoaderService(root);
+      await loader.loadAll();
+
+      expect(loader.findAll()).toEqual([]);
     });
   });
 
-  // #1196: flat `recipes/{formId}.json` is the canonical store; the versioned
-  // `recipes/{formId}/{v}.json` dirs are a read-only legacy fallback.
+  // #1196: flat `recipes/{formId}.json` is the canonical (and only) store —
+  // recipe versioning was removed, and the versioned `recipes/{formId}/{v}.json`
+  // dirs were deleted entirely (no legacy fallback).
   describe("canonical flat recipes (#1196)", () => {
-    it("(i) serves the flat canonical recipe over the versioned files", async () => {
-      const root = await newRoot({
-        "passport-renewal": ["valid-recipe.json"], // versioned 1.0.0
-      });
-      await writeFlatRecipe(root, "passport-renewal", {
-        title: "Passport Renewal (canonical)",
-      });
-      const loader = new RecipeFileLoaderService(root);
-      await loader.loadAll();
-
-      const recipe = loader.findByFormId({ formId: "passport-renewal" });
-      expect(recipe?.title).toBe("Passport Renewal (canonical)");
-      // Canonical files carry no version.
-      expect(recipe?.version).toBeUndefined();
-    });
-
-    it("(ii) falls back to the highest versioned recipe when no flat file exists", async () => {
-      const root = await newRoot({
-        "passport-renewal": ["valid-recipe.json", "valid-recipe-v2.json"],
-      });
-      const loader = new RecipeFileLoaderService(root);
-      await loader.loadAll();
-
-      expect(loader.findByFormId({ formId: "passport-renewal" })?.version).toBe(
-        "1.1.0",
-      );
-    });
-
-    it("(iii) loadLegacyVersion resolves a specific legacy file", async () => {
-      const root = await newRoot({
-        "passport-renewal": ["valid-recipe.json", "valid-recipe-v2.json"],
-      });
-      await writeFlatRecipe(root, "passport-renewal");
-      const loader = new RecipeFileLoaderService(root);
-      await loader.loadAll();
-
-      expect(
-        loader.loadLegacyVersion("passport-renewal", "1.0.0")?.version,
-      ).toBe("1.0.0");
-      // An explicit version pin is honoured over the canonical file.
-      expect(
-        loader.findByFormId({ formId: "passport-renewal", version: "1.1.0" })
-          ?.version,
-      ).toBe("1.1.0");
-    });
-
-    it("(iv) loadLegacyVersion rejects an unsafe version string", async () => {
-      const root = await newRoot({
-        "passport-renewal": ["valid-recipe.json"],
-      });
-      const loader = new RecipeFileLoaderService(root);
-      await loader.loadAll();
-
-      expect(() =>
-        loader.loadLegacyVersion("passport-renewal", "../../etc/passwd"),
-      ).toThrow();
-    });
-
-    it("falls through to canonical when a pinned version has aged out", async () => {
-      const root = await newRoot({
-        "passport-renewal": ["valid-recipe.json"], // only 1.0.0 on disk
-      });
-      await writeFlatRecipe(root, "passport-renewal", {
-        title: "Passport Renewal (canonical)",
-      });
-      const loader = new RecipeFileLoaderService(root);
-      await loader.loadAll();
-
-      const recipe = loader.findByFormId({
-        formId: "passport-renewal",
-        version: "9.9.9", // no longer on disk
-      });
-      expect(recipe?.title).toBe("Passport Renewal (canonical)");
-    });
-
-    it("lists a canonical-only form (no versioned files) via findAll", async () => {
+    it("lists a canonical form via findAll with an empty version", async () => {
       const root = await fs.mkdtemp(path.join(os.tmpdir(), "recipes-test-"));
       tempRoots.push(root);
       await writeFlatRecipe(root, "passport-renewal");
@@ -458,7 +327,7 @@ describe("RecipeFileLoaderService", () => {
         {
           formId: "passport-renewal",
           title: "Passport Renewal",
-          version: "", // canonical carries no version, no versioned fallback
+          version: "", // canonical files carry no version
         },
       ]);
     });
@@ -495,44 +364,34 @@ describe("RecipeFileLoaderService", () => {
     it("starts a watcher and reloads when a recipe changes (development)", async () => {
       process.env.NODE_ENV = "development";
       const root = await newRoot({
-        "passport-renewal": ["valid-recipe.json"],
+        "passport-renewal": "valid-recipe.json",
       });
       const loader = new RecipeFileLoaderService(root);
       loaders.push(loader);
 
       await loader.onModuleInit();
       expect(watcherOf(loader)).toBeDefined();
-      expect(loader.findByFormId({ formId: "passport-renewal" })?.version).toBe(
-        "1.0.0",
-      );
+      expect(
+        loader.findByFormId({ formId: "passport-renewal" }),
+      ).not.toBeNull();
+      expect(loader.findByFormId({ formId: "drivers-licence" })).toBeNull();
 
-      // Drop a newer version into the watched tree; the watcher should pick it
-      // up and reload without another explicit loadAll() call.
-      const v2 = JSON.parse(
-        await fs.readFile(
-          path.join(FIXTURES_ROOT, "valid-recipe-v2.json"),
-          "utf8",
-        ),
-      );
-      await fs.writeFile(
-        path.join(root, "passport-renewal", `${v2.version}.json`),
-        JSON.stringify(v2, null, 2) + "\n",
-      );
+      // Drop a new canonical recipe into the watched tree; the watcher should
+      // pick it up and reload without another explicit loadAll() call.
+      await writeFlatRecipe(root, "drivers-licence");
 
       await waitFor(
-        () =>
-          loader.findByFormId({ formId: "passport-renewal" })?.version ===
-          "1.1.0",
+        () => loader.findByFormId({ formId: "drivers-licence" }) !== null,
       );
-      expect(loader.findByFormId({ formId: "passport-renewal" })?.version).toBe(
-        "1.1.0",
+      expect(loader.findByFormId({ formId: "drivers-licence" })?.formId).toBe(
+        "drivers-licence",
       );
     });
 
     it("does not start a watcher outside development", async () => {
       process.env.NODE_ENV = "test";
       const root = await newRoot({
-        "passport-renewal": ["valid-recipe.json"],
+        "passport-renewal": "valid-recipe.json",
       });
       const loader = new RecipeFileLoaderService(root);
       loaders.push(loader);
@@ -587,7 +446,7 @@ describe("RecipeFileLoaderService", () => {
       handle("notes.txt");
       expect(scheduleSpy).not.toHaveBeenCalled();
 
-      handle("passport-renewal/1.0.0.json");
+      handle("passport-renewal.json");
       handle(null);
       expect(scheduleSpy).toHaveBeenCalledTimes(2);
     });
@@ -599,6 +458,83 @@ describe("RecipeFileLoaderService", () => {
   // configured root, an operator-editable manifest, etc.) cannot smuggle
   // traversal segments through `path.join`. This unit-tests the guard
   // directly; integration follows by the loader applying it on every entry.
+  describe("findAll visibility gate (#1646)", () => {
+    it("omits non-public forms from the list, keeps public ones", async () => {
+      const root = await newRoot({});
+      await writeFlatRecipe(root, "public-form");
+      await writeFlatRecipe(root, "preview-form", {
+        meta: { visibility: "preview" },
+      });
+      await writeFlatRecipe(root, "draft-form", {
+        meta: { visibility: "draft" },
+      });
+      const loader = new RecipeFileLoaderService(root);
+      await loader.loadAll();
+
+      expect(loader.findAll().map((f) => f.formId)).toEqual(["public-form"]);
+    });
+
+    it("treats a recipe with no meta as preview (hidden from the list)", async () => {
+      const root = await newRoot({});
+      // `meta: undefined` overrides the helper's public default, so the written
+      // file carries no `meta` at all — exercising the metaless default.
+      await writeFlatRecipe(root, "legacy-form", { meta: undefined });
+      const loader = new RecipeFileLoaderService(root);
+      await loader.loadAll();
+
+      expect(loader.findAll().map((f) => f.formId)).not.toContain(
+        "legacy-form",
+      );
+    });
+
+    it("still resolves a non-public recipe via findByFormId (gate is applied by the service, not the loader)", async () => {
+      const root = await newRoot({});
+      await writeFlatRecipe(root, "preview-form", {
+        meta: { visibility: "preview" },
+      });
+      const loader = new RecipeFileLoaderService(root);
+      await loader.loadAll();
+
+      expect(loader.findByFormId({ formId: "preview-form" })).not.toBeNull();
+    });
+  });
+
+  describe("findAll includeNonPublic authoring mode (#1835)", () => {
+    it("includes non-public forms and stamps each entry's visibility when includeNonPublic is true", async () => {
+      const root = await newRoot({});
+      await writeFlatRecipe(root, "public-form");
+      await writeFlatRecipe(root, "preview-form", {
+        meta: { visibility: "preview" },
+      });
+      await writeFlatRecipe(root, "maintenance-form", {
+        meta: { visibility: "maintenance" },
+      });
+      const loader = new RecipeFileLoaderService(root);
+      await loader.loadAll();
+
+      const byId = new Map(
+        loader.findAll(true).map((f) => [f.formId, f.visibility]),
+      );
+      expect(byId.get("public-form")).toBe("public");
+      expect(byId.get("preview-form")).toBe("preview");
+      expect(byId.get("maintenance-form")).toBe("maintenance");
+    });
+
+    it("still omits non-public forms and stamps no visibility by default (includeNonPublic absent)", async () => {
+      const root = await newRoot({});
+      await writeFlatRecipe(root, "public-form");
+      await writeFlatRecipe(root, "preview-form", {
+        meta: { visibility: "preview" },
+      });
+      const loader = new RecipeFileLoaderService(root);
+      await loader.loadAll();
+
+      const list = loader.findAll();
+      expect(list.map((f) => f.formId)).toEqual(["public-form"]);
+      expect(list[0]).not.toHaveProperty("visibility");
+    });
+  });
+
   describe("isLeafName", () => {
     it.each<[string, boolean]>([
       ["passport-renewal", true],

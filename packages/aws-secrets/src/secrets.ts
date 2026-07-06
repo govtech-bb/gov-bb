@@ -60,3 +60,19 @@ export async function getCachedSecretJson<T = Record<string, unknown>>(
   const raw = await getCachedSecretString(arn);
   return JSON.parse(raw) as T;
 }
+
+/**
+ * Fetch + parse a JSON secret, bypassing the cache. For values that must be
+ * current at use time rather than for the container's lifetime — e.g. a DB
+ * password resolved per new pool connection so an RDS master-password rotation
+ * is picked up without a redeploy.
+ */
+export async function getSecretJson<T = Record<string, unknown>>(
+  arn: string,
+): Promise<T> {
+  const r = await getClient().send(
+    new GetSecretValueCommand({ SecretId: arn }),
+  );
+  if (!r.SecretString) throw new Error(`Secret ${arn} has no SecretString`);
+  return JSON.parse(r.SecretString) as T;
+}

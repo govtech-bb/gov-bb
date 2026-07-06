@@ -1,8 +1,35 @@
 # 0011 — Unpublished recipe preview is a secret-gated, per-request exception
 
 **Date:** 2026-05-27
-**Status:** Accepted
-**Related:** [#219](https://github.com/govtech-bb/gov-bb/issues/219), ADR-0007 (runtime recipes load from files, not `form_definitions`), #145 (files-only runtime).
+**Status:** Accepted (re-scoped 2026-06-25 — see Update below)
+**Related:** [#219](https://github.com/govtech-bb/gov-bb/issues/219), ADR-0007 (runtime recipes load from files, not `form_definitions`), #145 (files-only runtime), [#1682](https://github.com/govtech-bb/gov-bb/issues/1682) (token split), [#1646](https://github.com/govtech-bb/gov-bb/issues/1646) (visibility), ADR-0058 (shared preview cookie).
+
+## Update (2026-06-25 — #1682 Phase 2 / #1646 Phase 3)
+
+When this ADR was written, the `X-Recipe-Preview` header carried **both**
+meanings: it bypassed visibility *and* sourced the unpublished DB scratch.
+#1682 split those into two independent, token-validated headers, and #1646
+Phase 3 moved the visibility bypass onto a forgeable cookie. This ADR is now
+**re-scoped to the DB-scratch sourcing path only**:
+
+- **This ADR governs the `?draft=` / `X-Recipe-Draft` path** — serving the
+  in-progress `form_definitions` scratch. All four binding properties below
+  (secret-gated per-request, constant-time + fail-closed, does-not-mutate
+  `source()`, read-only) continue to apply to it, unchanged. DB scratch is
+  **never** cookie-persisted: it requires the secret header on **every**
+  request.
+- **The published-form *visibility* bypass is no longer governed here.** It is a
+  forgeable rollout gate (cookie/token *presence*, not DB sourcing) — see
+  ADR-0058 and ADR-0013. A valid `X-Recipe-Preview` token, or a shared `preview`
+  cookie, bypasses the #1646 404 gate to serve the **published** recipe; it does
+  **not** read the DB.
+- **The disabled-form 410 kill switch** (`form_disabled_overrides`) still
+  precedes everything and is bypassed by neither token nor cookie.
+
+Read every "preview" reference below as the **DB-scratch** path. The `secret`,
+`constant-time`, `fail-closed`, `read-only` requirements are exactly what keep
+that path from reopening #145; ADR-0058's forgeable cookie deliberately does
+**not** touch it.
 
 ## Context
 

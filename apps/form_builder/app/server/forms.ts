@@ -5,10 +5,11 @@ import {
   processorSchema,
   type ServiceContractRecipe,
   type Processor,
+  type PublicFormSummary,
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
 import { getPublishedRecipe } from "./github-recipes";
-import type { FormDefinitionSummary } from "../types/index";
+import type { BuilderFormSummary } from "../types/index";
 import { requireSession } from "./auth/require-session";
 import {
   redactRecipeSecrets,
@@ -19,12 +20,12 @@ import {
 
 export const listForms = createServerFn({ method: "GET" })
   .middleware([requireSession])
-  .handler(async (): Promise<FormDefinitionSummary[]> => {
+  .handler(async (): Promise<BuilderFormSummary[]> => {
     const [drafts, published, disabled] = await Promise.all([
-      api.get<FormDefinitionSummary[]>("/builder/forms"),
-      api.get<{ formId: string; title: string; version: string }[]>(
-        "/builder/forms/published",
-      ),
+      api.get<BuilderFormSummary[]>("/builder/forms"),
+      api.get<
+        Pick<PublicFormSummary, "formId" | "title" | "version" | "visibility">[]
+      >("/builder/forms/published"),
       api.get<string[]>("/builder/forms/disabled"),
     ]);
 
@@ -39,8 +40,20 @@ export const listForms = createServerFn({ method: "GET" })
     const publishedVersionByFormId = new Map(
       published.map((p) => [p.formId, p.version] as const),
     );
+    // Launch-gate visibility from the authoring published index (#1835), keyed
+    // by formId so it survives the draft-wins merge below. Undefined for a
+    // draft-only form (absent from the index) and when the proxy fell back to
+    // the public-only list (no token → no `visibility` field); the picker
+    // badges only non-public values.
+    const visibilityByFormId = new Map(
+      published.map((p) => [p.formId, p.visibility] as const),
+    );
 
-    const byFormId = new Map<string, FormDefinitionSummary>();
+    // Every formId that has a draft row — used to flag orphan overrides below
+    // (a disabled form with neither a draft nor a published recipe).
+    const draftIds = new Set(drafts.map((d) => d.formId));
+
+    const byFormId = new Map<string, BuilderFormSummary>();
     for (const d of drafts) byFormId.set(d.formId, d);
     for (const p of published) {
       // #1196: a draft row is the current working copy — always prefer it over
@@ -55,21 +68,43 @@ export const listForms = createServerFn({ method: "GET" })
       });
     }
 
-    // Mark disabled forms. A disabled published form is kept so it can be
-    // re-enabled from the UI; a disabled non-published entry is an orphan
-    // tombstone from the old draft-delete behaviour with no UI home, so it's
-    // dropped. OR published-index membership into `isPublished` so a disabled
-    // published form with a newer draft (whose draft entry won the merge with
-    // isPublished=false) stays put with its Disabled badge and Enable button.
+    // The /builder/forms/disabled list is authoritative — it returns every
+    // override formId regardless of whether a draft or published recipe still
+    // exists. Seed a synthetic row for any disabled formId not already present
+    // so a form disabled with no draft and no published recipe still reaches the
+    // picker as an Enable-only orphan override (#1658); without this it would
+    // never enter byFormId at all.
     const disabledIds = new Set(disabled);
-    return Array.from(byFormId.values())
-      .map((f) => ({
-        ...f,
-        isPublished: f.isPublished || publishedIds.has(f.formId),
-        publishedVersion: publishedVersionByFormId.get(f.formId),
-        isDisabled: disabledIds.has(f.formId),
-      }))
-      .filter((f) => !f.isDisabled || f.isPublished);
+    for (const formId of disabledIds) {
+      if (byFormId.has(formId)) continue;
+      byFormId.set(formId, {
+        id: formId,
+        formId,
+        title: formId,
+        version: "",
+        isPublished: false,
+      });
+    }
+
+    // Mark disabled forms, keeping every one so any disabled form can be
+    // re-enabled from the UI (#1658). OR published-index membership into
+    // `isPublished` so a disabled published form with a newer draft (whose draft
+    // entry won the merge with isPublished=false) keeps its Published state.
+    // `isOrphanOverride` flags a disabled override with no underlying draft or
+    // published recipe — the picker renders it Enable-only and non-openable.
+    // `visibility` (#1835) rides through from the published index so the picker
+    // can badge a non-public published form (undefined for orphan/draft-only).
+    return Array.from(byFormId.values()).map((f) => ({
+      ...f,
+      isPublished: f.isPublished || publishedIds.has(f.formId),
+      publishedVersion: publishedVersionByFormId.get(f.formId),
+      visibility: visibilityByFormId.get(f.formId),
+      isDisabled: disabledIds.has(f.formId),
+      isOrphanOverride:
+        disabledIds.has(f.formId) &&
+        !draftIds.has(f.formId) &&
+        !publishedIds.has(f.formId),
+    }));
   });
 
 // Resolve the recipe the builder should load for `formId`, using the same
@@ -91,7 +126,26 @@ async function resolveStoredRecipe(
     const draft = await api.get<ServiceContractRecipe>(
       `/builder/forms/${encodeURIComponent(formId)}`,
     );
-    if (draft) return draft;
+    if (draft) {
+      // #1682: a form's visibility (`meta.visibility`) was written straight into
+      // the published flat files (#1676) for the #1517 flagged forms, bypassing
+      // the builder save flow — so their pre-existing DB scratch rows carry no
+      // `meta`. When the working copy has none, hydrate it from the published
+      // recipe so the builder's visibility control reflects the live launch gate
+      // instead of defaulting to "public". A draft that *did* set visibility
+      // keeps its own value; an unpublished draft (no flat file) stays metaless.
+      if (draft.meta === undefined) {
+        try {
+          const published = serviceContractRecipeSchema.parse(
+            await getPublishedRecipe(token, { formId }),
+          );
+          if (published.meta !== undefined) draft.meta = published.meta;
+        } catch {
+          // No published flat file yet — leave meta absent (treated as public).
+        }
+      }
+      return draft;
+    }
   } catch (err) {
     if (!(err instanceof ApiError) || err.status !== 404) throw err;
   }

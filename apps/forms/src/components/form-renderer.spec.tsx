@@ -1220,7 +1220,7 @@ describe("FormRenderer", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows the preview banner on a normal step when isPreview is true", () => {
+  it("shows the draft banner on a normal step when isDraft is true", () => {
     const step = makeStep("step-1");
     render(
       <FormRenderer
@@ -1230,17 +1230,17 @@ describe("FormRenderer", () => {
         visibleSteps={[step]}
         repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
         submissionState={mockSubmissionState as any}
-        isPreview
+        isDraft
       />,
     );
-    const banner = screen.getByTestId("preview-banner");
+    const banner = screen.getByTestId("draft-banner");
     expect(banner).toBeInTheDocument();
     expect(banner).toHaveTextContent(
       /unpublished draft and cannot be submitted/i,
     );
   });
 
-  it("does NOT show the preview banner when isPreview is omitted", () => {
+  it("does NOT show the draft banner when isDraft is omitted (incl. preview mode)", () => {
     const step = makeStep("step-1");
     render(
       <FormRenderer
@@ -1252,10 +1252,10 @@ describe("FormRenderer", () => {
         submissionState={mockSubmissionState as any}
       />,
     );
-    expect(screen.queryByTestId("preview-banner")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("draft-banner")).not.toBeInTheDocument();
   });
 
-  it("disables and relabels the submit button on the declaration step in preview, and shows the hint", () => {
+  it("disables and relabels the submit button on the declaration step in draft, and shows the hint", () => {
     const step = makeStep("declaration");
     render(
       <FormRenderer
@@ -1265,15 +1265,15 @@ describe("FormRenderer", () => {
         visibleSteps={[step]}
         repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
         submissionState={mockSubmissionState as any}
-        isPreview
+        isDraft
       />,
     );
-    const submit = screen.getByRole("button", { name: /submit \(preview\)/i });
+    const submit = screen.getByRole("button", { name: /submit \(draft\)/i });
     expect(submit).toBeDisabled();
-    expect(screen.getByTestId("preview-submit-hint")).toBeInTheDocument();
+    expect(screen.getByTestId("draft-submit-hint")).toBeInTheDocument();
   });
 
-  it("keeps the submit button enabled and labelled 'Submit' on the declaration step without preview", () => {
+  it("keeps the submit button enabled and labelled 'Submit' on the declaration step without draft (e.g. preview)", () => {
     const step = makeStep("declaration");
     render(
       <FormRenderer
@@ -1288,10 +1288,10 @@ describe("FormRenderer", () => {
     const submit = screen.getByRole("button", { name: /submit/i });
     expect(submit).toBeEnabled();
     expect(submit).toHaveTextContent("Submit");
-    expect(screen.queryByTestId("preview-submit-hint")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("draft-submit-hint")).not.toBeInTheDocument();
   });
 
-  it("does NOT show the preview banner on the submission-confirmation step even when isPreview is true", () => {
+  it("does NOT show the draft banner on the submission-confirmation step even when isDraft is true", () => {
     const step = makeStep("submission-confirmation");
     render(
       <FormRenderer
@@ -1301,10 +1301,10 @@ describe("FormRenderer", () => {
         visibleSteps={[step]}
         repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
         submissionState={mockSubmissionState as any}
-        isPreview
+        isDraft
       />,
     );
-    expect(screen.queryByTestId("preview-banner")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("draft-banner")).not.toBeInTheDocument();
   });
 
   it("repeat instance marker: a labelled instance renders the caption inside the h1 (GOV.UK pattern)", () => {

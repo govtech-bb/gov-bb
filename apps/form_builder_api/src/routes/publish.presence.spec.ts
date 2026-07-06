@@ -10,6 +10,7 @@ vi.mock("./validate-recipe.js", () => ({
 }));
 
 import { getDataSource } from "../db.js";
+import { HttpError } from "../lib/http-error";
 import { holdsFreshClaim } from "./presence.js";
 import { publishHandler } from "./publish";
 
@@ -48,10 +49,13 @@ afterEach(() => {
 });
 
 describe("publishHandler — presence enforcement", () => {
-  it("400s when userLogin is missing", async () => {
-    const res = mockRes();
-    await publishHandler(mockReq({ recipe, githubToken: "tok" }), res);
-    expect(res.statusCode).toBe(400);
+  it("throws a 400 HttpError when userLogin is missing", async () => {
+    const err = await publishHandler(
+      mockReq({ recipe, githubToken: "tok" }),
+      mockRes(),
+    ).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(400);
     expect(holdsFreshClaimMock).not.toHaveBeenCalled();
     expect(global.fetch).not.toHaveBeenCalled();
   });
@@ -74,9 +78,12 @@ describe("publishHandler — presence enforcement", () => {
   });
 
   it("still requires recipe and githubToken before the presence check", async () => {
-    const res = mockRes();
-    await publishHandler(mockReq({ userLogin: "alice" }), res);
-    expect(res.statusCode).toBe(400);
+    const err = await publishHandler(
+      mockReq({ userLogin: "alice" }),
+      mockRes(),
+    ).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(400);
     expect(holdsFreshClaimMock).not.toHaveBeenCalled();
   });
 });

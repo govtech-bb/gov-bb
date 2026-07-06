@@ -113,8 +113,28 @@ const baseSchema = z
     // Recipe preview (empty disables the per-request preview escape hatch)
     RECIPE_PREVIEW_TOKEN: z.string().default(""),
 
+    // Parent domain for the cross-app shared `preview` cookie (#1646 Phase 3),
+    // e.g. ".sandbox.alpha.gov.bb". When set, the cookie the API mints is scoped
+    // to this domain so landing, forms and the API (all subdomain siblings)
+    // share one grant. Unset → host-only cookie (local/Amplify-preview degrade
+    // gracefully to per-app URL tokens).
+    PREVIEW_COOKIE_DOMAIN: z.string().optional(),
+
     // Smoke submission (empty disables the processor-drop escape hatch, #1252)
     SMOKE_SUBMISSION_TOKEN: z.string().default(""),
+
+    // Bearer token the AdminTokenGuard validates on the /admin/* endpoints
+    // (kill switch + draft archive). OPTIONAL on purpose: the guard reads it
+    // per-request, so an unset value only disables auth outside production (it
+    // fails closed in prod). Never make this `.required()` — a boot-time
+    // required var would crash-loop ECS on a missing value (ADR 0061).
+    ARCHIVE_DRAFTS_TOKEN: z.string().optional(),
+
+    // Dedicated token for the kill-switch admin surface (per-form disable).
+    // When unset, the guard falls back to ARCHIVE_DRAFTS_TOKEN (same value
+    // today) — set this var only to rotate the two credentials independently.
+    // Never make this `.required()` either, for the same reason (ADR 0061).
+    ADMIN_KILL_SWITCH_TOKEN: z.string().optional(),
 
     // S3 file uploads (optional — required only when a form uses file fields)
     S3_BUCKET: z.string().default(""),

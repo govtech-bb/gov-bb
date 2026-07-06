@@ -181,4 +181,47 @@ describe("GET /builder/forms/published", () => {
     );
     expect(res.statusCode).toBe(200);
   });
+
+  describe("preview token forwarding (#1835)", () => {
+    const originalToken = process.env.RECIPE_PREVIEW_TOKEN;
+    afterEach(() => {
+      if (originalToken === undefined) delete process.env.RECIPE_PREVIEW_TOKEN;
+      else process.env.RECIPE_PREVIEW_TOKEN = originalToken;
+    });
+
+    it("forwards x-recipe-preview to apps/api when RECIPE_PREVIEW_TOKEN is set", async () => {
+      process.env.RECIPE_PREVIEW_TOKEN = "s3cret";
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ data: [] }),
+      }) as unknown as typeof fetch;
+
+      const res = mockRes();
+      await listPublishedHandler({} as Request, res);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://api.test/form-definitions",
+        expect.objectContaining({
+          headers: { "x-recipe-preview": "s3cret" },
+        }),
+      );
+    });
+
+    it("omits the header (public-only fallback) when RECIPE_PREVIEW_TOKEN is unset", async () => {
+      delete process.env.RECIPE_PREVIEW_TOKEN;
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ data: [] }),
+      }) as unknown as typeof fetch;
+
+      const res = mockRes();
+      await listPublishedHandler({} as Request, res);
+
+      const opts = (global.fetch as unknown as { mock: { calls: unknown[][] } })
+        .mock.calls[0][1] as Record<string, unknown>;
+      expect(opts.headers).toBeUndefined();
+    });
+  });
 });

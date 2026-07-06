@@ -2,7 +2,7 @@
 # Form Builder API — lightweight Express server for form CRUD + AI/Bedrock calls.
 # Runs behind the existing ALB at /builder/*.
 
-FROM node:24-alpine3.23@sha256:7c70d1235c0b4c2bc9eeed5393d19f1bbdde6885ba0d58ba62bb385d7b0f3ff1 AS builder
+FROM node:24-alpine3.23@sha256:595398b0081eacda8e1c4c5b97b76cd1020e4d58a8ebcb4843b9bca1e79e7436 AS builder
 
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
@@ -33,16 +33,27 @@ RUN pnpm exec nx build form-builder-api
 
 # ---- runner ----------------------------------------------------------------
 # Matches the main API's runner pattern exactly.
-FROM node:24-alpine3.23@sha256:7c70d1235c0b4c2bc9eeed5393d19f1bbdde6885ba0d58ba62bb385d7b0f3ff1 AS runner
+FROM node:24-alpine3.23@sha256:595398b0081eacda8e1c4c5b97b76cd1020e4d58a8ebcb4843b9bca1e79e7436 AS runner
 
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
 
 WORKDIR /app
 
-# Download AWS RDS CA bundle for TLS connections
-RUN wget -O /app/rds-ca-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem && \
-    chown app:app /app/rds-ca-bundle.pem
+# `script` is required for ECS Exec session logging (issue #217). ECS Exec
+# uploads the session to CloudWatch/S3 only if `script` and `cat` are present in
+# the image; node:alpine ships busybox `cat` but NOT `script` (it lives in
+# util-linux-misc). Without it, exec works but nothing is ever logged.
+RUN apk add --no-cache util-linux-misc
+
+# AWS RDS CA bundle for TLS connections to RDS (issue #304). Committed to the
+# repo (certs/rds-global-bundle.pem) and COPYed in rather than fetched at build
+# time — no unverified network download, and the build no longer depends on the
+# truststore endpoint being reachable. It's the global-bundle.pem of RDS root
+# CAs; RDS auto-rotates the DB *server* cert under the same roots, so this is
+# stable for years. Refresh only on a new RDS root-CA generation (rare):
+#   curl -fsSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o certs/rds-global-bundle.pem
+COPY --chown=app:app certs/rds-global-bundle.pem /app/rds-ca-bundle.pem
 
 RUN chown app:app /app
 USER app
@@ -57,6 +68,13 @@ COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
 
 # node_modules from builder (has all deps resolved)
 COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
+
+# Drop esbuild from the runtime image (#1567). esbuild ships a Go-compiled
+# binary (@esbuild/<platform>/bin/esbuild) that AWS Inspector flags as
+# go/stdlib CVE-2025-68121 (+ other go/stdlib CVEs). It's a build-time tool
+# only — the runner runs `node dist/main.js` and never loads esbuild — so
+# removing it closes the finding with no runtime impact.
+RUN rm -rf node_modules/@esbuild node_modules/esbuild
 
 # Workspace package symlinks so require("@govtech-bb/database") resolves.
 # Generated from whatever's actually in packages/ rather than a hand-maintained
@@ -95,3 +113,8 @@ ENV PORT=3003
 EXPOSE 3003
 
 CMD ["node", "--require", "reflect-metadata", "dist/main.js"]
+
+# Bootstrap: trip nx-affected for form-builder-api so deploy-staging.yml builds
+# and pushes the first image to the gov-bb-form-builder ECR (empty since the
+# staging env stood up — same nx-affected gap that hit chat-ingest #468 and
+# api #470). form-builder-staging ECS has had no image to run.

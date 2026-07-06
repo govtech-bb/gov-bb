@@ -4,6 +4,7 @@ import type {
   Processor,
   ContactDetails,
   FormStep,
+  RecipeMeta,
 } from "@govtech-bb/form-types";
 
 // Per-child field overrides for a block (keyed by child fieldId)
@@ -62,4 +63,9 @@ export interface RecipeDraft {
   // Carried through with an editor-only id per entry (issue #255). Serializer
   // drops the id; deserialize mints a fresh one. Authoring UI: Session 2.
   processors?: RecipeProcessorDraft[];
+  // Recipe-level metadata — the launch-gate `visibility` (#1646/#1682). Round-
+  // tripped with the `!== undefined` guard (like contactDetails). Absent on a
+  // legacy draft (predating the control) → treated as `public` by
+  // getRecipeVisibility; a new draft seeds `{ visibility: "draft" }`.
+  meta?: RecipeMeta;
 }

@@ -86,7 +86,6 @@ export async function searchByVector(
 ): Promise<RetrieveResponse> {
   const database = db ?? (await getDb());
   const literal = JSON.stringify(vector);
-
   const res = await database.execute<RetrieveRow>(sql`
     WITH ranked AS (
       SELECT

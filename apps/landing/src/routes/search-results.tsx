@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Heading, Link, Search as SearchInput, Text } from '@govtech-bb/react'
 import { z } from 'zod'
@@ -26,6 +27,11 @@ function SearchResultsPage() {
   const { level } = Route.useRouteContext()
   const query = q.trim()
   const hits = query ? search(query, level) : []
+
+  useEffect(() => {
+    if (query) trackEvent('search', { query, results: hits.length })
+  }, [query, hits.length])
+
   const hasResults = query && hits.length > 0
   const hasNoResults = query && hits.length === 0
 

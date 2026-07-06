@@ -2,6 +2,7 @@ import React from "react";
 import { FileUploadProps, UploadedFile } from "@forms/types";
 import ErrorMessage from "./error-message";
 import { trackEvent } from "../lib/analytics";
+import { formCategory } from "../lib/form-category";
 import { uploadFile, FileUploadError } from "../lib/api/files";
 
 /** A file being uploaded, or one whose upload failed. */
@@ -24,6 +25,7 @@ export default function FileUpload({
   errorId,
   formId,
   previewToken,
+  draftToken,
 }: FileUploadProps) {
   const files = value ?? [];
 
@@ -74,9 +76,10 @@ export default function FileUpload({
     await Promise.all(
       picked.map(async (file) => {
         trackEvent("form-file-select", {
-          form_id: formId,
-          step_id: field.stepId,
-          field_id: field.fieldId,
+          form: formId ?? "",
+          category: formCategory(formId ?? ""),
+          step: field.stepId,
+          field: field.fieldId,
           mime: file.type,
           size_kb: Math.round(file.size / 1024),
         });
@@ -106,6 +109,7 @@ export default function FileUpload({
             stepId: presignStepId,
             fieldId: field.fieldId,
             previewToken,
+            draftToken,
           });
           appendConfirmed(confirmed);
           setPending((prev) => prev.filter((p) => p.id !== id));

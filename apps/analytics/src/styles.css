@@ -1,0 +1,47 @@
+@import '@fontsource/figtree/400.css';
+@import '@fontsource/figtree/500.css';
+@import '@fontsource/figtree/600.css';
+@import '@fontsource/figtree/700.css';
+@import '@fontsource/figtree/800.css';
+@import 'tailwindcss';
+/* Import the design tokens */
+@import '@govtech-bb/design';
+
+/* Scan the design system's compiled output for Tailwind class names */
+@source "../../../node_modules/@govtech-bb/react/dist/**/*.{js,cjs}";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-white-00);
+  color: var(--color-black-00);
+  font-family: var(--font-family-base);
+}
+
+.container {
+  margin-inline: auto;
+  width: 100%;
+  padding-inline: var(--spacing-s); /* 16px */
+
+  @media (width >= 640px) {
+    padding-inline: var(--spacing-m); /* 32px */
+  }
+
+  @media (width >= 1280px) {
+    padding-inline: var(--spacing-l); /* 64px */
+  }
+
+  @media (width >= 1512px) {
+    padding-inline: var(--spacing-xl); /* 128px */
+  }
+}

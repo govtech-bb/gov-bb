@@ -24,35 +24,32 @@ export class FormDraftsService {
   async create({
     draftId,
     formId,
-    version,
     values = {},
     lastActivePage = 0,
   }: {
     draftId: string;
     formId: string;
-    version?: string;
     values?: Record<string, unknown>;
     lastActivePage?: number;
   }): Promise<FormDraftEntity> {
     const existing = await this.draftRepo.findOne({ where: { draftId } });
     if (existing) return existing;
 
-    // Pin the form version at creation time. Routed through
+    // Confirm the form is published before creating a draft. Routed through
     // FormDefinitionsService.getRecipe so end-user drafts only succeed for
     // published recipes (files-mode) — they can no longer reach an
     // unpublished `form_definitions` row directly. See issue #145.
-    const recipe = await this.formDefinitionsService.getRecipe({
-      formId,
-      version,
-    });
+    const recipe = await this.formDefinitionsService.getRecipe({ formId });
     if (!recipe) {
-      throw AppError.notFound("Form definition", { formId, version });
+      throw AppError.notFound("Form definition", { formId });
     }
 
     const draft = this.draftRepo.create({
       draftId,
       formId,
-      formVersion: recipe.version,
+      // Versioning is retired (#1196): drafts resolve the canonical recipe, so
+      // there is no pinned version. The column stays as an audit breadcrumb.
+      formVersion: null,
       values,
       lastActivePage,
       status: DraftStatus.ACTIVE,

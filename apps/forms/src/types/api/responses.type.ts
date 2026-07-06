@@ -1,6 +1,16 @@
-import { ApiResponseShape, ServiceContract } from "@govtech-bb/form-types";
+import {
+  ApiResponseShape,
+  ServiceContract,
+  type PublicFormSummary,
+} from "@govtech-bb/form-types";
 import { FormDraftResponseBody } from "./form-draft.type";
 import { FormSubmissionResponseBody } from "./form-submission.type";
+
+// The public form-list contract is single-sourced in @govtech-bb/form-types
+// (#1403 / ARCH-01) so this consumer can't drift from apps/api's producer — in
+// particular it now carries the `version` the API returns, which the old local
+// copy silently dropped. Re-exported so existing `@forms/types` paths keep working.
+export type { PublicFormSummary };
 
 type FormSubmissionStatus =
   | "draft"
@@ -22,24 +32,12 @@ export interface ApiResponse extends Omit<
   statusCode?: number;
 }
 
-export interface FormDefinitionSummary {
-  formId: string;
-  title: string;
-  /**
-   * Grouping category for the landing page — sourced from the form's
-   * contactDetails.title (e.g. the owning ministry/department). Omitted by
-   * the API when the recipe has no contactDetails; the landing page buckets
-   * those under "Unknown".
-   */
-  category?: string;
-}
-
 export interface FormDefinitionResponse extends ApiResponse {
   data: ServiceContract;
 }
 
 export interface FormDefinitionsListResponse extends ApiResponse {
-  data: FormDefinitionSummary[];
+  data: PublicFormSummary[];
 }
 
 export interface FormDraftResponse extends ApiResponse {

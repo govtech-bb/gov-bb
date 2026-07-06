@@ -12,9 +12,10 @@ import {
   subcategoriesFor,
   type ViewLevel,
   type StartLinkType,
+  type FormState,
 } from "./-lib";
 import type { ContentPageSummary } from "./-server";
-import type { FormDefinitionSummary } from "../../types/index";
+import type { BuilderFormSummary } from "../../types/index";
 import { draftKeyFor, readDraft, writeDraft, clearDraft } from "./-draft-store";
 
 /**
@@ -30,19 +31,6 @@ export interface EditSearch {
   formId?: string;
   /** …of this kind (which sets the target file + a starter body). */
   kind?: "entry" | "start";
-}
-
-interface FormState {
-  formId: string;
-  slug: string;
-  title: string;
-  description: string;
-  category: string;
-  subcategory: string;
-  body: string;
-  linkType: StartLinkType;
-  linkHref: string;
-  visibility: ViewLevel;
 }
 
 const EMPTY: FormState = {
@@ -95,7 +83,7 @@ function catSlug(title: string): string {
 }
 
 export function useEditorState(
-  forms: FormDefinitionSummary[],
+  forms: BuilderFormSummary[],
   search: EditSearch,
   contentPages: ContentPageSummary[] | null,
 ) {

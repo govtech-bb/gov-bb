@@ -142,10 +142,7 @@ export class EmailBodyBuilder {
   ) {}
 
   async build(payload: SubmissionCreatedEvent): Promise<EmailTemplateContext> {
-    const contract = await this.resolveContract(
-      payload.formId,
-      payload.formVersion,
-    );
+    const contract = await this.resolveContract(payload.formId);
 
     const { meta, values, submissionId, referenceCode } = payload;
 
@@ -238,10 +235,7 @@ export class EmailBodyBuilder {
   async resolveContactDetails(
     payload: SubmissionCreatedEvent,
   ): Promise<ContactDetails | undefined> {
-    const contract = await this.resolveContract(
-      payload.formId,
-      payload.formVersion,
-    );
+    const contract = await this.resolveContract(payload.formId);
     return contract.contactDetails;
   }
 
@@ -250,22 +244,12 @@ export class EmailBodyBuilder {
    * `build`. Public so the email processor can walk the contract's file fields
    * when gathering upload attachments.
    */
-  async resolveContract(
-    formId: string,
-    // Optional post-#1196: absent → canonical recipe; present → legacy file for
-    // an in-flight pinned submission. The cache keys on formId alone — the
-    // canonical recipe is the single contract a form resolves to.
-    version?: string,
-  ): Promise<ServiceContract> {
-    const cacheKey = formId;
-    const cached = this.contractCache.get<ServiceContract>(cacheKey);
+  async resolveContract(formId: string): Promise<ServiceContract> {
+    const cached = this.contractCache.get<ServiceContract>(formId);
     if (cached) return cached;
 
-    const contract = await this.formDefinitionsService.findByFormId({
-      formId,
-      version,
-    });
-    this.contractCache.set(cacheKey, contract);
+    const contract = await this.formDefinitionsService.findByFormId({ formId });
+    this.contractCache.set(formId, contract);
     return contract;
   }
 

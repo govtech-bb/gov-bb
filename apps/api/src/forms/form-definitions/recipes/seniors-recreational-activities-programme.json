@@ -11,10 +11,75 @@
       }
     }
   ],
+  "meta": {
+    "visibility": "preview"
+  },
   "steps": [
     {
+      "stepId": "filling-out-form",
+      "title": "Who are you registering for?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Are you registering for yourself, or for someone else?",
+            "fieldId": "filling-out-on-behalf",
+            "options": [
+              {
+                "label": "Myself",
+                "value": "no"
+              },
+              {
+                "label": "Someone else",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Are you also the emergency contact person?",
+            "fieldId": "is-emergency-contact",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetStepId": "filling-out-form",
+                "targetFieldId": "filling-out-on-behalf"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
       "stepId": "about-you",
-      "title": "Tell us about yourself",
+      "title": "Tell us about the person registering for the programme",
       "elements": [
         {
           "ref": "components/title"
@@ -37,9 +102,9 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "national-registration-number",
-            "label": "National registration number",
             "hint": "For example, 950303-0041",
+            "label": "National registration number",
+            "fieldId": "national-registration-number",
             "validations": {
               "required": {
                 "value": false
@@ -48,10 +113,10 @@
           }
         },
         {
-          "ref": "components/nationality"
+          "ref": "components/sex"
         },
         {
-          "ref": "components/sex"
+          "ref": "components/nationality"
         }
       ],
       "behaviours": []
@@ -75,9 +140,9 @@
         {
           "ref": "components/address",
           "overrides": {
+            "hint": "Optional",
             "label": "Address line 2",
             "fieldId": "address-line-2",
-            "hint": "Optional",
             "validations": {
               "required": {
                 "value": false
@@ -89,10 +154,7 @@
           "ref": "components/parish"
         },
         {
-          "ref": "components/postcode",
-          "overrides": {
-            "hint": "Optional"
-          }
+          "ref": "components/postcode"
         },
         {
           "ref": "components/telephone"
@@ -100,6 +162,7 @@
         {
           "ref": "components/email",
           "overrides": {
+            "hint": "Optional",
             "validations": {
               "required": {
                 "value": false
@@ -112,18 +175,14 @@
     },
     {
       "stepId": "health-status",
-      "title": "Health status",
+      "title": "Tell us about any health conditions or a disability you may have",
       "elements": [
         {
-          "ref": "components/generic-radio",
+          "ref": "components/generic-checkbox",
           "overrides": {
+            "label": "Tell us about your current health status",
             "fieldId": "health-status",
-            "label": "Current health status",
             "options": [
-              {
-                "label": "Good health",
-                "value": "good-health"
-              },
               {
                 "label": "Diabetes",
                 "value": "diabetes"
@@ -131,10 +190,6 @@
               {
                 "label": "Hypertension",
                 "value": "hypertension"
-              },
-              {
-                "label": "Disability",
-                "value": "disability"
               },
               {
                 "label": "Arthritis",
@@ -151,11 +206,23 @@
               {
                 "label": "Mental illness",
                 "value": "mental-illness"
+              },
+              {
+                "label": "Disability",
+                "value": "disability"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              },
+              {
+                "label": "Healthy",
+                "value": "healthy"
               }
             ],
             "validations": {
               "required": {
-                "value": false
+                "value": true
               }
             }
           }
@@ -163,83 +230,121 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "type-of-disability",
-            "label": "Type of disability",
-            "validations": {
-              "required": {
-                "value": false
-              }
+            "ui": {
+              "width": "long"
             },
+            "label": "Could you describe the health condition or disability?",
+            "fieldId": "type-of-disability",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "health-status",
-                "operator": "equal",
-                "value": "disability"
+                "value": [
+                  "other"
+                ],
+                "operator": "in",
+                "targetStepId": "health-status",
+                "targetFieldId": "health-status"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
           }
         }
       ],
       "behaviours": []
     },
     {
-      "stepId": "filling-out-form",
-      "title": "Who is filling out this form?",
+      "stepId": "programme-location",
+      "title": "Choose your programme location",
       "elements": [
         {
-          "ref": "components/generic-radio",
+          "ref": "components/generic-select",
           "overrides": {
-            "fieldId": "filling-out-on-behalf",
-            "label": "Are you filling out this form on behalf of someone else?",
+            "label": "Programme location",
+            "fieldId": "programme-location",
             "options": [
               {
-                "label": "Yes",
-                "value": "yes"
+                "label": "Carrington's Wesleyan Church, Welches Road, St. Michael (Thursdays)",
+                "value": "carringtons-wesleyan-church"
               },
               {
-                "label": "No",
-                "value": "no"
+                "label": "Edge Cliff Wesleyan Church, Edge Cliff, St. John (Thursdays)",
+                "value": "edge-cliff-wesleyan-church"
+              },
+              {
+                "label": "Eden Lodge Community Centre, St. Michael (Fridays)",
+                "value": "eden-lodge-community-centre"
+              },
+              {
+                "label": "Fairview Nazarene Church, Fairview, Christ Church (Wednesdays)",
+                "value": "fairview-nazarene-church"
+              },
+              {
+                "label": "Gall Hill Pavilion, Gall Hill, St. John (Tuesdays)",
+                "value": "gall-hill-pavilion"
+              },
+              {
+                "label": "Holy Innocents Church, Ashford, St. Thomas (Fridays)",
+                "value": "holy-innocents-church"
+              },
+              {
+                "label": "Mapp Hill Sports Centre, Mapp Hill, St. Michael (Thursdays)",
+                "value": "mapp-hill-sports-centre"
+              },
+              {
+                "label": "Orange Hill Church of God, Endeavour #2, St. James (Wednesdays)",
+                "value": "orange-hill-church-of-god"
+              },
+              {
+                "label": "Proute Wesleyan Church, Proute, St. Thomas (Tuesdays)",
+                "value": "proute-wesleyan-church"
+              },
+              {
+                "label": "Speightstown Bus Terminal, Speightstown, St. Peter (Mondays, Tuesdays & Fridays)",
+                "value": "speightstown-bus-terminal"
+              },
+              {
+                "label": "St. Bartholomew Church Hall, St. Bartholomew, Christ Church (Tuesdays & Thursdays)",
+                "value": "st-bartholomew-church-hall"
+              },
+              {
+                "label": "St. Elizabeth Sports, St. Elizabeth, St. Joseph (Mondays)",
+                "value": "st-elizabeth-sports"
+              },
+              {
+                "label": "St. John the Baptist Church, Holder's Hill, St. James (Thursdays)",
+                "value": "st-john-baptist-church"
+              },
+              {
+                "label": "St. Mark's Community Centre, Blades Hill, St. Philip (Wednesdays)",
+                "value": "st-marks-community-centre"
+              },
+              {
+                "label": "St. Matthias Church Hall, St. Matthias, Christ Church (Wednesdays)",
+                "value": "st-matthias-church-hall"
+              },
+              {
+                "label": "St. Paul's Anglican, Baystreet, St Michael (Wednesdays)",
+                "value": "st-pauls-anglican"
+              },
+              {
+                "label": "Valley Resources Centre, Valley, St. George (Fridays)",
+                "value": "valley-resources-centre"
+              },
+              {
+                "label": "Whitepark Wesleyan Church, White Park Road, St. Michael (Mondays)",
+                "value": "whitepark-wesleyan-church"
               }
             ],
             "validations": {
               "required": {
-                "value": true,
-                "error": "Select an option"
+                "error": "Select a programme location",
+                "value": true
               }
             }
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "is-emergency-contact",
-            "label": "Are you the emergency contact person?",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select an option"
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "filling-out-on-behalf",
-                "operator": "equal",
-                "value": "yes",
-                "targetStepId": "filling-out-form"
-              }
-            ]
           }
         }
       ],
@@ -250,351 +355,121 @@
       "title": "Tell us about the person filling out this form",
       "elements": [
         {
-          "ref": "components/title",
-          "overrides": {
-            "fieldId": "completing-applicant-title",
-            "label": "Title"
-          }
-        },
-        {
           "ref": "components/first-name",
           "overrides": {
-            "fieldId": "completing-applicant-first-name",
-            "label": "First name"
+            "label": "First name",
+            "fieldId": "completing-applicant-first-name"
           }
         },
         {
           "ref": "components/middle-name",
           "overrides": {
-            "fieldId": "completing-applicant-middle-name",
-            "label": "Middle name"
+            "label": "Middle name",
+            "fieldId": "completing-applicant-middle-name"
           }
         },
         {
           "ref": "components/last-name",
           "overrides": {
-            "fieldId": "completing-applicant-last-name",
-            "label": "Last name"
-          }
-        }
-      ],
-      "behaviours": [
-        {
-          "type": "stepConditionalOn",
-          "targetStepId": "filling-out-form",
-          "targetFieldId": "filling-out-on-behalf",
-          "operator": "equal",
-          "value": "yes"
-        }
-      ]
-    },
-    {
-      "stepId": "applicant-contact-details",
-      "title": "Contact details for the person filling out this form",
-      "elements": [
-        {
-          "ref": "components/address",
-          "overrides": {
-            "fieldId": "completing-applicant-address-line-1",
-            "label": "Address line 1",
-            "validations": {
-              "required": {
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/address",
-          "overrides": {
-            "fieldId": "completing-applicant-address-line-2",
-            "label": "Address line 2",
-            "hint": "Optional",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/parish",
-          "overrides": {
-            "fieldId": "completing-applicant-parish",
-            "label": "Parish",
-            "validations": {
-              "required": {
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/postcode",
-          "overrides": {
-            "fieldId": "completing-applicant-postcode",
-            "label": "Postcode",
-            "ui": {
-              "width": "short"
-            },
-            "hint": "Optional"
+            "label": "Last name",
+            "fieldId": "completing-applicant-last-name"
           }
         },
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "completing-applicant-telephone",
-            "label": "Telephone"
+            "fieldId": "reg-tele"
           }
         },
         {
           "ref": "components/email",
           "overrides": {
-            "fieldId": "completing-applicant-email",
-            "label": "Email",
+            "hint": "Optional",
+            "fieldId": "some-email",
             "validations": {
               "required": {
                 "value": false
               }
             }
-          }
-        }
-      ],
-      "behaviours": [
-        {
-          "type": "stepConditionalOn",
-          "targetStepId": "filling-out-form",
-          "targetFieldId": "filling-out-on-behalf",
-          "operator": "equal",
-          "value": "yes"
-        }
-      ]
-    },
-    {
-      "stepId": "emergency-contact-about",
-      "title": "Tell us about the emergency contact",
-      "elements": [
-        {
-          "ref": "components/title",
-          "overrides": {
-            "fieldId": "emergency-title",
-            "label": "Title"
-          }
-        },
-        {
-          "ref": "components/first-name",
-          "overrides": {
-            "fieldId": "emergency-first-name",
-            "label": "First name"
-          }
-        },
-        {
-          "ref": "components/middle-name",
-          "overrides": {
-            "fieldId": "emergency-middle-name",
-            "label": "Middle name"
-          }
-        },
-        {
-          "ref": "components/last-name",
-          "overrides": {
-            "fieldId": "emergency-last-name",
-            "label": "Last name"
           }
         },
         {
           "ref": "components/relationship",
           "overrides": {
-            "fieldId": "emergency-relationship",
-            "label": "Relationship to you"
+            "label": "Relationship to the person you're registering"
           }
         }
       ],
       "behaviours": [
         {
           "type": "stepConditionalOn",
-          "targetStepId": "filling-out-form",
-          "targetFieldId": "is-emergency-contact",
+          "value": "yes",
           "operator": "equal",
-          "value": "no"
+          "targetStepId": "filling-out-form",
+          "targetFieldId": "filling-out-on-behalf"
         }
       ]
     },
     {
-      "stepId": "emergency-contact-details",
-      "title": "Give us the emergency contact's details",
+      "stepId": "emergency-contact-about",
+      "title": "Tell us about the emergency contact person",
       "elements": [
         {
-          "ref": "components/address",
+          "ref": "components/first-name",
           "overrides": {
-            "fieldId": "emergency-address-line-1",
-            "label": "Address line 1",
-            "validations": {
-              "required": {
-                "value": true
-              }
-            }
+            "label": "First name",
+            "fieldId": "emergency-first-name"
           }
         },
         {
-          "ref": "components/address",
+          "ref": "components/middle-name",
           "overrides": {
-            "fieldId": "emergency-address-line-2",
-            "label": "Address line 2",
-            "hint": "Optional",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
+            "label": "Middle name",
+            "fieldId": "emergency-middle-name"
           }
         },
         {
-          "ref": "components/parish",
+          "ref": "components/last-name",
           "overrides": {
-            "fieldId": "emergency-parish",
-            "label": "Parish"
-          }
-        },
-        {
-          "ref": "components/postcode",
-          "overrides": {
-            "fieldId": "emergency-postcode",
-            "label": "Postcode",
-            "ui": {
-              "width": "short"
-            },
-            "hint": "Optional"
+            "label": "Last name",
+            "fieldId": "emergency-last-name"
           }
         },
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "emergency-telephone",
-            "label": "Telephone",
-            "validations": {
-              "required": {
-                "value": true
-              }
-            }
+            "fieldId": "emer-telephone"
           }
         },
         {
           "ref": "components/email",
           "overrides": {
-            "fieldId": "emergency-email",
-            "label": "Email",
+            "hint": "Optional",
+            "fieldId": "emer-email",
             "validations": {
               "required": {
                 "value": false
               }
             }
           }
+        },
+        {
+          "ref": "components/relationship",
+          "overrides": {
+            "label": "Relationship to the person you're registering",
+            "fieldId": "emergency-relationship"
+          }
         }
       ],
       "behaviours": [
         {
           "type": "stepConditionalOn",
-          "targetStepId": "filling-out-form",
-          "targetFieldId": "is-emergency-contact",
+          "value": "no",
           "operator": "equal",
-          "value": "no"
+          "targetStepId": "filling-out-form",
+          "targetFieldId": "is-emergency-contact"
         }
       ]
-    },
-    {
-      "stepId": "programme-location",
-      "title": "Choose your programme location",
-      "elements": [
-        {
-          "ref": "components/generic-select",
-          "overrides": {
-            "fieldId": "programme-location",
-            "label": "Programme location",
-            "options": [
-              {
-                "label": "Valley Resources Centre, Valley, St. George (Fridays)",
-                "value": "valley-resources-centre"
-              },
-              {
-                "label": "Edge Cliff Wesleyan Church, Edge Cliff, St. John (Thursdays)",
-                "value": "edge-cliff-wesleyan-church"
-              },
-              {
-                "label": "Speightstown Bus Terminal, Speightstown, St. Peter (Mondays, Tuesdays & Fridays)",
-                "value": "speightstown-bus-terminal"
-              },
-              {
-                "label": "St. Elizabeth Sports, St. Elizabeth, St. Joseph (Mondays)",
-                "value": "st-elizabeth-sports"
-              },
-              {
-                "label": "St. Bartholomew Church Hall, St. Bartholomew, Christ Church (Tuesdays & Thursdays)",
-                "value": "st-bartholomew-church-hall"
-              },
-              {
-                "label": "St. Matthias Church Hall, St. Matthias, Christ Church (Wednesdays)",
-                "value": "st-matthias-church-hall"
-              },
-              {
-                "label": "Carrington's Wesleyan Church, Welches Road, St. Michael (Thursdays)",
-                "value": "carringtons-wesleyan-church"
-              },
-              {
-                "label": "Gall Hill Pavilion, Gall Hill, St. John (Tuesdays)",
-                "value": "gall-hill-pavilion"
-              },
-              {
-                "label": "St. Mark's Community Centre, Blades Hill, St. Philip (Wednesdays)",
-                "value": "st-marks-community-centre"
-              },
-              {
-                "label": "Mapp Hill Sports Centre, Mapp Hill, St. Michael (Thursdays)",
-                "value": "mapp-hill-sports-centre"
-              },
-              {
-                "label": "Fairview Nazarene Church, Fairview, Christ Church (Wednesdays)",
-                "value": "fairview-nazarene-church"
-              },
-              {
-                "label": "Whitepark Wesleyan Church, White Park Road, St. Michael (Mondays)",
-                "value": "whitepark-wesleyan-church"
-              },
-              {
-                "label": "Eden Lodge Community Centre, St. Michael (Fridays)",
-                "value": "eden-lodge-community-centre"
-              },
-              {
-                "label": "Proute Wesleyan Church, Proute, St. Thomas (Tuesdays)",
-                "value": "proute-wesleyan-church"
-              },
-              {
-                "label": "Holy Innocents Church, Ashford, St. Thomas (Fridays)",
-                "value": "holy-innocents-church"
-              },
-              {
-                "label": "St. John the Baptist Church, Holder's Hill, St. James (Thursdays)",
-                "value": "st-john-baptist-church"
-              },
-              {
-                "label": "Orange Hill Church of God, Endeavour #2, St. James (Wednesdays)",
-                "value": "orange-hill-church-of-god"
-              },
-              {
-                "label": "St Paul's Anglican, Baystreet, St Michael (Wednesdays)",
-                "value": "st-pauls-anglican"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select a programme location"
-              }
-            }
-          }
-        }
-      ],
-      "behaviours": []
     },
     {
       "stepId": "check-your-answers",
@@ -610,8 +485,8 @@
         {
           "ref": "components/confirmation",
           "overrides": {
-            "fieldId": "declaration-confirmed",
             "label": "Declaration",
+            "fieldId": "declaration-confirmed",
             "options": [
               {
                 "label": "I declare that the information provided in this application is true and correct.",
@@ -620,8 +495,8 @@
             ],
             "validations": {
               "required": {
-                "value": true,
-                "error": "You must confirm the declaration to continue"
+                "error": "You must confirm the declaration to continue",
+                "value": true
               }
             }
           }
@@ -642,6 +517,6 @@
       ]
     }
   ],
-  "createdAt": "2026-06-17T14:52:14.481Z",
-  "updatedAt": "2026-06-17T14:52:14.481Z"
+  "createdAt": "2026-06-26T10:57:46.815Z",
+  "updatedAt": "2026-06-30T10:03:42.916Z"
 }

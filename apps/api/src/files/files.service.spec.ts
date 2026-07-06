@@ -101,8 +101,9 @@ describe("FilesService", () => {
     it("returns a presigned URL + scoped key", async () => {
       const r = await service.presignUpload(dto);
       expect(r.uploadUrl).toMatch(/^https?:\/\//);
+      // Key embeds the (formId/stepId/fieldId) tuple so confirm can bind to it (#284).
       expect(r.key).toMatch(
-        /^uploads\/passport-renewal\/\d{4}\/\d{2}\/[0-9a-f-]+-my_cert\.pdf$/,
+        /^uploads\/passport-renewal\/documents\/policeCertificate\/\d{4}\/\d{2}\/[0-9a-f-]+-my_cert\.pdf$/,
       );
       expect(r.expiresIn).toBe(900);
       expect(r.maxSize).toBe(2 * 1024 * 1024);
@@ -143,40 +144,51 @@ describe("FilesService", () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    describe("preview token", () => {
-      it("resolves with preview:true when the token is valid", async () => {
+    describe("recipe tokens", () => {
+      it("resolves with bypassVisibility:true when the preview token is valid", async () => {
         await service.presignUpload(dto, "secret-preview-token");
         expect(formDefs.findByFormId).toHaveBeenCalledWith(
-          expect.objectContaining({ preview: true }),
+          expect.objectContaining({ bypassVisibility: true, draft: false }),
         );
       });
 
-      it("resolves with preview:false when no token is supplied", async () => {
+      it("resolves with draft:true when the draft token is valid", async () => {
+        await service.presignUpload(dto, undefined, "secret-preview-token");
+        expect(formDefs.findByFormId).toHaveBeenCalledWith(
+          expect.objectContaining({ bypassVisibility: false, draft: true }),
+        );
+      });
+
+      it("resolves with no bypass/draft when no token is supplied", async () => {
         await service.presignUpload(dto);
         expect(formDefs.findByFormId).toHaveBeenCalledWith(
-          expect.objectContaining({ preview: false }),
+          expect.objectContaining({ bypassVisibility: false, draft: false }),
         );
       });
 
-      it("resolves with preview:false when the token is invalid", async () => {
-        await service.presignUpload(dto, "wrong-token");
+      it("resolves with no bypass/draft when the token is invalid", async () => {
+        await service.presignUpload(dto, "wrong-token", "wrong-token");
         expect(formDefs.findByFormId).toHaveBeenCalledWith(
-          expect.objectContaining({ preview: false }),
+          expect.objectContaining({ bypassVisibility: false, draft: false }),
         );
       });
 
-      it("presigns a DB-only draft only with a valid token", async () => {
-        // Simulate an unpublished draft: resolvable only on the preview path.
+      it("presigns a DB-only draft only with a valid draft token", async () => {
+        // Simulate an unpublished draft: resolvable only on the draft path.
         formDefs.findByFormId.mockImplementation(
-          ({ preview }: { preview?: boolean }) =>
-            preview
+          ({ draft }: { draft?: boolean }) =>
+            draft
               ? Promise.resolve(makeContract())
               : Promise.reject(new Error("not found")),
         );
         await expect(service.presignUpload(dto)).rejects.toThrow(
           BadRequestException,
         );
-        const r = await service.presignUpload(dto, "secret-preview-token");
+        const r = await service.presignUpload(
+          dto,
+          undefined,
+          "secret-preview-token",
+        );
         expect(r.uploadUrl).toMatch(/^https?:\/\//);
       });
     });
@@ -233,7 +245,50 @@ describe("FilesService", () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    describe("preview token", () => {
+    describe("presign↔confirm binding (#284)", () => {
+      const boundKey =
+        "uploads/passport-renewal/documents/policeCertificate/2026/05/abcdef01-2345-6789-abcd-ef0123456789-x.pdf";
+
+      it("confirms a new-format key whose embedded tuple matches the field", async () => {
+        s3Mock.on(HeadObjectCommand).resolves({
+          ContentLength: 1234,
+          ContentType: "application/pdf",
+        });
+        const r = await service.confirmUpload({ ...confirmDto, key: boundKey });
+        expect(r.size).toBe(1234);
+        expect(r.name).toBe("x.pdf");
+      });
+
+      it("rejects when the confirmed field differs from the key's embedded tuple", async () => {
+        s3Mock.on(HeadObjectCommand).resolves({
+          ContentLength: 1234,
+          ContentType: "application/pdf",
+        });
+        // Key was presigned under documents/policeCertificate; confirming under
+        // a different step must be rejected before any policy check — this is
+        // the escape the binding closes.
+        await expect(
+          service.confirmUpload({
+            ...confirmDto,
+            key: boundKey,
+            stepId: "other-step",
+          }),
+        ).rejects.toThrow("Upload key does not match the confirmed field");
+      });
+
+      it("falls back to the client tuple for a legacy (tuple-less) key", async () => {
+        s3Mock.on(HeadObjectCommand).resolves({
+          ContentLength: 1234,
+          ContentType: "application/pdf",
+        });
+        // The default confirmDto.key is the old format — still accepted during
+        // rollout, no binding check.
+        const r = await service.confirmUpload(confirmDto);
+        expect(r.size).toBe(1234);
+      });
+    });
+
+    describe("recipe tokens", () => {
       beforeEach(() => {
         s3Mock.on(HeadObjectCommand).resolves({
           ContentLength: 1234,
@@ -241,24 +296,35 @@ describe("FilesService", () => {
         });
       });
 
-      it("resolves with preview:true when the token is valid", async () => {
+      it("resolves with bypassVisibility:true when the preview token is valid", async () => {
         await service.confirmUpload(confirmDto, "secret-preview-token");
         expect(formDefs.findByFormId).toHaveBeenCalledWith(
-          expect.objectContaining({ preview: true }),
+          expect.objectContaining({ bypassVisibility: true, draft: false }),
         );
       });
 
-      it("resolves with preview:false when no token is supplied", async () => {
+      it("resolves with draft:true when the draft token is valid", async () => {
+        await service.confirmUpload(
+          confirmDto,
+          undefined,
+          "secret-preview-token",
+        );
+        expect(formDefs.findByFormId).toHaveBeenCalledWith(
+          expect.objectContaining({ bypassVisibility: false, draft: true }),
+        );
+      });
+
+      it("resolves with no bypass/draft when no token is supplied", async () => {
         await service.confirmUpload(confirmDto);
         expect(formDefs.findByFormId).toHaveBeenCalledWith(
-          expect.objectContaining({ preview: false }),
+          expect.objectContaining({ bypassVisibility: false, draft: false }),
         );
       });
 
-      it("confirms a DB-only draft only with a valid token", async () => {
+      it("confirms a DB-only draft only with a valid draft token", async () => {
         formDefs.findByFormId.mockImplementation(
-          ({ preview }: { preview?: boolean }) =>
-            preview
+          ({ draft }: { draft?: boolean }) =>
+            draft
               ? Promise.resolve(makeContract())
               : Promise.reject(new Error("not found")),
         );
@@ -267,6 +333,7 @@ describe("FilesService", () => {
         );
         const r = await service.confirmUpload(
           confirmDto,
+          undefined,
           "secret-preview-token",
         );
         expect(r.size).toBe(1234);
