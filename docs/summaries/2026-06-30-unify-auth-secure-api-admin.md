@@ -82,10 +82,60 @@ Decisions that shaped the diff and won't survive in it:
   `/admin/form-definitions`) now gate on the same `ARCHIVE_DRAFTS_TOKEN`. The
   draft-archive endpoint has an automated caller; the kill switch is
   operator-invoked and now requires that token too.
-- **Deploy prerequisite (not code):** apps/api prod must set
+- **Deploy prerequisite (not code):** apps/api sandbox and prod must both set
   `ARCHIVE_DRAFTS_TOKEN` (same value the workflow sends) or `/admin/*` returns
   500 (fail-closed). Documented in ADR 0061 and the guard comment.
 - Verified this session: `api:test` (935 pass, 98.4% cov), `form-builder-app`
   (645), `form-builder-api` (244), `tsc -b` (exit 0),
   `nx run-many -t build --exclude=landing` (16 projects), and a clean
   adversarial code-review pass.
+
+## Follow-up (2026-07-06 review pass)
+
+A later review pass on this PR found four things worth fixing/recording
+rather than re-litigating the original decisions above:
+
+- **Deploy prerequisite corrected to sandbox-too.** The original "Deploy
+  prerequisite" bullet above said prod only; `apps/api`'s Dockerfile actually
+  sets `NODE_ENV=production` in its runner stage and `deploy-sandbox.yml`
+  redeploys `apps/api` on every merge to `sandbox` (this PR's own merge
+  target), so sandbox hits the fail-closed guard first, the moment this PR
+  merges — not prod later. The archive workflow's calls fail silently
+  (best-effort by design); the kill switch 500s overtly for operators. Fixed
+  above and in ADR 0061.
+- **`ADMIN_KILL_SWITCH_TOKEN` decouples the kill switch's credential from
+  `ARCHIVE_DRAFTS_TOKEN`.** The kill-switch controller now constructs its
+  guard as `new AdminTokenGuard("ADMIN_KILL_SWITCH_TOKEN", "ARCHIVE_DRAFTS_TOKEN")`
+  (first-set-wins fallback); the draft-archive controller uses the zero-arg
+  `new AdminTokenGuard()` (same `ARCHIVE_DRAFTS_TOKEN` default). Same
+  value today, but while the dedicated var is unset, rotating
+  `ARCHIVE_DRAFTS_TOKEN` (a CI credential with its own rotation cadence)
+  silently rotates kill-switch access too — operators must be notified, or
+  set `ADMIN_KILL_SWITCH_TOKEN` (`.optional()` in `env.validation.ts`, same as
+  its sibling) to decouple them.
+- **Comment-honesty fix on the CodeQL-driven `isValidSecretToken`/
+  `extractBearerToken` changes — mechanisms kept, rationale corrected.**
+  `isValidSecretToken` compares keyed HMAC-SHA256 digests (vs a bare SHA-256
+  digest) purely to satisfy CodeQL's `js/insufficient-password-hash` alert;
+  `timingSafeEqual` was already constant-time, so the keying adds no security
+  over the plain digest compare. Likewise `extractBearerToken`'s linear
+  scheme-test/slice/trim parse (vs a `/^Bearer\s+(.+)$/i` regex) is scanner
+  compliance against `js/polynomial-redos`, not a load-bearing defence. Both
+  functions' comments now say so explicitly; the mechanisms are unchanged.
+- **New admin-controller guard-coverage tripwire spec.** `admin-controller-guard-coverage.spec.ts`
+  scans the filesystem for `*.controller.ts` files without importing them,
+  flags any whose `@Controller(...)` path starts with `admin`, and fails
+  unless that file applies `AdminTokenGuard` inside a `@UseGuards(...)`
+  decorator (an import or comment mention doesn't count) — so a future
+  `admin/*` controller can't ship unauthenticated the way the original #11
+  gap did.
+- **Boot-crash caught and pinned: the guard must be applied as an instance.**
+  The review's adversarial pass found that giving `AdminTokenGuard` a
+  variadic constructor breaks the class-reference `@UseGuards(AdminTokenGuard)`
+  form — Nest DI-instantiates class-referenced guards and cannot resolve the
+  emitted constructor paramtype (`UnknownDependenciesException` at bootstrap →
+  ECS crash-loop), while every unit spec stays green because none boots a Nest
+  module. Both admin controllers now pass guard **instances**, and the new
+  `admin-guards-boot.spec.ts` compiles the real controllers in a
+  `Test.createTestingModule` so this class of break fails in CI, not at
+  deploy.

@@ -130,6 +130,12 @@ const baseSchema = z
     // required var would crash-loop ECS on a missing value (ADR 0061).
     ARCHIVE_DRAFTS_TOKEN: z.string().optional(),
 
+    // Dedicated token for the kill-switch admin surface (per-form disable).
+    // When unset, the guard falls back to ARCHIVE_DRAFTS_TOKEN (same value
+    // today) — set this var only to rotate the two credentials independently.
+    // Never make this `.required()` either, for the same reason (ADR 0061).
+    ADMIN_KILL_SWITCH_TOKEN: z.string().optional(),
+
     // S3 file uploads (optional — required only when a form uses file fields)
     S3_BUCKET: z.string().default(""),
     S3_REGION: z.string().optional(),

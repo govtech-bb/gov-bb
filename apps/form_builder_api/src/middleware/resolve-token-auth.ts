@@ -1,6 +1,10 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 // Per-process random key — see the twin in apps/api/src/common/secret-token.ts.
+// The keyed HMAC (vs a bare SHA-256 digest) exists to satisfy CodeQL
+// (js/insufficient-password-hash); with timingSafeEqual already constant-time
+// it adds no security over a plain digest compare. Deliberately ephemeral;
+// never persist or share it.
 const COMPARE_KEY = randomBytes(32);
 
 /**

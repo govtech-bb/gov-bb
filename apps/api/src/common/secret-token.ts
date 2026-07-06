@@ -1,10 +1,13 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 // Per-process random key. HMAC-ing both tokens through it yields fixed-length
-// (32-byte) digests to compare, so `timingSafeEqual` never throws on a length
-// mismatch and the configured token's length is not leaked via timing. A keyed
-// MAC (not a bare digest of the secret) sidesteps the fast-hash concern of
-// hashing the token directly.
+// (32-byte) digests, so `timingSafeEqual` never throws on a length mismatch
+// and the configured token's length is not leaked via timing. The KEYED mac
+// (vs a bare SHA-256 digest) exists to satisfy CodeQL — a bare createHash of
+// a secret trips js/insufficient-password-hash. With timingSafeEqual already
+// constant-time it adds no security over the plain digest compare: scanner
+// compliance, not a load-bearing defence. The key is deliberately ephemeral
+// and per-process; never persist or share it.
 const COMPARE_KEY = randomBytes(32);
 
 /**

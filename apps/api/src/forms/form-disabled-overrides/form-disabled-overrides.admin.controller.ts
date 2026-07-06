@@ -29,12 +29,15 @@ interface DisabledStatusResponse {
  * Admin endpoints for the per-form kill switch.
  *
  * SECURITY: Authenticated by `AdminTokenGuard` — every request must carry a
- * valid `Authorization: Bearer <ARCHIVE_DRAFTS_TOKEN>` (dev-bypass policy per
- * ADR 0061). The network ACL remains as defence in depth.
+ * valid `Authorization: Bearer <ADMIN_KILL_SWITCH_TOKEN>`, falling back to
+ * `ARCHIVE_DRAFTS_TOKEN` while the dedicated var is unset (dev-bypass policy
+ * per ADR 0061). The network ACL remains as defence in depth.
  */
 @ApiTags("Admin — Form Disabled Overrides")
 @ApiBearerAuth()
-@UseGuards(AdminTokenGuard)
+@UseGuards(
+  new AdminTokenGuard("ADMIN_KILL_SWITCH_TOKEN", "ARCHIVE_DRAFTS_TOKEN"),
+)
 @Controller("admin/form-definitions")
 @Throttle({
   short: { limit: 5, ttl: 10_000 },

@@ -45,7 +45,15 @@ service-token boundary.**
   forms/submissions/files endpoints stay open. It validates
   `Authorization: Bearer <token>` against **`ARCHIVE_DRAFTS_TOKEN`** (the secret
   the archive workflow already sends), reusing the existing timing-safe
-  `isValidSecretToken`.
+  `isValidSecretToken`. The kill-switch controller constructs it as
+  `new AdminTokenGuard("ADMIN_KILL_SWITCH_TOKEN", "ARCHIVE_DRAFTS_TOKEN")` —
+  first-set-wins fallback, so it validates the dedicated var once provisioned
+  and `ARCHIVE_DRAFTS_TOKEN` until then; the draft-archive controller uses the
+  zero-arg `new AdminTokenGuard()` (the plain `ARCHIVE_DRAFTS_TOKEN` default).
+  The guard is always applied as an **instance**, never the class reference —
+  Nest DI-instantiates a class-referenced guard and cannot resolve the
+  variadic constructor's emitted paramtype, crashing the app at bootstrap.
+  `admin-guards-boot.spec.ts` pins this by compiling the real controllers.
 
 - **`publish.ts`'s inline `requireSession` is deleted.** `publishRecipe` and
   `eraseRecipe` use `.middleware([requireSession])` and read `context.session`,
@@ -79,11 +87,23 @@ service-token boundary.**
 
 ## Consequences
 
-- **`apps/api` prod must provision `ARCHIVE_DRAFTS_TOKEN`** (the same value the
-  `archive-merged-drafts` workflow sends) alongside this change. Until it is
-  set, the guard fails closed in production: `/admin/*` returns 500 and the
-  archive workflow's best-effort calls are rejected. No new GitHub secret or
+- **Every environment that runs `apps/api` with `NODE_ENV=production` —
+  sandbox as well as prod — must provision `ARCHIVE_DRAFTS_TOKEN`** (the same
+  value the `archive-merged-drafts` workflow sends), not prod alone.
+  `apps/api`'s Dockerfile sets `NODE_ENV=production` in its runner stage, and
+  `deploy-sandbox.yml` redeploys `apps/api` on every merge to `sandbox` — this
+  ADR's own merge target — so sandbox hits the fail-closed guard first, the
+  moment this change merges. Until the var is set: the archive workflow's
+  calls fail silently (it is a best-effort caller by design), but the kill
+  switch 500s overtly for whoever is operating it. No new GitHub secret or
   workflow change is needed — the caller already sends the Bearer token.
+- **While `ADMIN_KILL_SWITCH_TOKEN` is unset, the kill switch's credential is
+  coupled to `ARCHIVE_DRAFTS_TOKEN`'s rotation.** `ARCHIVE_DRAFTS_TOKEN` is a
+  CI credential with its own rotation cadence; because the kill-switch guard
+  falls back to it, rotating it also rotates who can invoke the kill switch.
+  Notify operators before rotating it, or provision the dedicated
+  `ADMIN_KILL_SWITCH_TOKEN` (also `.optional()` in `env.validation.ts`, same
+  fail-closed-in-prod rule) to decouple the two.
 - **A new service-token boundary uses `resolveTokenAuth`**; it does not invent a
   fourth dev-bypass. A reviewer should push back on a hand-rolled `NODE_ENV`
   check that gates auth.

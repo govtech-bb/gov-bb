@@ -21,7 +21,7 @@ import { DraftArchiveService } from "./draft-archive.service";
  */
 @ApiTags("Admin — Drafts")
 @ApiBearerAuth()
-@UseGuards(AdminTokenGuard)
+@UseGuards(new AdminTokenGuard())
 @Controller("admin/drafts")
 export class DraftArchiveController {
   constructor(private readonly draftArchive: DraftArchiveService) {}
