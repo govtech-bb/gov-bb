@@ -969,6 +969,10 @@ jobs:
       - name: Dispatch deploy-staging for ${{ github.sha }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # This job has no checkout, so gh can't infer the repo from a local
+          # .git dir — give it explicitly. GH_REPO also removes the need for a
+          # --repo flag.
+          GH_REPO: ${{ github.repository }}
         run: |
           # Built-in GITHUB_TOKEN: workflow_dispatch is exempt from the token's
           # no-recursion guard, so this fires deploy-staging with NO PAT.
