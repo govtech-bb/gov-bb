@@ -17,15 +17,27 @@ nx-affected, so its snapshot goes stale.
 Move the content/services index behind an `apps/api` endpoint the tool fetches at
 runtime.
 
-## Decisive constraint
+## Decisive constraints
 
-The deployed `apps/api` Docker image ships only compiled `dist/` — **not** the
-landing `.md` files (`apps/landing/src/content`). So `loadContent()` (which reads
-those files) **cannot run at api runtime**. The repo's proven pattern for
-"content data available to the api without the files" is a **build-time
-generated constant** compiled into the image — exactly how
-`packages/content/src/form-categories.generated.ts` already ships and is
-consumed with zero runtime I/O.
+1. The deployed `apps/api` Docker image ships only compiled `dist/` — **not** the
+   landing `.md` files (`apps/landing/src/content`). So `loadContent()` (which
+   reads those files) **cannot run at api runtime**. The fix is a **build-time
+   generated constant** compiled into the image.
+2. `@govtech-bb/content` is the **only** workspace package that exposes its API
+   through an `exports` map pointing at **`.ts` source** (so its tsx-script
+   consumers — `generate-form-categories`, chat ingest, analytics snapshot —
+   resolve it from source). Every package the api consumes at runtime instead
+   uses a compiled `main: ./src/index.js`. Making the api import
+   `@govtech-bb/content` at runtime would need node to load `.ts` (impossible)
+   or a package-json change that breaks those tsx consumers — and re-opens the
+   #1880 pruned-deps pain. **Therefore the api must NOT take a runtime
+   dependency on `@govtech-bb/content`.**
+
+Consequence: the generated index is **owned by `apps/api`** (generated into its
+own source tree, compiled into its own `dist`). `@govtech-bb/content` keeps only
+the pure `buildServicesIndex` helper, used by the generator at build time (via
+tsx, from source). No api→content runtime dependency, no Docker/tsconfig-
+reference changes.
 
 True zero-deploy live is not achievable (content lives in git; it changes only
 via merge/deploy). This design ties the index's freshness to the **api's**
@@ -47,28 +59,31 @@ independent cadence.
 
 ## Components
 
-### 1. `@govtech-bb/content` — generated services index
+### 1. `@govtech-bb/content` — pure helper only
 
-- `build-services-index.ts` — pure `buildServicesIndex(services: ServiceEntity[])
-  → ServiceIndexEntry[]`, where
+- `build-services-index.ts` — pure `buildServicesIndex(services) →
+  ServiceIndexEntry[]`, where
   `ServiceIndexEntry = { slug, title, category?, formId?, visibility }`
-  (`slug` = content slug; `category` = `category ?? categories?.[0]`; `formId`
-  from frontmatter `form_id`; `visibility` defaults `public`). Exported type.
-- `services-index.generated.ts` — committed constant `SERVICES_INDEX:
-  ServiceIndexEntry[]`, produced by `scripts/generate-services-index.ts`
-  (`loadContent()` → `buildServicesIndex` → write file), wired as
-  `pnpm generate:services-index`. Mirrors `scripts/generate-form-categories.ts`.
-- Exported from the package index alongside `FORM_CATEGORIES`.
+  (`slug` = content slug; `category` = `categories?.[0] ?? category`; `formId`
+  from frontmatter `form_id`; `visibility` defaults `public`). Exported for the
+  generator. No generated constant lives in this package.
 
-### 2. `apps/api` — `GET /services`
+### 2. Generator → `apps/api`-owned generated file
 
-- New `ContentModule` / `ServicesController` / `ServicesService`, registered in
-  `app.module.ts`. Throttled like the sibling read controllers.
-- `apps/api` gains a dependency on `@govtech-bb/content` (compiled import of the
-  generated constant — **no `.md` files needed**). Wire per the monorepo build
-  gotcha (add to `apps/api/package.json` + `tsconfig.json` `references`) and
-  confirm the Docker image ships `dist/packages/content` + the content manifest
-  (the #1880 groundwork). **This is the primary implementation risk.**
+- `scripts/generate-services-index.ts` (root, tsx) — `loadContent()` →
+  `buildServicesIndex` → writes
+  `apps/api/src/content/services-index.generated.ts` (a `SERVICES_INDEX`
+  constant typed by an **api-local** `ServiceIndexEntry`). Wired as
+  `pnpm generate:services-index`. Mirrors `scripts/generate-form-categories.ts`,
+  but the output lives in the api so the api needs no content runtime dep.
+
+### 3. `apps/api` — `GET /services`
+
+- New `ContentModule` / `ContentController` / `ContentService` under
+  `apps/api/src/content/`, registered in `app.module.ts`. Throttled like the
+  sibling read controllers. Owns `service-index.type.ts` (`ServiceIndexEntry`)
+  and imports the generated `SERVICES_INDEX` locally — **no `@govtech-bb/content`
+  import**.
 - Soft auth via the existing `resolveTokenAuth` + a bearer parser (not the
   throwing `AdminTokenGuard`): read `Authorization: Bearer`, resolve against
   `SERVICE_STATUS_ADMIN_TOKEN` then `ARCHIVE_DRAFTS_TOKEN`;
@@ -95,9 +110,9 @@ independent cadence.
 ## Data flow
 
 ```
-content .md ──(generate:services-index, build-time)──▶ SERVICES_INDEX (packages/content, committed)
-                                                            │ compiled into api image
-apps/api  GET /services ──(soft-auth: public vs all)────────┘
+content .md ─(generate:services-index, tsx build-time)─▶ SERVICES_INDEX (apps/api/src/content, committed)
+                                                             │ compiled into api's own dist
+apps/api  GET /services ──(soft-auth: public vs all)─────────┘
    ▲
    │ runtime fetch (bearer)
 apps/feature_flagging listServices ──▶ reconcileCatalogue(landing, forms, statuses)
@@ -116,12 +131,22 @@ apps/feature_flagging listServices ──▶ reconcileCatalogue(landing, forms, 
 - Full `nx run-many -t build` (esp. `api` + `content`) and a Docker-deps sanity
   check that the api image resolves `@govtech-bb/content`.
 
-## Rollout / ordering
+## Delivery / ordering
 
-- Independent of PRs #1908/#1909, but complements them. When merged, regenerate
-  `services-index.generated.ts` in any future content PR (like form-categories).
-- Optional follow-up: a CI check that the generated index is current (parallel
-  to any existing form-categories freshness check).
+`apps/feature_flagging` is not on `main` yet (PR #1909, unmerged), so the work
+splits across two branches:
+
+- **This PR → `main`:** the api `GET /services` endpoint, the root generator +
+  `pnpm generate:services-index`, the api-owned generated file, and the pure
+  `buildServicesIndex` in `@govtech-bb/content`. Self-contained and mergeable
+  independently.
+- **On the PR #1909 branch:** component 4 (feature_flagging fetches `/services`,
+  deletes its baked snapshot + generator + content devDependency). Lands there
+  because that's where the app lives.
+
+When a future content PR changes landing pages, regenerate
+`services-index.generated.ts` (like form-categories). Optional follow-up: a CI
+check that the generated index is current.
 
 ## Success criteria
 
