@@ -606,14 +606,14 @@ jobs:
       - name: Lint affected projects
         id: lint
         run: |
-          # TEMPORARY (ratchet): analytics-app, api, form-builder-app, forms,
-          # landing carry ~300 pre-existing lint errors never caught before —
-          # sandbox/prod never had a lint gate, so this trunk gate is the first
-          # to run `nx affected -t lint` over them. Excluded to land the
-          # prod→main resync (#1884); tracked in #1885 — clean each app and
-          # remove it from --exclude to re-arm the gate, one at a time.
+          # TEMPORARY (ratchet): api, form-builder-app still carry pre-existing
+          # lint errors never caught before — sandbox/prod never had a lint
+          # gate, so this trunk gate is the first to run `nx affected -t lint`
+          # over them. Excluded to land the prod→main resync (#1884); tracked in
+          # #1885 — clean each app and remove it from --exclude, one at a time.
+          # Re-armed so far: analytics-app, landing, forms (#1891/#1892/#1893).
           pnpm exec nx affected -t lint --nxBail=false \
-            --exclude=analytics-app,api,form-builder-app,forms,landing 2>&1 | tee lint-output.txt
+            --exclude=api,form-builder-app 2>&1 | tee lint-output.txt
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 
