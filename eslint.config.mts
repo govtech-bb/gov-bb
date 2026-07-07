@@ -3,6 +3,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 import json from "@eslint/json";
 import css from "@eslint/css";
+import { tailwind4 } from "tailwind-csstree";
 import { defineConfig } from "eslint/config";
 
 export default defineConfig([
@@ -30,5 +31,15 @@ export default defineConfig([
     },
   },
   { files: ["**/*.json"], plugins: { json }, language: "json/json", extends: ["json/recommended"] },
-  { files: ["**/*.css"], plugins: { css }, language: "css/css", extends: ["css/recommended"] },
+  {
+    files: ["**/*.css"],
+    plugins: { css },
+    language: "css/css",
+    languageOptions: { customSyntax: tailwind4 },
+    extends: ["css/recommended"],
+    // Design tokens (--color-*, --spacing-*, etc.) are defined in the imported
+    // @govtech-bb/design package, which the linter can't resolve — so var()
+    // references to them are false positives, not undefined variables.
+    rules: { "css/no-invalid-properties": ["error", { allowUnknownVariables: true }] },
+  },
 ]);

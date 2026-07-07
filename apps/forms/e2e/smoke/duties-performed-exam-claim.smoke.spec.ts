@@ -29,7 +29,7 @@
  *    `first-name` etc.).
  */
 import { faker } from "@faker-js/faker";
-import { test, expect } from "@playwright/test";
+import { test } from "@playwright/test";
 import {
   STEP_TIMEOUT,
   advance,

@@ -1,6 +1,7 @@
 import { FrontmatterSchema, titleFromSlug } from '../lib/frontmatter'
 import type { Frontmatter, ViewLevel } from '../lib/frontmatter'
 import type { Root } from 'hast'
+import type { ComponentType } from 'react'
 import { bakeStartLinkFormId } from '../utils/markdown/plugins'
 import { CATEGORIES, CATEGORY_BY_SLUG, getSubcategory } from './categories'
 import type { Category } from './categories'
@@ -17,7 +18,7 @@ export interface ContentPage {
   /** Build-time compiled body (see `vite-plugin-markdown.ts`). Empty root for feature pages. */
   hast: Root
   /** For a co-located `.tsx` page: its component, rendered instead of `hast`. */
-  Component?: import('react').ComponentType
+  Component?: ComponentType
   /**
    * A co-located page `.tsx` renders its own title/layout, so the catch-all
    * renders it bare inside the shell rather than through the markdown chrome.

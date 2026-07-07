@@ -1,7 +1,6 @@
-name: Deploy Production
+name: Deploy Staging
 
-# Reliability-first production CD. Port of deploy-staging.yml, retargeted at the
-# prod account (996501092968, ca-central-1). Same design as staging:
+# Reliability-first staging CD. See docs/plans/staging-cicd-reliability-first.md.
 #
 # Design:
 #   - All deploy targets run as parallel independent jobs. Each owns its own
@@ -9,121 +8,96 @@ name: Deploy Production
 #     job does NOT cancel others — we want full visibility on every layer.
 #   - ECS deploys verify the *deployed* task def matches the *registered* one
 #     (catches silent rollback) and check ALB target health post-deploy.
-#   - Amplify auto-build is OFF on the prod branch; this workflow is the sole
-#     trigger. Each Amplify job runs start-job → monitor → URL smoke test.
+#   - Amplify auto-build is OFF on the staging branch; this workflow is the
+#     sole trigger. Each Amplify job runs start-job → monitor → URL smoke
+#     test.
 #   - Roll-forward only: when a container fails to start, the workflow fails
 #     loudly. No silent revert. Fix-forward via a new commit, never via
 #     rollback magic.
 #
-# Prod deltas vs staging:
-#   - form-builder is NOT wired up in production (decision 2026-06-04): no
-#     deploy-form-builder (API) or amplify-form-builder job, no fb-* targets.
-#   - Public DNS is not cut over yet (Phase 1). Smoke tests hit the ALB DNS
-#     (HTTP) and the *.amplifyapp.com default domains instead of the friendly
-#     *.alpha.gov.bb hostnames — same as staging's own pre-DNS phase. Switch to
-#     api.ssb/forms/chat/landing .alpha.gov.bb once DNS + the :443 listener land.
-#   - workflow_dispatch exposes a `deploy_all` input to force every target,
-#     ignoring affected detection — needed to bootstrap the first prod deploy
-#     (ECR image + forms-db migrations) since a workflow-only push marks nothing
-#     affected.
-#
 # Prereqs:
-#   - Repo secret AWS_ROLE_ARN_PROD set to the gov-bb-github-actions-prod role
-#     ARN (output by alpha-infra's prod stack — gov-bb-github-oidc.tf).
-#   - The prod Amplify apps connected to govtech-bb/gov-bb branch `prod` in the
-#     Amplify console, auto-build OFF.
+#   - Repo secret AWS_ROLE_ARN_STAGING set to the gov-bb-github-actions-staging
+#     role ARN (output by alpha-infra's staging stack — see PR #240).
+#   - The 4 staging Amplify apps connected to govtech-bb/gov-bb branch
+#     `staging` in the Amplify console with auto-build set per app IaC.
 
 on:
-  # TRUNK: production is NEVER automatic. This is the manual, windowed
-  # "Deploy Production" button — run it from the `staging` branch (Actions →
-  # Deploy Production → Run workflow → Branch: staging) so prod ships exactly
-  # the commit staging proved. The `advance-prod` job fast-forwards the `prod`
-  # branch to that commit and a guard blocks running from any branch but
-  # `staging` (unless explicitly overridden for a rollback/hotfix).
+  # TRUNK: staging is NOT pushed to directly. It's dispatched by deploy-sandbox's
+  # `promote-to-staging` job once sandbox is fully green (the sequential gate),
+  # or manually from the Actions tab. This job fast-forwards the `staging` branch
+  # to the commit being deployed so Amplify (which builds the `staging` branch)
+  # stays consistent with the ECS deploys.
   workflow_dispatch:
     inputs:
-      deploy_all:
-        description: "Force-deploy all targets (bootstrap / full redeploy), ignoring affected detection"
-        type: boolean
-        default: false
-      allow_non_staging:
-        description: "Override the staging-only guard (rollback/hotfix from another ref). Leave off for normal releases."
-        type: boolean
-        default: false
+      promoted_sha:
+        description: "Commit sandbox proved (for the audit log; the run deploys main's HEAD)."
+        required: false
+        type: string
 
 permissions:
   # Single-purpose deploy workflow: every job assumes the AWS deploy role via
   # OIDC, so a workflow-level id-token grant is intentional. Per-job scoping
   # tracked in #1462.
   id-token: write # zizmor: ignore[excessive-permissions]
-  # Branch-advance write is granted at the JOB level (advance-prod) so the
+  # Branch-advance write is granted at the JOB level (advance-staging) so the
   # deploy jobs stay read-only.
   contents: read
 
 # Queue deploys; never cancel one mid-flight. A half-applied deploy must
 # finish before the next starts.
 concurrency:
-  group: deploy-prod-${{ github.ref }}
+  group: deploy-staging-${{ github.ref }}
   cancel-in-progress: false
 
 env:
   AWS_REGION: ca-central-1
   ECR_REPOSITORY: ssb-api
-  ECS_CLUSTER: simple-service-builder-prod
-  ECS_SERVICE: ssb-api-prod
+  ECS_CLUSTER: simple-service-builder-staging
+  ECS_SERVICE: ssb-api-staging
 
-  # Smoke test URLs. The API's friendly DNS + :443 listener have landed, and the
-  # ALB now force-redirects HTTP→HTTPS (301) — so hitting the raw ALB over HTTP
-  # fails the smoke (301 ≠ 200, and the ALB DNS doesn't match the cert, so
-  # following the redirect breaks too). Smoke the friendly HTTPS host, which
-  # returns 200 through to the app. The Amplify apps still use their default
-  # *.amplifyapp.com domains over TLS until their friendly DNS is cut over.
-  API_SMOKE_URL: https://api.ssb.alpha.gov.bb/health
-  AMPLIFY_FORMS_URL: https://prod.d2a6u3uw8mle6w.amplifyapp.com
-  AMPLIFY_LANDING_URL: https://prod.d33h8dmrfcznn0.amplifyapp.com
-  AMPLIFY_CHAT_URL: https://prod.d3dc75921xrndn.amplifyapp.com
-  AMPLIFY_CHAT_HEALTH_URL: https://prod.d3dc75921xrndn.amplifyapp.com/api/health
+  # Smoke test URLs — friendly *.staging.alpha.gov.bb hostnames. DNS + ACM +
+  # the ALB HTTPS listener landed in alpha-infra PR-3 (network + staging stack),
+  # so smoke tests now hit the real URLs QA uses, over TLS.
+  API_SMOKE_URL: https://api.staging.alpha.gov.bb/health
+  FORM_BUILDER_API_SMOKE_URL: https://api.staging.alpha.gov.bb/builder/health
+  AMPLIFY_FORMS_URL: https://forms.staging.alpha.gov.bb
+  AMPLIFY_LANDING_URL: https://staging.alpha.gov.bb
+  AMPLIFY_CHAT_URL: https://chat.staging.alpha.gov.bb
+  AMPLIFY_CHAT_HEALTH_URL: https://chat.staging.alpha.gov.bb/api/health
+  AMPLIFY_FORM_BUILDER_URL: https://builder.staging.alpha.gov.bb
 
 jobs:
-  # Guard + move the `prod` pointer to the commit being deployed BEFORE any
-  # Amplify job runs (Amplify builds the `prod` branch). The guard blocks any
-  # ref but `staging`, so production only ever ships staging-proven code —
-  # override only for a deliberate rollback/hotfix.
-  advance-prod:
-    name: Guard + advance prod branch
+  # Move the `staging` deploy pointer to the commit being deployed BEFORE any
+  # Amplify job runs (Amplify builds the `staging` branch). force=false →
+  # fast-forward only; staging is always behind main, so this always ff's.
+  advance-staging:
+    name: Advance staging branch
     runs-on: ubuntu-latest
     permissions:
-      contents: write # fast-forward the prod branch ref
+      contents: write # fast-forward the staging branch ref
     steps:
-      - name: Guard — prod ships staging-proven code only
-        env:
-          # Via env, not inline ${{ }}, so ref/input values can't expand into
-          # the shell (zizmor template-injection).
-          REF_NAME: ${{ github.ref_name }}
-          ALLOW_NON_STAGING: ${{ inputs.allow_non_staging }}
-        run: |
-          if [ "$REF_NAME" != "staging" ] && [ "$ALLOW_NON_STAGING" != "true" ]; then
-            echo "❌ Deploy Production must be run from the 'staging' branch (the proven code)."
-            echo "   Re-run: Actions → Deploy Production → Run workflow → Branch: staging."
-            echo "   For a deliberate rollback/hotfix from another ref, set allow_non_staging=true."
-            exit 1
-          fi
-      - name: Fast-forward prod → ${{ github.sha }}
+      - name: Fast-forward staging → ${{ github.sha }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Via env, not inline ${{ }}, so the user-supplied input can't expand
+          # into the shell (zizmor template-injection).
+          PROMOTED_SHA: ${{ inputs.promoted_sha }}
         run: |
-          gh api -X PATCH "repos/${{ github.repository }}/git/refs/heads/prod" \
+          echo "Promoted from sandbox: ${PROMOTED_SHA:-manual dispatch}"
+          gh api -X PATCH "repos/${{ github.repository }}/git/refs/heads/staging" \
             -f sha="${{ github.sha }}" -F force=false
 
   setup:
     name: Detect affected targets
-    needs: advance-prod
+    needs: advance-staging
     runs-on: ubuntu-latest
     outputs:
       api: ${{ steps.affected.outputs.api }}
+      fb-api: ${{ steps.affected.outputs.fb-api }}
       forms: ${{ steps.affected.outputs.forms }}
       landing: ${{ steps.affected.outputs.landing }}
       chat: ${{ steps.affected.outputs.chat }}
+      fb-app: ${{ steps.affected.outputs.fb-app }}
       migrations: ${{ steps.affected.outputs.migrations }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
     steps:
@@ -133,7 +107,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version-file: ".nvmrc"
@@ -143,43 +117,35 @@ jobs:
       - name: Derive base/head SHAs
         uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
         with:
-          # Prod is run from the `staging` ref (the proven code), so the affected
-          # base is the last successful deploy-prod run on staging. (Was `prod`
-          # when this triggered on push:prod.) First run after cutover marks
-          # nothing affected → use the deploy_all input to bootstrap.
-          main-branch-name: staging
-          workflow-id: deploy-prod.yml
+          # Runs are dispatched with --ref main now, so the affected base is the
+          # last successful deploy-staging run on main. (Was `staging` when this
+          # triggered on push:staging.)
+          main-branch-name: main
+          workflow-id: deploy-staging.yml
 
       - name: Compute affected deploy targets
         id: affected
-        env:
-          DEPLOY_ALL: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_all }}
         run: |
-          if [ "$DEPLOY_ALL" = "true" ]; then
-            echo "Manual deploy_all=true — forcing every target (affected detection bypassed)"
-          fi
-
           AFFECTED=$(pnpm exec nx show projects \
             --affected --base="$NX_BASE" --head="$NX_HEAD" --type app --json 2>/dev/null || echo '[]')
           echo "Affected apps: $AFFECTED"
-          has() {
-            if [ "$DEPLOY_ALL" = "true" ]; then echo true; return; fi
-            echo "$AFFECTED" | jq -e --arg p "$1" 'index($p)' >/dev/null && echo true || echo false
-          }
+          has() { echo "$AFFECTED" | jq -e --arg p "$1" 'index($p)' >/dev/null && echo true || echo false; }
 
           echo "api=$(has api)" >> "$GITHUB_OUTPUT"
+          echo "fb-api=$(has form-builder-api)" >> "$GITHUB_OUTPUT"
           echo "forms=$(has forms)" >> "$GITHUB_OUTPUT"
           echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
           echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
+          echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
 
-          if [ "$DEPLOY_ALL" = "true" ] || git diff --name-only "$NX_BASE" "$NX_HEAD" | grep -q '^apps/api/src/database/migrations/'; then
+          if git diff --name-only "$NX_BASE" "$NX_HEAD" | grep -q '^apps/api/src/database/migrations/'; then
             echo "migrations=true" >> "$GITHUB_OUTPUT"
           else
             echo "migrations=false" >> "$GITHUB_OUTPUT"
           fi
 
-          if [ "$DEPLOY_ALL" = "true" ] || git diff --name-only "$NX_BASE" "$NX_HEAD" \
-              | grep -qE '^(amplify\.yml|\.github/workflows/deploy-prod\.yml)$'; then
+          if git diff --name-only "$NX_BASE" "$NX_HEAD" \
+              | grep -qE '^(amplify\.yml|\.github/workflows/deploy-staging\.yml)$'; then
             echo "amplify-config=true" >> "$GITHUB_OUTPUT"
           else
             echo "amplify-config=false" >> "$GITHUB_OUTPUT"
@@ -204,7 +170,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
@@ -225,7 +191,7 @@ jobs:
       - name: Get current task definition
         run: |
           aws ecs describe-task-definition \
-            --task-definition ssb-api-prod \
+            --task-definition ssb-api-staging \
             --region $AWS_REGION \
             --query taskDefinition \
             --output json > task-def.json
@@ -254,7 +220,7 @@ jobs:
             --cluster $ECS_CLUSTER \
             --task-definition "$TASK_DEF_ARN" \
             --launch-type FARGATE \
-            --network-configuration "awsvpcConfiguration={subnets=[subnet-07a490c8b7bbc6622,subnet-0c052b93d42a9711f],securityGroups=[sg-0a5ee82a653cd6000],assignPublicIp=DISABLED}" \
+            --network-configuration "awsvpcConfiguration={subnets=[subnet-0374aa2ad1df7a431,subnet-04e50152fa2b77b88],securityGroups=[sg-0e6b76b9c1c50d397],assignPublicIp=DISABLED}" \
             --overrides '{"containerOverrides":[{"name":"api","command":["pnpm","migration:run"]}]}' \
             --region $AWS_REGION \
             --query tasks[0].taskArn \
@@ -268,7 +234,7 @@ jobs:
             --query "tasks[0].containers[?name=='api'].exitCode | [0]" --output text)
 
           if [ "$EXIT_CODE" != "0" ]; then
-            echo "❌ Migration failed (exit $EXIT_CODE). Logs: aws logs tail /ecs/ssb-api-prod --follow"
+            echo "❌ Migration failed (exit $EXIT_CODE). Logs: aws logs tail /ecs/ssb-api-staging --follow"
             exit 1
           fi
           echo "✅ Migrations succeeded"
@@ -295,10 +261,78 @@ jobs:
           LABEL: api
         run: bash .github/scripts/smoke-test-url.sh
 
+  deploy-form-builder:
+    name: Build, Push & Deploy form-builder
+    needs: setup
+    if: needs.setup.outputs.fb-api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
+
+      - name: Build and push image
+        id: build
+        run: |
+          set -euo pipefail
+          IMAGE_URI="${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:${{ github.sha }}"
+          LATEST_URI="${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:latest"
+          docker build --platform linux/amd64 -f apps/form_builder_api/Dockerfile -t "$IMAGE_URI" -t "$LATEST_URI" .
+          docker push "$IMAGE_URI"
+          docker push "$LATEST_URI"
+          echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+
+      - name: Get current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition form-builder-staging \
+            --region $AWS_REGION --query taskDefinition --output json > fb-task-def.json
+
+      - name: Render task definition with new image
+        id: new-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@6853cfae8c3a7d978fbf68b5a55453395541dfbb # v1.8.5
+        with:
+          task-definition: fb-task-def.json
+          container-name: form-builder
+          image: ${{ steps.build.outputs.image }}
+
+      - name: Deploy to ECS
+        id: deploy
+        uses: aws-actions/amazon-ecs-deploy-task-definition@a310a830f5c14e583e35d84e4e1ec7dd177c3c9c # v2.6.2
+        with:
+          task-definition: ${{ steps.new-task-def.outputs.task-definition }}
+          service: form-builder-staging
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+      - name: Verify ECS deployment landed (catches silent rollback)
+        env:
+          CLUSTER: ${{ env.ECS_CLUSTER }}
+          SERVICE: form-builder-staging
+          EXPECTED_TASK_DEF: ${{ steps.deploy.outputs.task-definition-arn }}
+        run: bash .github/scripts/verify-ecs-deployment.sh
+
+      - name: Smoke test /builder/health
+        env:
+          URL: ${{ env.FORM_BUILDER_API_SMOKE_URL }}
+          LABEL: form-builder
+        run: bash .github/scripts/smoke-test-url.sh
+
   deploy-chat-ingest:
-    # Chatbot RAG ingest one-shot Fargate task. Build image, push to prod ECR,
-    # then invoke the indexer Lambda so content changes propagate to chat-prod
-    # immediately instead of waiting for the cron.
+    # Chatbot RAG ingest one-shot Fargate task. Build image, push to staging
+    # ECR, then invoke the indexer Lambda so content changes propagate to
+    # chat-staging immediately instead of waiting for the cron.
     name: Build, Push & Trigger chat-ingest
     needs: setup
     if: needs.setup.outputs.chat == 'true'
@@ -312,7 +346,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
@@ -322,8 +356,8 @@ jobs:
       - name: Build and push chat-ingest image
         run: |
           set -euo pipefail
-          INGEST_URI="${{ steps.ecr-login.outputs.registry }}/chatbot-ingest-prod:${{ github.sha }}"
-          INGEST_LATEST="${{ steps.ecr-login.outputs.registry }}/chatbot-ingest-prod:latest"
+          INGEST_URI="${{ steps.ecr-login.outputs.registry }}/chatbot-ingest-staging:${{ github.sha }}"
+          INGEST_LATEST="${{ steps.ecr-login.outputs.registry }}/chatbot-ingest-staging:latest"
           docker build --platform linux/amd64 -f apps/chat/Dockerfile.ingest -t "$INGEST_URI" -t "$INGEST_LATEST" .
           docker push "$INGEST_URI"
           docker push "$INGEST_LATEST"
@@ -331,7 +365,7 @@ jobs:
       - name: Invoke RAG indexer
         env:
           COMMIT_SHA: ${{ github.sha }}
-          INDEXER: chatbot-rag-indexer-prod
+          INDEXER: chatbot-rag-indexer-staging
         run: |
           set -euo pipefail
           PAYLOAD=$(printf '{"startedBy":"gh-%.36s"}' "$COMMIT_SHA")
@@ -372,8 +406,10 @@ jobs:
   # SSR smoke gate — boots each affected WEB_COMPUTE app's BUILT compute server
   # in the runner and asserts its homepage responds (<500, no hang) BEFORE the
   # Amplify deploy jobs run. Catches "compiles clean but hangs/5xx at runtime"
-  # regressions that build/typecheck/unit all miss. amplify-{landing,chat} need
-  # this job, so a failure here BLOCKS the deploy and prod stays on the last good
+  # regressions that build/typecheck/unit all miss — e.g. the 2026-05-31 outage
+  # where a transitive @tanstack/react-start bump hung landing's createServerFn
+  # SSR path (30s timeout → 500). amplify-{landing,chat,form-builder} need this
+  # job, so a failure here BLOCKS the deploy and staging stays on the last good
   # version. forms is static (WEB) — no compute server to smoke.
   # ---------------------------------------------------------------------------
   ssr-smoke:
@@ -382,6 +418,7 @@ jobs:
     if: |
       needs.setup.outputs.landing == 'true'
       || needs.setup.outputs.chat == 'true'
+      || needs.setup.outputs.fb-app == 'true'
       || needs.setup.outputs.amplify-config == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -400,9 +437,8 @@ jobs:
         if: needs.setup.outputs.landing == 'true' || needs.setup.outputs.amplify-config == 'true'
         env:
           # landing's prebuild fetches the live form manifest; point it at the
-          # prod API (ALB DNS over HTTP until api.ssb DNS + :443 land) so the
-          # build resolves against the env it deploys into.
-          VITE_FORMS_API_URL: http://ssb-api-prod-1165104707.ca-central-1.elb.amazonaws.com
+          # staging API so the build resolves against the env it deploys into.
+          VITE_FORMS_API_URL: https://api.staging.alpha.gov.bb
         run: |
           pnpm exec nx build landing
           node .github/scripts/ssr-smoke.mjs apps/landing/.amplify-hosting/compute/default landing
@@ -413,12 +449,32 @@ jobs:
           pnpm exec nx build chat
           node .github/scripts/ssr-smoke.mjs apps/chat/.amplify-hosting/compute/default chat
 
+      - name: Smoke form-builder
+        if: needs.setup.outputs.fb-app == 'true' || needs.setup.outputs.amplify-config == 'true'
+        env:
+          # Dummy boot-time values so the SSR server starts: the session cipher
+          # requires a 32-byte base64 SESSION_SECRET (set below) or it throws.
+          # The smoke only GETs / which 307-redirects to OAuth — that proves the
+          # runtime serves requests; it never completes an actual OAuth flow.
+          GITHUB_OAUTH_CLIENT_ID: smoke
+          GITHUB_OAUTH_CLIENT_SECRET: smoke
+          GITHUB_ORG: govtech-bb
+          ADMIN_API_TOKEN: smoke
+          BUILDER_API_URL: http://127.0.0.1:9
+          OAUTH_REDIRECT_BASE: http://127.0.0.1:3000
+        run: |
+          export SESSION_SECRET="$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")"
+          pnpm exec nx build form-builder-app
+          node .github/scripts/ssr-smoke.mjs apps/form_builder/.amplify-hosting/compute/default form-builder
+
   # ---------------------------------------------------------------------------
-  # Amplify deploys — auto-build is OFF on the prod branch, so this workflow is
-  # the sole trigger. Each job runs start-job → monitor → URL smoke test.
+  # Amplify deploys — auto-build is OFF on the staging branch (per app IaC),
+  # so this workflow is the sole trigger. Each job runs start-job → monitor →
+  # URL smoke test. The smoke test catches "build succeeded but URL doesn't
+  # serve" (same pattern as sandbox commit ab003dd9).
   #
-  # The WEB_COMPUTE apps also `needs: ssr-smoke` — a runtime hang there blocks
-  # the deploy entirely, so a broken SSR build never reaches the live URL.
+  # The three WEB_COMPUTE apps also `needs: ssr-smoke` — a runtime hang there
+  # blocks the deploy entirely, so a broken SSR build never reaches the live URL.
   # ---------------------------------------------------------------------------
 
   amplify-forms:
@@ -434,13 +490,13 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Trigger and monitor Amplify build
         env:
-          AMPLIFY_APP_ID: d2a6u3uw8mle6w
-          AMPLIFY_BRANCH: prod
+          AMPLIFY_APP_ID: d27gpzyoit5nrf
+          AMPLIFY_BRANCH: staging
           APP_LABEL: forms
         run: |
           set -euo pipefail
@@ -484,13 +540,13 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Trigger and monitor Amplify build
         env:
-          AMPLIFY_APP_ID: d33h8dmrfcznn0
-          AMPLIFY_BRANCH: prod
+          AMPLIFY_APP_ID: d3u4q4kqt5t6ok
+          AMPLIFY_BRANCH: staging
           APP_LABEL: landing
         run: |
           set -euo pipefail
@@ -534,13 +590,13 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Trigger and monitor Amplify build
         env:
-          AMPLIFY_APP_ID: d3dc75921xrndn
-          AMPLIFY_BRANCH: prod
+          AMPLIFY_APP_ID: d2kl5gyeq6yv2d
+          AMPLIFY_BRANCH: staging
           APP_LABEL: chat
         run: |
           set -euo pipefail
@@ -569,15 +625,15 @@ jobs:
       # aws_amplify_app, and a number of unrelated operations (tofu apply,
       # console Amplify edits, possibly Amplify release jobs themselves) can
       # silently clear it. Without the compute role, the chat SSR Lambda has
-      # no IAM identity and Bedrock/Secrets Manager calls fail — which causes
-      # /api/health to return db: disconnected. Re-attach every deploy to keep
-      # chat healing itself.
+      # no IAM identity and Bedrock calls fail with "Could not load
+      # credentials from any providers" — which causes /api/health to return
+      # db: disconnected. Re-attach every deploy to keep chat healing itself.
       - name: Restore chat Amplify compute role
         run: |
           set -euo pipefail
           aws amplify update-app \
-            --app-id d3dc75921xrndn \
-            --compute-role-arn arn:aws:iam::996501092968:role/gov-bb-chat-amplify-compute-prod \
+            --app-id d2kl5gyeq6yv2d \
+            --compute-role-arn arn:aws:iam::096863132510:role/gov-bb-chat-amplify-compute-staging \
             --region "$AWS_REGION" \
             --query "app.computeRoleArn" \
             --output text
@@ -591,9 +647,64 @@ jobs:
           EXPECT_JSON_VALUE: connected
         run: bash .github/scripts/smoke-test-url.sh
 
+  amplify-form-builder:
+    name: Amplify build (form-builder)
+    needs: [setup, ssr-smoke]
+    if: needs.setup.outputs.fb-app == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Trigger and monitor Amplify build
+        env:
+          AMPLIFY_APP_ID: ds1h02l8ue9hv
+          AMPLIFY_BRANCH: staging
+          APP_LABEL: form-builder
+        run: |
+          set -euo pipefail
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE --region "$AWS_REGION" \
+            --query jobSummary.jobId --output text)
+          echo "Amplify $APP_LABEL job: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" --region "$AWS_REGION" \
+              --query job.summary.status --output text)
+            echo "[$i/30] $APP_LABEL: $STATUS"
+            case "$STATUS" in
+              SUCCEED) echo "✅ Amplify $APP_LABEL build succeeded"; exit 0 ;;
+              FAILED|CANCELLED) echo "❌ Amplify $APP_LABEL build $STATUS"; exit 1 ;;
+            esac
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish in 15 min"
+          exit 1
+
+      - name: Smoke test form-builder URL
+        env:
+          URL: ${{ env.AMPLIFY_FORM_BUILDER_URL }}
+          LABEL: form-builder
+          # form-builder is auth-gated: unauthenticated requests get a 307
+          # redirect to /auth/github (which 302s on to github.com OAuth).
+          # Either of those means the SSR is alive and routing correctly —
+          # the smoke is proof-of-life, not proof-of-auth-flow.
+          EXPECT_CODES: "200,302,307"
+        run: bash .github/scripts/smoke-test-url.sh
+
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-chat-ingest, ssr-smoke, amplify-forms, amplify-landing, amplify-chat]
+    needs: [setup, deploy-api, deploy-form-builder, deploy-chat-ingest, ssr-smoke, amplify-forms, amplify-landing, amplify-chat, amplify-form-builder]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -611,7 +722,7 @@ jobs:
           }
 
           {
-            echo "## Production Deployment Summary"
+            echo "## Staging Deployment Summary"
             echo ""
             echo "**Commit:** \`${{ github.sha }}\`"
             echo ""
@@ -619,14 +730,18 @@ jobs:
             echo "|--------|--------|"
             row "SSR smoke (pre-deploy)" "${{ needs.ssr-smoke.result }}"
             row "API"                  "${{ needs.deploy-api.result }}"
+            row "form-builder API"     "${{ needs.deploy-form-builder.result }}"
             row "chat-ingest"          "${{ needs.deploy-chat-ingest.result }}"
             row "Amplify forms"        "${{ needs.amplify-forms.result }}"
             row "Amplify landing"      "${{ needs.amplify-landing.result }}"
             row "Amplify chat"         "${{ needs.amplify-chat.result }}"
+            row "Amplify form-builder" "${{ needs.amplify-form-builder.result }}"
             echo ""
             echo "**URLs (ALB / amplifyapp.com until DNS lands):**"
             echo "- API: ${{ env.API_SMOKE_URL }}"
+            echo "- form-builder: ${{ env.FORM_BUILDER_API_SMOKE_URL }}"
             echo "- forms: ${{ env.AMPLIFY_FORMS_URL }}"
             echo "- landing: ${{ env.AMPLIFY_LANDING_URL }}"
             echo "- chat: ${{ env.AMPLIFY_CHAT_URL }}"
+            echo "- form-builder app: ${{ env.AMPLIFY_FORM_BUILDER_URL }}"
           } >> "$GITHUB_STEP_SUMMARY"

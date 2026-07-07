@@ -161,7 +161,7 @@ function RouteComponent() {
     if (step !== "submission-confirmation") {
       clearSubmissionState(formMeta.formId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only; reads the initial step
+    // Intentionally mount-only: reads the initial step; deps left empty.
   }, []);
 
   // Persist the committed outcome so a refresh on the confirmation step can

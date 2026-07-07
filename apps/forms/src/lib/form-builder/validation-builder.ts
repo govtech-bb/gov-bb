@@ -175,7 +175,6 @@ export const buildFieldValidationProperties = (
   // Either way, return a pass-through handler so the pipeline ignores them.
   if (field.htmlType === "show-hide" || !field.validations) {
     return {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       onDynamic(_input) {
         return undefined;
       },

@@ -2,7 +2,13 @@ name: Deploy Sandbox
 
 on:
   push:
-    branches: [sandbox]
+    # TRUNK: sandbox is the FIRST deploy target off the trunk. A merge to `main`
+    # deploys to sandbox; on success this workflow dispatches deploy-staging
+    # (see the `promote-to-staging` job). sandbox/staging/prod are deploy
+    # POINTERS, not workspaces — the `advance-sandbox` job fast-forwards the
+    # `sandbox` branch to the merged commit so Amplify (which builds the
+    # `sandbox` branch) ships the trunk code.
+    branches: [main]
     # Skip the whole pipeline for changes that can't affect any deploy target.
     # Keep the list conservative — when in doubt, let nx-affected gate the
     # individual jobs (it already skips unchanged apps). The point of this
@@ -27,7 +33,9 @@ on:
 permissions:
   # Single-purpose deploy workflow: every job assumes the AWS deploy role via
   # OIDC, so a workflow-level id-token grant is intentional. Per-job scoping
-  # tracked in #1462.
+  # tracked in #1462. The write scopes needed for branch-advance / dispatch are
+  # granted at the JOB level (advance-sandbox, promote-to-staging) so the deploy
+  # jobs stay read-only.
   id-token: write # zizmor: ignore[excessive-permissions]
   contents: read
 
@@ -44,12 +52,30 @@ env:
   ECS_SERVICE: modular-forms-api-sandbox
 
 jobs:
+  # Move the `sandbox` deploy pointer to the merged trunk commit BEFORE any
+  # Amplify job runs — Amplify builds the `sandbox` branch, so it must point at
+  # this code. force=false makes it a fast-forward-only update: a stale or
+  # rewound push can never silently roll sandbox back.
+  advance-sandbox:
+    name: Advance sandbox branch to trunk
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # fast-forward the sandbox branch ref
+    steps:
+      - name: Fast-forward sandbox → ${{ github.sha }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api -X PATCH "repos/${{ github.repository }}/git/refs/heads/sandbox" \
+            -f sha="${{ github.sha }}" -F force=false
+
   # Decide which deploy targets actually changed, so unchanged apps are skipped.
   # The base is the last SUCCESSFUL deploy (nx-set-shas), not the push range:
   # a target that failed to deploy stays "affected" until it ships green, where
   # a github.event.before diff would wrongly skip it on the next unrelated push.
   setup:
     name: Detect affected targets
+    needs: advance-sandbox
     runs-on: ubuntu-latest
     outputs:
       api: ${{ steps.affected.outputs.api }}
@@ -79,9 +105,10 @@ jobs:
       - name: Derive base/head SHAs
         uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
         with:
-          # MUST be sandbox: the default "main" makes nx-set-shas search a branch
-          # this workflow never runs on, so it falls back to HEAD~1 every time.
-          main-branch-name: sandbox
+          # This workflow runs on `main` now (trunk), so the affected base is the
+          # last successful deploy-sandbox run on main. (Was `sandbox` when the
+          # workflow triggered on push:sandbox.)
+          main-branch-name: main
           workflow-id: deploy-sandbox.yml
 
       - name: Compute affected deploy targets
@@ -924,3 +951,33 @@ jobs:
             {
               "text": ":x: *Sandbox deploy failed*\n*Workflow:* ${{ github.workflow }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* `${{ github.sha }}`\n*Triggered by:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View failed run>"
             }
+
+  # SEQUENTIAL DEPLOY GATE: staging deploys ONLY after sandbox is fully green.
+  # Runs only on a real trunk merge (not a manual sandbox re-run) and only when
+  # every affected target deployed cleanly — a skipped/unaffected job is fine,
+  # but any failure or cancellation stops the chain, so staging never receives
+  # code sandbox couldn't ship.
+  promote-to-staging:
+    name: Promote to staging (on sandbox green)
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, deploy-chat-ingest, amplify-form-builder]
+    if: ${{ github.event_name == 'push' && !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write # dispatch deploy-staging via the built-in token
+      contents: read
+    steps:
+      - name: Dispatch deploy-staging for ${{ github.sha }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # This job has no checkout, so gh can't infer the repo from a local
+          # .git dir — give it explicitly. GH_REPO also removes the need for a
+          # --repo flag.
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # Built-in GITHUB_TOKEN: workflow_dispatch is exempt from the token's
+          # no-recursion guard, so this fires deploy-staging with NO PAT.
+          # --ref main runs main's deploy-staging.yml regardless of the default
+          # branch, and passes the exact commit sandbox proved so staging
+          # advances to the same SHA.
+          gh workflow run deploy-staging.yml --ref main \
+            -f promoted_sha="${{ github.sha }}"

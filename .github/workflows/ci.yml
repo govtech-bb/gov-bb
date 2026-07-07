@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    branches: [sandbox, dev]
+    branches: [main, sandbox, staging, dev]
   workflow_dispatch:
 
 permissions:
@@ -217,6 +217,9 @@ jobs:
 
   security:
     name: Security Scan
+    # Skip CodeQL on staging-bound PRs: same code already scanned on the
+    # upstream sandbox PR. Staging is a promotion gate, not a new-code gate.
+    if: github.base_ref != 'staging'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -551,6 +554,10 @@ jobs:
 
   validate-recipes:
     name: Validate Recipes
+    # Skip recipe validation on staging-bound PRs: recipes don't change in
+    # promotion-only flow. Sandbox/dev PRs (where recipes are actually edited)
+    # remain gated.
+    if: github.base_ref != 'staging'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -565,3 +572,105 @@ jobs:
 
       - name: Validate recipe files
         run: pnpm validate-recipes
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Restore nx cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .nx/cache
+          # Job-specific key so lint/test/build don't collide on cache save.
+          key: nx-${{ runner.os }}-lint-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            nx-${{ runner.os }}-lint-${{ hashFiles('pnpm-lock.yaml') }}-
+            nx-${{ runner.os }}-lint-
+
+      - name: Derive affected base/head
+        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
+        with:
+          main-branch-name: ${{ github.base_ref }}
+
+      - name: Lint affected projects
+        id: lint
+        run: |
+          # TEMPORARY (ratchet): api, form-builder-app still carry pre-existing
+          # lint errors never caught before — sandbox/prod never had a lint
+          # gate, so this trunk gate is the first to run `nx affected -t lint`
+          # over them. Excluded to land the prod→main resync (#1884); tracked in
+          # #1885 — clean each app and remove it from --exclude, one at a time.
+          # Re-armed so far: analytics-app, landing, forms (#1891/#1892/#1893).
+          pnpm exec nx affected -t lint --nxBail=false \
+            --exclude=api,form-builder-app 2>&1 | tee lint-output.txt
+          exit ${PIPESTATUS[0]}
+        continue-on-error: true
+
+      - name: Report lint results
+        if: steps.lint.outcome == 'failure'
+        run: |
+          echo "## ❌ Lint Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "<details><summary>View lint errors</summary>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          tail -100 lint-output.txt >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "</details>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Fix it locally:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "pnpm exec nx affected -t lint" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          exit 1
+
+  docker-build:
+    # Build every Dockerfile in the repo on every PR. Catches refactors that
+    # orphan a `COPY` path (the class of bug that broke sandbox CD after
+    # commit a8d25528 deleted apps/form_builder/app/server/ai-builder/prompts
+    # while the form_builder_api Dockerfile still referenced it).
+    #
+    # `push: false` — no ECR push, just validate the build context. Faster
+    # than full deploy since we don't run the image, just compile it.
+    # GHA layer cache scoped per Dockerfile so a change to one doesn't bust
+    # the others.
+    name: Docker Build (${{ matrix.label }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: api
+            dockerfile: apps/api/Dockerfile
+          - label: form-builder-api
+            dockerfile: apps/form_builder_api/Dockerfile
+          - label: chat-ingest
+            dockerfile: apps/chat/Dockerfile.ingest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Build ${{ matrix.label }}
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: false
+          cache-from: type=gha,scope=ci-${{ matrix.label }}
+          cache-to: type=gha,mode=max,scope=ci-${{ matrix.label }}
