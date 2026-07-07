@@ -7,7 +7,7 @@
 ## Context
 
 PR #1876 landed the **schema only** for database-driven service visibility:
-`service_status` (one row per `form_id`, current state) and
+`service_status` (one row per `slug`, current state) and
 `service_status_audit_log` (append-only history), sharing the
 `service_status_enum` (`enabled` / `form_disabled` / `disabled`). The PR body
 notes: *"API enforcement and admin mutation endpoints come in later work."*
@@ -24,7 +24,7 @@ controller).
 ### `GET /service_status`
 
 Unauthenticated read. Returns every `service_status` row mapped to the minimal
-shape `{ formId, status }`.
+shape `{ slug, status }`.
 
 - Response: `ApiResponse.success(items, { message: "Service statuses retrieved" })`.
 
@@ -36,30 +36,31 @@ Admin-guarded (`@UseGuards(new AdminTokenGuard("SERVICE_STATUS_ADMIN_TOKEN",
 
 Body DTO `UpdateServiceStatusDto`:
 
-- `formId` — `@IsString @IsNotEmpty @MaxLength(100)`
+- `slug` — `@IsString @IsNotEmpty @MaxLength(100)`
 - `status` — `@IsEnum(ServiceStatus)`
 - `author` — `@IsString @IsNotEmpty @MaxLength(255)`
 
-Response: `ApiResponse.success({ formId, status }, { message: "Service status
+Response: `ApiResponse.success({ slug, status }, { message: "Service status
 updated" })`.
 
-**Contract note:** wire fields are camelCase (`formId`, `author`) to match the
-codebase's existing admin DTOs (e.g. `DisableFormDto.disabledBy`); the field
-*identity* follows the merged schema (`form_id` column, `author` column), not
-the task spec's `slug` / `performed_by`.
+**Contract note:** wire fields are camelCase (`slug`, `author`) to match the
+codebase's existing admin DTOs (e.g. `DisableFormDto.disabledBy`). The `slug`
+identifier follows the schema column of the same name — not every service is a
+form, so the column was renamed `form_id` → `slug` (see the
+RenameServiceStatusFormIdToSlug migration).
 
-## Service logic — `ServiceStatusService.setStatus(formId, status, author)`
+## Service logic — `ServiceStatusService.setStatus(slug, status, author)`
 
 One `SERIALIZABLE` transaction via `ServiceStatusRepository.tx()`, with the
 audit repository bound to the same transaction through `BaseRepository.withRepo()`:
 
-1. Load the existing `service_status` row for `formId`;
+1. Load the existing `service_status` row for `slug`;
    `oldState = existing?.status ?? null`.
 2. If `oldState === status` → idempotent no-op: no update, no audit row (the log
    records *changes*).
 3. Otherwise **upsert** the status (update the existing row, or insert a new one
    if none exists) and insert an audit row
-   `{ formId, oldState, newState: status, author }`.
+   `{ slug, oldState, newState: status, author }`.
 
 **Upsert, not 404:** the schema treats a form's first PUT as a create — the
 audit log's `old_state` is nullable precisely "for a form's first-ever entry",

@@ -18,7 +18,7 @@ describe("ServiceStatusController", () => {
   describe("list (GET /service_status)", () => {
     it("calls service.list and returns the success response shape", async () => {
       const items = [
-        { formId: "passport-renewal", status: ServiceStatus.ENABLED },
+        { slug: "passport-renewal", status: ServiceStatus.ENABLED },
       ];
       mockService.list.mockResolvedValue(items);
 
@@ -32,13 +32,13 @@ describe("ServiceStatusController", () => {
   describe("update (PUT /service_status)", () => {
     it("calls service.setStatus with the DTO fields and returns success", async () => {
       const view = {
-        formId: "passport-renewal",
+        slug: "passport-renewal",
         status: ServiceStatus.DISABLED,
       };
       mockService.setStatus.mockResolvedValue(view);
 
       const body: UpdateServiceStatusDto = {
-        formId: "passport-renewal",
+        slug: "passport-renewal",
         status: ServiceStatus.DISABLED,
         author: "admin@govtech.bb",
       };

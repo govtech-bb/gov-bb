@@ -4,14 +4,14 @@ import { ServiceStatus } from "@/database/entities/service-status.entity";
 
 export class UpdateServiceStatusDto {
   @ApiProperty({
-    description: "The form whose service status is being set",
+    description: "The slug of the service whose status is being set",
     maxLength: 100,
     example: "passport-renewal",
   })
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
-  formId!: string;
+  slug!: string;
 
   @ApiProperty({
     description: "The status to set the service to",

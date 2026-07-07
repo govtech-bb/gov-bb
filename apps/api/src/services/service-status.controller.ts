@@ -54,7 +54,7 @@ export class ServiceStatusController {
     @Body() body: UpdateServiceStatusDto,
   ): Promise<ApiResponseShape<ServiceStatusView>> {
     const data = await this.serviceStatus.setStatus(
-      body.formId,
+      body.slug,
       body.status,
       body.author,
     );

@@ -35,7 +35,7 @@ function makeRow(
 ): ServiceStatusEntity {
   return {
     id: "uuid-1",
-    formId: "passport-renewal",
+    slug: "passport-renewal",
     status: ServiceStatus.ENABLED,
     ...overrides,
   } as ServiceStatusEntity;
@@ -43,26 +43,26 @@ function makeRow(
 
 describe("ServiceStatusService", () => {
   describe("list", () => {
-    it("maps every row to { formId, status }", async () => {
+    it("maps every row to { slug, status }", async () => {
       const auditRepo = makeAuditRepo();
       const statusRepo = makeStatusRepo(auditRepo);
       statusRepo.find.mockResolvedValue([
-        makeRow({ formId: "a", status: ServiceStatus.ENABLED }),
-        makeRow({ formId: "b", status: ServiceStatus.DISABLED }),
+        makeRow({ slug: "a", status: ServiceStatus.ENABLED }),
+        makeRow({ slug: "b", status: ServiceStatus.DISABLED }),
       ]);
       const service = new ServiceStatusService(statusRepo, auditRepo);
 
       const result = await service.list();
 
       expect(result).toEqual([
-        { formId: "a", status: ServiceStatus.ENABLED },
-        { formId: "b", status: ServiceStatus.DISABLED },
+        { slug: "a", status: ServiceStatus.ENABLED },
+        { slug: "b", status: ServiceStatus.DISABLED },
       ]);
     });
   });
 
   describe("setStatus", () => {
-    it("creates the row and audits oldState=null for a form's first entry", async () => {
+    it("creates the row and audits oldState=null for a service's first entry", async () => {
       const auditRepo = makeAuditRepo();
       const statusRepo = makeStatusRepo(auditRepo);
       statusRepo.findOne.mockResolvedValue(null);
@@ -76,20 +76,20 @@ describe("ServiceStatusService", () => {
 
       expect(statusRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({
-          formId: "passport-renewal",
+          slug: "passport-renewal",
           status: ServiceStatus.DISABLED,
         }),
       );
       expect(auditRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({
-          formId: "passport-renewal",
+          slug: "passport-renewal",
           oldState: null,
           newState: ServiceStatus.DISABLED,
           author: "admin@govtech.bb",
         }),
       );
       expect(result).toEqual({
-        formId: "passport-renewal",
+        slug: "passport-renewal",
         status: ServiceStatus.DISABLED,
       });
     });
@@ -136,7 +136,7 @@ describe("ServiceStatusService", () => {
       expect(statusRepo.save).not.toHaveBeenCalled();
       expect(auditRepo.save).not.toHaveBeenCalled();
       expect(result).toEqual({
-        formId: "passport-renewal",
+        slug: "passport-renewal",
         status: ServiceStatus.ENABLED,
       });
     });
