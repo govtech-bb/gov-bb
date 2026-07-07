@@ -5,15 +5,17 @@ import {
   HttpCode,
   HttpStatus,
   Put,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import {
   ServiceStatusService,
+  type ServiceStatusAuditView,
   type ServiceStatusView,
 } from "./service-status.service";
-import { UpdateServiceStatusDto } from "./dto";
+import { ServiceStatusAuditQueryDto, UpdateServiceStatusDto } from "./dto";
 import { AdminTokenGuard } from "@/common/guards/admin-token.guard";
 import { ApiResponse } from "@/common/response";
 import type { ApiResponseShape } from "@/common/response";
@@ -41,6 +43,20 @@ export class ServiceStatusController {
     const data = await this.serviceStatus.list();
     return ApiResponse.success(data, {
       message: "Service statuses retrieved",
+    });
+  }
+
+  @Get("audit")
+  @ApiBearerAuth()
+  @UseGuards(
+    new AdminTokenGuard("SERVICE_STATUS_ADMIN_TOKEN", "ARCHIVE_DRAFTS_TOKEN"),
+  )
+  async audit(
+    @Query() query: ServiceStatusAuditQueryDto,
+  ): Promise<ApiResponseShape<ServiceStatusAuditView[]>> {
+    const data = await this.serviceStatus.getAuditForSlug(query.slug);
+    return ApiResponse.success(data, {
+      message: "Service status audit retrieved",
     });
   }
 

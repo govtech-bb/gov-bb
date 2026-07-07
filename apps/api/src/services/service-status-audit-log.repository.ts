@@ -8,4 +8,9 @@ export class ServiceStatusAuditLogRepository extends BaseRepository<ServiceStatu
   constructor(dataSource: DataSource) {
     super(ServiceStatusAuditLogEntity, dataSource.createEntityManager());
   }
+
+  /** Audit rows for a slug, newest change first. */
+  findBySlug(slug: string): Promise<ServiceStatusAuditLogEntity[]> {
+    return this.find({ where: { slug }, order: { changedAt: "DESC" } });
+  }
 }
