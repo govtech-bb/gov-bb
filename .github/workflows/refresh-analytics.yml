@@ -1,0 +1,142 @@
+name: Refresh Analytics Snapshot
+
+# Regenerates apps/analytics' committed Umami snapshot on a schedule, commits it
+# to sandbox, and triggers the standalone gov-bb-analytics Amplify build.
+#
+# Why this exists: the /analytics dashboard renders a STATIC JSON snapshot baked
+# in at build time (see apps/analytics/README.md). Its Amplify app
+# (gov-bb-analytics, app d363pae4e63dc6) has auto-build OFF and is NOT wired into
+# deploy-sandbox.yml, so the data only refreshes when someone manually
+# regenerates the snapshot and deploys. This automates that once a day.
+#
+# The commit is pushed with GITHUB_TOKEN, which by design does NOT recursively
+# trigger push workflows (deploy-sandbox.yml, zizmor.yml) — so this adds no other
+# CI. The Amplify build is therefore triggered explicitly via `aws amplify
+# start-job` (mirrors deploy-sandbox.yml), because the branch's auto-build is off.
+
+on:
+  schedule:
+    # 10:00 UTC = 06:00 America/Barbados (AST, no DST) — an off-peak daily refresh.
+    - cron: "0 10 * * *"
+  workflow_dispatch:
+
+# Serialize: never let two refreshes race on the sandbox push or the Amplify job.
+concurrency:
+  group: refresh-analytics
+  cancel-in-progress: false
+
+permissions:
+  contents: write # commit + push the regenerated snapshot to sandbox
+  id-token: write # AWS OIDC to trigger the Amplify build
+
+env:
+  AWS_REGION: ca-central-1
+  AMPLIFY_APP_ID: d363pae4e63dc6
+  AMPLIFY_BRANCH: sandbox
+  APP_URL: https://analytics.sandbox.alpha.gov.bb
+  SNAPSHOT: apps/analytics/src/content/analytics-snapshot.json
+
+jobs:
+  refresh:
+    name: Regenerate snapshot and deploy
+    runs-on: ubuntu-latest
+    # The generator makes ~280 sequential Umami calls (5 presets), so allow
+    # plenty of headroom on top of install + the Amplify build monitor.
+    timeout-minutes: 40
+    steps:
+      - name: Checkout sandbox
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          ref: sandbox
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Regenerate snapshot from Umami
+        # The generator is resilient by design: if a fetch fails it skips that
+        # preset, and if nothing succeeds it leaves the committed snapshot
+        # untouched and exits 0 — it can never blank out the committed data.
+        env:
+          UMAMI_API_KEY: ${{ secrets.UMAMI_API_KEY }}
+          UMAMI_LANDING_WEBSITE_ID: ${{ secrets.UMAMI_LANDING_WEBSITE_ID }}
+          UMAMI_FORMS_WEBSITE_ID: ${{ secrets.UMAMI_FORMS_WEBSITE_ID }}
+          UMAMI_TIMEZONE: America/Barbados
+        run: pnpm --filter @govtech-bb/analytics-app run generate:analytics
+
+      - name: Commit & push the snapshot if it changed
+        id: commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          if git diff --quiet -- "$SNAPSHOT"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Snapshot unchanged — nothing to deploy."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$SNAPSHOT"
+          git commit -m "chore(analytics): refresh snapshot [skip ci]"
+          # Push with the ephemeral token via an explicit remote URL (keeps
+          # persist-credentials off). If sandbox advanced during the ~10-min
+          # generate window the push is rejected non-fast-forward and the job
+          # fails; the next scheduled run regenerates from fresh HEAD and heals.
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" HEAD:sandbox
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials
+        if: steps.commit.outputs.changed == 'true'
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Trigger and monitor the Amplify build
+        if: steps.commit.outputs.changed == 'true'
+        run: |
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE \
+            --region "$AWS_REGION" \
+            --query jobSummary.jobId \
+            --output text)
+          echo "Amplify analytics job started: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" \
+              --region "$AWS_REGION" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/30] Amplify analytics status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify analytics build succeeded — smoke testing $APP_URL"
+              # CloudFront can serve stale for a few seconds after SUCCEED; retry.
+              for j in 1 2 3 4 5; do
+                CODE=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL" 2>/dev/null || echo "000")
+                if [ "$CODE" = "200" ]; then
+                  echo "✅ analytics smoke test passed (HTTP 200)"
+                  exit 0
+                fi
+                echo "[$j/5] smoke test got HTTP $CODE, retrying in 5s..."
+                sleep 5
+              done
+              echo "❌ analytics smoke test failed — $APP_URL not responding 200 after deploy"
+              exit 1
+            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
+              echo "❌ Amplify analytics build $STATUS"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "❌ Amplify analytics build did not finish within 15 minutes"
+          exit 1
