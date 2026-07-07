@@ -102,7 +102,7 @@ describe('education pages link their published form (#911 Group A)', () => {
       expect(page, `page not found at ${url}`).toBeDefined()
       expect(page!.frontmatter.form_id).toBe(formId)
 
-      const startLink = findStartLink(page!.hast as never)
+      const startLink = findStartLink(page!.hast)
       expect(startLink, 'no data-start-link anchor on the page').toBeDefined()
       // No authored href — otherwise the baked form_id is ignored.
       expect(startLink!.properties?.href).toBeUndefined()

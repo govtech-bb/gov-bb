@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import type * as ReactRouter from '@tanstack/react-router'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { processMarkdown } from '../../utils/markdown/processor'
 import { bakeStartLinkFormId } from '../../utils/markdown/plugins'
@@ -7,7 +8,7 @@ import { MarkdownBody } from './MarkdownContent'
 // StartLink reads useLocation for analytics; stub it so form CTAs render
 // without a router context.
 vi.mock('@tanstack/react-router', async (orig) => ({
-  ...(await orig<typeof import('@tanstack/react-router')>()),
+  ...(await orig<typeof ReactRouter>()),
   useLocation: () => ({ pathname: '/test' }),
 }))
 

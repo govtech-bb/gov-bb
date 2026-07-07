@@ -19,8 +19,8 @@ import {
   DISTRICT_CHAIRS,
   HURRICANE_TERMS,
   PHONE_DIRECTORY,
-  type PhoneEntry,
 } from '../-data/guidance-data'
+import type { PhoneEntry } from '../-data/guidance-data'
 import { EMERGENCY_SHELTER_FIND_HREF } from '../-lib/routes'
 
 const DEM_TEL = 'tel:+12464387575'
@@ -44,7 +44,9 @@ const CONTENTS = [
   { id: 'phone-numbers', label: 'All phone numbers' },
 ]
 
-const accessibleShelters = EMERGENCY_SHELTERS.filter((shelter) => shelter.access)
+const accessibleShelters = EMERGENCY_SHELTERS.filter(
+  (shelter) => shelter.access,
+)
 const accessibleCategory1 = accessibleShelters.filter((s) => s.category === 1)
 const accessibleCategory2 = accessibleShelters.filter((s) => s.category === 2)
 
