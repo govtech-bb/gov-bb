@@ -295,30 +295,6 @@ jobs:
           LABEL: api
         run: bash .github/scripts/smoke-test-url.sh
 
-  deploy-payload-cms:
-    # STUB. gov-bb has no apps/payload_cms source — the prod IaC provisions a
-    # payload-cms ECS service + RDS + S3 media bucket, but no image is ever
-    # pushed. continue-on-error keeps the overall deploy GREEN when the real
-    # apps succeed, so a red prod deploy means something ACTUALLY broke
-    # (instead of every run being red on this known stub).
-    name: Build, Push & Deploy payload-cms (STUB)
-    needs: setup
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - name: Inform on missing source
-        run: |
-          {
-            echo "## ⚠️ payload-cms not yet deployable from gov-bb"
-            echo ""
-            echo "The prod IaC provisions a payload-cms ECS service, RDS, and"
-            echo "S3 media bucket, but gov-bb has no \`apps/payload_cms\` source."
-            echo "Image \`gov-bb-payload-cms:latest\` has never been pushed →"
-            echo "\`payload-cms-prod\` ECS service stays in CircuitBreaker FAILED."
-          } >> $GITHUB_STEP_SUMMARY
-          echo "❌ payload-cms source not yet in gov-bb — see workflow summary."
-          exit 1
-
   deploy-chat-ingest:
     # Chatbot RAG ingest one-shot Fargate task. Build image, push to prod ECR,
     # then invoke the indexer Lambda so content changes propagate to chat-prod
@@ -617,7 +593,7 @@ jobs:
 
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-payload-cms, deploy-chat-ingest, ssr-smoke, amplify-forms, amplify-landing, amplify-chat]
+    needs: [setup, deploy-api, deploy-chat-ingest, ssr-smoke, amplify-forms, amplify-landing, amplify-chat]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -643,7 +619,6 @@ jobs:
             echo "|--------|--------|"
             row "SSR smoke (pre-deploy)" "${{ needs.ssr-smoke.result }}"
             row "API"                  "${{ needs.deploy-api.result }}"
-            row "payload-cms"          "${{ needs.deploy-payload-cms.result }}"
             row "chat-ingest"          "${{ needs.deploy-chat-ingest.result }}"
             row "Amplify forms"        "${{ needs.amplify-forms.result }}"
             row "Amplify landing"      "${{ needs.amplify-landing.result }}"
