@@ -61,6 +61,7 @@
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.0.0",
     "sherif": "^1.11.1",
+    "tailwind-csstree": "^0.3.3",
     "ts-node": "^10.9.2",
     "tsx": "^4.22.3",
     "typeorm": "^0.3.28",
