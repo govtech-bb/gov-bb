@@ -7,12 +7,12 @@ import { ServiceStatus } from "./service-status.entity";
  * every state change and never updated.
  */
 @Entity({ name: "service_status_audit_log" })
-@Index(["formId"])
+@Index(["slug"])
 export class ServiceStatusAuditLogEntity extends UuidEntity {
-  @Column({ name: "form_id", type: "varchar", length: 100 })
-  formId!: string;
+  @Column({ name: "slug", type: "varchar", length: 100 })
+  slug!: string;
 
-  /** The state before the change. Null for a form's first-ever entry. */
+  /** The state before the change. Null for a service's first-ever entry. */
   @Column({
     name: "old_state",
     type: "enum",
