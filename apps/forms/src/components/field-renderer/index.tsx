@@ -1,4 +1,4 @@
-import { AnyFieldApi } from "@tanstack/react-form";
+import { AnyFieldApi, type AnyFormApi } from "@tanstack/react-form";
 import {
   ClientPrimitive,
   FieldValidationProperties,
@@ -27,7 +27,7 @@ export default function FieldRenderer({
   previewToken,
   draftToken,
 }: {
-  form: any;
+  form: AnyFormApi;
   field: ClientPrimitive;
   validationProperties: FieldValidationProperties;
   /** Option-value → inset fields that reveal when that option is selected. */

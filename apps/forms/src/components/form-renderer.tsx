@@ -647,9 +647,9 @@ export default function FormRenderer({
             isLastFormStep &&
             isDraft && (
               <p className="govbb-hint" data-testid="draft-submit-hint">
-                Submitting is disabled for an unpublished draft. Set the form's
-                visibility to Preview or Public and publish it to enable
-                submission.
+                Submitting is disabled for an unpublished draft. Set the
+                form&apos;s visibility to Preview or Public and publish it to
+                enable submission.
               </p>
             )}
         </div>
