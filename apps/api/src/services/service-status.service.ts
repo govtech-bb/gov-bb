@@ -9,6 +9,15 @@ export interface ServiceStatusView {
   status: ServiceStatus;
 }
 
+/** A single audit-log entry for a service's status change. */
+export interface ServiceStatusAuditView {
+  slug: string;
+  oldState: ServiceStatus | null;
+  newState: ServiceStatus;
+  author: string;
+  changedAt: Date;
+}
+
 @Injectable()
 export class ServiceStatusService {
   constructor(
@@ -20,6 +29,18 @@ export class ServiceStatusService {
   async list(): Promise<ServiceStatusView[]> {
     const rows = await this.statusRepo.find();
     return rows.map((row) => ({ slug: row.slug, status: row.status }));
+  }
+
+  /** A service's status-change history, newest first. */
+  async getAuditForSlug(slug: string): Promise<ServiceStatusAuditView[]> {
+    const rows = await this.auditRepo.findBySlug(slug);
+    return rows.map((row) => ({
+      slug: row.slug,
+      oldState: row.oldState,
+      newState: row.newState,
+      author: row.author,
+      changedAt: row.changedAt,
+    }));
   }
 
   /**

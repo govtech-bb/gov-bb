@@ -5,6 +5,7 @@ import type { UpdateServiceStatusDto } from "./dto";
 const mockService = {
   list: vi.fn(),
   setStatus: vi.fn(),
+  getAuditForSlug: vi.fn(),
 };
 
 describe("ServiceStatusController", () => {
@@ -51,6 +52,28 @@ describe("ServiceStatusController", () => {
         "admin@govtech.bb",
       );
       expect(result).toMatchObject({ status: "success", data: view });
+    });
+  });
+
+  describe("audit (GET /service_status/audit)", () => {
+    it("calls service.getAuditForSlug with the query slug and returns success", async () => {
+      const items = [
+        {
+          slug: "passport-renewal",
+          oldState: ServiceStatus.ENABLED,
+          newState: ServiceStatus.DISABLED,
+          author: "admin@govtech.bb",
+          changedAt: new Date("2026-07-07T12:00:00.000Z"),
+        },
+      ];
+      mockService.getAuditForSlug.mockResolvedValue(items);
+
+      const result = await controller.audit({ slug: "passport-renewal" });
+
+      expect(mockService.getAuditForSlug).toHaveBeenCalledWith(
+        "passport-renewal",
+      );
+      expect(result).toMatchObject({ status: "success", data: items });
     });
   });
 });

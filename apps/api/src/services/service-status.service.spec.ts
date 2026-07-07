@@ -11,6 +11,7 @@ function makeAuditRepo(): Mocked<ServiceStatusAuditLogRepository> {
   return {
     create: vi.fn((row) => row),
     save: vi.fn(),
+    findBySlug: vi.fn(),
   } as unknown as Mocked<ServiceStatusAuditLogRepository>;
 }
 
@@ -57,6 +58,38 @@ describe("ServiceStatusService", () => {
       expect(result).toEqual([
         { slug: "a", status: ServiceStatus.ENABLED },
         { slug: "b", status: ServiceStatus.DISABLED },
+      ]);
+    });
+  });
+
+  describe("getAuditForSlug", () => {
+    it("returns the audit rows for a slug, mapped to the audit view", async () => {
+      const auditRepo = makeAuditRepo();
+      const statusRepo = makeStatusRepo(auditRepo);
+      const changedAt = new Date("2026-07-07T12:00:00.000Z");
+      auditRepo.findBySlug.mockResolvedValue([
+        {
+          id: "uuid-1",
+          slug: "passport-renewal",
+          oldState: ServiceStatus.ENABLED,
+          newState: ServiceStatus.DISABLED,
+          author: "admin@govtech.bb",
+          changedAt,
+        },
+      ] as never);
+      const service = new ServiceStatusService(statusRepo, auditRepo);
+
+      const result = await service.getAuditForSlug("passport-renewal");
+
+      expect(auditRepo.findBySlug).toHaveBeenCalledWith("passport-renewal");
+      expect(result).toEqual([
+        {
+          slug: "passport-renewal",
+          oldState: ServiceStatus.ENABLED,
+          newState: ServiceStatus.DISABLED,
+          author: "admin@govtech.bb",
+          changedAt,
+        },
       ]);
     });
   });
