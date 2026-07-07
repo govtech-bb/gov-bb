@@ -32,6 +32,7 @@ import { MakeFormVersionNullable1781000000000 } from "./migrations/1781000000000
 import { DedupFormDefinitionsUniqueFormId1781100000000 } from "./migrations/1781100000000-DedupFormDefinitionsUniqueFormId";
 import { AddProcessorsFailedToFormSubmissions1781200000000 } from "./migrations/1781200000000-AddProcessorsFailedToFormSubmissions";
 import { CreateServiceStatusTables1783356461699 } from "./migrations/1783356461699-CreateServiceStatusTables";
+import { RenameServiceStatusFormIdToSlug1783440984875 } from "./migrations/1783440984875-RenameServiceStatusFormIdToSlug";
 
 export const entities = [
   FormComponentEntity,
@@ -66,6 +67,7 @@ export const migrations = [
   DedupFormDefinitionsUniqueFormId1781100000000,
   AddProcessorsFailedToFormSubmissions1781200000000,
   CreateServiceStatusTables1783356461699,
+  RenameServiceStatusFormIdToSlug1783440984875,
 ];
 
 /**
