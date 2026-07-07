@@ -3,6 +3,8 @@ import { DraftArchiveController } from "@/forms/form-definitions/draft-archive.c
 import { DraftArchiveService } from "@/forms/form-definitions/draft-archive.service";
 import { FormDisabledOverridesAdminController } from "@/forms/form-disabled-overrides/form-disabled-overrides.admin.controller";
 import { FormDisabledOverridesService } from "@/forms/form-disabled-overrides/form-disabled-overrides.service";
+import { ServiceStatusController } from "@/services/service-status.controller";
+import { ServiceStatusService } from "@/services/service-status.service";
 
 /**
  * Boot-safety pin for the admin guards (ADR 0061): compiles the REAL admin
@@ -22,10 +24,12 @@ describe("admin controllers boot with their guards", () => {
       controllers: [
         DraftArchiveController,
         FormDisabledOverridesAdminController,
+        ServiceStatusController,
       ],
       providers: [
         { provide: DraftArchiveService, useValue: {} },
         { provide: FormDisabledOverridesService, useValue: {} },
+        { provide: ServiceStatusService, useValue: {} },
       ],
     }).compile();
 
