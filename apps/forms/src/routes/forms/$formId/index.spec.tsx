@@ -14,7 +14,6 @@ import type { Mock } from "vitest";
  * - Route.validateSearch accepts { step: "..." } and an empty object
  */
 
-import React from "react";
 import { render, screen, act } from "@testing-library/react";
 
 vi.mock("@tanstack/react-router", () => ({
