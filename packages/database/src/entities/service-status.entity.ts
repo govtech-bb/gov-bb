@@ -14,16 +14,16 @@ export enum ServiceStatus {
 }
 
 /**
- * Database-driven visibility state for a service. One row per `formId`
- * (unique); a form with no row is left to the consuming app layer's default.
+ * Database-driven visibility state for a service. One row per `slug`
+ * (unique); a service with no row is left to the consuming app layer's default.
  * State changes are recorded in service_status_audit_log.
  */
 @Entity({ name: "service_status" })
-@Index(["formId"], { unique: true })
+@Index(["slug"], { unique: true })
 export class ServiceStatusEntity extends UuidEntity {
-  /** The form this status belongs to. Unique — one status row per form. */
-  @Column({ name: "form_id", type: "varchar", length: 100 })
-  formId!: string;
+  /** The service this status belongs to. Unique — one status row per service. */
+  @Column({ name: "slug", type: "varchar", length: 100 })
+  slug!: string;
 
   @Column({
     type: "enum",
