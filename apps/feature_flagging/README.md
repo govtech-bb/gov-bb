@@ -36,16 +36,17 @@ With no `SESSION_SECRET` set, auth is bypassed (`login: "dev"`) and, with no
 
 ## Service catalogue
 
-The landing half of the catalogue is baked at build time (offline-safe) into
-`app/lib/services-catalogue.generated.ts`. Regenerate when landing content
-changes:
+All three sources are fetched from `apps/api` at request time and merged in
+`app/lib/catalogue.ts`:
 
-```bash
-pnpm --filter @govtech-bb/feature-flagging-app generate:catalogue
-```
+- content pages — `GET /services` (the runtime content index),
+- forms — `GET /form-definitions`,
+- live statuses — `GET /service_status`.
 
-The forms list and live statuses are fetched at request time and merged in
-`app/lib/catalogue.ts`.
+Nothing is baked at build time, so new landing pages appear once the api serves
+them (the api regenerates its `services-index.generated.ts` and redeploys) — no
+redeploy of this app needed. If `GET /services` is unavailable the tool degrades
+to forms + statuses.
 
 ## Deployment / infra checklist
 

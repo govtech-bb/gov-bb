@@ -1,6 +1,6 @@
 import { DEFAULT_STATUS, type ServiceStatus } from "./service-status";
 
-/** A landing-content service, baked at build time (services-catalogue.generated). */
+/** A landing-content service, fetched at runtime from the api's `GET /services`. */
 export interface LandingService {
   /** The landing content slug (hierarchical, e.g. `category/service`). */
   contentSlug: string;
