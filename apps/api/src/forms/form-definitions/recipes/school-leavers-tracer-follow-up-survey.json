@@ -1,0 +1,669 @@
+{
+  "formId": "school-leavers-tracer-follow-up-survey",
+  "title": "2025 School Leavers' Tracer Follow-up Survey",
+  "description": "Ministry of Youth, Sports and Community Empowerment survey to track school leavers' pathways and support needs.",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "contact-information.email-address",
+        "subject": "School Leavers' Tracer Follow-up Survey – submission received"
+      }
+    }
+  ],
+  "meta": {
+    "visibility": "preview"
+  },
+  "steps": [
+    {
+      "stepId": "personal-information",
+      "title": "About you",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "fieldId": "full-name",
+            "label": "Full name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your full name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "address-line-1",
+            "label": "Address",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your address"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "fieldId": "date-of-birth",
+            "label": "Date of birth",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your date of birth"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "age",
+            "label": "Age",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your age"
+              },
+              "min": {
+                "value": 13,
+                "error": "Age must be 13 or older"
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/sex",
+          "overrides": {
+            "fieldId": "sex",
+            "label": "Sex",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select your sex"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "contact-information",
+      "title": "Contact details",
+      "elements": [
+        {
+          "ref": "components/home-telephone",
+          "overrides": {
+            "fieldId": "home-telephone",
+            "label": "Home telephone number",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter a home telephone number"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/mobile-telephone",
+          "overrides": {
+            "fieldId": "mobile-telephone",
+            "label": "Mobile telephone number"
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "email-address",
+            "label": "Email address",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your email address"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "qualifications",
+      "title": "Your qualifications",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "total-qualifications",
+            "label": "How many subjects have you qualified in?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of subjects"
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more"
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "qualification-types",
+            "label": "Which of the following qualifications have you gained?",
+            "options": [
+              {
+                "label": "CCSLC",
+                "value": "ccslc"
+              },
+              {
+                "label": "CXC General (Grade 1, 2 and 3 only)",
+                "value": "cxc-general"
+              },
+              {
+                "label": "GCE O'Level (Grade 1, 2, 3 and 4 only)",
+                "value": "gce-olevel"
+              },
+              {
+                "label": "CAPE",
+                "value": "cape"
+              },
+              {
+                "label": "CVQs",
+                "value": "cvqs"
+              },
+              {
+                "label": "NVQs",
+                "value": "nvqs"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select at least one qualification type"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "other-qualifications",
+            "label": "If other, please specify",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "qualification-types",
+                "operator": "in",
+                "value": [
+                  "other"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "current-status",
+      "title": "Your current activity",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "current-status",
+            "label": "What is your current status?",
+            "options": [
+              {
+                "label": "Enrolled in further studies (sixth form, college, university)",
+                "value": "further-studies"
+              },
+              {
+                "label": "Enrolled in vocational training/skills programme (BVTB)",
+                "value": "vocational-training"
+              },
+              {
+                "label": "Employed (Full-time)",
+                "value": "employed-full-time"
+              },
+              {
+                "label": "Employed (Part-time/Temporary)",
+                "value": "employed-part-time"
+              },
+              {
+                "label": "Apprenticeship/Internship",
+                "value": "apprenticeship"
+              },
+              {
+                "label": "Self-employed",
+                "value": "self-employed"
+              },
+              {
+                "label": "Currently unemployed",
+                "value": "unemployed"
+              },
+              {
+                "label": "Unemployed actively seeking employment",
+                "value": "unemployed-seeking"
+              },
+              {
+                "label": "Unemployed not seeking employment",
+                "value": "unemployed-not-seeking"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select your current status"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "career-goals",
+      "title": "Achieving your career goals",
+      "elements": [
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "steps-towards-goals",
+            "label": "What steps have you taken towards achieving your career goal?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe the steps you have taken"
+              }
+            },
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "division-youth-support",
+            "label": "What do you think the Division of Youth can do to assist you with achieving your goals?",
+            "ui": {
+              "width": "long"
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "community-engagement",
+      "title": "Community involvement",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "interested-community-group",
+            "label": "Would you be interested in joining a community group?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select yes or no"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "transition-experience",
+      "title": "Transition from secondary school",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "transition-difficulty",
+            "label": "How easy or difficult was it to transition from secondary school to your current activity?",
+            "options": [
+              {
+                "label": "Very easy",
+                "value": "very-easy"
+              },
+              {
+                "label": "Easy",
+                "value": "easy"
+              },
+              {
+                "label": "Difficult",
+                "value": "difficult"
+              },
+              {
+                "label": "Very difficult",
+                "value": "very-difficult"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select how easy or difficult the transition was"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "secondary-education-preparation",
+      "title": "How well your secondary education prepared you",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "prepared-further-studies",
+            "label": "Further studies",
+            "options": [
+              {
+                "label": "Yes, I feel well prepared",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "prepared-further-studies-rating",
+            "label": "Do you feel your secondary school education prepared you adequately for further studies?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select yes or no"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "prepared-employment-rating",
+            "label": "Do you feel your secondary school education prepared you adequately for employment?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select yes or no"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "prepared-personal-development-rating",
+            "label": "Do you feel your secondary school education prepared you adequately for personal development?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select yes or no"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "challenges-faced",
+      "title": "Challenges since leaving school",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "challenges-faced",
+            "label": "What challenges have you faced since leaving school?",
+            "options": [
+              {
+                "label": "Finding employment",
+                "value": "finding-employment"
+              },
+              {
+                "label": "Financing further studies/training",
+                "value": "financing-studies"
+              },
+              {
+                "label": "Accessing training opportunities",
+                "value": "accessing-training"
+              },
+              {
+                "label": "Balancing responsibilities (work/family)",
+                "value": "balancing-responsibilities"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select at least one challenge"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "other-challenges",
+            "label": "If other, please specify",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "challenges-faced",
+                "operator": "in",
+                "value": [
+                  "other"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "support-needed",
+      "title": "Support after leaving school",
+      "elements": [
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "type-of-support-needed",
+            "label": "What type of support would have been most helpful to you after leaving school?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe the support that would have been helpful"
+              }
+            },
+            "ui": {
+              "width": "long"
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "community-conditions",
+      "title": "Conditions in your community",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "community-conditions",
+            "label": "Which of the following exists within the community where you live?",
+            "options": [
+              {
+                "label": "Family/parental support to their youth",
+                "value": "family-support"
+              },
+              {
+                "label": "Lack of community resources (e.g. community centres, playing fields, etc.)",
+                "value": "lack-resources"
+              },
+              {
+                "label": "Lack of youth programmes (e.g. skills/sports/cultural training programmes)",
+                "value": "lack-programmes"
+              },
+              {
+                "label": "Crime and violence",
+                "value": "crime-violence"
+              },
+              {
+                "label": "Use and abuse of alcohol and illegal drugs",
+                "value": "substance-abuse"
+              },
+              {
+                "label": "Unemployment",
+                "value": "unemployment"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select at least one condition"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "other-community-conditions",
+            "label": "If other, please specify",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "community-conditions",
+                "operator": "in",
+                "value": [
+                  "other"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "options": [
+              {
+                "label": "I confirm that the information provided is true and correct and will be treated confidentially.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "You must confirm the declaration to continue"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "Thank you for completing the 2025 School Leavers' Tracer Follow-up Survey. We have received your submission. Your responses will help us plan programmes that respond to your needs. You will receive a confirmation email at the address you provided."
+        }
+      ]
+    }
+  ],
+  "createdAt": "2026-07-07T19:37:15.399Z",
+  "updatedAt": "2026-07-07T19:37:15.399Z"
+}
