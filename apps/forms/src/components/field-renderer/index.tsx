@@ -1,4 +1,4 @@
-import { AnyFieldApi, type AnyFormApi } from "@tanstack/react-form";
+import { AnyFieldApi } from "@tanstack/react-form";
 import {
   ClientPrimitive,
   FieldValidationProperties,
@@ -27,7 +27,11 @@ export default function FieldRenderer({
   previewToken,
   draftToken,
 }: {
-  form: AnyFormApi;
+  // Needs the React `.Field` component from useForm()'s ReactFormExtendedApi,
+  // which AnyFormApi (form-core) doesn't expose and which has no ergonomic
+  // non-generic type — so `any` here, unlike the .store-only call sites.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  form: any;
   field: ClientPrimitive;
   validationProperties: FieldValidationProperties;
   /** Option-value → inset fields that reveal when that option is selected. */
