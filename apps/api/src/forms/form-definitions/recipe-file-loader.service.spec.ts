@@ -129,6 +129,7 @@ describe("RecipeFileLoaderService", () => {
           formId: "passport-renewal",
           title: "Passport Renewal",
           version: "",
+          visibility: "public",
         },
       ]);
     });
@@ -150,11 +151,13 @@ describe("RecipeFileLoaderService", () => {
             formId: "passport-renewal",
             title: "Passport Renewal",
             version: "",
+            visibility: "public",
           },
           {
             formId: "drivers-licence",
             title: "Drivers Licence",
             version: "",
+            visibility: "public",
           },
         ]),
       );
@@ -174,6 +177,7 @@ describe("RecipeFileLoaderService", () => {
           title: "Passport Renewal",
           version: "",
           category: "Immigration Department",
+          visibility: "public",
         },
       ]);
     });
@@ -219,6 +223,7 @@ describe("RecipeFileLoaderService", () => {
           formId: "passport-renewal",
           title: "Passport Renewal",
           version: "",
+          visibility: "public",
         },
       ]);
       const logged = errorSpy.mock.calls.map((c) => String(c[0])).join("\n");
@@ -282,8 +287,14 @@ describe("RecipeFileLoaderService", () => {
     });
   });
 
-  describe("findMaintenanceFormIds (#1694)", () => {
-    it("returns only the IDs of maintenance recipes", async () => {
+  // #1896: the loader no longer filters by visibility or exposes a dedicated
+  // maintenance-only accessor — findAll always returns every loaded recipe,
+  // each stamped with its own recipe visibility, and FormDefinitionsService
+  // applies one shared gate (recipe visibility overridden by any
+  // `service_status` row) for both the public list (#1646/#1835) and the
+  // maintenance list (#1694) on top of these raw (formId, visibility) pairs.
+  describe("findAll stamps every recipe's visibility, unfiltered (#1896)", () => {
+    it("includes maintenance, preview and public recipes, each with its own visibility", async () => {
       const root = await fs.mkdtemp(path.join(os.tmpdir(), "recipes-test-"));
       tempRoots.push(root);
       await writeFlatRecipe(root, "public-form");
@@ -296,19 +307,31 @@ describe("RecipeFileLoaderService", () => {
       const loader = new RecipeFileLoaderService(root);
       await loader.loadAll();
 
-      expect(loader.findMaintenanceFormIds()).toEqual(["maintenance-form"]);
+      const byId = new Map(
+        loader.findAll().map((f) => [f.formId, f.visibility]),
+      );
+      expect(byId.get("public-form")).toBe("public");
+      expect(byId.get("preview-form")).toBe("preview");
+      expect(byId.get("maintenance-form")).toBe("maintenance");
+      expect(byId.size).toBe(3);
     });
 
-    it("excludes maintenance forms from the public findAll list", async () => {
-      const root = await fs.mkdtemp(path.join(os.tmpdir(), "recipes-test-"));
-      tempRoots.push(root);
-      await writeFlatRecipe(root, "maintenance-form", {
-        meta: { visibility: "maintenance" },
-      });
+    it("treats a recipe with no meta as preview", async () => {
+      const root = await newRoot({});
+      // `meta: undefined` overrides the helper's public default, so the written
+      // file carries no `meta` at all — exercising the metaless default.
+      await writeFlatRecipe(root, "legacy-form", { meta: undefined });
       const loader = new RecipeFileLoaderService(root);
       await loader.loadAll();
 
-      expect(loader.findAll()).toEqual([]);
+      expect(loader.findAll()).toEqual([
+        {
+          formId: "legacy-form",
+          title: "Passport Renewal",
+          version: "",
+          visibility: "preview",
+        },
+      ]);
     });
   });
 
@@ -328,6 +351,7 @@ describe("RecipeFileLoaderService", () => {
           formId: "passport-renewal",
           title: "Passport Renewal",
           version: "", // canonical files carry no version
+          visibility: "public",
         },
       ]);
     });
@@ -458,36 +482,13 @@ describe("RecipeFileLoaderService", () => {
   // configured root, an operator-editable manifest, etc.) cannot smuggle
   // traversal segments through `path.join`. This unit-tests the guard
   // directly; integration follows by the loader applying it on every entry.
-  describe("findAll visibility gate (#1646)", () => {
-    it("omits non-public forms from the list, keeps public ones", async () => {
-      const root = await newRoot({});
-      await writeFlatRecipe(root, "public-form");
-      await writeFlatRecipe(root, "preview-form", {
-        meta: { visibility: "preview" },
-      });
-      await writeFlatRecipe(root, "draft-form", {
-        meta: { visibility: "draft" },
-      });
-      const loader = new RecipeFileLoaderService(root);
-      await loader.loadAll();
-
-      expect(loader.findAll().map((f) => f.formId)).toEqual(["public-form"]);
-    });
-
-    it("treats a recipe with no meta as preview (hidden from the list)", async () => {
-      const root = await newRoot({});
-      // `meta: undefined` overrides the helper's public default, so the written
-      // file carries no `meta` at all — exercising the metaless default.
-      await writeFlatRecipe(root, "legacy-form", { meta: undefined });
-      const loader = new RecipeFileLoaderService(root);
-      await loader.loadAll();
-
-      expect(loader.findAll().map((f) => f.formId)).not.toContain(
-        "legacy-form",
-      );
-    });
-
-    it("still resolves a non-public recipe via findByFormId (gate is applied by the service, not the loader)", async () => {
+  // The #1646/#1835 visibility gate (public-only default, includeNonPublic
+  // authoring mode) moved up into FormDefinitionsService (#1896) — see
+  // "findAll stamps every recipe's visibility, unfiltered" above. The loader
+  // itself no longer filters or gates; it stays the raw (formId, visibility)
+  // source for both the public list and the preview/draft single-form path.
+  describe("findByFormId resolves any visibility (gate is applied by the service, not the loader)", () => {
+    it("still resolves a non-public recipe via findByFormId", async () => {
       const root = await newRoot({});
       await writeFlatRecipe(root, "preview-form", {
         meta: { visibility: "preview" },
@@ -496,42 +497,6 @@ describe("RecipeFileLoaderService", () => {
       await loader.loadAll();
 
       expect(loader.findByFormId({ formId: "preview-form" })).not.toBeNull();
-    });
-  });
-
-  describe("findAll includeNonPublic authoring mode (#1835)", () => {
-    it("includes non-public forms and stamps each entry's visibility when includeNonPublic is true", async () => {
-      const root = await newRoot({});
-      await writeFlatRecipe(root, "public-form");
-      await writeFlatRecipe(root, "preview-form", {
-        meta: { visibility: "preview" },
-      });
-      await writeFlatRecipe(root, "maintenance-form", {
-        meta: { visibility: "maintenance" },
-      });
-      const loader = new RecipeFileLoaderService(root);
-      await loader.loadAll();
-
-      const byId = new Map(
-        loader.findAll(true).map((f) => [f.formId, f.visibility]),
-      );
-      expect(byId.get("public-form")).toBe("public");
-      expect(byId.get("preview-form")).toBe("preview");
-      expect(byId.get("maintenance-form")).toBe("maintenance");
-    });
-
-    it("still omits non-public forms and stamps no visibility by default (includeNonPublic absent)", async () => {
-      const root = await newRoot({});
-      await writeFlatRecipe(root, "public-form");
-      await writeFlatRecipe(root, "preview-form", {
-        meta: { visibility: "preview" },
-      });
-      const loader = new RecipeFileLoaderService(root);
-      await loader.loadAll();
-
-      const list = loader.findAll();
-      expect(list.map((f) => f.formId)).toEqual(["public-form"]);
-      expect(list[0]).not.toHaveProperty("visibility");
     });
   });
 
