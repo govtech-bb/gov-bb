@@ -33,6 +33,7 @@ import { DedupFormDefinitionsUniqueFormId1781100000000 } from "./migrations/1781
 import { AddProcessorsFailedToFormSubmissions1781200000000 } from "./migrations/1781200000000-AddProcessorsFailedToFormSubmissions";
 import { CreateServiceStatusTables1783356461699 } from "./migrations/1783356461699-CreateServiceStatusTables";
 import { RenameServiceStatusFormIdToSlug1783440984875 } from "./migrations/1783440984875-RenameServiceStatusFormIdToSlug";
+import { SeedServiceStatus1783520007424 } from "./migrations/1783520007424-SeedServiceStatus";
 
 export const entities = [
   FormComponentEntity,
@@ -68,6 +69,7 @@ export const migrations = [
   AddProcessorsFailedToFormSubmissions1781200000000,
   CreateServiceStatusTables1783356461699,
   RenameServiceStatusFormIdToSlug1783440984875,
+  SeedServiceStatus1783520007424,
 ];
 
 /**

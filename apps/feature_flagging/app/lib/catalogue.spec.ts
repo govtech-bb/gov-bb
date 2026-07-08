@@ -1,5 +1,6 @@
 import {
   reconcileCatalogue,
+  serviceTypeLabel,
   sortServiceRows,
   type ServiceRow,
 } from "./catalogue";
@@ -126,6 +127,36 @@ describe("reconcileCatalogue", () => {
     });
 
     expect(rows.map((r) => r.title)).toEqual(["apple", "Banana"]);
+  });
+});
+
+describe("serviceTypeLabel", () => {
+  const row = (over: Partial<ServiceRow>): ServiceRow => ({
+    slug: over.slug ?? "x",
+    title: over.title ?? "X",
+    hasForm: over.hasForm ?? false,
+    status: over.status ?? "enabled",
+    ...over,
+  });
+
+  it("labels a landing page with a form 'Content + Form'", () => {
+    expect(
+      serviceTypeLabel(row({ hasForm: true, landingUrl: "cat/svc" })),
+    ).toBe("Content + Form");
+  });
+
+  it("labels a landing page without a form 'Content'", () => {
+    expect(
+      serviceTypeLabel(row({ hasForm: false, landingUrl: "cat/svc" })),
+    ).toBe("Content");
+  });
+
+  it("labels a form with no landing page 'Form only'", () => {
+    expect(serviceTypeLabel(row({ hasForm: true }))).toBe("Form only");
+  });
+
+  it("returns null for an orphan (no page, no form)", () => {
+    expect(serviceTypeLabel(row({ hasForm: false, orphan: true }))).toBeNull();
   });
 });
 
