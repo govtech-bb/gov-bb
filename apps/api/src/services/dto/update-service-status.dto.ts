@@ -21,14 +21,6 @@ export class UpdateServiceStatusDto {
   @IsEnum(ServiceStatus)
   status!: ServiceStatus;
 
-  @ApiProperty({
-    description:
-      "Email of the user making the change (recorded in the audit log)",
-    maxLength: 255,
-    example: "admin@govtech.bb",
-  })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(255)
-  author!: string;
+  // `author` is NOT accepted from the request body — it is the GitHub login
+  // verified by GitHubAuthGuard (see the controller), so it can't be spoofed.
 }

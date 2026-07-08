@@ -31,7 +31,7 @@ describe("ServiceStatusController", () => {
   });
 
   describe("update (PUT /service_status)", () => {
-    it("calls service.setStatus with the DTO fields and returns success", async () => {
+    it("uses the guard-verified GitHub login as the audit author, not the body", async () => {
       const view = {
         slug: "passport-renewal",
         status: ServiceStatus.DISABLED,
@@ -41,15 +41,15 @@ describe("ServiceStatusController", () => {
       const body: UpdateServiceStatusDto = {
         slug: "passport-renewal",
         status: ServiceStatus.DISABLED,
-        author: "admin@govtech.bb",
       };
 
-      const result = await controller.update(body);
+      // Second arg is injected by @GitHubLogin (the verified login).
+      const result = await controller.update(body, "octocat");
 
       expect(mockService.setStatus).toHaveBeenCalledWith(
         "passport-renewal",
         ServiceStatus.DISABLED,
-        "admin@govtech.bb",
+        "octocat",
       );
       expect(result).toMatchObject({ status: "success", data: view });
     });
