@@ -1,4 +1,8 @@
-import { reconcileCatalogue } from "./catalogue";
+import {
+  reconcileCatalogue,
+  sortServiceRows,
+  type ServiceRow,
+} from "./catalogue";
 
 describe("reconcileCatalogue", () => {
   it("keys a form-backed landing service by its formId (canonical slug)", () => {
@@ -122,5 +126,63 @@ describe("reconcileCatalogue", () => {
     });
 
     expect(rows.map((r) => r.title)).toEqual(["apple", "Banana"]);
+  });
+});
+
+describe("sortServiceRows", () => {
+  const row = (over: Partial<ServiceRow>): ServiceRow => ({
+    slug: over.slug ?? over.title ?? "x",
+    title: over.title ?? "X",
+    hasForm: over.hasForm ?? false,
+    status: over.status ?? "enabled",
+    ...over,
+  });
+
+  const rows: ServiceRow[] = [
+    row({ title: "Banana", status: "disabled", hasForm: true, category: "b" }),
+    row({ title: "apple", status: "enabled", hasForm: false, category: "a" }),
+    row({ title: "Cherry", status: "enabled", hasForm: true, category: "c" }),
+    row({ title: "date", status: "form_disabled", hasForm: true }),
+  ];
+
+  it("default (status asc) floats enabled to the top, alphabetical within group", () => {
+    const out = sortServiceRows(rows, "status", "asc");
+    expect(out.map((r) => [r.title, r.status])).toEqual([
+      ["apple", "enabled"],
+      ["Cherry", "enabled"],
+      ["date", "form_disabled"],
+      ["Banana", "disabled"],
+    ]);
+  });
+
+  it("status desc reverses the groups but keeps names alphabetical within", () => {
+    const out = sortServiceRows(rows, "status", "desc");
+    expect(out.map((r) => r.status)).toEqual([
+      "disabled",
+      "form_disabled",
+      "enabled",
+      "enabled",
+    ]);
+    // enabled group still alphabetical (tiebreak isn't reversed)
+    expect(out.slice(2).map((r) => r.title)).toEqual(["apple", "Cherry"]);
+  });
+
+  it("service sorts by title, case-insensitively, both directions", () => {
+    expect(sortServiceRows(rows, "service", "asc").map((r) => r.title)).toEqual(
+      ["apple", "Banana", "Cherry", "date"],
+    );
+    expect(
+      sortServiceRows(rows, "service", "desc").map((r) => r.title),
+    ).toEqual(["date", "Cherry", "Banana", "apple"]);
+  });
+
+  it("category sorts alphabetically with missing categories last", () => {
+    const out = sortServiceRows(rows, "category", "asc");
+    expect(out.map((r) => r.category ?? "—")).toEqual(["a", "b", "c", "—"]);
+  });
+
+  it("type asc puts Form before Info", () => {
+    const out = sortServiceRows(rows, "type", "asc");
+    expect(out[out.length - 1].hasForm).toBe(false); // the one Info row is last
   });
 });

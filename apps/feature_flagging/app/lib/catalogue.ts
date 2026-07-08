@@ -110,3 +110,54 @@ export function reconcileCatalogue(input: CatalogueInput): ServiceRow[] {
     a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
   );
 }
+
+/** Columns the services table can sort by. */
+export type SortKey = "service" | "category" | "type" | "status";
+export type SortDir = "asc" | "desc";
+
+// enabled first, then form_disabled, then disabled — so `status asc` floats the
+// live services to the top.
+const STATUS_RANK: Record<ServiceStatus, number> = {
+  enabled: 0,
+  form_disabled: 1,
+  disabled: 2,
+};
+
+/**
+ * Sort rows by a column. Title (case-insensitive) is always the tiebreak and is
+ * NOT reversed by `dir`, so within any group the order stays alphabetical.
+ * Default table sort is `status` asc → enabled at the top, alphabetical within.
+ */
+export function sortServiceRows(
+  rows: ServiceRow[],
+  key: SortKey,
+  dir: SortDir,
+): ServiceRow[] {
+  const factor = dir === "asc" ? 1 : -1;
+  const byTitle = (a: ServiceRow, b: ServiceRow) =>
+    a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+  return [...rows].sort((a, b) => {
+    let primary = 0;
+    switch (key) {
+      case "service":
+        primary = byTitle(a, b);
+        break;
+      case "category":
+        // Missing category sorts last regardless of direction's group order.
+        primary = (a.category ?? "￿").localeCompare(
+          b.category ?? "￿",
+          undefined,
+          { sensitivity: "base" },
+        );
+        break;
+      case "type":
+        // Form before Info in ascending order.
+        primary = Number(b.hasForm) - Number(a.hasForm);
+        break;
+      case "status":
+        primary = STATUS_RANK[a.status] - STATUS_RANK[b.status];
+        break;
+    }
+    return primary !== 0 ? primary * factor : byTitle(a, b);
+  });
+}
