@@ -20,6 +20,7 @@ import type { Category, SubCategory } from '../content/categories'
 import { getAvailableForms, getMaintenanceForms } from '../lib/available-forms'
 import { shouldHideStartLink } from '../lib/hide-start-link'
 import { checkFormAccessible } from '../lib/preview-form-access'
+import { getServiceStatuses } from '../lib/service-status'
 import { seoTags } from '../lib/page-head'
 import { trackEvent } from '../lib/analytics'
 import { pageViewEvent } from './-page-view-event'
@@ -44,6 +45,10 @@ type LoaderData =
       // render time.
       kind: 'page'
       url: string
+      // The page's level with service_status overrides already applied
+      // (#1897), computed once in the loader so `head()` and the component
+      // don't need the overrides map themselves.
+      effectiveLevel: ViewLevel
       availableForms: string[]
       underMaintenance: boolean
     }
@@ -63,13 +68,17 @@ type LoaderData =
 export const Route = createFileRoute('/$')({
   loader: async ({ params, context }): Promise<LoaderData> => {
     const { level } = context
+    // Fetched once per request and threaded through every visibility check
+    // below (#1897) — an empty map (no fetch/no rows) reproduces today's
+    // frontmatter-only behaviour.
+    const statusOverrides = await getServiceStatuses()
     const splat = (params._splat ?? '').replace(/^\/+|\/+$/g, '')
     const segments = splat.split('/').filter(Boolean)
 
     if (segments.length === 1) {
       const cat = CATEGORY_BY_SLUG[segments[0]]
       if (cat) {
-        if (!isCategoryVisible(cat, level)) throw notFound()
+        if (!isCategoryVisible(cat, level, statusOverrides)) throw notFound()
         if (cat.subcategories && cat.subcategories.length > 0) {
           return {
             kind: 'subcategory-index',
@@ -77,14 +86,17 @@ export const Route = createFileRoute('/$')({
             subcategories: cat.subcategories,
           }
         }
-        const items = categoryServices(cat.slug, level).map(toListItem)
+        const items = categoryServices(cat.slug, level, statusOverrides).map(
+          toListItem,
+        )
         return { kind: 'category', category: cat, items }
       }
     }
 
     const page = findPage(splat)
     if (page) {
-      if (!isVisible(page, level)) throw notFound()
+      if (!isVisible(page, level, statusOverrides)) throw notFound()
+      const effectiveLevel = pageLevel(page, statusOverrides)
       // Only content pages render Start now buttons, so the forms list is
       // resolved here (server-side, cached) and nowhere else.
       let availableForms = await getAvailableForms()
@@ -115,15 +127,21 @@ export const Route = createFileRoute('/$')({
       const underMaintenance = formId
         ? (await getMaintenanceForms()).includes(formId)
         : false
-      return { kind: 'page', url: page.url, availableForms, underMaintenance }
+      return {
+        kind: 'page',
+        url: page.url,
+        effectiveLevel,
+        availableForms,
+        underMaintenance,
+      }
     }
 
     if (segments.length === 2) {
       const cat = CATEGORY_BY_SLUG[segments[0]]
       const sub = cat ? getSubcategory(cat.slug, segments[1]) : undefined
       if (cat && sub) {
-        if (!isCategoryVisible(cat, level)) throw notFound()
-        const items = categoryServices(cat.slug, level)
+        if (!isCategoryVisible(cat, level, statusOverrides)) throw notFound()
+        const items = categoryServices(cat.slug, level, statusOverrides)
           .filter((p) => p.frontmatter.subcategory === sub.slug)
           .map(toListItem)
         return { kind: 'subcategory', category: cat, subcategory: sub, items }
@@ -138,7 +156,7 @@ export const Route = createFileRoute('/$')({
       const page = findPage(loaderData.url)
       if (!page) return {}
       const title = page.frontmatter.title
-      const isPublic = pageLevel(page) === 'public'
+      const isPublic = loaderData.effectiveLevel === 'public'
       // Canonical/OG only for indexable pages — a gated page is noindex.
       const seo = isPublic
         ? seoTags(title, page.frontmatter.description ?? '', `/${page.url}`)
@@ -189,6 +207,7 @@ function ContentRoute() {
         page={page}
         availableForms={data.availableForms}
         viewerLevel={level}
+        effectiveLevel={data.effectiveLevel}
         underMaintenance={data.underMaintenance}
       />
     )
@@ -216,11 +235,13 @@ function PageView({
   page,
   availableForms,
   viewerLevel,
+  effectiveLevel,
   underMaintenance,
 }: {
   page: ContentPage
   availableForms: string[]
   viewerLevel: ViewLevel
+  effectiveLevel: ViewLevel
   underMaintenance: boolean
 }) {
   // A visitor whose level can't see this page's `/start` sub-page (because it's
@@ -239,7 +260,7 @@ function PageView({
     formId: page.frontmatter.form_id,
     availableForms,
   })
-  const level = pageLevel(page)
+  const level = effectiveLevel
   // A co-located `.tsx` page renders its own title/layout; everything else is
   // a `.md` page rendered through the markdown article chrome.
   const Body = page.selfRendered ? page.Component : undefined

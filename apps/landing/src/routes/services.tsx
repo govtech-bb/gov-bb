@@ -4,8 +4,10 @@ import { HelpfulBox } from '../components/HelpfulBox'
 import { isDigitalService, isVisible, PAGES } from '../content/registry'
 import { trackEvent } from '../lib/analytics'
 import { pageHead } from '../lib/page-head'
+import { getServiceStatuses } from '../lib/service-status'
 
 export const Route = createFileRoute('/services')({
+  loader: async () => ({ statusOverrides: await getServiceStatuses() }),
   head: () =>
     pageHead(
       'Alpha services',
@@ -17,11 +19,12 @@ export const Route = createFileRoute('/services')({
 
 function ServicesPage() {
   const { level } = Route.useRouteContext()
+  const { statusOverrides } = Route.useLoaderData()
   const items = PAGES.filter(
     (p) =>
       p.frontmatter.stage === 'alpha' &&
       !p.slug.endsWith('/start') &&
-      isVisible(p, level),
+      isVisible(p, level, statusOverrides),
   )
     .map((p) => ({
       title: p.frontmatter.title,

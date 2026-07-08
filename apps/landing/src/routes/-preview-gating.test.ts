@@ -34,21 +34,21 @@ const accessMocks = vi.hoisted(() => ({
 }))
 vi.mock('../lib/preview-form-access', () => accessMocks)
 
+// The routes fetch the service_status overrides map (#1897) and thread it
+// into the registry's visibility functions; stub it so the gating tests
+// don't reach the network. Defaults to "no overrides", i.e. today's
+// frontmatter-only behaviour.
+const statusMocks = vi.hoisted(() => ({
+  getServiceStatuses: vi.fn(async () => ({}) as Record<string, string>),
+}))
+vi.mock('../lib/service-status', () => statusMocks)
+
 const fakePage: ContentPage = {
   slug: 'secret-service',
   url: 'secret-service',
   frontmatter: { title: 'Secret', categories: [], visibility: 'draft' },
   body: '',
   hast: { type: 'root', children: [] },
-}
-
-function caught(fn: () => unknown): unknown {
-  try {
-    fn()
-    return undefined
-  } catch (e) {
-    return e
-  }
 }
 
 beforeEach(() => {
@@ -60,6 +60,7 @@ beforeEach(() => {
   mocks.isStartSubPageVisible.mockReturnValue(true)
   mocks.isUrlVisible.mockReturnValue(true)
   mocks.urlLevel.mockReturnValue('public')
+  statusMocks.getServiceStatuses.mockResolvedValue({})
 })
 
 describe('$ route loader gating', () => {
@@ -75,7 +76,7 @@ describe('$ route loader gating', () => {
     }).catch((e: unknown) => e)
     expect(err).toBeDefined()
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
-    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'public')
+    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'public', {})
   })
 
   it('throws notFound for a /start step whose form is non-public to the public', async () => {
@@ -160,10 +161,11 @@ describe('$ route loader gating', () => {
     expect(data).toEqual({
       kind: 'page',
       url: fakePage.url,
+      effectiveLevel: 'public',
       availableForms: ['get-birth-certificate'],
       underMaintenance: false,
     })
-    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'draft')
+    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'draft', {})
   })
 
   it('flags a page whose form is under maintenance', async () => {
@@ -226,6 +228,7 @@ describe('$ route category gating', () => {
     expect(mocks.isCategoryVisible).toHaveBeenCalledWith(
       expect.objectContaining({ slug: 'pensions-and-gratuities' }),
       'public',
+      {},
     )
   })
 
@@ -258,6 +261,7 @@ describe('$ route subcategory gating', () => {
     expect(mocks.isCategoryVisible).toHaveBeenCalledWith(
       expect.objectContaining({ slug: 'youth-and-community' }),
       'public',
+      {},
     )
   })
 
@@ -276,16 +280,73 @@ describe('$ route subcategory gating', () => {
   })
 })
 
+describe('$ route service-status threading (#1897)', () => {
+  it('fetches the status map once and threads it into isVisible/pageLevel', async () => {
+    const { Route } = await import('./$')
+    mocks.findPage.mockReturnValue(fakePage)
+    mocks.isVisible.mockReturnValue(true)
+    statusMocks.getServiceStatuses.mockResolvedValueOnce({
+      'secret-service': 'enabled',
+    })
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    await loader({
+      params: { _splat: 'secret-service' },
+      context: { level: 'public' },
+    })
+
+    expect(statusMocks.getServiceStatuses).toHaveBeenCalledOnce()
+    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'public', {
+      'secret-service': 'enabled',
+    })
+    expect(mocks.pageLevel).toHaveBeenCalledWith(fakePage, {
+      'secret-service': 'enabled',
+    })
+  })
+
+  it('threads the status map into isCategoryVisible/categoryServices for a category listing', async () => {
+    const { Route } = await import('./$')
+    mocks.isCategoryVisible.mockReturnValue(true)
+    statusMocks.getServiceStatuses.mockResolvedValueOnce({
+      'some-service': 'disabled',
+    })
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    await loader({
+      params: { _splat: 'pensions-and-gratuities' },
+      context: { level: 'public' },
+    })
+
+    expect(mocks.categoryServices).toHaveBeenCalledWith(
+      'pensions-and-gratuities',
+      'public',
+      { 'some-service': 'disabled' },
+    )
+  })
+})
+
+describe('services route loader (#1897)', () => {
+  it('fetches and returns the service-status overrides map', async () => {
+    statusMocks.getServiceStatuses.mockResolvedValueOnce({
+      'some-service': 'disabled',
+    })
+    const { Route } = await import('./services')
+    const loader = Route.options.loader as () => Promise<unknown>
+    const data = await loader()
+    expect(data).toEqual({ statusOverrides: { 'some-service': 'disabled' } })
+  })
+})
+
 describe('form route beforeLoad gating', () => {
   it('throws notFound when the viewer cannot see the owning service', async () => {
     mocks.isUrlVisible.mockReturnValue(false)
     const { Route } =
       await import('./money-financial-support/calculate-severance-pay/form')
-    const err = caught(() =>
-      (Route.options.beforeLoad as (a: unknown) => unknown)({
-        context: { level: 'public' },
-      }),
-    )
+    const err = await (
+      Route.options.beforeLoad as (a: unknown) => Promise<unknown>
+    )({
+      context: { level: 'public' },
+    }).catch((e: unknown) => e)
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
   })
 
@@ -293,11 +354,11 @@ describe('form route beforeLoad gating', () => {
     mocks.isUrlVisible.mockReturnValue(true)
     const { Route } =
       await import('./money-financial-support/calculate-severance-pay/form')
-    const err = caught(() =>
-      (Route.options.beforeLoad as (a: unknown) => unknown)({
-        context: { level: 'preview' },
-      }),
-    )
+    const err = await (
+      Route.options.beforeLoad as (a: unknown) => Promise<unknown>
+    )({
+      context: { level: 'preview' },
+    }).catch((e: unknown) => e)
     expect(err).toBeUndefined()
   })
 
@@ -305,11 +366,59 @@ describe('form route beforeLoad gating', () => {
     mocks.isUrlVisible.mockReturnValue(true)
     const { Route } =
       await import('./money-financial-support/calculate-severance-pay/form')
-    const err = caught(() =>
-      (Route.options.beforeLoad as (a: unknown) => unknown)({
-        context: { level: 'public' },
-      }),
-    )
+    const err = await (
+      Route.options.beforeLoad as (a: unknown) => Promise<unknown>
+    )({
+      context: { level: 'public' },
+    }).catch((e: unknown) => e)
     expect(err).toBeUndefined()
+  })
+
+  it('fetches the status map and threads it into isUrlVisible', async () => {
+    mocks.isUrlVisible.mockReturnValue(true)
+    statusMocks.getServiceStatuses.mockResolvedValueOnce({
+      'calculate-severance-pay': 'disabled',
+    })
+    const { Route } =
+      await import('./money-financial-support/calculate-severance-pay/form')
+    await (Route.options.beforeLoad as (a: unknown) => Promise<unknown>)({
+      context: { level: 'preview' },
+    })
+    expect(mocks.isUrlVisible).toHaveBeenCalledWith(
+      'money-financial-support/calculate-severance-pay',
+      'preview',
+      { 'calculate-severance-pay': 'disabled' },
+    )
+  })
+})
+
+describe('shelter feature route beforeLoad gating', () => {
+  it('throws notFound when the viewer cannot see the feature', async () => {
+    mocks.isUrlVisible.mockReturnValue(false)
+    const { Route } =
+      await import('./health-and-emergency-services/find-an-emergency-shelter/route')
+    const err = await (
+      Route.options.beforeLoad as (a: unknown) => Promise<unknown>
+    )({
+      context: { level: 'public' },
+    }).catch((e: unknown) => e)
+    expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
+  })
+
+  it('fetches the status map and threads it into isUrlVisible', async () => {
+    mocks.isUrlVisible.mockReturnValue(true)
+    statusMocks.getServiceStatuses.mockResolvedValueOnce({
+      'some-service': 'disabled',
+    })
+    const { Route } =
+      await import('./health-and-emergency-services/find-an-emergency-shelter/route')
+    await (Route.options.beforeLoad as (a: unknown) => Promise<unknown>)({
+      context: { level: 'preview' },
+    })
+    expect(mocks.isUrlVisible).toHaveBeenCalledWith(
+      expect.any(String),
+      'preview',
+      { 'some-service': 'disabled' },
+    )
   })
 })
