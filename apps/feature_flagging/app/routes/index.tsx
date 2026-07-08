@@ -39,6 +39,8 @@ function ServicesPage() {
   const [rows, setRows] = useState<ServiceRow[]>(initial);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   // Default: enabled at the top, alphabetical within each status group.
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
     key: "status",
@@ -54,10 +56,36 @@ function ServicesPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
 
+  // Category options are the distinct categories present, alphabetical.
+  const categories = useMemo(
+    () =>
+      [
+        ...new Set(
+          rows.map((r) => r.category).filter((c): c is string => Boolean(c)),
+        ),
+      ].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })),
+    [rows],
+  );
+  // Type options are the canonical labels that actually appear in the rows.
+  const types = useMemo(() => {
+    const present = new Set(
+      rows
+        .map((r) => serviceTypeLabel(r))
+        .filter((t): t is string => t !== null),
+    );
+    return ["Content + Form", "Content", "Form only"].filter((t) =>
+      present.has(t),
+    );
+  }, [rows]);
+
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = rows.filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
+      if (categoryFilter !== "all" && r.category !== categoryFilter)
+        return false;
+      if (typeFilter !== "all" && serviceTypeLabel(r) !== typeFilter)
+        return false;
       if (!q) return true;
       return (
         r.title.toLowerCase().includes(q) ||
@@ -66,9 +94,13 @@ function ServicesPage() {
       );
     });
     return sortServiceRows(filtered, sort.key, sort.dir);
-  }, [rows, query, statusFilter, sort]);
+  }, [rows, query, statusFilter, categoryFilter, typeFilter, sort]);
 
-  const isFiltered = query.trim() !== "" || statusFilter !== "all";
+  const isFiltered =
+    query.trim() !== "" ||
+    statusFilter !== "all" ||
+    categoryFilter !== "all" ||
+    typeFilter !== "all";
 
   function toggleSort(key: SortKey) {
     setSort((p) =>
@@ -136,6 +168,30 @@ function ServicesPage() {
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search services"
         />
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          aria-label="Filter by category"
+        >
+          <option value="all">All categories</option>
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          aria-label="Filter by type"
+        >
+          <option value="all">All types</option>
+          {types.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
