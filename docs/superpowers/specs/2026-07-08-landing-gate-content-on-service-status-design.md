@@ -27,8 +27,11 @@ toggles gate public content without a landing redeploy.
 2. The read is a **public, unauthenticated** endpoint
    (`ServiceStatusController.list`) — landing needs no token.
 3. Response: `{ status:"success", data: [{ slug, status }] }`,
-   `status ∈ { enabled, form_disabled, disabled }`, keyed by the **hierarchical
-   content slug** — the same key as the registry's `BY_SLUG`.
+   `status ∈ { enabled, form_disabled, disabled }`. Rows are keyed by the
+   platform's **canonical service key** — `form_id` when the service has a form,
+   else the content slug (see feature-flagging `catalogue.ts` / the seed tool,
+   #1898). Landing therefore reconciles a content page to its key via
+   `form_id ?? slug`, **not** by content slug alone.
 4. The registry's visibility core `resolvePageLevel(slug, visibilityOf)` already
    takes an **injectable** `visibilityOf`, which is the natural seam for an
    overlay.
@@ -61,10 +64,12 @@ Two overlays are derived from the one fetched status map:
    - `disabled` → `preview`
    - `enabled` → `public`
    - `form_disabled` → (no entry; visibility unchanged)
-2. **Form-reachability overlay** (for the `$.tsx` page loader): slugs with
-   `form_disabled` → the page's `form_id` is forced into the maintenance path
-   (removed from `availableForms`, added to the maintenance set → notice +
-   hidden Start button).
+2. **Form-reachability set** (for the `$.tsx` page loader): the `form_disabled`
+   keys. A `form_disabled` service always has a form, so these keys are
+   `form_id`s — matched directly against the page's `form_id` (no slug mapping).
+   A match forces the form into the maintenance path (removed from
+   `availableForms` for the public → notice + hidden Start button + `/start`
+   404).
 
 **Sharp edge (accepted):** because a row *overrides*, an `enabled` row on a page
 whose frontmatter is `draft` makes it **public** — the admin tool is the launch
@@ -92,10 +97,16 @@ A near-clone of `available-forms.ts`:
 
 Add an optional `overlay?: ReadonlyMap<string, ViewLevel>` parameter to the
 public gate functions, composed over frontmatter in the existing
-`resolvePageLevel` seam:
+`resolvePageLevel` seam. The overlay is keyed by the **canonical service key**,
+so the seam resolves each content page to its key (`form_id ?? slug`) before
+looking it up:
 
 ```ts
-visibilityOf = (slug) => overlay?.get(slug) ?? BY_SLUG.get(slug)?.frontmatter.visibility
+visibilityOf = (slug) => {
+  const page = BY_SLUG.get(slug)
+  const key = page?.frontmatter.form_id ?? slug
+  return overlay?.get(key) ?? page?.frontmatter.visibility
+}
 ```
 
 Functions updated (all keep today's behavior when `overlay` is omitted):

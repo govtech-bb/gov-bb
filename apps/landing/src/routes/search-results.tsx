@@ -4,6 +4,7 @@ import { Heading, Link, Search as SearchInput, Text } from '@govtech-bb/react'
 import { z } from 'zod'
 import { search } from '../lib/search'
 import { trackEvent } from '../lib/analytics'
+import { deriveVisibilityOverlay } from '../lib/service-status'
 
 const SearchParams = z.object({
   q: z.string().optional().default(''),
@@ -24,9 +25,11 @@ export const Route = createFileRoute('/search-results')({
 
 function SearchResultsPage() {
   const { q } = Route.useSearch()
-  const { level } = Route.useRouteContext()
+  const { level, serviceStatuses } = Route.useRouteContext()
   const query = q.trim()
-  const hits = query ? search(query, level) : []
+  const hits = query
+    ? search(query, level, deriveVisibilityOverlay(serviceStatuses))
+    : []
 
   useEffect(() => {
     if (query) trackEvent('search', { query, results: hits.length })
