@@ -15,4 +15,5 @@ export { DedupFormDefinitionsUniqueFormId1781100000000 } from "./1781100000000-D
 export { AddProcessorsFailedToFormSubmissions1781200000000 } from "./1781200000000-AddProcessorsFailedToFormSubmissions";
 export { CreateServiceStatusTables1783356461699 } from "./1783356461699-CreateServiceStatusTables";
 export { RenameServiceStatusFormIdToSlug1783440984875 } from "./1783440984875-RenameServiceStatusFormIdToSlug";
+export { CreateNotificationLog1783458705143 } from "./1783458705143-CreateNotificationLog";
 export { SeedServiceStatus1783520007424 } from "./1783520007424-SeedServiceStatus";
