@@ -204,20 +204,16 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * List the loaded forms. By default the public index (#1646): non-public
-   * recipes are omitted and no `visibility` is stamped, so the public list
-   * contract is unchanged. When `includeNonPublic` is set — the token-gated
-   * authoring path (#1835) — non-public recipes are kept and every entry
-   * carries its `visibility` so the builder picker can surface and badge them.
+   * List every loaded form, each always carrying its recipe `visibility`
+   * (#1896). The public/authoring split and the maintenance list are no
+   * longer this loader's job — FormDefinitionsService applies one shared gate
+   * (recipe visibility overridden by any `service_status` row) over these raw
+   * (formId, visibility) pairs, for both the public list (#1646/#1835) and
+   * the maintenance list (#1694).
    */
-  findAll(includeNonPublic = false): PublicFormSummary[] {
+  findAll(): PublicFormSummary[] {
     const out: PublicFormSummary[] = [];
     for (const [formId, recipe] of this.recipes) {
-      const visibility = getRecipeVisibility(recipe);
-      // Hide non-public forms from the list (#1646) — the public list carries
-      // no preview token, so preview/draft forms are unlisted for everyone,
-      // matching the 404 their single-form GET returns to the public.
-      if (visibility !== "public" && !includeNonPublic) continue;
       out.push({
         formId,
         title: recipe.title,
@@ -230,24 +226,8 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
         ...(recipe.contactDetails?.title && {
           category: recipe.contactDetails.title,
         }),
-        // Stamp visibility only on the authoring path so the default public
-        // response is byte-for-byte unchanged (#1835).
-        ...(includeNonPublic && { visibility }),
+        visibility: getRecipeVisibility(recipe),
       });
-    }
-    return out;
-  }
-
-  /**
-   * Form IDs whose recipe is under maintenance (#1694). Unlike preview/draft —
-   * which are hidden outright — a maintenance form is advertised publicly so the
-   * landing page can show an "under maintenance" notice. It stays absent from
-   * findAll (it is non-public), so its "Start now" button is still gated.
-   */
-  findMaintenanceFormIds(): string[] {
-    const out: string[] = [];
-    for (const [formId, recipe] of this.recipes) {
-      if (getRecipeVisibility(recipe) === "maintenance") out.push(formId);
     }
     return out;
   }
