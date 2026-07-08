@@ -111,6 +111,21 @@ export function reconcileCatalogue(input: CatalogueInput): ServiceRow[] {
   );
 }
 
+/**
+ * The Type-column label for a row:
+ * - `Content + Form` — a landing page that has a linked form.
+ * - `Content`        — a landing page with no form.
+ * - `Form only`      — a form with no landing page.
+ * Returns `null` for an orphan (a stray status row with neither page nor form);
+ * the table shows only the Orphan badge for those.
+ */
+export function serviceTypeLabel(row: ServiceRow): string | null {
+  const hasContent = Boolean(row.landingUrl);
+  if (hasContent) return row.hasForm ? "Content + Form" : "Content";
+  if (row.hasForm) return "Form only";
+  return null;
+}
+
 /** Columns the services table can sort by. */
 export type SortKey = "service" | "category" | "type" | "status";
 export type SortDir = "asc" | "desc";
