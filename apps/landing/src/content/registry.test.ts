@@ -396,7 +396,7 @@ describe('runtime status overlay (service_status)', () => {
     const overlay = new Map<string, ViewLevel>(
       categoryServices('family-birth-relationships', 'public').map((p) => [
         keyOf(p),
-        'preview' as ViewLevel,
+        'preview',
       ]),
     )
     expect(isCategoryVisible(cat, 'public', overlay)).toBe(false)
