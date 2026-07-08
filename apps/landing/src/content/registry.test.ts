@@ -6,6 +6,7 @@ import {
   isDigitalService,
   isStartSubPageVisible,
   isSubPage,
+  isUrlVisible,
   isVisible,
   PAGES,
   pageLevel,
@@ -318,5 +319,87 @@ describe('categoryServices', () => {
     expect(
       categoryServices('pensions-and-gratuities', 'preview').length,
     ).toBeGreaterThan(0)
+  })
+})
+
+describe('runtime status overlay (service_status)', () => {
+  const publicPage = () =>
+    findPage('money-financial-support/calculate-severance-pay')!
+  // The overlay is keyed by the canonical service key (form_id ?? content slug).
+  const keyOf = (p: { frontmatter: { form_id?: string }; slug: string }) =>
+    p.frontmatter.form_id ?? p.slug
+
+  it('pageLevel gates an otherwise-public page when the overlay disables it', () => {
+    const page = publicPage()
+    const overlay = new Map<string, ViewLevel>([[page.slug, 'preview']])
+    expect(pageLevel(page)).toBe('public')
+    expect(pageLevel(page, overlay)).toBe('preview')
+  })
+
+  it('isVisible hides a disabled page from the public but a token unlocks it', () => {
+    const page = publicPage()
+    const overlay = new Map<string, ViewLevel>([[page.slug, 'preview']])
+    expect(isVisible(page, 'public', overlay)).toBe(false)
+    expect(isVisible(page, 'preview', overlay)).toBe(true)
+  })
+
+  it('keys the overlay by form_id for a form-backed service (not the content slug)', () => {
+    // service_status rows use the canonical key: form_id for a form service.
+    const formPage = PAGES.find(
+      (p) => p.frontmatter.form_id && p.frontmatter.form_id !== p.slug,
+    )!
+    expect(formPage).toBeDefined()
+    const formId = formPage.frontmatter.form_id!
+
+    // Keyed by form_id → gates.
+    expect(pageLevel(formPage, new Map([[formId, 'preview']]))).toBe('preview')
+    // Keyed by the content slug → NO match, falls back to frontmatter.
+    expect(pageLevel(formPage, new Map([[formPage.slug, 'preview']]))).toBe(
+      formPage.frontmatter.visibility,
+    )
+  })
+
+  it('an enabled overlay publishes a page whose frontmatter default is preview', () => {
+    const previewPage = PAGES.find((p) => pageLevel(p) === 'preview')!
+    const overlay = new Map<string, ViewLevel>([[keyOf(previewPage), 'public']])
+    expect(isVisible(previewPage, 'public')).toBe(false)
+    expect(isVisible(previewPage, 'public', overlay)).toBe(true)
+  })
+
+  it('urlLevel and isUrlVisible respect the overlay', () => {
+    const page = publicPage()
+    const overlay = new Map<string, ViewLevel>([[page.slug, 'preview']])
+    expect(urlLevel(page.url, overlay)).toBe('preview')
+    expect(isUrlVisible(page.url, 'public', overlay)).toBe(false)
+    expect(isUrlVisible(page.url, 'preview', overlay)).toBe(true)
+  })
+
+  it('categoryServices drops a service the overlay disables, keeping it for reviewers', () => {
+    const cat = 'family-birth-relationships'
+    const target = categoryServices(cat, 'public')[0]
+    expect(target).toBeDefined()
+    const overlay = new Map<string, ViewLevel>([[keyOf(target), 'preview']])
+    expect(
+      categoryServices(cat, 'public', overlay).some(
+        (p) => p.slug === target.slug,
+      ),
+    ).toBe(false)
+    expect(
+      categoryServices(cat, 'preview', overlay).some(
+        (p) => p.slug === target.slug,
+      ),
+    ).toBe(true)
+  })
+
+  it('isCategoryVisible hides a category once the overlay disables all its public services', () => {
+    const cat = CATEGORY_BY_SLUG['family-birth-relationships']
+    const overlay = new Map<string, ViewLevel>(
+      categoryServices('family-birth-relationships', 'public').map((p) => [
+        keyOf(p),
+        'preview',
+      ]),
+    )
+    expect(isCategoryVisible(cat, 'public', overlay)).toBe(false)
+    expect(isCategoryVisible(cat, 'preview', overlay)).toBe(true)
   })
 })

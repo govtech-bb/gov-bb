@@ -4,6 +4,7 @@ import { HelpfulBox } from '../components/HelpfulBox'
 import { isDigitalService, isVisible, PAGES } from '../content/registry'
 import { trackEvent } from '../lib/analytics'
 import { pageHead } from '../lib/page-head'
+import { deriveVisibilityOverlay } from '../lib/service-status'
 
 export const Route = createFileRoute('/services')({
   head: () =>
@@ -16,12 +17,13 @@ export const Route = createFileRoute('/services')({
 })
 
 function ServicesPage() {
-  const { level } = Route.useRouteContext()
+  const { level, serviceStatuses } = Route.useRouteContext()
+  const overlay = deriveVisibilityOverlay(serviceStatuses)
   const items = PAGES.filter(
     (p) =>
       p.frontmatter.stage === 'alpha' &&
       !p.slug.endsWith('/start') &&
-      isVisible(p, level),
+      isVisible(p, level, overlay),
   )
     .map((p) => ({
       title: p.frontmatter.title,

@@ -330,18 +330,42 @@ export function isDigitalService(page: ContentPage): boolean {
 }
 
 /**
+ * A slug's own visibility, with an optional runtime `overlay` (from
+ * `service_status`) taking precedence over the baked frontmatter default.
+ *
+ * The overlay is keyed by the platform's **canonical service key** — `form_id`
+ * when the service has a form, else the content slug (see feature-flagging
+ * `catalogue.ts` / the seed tool, #1898). So a form-backed service is looked up
+ * by its `form_id`, not its content slug; a slug present under that key uses the
+ * overlaid level, otherwise it falls back to frontmatter (`undefined` for an
+ * intermediate directory with no page).
+ */
+function overlaidVisibilityOf(
+  overlay?: ReadonlyMap<string, ViewLevel>,
+): (slug: string) => ViewLevel | undefined {
+  return (slug) => {
+    const page = BY_SLUG.get(slug)
+    const canonicalKey = page?.frontmatter.form_id ?? slug
+    return overlay?.get(canonicalKey) ?? page?.frontmatter.visibility
+  }
+}
+
+/**
  * A page's *effective* level: the most restricted of its own `visibility` and
  * every ancestor page's. Walking ancestors by slug means flagging a service's
  * `index.md` as `preview`/`draft` automatically gates its `/start` (and other)
  * sub-pages, which sit at `<service>/<leaf>`. Slug-keyed (not URL) so it is
  * independent of the category prefix — a sub-page's URL hangs off its parent's,
  * but its slug is always `<parentSlug>/<leaf>`.
+ *
+ * An optional `overlay` (the runtime `service_status` visibility map) overrides
+ * the frontmatter default per slug — see `overlaidVisibilityOf`.
  */
-export function pageLevel(page: ContentPage): ViewLevel {
-  return resolvePageLevel(
-    page.slug,
-    (slug) => BY_SLUG.get(slug)?.frontmatter.visibility,
-  )
+export function pageLevel(
+  page: ContentPage,
+  overlay?: ReadonlyMap<string, ViewLevel>,
+): ViewLevel {
+  return resolvePageLevel(page.slug, overlaidVisibilityOf(overlay))
 }
 
 /**
@@ -365,8 +389,12 @@ export function resolvePageLevel(
 }
 
 /** A page is visible when the viewer's level meets the page's required level. */
-export function isVisible(page: ContentPage, viewer: ViewLevel): boolean {
-  return viewerMeets(viewer, pageLevel(page))
+export function isVisible(
+  page: ContentPage,
+  viewer: ViewLevel,
+  overlay?: ReadonlyMap<string, ViewLevel>,
+): boolean {
+  return viewerMeets(viewer, pageLevel(page, overlay))
 }
 
 /**
@@ -376,14 +404,21 @@ export function isVisible(page: ContentPage, viewer: ViewLevel): boolean {
  * treated as `public` (fail-open: a missing page already 404s through its own
  * route).
  */
-export function urlLevel(url: string): ViewLevel {
+export function urlLevel(
+  url: string,
+  overlay?: ReadonlyMap<string, ViewLevel>,
+): ViewLevel {
   const page = findPage(url)
-  return page ? pageLevel(page) : 'public'
+  return page ? pageLevel(page, overlay) : 'public'
 }
 
 /** Whether a viewer at `viewer` may see the page at `url`. */
-export function isUrlVisible(url: string, viewer: ViewLevel): boolean {
-  return viewerMeets(viewer, urlLevel(url))
+export function isUrlVisible(
+  url: string,
+  viewer: ViewLevel,
+  overlay?: ReadonlyMap<string, ViewLevel>,
+): boolean {
+  return viewerMeets(viewer, urlLevel(url, overlay))
 }
 
 /**
@@ -393,9 +428,12 @@ export function isUrlVisible(url: string, viewer: ViewLevel): boolean {
  * `/start` step: a page with no `/start` sub-page resolves to `public` and
  * keeps its existing manifest-gated behaviour.
  */
-export function startSubPageLevel(page: ContentPage): ViewLevel {
+export function startSubPageLevel(
+  page: ContentPage,
+  overlay?: ReadonlyMap<string, ViewLevel>,
+): ViewLevel {
   const start = BY_SLUG.get(`${page.slug}/start`)
-  return start ? pageLevel(start) : 'public'
+  return start ? pageLevel(start, overlay) : 'public'
 }
 
 /**
@@ -407,8 +445,9 @@ export function startSubPageLevel(page: ContentPage): ViewLevel {
 export function isStartSubPageVisible(
   page: ContentPage,
   viewer: ViewLevel,
+  overlay?: ReadonlyMap<string, ViewLevel>,
 ): boolean {
-  return viewerMeets(viewer, startSubPageLevel(page))
+  return viewerMeets(viewer, startSubPageLevel(page, overlay))
 }
 
 /**
@@ -462,12 +501,13 @@ export function resolveServiceHref(href: string): string {
 export function categoryServices(
   categorySlug: string,
   viewer: ViewLevel,
+  overlay?: ReadonlyMap<string, ViewLevel>,
 ): Array<ContentPage> {
   return PAGES.filter(
     (p) =>
       p.frontmatter.categories.includes(categorySlug) &&
       !isSubPage(p) &&
-      isVisible(p, viewer),
+      isVisible(p, viewer, overlay),
   )
 }
 
@@ -480,8 +520,9 @@ export function categoryServices(
 export function isCategoryVisible(
   category: Category,
   viewer: ViewLevel,
+  overlay?: ReadonlyMap<string, ViewLevel>,
 ): boolean {
-  return categoryServices(category.slug, viewer).length > 0
+  return categoryServices(category.slug, viewer, overlay).length > 0
 }
 
 export { CATEGORIES, CATEGORY_BY_SLUG }

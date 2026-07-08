@@ -327,8 +327,9 @@ function ConfirmStatusChange({
           <span className={`status-${next}`}>{STATUS_LABELS[next]}</span>.
         </p>
         <p className="modal-warn">
-          This takes effect immediately and changes what the public can see for
-          this service.
+          This changes what the public can see for this service. The change is
+          saved immediately, but the public site caches service statuses for up
+          to 60 seconds — so it can take a little over a minute to appear live.
         </p>
         <div className="modal-actions">
           <button type="button" className="btn-secondary" onClick={onCancel}>
