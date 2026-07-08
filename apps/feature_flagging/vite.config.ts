@@ -19,6 +19,11 @@ export default defineConfig(({ mode }) => {
     env[key] || process.env[key] || fallback;
 
   return {
+    // Pin the local dev server to a fixed port so it matches the GitHub OAuth
+    // App's callback URL and OAUTH_REDIRECT_BASE (http://localhost:3005). A
+    // drifting port would break the OAuth redirect_uri match. strictPort fails
+    // loudly instead of silently falling back. Ignored by the Amplify build.
+    server: { port: 3005, strictPort: true },
     define: {
       // SM-backed secret ARNs (non-sensitive identifiers).
       "process.env.FEATURE_FLAGGING_TOKENS_SECRET_ARN": JSON.stringify(

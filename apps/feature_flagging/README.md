@@ -39,26 +39,29 @@ false in any built output including Amplify).
 ## Local dev
 
 Because login is required, local dev needs a GitHub OAuth app + a session
-secret. Put these in `.env` (see [`.env.example`](.env.example)):
+secret. The dev server runs on a **fixed port 3005** (`vite.config.ts`), so
+register the OAuth app's **Authorization callback URL** as
+`http://localhost:3005/auth/github/callback`, then put these in `.env` (see
+[`.env.example`](.env.example)):
 
 ```bash
 SESSION_SECRET=$(openssl rand -base64 32)
 GITHUB_OAUTH_CLIENT_ID=<client id>
 GITHUB_OAUTH_CLIENT_SECRET=<client secret>
-OAUTH_REDIRECT_BASE=http://localhost:3001   # must match the OAuth app callback + the port vite prints
+OAUTH_REDIRECT_BASE=http://localhost:3005
 ```
 
 `GITHUB_ORG` / `GITHUB_TEAM_SLUG` are **not** needed locally (dev skips the
 membership check). Then:
 
 ```bash
-pnpm dev:feature_flagging_ui   # or: pnpm --filter @govtech-bb/feature-flagging-app dev
+pnpm dev:feature_flagging_ui   # serves http://localhost:3005
 ```
 
-Visiting the app redirects you to GitHub; after sign-in you're in as your GitHub
-login. The app reads the **sandbox** forms API by default
-(`FEATURE_FLAGGING_API_URL`), and with no `SERVICE_STATUS_ADMIN_TOKEN` the api's
-`AdminTokenGuard` passes through (ADR-0061).
+Open http://localhost:3005 → the login page → **Sign in with GitHub**; after
+sign-in you're in as your GitHub login. The app reads the **sandbox** forms API
+by default (`FEATURE_FLAGGING_API_URL`), and with no `SERVICE_STATUS_ADMIN_TOKEN`
+the api's `AdminTokenGuard` passes through (ADR-0061).
 
 ## Service catalogue
 
