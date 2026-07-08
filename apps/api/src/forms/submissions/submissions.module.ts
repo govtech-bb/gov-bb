@@ -4,6 +4,7 @@ import { ConfigModule } from "@nestjs/config";
 import { SubmissionsController } from "./submissions.controller";
 import { SubmissionsService } from "./submissions.service";
 import { FormSubmissionRepository } from "./form-submission.repository";
+import { NotificationLogRepository } from "./notification-log.repository";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { SubmissionProcessorListener } from "./submission-processor.listener";
 import {
@@ -44,6 +45,7 @@ import { PaymentRequiredListener } from "@/email/payment-required.listener";
   providers: [
     SubmissionsService,
     FormSubmissionRepository,
+    NotificationLogRepository,
     SubmissionPipelineService,
     SesMailer,
     PaymentRequiredListener,

@@ -83,6 +83,11 @@ const baseSchema = z
     // never emails a real MDA.
     SES_DEFAULT_RECIPIENT: z.string().default("testing@govtech.bb"),
 
+    // When true, a config.* recipient with no resolved MDA email is a hard
+    // (retryable) failure instead of silently defaulting to SES_DEFAULT_RECIPIENT.
+    // Set true in production only. See email.config.ts / EmailProcessor.
+    MDA_REQUIRE_RECIPIENT: boolFromEnv(false),
+
     // Recipient for the public site feedback form (apps/landing /feedback).
     FEEDBACK_RECIPIENT: z.string().default("feedback@govtech.bb"),
 
