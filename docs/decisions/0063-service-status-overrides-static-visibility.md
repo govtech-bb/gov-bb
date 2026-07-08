@@ -1,11 +1,15 @@
 # 0063 — A `service_status` row fully overrides the static visibility seed
 
 **Date:** 2026-07-08
-**Status:** Accepted
+**Status:** Accepted (amended 2026-07-08 — landing shipped via
+[#1928](https://github.com/govtech-bb/gov-bb/pull/1928), which also gates
+sitemap and search; see "Accepted gaps")
 **Related:** [#1650](https://github.com/govtech-bb/gov-bb/issues/1650) (epic:
 feature-flagging on `service_status`), [#1896](https://github.com/govtech-bb/gov-bb/issues/1896)
 (forms API gate), [#1897](https://github.com/govtech-bb/gov-bb/issues/1897)
-(landing page gate), `docs/plans/1650-service-status-seed-migration.md`
+(landing page gate, implemented by
+[#1928](https://github.com/govtech-bb/gov-bb/pull/1928)),
+`docs/plans/1650-service-status-seed-migration.md`
 (one-time seed), ADR 0030 (landing resolves availability at runtime,
 last-known-good degradation model)
 
@@ -38,7 +42,7 @@ visibility vocabulary:
 | `service_status` | Forms API effective visibility                                                                                                                 | Landing page effective visibility                                               |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `enabled`        | `public` — listed, reachable                                                                                                                   | `public`                                                                        |
-| `form_disabled`  | `maintenance` — dropped from the public list, advertised on `/form-definitions/maintenance` (reuses the #1694 maintenance machinery wholesale) | `public` (the page stays up; the form side flows through the API automatically) |
+| `form_disabled`  | `maintenance` — dropped from the public list, advertised on `/form-definitions/maintenance` (reuses the #1694 maintenance machinery wholesale) | page keeps its **frontmatter** level (stays up for public pages; the form side flows through the API automatically) |
 | `disabled`       | `preview` — hidden; preview token/cookie bypass still works                                                                                    | `preview` — hidden unless the viewer holds the preview cookie                   |
 | _(no row)_       | recipe `meta.visibility` (unchanged)                                                                                                           | frontmatter `visibility` (unchanged)                                            |
 
@@ -57,6 +61,12 @@ Consequences of "fully overrides," all intended:
   the public list; landing's existing `available-forms`/`MaintenanceNotice`
   machinery already hides the Start button and shows the notice once the API
   reflects the change, with zero landing-specific code for this level.
+  One asymmetry (amended 2026-07-08): on landing, `form_disabled` is the one
+  value that does **not** override the page's own level — the shipped
+  implementation (#1928) omits it from the visibility overlay, leaving the
+  frontmatter in charge of the page while only the form is gated. In practice
+  the two readings coincide: the seed only ever assigns `form_disabled` to
+  services whose page is already public.
 - Status rows are keyed by a slug namespace shared with landing content slugs
   (canonical slug = `formId` when the service has a form, else the landing
   content slug, per the #1898 spec). A row whose slug matches no known
@@ -94,12 +104,13 @@ matching their existing architecture:
 
 ## Accepted gaps
 
-- Landing's `lib/sitemap.ts` and search indexing stay **frontmatter-only** —
-  they do not consult `service_status`. A page an admin disabled via
-  `service_status` can therefore linger in the sitemap or search results
-  until its frontmatter changes, even though its URL now 404s (or is
-  preview-gated) for the public. Accepted for this iteration; revisit if this
-  causes an SEO complaint.
+- *(Amended 2026-07-08 — gap closed before it shipped.)* This ADR originally
+  accepted that landing's `lib/sitemap.ts` and search indexing would stay
+  frontmatter-only. The landing implementation that actually merged
+  ([#1928](https://github.com/govtech-bb/gov-bb/pull/1928)) gates the sitemap
+  and search on `service_status` as well, so a disabled page drops out of the
+  sitemap and search results within the same ~60-second staleness bound as the
+  rest of landing. No sitemap/search gap exists.
 - `form_builder_api`'s separate disable mechanism (the builder's own 410) is a
   different, older system and is not reconciled with `service_status` by this
   decision.
@@ -109,9 +120,7 @@ matching their existing architecture:
 - An admin's `PUT /service_status` toggle now has one observable, documented
   effect across both the form and its landing page, without a deploy.
 - The recipe `meta.visibility` / frontmatter `visibility` fields are not
-  deprecated — they remain the seed and the fallback for services with no row,
-  and the source of truth for behaviour `service_status` doesn't reach (the
-  accepted sitemap/search gap above).
+  deprecated — they remain the seed and the fallback for services with no row.
 - Future consumers of visibility (if any) must apply the same "row overrides
   seed" rule via each app's own effective-visibility mapping, not a shared
   package — the forms API and landing gates are intentionally separate,
