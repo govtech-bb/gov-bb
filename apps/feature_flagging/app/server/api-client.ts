@@ -1,14 +1,15 @@
 /**
  * Server-side client for the NestJS forms API (apps/api), which serves
- * `/service_status`, `/service_status/audit`, and `/form-definitions`.
+ * `/service_status`, `/service_status/audit`, `/services`, and
+ * `/form-definitions`.
  *
- * Runs only in the SSR Lambda — the admin bearer token never reaches the
- * client. GET reads are public; the audit read and PUT are guarded by the api's
- * AdminTokenGuard (`Authorization: Bearer <SERVICE_STATUS_ADMIN_TOKEN>`). We
- * attach the token to every call when present; in local dev it may be empty, in
- * which case the api passes through (ADR-0061).
+ * Runs only in the SSR Lambda. Auth is by **forwarded GitHub identity**: callers
+ * pass the signed-in user's GitHub access token (from the session), which the
+ * API validates + authorizes (GitHubAuthGuard). Public reads
+ * (`/form-definitions`, `/service_status`) need no token; the audit read, `PUT`,
+ * and the non-public `/services` view do. The token is never bundled client-side
+ * — it only lives in the encrypted session cookie and this server module.
  */
-import { getServiceStatusAdminToken } from "./secrets";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
@@ -40,9 +41,9 @@ interface ApiEnvelope<T> {
 async function call<T>(
   method: "GET" | "PUT",
   path: string,
-  body?: unknown,
+  opts: { body?: unknown; token?: string } = {},
 ): Promise<T> {
-  const token = await getServiceStatusAdminToken();
+  const { body, token } = opts;
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
   if (body !== undefined) headers["Content-Type"] = "application/json";
@@ -81,6 +82,9 @@ async function call<T>(
 }
 
 export const api = {
-  get: <T>(path: string) => call<T>("GET", path),
-  put: <T>(path: string, body: unknown) => call<T>("PUT", path, body),
+  /** GET a path. Pass the user's GitHub token to unlock guarded/non-public data. */
+  get: <T>(path: string, token?: string) => call<T>("GET", path, { token }),
+  /** PUT a path with the user's GitHub token (required by the API's guard). */
+  put: <T>(path: string, body: unknown, token: string) =>
+    call<T>("PUT", path, { body, token }),
 };

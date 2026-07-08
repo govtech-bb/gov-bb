@@ -60,8 +60,10 @@ pnpm dev:feature_flagging_ui   # serves http://localhost:3005
 
 Open http://localhost:3005 → the login page → **Sign in with GitHub**; after
 sign-in you're in as your GitHub login. The app reads the **sandbox** forms API
-by default (`FEATURE_FLAGGING_API_URL`), and with no `SERVICE_STATUS_ADMIN_TOKEN`
-the api's `AdminTokenGuard` passes through (ADR-0061).
+by default (`FEATURE_FLAGGING_API_URL`). The API authenticates its admin routes
+by your forwarded GitHub token — locally any authenticated GitHub user is
+authorized, so no admin token is needed. (Toggling against sandbox requires the
+GitHub-auth API change to be deployed there — see the `apps/api` PR.)
 
 ## Service catalogue
 
@@ -89,9 +91,9 @@ requires one-time infra, done outside the codebase:
 - [ ] Set env + Secrets Manager entries per environment:
       `FEATURE_FLAGGING_API_URL`, `OAUTH_REDIRECT_BASE`, `GITHUB_ORG`,
       `GITHUB_TEAM_SLUG`, and the `FEATURE_FLAGGING_TOKENS_SECRET_ARN`
-      (`{ admin_token, session_secret }`) +
+      (`{ session_secret }`) +
       `FEATURE_FLAGGING_GITHUB_OAUTH_SECRET_ARN` (`{ client_id, client_secret }`).
-- [ ] Set `SERVICE_STATUS_ADMIN_TOKEN` on the `apps/api` service (must match
-      `admin_token`) so the guard enforces in prod — today it is unset (dev
-      passthrough).
+- [ ] Ensure `apps/api` has `GITHUB_ORG` + `GITHUB_TEAM_SLUG` set so it can
+      authorize the forwarded GitHub tokens in prod (no shared admin token
+      needed — see the `apps/api` GitHub-auth change).
 ```

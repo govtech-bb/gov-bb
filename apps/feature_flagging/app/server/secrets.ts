@@ -6,11 +6,12 @@
 // grant, cached per warm Lambda container.
 //
 // JSON shape:
-//   FEATURE_FLAGGING_TOKENS_SECRET_ARN        → { admin_token, session_secret }
+//   FEATURE_FLAGGING_TOKENS_SECRET_ARN        → { session_secret }
 //   FEATURE_FLAGGING_GITHUB_OAUTH_SECRET_ARN  → { client_id, client_secret }
 //
-// `process.env.X` fallbacks remain so local dev / `.env.local` keeps working —
-// if the plaintext value is already in the environment we never call SM.
+// The service_status API is authenticated by the user's forwarded GitHub token
+// (see app/server/api-client.ts), so no service-to-service admin token is kept
+// here. `process.env.X` fallbacks remain so local dev / `.env.local` works.
 
 import { getCachedSecretJson } from "@govtech-bb/aws-secrets";
 
@@ -24,22 +25,6 @@ function readStringField(
     throw new Error(`Field '${key}' missing or empty in secret ${arnLabel}`);
   }
   return v;
-}
-
-/**
- * Admin bearer token for the service_status API (PUT + audit read). Unlike the
- * session secret this is allowed to be empty: in local dev the api's
- * AdminTokenGuard passes through when no token is configured (ADR-0061), so an
- * empty token is a valid "dev, no auth" state rather than an error.
- */
-export async function getServiceStatusAdminToken(): Promise<string> {
-  const direct = process.env.SERVICE_STATUS_ADMIN_TOKEN;
-  if (direct) return direct;
-  const arn = process.env.FEATURE_FLAGGING_TOKENS_SECRET_ARN;
-  if (!arn) return "";
-  const json = await getCachedSecretJson(arn);
-  const v = json["admin_token"];
-  return typeof v === "string" ? v : "";
 }
 
 export async function getSessionSecret(): Promise<string> {

@@ -53,10 +53,13 @@ export function mapServicesIndex(
  */
 export const listServices = createServerFn({ method: "GET" })
   .middleware([requireSession])
-  .handler(async (): Promise<ServiceRow[]> => {
+  .handler(async ({ context }): Promise<ServiceRow[]> => {
+    // Forward the user's GitHub token so /services returns non-public
+    // (preview/draft) services too. The other two reads are public.
+    const token = context.session.accessToken;
     const [services, forms, statuses] = await Promise.all([
       api
-        .get<ServiceIndexEntry[]>("/services")
+        .get<ServiceIndexEntry[]>("/services", token)
         .catch(() => [] as ServiceIndexEntry[]),
       api.get<FormSummary[]>("/form-definitions"),
       api.get<StatusRow[]>("/service_status"),
@@ -69,8 +72,8 @@ export const listServices = createServerFn({ method: "GET" })
   });
 
 /**
- * Set a service's status. The audit `author` is the authenticated GitHub login
- * from the session — never client-supplied.
+ * Set a service's status. Forwards the user's GitHub token; the API verifies it
+ * and records the audit author from the verified login (never client-supplied).
  */
 export const setServiceStatus = createServerFn({ method: "POST" })
   .middleware([requireSession])
@@ -83,19 +86,20 @@ export const setServiceStatus = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }): Promise<StatusRow> => {
-    return api.put<StatusRow>("/service_status", {
-      slug: data.slug,
-      status: data.status,
-      author: context.session.login,
-    });
+    return api.put<StatusRow>(
+      "/service_status",
+      { slug: data.slug, status: data.status },
+      context.session.accessToken,
+    );
   });
 
 /** A service's status-change history, newest first. */
 export const getServiceAudit = createServerFn({ method: "GET" })
   .middleware([requireSession])
   .inputValidator(z.object({ slug: z.string().min(1).max(100) }))
-  .handler(async ({ data }): Promise<AuditEntry[]> => {
+  .handler(async ({ data, context }): Promise<AuditEntry[]> => {
     return api.get<AuditEntry[]>(
       `/service_status/audit?slug=${encodeURIComponent(data.slug)}`,
+      context.session.accessToken,
     );
   });

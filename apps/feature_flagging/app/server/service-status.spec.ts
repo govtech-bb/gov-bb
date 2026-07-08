@@ -14,6 +14,12 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+const CTX = {
+  context: {
+    session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
+  },
+} as never;
+
 describe("mapServicesIndex", () => {
   it("maps index entries to the reconciler's landing-service shape", () => {
     expect(
@@ -59,9 +65,9 @@ describe("listServices", () => {
       return Promise.resolve([]);
     });
 
-    const rows = await listServices();
+    const rows = await listServices(CTX);
 
-    expect(get).toHaveBeenCalledWith("/services");
+    expect(get).toHaveBeenCalledWith("/services", "gh_tok");
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       slug: "get-x",
@@ -79,7 +85,7 @@ describe("listServices", () => {
       return Promise.resolve([]);
     });
 
-    const rows = await listServices();
+    const rows = await listServices(CTX);
 
     expect(rows).toEqual([
       expect.objectContaining({ slug: "only-form", hasForm: true }),
@@ -88,31 +94,39 @@ describe("listServices", () => {
 });
 
 describe("setServiceStatus", () => {
-  it("sends the session login as the audit author, not a client value", async () => {
+  it("forwards the GitHub token and sends no author in the body", async () => {
     put.mockResolvedValue({ slug: "passport-renewal", status: "disabled" });
 
     const result = await setServiceStatus({
       data: { slug: "passport-renewal", status: "disabled" },
-      context: { session: { login: "octocat", accessToken: "", expiresAt: 0 } },
+      context: {
+        session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
+      },
     } as never);
 
-    expect(put).toHaveBeenCalledWith("/service_status", {
-      slug: "passport-renewal",
-      status: "disabled",
-      author: "octocat",
-    });
+    expect(put).toHaveBeenCalledWith(
+      "/service_status",
+      { slug: "passport-renewal", status: "disabled" },
+      "gh_tok",
+    );
     expect(result).toEqual({ slug: "passport-renewal", status: "disabled" });
   });
 });
 
 describe("getServiceAudit", () => {
-  it("requests the audit for the given slug (url-encoded)", async () => {
+  it("requests the audit for the given slug (url-encoded) with the token", async () => {
     get.mockResolvedValue([]);
 
-    await getServiceAudit({ data: { slug: "a/b service" } } as never);
+    await getServiceAudit({
+      data: { slug: "a/b service" },
+      context: {
+        session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
+      },
+    } as never);
 
     expect(get).toHaveBeenCalledWith(
       "/service_status/audit?slug=a%2Fb%20service",
+      "gh_tok",
     );
   });
 });
