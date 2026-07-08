@@ -17,6 +17,7 @@
     "dev:forms": "nx dev forms",
     "dev:api": "ln -sfn ../dist/apps/api/src node_modules/@ && nx dev api",
     "dev:landing": "nx dev landing",
+    "dev:feature_flagging_ui": "nx dev feature-flagging-app",
     "start:forms": "nx start forms",
     "start:api": "ln -sfn ../dist/apps/api/src node_modules/@ && nx start api",
     "format": "prettier --write .",
