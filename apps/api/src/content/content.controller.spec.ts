@@ -1,53 +1,54 @@
+import { vi } from "vitest";
+
+const { authorizeGitHubToken } = vi.hoisted(() => ({
+  authorizeGitHubToken: vi.fn(),
+}));
+vi.mock("@/common/github-identity", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/common/github-identity")>()),
+  authorizeGitHubToken,
+}));
+
 import {
   ContentController,
   includeNonPublicFromAuth,
 } from "./content.controller";
 
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
 describe("includeNonPublicFromAuth", () => {
-  const OLD = { ...process.env };
-  afterEach(() => {
-    process.env = { ...OLD };
+  it("returns false when there is no bearer token (public-only)", async () => {
+    expect(await includeNonPublicFromAuth(undefined)).toBe(false);
+    expect(authorizeGitHubToken).not.toHaveBeenCalled();
   });
 
-  it("dev passthrough: no token configured, non-prod → true", () => {
-    delete process.env.SERVICE_STATUS_ADMIN_TOKEN;
-    delete process.env.ARCHIVE_DRAFTS_TOKEN;
-    process.env.NODE_ENV = "development";
-    expect(includeNonPublicFromAuth(undefined)).toBe(true);
+  it("returns true when the forwarded GitHub token is authorized", async () => {
+    authorizeGitHubToken.mockResolvedValue("octocat");
+    expect(await includeNonPublicFromAuth("Bearer gh_token")).toBe(true);
+    expect(authorizeGitHubToken).toHaveBeenCalledWith("gh_token");
   });
 
-  it("token configured + matching bearer → true", () => {
-    process.env.SERVICE_STATUS_ADMIN_TOKEN = "s3cret";
-    process.env.NODE_ENV = "production";
-    expect(includeNonPublicFromAuth("Bearer s3cret")).toBe(true);
+  it("returns false when the token is not authorized", async () => {
+    authorizeGitHubToken.mockResolvedValue(null);
+    expect(await includeNonPublicFromAuth("Bearer gh_token")).toBe(false);
   });
 
-  it("token configured + wrong/absent bearer → false", () => {
-    process.env.SERVICE_STATUS_ADMIN_TOKEN = "s3cret";
-    process.env.NODE_ENV = "production";
-    expect(includeNonPublicFromAuth("Bearer nope")).toBe(false);
-    expect(includeNonPublicFromAuth(undefined)).toBe(false);
-  });
-
-  it("no token configured in production (misconfigured) → false", () => {
-    delete process.env.SERVICE_STATUS_ADMIN_TOKEN;
-    delete process.env.ARCHIVE_DRAFTS_TOKEN;
-    process.env.NODE_ENV = "production";
-    expect(includeNonPublicFromAuth("Bearer anything")).toBe(false);
+  it("fails safe to public-only if verification throws", async () => {
+    authorizeGitHubToken.mockRejectedValue(new Error("misconfig"));
+    expect(await includeNonPublicFromAuth("Bearer gh_token")).toBe(false);
   });
 });
 
 describe("ContentController", () => {
-  it("passes the auth-derived flag to the service and wraps the response", () => {
+  it("passes the auth-derived flag to the service and wraps the response", async () => {
+    authorizeGitHubToken.mockResolvedValue("octocat");
     const mockService = { list: vi.fn().mockReturnValue([{ slug: "a" }]) };
     const controller = new ContentController(mockService as never);
-    process.env.NODE_ENV = "development";
-    delete process.env.SERVICE_STATUS_ADMIN_TOKEN;
-    delete process.env.ARCHIVE_DRAFTS_TOKEN;
 
-    const result = controller.list(undefined);
+    const result = await controller.list("Bearer gh_token");
 
-    expect(mockService.list).toHaveBeenCalledWith(true); // dev passthrough
+    expect(mockService.list).toHaveBeenCalledWith(true);
     expect(result).toMatchObject({ status: "success", data: [{ slug: "a" }] });
   });
 });

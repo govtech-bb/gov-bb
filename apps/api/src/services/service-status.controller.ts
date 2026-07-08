@@ -16,7 +16,8 @@ import {
   type ServiceStatusView,
 } from "./service-status.service";
 import { ServiceStatusAuditQueryDto, UpdateServiceStatusDto } from "./dto";
-import { AdminTokenGuard } from "@/common/guards/admin-token.guard";
+import { GitHubAuthGuard } from "@/common/guards/github-auth.guard";
+import { GitHubLogin } from "@/common/github-login.decorator";
 import { ApiResponse } from "@/common/response";
 import type { ApiResponseShape } from "@/common/response";
 
@@ -24,10 +25,12 @@ import type { ApiResponseShape } from "@/common/response";
  * Read + admin-mutate endpoints for database-driven service visibility
  * (see PR #1876 for the schema).
  *
- * The PUT is authenticated by `AdminTokenGuard` — every request must carry a
- * valid `Authorization: Bearer <SERVICE_STATUS_ADMIN_TOKEN>`, falling back to
- * `ARCHIVE_DRAFTS_TOKEN` while the dedicated var is unset (dev-bypass policy per
- * ADR 0061). The GET is an unauthenticated read of current statuses.
+ * The audit read and PUT are authenticated by `GitHubAuthGuard` — the caller
+ * forwards a GitHub access token (`Authorization: Bearer <github token>`) that
+ * the API validates against GitHub, checking org/team membership in production
+ * (any authenticated GitHub user in local dev). The verified login is the audit
+ * author — it is never taken from the request body. The GET of current statuses
+ * is an unauthenticated public read.
  */
 @ApiTags("Service Status")
 @Controller("service_status")
@@ -48,9 +51,7 @@ export class ServiceStatusController {
 
   @Get("audit")
   @ApiBearerAuth()
-  @UseGuards(
-    new AdminTokenGuard("SERVICE_STATUS_ADMIN_TOKEN", "ARCHIVE_DRAFTS_TOKEN"),
-  )
+  @UseGuards(GitHubAuthGuard)
   async audit(
     @Query() query: ServiceStatusAuditQueryDto,
   ): Promise<ApiResponseShape<ServiceStatusAuditView[]>> {
@@ -63,16 +64,15 @@ export class ServiceStatusController {
   @Put()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @UseGuards(
-    new AdminTokenGuard("SERVICE_STATUS_ADMIN_TOKEN", "ARCHIVE_DRAFTS_TOKEN"),
-  )
+  @UseGuards(GitHubAuthGuard)
   async update(
     @Body() body: UpdateServiceStatusDto,
+    @GitHubLogin() author: string,
   ): Promise<ApiResponseShape<ServiceStatusView>> {
     const data = await this.serviceStatus.setStatus(
       body.slug,
       body.status,
-      body.author,
+      author,
     );
     return ApiResponse.success(data, { message: "Service status updated" });
   }
