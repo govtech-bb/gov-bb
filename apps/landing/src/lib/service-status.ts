@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { resolveCachedValue } from './cached-resolver'
+import { FETCH_TIMEOUT_MS, fetchWithTimeout, formsApiBase } from './forms-api'
 
 /**
  * Runtime resolution of the DB-driven service_status overrides (#1897).
@@ -17,9 +18,6 @@ import { resolveCachedValue } from './cached-resolver'
  * keeps behaving exactly as its frontmatter says (ADR 0030 degradation model:
  * fail open to the seed, never fail closed).
  */
-
-const DEFAULT_API_URL = 'https://forms.api.sandbox.alpha.gov.bb'
-const FETCH_TIMEOUT_MS = 15_000
 
 /** How long a fetched map is served before the next request refetches it. */
 const TTL_MS = 60_000
@@ -90,21 +88,6 @@ export function parseServiceStatuses(payload: unknown): ServiceStatusMap {
     result[slug] = status as ServiceStatusValue
   }
   return result
-}
-
-async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), ms)
-  try {
-    return await fetch(url, { signal: controller.signal })
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
-/** Base URL of the forms API, trailing slashes trimmed. */
-function formsApiBase(): string {
-  return (process.env.VITE_FORMS_API_URL ?? DEFAULT_API_URL).replace(/\/+$/, '')
 }
 
 /** Fetch and validate the current service_status map. */

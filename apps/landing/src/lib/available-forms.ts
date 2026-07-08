@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { resolveCachedValue } from './cached-resolver'
+import { FETCH_TIMEOUT_MS, fetchWithTimeout, formsApiBase } from './forms-api'
 
 /**
  * Runtime resolution of the available forms list.
@@ -28,9 +29,6 @@ import { resolveCachedValue } from './cached-resolver'
  * See docs/decisions/0030-landing-resolves-form-availability-at-runtime.md
  * (supersedes 0005).
  */
-
-const DEFAULT_API_URL = 'https://forms.api.sandbox.alpha.gov.bb'
-const FETCH_TIMEOUT_MS = 15_000
 
 /** How long a fetched list is served before the next request refetches it. */
 const TTL_MS = 60_000
@@ -109,21 +107,6 @@ export function parseMaintenanceIds(payload: unknown): string[] {
     }
     return id
   })
-}
-
-async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), ms)
-  try {
-    return await fetch(url, { signal: controller.signal })
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
-/** Base URL of the forms API, trailing slashes trimmed. */
-function formsApiBase(): string {
-  return (process.env.VITE_FORMS_API_URL ?? DEFAULT_API_URL).replace(/\/+$/, '')
 }
 
 /** Fetch and validate the canonical list of available form IDs. */
