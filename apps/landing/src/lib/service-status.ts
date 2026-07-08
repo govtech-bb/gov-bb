@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
+import { resolveCachedValue } from './cached-resolver'
 import type { ViewLevel } from './frontmatter'
 
 /**
@@ -45,16 +46,6 @@ const TTL_MS = 60_000
  * back to its last-known-good map immediately rather than make a visitor wait.
  */
 const COLD_START_RETRIES = 3
-
-/** Backoff between cold-start retries; the last value repeats if exceeded. */
-const RETRY_DELAYS_MS = [200, 500, 1000]
-
-function retryDelayMs(attempt: number): number {
-  return RETRY_DELAYS_MS[Math.min(attempt - 1, RETRY_DELAYS_MS.length - 1)]
-}
-
-const defaultSleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms))
 
 const STATUS_VALUES: ReadonlySet<string> = new Set([
   'enabled',
@@ -177,15 +168,13 @@ async function fetchServiceStatuses(): Promise<ServiceStatusEntry[]> {
 }
 
 /**
- * Resolve the service statuses through the cache. Pure with respect to time and
- * I/O — `now`, the `fetcher`, and the `cache` holder are injected so the
- * caching, freshness, and fallback behaviour can be tested without the network.
- *
- * - Fresh (younger than `ttlMs`): return the cached map, no fetch.
- * - Stale: refetch, update the cache, return the new map.
- * - Fetch fails with a cached map present: return the last-known-good map.
- * - Fetch fails with no cache (cold start): warn and return `[]` — every service
- *   falls back to its frontmatter default and self-heals on the next fetch.
+ * Resolve the service statuses through the cache. A thin adapter over the shared
+ * {@link resolveCachedValue} — it maps this module's `{ entries, fetchedAt }`
+ * cache slot onto the generic `{ value, fetchedAt }` shape. `now`, the `fetcher`,
+ * and the `cache` holder are injected so the caching, freshness, and fallback
+ * behaviour can be tested without the network. A cold-start failure with no
+ * cache warns and returns `[]` — every service falls back to its frontmatter
+ * default and self-heals on the next fetch.
  */
 export async function resolveServiceStatuses({
   now,
@@ -193,7 +182,7 @@ export async function resolveServiceStatuses({
   fetcher,
   cache,
   coldStartRetries = 0,
-  sleep = defaultSleep,
+  sleep,
 }: {
   now: number
   ttlMs: number
@@ -204,38 +193,28 @@ export async function resolveServiceStatuses({
   /** Injectable delay so tests don't wait on real timers. */
   sleep?: (ms: number) => Promise<void>
 }): Promise<ServiceStatusEntry[]> {
-  const cached = cache.current
-  if (cached && now - cached.fetchedAt < ttlMs) {
-    return cached.entries
-  }
-
-  const maxAttempts = cached ? 1 : 1 + Math.max(0, coldStartRetries)
-  let lastErr: unknown
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      const entries = await fetcher()
-      cache.current = { entries, fetchedAt: now }
-      return entries
-    } catch (err) {
-      lastErr = err
-      if (attempt < maxAttempts) await sleep(retryDelayMs(attempt))
-    }
-  }
-
-  if (cached) {
-    // Stale but present: keep serving the last-known-good map, and re-stamp the
-    // attempt so a down API isn't re-fetched (and blocked on the full timeout)
-    // on every request — it gets a fresh `ttlMs` cooldown before the next try.
-    cache.current = { entries: cached.entries, fetchedAt: now }
-    return cached.entries
-  }
-
-  console.warn(
-    '[service-status] could not fetch service statuses and have no cached ' +
-      'copy — services fall back to their frontmatter defaults until the next ' +
-      `successful fetch. Cause: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`,
-  )
-  return []
+  return resolveCachedValue<ServiceStatusEntry[]>({
+    now,
+    ttlMs,
+    fetcher,
+    getCached: () =>
+      cache.current
+        ? { value: cache.current.entries, fetchedAt: cache.current.fetchedAt }
+        : null,
+    setCached: (entry) => {
+      cache.current = { entries: entry.value, fetchedAt: entry.fetchedAt }
+    },
+    emptyValue: [],
+    coldStartRetries,
+    sleep,
+    onFetchFailure: (err) => {
+      console.warn(
+        '[service-status] could not fetch service statuses and have no cached ' +
+          'copy — services fall back to their frontmatter defaults until the ' +
+          `next successful fetch. Cause: ${err instanceof Error ? err.message : String(err)}`,
+      )
+    },
+  })
 }
 
 /** Per-instance cache, shared across requests served by this server process. */
