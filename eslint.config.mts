@@ -30,6 +30,12 @@ export default defineConfig([
       ],
     },
   },
+  {
+    // Test files legitimately use `any` for mocks, fixtures and spies;
+    // no-explicit-any stays strict on production code.
+    files: ["**/*.spec.{ts,tsx}", "**/*.test.{ts,tsx}"],
+    rules: { "@typescript-eslint/no-explicit-any": "off" },
+  },
   { files: ["**/*.json"], plugins: { json }, language: "json/json", extends: ["json/recommended"] },
   {
     files: ["**/*.css"],

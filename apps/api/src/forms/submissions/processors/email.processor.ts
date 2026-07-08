@@ -221,6 +221,7 @@ export class EmailProcessor implements ISubmissionProcessor {
       const reason = err instanceof Error ? err.message : String(err);
       throw new Error(
         `Failed to send email for recipientField "${recipientField}" on submission ${payload.submissionId}: ${reason}`,
+        { cause: err },
       );
     }
   }
