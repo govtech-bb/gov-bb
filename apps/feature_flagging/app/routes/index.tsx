@@ -102,6 +102,11 @@ function ServicesPage() {
     categoryFilter !== "all" ||
     typeFilter !== "all";
 
+  // Orphans (stray service_status rows matching no service) are not real
+  // services, so report them separately rather than padding the count.
+  const orphanCount = rows.filter((r) => r.orphan).length;
+  const serviceCount = rows.length - orphanCount;
+
   function toggleSort(key: SortKey) {
     setSort((p) =>
       p.key === key
@@ -154,8 +159,8 @@ function ServicesPage() {
       </div>
       <p className="page-sub">
         {isFiltered
-          ? `Showing ${visible.length} of ${rows.length} services.`
-          : `${rows.length} services.`}{" "}
+          ? `Showing ${visible.length} of ${rows.length} rows.`
+          : `${serviceCount} services${orphanCount ? ` · ${orphanCount} orphaned status rows` : ""}.`}{" "}
         Changing a status writes to the service_status audit log against your
         GitHub login.
       </p>
