@@ -6,6 +6,10 @@ import { bakeStartLinkFormId } from '../utils/markdown/plugins'
 import { CATEGORIES, CATEGORY_BY_SLUG, getSubcategory } from './categories'
 import type { Category } from './categories'
 import { FeatureMetaSchema } from './feature-meta'
+import type {
+  ServiceStatusMap,
+  ServiceStatusValue,
+} from '../lib/service-status'
 
 export interface ContentPage {
   /** Relative slug derived from filename, e.g. "register-a-birth" or "register-a-birth/start". */
@@ -330,18 +334,43 @@ export function isDigitalService(page: ContentPage): boolean {
 }
 
 /**
+ * A `service_status` row's effective landing level (#1897). `enabled` and
+ * `form_disabled` both keep the page public — the form-side effect of
+ * `form_disabled` is handled entirely by the forms API + the existing
+ * available-forms/MaintenanceNotice machinery, not by page visibility.
+ * `disabled` hides the page from the public (still reachable with the
+ * preview/draft token, via the normal `ViewLevel` comparison).
+ */
+const STATUS_LEVEL: Record<ServiceStatusValue, ViewLevel> = {
+  enabled: 'public',
+  form_disabled: 'public',
+  disabled: 'preview',
+}
+
+/**
  * A page's *effective* level: the most restricted of its own `visibility` and
  * every ancestor page's. Walking ancestors by slug means flagging a service's
  * `index.md` as `preview`/`draft` automatically gates its `/start` (and other)
  * sub-pages, which sit at `<service>/<leaf>`. Slug-keyed (not URL) so it is
  * independent of the category prefix — a sub-page's URL hangs off its parent's,
  * but its slug is always `<parentSlug>/<leaf>`.
+ *
+ * `statusOverrides` (a `slug -> service_status` map, e.g. from
+ * `getServiceStatuses()`) lets a DB row fully replace an ancestor's *own*
+ * level in the walk, keyed by that ancestor's `form_id ?? slug`. Frontmatter
+ * `visibility` is the seed used only when no row exists; omitting the map
+ * entirely reproduces today's frontmatter-only behaviour.
  */
-export function pageLevel(page: ContentPage): ViewLevel {
-  return resolvePageLevel(
-    page.slug,
-    (slug) => BY_SLUG.get(slug)?.frontmatter.visibility,
-  )
+export function pageLevel(
+  page: ContentPage,
+  statusOverrides?: ServiceStatusMap,
+): ViewLevel {
+  return resolvePageLevel(page.slug, (slug) => {
+    const own = BY_SLUG.get(slug)
+    if (!own) return undefined
+    const status = statusOverrides?.[own.frontmatter.form_id ?? slug]
+    return status ? STATUS_LEVEL[status] : own.frontmatter.visibility
+  })
 }
 
 /**
@@ -365,8 +394,12 @@ export function resolvePageLevel(
 }
 
 /** A page is visible when the viewer's level meets the page's required level. */
-export function isVisible(page: ContentPage, viewer: ViewLevel): boolean {
-  return viewerMeets(viewer, pageLevel(page))
+export function isVisible(
+  page: ContentPage,
+  viewer: ViewLevel,
+  statusOverrides?: ServiceStatusMap,
+): boolean {
+  return viewerMeets(viewer, pageLevel(page, statusOverrides))
 }
 
 /**
@@ -376,14 +409,21 @@ export function isVisible(page: ContentPage, viewer: ViewLevel): boolean {
  * treated as `public` (fail-open: a missing page already 404s through its own
  * route).
  */
-export function urlLevel(url: string): ViewLevel {
+export function urlLevel(
+  url: string,
+  statusOverrides?: ServiceStatusMap,
+): ViewLevel {
   const page = findPage(url)
-  return page ? pageLevel(page) : 'public'
+  return page ? pageLevel(page, statusOverrides) : 'public'
 }
 
 /** Whether a viewer at `viewer` may see the page at `url`. */
-export function isUrlVisible(url: string, viewer: ViewLevel): boolean {
-  return viewerMeets(viewer, urlLevel(url))
+export function isUrlVisible(
+  url: string,
+  viewer: ViewLevel,
+  statusOverrides?: ServiceStatusMap,
+): boolean {
+  return viewerMeets(viewer, urlLevel(url, statusOverrides))
 }
 
 /**
@@ -462,12 +502,13 @@ export function resolveServiceHref(href: string): string {
 export function categoryServices(
   categorySlug: string,
   viewer: ViewLevel,
+  statusOverrides?: ServiceStatusMap,
 ): Array<ContentPage> {
   return PAGES.filter(
     (p) =>
       p.frontmatter.categories.includes(categorySlug) &&
       !isSubPage(p) &&
-      isVisible(p, viewer),
+      isVisible(p, viewer, statusOverrides),
   )
 }
 
@@ -480,8 +521,9 @@ export function categoryServices(
 export function isCategoryVisible(
   category: Category,
   viewer: ViewLevel,
+  statusOverrides?: ServiceStatusMap,
 ): boolean {
-  return categoryServices(category.slug, viewer).length > 0
+  return categoryServices(category.slug, viewer, statusOverrides).length > 0
 }
 
 export { CATEGORIES, CATEGORY_BY_SLUG }

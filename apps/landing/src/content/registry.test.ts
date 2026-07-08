@@ -6,6 +6,7 @@ import {
   isDigitalService,
   isStartSubPageVisible,
   isSubPage,
+  isUrlVisible,
   isVisible,
   PAGES,
   pageLevel,
@@ -318,5 +319,110 @@ describe('categoryServices', () => {
     expect(
       categoryServices('pensions-and-gratuities', 'preview').length,
     ).toBeGreaterThan(0)
+  })
+})
+
+describe('statusOverrides (#1897 — service_status drives landing visibility)', () => {
+  // A form-backed draft page: frontmatter seeds `draft`, and the page's
+  // form_id differs from its slug — the override key must be the form_id.
+  const bsseeEarly = findPage('education/apply-to-sit-the-bssee-early')!
+  // An info-only public page (no form_id) with a real /start sub-page — the
+  // override key falls back to the slug, and its ancestor walk is exercised
+  // by the sub-page.
+  const severance = findPage('money-financial-support/calculate-severance-pay')!
+  const severanceStart = findPage(
+    'money-financial-support/calculate-severance-pay/start',
+  )!
+
+  it('is a no-op when there is no override map — identical to today', () => {
+    expect(pageLevel(bsseeEarly)).toBe(pageLevel(bsseeEarly, undefined))
+    expect(pageLevel(severance)).toBe(pageLevel(severance, {}))
+    expect(isVisible(severance, 'public')).toBe(
+      isVisible(severance, 'public', {}),
+    )
+  })
+
+  it('an "enabled" override keyed by form_id raises a draft page to public', () => {
+    expect(pageLevel(bsseeEarly)).toBe('draft')
+    expect(
+      pageLevel(bsseeEarly, {
+        'bssee-form-a-pupil-under-11-request': 'enabled',
+      }),
+    ).toBe('public')
+  })
+
+  it('form-backed pages are keyed by form_id, not by slug', () => {
+    // Overriding the page's *slug* has no effect once it has a form_id.
+    expect(
+      pageLevel(bsseeEarly, {
+        'apply-to-sit-the-bssee-early': 'enabled',
+      }),
+    ).toBe('draft')
+  })
+
+  it('info-only pages (no form_id) are keyed by slug', () => {
+    expect(pageLevel(severance)).toBe('public')
+    expect(
+      pageLevel(severance, { 'calculate-severance-pay': 'disabled' }),
+    ).toBe('preview')
+  })
+
+  it('a "disabled" override hides a public page from a public viewer but not a preview-cookie viewer', () => {
+    const statusOverrides = { 'calculate-severance-pay': 'disabled' as const }
+    expect(isVisible(severance, 'public', statusOverrides)).toBe(false)
+    expect(isVisible(severance, 'preview', statusOverrides)).toBe(true)
+    expect(isVisible(severance, 'draft', statusOverrides)).toBe(true)
+  })
+
+  it('a "form_disabled" override leaves the page public', () => {
+    const statusOverrides = {
+      'calculate-severance-pay': 'form_disabled' as const,
+    }
+    expect(pageLevel(severance, statusOverrides)).toBe('public')
+    expect(isVisible(severance, 'public', statusOverrides)).toBe(true)
+  })
+
+  it('an override on an ancestor gates its sub-page through the walk', () => {
+    expect(pageLevel(severanceStart)).toBe('public')
+    expect(
+      pageLevel(severanceStart, { 'calculate-severance-pay': 'disabled' }),
+    ).toBe('preview')
+  })
+
+  it('an override on a sub-page does not affect its parent', () => {
+    const statusOverrides = {
+      'calculate-severance-pay/start': 'disabled' as const,
+    }
+    expect(pageLevel(severanceStart, statusOverrides)).toBe('preview')
+    expect(pageLevel(severance, statusOverrides)).toBe('public')
+  })
+
+  it('urlLevel and isUrlVisible apply overrides the same way as pageLevel/isVisible', () => {
+    const url = 'money-financial-support/calculate-severance-pay'
+    const statusOverrides = { 'calculate-severance-pay': 'disabled' as const }
+    expect(urlLevel(url, statusOverrides)).toBe('preview')
+    expect(isUrlVisible(url, 'public', statusOverrides)).toBe(false)
+    expect(isUrlVisible(url, 'preview', statusOverrides)).toBe(true)
+  })
+
+  it('isCategoryVisible and categoryServices apply overrides', () => {
+    // Severance is the only public service in work-employment among the
+    // fixtures this suite cares about; disable it and the category (and its
+    // listing) should reflect that for a public viewer.
+    const statusOverrides = { 'calculate-severance-pay': 'disabled' as const }
+    expect(
+      categoryServices('money-financial-support', 'public', statusOverrides),
+    ).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ slug: 'calculate-severance-pay' }),
+      ]),
+    )
+    expect(
+      categoryServices(
+        'money-financial-support',
+        'preview',
+        statusOverrides,
+      ).some((p) => p.slug === 'calculate-severance-pay'),
+    ).toBe(true)
   })
 })
