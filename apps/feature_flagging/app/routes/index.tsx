@@ -11,15 +11,15 @@ import {
 import { AuditDrawer } from "./-audit-drawer";
 
 export const Route = createFileRoute("/")({
-  // Gate initial navigation: an unauthenticated visitor is bounced to the OAuth
-  // flow (except in local dev, where no SESSION_SECRET is configured). The
-  // server functions below are independently guarded by requireSession.
+  // Gate initial navigation: an unauthenticated visitor is bounced to the GitHub
+  // OAuth flow in every environment. The server functions below are
+  // independently guarded by requireSession.
   beforeLoad: async () => {
     const session = await checkSession().catch(() => null);
-    if (!session && !import.meta.env.DEV) {
+    if (!session) {
       throw redirect({ to: "/auth/github" });
     }
-    return { login: session?.login ?? "dev" };
+    return { login: session.login };
   },
   loader: () => listServices(),
   component: ServicesPage,

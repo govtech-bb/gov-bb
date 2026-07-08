@@ -8,6 +8,7 @@ import { z } from "zod";
 import {
   exchangeCodeForToken,
   fetchGitHubLogin,
+  isAuthorized,
   userHasRepoWriteAccess,
   userIsTeamMember,
 } from "../../server/github-oauth";
@@ -65,11 +66,11 @@ export const Route = createFileRoute("/auth/github_/callback")({
   validateSearch: (search) => QuerySchema.parse(search),
   beforeLoad: async ({ search }) => {
     const rawBase = process.env.OAUTH_REDIRECT_BASE;
-    const teamSlug = process.env.GITHUB_TEAM_SLUG;
     if (!rawBase) throw new Error("OAUTH_REDIRECT_BASE is not set");
-    const org = repoOwner();
-    if (!teamSlug) throw new Error("GITHUB_TEAM_SLUG is not set");
     const base = normalizeOAuthBase(rawBase);
+    // Local dev authorizes any authenticated GitHub user; a deployed build
+    // enforces org/team (or repo-write) membership below.
+    const isDev = import.meta.env.DEV;
 
     const [{ clientId, clientSecret }, sessionSecret] = await Promise.all([
       getGitHubOAuthCreds(),
@@ -93,9 +94,23 @@ export const Route = createFileRoute("/auth/github_/callback")({
       redirectUri: `${base}/auth/github/callback`,
     });
     const login = await fetchGitHubLogin(accessToken);
-    const allowed =
-      (await userIsTeamMember({ accessToken, org, teamSlug, login })) ||
-      (await userHasRepoWriteAccess({ accessToken, org, login }));
+    let isTeamMember = false;
+    let hasRepoWrite = false;
+    if (!isDev) {
+      const org = repoOwner();
+      const teamSlug = process.env.GITHUB_TEAM_SLUG;
+      if (!teamSlug) throw new Error("GITHUB_TEAM_SLUG is not set");
+      isTeamMember = await userIsTeamMember({
+        accessToken,
+        org,
+        teamSlug,
+        login,
+      });
+      if (!isTeamMember) {
+        hasRepoWrite = await userHasRepoWriteAccess({ accessToken, org, login });
+      }
+    }
+    const allowed = isAuthorized({ isDev, isTeamMember, hasRepoWrite });
 
     if (!allowed) {
       // Clear the CSRF state cookie even on denial, so a retry starts clean.

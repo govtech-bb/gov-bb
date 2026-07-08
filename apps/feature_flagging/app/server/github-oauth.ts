@@ -14,6 +14,23 @@ const GITHUB_USER_URL = "https://api.github.com/user";
 const USER_AGENT = "gov-bb-feature-flagging";
 
 /**
+ * Whether an authenticated GitHub user may use the tool.
+ *
+ * - **Local dev** (`isDev`): any authenticated GitHub user is allowed — login is
+ *   still required, but no org/team membership is checked.
+ * - **Deployed** (Amplify, `!isDev`): the user must be an active member of the
+ *   configured team OR have write access to the repo (same gate as form_builder).
+ */
+export function isAuthorized(args: {
+  isDev: boolean;
+  isTeamMember: boolean;
+  hasRepoWrite: boolean;
+}): boolean {
+  if (args.isDev) return true;
+  return args.isTeamMember || args.hasRepoWrite;
+}
+
+/**
  * Exchange an OAuth `code` for an access token.
  * Throws on transport failures or if GitHub does not return a token.
  */

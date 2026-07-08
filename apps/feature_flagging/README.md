@@ -22,17 +22,43 @@ TanStack Start + Nitro SSR + React + Vite, deployed to AWS Amplify — the same
 shape as `apps/form_builder`, whose GitHub-OAuth session layer this reuses. The
 admin bearer token is held server-side only (never bundled into the client).
 
+## Auth
+
+GitHub sign-in is **required in every environment** — there is no dev bypass.
+Authorization differs by environment:
+
+- **Local dev** (`vite dev`): any authenticated GitHub user is allowed (login
+  required, but no org/team check).
+- **Deployed** (Amplify, any production build): the user must be an active member
+  of `${GITHUB_ORG}/${GITHUB_TEAM_SLUG}` **or** have write access to the repo —
+  otherwise they land on `/auth/denied`. Same gate as `form_builder`.
+
+The environment is distinguished by `import.meta.env.DEV` (true under `vite dev`,
+false in any built output including Amplify).
+
 ## Local dev
 
+Because login is required, local dev needs a GitHub OAuth app + a session
+secret. Put these in `.env` (see [`.env.example`](.env.example)):
+
 ```bash
-pnpm --filter @govtech-bb/feature-flagging-app dev
+SESSION_SECRET=$(openssl rand -base64 32)
+GITHUB_OAUTH_CLIENT_ID=<client id>
+GITHUB_OAUTH_CLIENT_SECRET=<client secret>
+OAUTH_REDIRECT_BASE=http://localhost:3001   # must match the OAuth app callback + the port vite prints
 ```
 
-With no `SESSION_SECRET` set, auth is bypassed (`login: "dev"`) and, with no
-`SERVICE_STATUS_ADMIN_TOKEN`, the api's `AdminTokenGuard` passes through
-(ADR-0061). By default the app reads the **sandbox** forms API
-(`FEATURE_FLAGGING_API_URL`) so the list is populated without a local api. See
-[`.env.example`](.env.example) for the full config.
+`GITHUB_ORG` / `GITHUB_TEAM_SLUG` are **not** needed locally (dev skips the
+membership check). Then:
+
+```bash
+pnpm dev:feature_flagging_ui   # or: pnpm --filter @govtech-bb/feature-flagging-app dev
+```
+
+Visiting the app redirects you to GitHub; after sign-in you're in as your GitHub
+login. The app reads the **sandbox** forms API by default
+(`FEATURE_FLAGGING_API_URL`), and with no `SERVICE_STATUS_ADMIN_TOKEN` the api's
+`AdminTokenGuard` passes through (ADR-0061).
 
 ## Service catalogue
 

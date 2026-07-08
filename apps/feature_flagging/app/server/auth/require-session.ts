@@ -13,35 +13,22 @@ import type { SessionPayload } from "../session";
  * valid cookie) can hit independently.
  *
  * Reads the `Cookie` header, decrypts the session blob with SESSION_SECRET, and
- * throws if there's no valid session. The decoded payload is passed down via
- * context so handlers can read `context.session.login` (used as the audit
- * author on PUT /service_status) without re-doing the work.
+ * throws if there's no valid session. A valid GitHub login is required in every
+ * environment — there is no dev bypass. (Local dev still signs in via GitHub; it
+ * only skips the org/team authorization check — see auth/github_.callback.tsx.)
+ * The decoded payload is passed down via context so handlers can read
+ * `context.session.login` (the audit author on PUT /service_status).
  */
 export const requireSession = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
-    let session: SessionPayload | null = null;
-    try {
-      const headers = getRequestHeaders();
-      const cookie =
-        (headers as { get?: (k: string) => string | null }).get?.("cookie") ??
-        (headers as { cookie?: string }).cookie ??
-        null;
-      const secret = await getSessionSecret();
-      session = getSession(cookie, secret);
-    } catch (err) {
-      // Local dev tolerance: no SESSION_SECRET configured falls through to the
-      // dev session below. In production the error propagates (DEV is
-      // statically false there).
-      if (!import.meta.env.DEV) throw err;
-    }
-    if (!session) {
-      if (!import.meta.env.DEV) throw new Error("Not authenticated");
-      session = {
-        login: "dev",
-        accessToken: "",
-        expiresAt: Date.now() + 60 * 60 * 1000,
-      };
-    }
+    const headers = getRequestHeaders();
+    const cookie =
+      (headers as { get?: (k: string) => string | null }).get?.("cookie") ??
+      (headers as { cookie?: string }).cookie ??
+      null;
+    const secret = await getSessionSecret();
+    const session: SessionPayload | null = getSession(cookie, secret);
+    if (!session) throw new Error("Not authenticated");
     return next({ context: { session } });
   },
 );
