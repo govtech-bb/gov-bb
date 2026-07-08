@@ -116,4 +116,64 @@ describe("authorizeGitHubToken", () => {
     });
     expect(await authorizeGitHubToken("good")).toBeNull();
   });
+
+  it("in production authorizes a non-member with repo write access", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.GITHUB_ORG = "govtech-bb";
+    process.env.GITHUB_TEAM_SLUG = "flag-admins";
+    stubFetch((url) => {
+      if (url.endsWith("/user"))
+        return { status: 200, body: { login: "maintainer" } };
+      if (url.includes("/memberships/")) return { status: 404, body: {} };
+      if (url.includes("/permission"))
+        return { status: 200, body: { permission: "admin" } };
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    expect(await authorizeGitHubToken("good")).toBe("maintainer");
+  });
+
+  it("throws in production when GITHUB_ORG / GITHUB_TEAM_SLUG are unset", async () => {
+    process.env.NODE_ENV = "production";
+    delete process.env.GITHUB_ORG;
+    delete process.env.GITHUB_TEAM_SLUG;
+    stubFetch((url) => {
+      if (url.endsWith("/user"))
+        return { status: 200, body: { login: "octocat" } };
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    await expect(authorizeGitHubToken("good")).rejects.toThrow(
+      /GITHUB_ORG and GITHUB_TEAM_SLUG/,
+    );
+  });
+
+  it("throws on an unexpected GitHub error during the membership check", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.GITHUB_ORG = "govtech-bb";
+    process.env.GITHUB_TEAM_SLUG = "flag-admins";
+    stubFetch((url) => {
+      if (url.endsWith("/user"))
+        return { status: 200, body: { login: "octocat" } };
+      if (url.includes("/memberships/")) return { status: 500, body: {} };
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    await expect(authorizeGitHubToken("good")).rejects.toThrow(
+      /team membership check failed/,
+    );
+  });
+
+  it("throws on an unexpected GitHub error during the repo permission check", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.GITHUB_ORG = "govtech-bb";
+    process.env.GITHUB_TEAM_SLUG = "flag-admins";
+    stubFetch((url) => {
+      if (url.endsWith("/user"))
+        return { status: 200, body: { login: "octocat" } };
+      if (url.includes("/memberships/")) return { status: 404, body: {} };
+      if (url.includes("/permission")) return { status: 500, body: {} };
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    await expect(authorizeGitHubToken("good")).rejects.toThrow(
+      /permission check failed/,
+    );
+  });
 });
