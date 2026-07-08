@@ -11,13 +11,13 @@ import {
 import { AuditDrawer } from "./-audit-drawer";
 
 export const Route = createFileRoute("/")({
-  // Gate initial navigation: an unauthenticated visitor is bounced to the GitHub
-  // OAuth flow in every environment. The server functions below are
-  // independently guarded by requireSession.
+  // Gate initial navigation: an unauthenticated visitor is sent to the login
+  // page in every environment. The server functions below are independently
+  // guarded by requireSession.
   beforeLoad: async () => {
     const session = await checkSession().catch(() => null);
     if (!session) {
-      throw redirect({ to: "/auth/github" });
+      throw redirect({ to: "/login" });
     }
     return { login: session.login };
   },

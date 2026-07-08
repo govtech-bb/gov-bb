@@ -9,11 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthGithubRouteImport } from './routes/auth/github'
-import { Route as AuthDeniedRouteImport } from './routes/auth/denied'
 import { Route as AuthGithubCallbackRouteImport } from './routes/auth/github_.callback'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -24,11 +29,6 @@ const AuthGithubRoute = AuthGithubRouteImport.update({
   path: '/auth/github',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthDeniedRoute = AuthDeniedRouteImport.update({
-  id: '/auth/denied',
-  path: '/auth/denied',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthGithubCallbackRoute = AuthGithubCallbackRouteImport.update({
   id: '/auth/github_/callback',
   path: '/auth/github/callback',
@@ -37,45 +37,47 @@ const AuthGithubCallbackRoute = AuthGithubCallbackRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/auth/denied': typeof AuthDeniedRoute
+  '/login': typeof LoginRoute
   '/auth/github': typeof AuthGithubRoute
   '/auth/github/callback': typeof AuthGithubCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/auth/denied': typeof AuthDeniedRoute
+  '/login': typeof LoginRoute
   '/auth/github': typeof AuthGithubRoute
   '/auth/github/callback': typeof AuthGithubCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/auth/denied': typeof AuthDeniedRoute
+  '/login': typeof LoginRoute
   '/auth/github': typeof AuthGithubRoute
   '/auth/github_/callback': typeof AuthGithubCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth/denied' | '/auth/github' | '/auth/github/callback'
+  fullPaths: '/' | '/login' | '/auth/github' | '/auth/github/callback'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth/denied' | '/auth/github' | '/auth/github/callback'
-  id:
-    | '__root__'
-    | '/'
-    | '/auth/denied'
-    | '/auth/github'
-    | '/auth/github_/callback'
+  to: '/' | '/login' | '/auth/github' | '/auth/github/callback'
+  id: '__root__' | '/' | '/login' | '/auth/github' | '/auth/github_/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AuthDeniedRoute: typeof AuthDeniedRoute
+  LoginRoute: typeof LoginRoute
   AuthGithubRoute: typeof AuthGithubRoute
   AuthGithubCallbackRoute: typeof AuthGithubCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -90,13 +92,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthGithubRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth/denied': {
-      id: '/auth/denied'
-      path: '/auth/denied'
-      fullPath: '/auth/denied'
-      preLoaderRoute: typeof AuthDeniedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth/github_/callback': {
       id: '/auth/github_/callback'
       path: '/auth/github/callback'
@@ -109,7 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AuthDeniedRoute: AuthDeniedRoute,
+  LoginRoute: LoginRoute,
   AuthGithubRoute: AuthGithubRoute,
   AuthGithubCallbackRoute: AuthGithubCallbackRoute,
 }

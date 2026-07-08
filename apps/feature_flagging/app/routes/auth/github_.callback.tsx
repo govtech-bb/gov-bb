@@ -60,7 +60,7 @@ const issueSessionCookie = createIsomorphicFn()
  * OAuth callback. Validates the CSRF state cookie, exchanges the code for a
  * token, checks team membership (or repo write access), and issues the session
  * cookie — all inline so the Set-Cookie header rides the same response as the
- * redirect to `/` (or `/auth/denied`).
+ * redirect to `/` (or `/login?error=…` on failure).
  */
 export const Route = createFileRoute("/auth/github_/callback")({
   validateSearch: (search) => QuerySchema.parse(search),
@@ -82,7 +82,7 @@ export const Route = createFileRoute("/auth/github_/callback")({
     const cookie = readCookieHeader();
     const storedState = parseOAuthStateCookie(cookie);
     if (!storedState || !verifyStateMatches(storedState, search.state)) {
-      throw redirect({ to: "/auth/denied", search: { reason: "csrf" } });
+      throw redirect({ to: "/login", search: { error: "csrf" } });
     }
 
     const secure = base.startsWith("https://");
@@ -115,7 +115,7 @@ export const Route = createFileRoute("/auth/github_/callback")({
     if (!allowed) {
       // Clear the CSRF state cookie even on denial, so a retry starts clean.
       setResponseCookies(serializeOAuthStateCookie("", { secure, clear: true }));
-      throw redirect({ to: "/auth/denied" });
+      throw redirect({ to: "/login", search: { error: "denied" } });
     }
 
     const sessionCookie = issueSessionCookie(
