@@ -11,7 +11,9 @@ export default defineConfig([
   { files: ["**/*.{js,mjs,cjs,ts,mts,cts}"], plugins: { js }, extends: ["js/recommended"], languageOptions: { globals: {...globals.browser, ...globals.node} } },
   tseslint.configs.recommended,
   {
-    files: ["**/*.{ts,mts,cts}"],
+    // Include tsx/jsx so the `_`-prefix convention for intentionally-unused
+    // bindings is honoured in React files too, not just plain .ts.
+    files: ["**/*.{ts,tsx,mts,cts,jsx}"],
     languageOptions: {
       parserOptions: {
         tsconfigRootDir: import.meta.dirname,
