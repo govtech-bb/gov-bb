@@ -31,6 +31,12 @@ export class ServiceStatusService {
     return rows.map((row) => ({ slug: row.slug, status: row.status }));
   }
 
+  /** A single service's current status, or null when it has no row (seed/default applies). */
+  async getStatus(slug: string): Promise<ServiceStatus | null> {
+    const row = await this.statusRepo.findOne({ where: { slug } });
+    return row?.status ?? null;
+  }
+
   /** A service's status-change history, newest first. */
   async getAuditForSlug(slug: string): Promise<ServiceStatusAuditView[]> {
     const rows = await this.auditRepo.findBySlug(slug);

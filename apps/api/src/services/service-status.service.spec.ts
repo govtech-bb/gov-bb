@@ -62,6 +62,35 @@ describe("ServiceStatusService", () => {
     });
   });
 
+  describe("getStatus", () => {
+    it("returns the status for a known slug", async () => {
+      const auditRepo = makeAuditRepo();
+      const statusRepo = makeStatusRepo(auditRepo);
+      statusRepo.findOne.mockResolvedValue(
+        makeRow({ slug: "passport-renewal", status: ServiceStatus.DISABLED }),
+      );
+      const service = new ServiceStatusService(statusRepo, auditRepo);
+
+      const result = await service.getStatus("passport-renewal");
+
+      expect(statusRepo.findOne).toHaveBeenCalledWith({
+        where: { slug: "passport-renewal" },
+      });
+      expect(result).toBe(ServiceStatus.DISABLED);
+    });
+
+    it("returns null when no row exists for the slug", async () => {
+      const auditRepo = makeAuditRepo();
+      const statusRepo = makeStatusRepo(auditRepo);
+      statusRepo.findOne.mockResolvedValue(null);
+      const service = new ServiceStatusService(statusRepo, auditRepo);
+
+      const result = await service.getStatus("ghost-service");
+
+      expect(result).toBeNull();
+    });
+  });
+
   describe("getAuditForSlug", () => {
     it("returns the audit rows for a slug, mapped to the audit view", async () => {
       const auditRepo = makeAuditRepo();
