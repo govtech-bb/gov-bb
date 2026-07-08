@@ -1,0 +1,400 @@
+:root {
+  --bg: #f5f6f7;
+  --surface: #ffffff;
+  --border: #d7dbe0;
+  --text: #1a1a1a;
+  --muted: #5a636e;
+  --accent: #0b5cab;
+  --ok: #0a7d3f;
+  --warn: #9a6700;
+  --off: #a3161c;
+  font-family:
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.page-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.page-head h1 {
+  font-size: 24px;
+  margin: 0;
+}
+
+.page-sub {
+  color: var(--muted);
+  margin: 0 0 24px;
+  font-size: 14px;
+}
+
+.who {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.toolbar input,
+.toolbar select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  background: var(--surface);
+}
+
+.toolbar input {
+  flex: 1;
+  min-width: 220px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  background: #fafbfc;
+}
+
+button.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+button.th-sort:hover {
+  color: var(--text);
+}
+
+.sort-ind {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+.svc-title {
+  font-weight: 600;
+}
+
+.svc-slug {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.badge.form {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.badge.orphan {
+  color: var(--off);
+  border-color: color-mix(in srgb, var(--off) 40%, var(--border));
+}
+
+select.status {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font: inherit;
+  background: var(--surface);
+}
+
+select.status:disabled {
+  opacity: 0.5;
+}
+
+.status-enabled {
+  color: var(--ok);
+}
+.status-form_disabled {
+  color: var(--warn);
+}
+.status-disabled {
+  color: var(--off);
+}
+
+.linklike {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.row-error {
+  color: var(--off);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Audit drawer */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer {
+  width: min(440px, 100%);
+  height: 100%;
+  background: var(--surface);
+  padding: 24px;
+  overflow-y: auto;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+}
+
+.drawer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.drawer h2 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.audit-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+}
+
+.audit-item {
+  border-left: 2px solid var(--border);
+  padding: 0 0 16px 14px;
+  position: relative;
+}
+
+.audit-item .when {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.audit-item .change {
+  font-weight: 600;
+  margin: 2px 0;
+}
+
+.audit-item .who-line {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.empty {
+  color: var(--muted);
+  padding: 24px;
+  text-align: center;
+}
+
+/* Login / auth screen */
+.auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.auth-card {
+  max-width: 460px;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+}
+
+.auth-card h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.auth-sub {
+  color: var(--muted);
+  margin: 0 0 24px;
+  font-size: 14px;
+}
+
+.auth-error {
+  background: color-mix(in srgb, var(--off) 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--off) 35%, var(--border));
+  color: var(--off);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 14px;
+  margin: 0 0 20px;
+  text-align: left;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #1f2328;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: #000;
+}
+
+/* Confirm modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 10;
+}
+
+.modal {
+  width: min(460px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.modal h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.modal p {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.modal-warn {
+  background: color-mix(in srgb, var(--warn) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, var(--border));
+  color: var(--warn);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background: #f0f1f3;
+}
+
+/* Auto-width buttons inside the modal action row (override the full-width
+   .btn-primary/.btn-secondary defaults). */
+.modal-actions .btn-primary,
+.modal-actions .btn-secondary {
+  width: auto;
+}
