@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { checkSession, logoutSession } from "../server/auth";
 import { listServices, setServiceStatus } from "../server/service-status";
 import {
+  serviceTypeLabel,
   sortServiceRows,
   type ServiceRow,
   type SortDir,
@@ -67,6 +68,8 @@ function ServicesPage() {
     return sortServiceRows(filtered, sort.key, sort.dir);
   }, [rows, query, statusFilter, sort]);
 
+  const isFiltered = query.trim() !== "" || statusFilter !== "all";
+
   function toggleSort(key: SortKey) {
     setSort((p) =>
       p.key === key
@@ -118,8 +121,11 @@ function ServicesPage() {
         </span>
       </div>
       <p className="page-sub">
-        {rows.length} services. Changing a status writes to the service_status
-        audit log against your GitHub login.
+        {isFiltered
+          ? `Showing ${visible.length} of ${rows.length} services.`
+          : `${rows.length} services.`}{" "}
+        Changing a status writes to the service_status audit log against your
+        GitHub login.
       </p>
 
       <div className="toolbar">
@@ -187,11 +193,7 @@ function ServicesPage() {
                 </td>
                 <td>{row.category ?? "—"}</td>
                 <td>
-                  {row.hasForm ? (
-                    <span className="badge form">Form</span>
-                  ) : (
-                    <span className="badge">Info</span>
-                  )}
+                  <TypeBadge row={row} />
                   {row.orphan && <span className="badge orphan">Orphan</span>}
                 </td>
                 <td>
@@ -261,6 +263,12 @@ function ServicesPage() {
       )}
     </div>
   );
+}
+
+function TypeBadge({ row }: { row: ServiceRow }) {
+  const label = serviceTypeLabel(row);
+  if (!label) return null;
+  return <span className={`badge${row.hasForm ? " form" : ""}`}>{label}</span>;
 }
 
 function SortHeader({
