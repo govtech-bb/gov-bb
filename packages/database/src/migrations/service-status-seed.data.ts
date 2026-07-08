@@ -41,7 +41,7 @@ export const SERVICE_STATUS_SEED_ROWS: {
   },
   {
     slug: "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026",
-    status: "disabled",
+    status: "enabled",
   },
   {
     slug: "apply-to-the-barbados-youthadvance-corps",
