@@ -7,7 +7,12 @@ import { pageHead } from '../lib/page-head'
 import { getServiceStatuses } from '../lib/service-status'
 
 export const Route = createFileRoute('/services')({
-  loader: async () => ({ statusOverrides: await getServiceStatuses() }),
+  // A rejected fetch falls open to no overrides rather than erroring the
+  // route (ADR 0030) — resolveServiceStatuses already degrades a bad/failed
+  // upstream response internally; this only guards the RPC call itself.
+  loader: async () => ({
+    statusOverrides: await getServiceStatuses().catch(() => undefined),
+  }),
   head: () =>
     pageHead(
       'Alpha services',

@@ -405,6 +405,21 @@ describe('statusOverrides (#1897 — service_status drives landing visibility)',
     expect(isUrlVisible(url, 'preview', statusOverrides)).toBe(true)
   })
 
+  it('startSubPageLevel and isStartSubPageVisible apply overrides (#1897 review fix)', () => {
+    // A preview-cookie reviewer viewing a DB-disabled service must not see a
+    // Start link computed from frontmatter alone — the parent's override
+    // must flow through to the /start sub-page here too.
+    const statusOverrides = { 'calculate-severance-pay': 'disabled' as const }
+    expect(startSubPageLevel(severance)).toBe('public')
+    expect(startSubPageLevel(severance, statusOverrides)).toBe('preview')
+    expect(isStartSubPageVisible(severance, 'public', statusOverrides)).toBe(
+      false,
+    )
+    expect(isStartSubPageVisible(severance, 'preview', statusOverrides)).toBe(
+      true,
+    )
+  })
+
   it('isCategoryVisible and categoryServices apply overrides', () => {
     // Severance is the only public service in work-employment among the
     // fixtures this suite cares about; disable it and the category (and its

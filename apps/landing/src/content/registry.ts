@@ -433,9 +433,12 @@ export function isUrlVisible(
  * `/start` step: a page with no `/start` sub-page resolves to `public` and
  * keeps its existing manifest-gated behaviour.
  */
-export function startSubPageLevel(page: ContentPage): ViewLevel {
+export function startSubPageLevel(
+  page: ContentPage,
+  statusOverrides?: ServiceStatusMap,
+): ViewLevel {
   const start = BY_SLUG.get(`${page.slug}/start`)
-  return start ? pageLevel(start) : 'public'
+  return start ? pageLevel(start, statusOverrides) : 'public'
 }
 
 /**
@@ -447,8 +450,9 @@ export function startSubPageLevel(page: ContentPage): ViewLevel {
 export function isStartSubPageVisible(
   page: ContentPage,
   viewer: ViewLevel,
+  statusOverrides?: ServiceStatusMap,
 ): boolean {
-  return viewerMeets(viewer, startSubPageLevel(page))
+  return viewerMeets(viewer, startSubPageLevel(page, statusOverrides))
 }
 
 /**

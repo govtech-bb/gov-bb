@@ -162,6 +162,7 @@ describe('$ route loader gating', () => {
       kind: 'page',
       url: fakePage.url,
       effectiveLevel: 'public',
+      statusOverrides: {},
       availableForms: ['get-birth-certificate'],
       underMaintenance: false,
     })
@@ -323,6 +324,42 @@ describe('$ route service-status threading (#1897)', () => {
       { 'some-service': 'disabled' },
     )
   })
+
+  it('degrades to no overrides (fail-open) when the fetch rejects, without erroring the route', async () => {
+    const { Route } = await import('./$')
+    mocks.findPage.mockReturnValue(fakePage)
+    mocks.isVisible.mockReturnValue(true)
+    statusMocks.getServiceStatuses.mockRejectedValueOnce(new Error('down'))
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: 'secret-service' },
+      context: { level: 'public' },
+    })) as { kind: string }
+
+    expect(data.kind).toBe('page')
+    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'public', undefined)
+  })
+})
+
+describe('index route loader (#1897)', () => {
+  it('fetches and returns the service-status overrides map', async () => {
+    statusMocks.getServiceStatuses.mockResolvedValueOnce({
+      'some-service': 'disabled',
+    })
+    const { Route } = await import('./index')
+    const loader = Route.options.loader as () => Promise<unknown>
+    const data = await loader()
+    expect(data).toEqual({ statusOverrides: { 'some-service': 'disabled' } })
+  })
+
+  it('degrades to no overrides (fail-open) when the fetch rejects', async () => {
+    statusMocks.getServiceStatuses.mockRejectedValueOnce(new Error('down'))
+    const { Route } = await import('./index')
+    const loader = Route.options.loader as () => Promise<unknown>
+    const data = await loader()
+    expect(data).toEqual({ statusOverrides: undefined })
+  })
 })
 
 describe('services route loader (#1897)', () => {
@@ -334,6 +371,14 @@ describe('services route loader (#1897)', () => {
     const loader = Route.options.loader as () => Promise<unknown>
     const data = await loader()
     expect(data).toEqual({ statusOverrides: { 'some-service': 'disabled' } })
+  })
+
+  it('degrades to no overrides (fail-open) when the fetch rejects', async () => {
+    statusMocks.getServiceStatuses.mockRejectedValueOnce(new Error('down'))
+    const { Route } = await import('./services')
+    const loader = Route.options.loader as () => Promise<unknown>
+    const data = await loader()
+    expect(data).toEqual({ statusOverrides: undefined })
   })
 })
 
@@ -359,7 +404,9 @@ describe('form route beforeLoad gating', () => {
     )({
       context: { level: 'preview' },
     }).catch((e: unknown) => e)
-    expect(err).toBeUndefined()
+    // beforeLoad returns the fetched map into context so `head` (below) can
+    // reuse it without a second fetch.
+    expect(err).toEqual({ statusOverrides: {} })
   })
 
   it('allows public access when the owning service is public', async () => {
@@ -371,10 +418,10 @@ describe('form route beforeLoad gating', () => {
     )({
       context: { level: 'public' },
     }).catch((e: unknown) => e)
-    expect(err).toBeUndefined()
+    expect(err).toEqual({ statusOverrides: {} })
   })
 
-  it('fetches the status map and threads it into isUrlVisible', async () => {
+  it('fetches the status map exactly once and threads it into isUrlVisible', async () => {
     mocks.isUrlVisible.mockReturnValue(true)
     statusMocks.getServiceStatuses.mockResolvedValueOnce({
       'calculate-severance-pay': 'disabled',
@@ -389,6 +436,39 @@ describe('form route beforeLoad gating', () => {
       'preview',
       { 'calculate-severance-pay': 'disabled' },
     )
+    // Exactly one fetch per request — head() (below) reuses this result via
+    // context rather than fetching again.
+    expect(statusMocks.getServiceStatuses).toHaveBeenCalledOnce()
+  })
+
+  it('degrades to no overrides (fail-open) when the fetch rejects, without erroring the route', async () => {
+    mocks.isUrlVisible.mockReturnValue(true)
+    statusMocks.getServiceStatuses.mockRejectedValueOnce(new Error('down'))
+    const { Route } =
+      await import('./money-financial-support/calculate-severance-pay/form')
+    const result = await (
+      Route.options.beforeLoad as (a: unknown) => Promise<unknown>
+    )({
+      context: { level: 'public' },
+    })
+    expect(result).toEqual({ statusOverrides: undefined })
+    expect(mocks.isUrlVisible).toHaveBeenCalledWith(
+      'money-financial-support/calculate-severance-pay',
+      'public',
+      undefined,
+    )
+  })
+
+  it("head reads statusOverrides from beforeLoad's context instead of re-fetching", async () => {
+    const { Route } =
+      await import('./money-financial-support/calculate-severance-pay/form')
+    const head = Route.options.head as (a: unknown) => unknown
+    head({ match: { context: { statusOverrides: { x: 'disabled' } } } })
+    expect(mocks.urlLevel).toHaveBeenCalledWith(
+      'money-financial-support/calculate-severance-pay',
+      { x: 'disabled' },
+    )
+    expect(statusMocks.getServiceStatuses).not.toHaveBeenCalled()
   })
 })
 
@@ -419,6 +499,24 @@ describe('shelter feature route beforeLoad gating', () => {
       expect.any(String),
       'preview',
       { 'some-service': 'disabled' },
+    )
+  })
+
+  it('degrades to no overrides (fail-open) when the fetch rejects, without erroring the route', async () => {
+    mocks.isUrlVisible.mockReturnValue(true)
+    statusMocks.getServiceStatuses.mockRejectedValueOnce(new Error('down'))
+    const { Route } =
+      await import('./health-and-emergency-services/find-an-emergency-shelter/route')
+    const result = await (
+      Route.options.beforeLoad as (a: unknown) => Promise<unknown>
+    )({
+      context: { level: 'public' },
+    })
+    expect(result).toBeUndefined()
+    expect(mocks.isUrlVisible).toHaveBeenCalledWith(
+      expect.any(String),
+      'public',
+      undefined,
     )
   })
 })

@@ -6,8 +6,15 @@ import { CATEGORIES } from '../content/categories'
 import { isCategoryVisible } from '../content/registry'
 import { trackEvent } from '../lib/analytics'
 import { pageHead } from '../lib/page-head'
+import { getServiceStatuses } from '../lib/service-status'
 
 export const Route = createFileRoute('/')({
+  // A rejected fetch falls open to no overrides rather than erroring the
+  // route (ADR 0030) — resolveServiceStatuses already degrades a bad/failed
+  // upstream response internally; this only guards the RPC call itself.
+  loader: async () => ({
+    statusOverrides: await getServiceStatuses().catch(() => undefined),
+  }),
   head: () =>
     pageHead(
       'Government Services',
@@ -19,7 +26,10 @@ export const Route = createFileRoute('/')({
 
 function Home() {
   const { level } = Route.useRouteContext()
-  const categories = CATEGORIES.filter((cat) => isCategoryVisible(cat, level))
+  const { statusOverrides } = Route.useLoaderData()
+  const categories = CATEGORIES.filter((cat) =>
+    isCategoryVisible(cat, level, statusOverrides),
+  )
 
   const handleSearch = (q: string) => {
     trackEvent('search-submit', { query: q, source: 'home' })

@@ -21,6 +21,7 @@ import { getAvailableForms, getMaintenanceForms } from '../lib/available-forms'
 import { shouldHideStartLink } from '../lib/hide-start-link'
 import { checkFormAccessible } from '../lib/preview-form-access'
 import { getServiceStatuses } from '../lib/service-status'
+import type { ServiceStatusMap } from '../lib/service-status'
 import { seoTags } from '../lib/page-head'
 import { trackEvent } from '../lib/analytics'
 import { pageViewEvent } from './-page-view-event'
@@ -46,9 +47,13 @@ type LoaderData =
       kind: 'page'
       url: string
       // The page's level with service_status overrides already applied
-      // (#1897), computed once in the loader so `head()` and the component
-      // don't need the overrides map themselves.
+      // (#1897), computed once in the loader so `head()` doesn't need the
+      // overrides map itself.
       effectiveLevel: ViewLevel
+      // Passed through to PageView so isStartSubPageVisible (used to decide
+      // whether to hide the online-application method) also sees the
+      // overrides, rather than falling back to frontmatter-only.
+      statusOverrides: ServiceStatusMap | undefined
       availableForms: string[]
       underMaintenance: boolean
     }
@@ -69,9 +74,11 @@ export const Route = createFileRoute('/$')({
   loader: async ({ params, context }): Promise<LoaderData> => {
     const { level } = context
     // Fetched once per request and threaded through every visibility check
-    // below (#1897) — an empty map (no fetch/no rows) reproduces today's
-    // frontmatter-only behaviour.
-    const statusOverrides = await getServiceStatuses()
+    // below (#1897) — an empty/undefined map (no fetch/no rows) reproduces
+    // today's frontmatter-only behaviour. A rejected fetch (the server-fn RPC
+    // itself failing, not a validated-away bad response) falls open the same
+    // way, rather than erroring the route (ADR 0030).
+    const statusOverrides = await getServiceStatuses().catch(() => undefined)
     const splat = (params._splat ?? '').replace(/^\/+|\/+$/g, '')
     const segments = splat.split('/').filter(Boolean)
 
@@ -131,6 +138,7 @@ export const Route = createFileRoute('/$')({
         kind: 'page',
         url: page.url,
         effectiveLevel,
+        statusOverrides,
         availableForms,
         underMaintenance,
       }
@@ -208,6 +216,7 @@ function ContentRoute() {
         availableForms={data.availableForms}
         viewerLevel={level}
         effectiveLevel={data.effectiveLevel}
+        statusOverrides={data.statusOverrides}
         underMaintenance={data.underMaintenance}
       />
     )
@@ -236,12 +245,14 @@ function PageView({
   availableForms,
   viewerLevel,
   effectiveLevel,
+  statusOverrides,
   underMaintenance,
 }: {
   page: ContentPage
   availableForms: string[]
   viewerLevel: ViewLevel
   effectiveLevel: ViewLevel
+  statusOverrides: ServiceStatusMap | undefined
   underMaintenance: boolean
 }) {
   // A visitor whose level can't see this page's `/start` sub-page (because it's
@@ -256,7 +267,11 @@ function PageView({
     if (event) trackEvent(event.name, event.data)
   }, [page])
   const hideStartLink = shouldHideStartLink({
-    startSubPageVisible: isStartSubPageVisible(page, viewerLevel),
+    startSubPageVisible: isStartSubPageVisible(
+      page,
+      viewerLevel,
+      statusOverrides,
+    ),
     formId: page.frontmatter.form_id,
     availableForms,
   })

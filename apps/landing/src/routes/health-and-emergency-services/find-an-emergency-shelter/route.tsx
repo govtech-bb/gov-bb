@@ -14,7 +14,10 @@ export const Route = createFileRoute(
   '/health-and-emergency-services/find-an-emergency-shelter',
 )({
   beforeLoad: async ({ context }) => {
-    const statusOverrides = await getServiceStatuses()
+    // A rejected fetch falls open to no overrides rather than erroring the
+    // route (ADR 0030) — resolveServiceStatuses already degrades a bad/failed
+    // upstream response internally; this only guards the RPC call itself.
+    const statusOverrides = await getServiceStatuses().catch(() => undefined)
     if (!isUrlVisible(META.url, context.level, statusOverrides))
       throw notFound()
   },
