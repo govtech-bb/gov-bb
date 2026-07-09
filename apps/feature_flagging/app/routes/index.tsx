@@ -19,7 +19,6 @@ import {
   type ServiceStatus,
 } from "../lib/service-status";
 import {
-  DEFAULT_SEARCH,
   parseSearch,
   stripDefaults,
   type ServicesSearch,
