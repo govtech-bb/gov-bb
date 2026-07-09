@@ -12,21 +12,26 @@
 // Resilience: if the creds are absent or any fetch fails, the existing
 // committed snapshot is left untouched and the script exits 0 — running it
 // without creds can never blank out the committed data.
-import { existsSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import {
   UmamiClient,
   aggregateFormEvents,
+  aggregateSessions,
   buildFormDetail,
   buildFormRows,
+  buildJourneys,
   buildPageRows,
   buildPresets,
   buildSearchReport,
   buildSources,
+  type ActivityRow,
   type FormDetail,
   type FormDetailSource,
   type PresetReport,
+  type RawSession,
   type ReportModel,
+  type SessionReport,
 } from '@govtech-bb/umami-analytics'
 import { loadContent } from '@govtech-bb/content'
 import type { FormMeta } from '@govtech-bb/umami-analytics'
@@ -172,6 +177,101 @@ async function buildPreset(
   }
 }
 
+// Session-based consolidated report: crawl recent sessions + their activity and
+// aggregate distinct-session funnels, flow, entry/exit, device/country. Bounded
+// by UMAMI_SESSION_DAYS (default 7) and UMAMI_SESSION_MAX (default 500) to stay
+// within Umami's rate limit; the client throttles + retries transient errors.
+//
+// RESUMABLE: each session's activity is cached to disk as it's fetched
+// (.session-cache.json, gitignored). A re-run reuses the cache and only fetches
+// sessions not yet cached — so a crawl interrupted by a network drop picks up
+// where it stopped instead of re-crawling from scratch. Returns null only if
+// nothing at all could be gathered.
+const CACHE = fileURLToPath(new URL('./.session-cache.json', import.meta.url))
+
+interface SessionCache {
+  key: string
+  activities: Record<string, ActivityRow[]>
+}
+
+function loadCache(key: string): SessionCache {
+  if (existsSync(CACHE)) {
+    try {
+      const c = JSON.parse(readFileSync(CACHE, 'utf8')) as SessionCache
+      if (c.key === key) return c
+    } catch {
+      /* corrupt/stale cache — start fresh */
+    }
+  }
+  return { key, activities: {} }
+}
+
+async function buildSessionReport(
+  client: UmamiClient,
+  websiteId: string,
+  now: Date,
+): Promise<SessionReport | null> {
+  const days = Number(process.env.UMAMI_SESSION_DAYS ?? 7)
+  const maxSessions = Number(process.env.UMAMI_SESSION_MAX ?? 500)
+  const endAt = now.getTime()
+  const startAt = endAt - days * 86_400_000
+  const key = `${websiteId}:${days}d:${new Date(endAt).toISOString().slice(0, 10)}`
+
+  let sessions: RawSession[]
+  try {
+    sessions = await client.listSessions(
+      websiteId,
+      { startAt, endAt },
+      maxSessions,
+    )
+  } catch (err) {
+    console.warn('[analytics-snapshot] session list failed, skipping:', err)
+    return null
+  }
+
+  const cache = loadCache(key)
+  const cachedAtStart = Object.keys(cache.activities).length
+  let fetched = 0
+  let failed = 0
+  const flush = () => writeFileSync(CACHE, JSON.stringify(cache))
+
+  for (const s of sessions) {
+    if (cache.activities[s.id]) continue // resume: already have it
+    try {
+      cache.activities[s.id] = await client.sessionActivity(websiteId, s.id, {
+        startAt,
+        endAt,
+      })
+      fetched++
+      if (fetched % 25 === 0) flush() // periodic checkpoint so progress survives
+    } catch {
+      failed++ // skip this session; a re-run will retry it (not cached)
+    }
+  }
+  flush()
+
+  const withActivity = sessions
+    .filter((s) => cache.activities[s.id])
+    .map((s) => ({ session: s, activity: cache.activities[s.id]! }))
+
+  if (!withActivity.length) {
+    console.warn('[analytics-snapshot] no session activity gathered, skipping.')
+    return null
+  }
+  console.log(
+    `[analytics-snapshot] sessions: ${withActivity.length}/${sessions.length} with activity ` +
+      `(${cachedAtStart} cached, ${fetched} fetched, ${failed} failed this run)`,
+  )
+  const report = aggregateSessions(buildJourneys(withActivity), {
+    startAt,
+    endAt,
+  })
+  console.log(
+    `[analytics-snapshot] session report: ${report.totals.sessions} sessions, ${report.funnels.length} form funnels`,
+  )
+  return report
+}
+
 async function main() {
   loadLocalEnv()
   const cfg = readEnv()
@@ -218,13 +318,24 @@ async function main() {
     return
   }
 
+  // Consolidated session report (distinct-session funnels + journeys). One
+  // website now carries both landing + forms events, so crawl either id.
+  const sessions = await buildSessionReport(
+    client,
+    cfg.formsWebsiteId,
+    new Date(),
+  )
+
   const model: ReportModel = {
     generatedAt: new Date().toISOString(),
     timezone: cfg.timezone,
     presets: reports,
+    ...(sessions ? { sessions } : {}),
   }
   writeFileSync(OUT, JSON.stringify(model))
-  console.log(`[analytics-snapshot] wrote ${reports.length} presets → ${OUT}`)
+  console.log(
+    `[analytics-snapshot] wrote ${reports.length} presets${sessions ? ' + session report' : ''} → ${OUT}`,
+  )
 }
 
 main().catch((err) => {

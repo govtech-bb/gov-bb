@@ -121,4 +121,10 @@ export interface ReportModel {
   generatedAt: string;
   timezone: string;
   presets: PresetReport[];
+  /**
+   * Session-based consolidated report (distinct-session funnels, flow,
+   * entry/exit, devices, countries). Optional so an event-only snapshot still
+   * validates. See sessions.ts. Freshness (#1917) is `generatedAt` + `sessions.window`.
+   */
+  sessions?: import("./sessions").SessionReport;
 }
