@@ -2,6 +2,7 @@ import { Heading, Select, Text } from '@govtech-bb/react'
 import * as React from 'react'
 import { REPORT } from './lib/report'
 import type { FormDetail, FormRow, SearchReport } from './lib/report'
+import { SessionsSection } from './SessionsSection'
 
 const DEFAULT_PRESET = 'last-30-days'
 
@@ -125,7 +126,10 @@ export default function AnalyticsPage() {
           Umami Analytics
         </Heading>
         <Text as="p" size="caption" className="text-mid-grey-00">
-          Last updated {fmtUpdated(generatedAt, timezone)}
+          Committed snapshot · generated {fmtUpdated(generatedAt, timezone)}
+          {REPORT.sessions
+            ? ` · session data: last ${REPORT.sessions.window.days} days`
+            : ''}
         </Text>
         <div className="mt-s max-w-[220px]">
           <Select
@@ -254,6 +258,8 @@ export default function AnalyticsPage() {
         </div>
         <SearchSection search={current.search} />
       </section>
+
+      {REPORT.sessions ? <SessionsSection report={REPORT.sessions} /> : null}
 
       {activeForm ? (
         <>

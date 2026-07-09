@@ -372,7 +372,11 @@ export function aggregateSessions(
   });
   flow.sort((a, b) => a.depth - b.depth || b.count - a.count);
 
-  const seqs = tally(journeys, (j) => j.pages.join(" › "));
+  // Only sessions with at least one page contribute a navigation sequence —
+  // event-only sessions (no pageview rows) would otherwise show as an empty path.
+  const seqs = tally(journeys, (j) =>
+    j.pages.length ? j.pages.join(" › ") : null,
+  );
 
   return {
     window: {

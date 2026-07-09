@@ -194,4 +194,26 @@ describe("aggregateSessions — consolidation (flow / entry / exit / mix)", () =
   it("records the reporting window (freshness #1917 inputs)", () => {
     expect(report.window.days).toBe(30);
   });
+
+  it("excludes event-only (no-pageview) sessions from top journeys", () => {
+    const rep = aggregateSessions(
+      buildJourneys([
+        {
+          session: { id: "evonly" },
+          activity: [ev("f:form-start", "2026-07-01T10:00:00Z")], // no pageviews
+        },
+        {
+          session: { id: "paged" },
+          activity: [pv("/", "2026-07-01T10:00:00Z")],
+        },
+      ]),
+      { startAt: 0, endAt: 86_400_000 },
+    );
+    // the event-only session must not appear as an empty-path journey
+    expect(rep.topJourneys.every((j) => j.steps.join("").length > 0)).toBe(
+      true,
+    );
+    expect(rep.topJourneys).toHaveLength(1);
+    expect(rep.topJourneys[0]!.steps).toEqual(["/"]);
+  });
 });
