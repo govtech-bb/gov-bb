@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { resolveCachedValue } from './cached-resolver'
+import { formsApiBase } from './forms-api-url'
 import type { ViewLevel } from './frontmatter'
 
 /**
@@ -34,7 +35,6 @@ export type ServiceStatus = 'enabled' | 'form_disabled' | 'disabled'
  */
 export type ServiceStatusEntry = [key: string, status: ServiceStatus]
 
-const DEFAULT_API_URL = 'https://forms.api.sandbox.alpha.gov.bb'
 const FETCH_TIMEOUT_MS = 15_000
 
 /** How long a fetched map is served before the next request refetches it. */
@@ -150,15 +150,10 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
   }
 }
 
-/** Base URL of the API, trailing slashes trimmed. */
-function apiBase(): string {
-  return (process.env.VITE_FORMS_API_URL ?? DEFAULT_API_URL).replace(/\/+$/, '')
-}
-
 /** Fetch and validate the current service statuses. */
 async function fetchServiceStatuses(): Promise<ServiceStatusEntry[]> {
   const response = await fetchWithTimeout(
-    `${apiBase()}/service_status`,
+    `${formsApiBase()}/service_status`,
     FETCH_TIMEOUT_MS,
   )
   if (!response.ok) {
