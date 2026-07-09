@@ -1,10 +1,12 @@
 import { useLayoutEffect, useRef } from "react";
 
 const REORDER_MS = 250;
-const FLASH_MS = 300;
-// A soft --accent (#0b5cab) tint that fades to transparent — direction-neutral,
-// so it reads as "this row just changed" whether it was enabled or disabled.
-const FLASH_FROM = "rgba(11, 92, 171, 0.2)";
+const FLASH_MS = 1500;
+// A clearly-visible --accent (#0b5cab) tint that fades to transparent —
+// direction-neutral, so it reads as "this row just changed" whether it was
+// enabled or disabled. Held solid briefly, then faded, so it's obvious even
+// while the row slides to its new sorted position.
+const FLASH_FROM = "rgba(11, 92, 171, 0.45)";
 const FLASH_TO = "rgba(11, 92, 171, 0)";
 
 function prefersReducedMotion(): boolean {
@@ -48,9 +50,9 @@ export function useRowAnimations(orderKey: string) {
     // Read phase first: settled positions of every registered row, taken before
     // any animate() call so a mid-flight transform can't corrupt the measurement.
     const tops = new Map<string, number>();
-    rows.current.forEach((el, slug) =>
-      tops.set(slug, el.getBoundingClientRect().top),
-    );
+    rows.current.forEach((el, slug) => {
+      tops.set(slug, el.getBoundingClientRect().top);
+    });
 
     if (!prefersReducedMotion()) {
       rows.current.forEach((el, slug) => {
@@ -74,7 +76,11 @@ export function useRowAnimations(orderKey: string) {
     const el = rows.current.get(slug);
     if (!canAnimate(el)) return;
     el.animate(
-      [{ backgroundColor: FLASH_FROM }, { backgroundColor: FLASH_TO }],
+      [
+        { backgroundColor: FLASH_FROM, offset: 0 },
+        { backgroundColor: FLASH_FROM, offset: 0.2 },
+        { backgroundColor: FLASH_TO, offset: 1 },
+      ],
       { duration: FLASH_MS, easing: "ease-out" },
     );
   }
