@@ -1,4 +1,8 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  redirect,
+  type SearchSchemaInput,
+} from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { checkSession, logoutSession } from "../server/auth";
 import { listServices, setServiceStatus } from "../server/service-status";
@@ -14,9 +18,24 @@ import {
   STATUS_LABELS,
   type ServiceStatus,
 } from "../lib/service-status";
+import {
+  parseSearch,
+  stripDefaults,
+  type ServicesSearch,
+  type StatusFilter,
+} from "../lib/search-params";
+import { useRowAnimations } from "../lib/use-row-animations";
 import { AuditDrawer } from "./-audit-drawer";
 
 export const Route = createFileRoute("/")({
+  // Filters and sort live in the URL so a refresh (or a shared link) restores
+  // the same view; defaults are stripped so an unfiltered table stays at `/`.
+  // `SearchSchemaInput` marks every param optional for navigation (so a bare
+  // `redirect({ to: "/" })` still type-checks) while `useSearch` reads them back
+  // fully defaulted.
+  validateSearch: (
+    search: Partial<ServicesSearch> & SearchSchemaInput,
+  ): ServicesSearch => parseSearch(search),
   // Gate initial navigation: an unauthenticated visitor is sent to the login
   // page in every environment. The server functions below are independently
   // guarded by requireSession.
@@ -31,21 +50,31 @@ export const Route = createFileRoute("/")({
   component: ServicesPage,
 });
 
-type StatusFilter = ServiceStatus | "all";
-
 function ServicesPage() {
   const initial = Route.useLoaderData();
   const { login } = Route.useRouteContext();
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const [rows, setRows] = useState<ServiceRow[]>(initial);
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
-  // Default: enabled at the top, alphabetical within each status group.
-  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
-    key: "status",
-    dir: "asc",
-  });
+  const {
+    q: query,
+    category: categoryFilter,
+    type: typeFilter,
+    status: statusFilter,
+    sortKey,
+    sortDir,
+  } = search;
+  const sort = { key: sortKey, dir: sortDir };
+
+  // Merge a patch into the URL search, dropping any field back at its default so
+  // the URL only ever carries the filters/sort that differ from the base view.
+  // `replace` keeps typing in the search box out of the browser history stack.
+  const update = (patch: Partial<ServicesSearch>) =>
+    void navigate({
+      replace: true,
+      search: (prev) => stripDefaults({ ...prev, ...patch }),
+    });
+
   const [audit, setAudit] = useState<{ slug: string; title: string } | null>(
     null,
   );
@@ -93,8 +122,11 @@ function ServicesPage() {
         (r.category?.toLowerCase().includes(q) ?? false)
       );
     });
-    return sortServiceRows(filtered, sort.key, sort.dir);
-  }, [rows, query, statusFilter, categoryFilter, typeFilter, sort]);
+    return sortServiceRows(filtered, sortKey, sortDir);
+  }, [rows, query, statusFilter, categoryFilter, typeFilter, sortKey, sortDir]);
+
+  // Drives the FLIP reorder animation: changes whenever the rendered order does.
+  const anim = useRowAnimations(visible.map((r) => r.slug).join(","));
 
   const isFiltered =
     query.trim() !== "" ||
@@ -103,11 +135,9 @@ function ServicesPage() {
     typeFilter !== "all";
 
   function toggleSort(key: SortKey) {
-    setSort((p) =>
-      p.key === key
-        ? { key, dir: p.dir === "asc" ? "desc" : "asc" }
-        : { key, dir: "asc" },
-    );
+    const dir =
+      sortKey === key ? (sortDir === "asc" ? "desc" : "asc") : "asc";
+    update({ sortKey: key, sortDir: dir });
   }
 
   async function changeStatus(row: ServiceRow, next: ServiceStatus) {
@@ -117,6 +147,9 @@ function ServicesPage() {
     setRows((rs) =>
       rs.map((r) => (r.slug === row.slug ? { ...r, status: next } : r)),
     );
+    // Highlight the just-changed row; it fades as the row slides to its new
+    // sorted position (both run on the same, slug-keyed DOM node).
+    anim.flash(row.slug);
     setErrors((e) => ({ ...e, [row.slug]: "" }));
     setSaving((s) => ({ ...s, [row.slug]: true }));
     try {
@@ -165,12 +198,12 @@ function ServicesPage() {
           type="search"
           placeholder="Search by title, slug or category…"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => update({ q: e.target.value })}
           aria-label="Search services"
         />
         <select
           value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
+          onChange={(e) => update({ category: e.target.value })}
           aria-label="Filter by category"
         >
           <option value="all">All categories</option>
@@ -182,7 +215,7 @@ function ServicesPage() {
         </select>
         <select
           value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
+          onChange={(e) => update({ type: e.target.value })}
           aria-label="Filter by type"
         >
           <option value="all">All types</option>
@@ -194,7 +227,7 @@ function ServicesPage() {
         </select>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+          onChange={(e) => update({ status: e.target.value as StatusFilter })}
           aria-label="Filter by status"
         >
           <option value="all">All statuses</option>
@@ -239,7 +272,7 @@ function ServicesPage() {
           </thead>
           <tbody>
             {visible.map((row) => (
-              <tr key={row.slug}>
+              <tr key={row.slug} ref={anim.register(row.slug)}>
                 <td>
                   <div className="svc-title">{row.title}</div>
                   <div className="svc-slug">{row.slug}</div>
