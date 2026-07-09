@@ -1,0 +1,82 @@
+name: Refresh analytics snapshot
+
+# The /analytics dashboard renders a STATIC snapshot committed to the repo
+# (apps/analytics/src/content/analytics-snapshot.json). Nothing regenerates it
+# at build or request time, so it only refreshes when someone re-runs the
+# generator and commits. This scheduled job automates that refresh cadence while
+# keeping the fast, no-API-key-at-serve static model:
+#
+#   nightly → run generate:analytics (crawls Umami) → commit the snapshot if it
+#   changed → push to the integration branch → Amplify auto-build redeploys.
+#
+# Requires repo secrets: UMAMI_API_KEY, UMAMI_LANDING_WEBSITE_ID,
+# UMAMI_FORMS_WEBSITE_ID (server-side Umami Cloud API key + website ids).
+#
+# Branch note: commits to `sandbox` (the active integration branch analytics
+# deploys from). If that branch is protected against direct pushes, either grant
+# this workflow's token a push exception or switch TARGET_BRANCH + the final step
+# to open a PR instead.
+
+on:
+  schedule:
+    # 05:10 UTC daily ≈ 01:10 AST (Barbados, UTC-4). Off the hour to avoid the
+    # top-of-hour Actions surge.
+    - cron: "10 5 * * *"
+  workflow_dispatch: # manual refresh on demand
+
+# Never run two refreshes at once (they'd race on the commit).
+concurrency:
+  group: refresh-analytics-snapshot
+  cancel-in-progress: false
+
+permissions:
+  contents: write # commit + push the refreshed snapshot
+
+env:
+  TARGET_BRANCH: sandbox
+  # Session crawl bounds — kept modest to stay within Umami's rate limit.
+  UMAMI_SESSION_DAYS: "7"
+  UMAMI_SESSION_MAX: "500"
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Regenerate the snapshot
+        env:
+          UMAMI_API_KEY: ${{ secrets.UMAMI_API_KEY }}
+          UMAMI_LANDING_WEBSITE_ID: ${{ secrets.UMAMI_LANDING_WEBSITE_ID }}
+          UMAMI_FORMS_WEBSITE_ID: ${{ secrets.UMAMI_FORMS_WEBSITE_ID }}
+        run: pnpm --filter @govtech-bb/analytics-app run generate:analytics
+
+      - name: Commit + push if the snapshot changed
+        run: |
+          SNAP=apps/analytics/src/content/analytics-snapshot.json
+          if git diff --quiet -- "$SNAP"; then
+            echo "Snapshot unchanged — nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$SNAP"
+          git commit -m "chore(analytics): refresh Umami snapshot [automated]
+
+          Nightly regeneration of the committed analytics snapshot so the
+          /analytics dashboard stays current without leaving the static model.
+
+          Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+          git push origin "HEAD:${TARGET_BRANCH}"
+          echo "Pushed refreshed snapshot to ${TARGET_BRANCH}."
