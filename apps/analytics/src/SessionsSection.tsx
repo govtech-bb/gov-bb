@@ -1,5 +1,4 @@
 import { Heading, Text } from '@govtech-bb/react'
-import * as React from 'react'
 import type {
   FormFunnel,
   FunnelStep,

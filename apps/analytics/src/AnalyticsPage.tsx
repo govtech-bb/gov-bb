@@ -1,7 +1,11 @@
 import { Heading, Select, Text } from '@govtech-bb/react'
 import * as React from 'react'
-import { REPORT } from './lib/report'
-import type { FormDetail, FormRow, SearchReport } from './lib/report'
+import type {
+  FormDetail,
+  FormRow,
+  ReportModel,
+  SearchReport,
+} from '@govtech-bb/umami-analytics'
 import { SessionsSection } from './SessionsSection'
 
 const DEFAULT_PRESET = 'last-30-days'
@@ -78,8 +82,37 @@ interface SrcPop {
   y: number
 }
 
-export default function AnalyticsPage() {
-  const { presets, generatedAt, timezone } = REPORT
+export default function AnalyticsPage({
+  report,
+  refreshedAt,
+}: {
+  report: ReportModel | null
+  refreshedAt: string | null
+}) {
+  if (!report) {
+    return (
+      <div className="container py-8">
+        <Heading as="h1" size="h1">
+          Umami Analytics
+        </Heading>
+        <Text as="p" className="mt-s text-mid-grey-00">
+          Analytics are warming up — the first server-side refresh hasn't
+          completed yet. Check back in a few minutes.
+        </Text>
+      </div>
+    )
+  }
+  return <AnalyticsDashboard report={report} refreshedAt={refreshedAt} />
+}
+
+function AnalyticsDashboard({
+  report,
+  refreshedAt,
+}: {
+  report: ReportModel
+  refreshedAt: string | null
+}) {
+  const { presets, generatedAt, timezone } = report
   const [presetKey, setPresetKey] = React.useState(
     presets.find((p) => p.key === DEFAULT_PRESET)?.key ?? presets[0]?.key ?? '',
   )
@@ -95,8 +128,7 @@ export default function AnalyticsPage() {
           Umami Analytics
         </Heading>
         <Text as="p" className="mt-s text-mid-grey-00">
-          The analytics snapshot is empty. Regenerate it with{' '}
-          <code>pnpm run generate:analytics</code> and commit the result.
+          No analytics data is available for any range yet.
         </Text>
       </div>
     )
@@ -126,9 +158,9 @@ export default function AnalyticsPage() {
           Umami Analytics
         </Heading>
         <Text as="p" size="caption" className="text-mid-grey-00">
-          Committed snapshot · generated {fmtUpdated(generatedAt, timezone)}
-          {REPORT.sessions
-            ? ` · session data: last ${REPORT.sessions.window.days} days`
+          Live · refreshed {fmtUpdated(refreshedAt ?? generatedAt, timezone)}
+          {report.sessions
+            ? ` · session data: last ${report.sessions.window.days} days`
             : ''}
         </Text>
         <div className="mt-s max-w-[220px]">
@@ -259,7 +291,7 @@ export default function AnalyticsPage() {
         <SearchSection search={current.search} />
       </section>
 
-      {REPORT.sessions ? <SessionsSection report={REPORT.sessions} /> : null}
+      {report.sessions ? <SessionsSection report={report.sessions} /> : null}
 
       {activeForm ? (
         <>
