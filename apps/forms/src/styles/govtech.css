@@ -417,7 +417,6 @@
  * (same tokens as the service-title caption and payment panel), a small bold
  * grey label, and the formatted closing datetime beneath it. */
 .form-page__closed-panel {
-  margin-top: var(--spacing-m);
   padding: var(--spacing-s) var(--spacing-m);
   background: var(--color-blue-10);
   border-left: var(--color-blue-40) 0.25rem solid;
