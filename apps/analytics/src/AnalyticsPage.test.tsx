@@ -3,23 +3,57 @@ import { describe, expect, it, vi } from 'vitest'
 import AnalyticsPage from './AnalyticsPage'
 import type { OverviewPayload } from './lib/report'
 
-// The form drawer calls this server function on click; stub it so the module
-// (which imports nitro/runtime-config) doesn't load its server-only deps here.
-vi.mock('./lib/report', () => ({ fetchFormDetail: vi.fn() }))
+// Router hooks need a router context; stub them for a unit render.
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children }: { children: React.ReactNode }) => (
+    <a href="#test">{children}</a>
+  ),
+  useNavigate: () => vi.fn(),
+}))
 
 const overview: OverviewPayload = {
   configured: true,
   stats: { visitors: 10, pageviews: 20 },
-  pages: [{ path: '/', pageviews: 20, visitors: 10, topSources: [] }],
+  pages: [
+    {
+      path: '/',
+      pageviews: 20,
+      visitors: 10,
+      topSources: [
+        { referrer: 'alpha.gov.bb', count: 6 },
+        { referrer: 'google.com', count: 2 },
+      ],
+    },
+  ],
   forms: [{ formId: 'birth-cert', title: 'Get a birth certificate' }],
+  generatedAt: '2026-07-10T12:00:00.000Z',
+  window: 'last 30 days',
+  range: 'past-30-days',
 }
 
 describe('AnalyticsPage', () => {
-  it('renders the overview and the form list from the loader payload', () => {
+  it('renders the overview, freshness banner and the linked form list', () => {
     render(<AnalyticsPage overview={overview} />)
     expect(screen.getByText('Top pages')).toBeTruthy()
     expect(screen.getByText('Get a birth certificate')).toBeTruthy()
     expect(screen.getByText(/10 visitors/)).toBeTruthy()
+    expect(screen.getByText(/last 30 days/)).toBeTruthy()
+  })
+
+  it('shows the top source column with the leading referrer and a +N for the rest', () => {
+    render(<AnalyticsPage overview={overview} />)
+    // "Top source" also appears in the how-it-works popover copy, so target the
+    // column header specifically.
+    expect(
+      screen.getByRole('columnheader', { name: 'Top source' }),
+    ).toBeTruthy()
+    expect(screen.getByText('alpha.gov.bb')).toBeTruthy()
+    expect(screen.getByText(/\+1/)).toBeTruthy()
+  })
+
+  it('renders the "How it works" popover triggers', () => {
+    render(<AnalyticsPage overview={overview} />)
+    expect(screen.getAllByText('How it works').length).toBeGreaterThan(0)
   })
 
   it('shows the setup message when analytics is not configured', () => {
@@ -30,6 +64,9 @@ describe('AnalyticsPage', () => {
           stats: { visitors: 0, pageviews: 0 },
           pages: [],
           forms: [],
+          generatedAt: '',
+          window: 'last 30 days',
+          range: 'past-30-days',
         }}
       />,
     )

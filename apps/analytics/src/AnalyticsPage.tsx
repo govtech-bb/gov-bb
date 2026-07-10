@@ -1,39 +1,43 @@
-import { Heading, Text } from '@govtech-bb/react'
+import { Heading, Select, Text } from '@govtech-bb/react'
+import { Link, useNavigate } from '@tanstack/react-router'
 import * as React from 'react'
-import { fetchFormDetail } from './lib/report'
+import { FreshnessBanner } from './components/FreshnessBanner'
 import type { OverviewPayload } from './lib/report'
-import type { FormDetailData } from './lib/umami-server'
+import { RANGE_OPTIONS } from './lib/umami-server'
 
-// --- formatting helpers ---
 const fmtInt = (n: number) => n.toLocaleString()
-const fmtPct = (n: number) => `${n.toFixed(1).replace(/\.0$/, '')}%`
 
-// --- shared class fragments (design-system tokens) ---
 const TH =
   'px-s py-s text-left text-caption font-bold uppercase tracking-wide text-mid-grey-00'
 const TD = 'px-s py-s align-top text-caption border-t border-grey-00'
 const NUM = 'text-right tabular-nums'
 const CARD = 'overflow-x-auto rounded-lg border border-grey-00'
 
+interface SrcPop {
+  sources: { referrer: string; count: number }[]
+  x: number
+  y: number
+}
+
+function HowToButton({ target }: { target: string }) {
+  return (
+    <button
+      type="button"
+      popoverTarget={target}
+      className="rounded-full border border-grey-00 px-s py-xs text-caption font-bold text-teal-00"
+    >
+      How it works
+    </button>
+  )
+}
+
 export default function AnalyticsPage({
   overview,
 }: {
   overview: OverviewPayload
 }) {
-  const [activeForm, setActiveForm] = React.useState<string | null>(null)
-  const [detail, setDetail] = React.useState<FormDetailData | null>(null)
-  const [loading, setLoading] = React.useState(false)
-
-  async function openForm(formId: string) {
-    setActiveForm(formId)
-    setDetail(null)
-    setLoading(true)
-    try {
-      setDetail(await fetchFormDetail({ data: formId }))
-    } finally {
-      setLoading(false)
-    }
-  }
+  const navigate = useNavigate()
+  const [srcPop, setSrcPop] = React.useState<SrcPop | null>(null)
 
   if (!overview.configured) {
     return (
@@ -50,26 +54,47 @@ export default function AnalyticsPage({
     )
   }
 
-  const activeTitle =
-    overview.forms.find((f) => f.formId === activeForm)?.title ?? activeForm
-
   return (
     <div className="container py-8">
+      <style>{POPOVER_CSS}</style>
+
       <header className="mb-l">
         <Heading as="h1" size="h1">
           Umami Analytics
         </Heading>
         <Text as="p" size="caption" className="text-mid-grey-00">
-          Live — last 30 days · {fmtInt(overview.stats.visitors)} visitors ·{' '}
+          {fmtInt(overview.stats.visitors)} visitors ·{' '}
           {fmtInt(overview.stats.pageviews)} pageviews
         </Text>
+        <div className="mt-s max-w-[220px]">
+          <Select
+            label="Date range"
+            value={overview.range}
+            onChange={(e) =>
+              navigate({ to: '/', search: { range: e.target.value } })
+            }
+          >
+            {RANGE_OPTIONS.map((o) => (
+              <option key={o.key} value={o.key}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <FreshnessBanner
+          window={overview.window}
+          generatedAt={overview.generatedAt}
+        />
       </header>
 
       {/* Top pages */}
       <section className="mb-l">
-        <Heading as="h2" size="h3" className="mb-s">
-          Top pages
-        </Heading>
+        <div className="mb-s flex items-center justify-between gap-s">
+          <Heading as="h2" size="h3">
+            Top pages
+          </Heading>
+          <HowToButton target="uar-howto-pages" />
+        </div>
         <div className={CARD}>
           <table className="min-w-full">
             <thead>
@@ -77,12 +102,13 @@ export default function AnalyticsPage({
                 <th className={TH}>Path</th>
                 <th className={`${TH} ${NUM}`}>Pageviews</th>
                 <th className={`${TH} ${NUM}`}>Visitors</th>
+                <th className={TH}>Top source</th>
               </tr>
             </thead>
             <tbody>
               {overview.pages.length === 0 ? (
                 <tr>
-                  <td className={`${TD} text-mid-grey-00`} colSpan={3}>
+                  <td className={`${TD} text-mid-grey-00`} colSpan={4}>
                     No page data.
                   </td>
                 </tr>
@@ -92,6 +118,7 @@ export default function AnalyticsPage({
                     <td className={TD}>{p.path}</td>
                     <td className={`${TD} ${NUM}`}>{fmtInt(p.pageviews)}</td>
                     <td className={`${TD} ${NUM}`}>{fmtInt(p.visitors)}</td>
+                    <SourceCell sources={p.topSources} onShow={setSrcPop} />
                   </tr>
                 ))
               )}
@@ -102,11 +129,15 @@ export default function AnalyticsPage({
 
       {/* Forms */}
       <section className="mb-l">
-        <Heading as="h2" size="h3" className="mb-s">
-          Forms
-        </Heading>
+        <div className="mb-s flex items-center justify-between gap-s">
+          <Heading as="h2" size="h3">
+            Forms
+          </Heading>
+          <HowToButton target="uar-howto-forms" />
+        </div>
         <Text as="p" size="caption" className="mb-s text-mid-grey-00">
-          Select a form to load its funnel and journey (fetched live).
+          Select a form for its funnel, per-step drop-off, submit reliability and
+          journeys.
         </Text>
         <div className={CARD}>
           <table className="min-w-full">
@@ -125,22 +156,16 @@ export default function AnalyticsPage({
                 </tr>
               ) : (
                 overview.forms.map((f) => (
-                  <tr
-                    key={f.formId}
-                    tabIndex={0}
-                    onClick={() => openForm(f.formId)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        openForm(f.formId)
-                      }
-                    }}
-                    className={`cursor-pointer hover:bg-teal-10 ${activeForm === f.formId ? 'bg-teal-10' : ''}`}
-                  >
+                  <tr key={f.formId} className="hover:bg-teal-10">
                     <td className={TD}>
-                      <Text as="span" size="caption" weight="bold">
+                      <Link
+                        to="/analytics/forms/$formId"
+                        params={{ formId: f.formId }}
+                        search={{ range: overview.range }}
+                        className="font-bold text-teal-00 underline"
+                      >
                         {f.title}
-                      </Text>
+                      </Link>
                     </td>
                     <td className={`${TD} ${NUM} text-mid-grey-00`}>View →</td>
                   </tr>
@@ -151,120 +176,99 @@ export default function AnalyticsPage({
         </div>
       </section>
 
-      {activeForm ? (
-        <>
-          <button
-            type="button"
-            aria-label="Close details"
-            className="fixed inset-0 z-40 bg-black-00/40"
-            onClick={() => setActiveForm(null)}
-          />
-          <aside className="fixed top-0 right-0 z-50 h-full w-[min(580px,94vw)] overflow-y-auto border-l border-grey-00 bg-white-00 p-l shadow-2xl">
-            <button
-              type="button"
-              onClick={() => setActiveForm(null)}
-              className="float-right rounded-md border border-grey-00 px-s py-xs text-caption"
+      {srcPop ? (
+        <div
+          className="fixed z-[60] min-w-[210px] rounded-lg border border-grey-00 bg-white-00 p-s shadow-xl"
+          style={{ left: srcPop.x, top: srcPop.y }}
+        >
+          <Text
+            as="span"
+            size="small-caption"
+            className="mb-xs block uppercase text-mid-grey-00"
+          >
+            All sources
+          </Text>
+          {srcPop.sources.map((s) => (
+            <div
+              key={s.referrer}
+              className="flex justify-between gap-m py-xs text-caption"
             >
-              Close ✕
-            </button>
-            <Heading as="h3" size="h4">
-              {activeTitle}
-            </Heading>
-            <Text as="p" size="small-caption" className="mb-s text-mid-grey-00">
-              {activeForm}
-            </Text>
-            {loading || !detail ? (
-              <Text as="p" className="text-mid-grey-00">
-                {loading ? 'Loading…' : 'No data.'}
-              </Text>
-            ) : (
-              <FormDetailBody detail={detail} />
-            )}
-          </aside>
-        </>
+              <span>{s.referrer}</span>
+              <span className="text-mid-grey-00">{fmtInt(s.count)}</span>
+            </div>
+          ))}
+        </div>
       ) : null}
+
+      <HowToPopovers />
     </div>
   )
 }
 
-function SubHeading({ children }: { children: React.ReactNode }) {
+function SourceCell({
+  sources,
+  onShow,
+}: {
+  sources: { referrer: string; count: number }[]
+  onShow: (p: SrcPop | null) => void
+}) {
+  if (!sources.length) return <td className={`${TD} text-mid-grey-00`}>—</td>
+  const top = sources[0]
+  const hasMore = sources.length > 1
   return (
-    <Text
-      as="span"
-      size="caption"
-      weight="bold"
-      className="mt-m mb-xs block uppercase tracking-wide text-mid-grey-00"
+    <td
+      className={`${TD} ${hasMore ? 'cursor-help' : ''}`}
+      onMouseEnter={
+        hasMore
+          ? (e) => {
+              const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+              onShow({ sources, x: Math.max(8, r.left), y: r.bottom + 4 })
+            }
+          : undefined
+      }
+      onMouseLeave={hasMore ? () => onShow(null) : undefined}
     >
-      {children}
-    </Text>
+      {top.referrer}{' '}
+      <span className="text-mid-grey-00">({fmtInt(top.count)})</span>
+      {hasMore ? (
+        <span className="text-mid-grey-00"> +{sources.length - 1}</span>
+      ) : null}
+    </td>
   )
 }
 
-function FormDetailBody({ detail }: { detail: FormDetailData }) {
-  const max = Math.max(1, ...detail.funnel.map((s) => s.count))
+function HowToPopovers() {
   return (
     <>
-      {detail.submitErrorRate != null ? (
-        <Text as="p" size="caption" className="mt-s">
-          Submit-error rate: <b>{fmtPct(detail.submitErrorRate * 100)}</b>
+      <div id="uar-howto-pages" popover="auto" className="uar-pop">
+        <Heading as="h3" size="h5">
+          Top pages — how it works
+        </Heading>
+        <Text as="p" size="caption" className="mt-xs">
+          Most-visited landing pages over the selected range (Umami pageviews),
+          top 10. <b>Top source</b> lists the leading referrers to each page —
+          hover to see all; <code>(direct)</code> = no referrer.
         </Text>
-      ) : null}
-
-      <SubHeading>Funnel (distinct visitors)</SubHeading>
-      {detail.funnel.length === 0 ? (
-        <Text as="p" size="caption" className="text-mid-grey-00">
-          No funnel data for this form.
+      </div>
+      <div id="uar-howto-forms" popover="auto" className="uar-pop">
+        <Heading as="h3" size="h5">
+          Forms — how it works
+        </Heading>
+        <Text as="p" size="caption" className="mt-xs">
+          Every published form. Open one for its distinct-visitor funnel
+          (start → review → submit), per-step reached-vs-completed drop-off,
+          submit-error rate broken down by reason, and top journeys — all queried
+          live for the selected range.
         </Text>
-      ) : (
-        <div className="flex max-w-[560px] flex-col gap-xs">
-          {detail.funnel.map((s) => (
-            <div
-              key={s.label}
-              className="grid grid-cols-[90px_1fr_130px] items-center gap-s text-caption"
-            >
-              <span>{s.label}</span>
-              <span className="rounded bg-teal-10">
-                <span
-                  className="block h-[22px] min-w-[2px] rounded bg-teal-00"
-                  style={{ width: `${(100 * s.count) / max}%` }}
-                />
-              </span>
-              <span className={NUM}>
-                {fmtInt(s.count)}
-                {s.dropoffPct ? (
-                  <span className="text-red-00"> -{fmtPct(s.dropoffPct)}</span>
-                ) : null}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <SubHeading>Top journeys</SubHeading>
-      {detail.journey.length === 0 ? (
-        <Text as="p" size="caption" className="text-mid-grey-00">
-          No journey data.
-        </Text>
-      ) : (
-        <div className={CARD}>
-          <table className="min-w-full">
-            <thead>
-              <tr>
-                <th className={TH}>Path</th>
-                <th className={`${TH} ${NUM}`}>Count</th>
-              </tr>
-            </thead>
-            <tbody>
-              {detail.journey.map((j, i) => (
-                <tr key={i}>
-                  <td className={TD}>{j.items.join(' › ')}</td>
-                  <td className={`${TD} ${NUM}`}>{fmtInt(j.count)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      </div>
     </>
   )
 }
+
+// Only the native popover needs raw CSS (it's a top-layer element with a
+// backdrop); the rest of the page is design-system components + Tailwind tokens.
+const POPOVER_CSS = `
+.uar-pop { max-width: min(460px, 92vw); border: 1px solid var(--color-grey-00); border-radius: 12px; padding: 18px 20px; box-shadow: 0 16px 48px rgba(0,0,0,.22); background: #fff; }
+.uar-pop::backdrop { background: rgba(0,0,0,.3); }
+.uar-pop code { background: var(--color-teal-10); padding: 1px 5px; border-radius: 4px; }
+`

@@ -1,16 +1,18 @@
 // Server functions for the /analytics page. These run on the server (SSR +
 // server-fn RPC), read Umami in real time, and return aggregate-only data — the
 // browser never talks to Umami and never sees the API key. No DB, no snapshot:
-// the overview loads with the page, each form's detail loads on click.
+// the overview loads with the page, each form's detail loads on its own page.
 import { createServerFn } from '@tanstack/react-start'
 import { useRuntimeConfig } from 'nitro/runtime-config'
 import {
-  fetchOverviewData,
   fetchFormDetailData,
+  fetchOverviewData,
   isConfigured,
-  type UmamiConfig,
-  type OverviewData,
+  normaliseRange,
+  rangeLabel,
   type FormDetailData,
+  type OverviewData,
+  type UmamiConfig,
 } from './umami-server'
 
 const DEFAULT_FORMS_API = 'https://forms.api.sandbox.alpha.gov.bb'
@@ -33,48 +35,70 @@ function getConfig(): UmamiConfig {
 
 export type OverviewPayload = { configured: boolean } & OverviewData
 
-const EMPTY_OVERVIEW: OverviewPayload = {
-  configured: false,
-  stats: { visitors: 0, pageviews: 0 },
-  pages: [],
-  forms: [],
+function emptyOverview(range: string): OverviewPayload {
+  return {
+    configured: false,
+    stats: { visitors: 0, pageviews: 0 },
+    pages: [],
+    forms: [],
+    generatedAt: '',
+    window: rangeLabel(range),
+    range,
+  }
 }
 
-const EMPTY_DETAIL: FormDetailData = {
-  funnel: [],
-  journey: [],
-  submitErrorRate: null,
+function emptyDetail(formId: string, range: string): FormDetailData {
+  return {
+    formId,
+    title: formId,
+    funnel: [],
+    steps: [],
+    submitError: { total: 0, attempts: 0, rate: null, byReason: [] },
+    journey: [],
+    generatedAt: '',
+    window: rangeLabel(range),
+    range,
+  }
 }
 
 /**
- * Site overview + form list. Runs server-side on the initial SSR load. Degrades
- * to an unconfigured/empty payload (never throws) so the page always renders.
+ * Site overview + form list for a date range. Runs server-side on the initial
+ * SSR load. Degrades to an unconfigured/empty payload (never throws) so the page
+ * always renders.
  */
-export const fetchOverview = createServerFn({ method: 'GET' }).handler(
-  async (): Promise<OverviewPayload> => {
+export const fetchOverview = createServerFn({ method: 'GET' })
+  .validator((raw: unknown) =>
+    normaliseRange(raw == null ? undefined : String(raw)),
+  )
+  .handler(async ({ data: range }): Promise<OverviewPayload> => {
     const cfg = getConfig()
-    if (!isConfigured(cfg)) return EMPTY_OVERVIEW
+    if (!isConfigured(cfg)) return emptyOverview(range)
     try {
-      const data = await fetchOverviewData(cfg)
+      const data = await fetchOverviewData(cfg, range)
       return { configured: true, ...data }
     } catch {
-      return EMPTY_OVERVIEW
+      return emptyOverview(range)
     }
-  },
-)
+  })
 
 /**
- * One form's funnel + journey + submit-error rate, fetched when the user opens
- * the form. Degrades to empty data on error rather than throwing.
+ * One form's funnel + per-step + submit reliability + journeys for a date range.
+ * Degrades to empty data on error rather than throwing.
  */
 export const fetchFormDetail = createServerFn({ method: 'GET' })
-  .validator((raw: unknown) => String(raw))
-  .handler(async ({ data: formId }): Promise<FormDetailData> => {
+  .validator((raw: unknown) => {
+    const o = (raw ?? {}) as { formId?: unknown; range?: unknown }
+    return {
+      formId: String(o.formId ?? ''),
+      range: normaliseRange(o.range == null ? undefined : String(o.range)),
+    }
+  })
+  .handler(async ({ data }): Promise<FormDetailData> => {
     const cfg = getConfig()
-    if (!isConfigured(cfg)) return EMPTY_DETAIL
+    if (!isConfigured(cfg)) return emptyDetail(data.formId, data.range)
     try {
-      return await fetchFormDetailData(cfg, formId)
+      return await fetchFormDetailData(cfg, data.formId, data.range)
     } catch {
-      return EMPTY_DETAIL
+      return emptyDetail(data.formId, data.range)
     }
   })
