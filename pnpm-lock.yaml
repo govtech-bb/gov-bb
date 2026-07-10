@@ -310,6 +310,9 @@ importers:
       '@govtech-bb/registry':
         specifier: workspace:*
         version: link:../../packages/registry
+      '@govtech-bb/umami-analytics':
+        specifier: workspace:*
+        version: link:../../packages/umami-analytics
       '@nestjs/axios':
         specifier: ^4.0.1
         version: 4.0.1(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(axios@1.18.0)(rxjs@7.8.2)
