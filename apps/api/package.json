@@ -24,7 +24,6 @@
     "@govtech-bb/form-types": "workspace:*",
     "@govtech-bb/form-validation": "workspace:*",
     "@govtech-bb/registry": "workspace:*",
-    "@govtech-bb/umami-analytics": "workspace:*",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^11.1.0",
     "@nestjs/config": "^4.0.3",

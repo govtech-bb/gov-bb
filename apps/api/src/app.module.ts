@@ -15,7 +15,6 @@ import { FeedbackModule } from "./feedback/feedback.module";
 import { ServiceStatusModule } from "./services/service-status.module";
 import { ContentModule } from "./content/content.module";
 import { TelemetryModule } from "./telemetry/telemetry.module";
-import { AnalyticsModule } from "./analytics/analytics.module";
 import { configs } from "./config";
 import { envValidationSchema } from "./config/env.validation";
 
@@ -51,7 +50,6 @@ import { envValidationSchema } from "./config/env.validation";
     PaymentsModule,
     WebhooksModule,
     FeedbackModule,
-    AnalyticsModule,
     ServiceStatusModule,
     ContentModule,
   ],
