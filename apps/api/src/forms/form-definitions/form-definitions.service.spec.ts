@@ -1516,6 +1516,57 @@ describe("FormDefinitionsService — service_status overrides (#1896)", () => {
     });
   });
 
+  describe("findClosedFormIds (#1936)", () => {
+    const now = new Date("2026-07-10T12:00:00-04:00");
+
+    it("returns public forms whose closingDateTime has passed", async () => {
+      const { fileLoader, service } = makeMocks({ source: "files" });
+      (fileLoader.findAll as Mock).mockReturnValue([
+        {
+          formId: "closed-form",
+          title: "A",
+          version: "",
+          visibility: "public",
+          closingDateTime: "2026-07-09T23:59:00-04:00",
+        },
+        {
+          formId: "open-form",
+          title: "B",
+          version: "",
+          visibility: "public",
+          closingDateTime: "2030-01-01T00:00:00-04:00",
+        },
+        {
+          formId: "no-deadline",
+          title: "C",
+          version: "",
+          visibility: "public",
+        },
+      ]);
+
+      const ids = await service.findClosedFormIds(now);
+
+      expect(ids).toEqual(["closed-form"]);
+    });
+
+    it("excludes non-public forms even if their deadline has passed", async () => {
+      const { fileLoader, service } = makeMocks({ source: "files" });
+      (fileLoader.findAll as Mock).mockReturnValue([
+        {
+          formId: "hidden",
+          title: "A",
+          version: "",
+          visibility: "preview",
+          closingDateTime: "2026-07-09T23:59:00-04:00",
+        },
+      ]);
+
+      const ids = await service.findClosedFormIds(now);
+
+      expect(ids).toEqual([]);
+    });
+  });
+
   describe("getRecipe (launch gate)", () => {
     const PREVIEW_RECIPE = {
       ...MOCK_RECIPE,

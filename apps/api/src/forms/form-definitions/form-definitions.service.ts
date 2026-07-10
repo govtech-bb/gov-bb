@@ -7,7 +7,7 @@ import { FormConfigService } from "../form-config/form-config.service";
 import { ServiceStatusService } from "@/services/service-status.service";
 import { ServiceStatus } from "@/database/entities/service-status.entity";
 import { AppError } from "@/common/errors";
-import { getRecipeVisibility } from "@govtech-bb/form-types";
+import { getRecipeVisibility, isFormClosed } from "@govtech-bb/form-types";
 import type {
   Processor,
   PublicFormSummary,
@@ -194,6 +194,50 @@ export class FormDefinitionsService {
   }
 
   /**
+   * Form IDs whose application window has closed (#1936): *public* forms (by
+   * effective visibility) with a `closingDateTime` at/past now. Mirrors
+   * findMaintenanceFormIds' source dispatch so landing can hide "Start now" and
+   * show a closed notice. `now` is injectable for tests; defaults to the current
+   * instant.
+   */
+  async findClosedFormIds(now: Date = new Date()): Promise<string[]> {
+    const source = this.source();
+    const statusMap = await this.getStatusMap();
+
+    if (source === "files") {
+      return this.closedIds(this.recipeFileLoader.findAll(), statusMap, now);
+    }
+
+    const dbIds = this.closedIds(await this.loadDbEntries(), statusMap, now);
+    if (source === "db") {
+      return dbIds;
+    }
+
+    return [
+      ...new Set([
+        ...dbIds,
+        ...this.closedIds(this.recipeFileLoader.findAll(), statusMap, now),
+      ]),
+    ];
+  }
+
+  private closedIds(
+    entries: PublicFormSummary[],
+    statusMap: Map<string, ServiceStatus>,
+    now: Date,
+  ): string[] {
+    return entries
+      .filter(
+        (e) =>
+          effectiveVisibility(
+            e.visibility ?? "preview",
+            statusMap.get(e.formId),
+          ) === "public" && isFormClosed(e.closingDateTime, now),
+      )
+      .map((e) => e.formId);
+  }
+
+  /**
    * Every DB-backed form, deduped by formId (latest by createdAt), each
    * always carrying its raw recipe `visibility` — unfiltered. Shared by
    * findAll and findMaintenanceFormIds so both derive from the same
@@ -220,6 +264,10 @@ export class FormDefinitionsService {
           category: entity.schema.contactDetails.title,
         }),
         visibility: getRecipeVisibility(entity.schema),
+        // Carry the application deadline (#1936) so findClosedFormIds sees it.
+        ...(entity.schema.meta?.closingDateTime && {
+          closingDateTime: entity.schema.meta.closingDateTime,
+        }),
       });
     }
     return result;
