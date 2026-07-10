@@ -141,6 +141,14 @@ const baseSchema = z
     // Never make this `.required()` either, for the same reason (ADR 0061).
     ADMIN_KILL_SWITCH_TOKEN: z.string().optional(),
 
+    // Shared secret the observability console presents (Authorization: Bearer)
+    // to GET /monitoring/notification-log — the read-only Delivery feed. Read
+    // per-request by AdminTokenGuard, so it fails closed in prod (unset → 500,
+    // never serves PII un-gated) and stays open in local dev. OPTIONAL on
+    // purpose — never `.required()`, same ECS crash-loop reason as above
+    // (ADR 0061).
+    MONITORING_API_TOKEN: z.string().optional(),
+
     // S3 file uploads (optional — required only when a form uses file fields)
     S3_BUCKET: z.string().default(""),
     S3_REGION: z.string().optional(),

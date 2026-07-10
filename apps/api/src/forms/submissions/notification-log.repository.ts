@@ -54,4 +54,26 @@ export class NotificationLogRepository extends BaseRepository<NotificationLogEnt
       );
     }
   }
+
+  /**
+   * Recent send outcomes, newest first — powers the monitoring console's
+   * Delivery view. Read-only projection of the human-relevant columns (no
+   * submission_id / error / delivery_status). `limit` is clamped to [1, 500].
+   */
+  async findRecent(limit = 200): Promise<NotificationLogEntity[]> {
+    const take = Math.min(Math.max(Math.trunc(limit) || 200, 1), 500);
+    return this.find({
+      order: { createdAt: "DESC" },
+      take,
+      select: {
+        referenceCode: true,
+        formId: true,
+        recipientKind: true,
+        recipient: true,
+        outcome: true,
+        providerMessageId: true,
+        createdAt: true,
+      },
+    });
+  }
 }
