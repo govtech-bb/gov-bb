@@ -7,7 +7,7 @@ import { StatusBanner, Text } from '@govtech-bb/react'
  */
 export function ApplicationClosedNotice() {
   return (
-    <StatusBanner variant="service-issue">
+    <StatusBanner variant="service-issue" className="mb-4">
       <Text as="p">Applications for this service have closed.</Text>
     </StatusBanner>
   )
