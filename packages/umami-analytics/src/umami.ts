@@ -171,7 +171,8 @@ export class UmamiClient {
     return (await res.json()) as T;
   }
 
-  /** Distinct-visitor funnel for a list of ordered steps (event names or paths). */
+  /** Distinct-visitor funnel for a list of ordered steps (event names or paths).
+   * `filters` is a required top-level object in the report API (send `{}`). */
   reportFunnel(
     websiteId: string,
     opts: { steps: FunnelStepInput[]; window: number; range: Range },
@@ -179,6 +180,7 @@ export class UmamiClient {
     return this.post<FunnelStepResult[]>(`/reports/funnel`, {
       websiteId,
       type: "funnel",
+      filters: {},
       parameters: {
         startDate: new Date(opts.range.startAt).toISOString(),
         endDate: new Date(opts.range.endAt).toISOString(),
@@ -188,7 +190,7 @@ export class UmamiClient {
     });
   }
 
-  /** Top navigation paths (journey report). */
+  /** Top navigation paths (journey report). `filters` is required (send `{}`). */
   reportJourney(
     websiteId: string,
     opts: { steps: number; startStep?: string; endStep?: string; range: Range },
@@ -196,6 +198,7 @@ export class UmamiClient {
     return this.post<JourneyPath[]>(`/reports/journey`, {
       websiteId,
       type: "journey",
+      filters: {},
       parameters: {
         startDate: new Date(opts.range.startAt).toISOString(),
         endDate: new Date(opts.range.endAt).toISOString(),
