@@ -61,6 +61,10 @@ async function pollUntilDone<T extends { status: string }>(
 ): Promise<Extract<T, { status: "done" }>> {
   const start = Date.now();
   let delay = opts.firstPollMs;
+  // A transient 5xx mid-poll must not kill a billed 1–3 min job (#1531):
+  // tolerate up to 2 consecutive failed polls, surfacing only the 3rd. The
+  // loop's own sleep is the backoff and the overall deadline never resets.
+  let consecutiveFailures = 0;
   // eslint-disable-next-line no-constant-condition
   while (true) {
     if (abort.signal.aborted) throw new DOMException("Aborted", "AbortError");
@@ -73,7 +77,15 @@ async function pollUntilDone<T extends { status: string }>(
       );
     }
 
-    const status = await getStatus();
+    let status: T;
+    try {
+      status = await getStatus();
+    } catch (err) {
+      consecutiveFailures += 1;
+      if (consecutiveFailures >= 3) throw err;
+      continue;
+    }
+    consecutiveFailures = 0;
     if (status.status === "processing" || status.status === "generating") {
       continue;
     }
