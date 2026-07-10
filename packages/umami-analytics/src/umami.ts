@@ -1,5 +1,5 @@
 // Thin Umami Cloud REST client. I/O only — aggregation lives in metrics.ts
-// (event-count report) and sessions.ts (session-based consolidated report).
+// (event-count report); funnels/journeys come from Umami's own report endpoints.
 import type {
   EventDataValue,
   ExpandedRow,
@@ -8,7 +8,6 @@ import type {
   FunnelStepResult,
   JourneyPath,
 } from "./types";
-import type { ActivityRow, RawSession, SessionWithActivity } from "./sessions";
 
 export interface UmamiClientOptions {
   apiKey: string;
@@ -205,96 +204,5 @@ export class UmamiClient {
         ...(opts.endStep ? { endStep: opts.endStep } : {}),
       },
     });
-  }
-
-  /** One page of sessions for the range (Umami paginates: `{ data, count }`). */
-  private sessionsPage(
-    websiteId: string,
-    range: Range,
-    page: number,
-    pageSize: number,
-  ): Promise<{ data: RawSession[]; count: number }> {
-    return this.get<{ data: RawSession[]; count: number }>(
-      `/websites/${websiteId}/sessions`,
-      { ...range, page, pageSize },
-    );
-  }
-
-  /** List up to `maxSessions` sessions for the range (paginated). Cheap
-   * relative to activity; lets a caller drive a resumable per-session crawl. */
-  async listSessions(
-    websiteId: string,
-    range: Range,
-    maxSessions = 2000,
-    pageSize = 100,
-  ): Promise<RawSession[]> {
-    const sessions: RawSession[] = [];
-    for (let page = 1; sessions.length < maxSessions; page++) {
-      const { data, count } = await this.sessionsPage(
-        websiteId,
-        range,
-        page,
-        pageSize,
-      );
-      sessions.push(...data);
-      if (data.length < pageSize || sessions.length >= count) break;
-    }
-    return sessions.slice(0, maxSessions);
-  }
-
-  /** Ordered pageviews + custom events for one session. */
-  sessionActivity(
-    websiteId: string,
-    sessionId: string,
-    range: Range,
-  ): Promise<ActivityRow[]> {
-    return this.get<ActivityRow[]>(
-      `/websites/${websiteId}/sessions/${sessionId}/activity`,
-      { ...range },
-    );
-  }
-
-  /**
-   * Fetch up to `maxSessions` sessions for the range, each with its ordered
-   * activity — the raw input for the session-based report (sessions.ts). This
-   * is many requests (1 per session for activity); the client's throttle keeps
-   * it under Umami's rate limit. Callers should cache the result and commit a
-   * snapshot rather than run this at serve time.
-   */
-  async collectSessions(
-    websiteId: string,
-    range: Range,
-    opts: { maxSessions?: number; pageSize?: number } = {},
-  ): Promise<SessionWithActivity[]> {
-    const maxSessions = opts.maxSessions ?? 2000;
-    const pageSize = opts.pageSize ?? 100;
-    const sessions: RawSession[] = [];
-    for (let page = 1; sessions.length < maxSessions; page++) {
-      const { data, count } = await this.sessionsPage(
-        websiteId,
-        range,
-        page,
-        pageSize,
-      );
-      sessions.push(...data);
-      if (data.length < pageSize || sessions.length >= count) break;
-    }
-    const capped = sessions.slice(0, maxSessions);
-    const out: SessionWithActivity[] = [];
-    for (const session of capped) {
-      try {
-        const activity = await this.sessionActivity(
-          websiteId,
-          session.id,
-          range,
-        );
-        out.push({ session, activity });
-      } catch {
-        // Skip a session whose activity can't be fetched — one bad fetch must
-        // not abort the whole crawl (the generator's resumable cache is the
-        // preferred path; this keeps the convenience method robust too).
-      }
-    }
-    return out;
   }
 }
