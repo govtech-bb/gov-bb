@@ -3,7 +3,7 @@ import {
   redirect,
   type SearchSchemaInput,
 } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { checkSession, logoutSession } from "../server/auth";
 import { listServices, setServiceStatus } from "../server/service-status";
 import {
@@ -74,6 +74,20 @@ function ServicesPage() {
       replace: true,
       search: (prev) => stripDefaults({ ...prev, ...patch }),
     });
+
+  // The search box updates its own text instantly but only writes `q` to the
+  // URL after a 500ms pause, so a burst of keystrokes triggers one navigation
+  // instead of one per character. `qInput` re-syncs whenever `q` changes from
+  // outside typing (back/forward, a shared link).
+  const [qInput, setQInput] = useState(query);
+  const qTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => setQInput(query), [query]);
+  useEffect(() => () => clearTimeout(qTimer.current), []);
+  const onQueryChange = (value: string) => {
+    setQInput(value);
+    clearTimeout(qTimer.current);
+    qTimer.current = setTimeout(() => update({ q: value }), 500);
+  };
 
   const [audit, setAudit] = useState<{ slug: string; title: string } | null>(
     null,
@@ -197,8 +211,8 @@ function ServicesPage() {
         <input
           type="search"
           placeholder="Search by title, slug or category…"
-          value={query}
-          onChange={(e) => update({ q: e.target.value })}
+          value={qInput}
+          onChange={(e) => onQueryChange(e.target.value)}
           aria-label="Search services"
         />
         <select
