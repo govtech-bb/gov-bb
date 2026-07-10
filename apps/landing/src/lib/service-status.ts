@@ -38,11 +38,11 @@ const DEFAULT_API_URL = 'https://forms.api.sandbox.alpha.gov.bb'
 const FETCH_TIMEOUT_MS = 15_000
 
 /**
- * How long a fetched map is served before the next request refetches it. Zero
+ * How long a fetched map is served before the next request refetches it. 15s
  * in local dev (`vite dev`) so an admin service-status toggle shows on landing
- * immediately; 60s in the built sandbox/staging/production bundles.
+ * quickly; 60s in the built sandbox/staging/production bundles.
  */
-const TTL_MS = import.meta.env.DEV ? 0 : 60_000
+const TTL_MS = import.meta.env.DEV ? 15_000 : 60_000
 
 /**
  * Extra fetch attempts on a cold start (no cached map yet) before giving up and
