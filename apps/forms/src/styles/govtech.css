@@ -412,6 +412,23 @@
   font-weight: var(--font-weight-bold);
 }
 
+/* ---- Applications-closed page (#1936) ------------------------------------ *
+ * The "Application closed" inset: a light-blue panel with a navy left rule
+ * (same tokens as the service-title caption and payment panel), a small bold
+ * grey label, and the formatted closing datetime beneath it. */
+.form-page__closed-panel {
+  margin-top: var(--spacing-m);
+  padding: var(--spacing-s) var(--spacing-m);
+  background: var(--color-blue-10);
+  border-left: var(--color-blue-40) 0.25rem solid;
+}
+
+.form-page__closed-panel-label {
+  margin-bottom: var(--spacing-xxs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-mid-grey-00);
+}
+
 /* ---- Markdown content (recipe-authored confirmation copy) ---------------- *
  * react-markdown emits bare <p> elements, which Tailwind's preflight resets to
  * zero margin — collapsing paragraphs together. Restore vertical rhythm between

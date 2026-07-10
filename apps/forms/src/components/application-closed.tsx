@@ -1,4 +1,3 @@
-import { Heading, Text } from "@govtech-bb/react";
 import { ContactDetails, formatClosingDateTime } from "@govtech-bb/form-types";
 
 interface ApplicationClosedProps {
@@ -9,7 +8,7 @@ interface ApplicationClosedProps {
 
 /**
  * Shown in place of the form when a recipe's `meta.closingDateTime` has passed
- * (#1936). Mirrors the platform error/closed page layout and sources the MDA
+ * (#1936). Uses the same form-page chrome as the renderer and sources the MDA
  * contact from the served contract's `contactDetails` (never hardcoded).
  */
 export default function ApplicationClosed({
@@ -17,45 +16,56 @@ export default function ApplicationClosed({
   closingDateTime,
   contactDetails,
 }: ApplicationClosedProps) {
+  const hasContact = Boolean(
+    contactDetails?.title ||
+    contactDetails?.email ||
+    contactDetails?.telephoneNumber,
+  );
+
   return (
-    <div className="container py-8 lg:py-16">
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2 lg:space-y-8">
-          <Heading as="h1">Applications for {serviceTitle} have closed</Heading>
-          <Text as="p">The application window has closed.</Text>
-
-          <div className="form-page__contact">
-            <p>
-              <span className="form-page__contact-label">
-                Application closed
-              </span>
-            </p>
-            <p>{formatClosingDateTime(closingDateTime)}</p>
-          </div>
-
-          {contactDetails && (
-            <div className="form-page__contact">
-              <p>If you have a question about this service, contact:</p>
-              {contactDetails.title && (
-                <h3 className="govbb-text-h3">{contactDetails.title}</h3>
-              )}
-              <div className="form-page__contact-body">
-                {contactDetails.telephoneNumber && (
-                  <p>
-                    <span className="form-page__contact-label">Telephone:</span>{" "}
-                    {contactDetails.telephoneNumber}
-                  </p>
-                )}
-                {contactDetails.email && (
-                  <p>
-                    <span className="form-page__contact-label">Email:</span>{" "}
-                    {contactDetails.email}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
+    <div className="container pb-8 lg:pb-16">
+      <div className="form-page form-width">
+        <div className="form-page__header">
+          <h1 className="govbb-text-h1">
+            Applications for {serviceTitle} have closed
+          </h1>
+          <p className="form-page__step-description">
+            The application window has closed.
+          </p>
         </div>
+
+        <div className="form-page__closed-panel">
+          <p className="form-page__closed-panel-label">Application closed</p>
+          <p>{formatClosingDateTime(closingDateTime)}</p>
+        </div>
+
+        {hasContact && contactDetails && (
+          <div className="form-page__contact">
+            <h2 className="govbb-text-h2">
+              Have a question about this service?
+            </h2>
+            <p>
+              If you need to speak to someone, contact{" "}
+              {contactDetails.title ? `the ${contactDetails.title}` : "us"}
+              {contactDetails.email && (
+                <>
+                  {" "}
+                  at{" "}
+                  <a
+                    className="govbb-link"
+                    href={`mailto:${contactDetails.email}`}
+                  >
+                    {contactDetails.email}
+                  </a>
+                </>
+              )}
+              {contactDetails.telephoneNumber && (
+                <> or call {contactDetails.telephoneNumber}</>
+              )}
+              .
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

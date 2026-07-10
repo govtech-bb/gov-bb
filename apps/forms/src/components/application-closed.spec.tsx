@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import ApplicationClosed from "./application-closed";
 
 describe("ApplicationClosed", () => {
-  it("shows the service title, formatted deadline, and MDA contact", () => {
+  it("shows the heading, subtext, formatted deadline, and MDA contact prose", () => {
     render(
       <ApplicationClosed
         serviceTitle="National Science Camp 2026"
@@ -20,13 +20,30 @@ describe("ApplicationClosed", () => {
       }),
     ).toBeInTheDocument();
     expect(
+      screen.getByText("The application window has closed."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Application closed")).toBeInTheDocument();
+    expect(
       screen.getByText("Thursday, 9 July 2026 at 11:59pm"),
     ).toBeInTheDocument();
-    expect(screen.getByText("camp@example.gov.bb")).toBeInTheDocument();
-    expect(screen.getByText("246-555-0100")).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Have a question about this service?",
+      }),
+    ).toBeInTheDocument();
+    // Contact rendered as prose: "contact the {MDA} at {email link} or call {number}".
+    expect(
+      screen.getByText(/contact the Ministry of Education/i),
+    ).toBeInTheDocument();
+    const emailLink = screen.getByRole("link", {
+      name: "camp@example.gov.bb",
+    });
+    expect(emailLink).toHaveAttribute("href", "mailto:camp@example.gov.bb");
+    expect(screen.getByText(/or call 246-555-0100/i)).toBeInTheDocument();
   });
 
-  it("renders without a contact block when contactDetails is absent", () => {
+  it("omits the contact section when contactDetails is absent", () => {
     render(
       <ApplicationClosed
         serviceTitle="Some Service"
@@ -38,6 +55,10 @@ describe("ApplicationClosed", () => {
         name: /Applications for Some Service have closed/i,
       }),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/contact:/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: "Have a question about this service?",
+      }),
+    ).not.toBeInTheDocument();
   });
 });
