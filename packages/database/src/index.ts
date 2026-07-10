@@ -14,6 +14,7 @@ import { FormDisabledOverrideEntity } from "./entities/form-disabled-override.en
 import { FormEditingSessionEntity } from "./entities/form-editing-session.entity";
 import { ServiceStatusEntity } from "./entities/service-status.entity";
 import { ServiceStatusAuditLogEntity } from "./entities/service-status-audit-log.entity";
+import { AnalyticsReportCacheEntity } from "./entities/analytics-report-cache.entity";
 
 // Migrations
 import { CreateFormsTables1774544962999 } from "./migrations/1774544962999-CreateFormsTables";
@@ -32,6 +33,7 @@ import { MakeFormVersionNullable1781000000000 } from "./migrations/1781000000000
 import { DedupFormDefinitionsUniqueFormId1781100000000 } from "./migrations/1781100000000-DedupFormDefinitionsUniqueFormId";
 import { AddProcessorsFailedToFormSubmissions1781200000000 } from "./migrations/1781200000000-AddProcessorsFailedToFormSubmissions";
 import { CreateServiceStatusTables1783356461699 } from "./migrations/1783356461699-CreateServiceStatusTables";
+import { CreateAnalyticsReportCache1783500000000 } from "./migrations/1783500000000-CreateAnalyticsReportCache";
 
 export const entities = [
   FormComponentEntity,
@@ -47,6 +49,7 @@ export const entities = [
   FormEditingSessionEntity,
   ServiceStatusEntity,
   ServiceStatusAuditLogEntity,
+  AnalyticsReportCacheEntity,
 ];
 
 export const migrations = [
@@ -66,6 +69,7 @@ export const migrations = [
   DedupFormDefinitionsUniqueFormId1781100000000,
   AddProcessorsFailedToFormSubmissions1781200000000,
   CreateServiceStatusTables1783356461699,
+  CreateAnalyticsReportCache1783500000000,
 ];
 
 /**

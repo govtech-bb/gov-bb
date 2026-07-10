@@ -14,3 +14,4 @@ export { MakeFormVersionNullable1781000000000 } from "./1781000000000-MakeFormVe
 export { DedupFormDefinitionsUniqueFormId1781100000000 } from "./1781100000000-DedupFormDefinitionsUniqueFormId";
 export { AddProcessorsFailedToFormSubmissions1781200000000 } from "./1781200000000-AddProcessorsFailedToFormSubmissions";
 export { CreateServiceStatusTables1783356461699 } from "./1783356461699-CreateServiceStatusTables";
+export { CreateAnalyticsReportCache1783500000000 } from "./1783500000000-CreateAnalyticsReportCache";
