@@ -49,7 +49,7 @@ export class ContentController {
   async list(
     @Headers("authorization") auth?: string,
   ): Promise<ApiResponseShape<ServiceIndexEntry[]>> {
-    const data = this.content.list(await includeNonPublicFromAuth(auth));
+    const data = await this.content.list(await includeNonPublicFromAuth(auth));
     return ApiResponse.success(data, { message: "Services retrieved" });
   }
 }
