@@ -227,6 +227,11 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
           category: recipe.contactDetails.title,
         }),
         visibility: getRecipeVisibility(recipe),
+        // Carry the application deadline (#1936) so findClosedFormIds can tell
+        // which public forms have passed it. Omitted when the recipe has none.
+        ...(recipe.meta?.closingDateTime && {
+          closingDateTime: recipe.meta.closingDateTime,
+        }),
       });
     }
     return out;

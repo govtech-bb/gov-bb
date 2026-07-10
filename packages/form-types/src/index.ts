@@ -121,6 +121,8 @@ export {
 
 export { formConfigBlobSchema, parseFormConfigBlob } from "./form-config.type";
 
+export { isFormClosed, formatClosingDateTime } from "./closing";
+
 export type { FormConfigBlob } from "./form-config.type";
 
 export type {

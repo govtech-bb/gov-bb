@@ -23,6 +23,7 @@ vi.mock('../content/registry', () => mocks)
 const formMocks = vi.hoisted(() => ({
   getAvailableForms: vi.fn(async () => ['get-birth-certificate']),
   getMaintenanceForms: vi.fn(async () => [] as string[]),
+  getClosedForms: vi.fn(async () => [] as string[]),
 }))
 vi.mock('../lib/available-forms', () => formMocks)
 
@@ -162,6 +163,7 @@ describe('$ route loader gating', () => {
       url: fakePage.url,
       availableForms: ['get-birth-certificate'],
       underMaintenance: false,
+      applicationClosed: false,
       level: 'public',
       startSubPageVisible: true,
     })
@@ -211,6 +213,52 @@ describe('$ route loader gating', () => {
       context: { level: 'public', serviceStatuses: [] },
     })) as { underMaintenance: boolean }
     expect(data.underMaintenance).toBe(false)
+  })
+
+  it('flags a page whose form has closed and hides its Start link (#1936)', async () => {
+    const { Route } = await import('./$')
+    const formPage: ContentPage = {
+      ...fakePage,
+      frontmatter: {
+        ...fakePage.frontmatter,
+        visibility: 'public',
+        form_id: 'get-birth-certificate',
+      },
+    }
+    mocks.findPage.mockReturnValue(formPage)
+    mocks.isVisible.mockReturnValue(true)
+    formMocks.getClosedForms.mockResolvedValueOnce(['get-birth-certificate'])
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: 'secret-service' },
+      context: { level: 'public', serviceStatuses: [] },
+    })) as { applicationClosed: boolean; availableForms: string[] }
+    expect(data.applicationClosed).toBe(true)
+    // Closed forms are stripped from availableForms so the Start CTA is hidden.
+    expect(data.availableForms).not.toContain('get-birth-certificate')
+  })
+
+  it('does not flag a page whose form has not closed (#1936)', async () => {
+    const { Route } = await import('./$')
+    const formPage: ContentPage = {
+      ...fakePage,
+      frontmatter: {
+        ...fakePage.frontmatter,
+        visibility: 'public',
+        form_id: 'get-birth-certificate',
+      },
+    }
+    mocks.findPage.mockReturnValue(formPage)
+    mocks.isVisible.mockReturnValue(true)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: 'secret-service' },
+      context: { level: 'public', serviceStatuses: [] },
+    })) as { applicationClosed: boolean; availableForms: string[] }
+    expect(data.applicationClosed).toBe(false)
+    expect(data.availableForms).toContain('get-birth-certificate')
   })
 
   it('hides the form and flags maintenance when service_status disables it for the public', async () => {
