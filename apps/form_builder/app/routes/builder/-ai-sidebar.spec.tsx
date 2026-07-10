@@ -156,22 +156,42 @@ describe("AiSidebar — Edit Form", () => {
   });
 
   it("shows an interrupted message when the edit session is not found (404)", async () => {
-    // A single-task restart mid-edit loses the in-memory job; the next status
-    // poll 404s, surfaced by the API client as the expired-session message.
+    // A single-task restart mid-edit loses the in-memory job; every status
+    // poll 404s, surfaced by the API client as the expired-session message
+    // once the 3-consecutive-failure retry budget (#1531) is spent.
+    vi.useFakeTimers();
+    const user = userEvent.setup({
+      advanceTimers: (ms) => {
+        if (vi.isFakeTimers()) vi.advanceTimersByTime(ms);
+      },
+    });
     startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
     getEditStatus.mockRejectedValue(
       new Error("This edit session expired — please try again."),
     );
     setup();
 
-    await userEvent.type(
+    await user.type(
       screen.getByPlaceholderText(/make the email field required/i),
       "do a huge edit",
     );
-    await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
+    await user.click(screen.getByRole("button", { name: /edit form/i }));
 
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(/edit session expired/i);
+    // Three failed polls: 400ms first poll, then 2s between retries.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(/edit session expired/i),
+    );
+    vi.useRealTimers();
   });
 
   it("surfaces a validation error returned by the apply pipeline", async () => {
@@ -462,6 +482,74 @@ describe("AiSidebar — Upload", () => {
     });
 
     await waitFor(() => expect(onApplyRecipe).toHaveBeenCalled());
+    vi.useRealTimers();
+  });
+
+  it("tolerates two transient poll failures then applies the recipe on recovery", async () => {
+    // A 502/503 blip mid-poll must not kill a billed Textract + Bedrock run —
+    // two consecutive failures are swallowed and the job recovers on the third.
+    vi.useFakeTimers();
+    const user = setupUser();
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    startPdfConvert.mockResolvedValue({ jobId: "job-1" });
+    getPdfConvertStatus
+      .mockRejectedValueOnce(new Error("502 Bad Gateway"))
+      .mockRejectedValueOnce(new Error("503 Service Unavailable"))
+      .mockResolvedValueOnce({
+        status: "done",
+        recipe: { formId: "f", steps: [] },
+        reply: "Done.",
+        unresolvableRefs: [],
+      });
+    const { onApplyRecipe } = setup();
+
+    await pickPdf(user);
+    await user.click(screen.getByRole("button", { name: /upload/i }));
+
+    // Three polls: reject → reject → done. The two failures never surface.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    await waitFor(() => expect(onApplyRecipe).toHaveBeenCalled());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it("surfaces the error only after three consecutive poll failures", async () => {
+    vi.useFakeTimers();
+    const user = setupUser();
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    startPdfConvert.mockResolvedValue({ jobId: "job-1" });
+    getPdfConvertStatus.mockRejectedValue(new Error("502 Bad Gateway"));
+    setup();
+
+    await pickPdf(user);
+    await user.click(screen.getByRole("button", { name: /upload/i }));
+
+    // No alert after the first two failures — the retry budget isn't spent yet.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    // The third consecutive failure surfaces the error and stops polling.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(/502 bad gateway/i),
+    );
+    expect(getPdfConvertStatus).toHaveBeenCalledTimes(3);
     vi.useRealTimers();
   });
 
