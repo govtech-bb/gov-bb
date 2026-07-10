@@ -30,6 +30,12 @@ describe("application-code", () => {
     expect(() => generateApplicationCode("CIP", 36 ** 3)).toThrow();
   });
 
+  it("throws when the counter is negative", () => {
+    expect(() => generateApplicationCode("CIP", -1)).toThrow(
+      "Counter must be non-negative",
+    );
+  });
+
   it("generateApplicationCodeForService produces a valid code for the service", () => {
     const code = generateApplicationCodeForService("SPARKS");
     expect(code).toMatch(/^SPARKS-\d{4}-[0-9A-Z]{7}$/);
