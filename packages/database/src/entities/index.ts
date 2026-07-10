@@ -24,3 +24,8 @@ export { FormEditingSessionEntity } from "./form-editing-session.entity";
 export { ServiceStatusEntity, ServiceStatus } from "./service-status.entity";
 export { ServiceStatusAuditLogEntity } from "./service-status-audit-log.entity";
 export { AnalyticsReportCacheEntity } from "./analytics-report-cache.entity";
+export {
+  NotificationLogEntity,
+  NotificationOutcome,
+  NotificationDeliveryStatus,
+} from "./notification-log.entity";

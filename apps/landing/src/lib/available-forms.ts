@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
+import { resolveCachedValue } from './cached-resolver'
 
 /**
  * Runtime resolution of the available forms list.
@@ -41,16 +42,6 @@ const TTL_MS = 60_000
  * than make a visitor wait during an outage.
  */
 const COLD_START_RETRIES = 3
-
-/** Backoff between cold-start retries; the last value repeats if exceeded. */
-const RETRY_DELAYS_MS = [200, 500, 1000]
-
-function retryDelayMs(attempt: number): number {
-  return RETRY_DELAYS_MS[Math.min(attempt - 1, RETRY_DELAYS_MS.length - 1)]
-}
-
-const defaultSleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms))
 
 /** Canonical form IDs are kebab-case (ADR-0028). */
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/
@@ -177,7 +168,7 @@ export async function resolveAvailableForms({
   fetcher,
   cache,
   coldStartRetries = 0,
-  sleep = defaultSleep,
+  sleep,
 }: {
   now: number
   ttlMs: number
@@ -188,41 +179,28 @@ export async function resolveAvailableForms({
   /** Injectable delay so tests don't wait on real timers. */
   sleep?: (ms: number) => Promise<void>
 }): Promise<string[]> {
-  const cached = cache.current
-  if (cached && now - cached.fetchedAt < ttlMs) {
-    return cached.ids
-  }
-
-  // One attempt for a warm (stale) instance; on a cold start, retry a few times
-  // before giving up so a momentary blip on the first-ever request doesn't blank
-  // the buttons.
-  const maxAttempts = cached ? 1 : 1 + Math.max(0, coldStartRetries)
-  let lastErr: unknown
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      const ids = await fetcher()
-      cache.current = { ids, fetchedAt: now }
-      return ids
-    } catch (err) {
-      lastErr = err
-      if (attempt < maxAttempts) await sleep(retryDelayMs(attempt))
-    }
-  }
-
-  if (cached) {
-    // Stale but present: keep serving the last-known-good list, and stamp the
-    // attempt so a down API isn't re-fetched (and blocked on the full timeout)
-    // on every request — it gets a fresh `ttlMs` cooldown before the next try.
-    cache.current = { ids: cached.ids, fetchedAt: now }
-    return cached.ids
-  }
-
-  console.warn(
-    '[available-forms] could not fetch the forms list and have no cached ' +
-      'copy — Start now buttons are suppressed until the next successful ' +
-      `fetch. Cause: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`,
-  )
-  return []
+  return resolveCachedValue<string[]>({
+    now,
+    ttlMs,
+    fetcher,
+    getCached: () =>
+      cache.current
+        ? { value: cache.current.ids, fetchedAt: cache.current.fetchedAt }
+        : null,
+    setCached: (entry) => {
+      cache.current = { ids: entry.value, fetchedAt: entry.fetchedAt }
+    },
+    emptyValue: [],
+    coldStartRetries,
+    sleep,
+    onFetchFailure: (err) => {
+      console.warn(
+        '[available-forms] could not fetch the forms list and have no cached ' +
+          'copy — Start now buttons are suppressed until the next successful ' +
+          `fetch. Cause: ${err instanceof Error ? err.message : String(err)}`,
+      )
+    },
+  })
 }
 
 /** Per-instance cache, shared across requests served by this server process. */

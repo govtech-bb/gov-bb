@@ -23,6 +23,8 @@ import type { SubmissionCreatedEvent } from "../submissions.types";
 import { FormConfigService } from "@/forms/form-config/form-config.service";
 import { NonRetryableError } from "./non-retryable-error";
 import { redactPii } from "./log-sanitize";
+import { NotificationLogRepository } from "../notification-log.repository";
+import { NotificationOutcome } from "@/database/entities/notification-log.entity";
 
 // The detailed reviewer/MDA email: full field-by-field summary of the
 // submission. Used for every recipient kind except the citizen.
@@ -54,6 +56,7 @@ export class EmailProcessor implements ISubmissionProcessor {
   readonly type = "email" as const;
   private readonly logger = new Logger(EmailProcessor.name);
   private readonly defaultRecipient: string;
+  private readonly requireResolvedRecipient: boolean;
 
   constructor(
     config: ConfigService,
@@ -62,9 +65,12 @@ export class EmailProcessor implements ISubmissionProcessor {
     private readonly emailBodyBuilder: EmailBodyBuilder,
     private readonly filesService: FilesService,
     private readonly formConfigService: FormConfigService,
+    private readonly notificationLog: NotificationLogRepository,
   ) {
     this.defaultRecipient =
       config.get<string>("email.defaultRecipient") ?? "testing@govtech.bb";
+    this.requireResolvedRecipient =
+      config.get<boolean>("email.requireResolvedRecipient") ?? false;
   }
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
@@ -105,23 +111,32 @@ export class EmailProcessor implements ISubmissionProcessor {
       );
     }
 
+    // Classify once: recipient resolution and the uploads gate below both
+    // derive from `kind` so they can never disagree. See classifyRecipientField
+    // (@govtech-bb/form-types) for the literal/contact/config/submitted rules.
+    // `kind`, `recipient` and `defaulted` are declared out here so the catch
+    // block can attribute the failure to the right recipient/outcome.
+    const kind = classifyRecipientField(recipientField);
+    let recipient: string | undefined;
+    let defaulted = false;
+
     // Wrap resolution + send so any failure (unresolved recipient or an SES
     // delivery error) throws. The caller surfaces it (SQS retry → DLQ / error
-    // log) instead of silently dropping an undelivered email.
+    // log) instead of silently dropping an undelivered email. Every terminal
+    // outcome is also recorded to notification_log (best-effort) so an
+    // undelivered MDA notification is visible and recoverable, never silent.
     try {
-      // Classify once: recipient resolution and the uploads gate below both
-      // derive from `kind` so they can never disagree. See classifyRecipientField
-      // (@govtech-bb/form-types) for the literal/contact/config/submitted rules.
-      const kind = classifyRecipientField(recipientField);
-
-      const recipient =
-        kind === "literal"
-          ? recipientField
-          : kind === "contact"
-            ? await this.resolveContactRecipient(payload, recipientField)
-            : kind === "config"
-              ? await this.resolveConfigRecipient(payload)
-              : this.resolveSubmittedRecipient(payload, recipientField);
+      if (kind === "literal") {
+        recipient = recipientField;
+      } else if (kind === "contact") {
+        recipient = await this.resolveContactRecipient(payload, recipientField);
+      } else if (kind === "config") {
+        const resolved = await this.resolveConfigRecipient(payload);
+        recipient = resolved.recipient;
+        defaulted = resolved.defaulted;
+      } else {
+        recipient = this.resolveSubmittedRecipient(payload, recipientField);
+      }
 
       if (!recipient) {
         // Config error: the recipient resolved to nothing (e.g. a misconfigured
@@ -129,6 +144,12 @@ export class EmailProcessor implements ISubmissionProcessor {
         // retry, so fail non-retryably. NOTE: a resolver that *throws* (DB/infra
         // down) is a transient failure — it propagates to the catch below and is
         // re-wrapped as a normal, retryable error.
+        await this.recordOutcome(
+          payload,
+          kind,
+          NotificationOutcome.NO_RECIPIENT,
+          { error: `Could not resolve recipient at "${recipientField}"` },
+        );
         throw new NonRetryableError(
           `Could not resolve recipient at "${recipientField}"`,
         );
@@ -196,7 +217,7 @@ export class EmailProcessor implements ISubmissionProcessor {
               },
             };
 
-      await this.mailer.client.send(
+      const result = await this.mailer.client.send(
         new SendEmailCommand({
           FromEmailAddress: this.mailer.from,
           Destination: { ToAddresses: [recipient] },
@@ -209,20 +230,61 @@ export class EmailProcessor implements ISubmissionProcessor {
         }),
       );
 
+      // Record the accepted send. A non-prod config.* recipient that fell back
+      // to the default test inbox is flagged DEFAULTED (distinct from a real
+      // SENT) so it stays queryable; the SES MessageId is the reconciliation key
+      // a future SES-event consumer uses to fill delivery_status on this row.
+      await this.recordOutcome(
+        payload,
+        kind,
+        defaulted ? NotificationOutcome.DEFAULTED : NotificationOutcome.SENT,
+        { recipient, providerMessageId: result.MessageId ?? null },
+      );
+
       this.logger.log(
         `[email] Confirmation sent to ${redactPii(recipient)} for submission ${payload.submissionId}`,
       );
     } catch (err) {
       // A config error (unresolved recipient) is non-retryable — rethrow it
-      // untouched so the consumer drops the message instead of retrying. Any
-      // other failure (SES delivery, resolver/DB exception) is transient: wrap
-      // it as a normal error so SQS retries → DLQ.
+      // untouched so the consumer drops the message instead of retrying (its
+      // outcome was already recorded above). Any other failure (SES delivery,
+      // resolver/DB exception, or a prod missing-MDA recipient) is transient:
+      // record it and wrap it as a normal error so SQS retries → DLQ.
       if (err instanceof NonRetryableError) throw err;
       const reason = err instanceof Error ? err.message : String(err);
+      await this.recordOutcome(payload, kind, NotificationOutcome.FAILED, {
+        recipient: recipient ?? null,
+        error: reason,
+      });
       throw new Error(
         `Failed to send email for recipientField "${recipientField}" on submission ${payload.submissionId}: ${reason}`,
       );
     }
+  }
+
+  /** Best-effort write of a send outcome to notification_log. Delegates to
+   *  NotificationLogRepository.record, which never throws — the log must not
+   *  become a new failure mode for email sending. */
+  private recordOutcome(
+    payload: SubmissionCreatedEvent,
+    recipientKind: string,
+    outcome: NotificationOutcome,
+    fields: {
+      recipient?: string | null;
+      error?: string | null;
+      providerMessageId?: string | null;
+    } = {},
+  ): Promise<void> {
+    return this.notificationLog.record({
+      submissionId: payload.submissionId,
+      formId: payload.formId,
+      referenceCode: payload.referenceCode,
+      recipientKind,
+      recipient: fields.recipient ?? null,
+      outcome,
+      error: fields.error ?? null,
+      providerMessageId: fields.providerMessageId ?? null,
+    });
   }
 
   /**
@@ -268,23 +330,36 @@ export class EmailProcessor implements ISubmissionProcessor {
   /**
    * Resolves a recipient for the reserved "config.*" token from the
    * per-environment `form_config` → `mda_contact` directory (the private MDA
-   * notification address). Always returns a usable address: on a **resolved
-   * miss** — no row (e.g. sandbox, or a freshly-migrated recipe with no
-   * production row yet), no/deleted contact, or a blank `mda_email` — it
-   * degrades to the configured default test inbox rather than a stale
-   * production address.
+   * notification address). Returns `{ recipient, defaulted }`.
+   *
+   * On a **resolved miss** — no row (e.g. sandbox, or a freshly-migrated recipe
+   * with no production row yet), no/deleted contact, or a blank `mda_email`:
+   *   - if `MDA_REQUIRE_RECIPIENT` is set (production), it **throws a *retryable*
+   *     error** so the send dead-letters and is recoverable by redrive once the
+   *     recipient is configured — never silently misrouting a real MDA
+   *     notification to the default test inbox (the summer-camp incident);
+   *   - otherwise (non-prod), it degrades to the default test inbox with
+   *     `defaulted: true` so the caller records the fallback rather than it
+   *     being silent.
    *
    * A genuine infrastructure failure (DB unreachable) is *not* a resolved miss:
-   * it propagates so the send retries (SQS → DLQ) instead of silently
-   * misrouting a production MDA notification to the default inbox.
+   * it propagates so the send retries (SQS → DLQ).
    */
   private async resolveConfigRecipient(
     payload: SubmissionCreatedEvent,
-  ): Promise<string> {
+  ): Promise<{ recipient: string; defaulted: boolean }> {
     const mdaEmail = await this.formConfigService.resolveMdaEmail(
       payload.formId,
     );
-    return mdaEmail ?? this.defaultRecipient;
+    if (mdaEmail) return { recipient: mdaEmail, defaulted: false };
+
+    if (this.requireResolvedRecipient) {
+      throw new Error(
+        `No MDA recipient configured for form "${payload.formId}" (config.* recipient) and MDA_REQUIRE_RECIPIENT is set — refusing to default to the test inbox`,
+      );
+    }
+
+    return { recipient: this.defaultRecipient, defaulted: true };
   }
 
   /**

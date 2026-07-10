@@ -8,7 +8,7 @@ const VALID = {
 }
 
 function okFetch() {
-  return vi.fn().mockResolvedValue({ ok: true } as Response)
+  return vi.fn().mockResolvedValue({ ok: true })
 }
 
 describe('postFeedback', () => {
@@ -55,7 +55,7 @@ describe('postFeedback', () => {
   })
 
   it('returns a server error (no false success) on a non-2xx response', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue({ ok: false } as Response)
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: false })
     const result = await postFeedback(VALID, {
       apiBase: 'https://api.example',
       fetchImpl,

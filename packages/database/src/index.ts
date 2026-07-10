@@ -15,6 +15,7 @@ import { FormEditingSessionEntity } from "./entities/form-editing-session.entity
 import { ServiceStatusEntity } from "./entities/service-status.entity";
 import { ServiceStatusAuditLogEntity } from "./entities/service-status-audit-log.entity";
 import { AnalyticsReportCacheEntity } from "./entities/analytics-report-cache.entity";
+import { NotificationLogEntity } from "./entities/notification-log.entity";
 
 // Migrations
 import { CreateFormsTables1774544962999 } from "./migrations/1774544962999-CreateFormsTables";
@@ -34,6 +35,9 @@ import { DedupFormDefinitionsUniqueFormId1781100000000 } from "./migrations/1781
 import { AddProcessorsFailedToFormSubmissions1781200000000 } from "./migrations/1781200000000-AddProcessorsFailedToFormSubmissions";
 import { CreateServiceStatusTables1783356461699 } from "./migrations/1783356461699-CreateServiceStatusTables";
 import { CreateAnalyticsReportCache1783500000000 } from "./migrations/1783500000000-CreateAnalyticsReportCache";
+import { RenameServiceStatusFormIdToSlug1783440984875 } from "./migrations/1783440984875-RenameServiceStatusFormIdToSlug";
+import { CreateNotificationLog1783458705143 } from "./migrations/1783458705143-CreateNotificationLog";
+import { SeedServiceStatus1783520007424 } from "./migrations/1783520007424-SeedServiceStatus";
 
 export const entities = [
   FormComponentEntity,
@@ -50,6 +54,7 @@ export const entities = [
   ServiceStatusEntity,
   ServiceStatusAuditLogEntity,
   AnalyticsReportCacheEntity,
+  NotificationLogEntity,
 ];
 
 export const migrations = [
@@ -70,6 +75,9 @@ export const migrations = [
   AddProcessorsFailedToFormSubmissions1781200000000,
   CreateServiceStatusTables1783356461699,
   CreateAnalyticsReportCache1783500000000,
+  RenameServiceStatusFormIdToSlug1783440984875,
+  CreateNotificationLog1783458705143,
+  SeedServiceStatus1783520007424,
 ];
 
 /**

@@ -71,11 +71,11 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const err = await loader({
       params: { _splat: 'secret-service' },
-      context: { level: 'public' },
+      context: { level: 'public', serviceStatuses: [] },
     }).catch((e: unknown) => e)
     expect(err).toBeDefined()
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
-    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'public')
+    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'public', new Map())
   })
 
   it('throws notFound for a /start step whose form is non-public to the public', async () => {
@@ -97,7 +97,7 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const err = await loader({
       params: { _splat: 'work-employment/apply-for-conductor-licence/start' },
-      context: { level: 'public' },
+      context: { level: 'public', serviceStatuses: [] },
     }).catch((e: unknown) => e)
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
   })
@@ -119,7 +119,7 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'life-events/get-birth-certificate/start' },
-      context: { level: 'public' },
+      context: { level: 'public', serviceStatuses: [] },
     })) as { kind: string }
     expect(data.kind).toBe('page')
   })
@@ -142,7 +142,7 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'work-employment/apply-for-conductor-licence/start' },
-      context: { level: 'preview' },
+      context: { level: 'preview', serviceStatuses: [] },
     })) as { kind: string }
     expect(data.kind).toBe('page')
   })
@@ -155,15 +155,17 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = await loader({
       params: { _splat: 'secret-service' },
-      context: { level: 'draft' },
+      context: { level: 'draft', serviceStatuses: [] },
     })
     expect(data).toEqual({
       kind: 'page',
       url: fakePage.url,
       availableForms: ['get-birth-certificate'],
       underMaintenance: false,
+      level: 'public',
+      startSubPageVisible: true,
     })
-    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'draft')
+    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'draft', new Map())
   })
 
   it('flags a page whose form is under maintenance', async () => {
@@ -185,7 +187,7 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'secret-service' },
-      context: { level: 'public' },
+      context: { level: 'public', serviceStatuses: [] },
     })) as { underMaintenance: boolean }
     expect(data.underMaintenance).toBe(true)
   })
@@ -206,9 +208,40 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'secret-service' },
-      context: { level: 'public' },
+      context: { level: 'public', serviceStatuses: [] },
     })) as { underMaintenance: boolean }
     expect(data.underMaintenance).toBe(false)
+  })
+
+  it('hides the form and flags maintenance when service_status disables it for the public', async () => {
+    const { Route } = await import('./$')
+    const formPage: ContentPage = {
+      ...fakePage,
+      slug: 'svc',
+      url: 'svc',
+      frontmatter: {
+        ...fakePage.frontmatter,
+        visibility: 'public',
+        form_id: 'svc-form',
+      },
+    }
+    mocks.findPage.mockReturnValue(formPage)
+    mocks.isVisible.mockReturnValue(true)
+    formMocks.getAvailableForms.mockResolvedValueOnce(['svc-form'])
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: 'svc' },
+      context: {
+        // Status rows are keyed by the canonical key — the form_id here.
+        level: 'public',
+        serviceStatuses: [['svc-form', 'form_disabled']],
+      },
+    })) as { availableForms: string[]; underMaintenance: boolean }
+    // The form is dropped from the public available list (Start hidden) and the
+    // maintenance notice is flagged.
+    expect(data.availableForms).toEqual([])
+    expect(data.underMaintenance).toBe(true)
   })
 })
 
@@ -220,12 +253,13 @@ describe('$ route category gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const err = await loader({
       params: { _splat: 'pensions-and-gratuities' },
-      context: { level: 'public' },
+      context: { level: 'public', serviceStatuses: [] },
     }).catch((e: unknown) => e)
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
     expect(mocks.isCategoryVisible).toHaveBeenCalledWith(
       expect.objectContaining({ slug: 'pensions-and-gratuities' }),
       'public',
+      new Map(),
     )
   })
 
@@ -236,7 +270,7 @@ describe('$ route category gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'pensions-and-gratuities' },
-      context: { level: 'preview' },
+      context: { level: 'preview', serviceStatuses: [] },
     })) as { kind: string; category: { slug: string } }
     expect(data.kind).toBe('category')
     expect(data.category.slug).toBe('pensions-and-gratuities')
@@ -252,12 +286,13 @@ describe('$ route subcategory gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const err = await loader({
       params: { _splat: 'youth-and-community/youth-development-leadership' },
-      context: { level: 'public' },
+      context: { level: 'public', serviceStatuses: [] },
     }).catch((e: unknown) => e)
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
     expect(mocks.isCategoryVisible).toHaveBeenCalledWith(
       expect.objectContaining({ slug: 'youth-and-community' }),
       'public',
+      new Map(),
     )
   })
 
@@ -269,7 +304,7 @@ describe('$ route subcategory gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'youth-and-community/youth-development-leadership' },
-      context: { level: 'preview' },
+      context: { level: 'preview', serviceStatuses: [] },
     })) as { kind: string; subcategory: { slug: string } }
     expect(data.kind).toBe('subcategory')
     expect(data.subcategory.slug).toBe('youth-development-leadership')
@@ -283,7 +318,7 @@ describe('form route beforeLoad gating', () => {
       await import('./money-financial-support/calculate-severance-pay/form')
     const err = caught(() =>
       (Route.options.beforeLoad as (a: unknown) => unknown)({
-        context: { level: 'public' },
+        context: { level: 'public', serviceStatuses: [] },
       }),
     )
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
@@ -295,7 +330,7 @@ describe('form route beforeLoad gating', () => {
       await import('./money-financial-support/calculate-severance-pay/form')
     const err = caught(() =>
       (Route.options.beforeLoad as (a: unknown) => unknown)({
-        context: { level: 'preview' },
+        context: { level: 'preview', serviceStatuses: [] },
       }),
     )
     expect(err).toBeUndefined()
@@ -307,7 +342,7 @@ describe('form route beforeLoad gating', () => {
       await import('./money-financial-support/calculate-severance-pay/form')
     const err = caught(() =>
       (Route.options.beforeLoad as (a: unknown) => unknown)({
-        context: { level: 'public' },
+        context: { level: 'public', serviceStatuses: [] },
       }),
     )
     expect(err).toBeUndefined()
