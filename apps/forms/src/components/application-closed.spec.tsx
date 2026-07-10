@@ -28,13 +28,13 @@ describe("ApplicationClosed", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByRole("heading", {
-        name: "Have a question about this service?",
-      }),
+      screen.getByRole("heading", { name: "Have a question?" }),
     ).toBeInTheDocument();
-    // Contact rendered as prose: "contact the {MDA} at {email link} or call {number}".
+    // Contact rendered as prose: "…please contact the {MDA} at {email link} or call {number}".
     expect(
-      screen.getByText(/contact the Ministry of Education/i),
+      screen.getByText(
+        /If you need assistance or have any questions, please contact the Ministry of Education/i,
+      ),
     ).toBeInTheDocument();
     const emailLink = screen.getByRole("link", {
       name: "camp@example.gov.bb",
@@ -56,9 +56,7 @@ describe("ApplicationClosed", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", {
-        name: "Have a question about this service?",
-      }),
+      screen.queryByRole("heading", { name: "Have a question?" }),
     ).not.toBeInTheDocument();
   });
 });
