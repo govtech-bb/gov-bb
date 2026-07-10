@@ -8,7 +8,8 @@ import {
   contractQueryOptions,
   formMetaQueryOptions,
 } from "@forms/lib";
-import { FormRenderer, FormError } from "@forms/components";
+import { FormRenderer, FormError, ApplicationClosed } from "@forms/components";
+import { isFormClosed } from "@govtech-bb/form-types";
 import {
   formSearchParamSchema,
   type FormSearchParams,
@@ -103,6 +104,30 @@ export const Route = createFileRoute("/forms/$formId/")({
 });
 
 function RouteComponent() {
+  const formMeta = Route.useLoaderData();
+  const { preview } = Route.useSearch();
+  const { closingDateTime } = formMeta;
+  // #1936: a form past its closing datetime shows the closed page instead of the
+  // renderer. Previewing an unpublished recipe (?preview=) bypasses the gate so
+  // an operator can still review a closed form. This gate is a wrapper so the
+  // form view's hooks are never called conditionally (rules-of-hooks).
+  if (
+    !preview &&
+    closingDateTime &&
+    isFormClosed(closingDateTime, new Date())
+  ) {
+    return (
+      <ApplicationClosed
+        serviceTitle={formMeta.formTitle}
+        closingDateTime={closingDateTime}
+        contactDetails={formMeta.contactDetails}
+      />
+    );
+  }
+  return <FormView />;
+}
+
+function FormView() {
   const formMeta = Route.useLoaderData();
   const { step, preview, draft, source, payment } = Route.useSearch();
   // Only `?draft=` (the DB scratch) blocks submission. `?preview=` serves the
