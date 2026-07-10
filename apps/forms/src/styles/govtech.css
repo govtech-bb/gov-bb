@@ -394,6 +394,9 @@
 
 .form-page__contact {
   margin-top: var(--spacing-m);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s); /* 16px between inner elements */
 }
 
 .form-page__contact-body {
@@ -417,7 +420,7 @@
  * (same tokens as the service-title caption and payment panel), a small bold
  * grey label, and the formatted closing datetime beneath it. */
 .form-page__closed-panel {
-  padding: var(--spacing-s) var(--spacing-m);
+  padding: var(--spacing-s) var(--spacing-s);
   background: var(--color-blue-10);
   border-left: var(--color-blue-40) 0.25rem solid;
 }
