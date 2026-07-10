@@ -1,5 +1,5 @@
 ---
-title: Apply for National Science Camp 2026
+title: Apply for National Summer Camp Science Programme 2026
 description: >-
   Apply for a child to attend Tropical Trails and Tales Science Camp 2026 (13
   July to 21 August 2026).
