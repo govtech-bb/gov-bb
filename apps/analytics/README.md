@@ -1,10 +1,11 @@
 # @govtech-bb/analytics-app
 
-Internal analytics dashboard for the alpha.gov.bb platform — top pages, form
-funnels (starts, completion, drop-off, field errors and *why* fields fail),
-session-based journeys/funnels, and search queries. TanStack Start + React +
-Tailwind on **Amplify SSR compute** (Nitro), styled with the `@govtech-bb/react`
-design system.
+Internal analytics dashboard for the alpha.gov.bb platform — a slim site
+overview (visitors, pageviews, top pages) plus a list of forms; select a form to
+load its **funnel** (start → review → submit, distinct visitors + drop-off),
+**top journeys**, and **submit-error rate**. TanStack Start + React + Tailwind on
+**Amplify SSR compute** (Nitro), styled with the `@govtech-bb/react` design
+system.
 
 ```bash
 pnpm dev      # start on port 3100 (SSR dev server)
@@ -17,43 +18,50 @@ view, not part of the public site.
 
 ## How it works
 
-The dashboard fetches its data **server-side** from the API's cached endpoint
-`GET /analytics/report` (see [`src/lib/report.ts`](./src/lib/report.ts), a
-TanStack `createServerFn` loader). The API refreshes that cache from Umami every
-15 minutes on a schedule (advisory-locked so exactly one ECS task crawls), so:
+The dashboard reads Umami **directly, server-side, in real time** — no database,
+no cron, no committed snapshot.
 
-- data is near-real-time (≤15 min stale) without crawling Umami per request;
-- the Umami API key stays in the API — this app never sees it;
-- the browser never talks to Umami or the API directly (the fetch is SSR/RPC).
+- On page load, a TanStack `createServerFn` loader
+  ([`src/lib/report.ts`](./src/lib/report.ts) → [`umami-server.ts`](./src/lib/umami-server.ts))
+  fetches the site overview: `/stats` + top-pages `/metrics` from the **landing**
+  Umami website, and the published-forms list from `GET /form-definitions`.
+- When a form is selected, a second server function fetches that one form's
+  detail from the **forms** Umami website: `POST /reports/funnel` (steps
+  `<formId>:form-start → :form-review → :form-submit`), `POST /reports/journey`,
+  and a `/metrics` lookup for the `<formId>:form-submit-error` count.
+- The Umami API key stays on the server (Nitro runtime config); the browser
+  never talks to Umami. A short **~60s in-memory TTL** ([`cache.ts`](./src/lib/cache.ts))
+  dedupes calls across refreshes / concurrent loads. Any Umami error degrades to
+  an empty section rather than throwing, so the page always renders.
 
-On cold start, before the first refresh populates the cache, the endpoint
-reports `ready: false` and the page shows a "warming up" state. If the API is
-unreachable the loader degrades to the same state rather than erroring.
+Funnel/journey shaping and the thin Umami REST client live in the shared
+[`@govtech-bb/umami-analytics`](../../packages/umami-analytics) package.
 
-Report shaping lives in the shared [`@govtech-bb/umami-analytics`](../../packages/umami-analytics)
-package (used by both this app and the API's refresher, so the report shape is
-produced in exactly one place). The committed
-[`src/content/analytics-snapshot.json`](./src/content/analytics-snapshot.json)
-is real, PII-safe data kept only as a rendering **test fixture** — it is no
-longer a data source.
+> Funnel counts are distinct **visitors** (Umami's funnel-report semantics).
+> Per-step reached-vs-completed (#1915) is not shown in the real-time model — it
+> needs the step in the URL (#1931).
 
 ## Configuration
 
-One env var, the API base URL (a public URL — **not** a secret):
+Set on the deployment (Amplify Console), per environment:
 
 ```env
-VITE_API_URL=https://forms.api.sandbox.alpha.gov.bb   # per environment
+UMAMI_API_KEY=...                  # secret — server-only, never exposed
+UMAMI_LANDING_WEBSITE_ID=...       # landing site (overview stats/pages)
+UMAMI_FORMS_WEBSITE_ID=...         # forms site (funnels/journeys/events)
+VITE_FORMS_API_URL=https://forms.api.sandbox.alpha.gov.bb   # public — lists forms
 ```
 
-It is snapshotted into the Nitro server runtime config at build time (see
-[`vite.config.ts`](./vite.config.ts)) because the Amplify SSR Lambda never sees
-Console env vars at runtime. Unset → falls back to the sandbox default. The
-Umami crawl credentials (`UMAMI_*`) live on the **API**, not here.
+These are snapshotted into the Nitro **server** runtime config at build time
+(see [`vite.config.ts`](./vite.config.ts)) because the Amplify SSR Lambda never
+sees Console env vars at runtime. They are deliberately **not** `VITE_`-prefixed
+(that would inline them into the browser bundle). With `UMAMI_*` unset the page
+renders a "not configured" message.
 
 ## Deployment
 
 Deployed as **Amplify SSR compute** (Nitro `aws_amplify` preset), like the
 landing and chat apps. `amplify.yml` serves `apps/analytics/.amplify-hosting`.
-Set `VITE_API_URL` in the Amplify Console per environment. Data freshness is
-handled entirely by the API's scheduled refresh — there is no snapshot to
-regenerate or commit.
+The standalone `gov-bb-analytics` Amplify app must run as SSR/compute (not static
+hosting) and have the env vars above set. There is no snapshot to regenerate and
+no scheduled job — data is fetched live on each request (with the short TTL).

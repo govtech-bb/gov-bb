@@ -1,5 +1,19 @@
 # Real-time per-form analytics SSR dashboard — Implementation Plan
 
+> **Revision (execution):** the branch's true starting state was the *full* PR
+> #1934 — the analytics app was **already** a TanStack Start SSR app (so the
+> planned "convert static SPA → SSR" and Amplify-SSR steps were already done),
+> and the **api-side DB cache + cron + `/analytics/report` endpoint were present**
+> (not "already gone" as an earlier draft assumed). The executed work therefore:
+> (1) added the report-endpoint methods; (2) **retired the api/DB layer** —
+> analytics module, `umami.config`, the cache entity in `apps/api` + `packages/database`,
+> the `CreateAnalyticsReportCache` migration, and the `apps/api` dep on the package;
+> (3) retired the package session-crawl; (4) added the direct-Umami data layer +
+> TTL; (5) rewired `vite` runtimeConfig + server functions + loader to call Umami
+> directly; (6) rewrote `AnalyticsPage`, removed `SessionsSection` + the snapshot.
+> Tasks below are kept as originally written for reference.
+
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Rebuild `/analytics` to fetch Umami data server-side in real time (no DB, no committed snapshot), showing a slim site overview + form list, with each form's funnel/journey/submit-error loaded on click.
