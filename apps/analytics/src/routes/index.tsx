@@ -1,15 +1,16 @@
 import { createFileRoute } from '@tanstack/react-router'
 import AnalyticsPage from '../AnalyticsPage'
-import { fetchReport } from '../lib/report'
+import { fetchOverview } from '../lib/report'
 
 export const Route = createFileRoute('/')({
-  // Runs server-side on the initial SSR load; the fetched report is dehydrated
-  // into the page so the browser renders it without a second round-trip.
-  loader: () => fetchReport(),
+  // Runs server-side on the initial SSR load; the overview is dehydrated into
+  // the page so the browser renders it without a second round-trip. Each form's
+  // detail is fetched separately, on click.
+  loader: () => fetchOverview(),
   component: Analytics,
 })
 
 function Analytics() {
-  const { report, refreshedAt } = Route.useLoaderData()
-  return <AnalyticsPage report={report} refreshedAt={refreshedAt} />
+  const overview = Route.useLoaderData()
+  return <AnalyticsPage overview={overview} />
 }

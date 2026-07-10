@@ -1,35 +1,38 @@
 import { render, screen } from '@testing-library/react'
-import { expect, test } from 'vitest'
-import type { ReportModel } from '@govtech-bb/umami-analytics'
+import { describe, expect, it, vi } from 'vitest'
 import AnalyticsPage from './AnalyticsPage'
-// Real, PII-safe report kept as a rendering fixture (the live data now comes
-// from the API's cached endpoint at runtime; see src/lib/report.ts).
-import snapshot from './content/analytics-snapshot.json'
+import type { OverviewPayload } from './lib/report'
 
-const REPORT = snapshot as unknown as ReportModel
+// The form drawer calls this server function on click; stub it so the module
+// (which imports nitro/runtime-config) doesn't load its server-only deps here.
+vi.mock('./lib/report', () => ({ fetchFormDetail: vi.fn() }))
 
-test('renders the dashboard from a report', () => {
-  render(<AnalyticsPage report={REPORT} refreshedAt="2026-07-10T09:00:00Z" />)
-  // Top pages table heading is always present when a preset exists.
-  expect(screen.getByRole('combobox')).toBeDefined()
-  expect(screen.getAllByRole('heading').length).toBeGreaterThan(0)
-})
+const overview: OverviewPayload = {
+  configured: true,
+  stats: { visitors: 10, pageviews: 20 },
+  pages: [{ path: '/', pageviews: 20, visitors: 10, topSources: [] }],
+  forms: [{ formId: 'birth-cert', title: 'Get a birth certificate' }],
+}
 
-test('renders the session-based consolidated section when the report has it', () => {
-  render(<AnalyticsPage report={REPORT} refreshedAt="2026-07-10T09:00:00Z" />)
-  if (REPORT.sessions) {
-    expect(
-      screen.getByText(/Journeys & funnels \(session-based\)/i),
-    ).toBeDefined()
-    expect(screen.getByText(/^Entry pages$/)).toBeDefined()
-    expect(screen.getByText(/^Devices$/)).toBeDefined()
-    expect(screen.getByText(/^Countries$/)).toBeDefined()
-    // Freshness (#1917): header notes the session window.
-    expect(screen.getByText(/session data: last \d+ days/i)).toBeDefined()
-  }
-})
+describe('AnalyticsPage', () => {
+  it('renders the overview and the form list from the loader payload', () => {
+    render(<AnalyticsPage overview={overview} />)
+    expect(screen.getByText('Top pages')).toBeTruthy()
+    expect(screen.getByText('Get a birth certificate')).toBeTruthy()
+    expect(screen.getByText(/10 visitors/)).toBeTruthy()
+  })
 
-test('shows a warming-up message before the first refresh (cold start)', () => {
-  render(<AnalyticsPage report={null} refreshedAt={null} />)
-  expect(screen.getByText(/warming up/i)).toBeDefined()
+  it('shows the setup message when analytics is not configured', () => {
+    render(
+      <AnalyticsPage
+        overview={{
+          configured: false,
+          stats: { visitors: 0, pageviews: 0 },
+          pages: [],
+          forms: [],
+        }}
+      />,
+    )
+    expect(screen.getByText(/not configured/)).toBeTruthy()
+  })
 })
