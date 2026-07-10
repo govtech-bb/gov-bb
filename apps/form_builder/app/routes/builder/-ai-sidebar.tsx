@@ -113,6 +113,19 @@ export function AiSidebar({ draft, onApplyRecipe }: AiSidebarProps) {
   const [pdfName, setPdfName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A generated recipe whose apply *rejected* (the editor pipeline crashed, as
+  // opposed to a resolved { error } validation verdict). Stashed so Retry
+  // apply can re-run onApplyRecipe from memory instead of forcing the user
+  // back through the billed upload/Textract/Bedrock pipeline (#1873).
+  const [pendingApply, setPendingApply] = useState<{
+    recipe: ServiceContractRecipe;
+    unresolvableRefs: UnknownRef[];
+  } | null>(null);
+  // True while an apply is in flight. The pipeline validates over the network
+  // before it loads, so this window is real: lock out a second Retry click and
+  // any new job start, or a stale apply's continuation would clobber the newer
+  // job's state.
+  const [applying, setApplying] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   // Needed to reset the hidden file input when the staged file is removed —
   // without it, re-picking the same file fires no change event.
@@ -171,26 +184,58 @@ export function AiSidebar({ draft, onApplyRecipe }: AiSidebarProps) {
       ...m,
       { role: "assistant", content: stripRecipeJson(reply) },
     ]);
-    const result = await onApplyRecipe(
+    await applyRecipe(
       recipe as unknown as ServiceContractRecipe,
       unresolvableRefs,
     );
+  };
+
+  // Apply-and-report, shared by handleResponse and the Retry apply action. A
+  // rejection means the editor pipeline crashed — the generation itself
+  // succeeded, so stash the recipe for retry rather than routing the error
+  // through the callers' upload/edit catches with a misleading message
+  // (#1532, #1871). The resolved paths clear the stash, except "cancelled":
+  // the user declined the dirty-form overwrite prompt, and retry must stay
+  // available (e.g. after they save) or they're forced back through a billed
+  // regeneration.
+  const applyRecipe = async (
+    recipe: ServiceContractRecipe,
+    unresolvableRefs: UnknownRef[],
+  ) => {
+    setApplying(true);
+    let result: ApplyRecipeResult;
+    try {
+      result = await onApplyRecipe(recipe, unresolvableRefs);
+    } catch {
+      setPendingApply({ recipe, unresolvableRefs });
+      setError("Couldn't apply the recipe to the editor.");
+      return;
+    } finally {
+      setApplying(false);
+    }
     if (result.error) {
+      // Deterministic validation verdict — a retry would fail identically.
+      setPendingApply(null);
       setError(result.error);
     } else if (result.applied) {
+      setPendingApply(null);
+      setError(null);
       pushStatus(
         "✓ Applied to the editor — not saved yet. Use Save draft to keep it, or Discard to undo.",
       );
     } else if (result.reason === "unchanged") {
+      setPendingApply(null);
       pushStatus("The AI returned the form unchanged — nothing to apply.");
     }
     // reason === "cancelled" is the user's own choice — stay silent.
   };
 
   const handleUpload = async () => {
-    if (!pdfFile || loading) return;
+    if (!pdfFile || loading || applying) return;
     setLoading(true);
     setError(null);
+    // A fresh job supersedes any recipe held for retry.
+    setPendingApply(null);
     // Steering context typed in the prompt box rides along with the upload
     // (e.g. "make every field optional"). Empty box → blind convert as before.
     const context = input.trim();
@@ -255,10 +300,12 @@ export function AiSidebar({ draft, onApplyRecipe }: AiSidebarProps) {
 
   const handleEditForm = async () => {
     const message = input.trim();
-    if (!message || loading) return;
+    if (!message || loading || applying) return;
     setInput("");
     setLoading(true);
     setError(null);
+    // A fresh job supersedes any recipe held for retry.
+    setPendingApply(null);
     setMessages((m) => [...m, { role: "user", content: message }]);
 
     // Cancel any prior in-flight poll before starting a fresh one, then publish
@@ -397,6 +444,18 @@ export function AiSidebar({ draft, onApplyRecipe }: AiSidebarProps) {
             {error}
           </div>
         )}
+        {pendingApply && (
+          <button
+            type="button"
+            className={s.aiRetryBtn}
+            disabled={applying}
+            onClick={() =>
+              applyRecipe(pendingApply.recipe, pendingApply.unresolvableRefs)
+            }
+          >
+            Retry apply
+          </button>
+        )}
         <div ref={chatEndRef} />
       </div>
 
@@ -461,7 +520,7 @@ export function AiSidebar({ draft, onApplyRecipe }: AiSidebarProps) {
             <button
               type="button"
               onClick={handleUpload}
-              disabled={!pdfFile || loading}
+              disabled={!pdfFile || loading || applying}
             >
               Upload
             </button>
@@ -469,7 +528,7 @@ export function AiSidebar({ draft, onApplyRecipe }: AiSidebarProps) {
             <button
               type="submit"
               className={s.btnPrimary}
-              disabled={!input.trim() || loading}
+              disabled={!input.trim() || loading || applying}
             >
               Edit Form
             </button>
