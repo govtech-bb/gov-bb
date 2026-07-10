@@ -81,9 +81,11 @@ export function shapeFormDetail(
   return { funnel, journey, submitErrorRate }
 }
 
+// Umami Cloud `/stats` returns flat counts (plus a `comparison` block for the
+// previous period), e.g. { pageviews: 14442, visitors: 3889, ... }.
 interface UmamiStats {
-  pageviews?: { value?: number }
-  visitors?: { value?: number }
+  pageviews?: number
+  visitors?: number
 }
 
 async function fetchFormList(cfg: UmamiConfig): Promise<FormListItem[]> {
@@ -118,8 +120,8 @@ export async function fetchOverviewData(
       .slice(0, 10)
     return {
       stats: {
-        visitors: statsRaw.visitors?.value ?? 0,
-        pageviews: statsRaw.pageviews?.value ?? 0,
+        visitors: statsRaw.visitors ?? 0,
+        pageviews: statsRaw.pageviews ?? 0,
       },
       pages,
       forms: forms.sort((a, b) => a.title.localeCompare(b.title)),

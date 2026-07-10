@@ -68,7 +68,7 @@ export const fetchOverview = createServerFn({ method: 'GET' }).handler(
  * the form. Degrades to empty data on error rather than throwing.
  */
 export const fetchFormDetail = createServerFn({ method: 'GET' })
-  .inputValidator((raw: unknown) => String(raw))
+  .validator((raw: unknown) => String(raw))
   .handler(async ({ data: formId }): Promise<FormDetailData> => {
     const cfg = getConfig()
     if (!isConfigured(cfg)) return EMPTY_DETAIL
