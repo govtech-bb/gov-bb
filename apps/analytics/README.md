@@ -1,14 +1,15 @@
 # @govtech-bb/analytics-app
 
 Internal analytics dashboard for the alpha.gov.bb platform — top pages, form
-funnels (starts, completion, drop-off, field errors and *why* fields fail), and
-search queries. Vite + React + Tailwind, styled with the `@govtech-bb/react`
+funnels (starts, completion, drop-off, field errors and *why* fields fail),
+session-based journeys/funnels, and search queries. TanStack Start + React +
+Tailwind on **Amplify SSR compute** (Nitro), styled with the `@govtech-bb/react`
 design system.
 
 ```bash
-pnpm dev      # start on port 3100
+pnpm dev      # start on port 3100 (SSR dev server)
 pnpm test     # run Vitest unit tests
-pnpm build    # production build
+pnpm build    # production build → .amplify-hosting (aws_amplify Nitro preset)
 ```
 
 The page is `noindex` and carries no navigation — it's a standalone internal
@@ -16,39 +17,43 @@ view, not part of the public site.
 
 ## How it works
 
-The dashboard renders **static data** from a JSON snapshot committed to the repo
-([`src/content/analytics-snapshot.json`](./src/content/analytics-snapshot.json))
-and bundled at build time. It never calls Umami at request time (that fanned out
-to ~30 calls per view and made the page slow), and the build does no fetching
-either — so deploys need no `UMAMI_*` env vars and previews are stable.
+The dashboard fetches its data **server-side** from the API's cached endpoint
+`GET /analytics/report` (see [`src/lib/report.ts`](./src/lib/report.ts), a
+TanStack `createServerFn` loader). The API refreshes that cache from Umami every
+15 minutes on a schedule (advisory-locked so exactly one ECS task crawls), so:
+
+- data is near-real-time (≤15 min stale) without crawling Umami per request;
+- the Umami API key stays in the API — this app never sees it;
+- the browser never talks to Umami or the API directly (the fetch is SSR/RPC).
+
+On cold start, before the first refresh populates the cache, the endpoint
+reports `ready: false` and the page shows a "warming up" state. If the API is
+unreachable the loader degrades to the same state rather than erroring.
 
 Report shaping lives in the shared [`@govtech-bb/umami-analytics`](../../packages/umami-analytics)
-package; form titles/categories are resolved from [`@govtech-bb/content`](../../packages/content)
-so the snapshot is self-describing.
+package (used by both this app and the API's refresher, so the report shape is
+produced in exactly one place). The committed
+[`src/content/analytics-snapshot.json`](./src/content/analytics-snapshot.json)
+is real, PII-safe data kept only as a rendering **test fixture** — it is no
+longer a data source.
 
-## Refreshing the snapshot
+## Configuration
 
-```bash
-pnpm run generate:analytics   # fetch from Umami, rewrite the snapshot, then COMMIT it
-```
-
-The generator auto-loads the repo-root `.env` for credentials. Set these (see
-the forms/landing Umami setup for where the website IDs come from):
+One env var, the API base URL (a public URL — **not** a secret):
 
 ```env
-UMAMI_API_KEY=...
-UMAMI_LANDING_WEBSITE_ID=...
-UMAMI_FORMS_WEBSITE_ID=...
-UMAMI_API_URL=...                 # optional — defaults to Umami Cloud
-UMAMI_TIMEZONE=America/Barbados   # optional
+VITE_API_URL=https://forms.api.sandbox.alpha.gov.bb   # per environment
 ```
 
-**Resilient by design:** if the credentials are absent or any fetch fails, the
-existing committed snapshot is left untouched and the script exits 0 — running
-it without creds can never blank out the committed data.
+It is snapshotted into the Nitro server runtime config at build time (see
+[`vite.config.ts`](./vite.config.ts)) because the Amplify SSR Lambda never sees
+Console env vars at runtime. Unset → falls back to the sandbox default. The
+Umami crawl credentials (`UMAMI_*`) live on the **API**, not here.
 
 ## Deployment
 
-Deployed as a static build on **AWS Amplify**. Because the data is baked into the
-committed snapshot, the build fetches nothing and needs no environment variables.
-Refresh the dashboard by regenerating the snapshot locally and committing it.
+Deployed as **Amplify SSR compute** (Nitro `aws_amplify` preset), like the
+landing and chat apps. `amplify.yml` serves `apps/analytics/.amplify-hosting`.
+Set `VITE_API_URL` in the Amplify Console per environment. Data freshness is
+handled entirely by the API's scheduled refresh — there is no snapshot to
+regenerate or commit.
