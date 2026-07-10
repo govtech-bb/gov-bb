@@ -72,4 +72,17 @@ describe("ContentService.list", () => {
     const publicOnly = await service.list(false);
     expect(publicOnly.map((e) => e.slug)).toEqual(["info-page"]);
   });
+
+  it("runs over the real services index; no status rows fail closed to preview", async () => {
+    const serviceStatus = { list: vi.fn().mockResolvedValue([]) };
+    const service = new ContentService(serviceStatus as never);
+
+    // No `index()` spy here, so the real static catalogue is used.
+    const all = await service.list(true);
+    expect(all.length).toBeGreaterThan(0);
+    expect(all.every((e) => e.visibility === "preview")).toBe(true);
+
+    // Every service is preview, so the public request returns nothing.
+    expect(await service.list(false)).toEqual([]);
+  });
 });
