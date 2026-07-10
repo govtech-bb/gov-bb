@@ -4,6 +4,7 @@ import { Heading, Text, linkVariants } from '@govtech-bb/react'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { MaintenanceNotice } from '../components/MaintenanceNotice'
+import { ApplicationClosedNotice } from '../components/ApplicationClosedNotice'
 import { MarkdownContent } from '../components/markdown'
 import {
   categoryServices,
@@ -17,7 +18,11 @@ import type { ContentPage } from '../content/registry'
 import type { ViewLevel } from '../lib/frontmatter'
 import { CATEGORY_BY_SLUG, getSubcategory } from '../content/categories'
 import type { Category, SubCategory } from '../content/categories'
-import { getAvailableForms, getMaintenanceForms } from '../lib/available-forms'
+import {
+  getAvailableForms,
+  getMaintenanceForms,
+  getClosedForms,
+} from '../lib/available-forms'
 import {
   deriveFormDisabledSlugs,
   deriveVisibilityOverlay,
@@ -50,6 +55,9 @@ type LoaderData =
       url: string
       availableForms: string[]
       underMaintenance: boolean
+      /** Whether the form's application window has closed (#1936) — for the
+       * closed notice and hiding the online application method. */
+      applicationClosed: boolean
       /** The page's effective level (with the status overlay) — for the review
        * banner and `noindex`. */
       level: ViewLevel
@@ -124,6 +132,15 @@ export const Route = createFileRoute('/$')({
       if (formDisabledByStatus && level === 'public') {
         availableForms = availableForms.filter((f) => f !== formId)
       }
+      // A closed form (#1936) stays public, so — unlike maintenance — it IS in
+      // availableForms; strip its formId here so its Start CTA is hidden and its
+      // `/start` sub-page 404s by direct URL (the check below), and flag it so
+      // PageView renders the closed notice. Computed before the `/start` gate.
+      const applicationClosed =
+        formId !== undefined && (await getClosedForms()).includes(formId)
+      if (applicationClosed) {
+        availableForms = availableForms.filter((f) => f !== formId)
+      }
       // The `/start` sub-page IS the online-application step. When its form is
       // non-public (preview/maintenance/status-disabled) it is hidden the same
       // way its Start button is — a reviewer keeps access (the form was added to
@@ -147,6 +164,7 @@ export const Route = createFileRoute('/$')({
         url: page.url,
         availableForms,
         underMaintenance,
+        applicationClosed,
         level: pageLevel(page, overlay),
         startSubPageVisible: isStartSubPageVisible(page, level, overlay),
       }
@@ -224,6 +242,7 @@ function ContentRoute() {
         level={data.level}
         startSubPageVisible={data.startSubPageVisible}
         underMaintenance={data.underMaintenance}
+        applicationClosed={data.applicationClosed}
       />
     )
   }
@@ -252,6 +271,7 @@ function PageView({
   level,
   startSubPageVisible,
   underMaintenance,
+  applicationClosed,
 }: {
   page: ContentPage
   availableForms: string[]
@@ -260,6 +280,7 @@ function PageView({
   /** Whether the viewer may see the `/start` step (computed in the loader). */
   startSubPageVisible: boolean
   underMaintenance: boolean
+  applicationClosed: boolean
 }) {
   // A visitor whose level can't see this page's `/start` sub-page (because it's
   // gated above them) sees the online-application method stripped and the
@@ -284,6 +305,7 @@ function PageView({
     <Shell>
       {level !== 'public' ? <ReviewBanner level={level} /> : null}
       {underMaintenance ? <MaintenanceNotice /> : null}
+      {applicationClosed ? <ApplicationClosedNotice /> : null}
       {Body ? (
         <Body />
       ) : (

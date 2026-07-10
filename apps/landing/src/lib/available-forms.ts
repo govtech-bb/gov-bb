@@ -150,6 +150,19 @@ async function fetchMaintenanceFormIds(): Promise<string[]> {
   return parseMaintenanceIds(await response.json())
 }
 
+/** Fetch and validate the IDs of forms whose application window has closed (#1936). */
+async function fetchClosedFormIds(): Promise<string[]> {
+  const response = await fetchWithTimeout(
+    `${formsApiBase()}/form-definitions/closed`,
+    FETCH_TIMEOUT_MS,
+  )
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText}`)
+  }
+  // Same bare `{status,data:[ids]}` shape as /maintenance.
+  return parseMaintenanceIds(await response.json())
+}
+
 /**
  * Resolve the available form IDs through the cache. Pure with respect to time
  * and I/O — `now`, the `fetcher`, and the `cache` holder are injected so the
@@ -249,6 +262,29 @@ function resolveMaintenanceFromModuleCache(): Promise<string[]> {
  */
 export const getMaintenanceForms = createServerFn().handler(
   async (): Promise<string[]> => resolveMaintenanceFromModuleCache(),
+)
+
+/** Per-instance cache for the closed-forms list, separate from the others. */
+const closedCache: CacheRef = { current: null }
+
+/** Resolve the closed-forms list through its own per-instance cache. */
+function resolveClosedFromModuleCache(): Promise<string[]> {
+  return resolveAvailableForms({
+    now: Date.now(),
+    ttlMs: TTL_MS,
+    fetcher: fetchClosedFormIds,
+    cache: closedCache,
+    coldStartRetries: COLD_START_RETRIES,
+  })
+}
+
+/**
+ * Server function returning the IDs of forms whose application window has closed
+ * (#1936), backed by its own per-instance cache. A failed fetch degrades safely
+ * to `[]` — the closed notice is suppressed and the Start button stays as-is.
+ */
+export const getClosedForms = createServerFn().handler(
+  async (): Promise<string[]> => resolveClosedFromModuleCache(),
 )
 
 // Warm the cache as soon as this module loads on the server, so the first
