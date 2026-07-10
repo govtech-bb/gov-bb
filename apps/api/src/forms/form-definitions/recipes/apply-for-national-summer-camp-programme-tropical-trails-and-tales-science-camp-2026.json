@@ -1,7 +1,12 @@
 {
   "formId": "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026",
-  "title": "Apply for National Science Camp 2026",
+  "title": "National Summer Camp Science Programme 2026",
   "description": "Apply for Tropical Trails and Tales Science Camp 2026.",
+  "contactDetails": {
+    "title": "Division of Youth & Culture, Prime Ministers Office",
+    "email": "doyaresearchunit@gmail.com",
+    "telephoneNumber": "+1 (246) 535-3846"
+  },
   "processors": [
     {
       "type": "email",
