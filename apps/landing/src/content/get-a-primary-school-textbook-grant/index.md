@@ -42,7 +42,7 @@ There are 2 ways to register for the Primary School Textbook Grant. You can:
 
 2. #### Get in touch with the Ministry
 
-   You can get support by:
+   If you cannot complete the form online, you can get support by:
 
    - making an appointment at your child’s school.
    - visiting the Ministry of Educational Transformation at:
