@@ -1,5 +1,5 @@
 import { Heading, Select, Text } from '@govtech-bb/react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import * as React from 'react'
 import { FreshnessBanner } from './components/FreshnessBanner'
 import type { OverviewPayload } from './lib/report'
@@ -38,6 +38,8 @@ export default function AnalyticsPage({
 }) {
   const navigate = useNavigate()
   const [srcPop, setSrcPop] = React.useState<SrcPop | null>(null)
+  // True while a navigation (e.g. a range change) is running its loader.
+  const isLoading = useRouterState({ select: (s) => s.isLoading })
 
   if (!overview.configured) {
     return (
@@ -66,20 +68,32 @@ export default function AnalyticsPage({
           {fmtInt(overview.stats.visitors)} visitors ·{' '}
           {fmtInt(overview.stats.pageviews)} pageviews
         </Text>
-        <div className="mt-s max-w-[220px]">
-          <Select
-            label="Date range"
-            value={overview.range}
-            onChange={(e) =>
-              navigate({ to: '/', search: { range: e.target.value } })
-            }
-          >
-            {RANGE_OPTIONS.map((o) => (
-              <option key={o.key} value={o.key}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
+        <div className="mt-s flex items-end gap-s">
+          <div className="max-w-[220px] grow">
+            <Select
+              label="Date range"
+              value={overview.range}
+              disabled={isLoading}
+              onChange={(e) =>
+                navigate({ to: '/', search: { range: e.target.value } })
+              }
+            >
+              {RANGE_OPTIONS.map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          {isLoading ? (
+            <span
+              role="status"
+              className="flex items-center gap-xs pb-xs text-caption text-mid-grey-00"
+            >
+              <Spinner />
+              Updating…
+            </span>
+          ) : null}
         </div>
         <FreshnessBanner
           window={overview.window}
@@ -87,8 +101,12 @@ export default function AnalyticsPage({
         />
       </header>
 
-      {/* Top pages */}
-      <section className="mb-l">
+      <div
+        aria-busy={isLoading}
+        className={`transition-opacity ${isLoading ? 'pointer-events-none opacity-50' : ''}`}
+      >
+        {/* Top pages */}
+        <section className="mb-l">
         <div className="mb-s flex items-center justify-between gap-s">
           <Heading as="h2" size="h3">
             Top pages
@@ -174,7 +192,8 @@ export default function AnalyticsPage({
             </tbody>
           </table>
         </div>
-      </section>
+        </section>
+      </div>
 
       {srcPop ? (
         <div
@@ -265,10 +284,21 @@ function HowToPopovers() {
   )
 }
 
+function Spinner() {
+  return (
+    <span
+      aria-hidden="true"
+      className="uar-spin inline-block h-[14px] w-[14px] rounded-full border-2 border-grey-00 border-t-teal-00"
+    />
+  )
+}
+
 // Only the native popover needs raw CSS (it's a top-layer element with a
 // backdrop); the rest of the page is design-system components + Tailwind tokens.
 const POPOVER_CSS = `
-.uar-pop { max-width: min(460px, 92vw); border: 1px solid var(--color-grey-00); border-radius: 12px; padding: 18px 20px; box-shadow: 0 16px 48px rgba(0,0,0,.22); background: #fff; }
+.uar-pop { position: fixed; inset: 0; margin: auto; height: fit-content; max-width: min(460px, 92vw); border: 1px solid var(--color-grey-00); border-radius: 12px; padding: 18px 20px; box-shadow: 0 16px 48px rgba(0,0,0,.22); background: #fff; }
 .uar-pop::backdrop { background: rgba(0,0,0,.3); }
 .uar-pop code { background: var(--color-teal-10); padding: 1px 5px; border-radius: 4px; }
+.uar-spin { animation: uar-spin .7s linear infinite; }
+@keyframes uar-spin { to { transform: rotate(360deg); } }
 `

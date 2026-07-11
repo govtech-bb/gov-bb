@@ -9,6 +9,7 @@ vi.mock('@tanstack/react-router', () => ({
     <a href="#test">{children}</a>
   ),
   useNavigate: () => vi.fn(),
+  useRouterState: () => false,
 }))
 
 const overview: OverviewPayload = {
