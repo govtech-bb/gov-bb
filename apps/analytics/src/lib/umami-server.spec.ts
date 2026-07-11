@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildFunnelSteps,
+  shapeFormList,
   shapeFunnel,
   shapeSteps,
   shapeSubmitError,
@@ -58,6 +59,34 @@ describe('shapeSteps (#1915 reached vs completed)', () => {
     const out = shapeSteps(steps, { a: 5, c: 9 })
     expect(out[0]).toMatchObject({ reached: 5, completed: 0, abandoned: 5 })
     expect(out[1]).toMatchObject({ reached: 0, completed: 9, abandoned: 0 })
+  })
+})
+
+describe('shapeFormList (per-form starts + completion)', () => {
+  it('derives starts, completions and completion% per form from event counts', () => {
+    const forms = [
+      { formId: 'a', title: 'Form A' },
+      { formId: 'b', title: 'Form B' },
+    ]
+    const events = [
+      { x: 'a:form-start', y: 200 },
+      { x: 'a:form-submit', y: 50 },
+      { x: 'a:form-step-view', y: 999 },
+      { x: 'b:form-start', y: 0 },
+    ]
+    const out = shapeFormList(forms, events)
+    expect(out[0]).toMatchObject({
+      formId: 'a',
+      starts: 200,
+      completions: 50,
+      completionPct: 25,
+    })
+    // no starts → 0% (not NaN/Infinity)
+    expect(out[1]).toMatchObject({
+      starts: 0,
+      completions: 0,
+      completionPct: 0,
+    })
   })
 })
 

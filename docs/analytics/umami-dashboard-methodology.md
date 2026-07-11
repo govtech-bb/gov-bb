@@ -26,6 +26,16 @@ of the retired Journeys app (which deduped by session).
 > Journeys app deduped by **session**. They are equivalent for this purpose
 > ("how many people got this far"); the number is distinct either way.
 
+## Overview forms table — starts & completion
+
+The homepage Forms table lists every published form with **Starts**
+(`<formId>:form-start` events) and **Completion** (successful
+`<formId>:form-submit` ÷ starts, with the submit count in brackets), pulled in a
+single forms-website event-metrics call. These are **event counts** — a quick
+per-form summary. The per-form page's funnel (below) is the deduped,
+distinct-visitor view; the two can differ, by design. Every table on both pages
+is sortable by clicking a column heading.
+
 ## Per-step: reached vs completed (#1915)
 
 A companion table breaks the funnel down by the form's declared steps:

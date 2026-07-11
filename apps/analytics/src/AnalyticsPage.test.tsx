@@ -26,7 +26,15 @@ const overview: OverviewPayload = {
       ],
     },
   ],
-  forms: [{ formId: 'birth-cert', title: 'Get a birth certificate' }],
+  forms: [
+    {
+      formId: 'birth-cert',
+      title: 'Get a birth certificate',
+      starts: 100,
+      completions: 40,
+      completionPct: 40,
+    },
+  ],
   generatedAt: '2026-07-10T12:00:00.000Z',
   window: 'last 30 days',
   range: 'past-30-days',
@@ -39,6 +47,18 @@ describe('AnalyticsPage', () => {
     expect(screen.getByText('Get a birth certificate')).toBeTruthy()
     expect(screen.getByText(/10 visitors/)).toBeTruthy()
     expect(screen.getByText(/last 30 days/)).toBeTruthy()
+  })
+
+  it('shows per-form starts and completion', () => {
+    render(<AnalyticsPage overview={overview} />)
+    expect(
+      screen.getByRole('columnheader', { name: 'Starts' }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('columnheader', { name: 'Completion' }),
+    ).toBeTruthy()
+    expect(screen.getByText('100')).toBeTruthy() // starts
+    expect(screen.getByText(/40%/)).toBeTruthy() // completion
   })
 
   it('shows the top source column with the leading referrer and a +N for the rest', () => {

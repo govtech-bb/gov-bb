@@ -2,6 +2,7 @@ import { Heading, Text } from '@govtech-bb/react'
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { FreshnessBanner } from './components/FreshnessBanner'
+import { SortHeader, useTableSort } from './components/SortableTable'
 import type { FormDetailData } from './lib/umami-server'
 
 const fmtInt = (n: number) => n.toLocaleString()
@@ -147,6 +148,13 @@ function Funnel({ detail }: { detail: FormDetailData }) {
 
 // #1915 — per-step reached vs completed.
 function Steps({ detail }: { detail: FormDetailData }) {
+  // Default: the form's declared step order (no sort key); columns are sortable.
+  const sort = useTableSort(detail.steps, {
+    step: (s) => s.title,
+    reached: (s) => s.reached,
+    completed: (s) => s.completed,
+    abandoned: (s) => s.abandoned,
+  })
   return (
     <section>
       <SubHeading>Per-step: reached vs completed</SubHeading>
@@ -159,14 +167,14 @@ function Steps({ detail }: { detail: FormDetailData }) {
           <table className="min-w-full">
             <thead>
               <tr>
-                <th className={TH}>Step</th>
-                <th className={`${TH} ${NUM}`}>Reached</th>
-                <th className={`${TH} ${NUM}`}>Completed</th>
-                <th className={`${TH} ${NUM}`}>Abandoned</th>
+                <SortHeader label="Step" colKey="step" sort={sort} className={TH} />
+                <SortHeader label="Reached" colKey="reached" sort={sort} className={`${TH} ${NUM}`} />
+                <SortHeader label="Completed" colKey="completed" sort={sort} className={`${TH} ${NUM}`} />
+                <SortHeader label="Abandoned" colKey="abandoned" sort={sort} className={`${TH} ${NUM}`} />
               </tr>
             </thead>
             <tbody>
-              {detail.steps.map((s) => (
+              {sort.sorted.map((s) => (
                 <tr key={s.stepId}>
                   <td className={TD}>{s.title}</td>
                   <td className={`${TD} ${NUM}`}>{fmtInt(s.reached)}</td>
@@ -195,6 +203,15 @@ function Steps({ detail }: { detail: FormDetailData }) {
 }
 
 function Journeys({ detail }: { detail: FormDetailData }) {
+  const sort = useTableSort(
+    detail.journey,
+    {
+      path: (j) => j.items.join(' › '),
+      count: (j) => j.count,
+    },
+    'count',
+    'desc',
+  )
   return (
     <section>
       <SubHeading>Top journeys</SubHeading>
@@ -207,13 +224,13 @@ function Journeys({ detail }: { detail: FormDetailData }) {
           <table className="min-w-full">
             <thead>
               <tr>
-                <th className={TH}>Path</th>
-                <th className={`${TH} ${NUM}`}>Count</th>
+                <SortHeader label="Path" colKey="path" sort={sort} className={TH} />
+                <SortHeader label="Count" colKey="count" sort={sort} className={`${TH} ${NUM}`} />
               </tr>
             </thead>
             <tbody>
-              {detail.journey.map((j, i) => (
-                <tr key={i}>
+              {sort.sorted.map((j) => (
+                <tr key={j.items.join('>')}>
                   <td className={TD}>{j.items.join(' › ')}</td>
                   <td className={`${TD} ${NUM}`}>{fmtInt(j.count)}</td>
                 </tr>

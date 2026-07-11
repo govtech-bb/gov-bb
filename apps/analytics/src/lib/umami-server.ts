@@ -15,6 +15,7 @@ import {
   type FunnelStepInput,
   type FunnelStepResult,
   type JourneyPath,
+  type MetricRow,
   type PageRow,
   type Range,
   type SourceRow,
@@ -54,6 +55,8 @@ export const RANGE_OPTIONS: RangeOption[] = [
   { key: 'past-7-days', label: 'Past 7 days' },
   { key: 'past-15-days', label: 'Past 15 days' },
   { key: 'past-30-days', label: 'Past 30 days' },
+  { key: 'past-60-days', label: 'Last 60 days' },
+  { key: 'past-90-days', label: 'Last 90 days' },
 ]
 export const DEFAULT_RANGE = 'past-30-days'
 
@@ -89,6 +92,10 @@ export function rangeForKey(key: string, now: Date = new Date()): Range {
       return { startAt: startOfDayInTz(TZ, now, 6), endAt }
     case 'past-15-days':
       return { startAt: startOfDayInTz(TZ, now, 14), endAt }
+    case 'past-60-days':
+      return { startAt: startOfDayInTz(TZ, now, 59), endAt }
+    case 'past-90-days':
+      return { startAt: startOfDayInTz(TZ, now, 89), endAt }
     default: // past-30-days
       return { startAt: startOfDayInTz(TZ, now, 29), endAt }
   }
@@ -99,6 +106,12 @@ export function rangeForKey(key: string, now: Date = new Date()): Range {
 export interface FormListItem {
   formId: string
   title: string
+  /** `form-start` events in the window. */
+  starts: number
+  /** successful `form-submit` events in the window. */
+  completions: number
+  /** completions ÷ starts × 100, 1dp; 0 when no starts. */
+  completionPct: number
 }
 export interface SiteStats {
   visitors: number
@@ -217,6 +230,38 @@ export function shapeSubmitError(
   }
 }
 
+/**
+ * Attach per-form starts (`form-start`) and completions (`form-submit`) from a
+ * single forms-website event-metrics pull. Event counts (a quick per-form
+ * summary); the per-form page's funnel is the deduped, distinct-visitor view.
+ */
+export function shapeFormList(
+  forms: { formId: string; title: string }[],
+  events: MetricRow[],
+): FormListItem[] {
+  const starts = new Map<string, number>()
+  const submits = new Map<string, number>()
+  for (const e of events) {
+    const i = e.x.indexOf(':')
+    if (i < 0) continue
+    const id = e.x.slice(0, i)
+    const event = e.x.slice(i + 1)
+    if (event === 'form-start') starts.set(id, (starts.get(id) ?? 0) + e.y)
+    else if (event === 'form-submit')
+      submits.set(id, (submits.get(id) ?? 0) + e.y)
+  }
+  return forms.map((f) => {
+    const s = starts.get(f.formId) ?? 0
+    const c = submits.get(f.formId) ?? 0
+    return {
+      ...f,
+      starts: s,
+      completions: c,
+      completionPct: s ? Math.round((c / s) * 1000) / 10 : 0,
+    }
+  })
+}
+
 /** Drop the null padding the journey report returns and keep form-relevant paths. */
 export function shapeJourneys(
   rows: JourneyPath[],
@@ -276,10 +321,11 @@ export async function fetchOverviewData(
   return memoize(`overview:${range}`, TTL_MS, async () => {
     const client = new UmamiClient({ apiKey: cfg.apiKey })
     const r = rangeForKey(range)
-    const [statsRaw, urls, forms] = await Promise.all([
+    const [statsRaw, urls, forms, formEvents] = await Promise.all([
       client.stats(cfg.landingWebsiteId, r) as Promise<UmamiStats>,
       client.metricsUrls(cfg.landingWebsiteId, r),
       fetchFormList(cfg),
+      client.metricsEvents(cfg.formsWebsiteId, r),
     ])
     const topPages = urls
       .map((row) => ({
@@ -310,7 +356,9 @@ export async function fetchOverviewData(
         pageviews: statsRaw.pageviews ?? 0,
       },
       pages,
-      forms: forms.sort((a, b) => a.title.localeCompare(b.title)),
+      forms: shapeFormList(forms, formEvents).sort((a, b) =>
+        a.title.localeCompare(b.title),
+      ),
       generatedAt: new Date().toISOString(),
       window: rangeLabel(range),
       range,

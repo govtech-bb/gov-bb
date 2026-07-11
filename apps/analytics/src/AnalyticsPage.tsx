@@ -2,10 +2,12 @@ import { Heading, Select, Text } from '@govtech-bb/react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import * as React from 'react'
 import { FreshnessBanner } from './components/FreshnessBanner'
+import { SortHeader, useTableSort } from './components/SortableTable'
 import type { OverviewPayload } from './lib/report'
 import { RANGE_OPTIONS } from './lib/umami-server'
 
 const fmtInt = (n: number) => n.toLocaleString()
+const fmtPct = (n: number) => `${n.toFixed(1).replace(/\.0$/, '')}%`
 
 const TH =
   'px-s py-s text-left text-caption font-bold uppercase tracking-wide text-mid-grey-00'
@@ -40,6 +42,28 @@ export default function AnalyticsPage({
   const [srcPop, setSrcPop] = React.useState<SrcPop | null>(null)
   // True while a navigation (e.g. a range change) is running its loader.
   const isLoading = useRouterState({ select: (s) => s.isLoading })
+
+  const pageSort = useTableSort(
+    overview.pages,
+    {
+      path: (p) => p.path,
+      pageviews: (p) => p.pageviews,
+      visitors: (p) => p.visitors,
+      source: (p) => p.topSources[0]?.count ?? 0,
+    },
+    'pageviews',
+    'desc',
+  )
+  const formSort = useTableSort(
+    overview.forms,
+    {
+      title: (f) => f.title,
+      starts: (f) => f.starts,
+      completion: (f) => f.completionPct,
+    },
+    'starts',
+    'desc',
+  )
 
   if (!overview.configured) {
     return (
@@ -107,91 +131,99 @@ export default function AnalyticsPage({
       >
         {/* Top pages */}
         <section className="mb-l">
-        <div className="mb-s flex items-center justify-between gap-s">
-          <Heading as="h2" size="h3">
-            Top pages
-          </Heading>
-          <HowToButton target="uar-howto-pages" />
-        </div>
-        <div className={CARD}>
-          <table className="min-w-full">
-            <thead>
-              <tr>
-                <th className={TH}>Path</th>
-                <th className={`${TH} ${NUM}`}>Pageviews</th>
-                <th className={`${TH} ${NUM}`}>Visitors</th>
-                <th className={TH}>Top source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {overview.pages.length === 0 ? (
+          <div className="mb-s flex items-center justify-between gap-s">
+            <Heading as="h2" size="h3">
+              Top pages
+            </Heading>
+            <HowToButton target="uar-howto-pages" />
+          </div>
+          <div className={CARD}>
+            <table className="min-w-full">
+              <thead>
                 <tr>
-                  <td className={`${TD} text-mid-grey-00`} colSpan={4}>
-                    No page data.
-                  </td>
+                  <SortHeader label="Path" colKey="path" sort={pageSort} className={TH} />
+                  <SortHeader label="Pageviews" colKey="pageviews" sort={pageSort} className={`${TH} ${NUM}`} />
+                  <SortHeader label="Visitors" colKey="visitors" sort={pageSort} className={`${TH} ${NUM}`} />
+                  <SortHeader label="Top source" colKey="source" sort={pageSort} className={TH} />
                 </tr>
-              ) : (
-                overview.pages.map((p) => (
-                  <tr key={p.path}>
-                    <td className={TD}>{p.path}</td>
-                    <td className={`${TD} ${NUM}`}>{fmtInt(p.pageviews)}</td>
-                    <td className={`${TD} ${NUM}`}>{fmtInt(p.visitors)}</td>
-                    <SourceCell sources={p.topSources} onShow={setSrcPop} />
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* Forms */}
-      <section className="mb-l">
-        <div className="mb-s flex items-center justify-between gap-s">
-          <Heading as="h2" size="h3">
-            Forms
-          </Heading>
-          <HowToButton target="uar-howto-forms" />
-        </div>
-        <Text as="p" size="caption" className="mb-s text-mid-grey-00">
-          Select a form for its funnel, per-step drop-off, submit reliability and
-          journeys.
-        </Text>
-        <div className={CARD}>
-          <table className="min-w-full">
-            <thead>
-              <tr>
-                <th className={TH}>Form</th>
-                <th className={`${TH} ${NUM}`}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {overview.forms.length === 0 ? (
-                <tr>
-                  <td className={`${TD} text-mid-grey-00`} colSpan={2}>
-                    No forms found.
-                  </td>
-                </tr>
-              ) : (
-                overview.forms.map((f) => (
-                  <tr key={f.formId} className="hover:bg-teal-10">
-                    <td className={TD}>
-                      <Link
-                        to="/analytics/forms/$formId"
-                        params={{ formId: f.formId }}
-                        search={{ range: overview.range }}
-                        className="font-bold text-teal-00 underline"
-                      >
-                        {f.title}
-                      </Link>
+              </thead>
+              <tbody>
+                {pageSort.sorted.length === 0 ? (
+                  <tr>
+                    <td className={`${TD} text-mid-grey-00`} colSpan={4}>
+                      No page data.
                     </td>
-                    <td className={`${TD} ${NUM} text-mid-grey-00`}>View →</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  pageSort.sorted.map((p) => (
+                    <tr key={p.path}>
+                      <td className={TD}>{p.path}</td>
+                      <td className={`${TD} ${NUM}`}>{fmtInt(p.pageviews)}</td>
+                      <td className={`${TD} ${NUM}`}>{fmtInt(p.visitors)}</td>
+                      <SourceCell sources={p.topSources} onShow={setSrcPop} />
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Forms */}
+        <section className="mb-l">
+          <div className="mb-s flex items-center justify-between gap-s">
+            <Heading as="h2" size="h3">
+              Forms
+            </Heading>
+            <HowToButton target="uar-howto-forms" />
+          </div>
+          <Text as="p" size="caption" className="mb-s text-mid-grey-00">
+            Starts and completion for each form; open one for its funnel,
+            per-step drop-off, submit reliability and journeys.
+          </Text>
+          <div className={CARD}>
+            <table className="min-w-full">
+              <thead>
+                <tr>
+                  <SortHeader label="Form" colKey="title" sort={formSort} className={TH} />
+                  <SortHeader label="Starts" colKey="starts" sort={formSort} className={`${TH} ${NUM}`} />
+                  <SortHeader label="Completion" colKey="completion" sort={formSort} className={`${TH} ${NUM}`} />
+                </tr>
+              </thead>
+              <tbody>
+                {formSort.sorted.length === 0 ? (
+                  <tr>
+                    <td className={`${TD} text-mid-grey-00`} colSpan={3}>
+                      No forms found.
+                    </td>
+                  </tr>
+                ) : (
+                  formSort.sorted.map((f) => (
+                    <tr key={f.formId} className="hover:bg-teal-10">
+                      <td className={TD}>
+                        <Link
+                          to="/analytics/forms/$formId"
+                          params={{ formId: f.formId }}
+                          search={{ range: overview.range }}
+                          className="font-bold text-teal-00 underline"
+                        >
+                          {f.title}
+                        </Link>
+                      </td>
+                      <td className={`${TD} ${NUM}`}>{fmtInt(f.starts)}</td>
+                      <td className={`${TD} ${NUM}`}>
+                        {f.starts ? fmtPct(f.completionPct) : '—'}
+                        <span className="text-mid-grey-00">
+                          {' '}
+                          ({fmtInt(f.completions)})
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
       </div>
 
@@ -264,9 +296,10 @@ function HowToPopovers() {
           Top pages — how it works
         </Heading>
         <Text as="p" size="caption" className="mt-xs">
-          Most-visited landing pages over the selected range (Umami pageviews),
-          top 10. <b>Top source</b> lists the leading referrers to each page —
-          hover to see all; <code>(direct)</code> = no referrer.
+          Most-visited landing pages over the selected range (Umami pageviews).
+          <b> Top source</b> lists the leading referrers to each page — hover to
+          see all; <code>(direct)</code> = no referrer. Click any column heading
+          to sort.
         </Text>
       </div>
       <div id="uar-howto-forms" popover="auto" className="uar-pop">
@@ -274,10 +307,10 @@ function HowToPopovers() {
           Forms — how it works
         </Heading>
         <Text as="p" size="caption" className="mt-xs">
-          Every published form. Open one for its distinct-visitor funnel
-          (start → review → submit), per-step reached-vs-completed drop-off,
-          submit-error rate broken down by reason, and top journeys — all queried
-          live for the selected range.
+          <b>Starts</b> = <code>form-start</code> events; <b>Completion</b> =
+          successful submits ÷ starts (submit count in brackets), over the
+          selected range. Open a form for its distinct-visitor funnel, per-step
+          drop-off, submit-error rate and journeys. Click any column to sort.
         </Text>
       </div>
     </>
