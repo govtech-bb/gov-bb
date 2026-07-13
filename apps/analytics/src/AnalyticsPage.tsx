@@ -65,41 +65,46 @@ export default function AnalyticsPage({
     'desc',
   )
 
+  const header = (
+    <AnalyticsHeader
+      range={overview.range}
+      onRangeChange={(range) => navigate({ to: '/', search: { range } })}
+    />
+  )
+
   if (!overview.configured) {
     return (
-      <div className="container py-8">
-        <Heading as="h1" size="h1">
-          Alpha.gov.bb analytics
-        </Heading>
-        <Text as="p" className="mt-s text-mid-grey-00">
-          Analytics is not configured. Set <code>UMAMI_API_KEY</code>,{' '}
-          <code>UMAMI_LANDING_WEBSITE_ID</code> and{' '}
-          <code>UMAMI_FORMS_WEBSITE_ID</code> on the deployment.
-        </Text>
-      </div>
+      <>
+        {header}
+        <div className="container py-8">
+          <Text as="p" className="text-mid-grey-00">
+            Analytics is not configured. Set <code>UMAMI_API_KEY</code>,{' '}
+            <code>UMAMI_LANDING_WEBSITE_ID</code> and{' '}
+            <code>UMAMI_FORMS_WEBSITE_ID</code> on the deployment.
+          </Text>
+        </div>
+      </>
     )
   }
 
   return (
-    <div className="container py-8">
-      <style>{POPOVER_CSS}</style>
+    <>
+      {header}
+      <div className="container py-8">
+        <style>{POPOVER_CSS}</style>
 
-      <AnalyticsHeader
-        title="Alpha.gov.bb analytics"
-        subtitle={
-          <>
-            {fmtInt(overview.stats.visitors)} visitors ·{' '}
-            {fmtInt(overview.stats.pageviews)} pageviews
-          </>
-        }
-        range={overview.range}
-        onRangeChange={(range) => navigate({ to: '/', search: { range } })}
-      />
+        <Heading as="h1" size="h1" className="sr-only">
+          Alpha.gov.bb analytics
+        </Heading>
+        <Text as="p" size="caption" className="mb-l text-mid-grey-00">
+          {fmtInt(overview.stats.visitors)} visitors ·{' '}
+          {fmtInt(overview.stats.pageviews)} pageviews
+        </Text>
 
-      <div
-        aria-busy={isLoading}
-        className={`transition-opacity ${isLoading ? 'pointer-events-none opacity-50' : ''}`}
-      >
+        <div
+          aria-busy={isLoading}
+          className={`transition-opacity ${isLoading ? 'pointer-events-none opacity-50' : ''}`}
+        >
         {/* Most visited pages */}
         <section className="mb-l">
           <div className="mb-s flex items-center justify-between gap-s">
@@ -226,7 +231,8 @@ export default function AnalyticsPage({
       ) : null}
 
       <HowToPopovers />
-    </div>
+      </div>
+    </>
   )
 }
 

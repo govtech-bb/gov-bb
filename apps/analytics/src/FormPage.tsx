@@ -1,5 +1,5 @@
 import { Heading, Text } from '@govtech-bb/react'
-import { useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { AnalyticsHeader } from './components/AnalyticsHeader'
 import type { FormDetailData } from './lib/umami-server'
@@ -55,11 +55,8 @@ function Stat({ label, value }: { label: string; value: ReactNode }) {
 export default function FormPage({ detail }: { detail: FormDetailData }) {
   const navigate = useNavigate()
   return (
-    <div className="container py-8">
+    <>
       <AnalyticsHeader
-        title={detail.title}
-        subtitle={detail.formId}
-        backTo="/"
         range={detail.range}
         onRangeChange={(range) =>
           navigate({
@@ -69,12 +66,25 @@ export default function FormPage({ detail }: { detail: FormDetailData }) {
           })
         }
       />
+      <div className="container py-8">
+        <Link to="/" className="text-caption text-teal-00 underline">
+          ← All forms
+        </Link>
+        <header className="mt-s mb-l">
+          <Heading as="h1" size="h1">
+            {detail.title}
+          </Heading>
+          <Text as="p" size="small-caption" className="text-mid-grey-00">
+            {detail.formId}
+          </Text>
+        </header>
 
-      <Stats detail={detail} />
-      <Funnel detail={detail} />
-      <ValidationReasons detail={detail} />
-      <SubmitReliability detail={detail} />
-    </div>
+        <Stats detail={detail} />
+        <Funnel detail={detail} />
+        <ValidationReasons detail={detail} />
+        <SubmitReliability detail={detail} />
+      </div>
+    </>
   )
 }
 
