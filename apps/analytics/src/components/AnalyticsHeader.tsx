@@ -11,10 +11,13 @@ export function AnalyticsHeader({
   range,
   onRangeChange,
 }: {
-  range: string
-  onRangeChange: (range: string) => void
+  // The date-range filter is shown only when both are provided (data pages);
+  // the "coming soon" pages render the bar without it.
+  range?: string
+  onRangeChange?: (range: string) => void
 }) {
   const isLoading = useRouterState({ select: (s) => s.isLoading })
+  const showFilter = range !== undefined && onRangeChange !== undefined
   return (
     <div className="bg-blue-00 text-white-00">
       <style>{SPIN_CSS}</style>
@@ -31,34 +34,39 @@ export function AnalyticsHeader({
           </span>
         </Link>
 
-        <div className="ml-auto flex items-center gap-s text-caption">
-          {isLoading ? (
-            <span role="status" className="flex items-center gap-xs text-blue-40">
-              <Spinner />
-              Updating…
-            </span>
-          ) : null}
-          <label className="flex items-center gap-xs">
-            <span className="sr-only">Date range</span>
-            <select
-              aria-label="Date range"
-              value={range}
-              disabled={isLoading}
-              onChange={(e) => onRangeChange(e.target.value)}
-              className="rounded-sm border border-blue-40/40 bg-blue-100 px-s py-xs font-bold text-white-00 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100 disabled:opacity-60"
-            >
-              {RANGE_OPTIONS.map((o) => (
-                <option
-                  key={o.key}
-                  value={o.key}
-                  style={{ color: '#0b0c0c', backgroundColor: '#fff' }}
-                >
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        {showFilter ? (
+          <div className="ml-auto flex items-center gap-s text-caption">
+            {isLoading ? (
+              <span
+                role="status"
+                className="flex items-center gap-xs text-blue-40"
+              >
+                <Spinner />
+                Updating…
+              </span>
+            ) : null}
+            <label className="flex items-center gap-xs">
+              <span className="sr-only">Date range</span>
+              <select
+                aria-label="Date range"
+                value={range}
+                disabled={isLoading}
+                onChange={(e) => onRangeChange(e.target.value)}
+                className="rounded-sm border border-blue-40/40 bg-blue-100 px-s py-xs font-bold text-white-00 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100 disabled:opacity-60"
+              >
+                {RANGE_OPTIONS.map((o) => (
+                  <option
+                    key={o.key}
+                    value={o.key}
+                    style={{ color: '#0b0c0c', backgroundColor: '#fff' }}
+                  >
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : null}
       </div>
     </div>
   )

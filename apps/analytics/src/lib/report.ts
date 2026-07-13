@@ -6,11 +6,13 @@ import { createServerFn } from '@tanstack/react-start'
 import { useRuntimeConfig } from 'nitro/runtime-config'
 import {
   fetchFormDetailData,
+  fetchFormsData,
   fetchOverviewData,
   isConfigured,
   normaliseRange,
   rangeLabel,
   type FormDetailData,
+  type FormsData,
   type OverviewData,
   type UmamiConfig,
 } from './umami-server'
@@ -87,6 +89,30 @@ export const fetchOverview = createServerFn({ method: 'GET' })
       return { configured: true, ...data }
     } catch {
       return emptyOverview(range)
+    }
+  })
+
+export type FormsPayload = { configured: boolean } & FormsData
+
+/** All published forms + their stats for the "Forms" tab. */
+export const fetchForms = createServerFn({ method: 'GET' })
+  .validator((raw: unknown) =>
+    normaliseRange(raw == null ? undefined : String(raw)),
+  )
+  .handler(async ({ data: range }): Promise<FormsPayload> => {
+    const cfg = getConfig()
+    const empty = {
+      configured: false,
+      forms: [],
+      range,
+      window: rangeLabel(range),
+    }
+    if (!isConfigured(cfg)) return empty
+    try {
+      const data = await fetchFormsData(cfg, range)
+      return { configured: true, ...data }
+    } catch {
+      return empty
     }
   })
 

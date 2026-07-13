@@ -8,7 +8,11 @@ vi.mock('@tanstack/react-router', () => ({
     <a href="#test">{children}</a>
   ),
   useNavigate: () => () => {},
-  useRouterState: () => false,
+  useRouterState: ({ select }: { select: (s: unknown) => unknown }) =>
+    select({
+      isLoading: false,
+      location: { pathname: '/analytics/forms/get-birth-certificate' },
+    }),
 }))
 
 const detail: FormDetailData = {

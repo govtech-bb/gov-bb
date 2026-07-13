@@ -1,7 +1,7 @@
 import { Heading, Text } from '@govtech-bb/react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
-import { AnalyticsHeader } from './components/AnalyticsHeader'
+import { AnalyticsChrome } from './components/AnalyticsChrome'
 import type { FormDetailData } from './lib/umami-server'
 
 const fmtInt = (n: number) => n.toLocaleString()
@@ -56,7 +56,7 @@ export default function FormPage({ detail }: { detail: FormDetailData }) {
   const navigate = useNavigate()
   return (
     <>
-      <AnalyticsHeader
+      <AnalyticsChrome
         range={detail.range}
         onRangeChange={(range) =>
           navigate({

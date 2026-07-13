@@ -571,6 +571,35 @@ export async function fetchOverviewData(
   })
 }
 
+export interface FormsData {
+  forms: FormListItem[]
+  range: string
+  window: string
+}
+
+/** All published forms with their starts/completion — the "Forms" tab. */
+export async function fetchFormsData(
+  cfg: UmamiConfig,
+  rangeKey: string,
+): Promise<FormsData> {
+  const range = normaliseRange(rangeKey)
+  return memoize(`forms:${range}`, TTL_MS, async () => {
+    const client = new UmamiClient({ apiKey: cfg.apiKey })
+    const r = rangeForKey(range)
+    const [forms, formEvents] = await Promise.all([
+      fetchFormList(cfg),
+      client.metricsEvents(cfg.formsWebsiteId, r),
+    ])
+    return {
+      forms: shapeFormList(forms, formEvents).sort((a, b) =>
+        a.title.localeCompare(b.title),
+      ),
+      range,
+      window: rangeLabel(range),
+    }
+  })
+}
+
 export async function fetchFormDetailData(
   cfg: UmamiConfig,
   formId: string,

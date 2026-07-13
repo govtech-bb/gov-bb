@@ -9,7 +9,8 @@ vi.mock('@tanstack/react-router', () => ({
     <a href="#test">{children}</a>
   ),
   useNavigate: () => vi.fn(),
-  useRouterState: () => false,
+  useRouterState: ({ select }: { select: (s: unknown) => unknown }) =>
+    select({ isLoading: false, location: { pathname: '/' } }),
 }))
 
 const overview: OverviewPayload = {
