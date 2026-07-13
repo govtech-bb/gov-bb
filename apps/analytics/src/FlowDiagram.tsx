@@ -142,10 +142,7 @@ export function FlowDiagram({ flow }: { flow: FlowData }) {
             <g fill="var(--color-teal-00)">
               {ribbons.map((r) => (
                 <path key={r.key} d={r.d} className="uar-ribbon">
-                  <title>
-                    {r.source} → {r.target} — {fmtInt(r.value)} visits (
-                    {fmtPct(r.pctOfSource)} of {r.source})
-                  </title>
+                  <title>{`${r.source} → ${r.target} — ${fmtInt(r.value)} visits (${fmtPct(r.pctOfSource)} of ${r.source})`}</title>
                 </path>
               ))}
             </g>
@@ -163,10 +160,7 @@ export function FlowDiagram({ flow }: { flow: FlowData }) {
                       : 'var(--color-teal-00)'
                   }
                 >
-                  <title>
-                    {n.label} — {fmtInt(n.value)} visits ({fmtPct(n.pct)} of
-                    entries)
-                  </title>
+                  <title>{`${n.label} — ${fmtInt(n.value)} visits (${fmtPct(n.pct)} of entries)`}</title>
                 </rect>
                 <text
                   x={n.x + NODE_W + 6}

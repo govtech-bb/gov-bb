@@ -1,11 +1,10 @@
-import { Heading, Select, Text } from '@govtech-bb/react'
+import { Heading, Text } from '@govtech-bb/react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import * as React from 'react'
 import { FlowDiagram } from './FlowDiagram'
-import { FreshnessBanner } from './components/FreshnessBanner'
+import { AnalyticsHeader } from './components/AnalyticsHeader'
 import { SortHeader, useTableSort } from './components/SortableTable'
 import type { OverviewPayload } from './lib/report'
-import { RANGE_OPTIONS } from './lib/umami-server'
 
 const fmtInt = (n: number) => n.toLocaleString()
 const fmtPct = (n: number) => `${n.toFixed(1).replace(/\.0$/, '')}%`
@@ -85,46 +84,19 @@ export default function AnalyticsPage({
     <div className="container py-8">
       <style>{POPOVER_CSS}</style>
 
-      <header className="mb-l">
-        <Heading as="h1" size="h1">
-          Umami Analytics
-        </Heading>
-        <Text as="p" size="caption" className="text-mid-grey-00">
-          {fmtInt(overview.stats.visitors)} visitors ·{' '}
-          {fmtInt(overview.stats.pageviews)} pageviews
-        </Text>
-        <div className="mt-s flex items-end gap-s">
-          <div className="max-w-[220px] grow">
-            <Select
-              label="Date range"
-              value={overview.range}
-              disabled={isLoading}
-              onChange={(e) =>
-                navigate({ to: '/', search: { range: e.target.value } })
-              }
-            >
-              {RANGE_OPTIONS.map((o) => (
-                <option key={o.key} value={o.key}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          {isLoading ? (
-            <span
-              role="status"
-              className="flex items-center gap-xs pb-xs text-caption text-mid-grey-00"
-            >
-              <Spinner />
-              Updating…
-            </span>
-          ) : null}
-        </div>
-        <FreshnessBanner
-          window={overview.window}
-          generatedAt={overview.generatedAt}
-        />
-      </header>
+      <AnalyticsHeader
+        title="Umami Analytics"
+        subtitle={
+          <>
+            {fmtInt(overview.stats.visitors)} visitors ·{' '}
+            {fmtInt(overview.stats.pageviews)} pageviews
+          </>
+        }
+        range={overview.range}
+        window={overview.window}
+        generatedAt={overview.generatedAt}
+        onRangeChange={(range) => navigate({ to: '/', search: { range } })}
+      />
 
       <div
         aria-busy={isLoading}
@@ -180,7 +152,7 @@ export default function AnalyticsPage({
           </div>
           <Text as="p" size="caption" className="mb-s text-mid-grey-00">
             Starts and completion for each form; open one for its funnel,
-            per-step drop-off, submit reliability and journeys.
+            per-step drop-off and submit reliability.
           </Text>
           <div className={CARD}>
             <table className="min-w-full">
@@ -314,19 +286,10 @@ function HowToPopovers() {
           <b>Starts</b> = <code>form-start</code> events; <b>Completion</b> =
           successful submits ÷ starts (submit count in brackets), over the
           selected range. Open a form for its distinct-visitor funnel, per-step
-          drop-off, submit-error rate and journeys. Click any column to sort.
+          drop-off and submit-error rate. Click any column to sort.
         </Text>
       </div>
     </>
-  )
-}
-
-function Spinner() {
-  return (
-    <span
-      aria-hidden="true"
-      className="uar-spin inline-block h-[14px] w-[14px] rounded-full border-2 border-grey-00 border-t-teal-00"
-    />
   )
 }
 
@@ -336,6 +299,4 @@ const POPOVER_CSS = `
 .uar-pop { position: fixed; inset: 0; margin: auto; height: fit-content; max-width: min(460px, 92vw); border: 1px solid var(--color-grey-00); border-radius: 12px; padding: 18px 20px; box-shadow: 0 16px 48px rgba(0,0,0,.22); background: #fff; }
 .uar-pop::backdrop { background: rgba(0,0,0,.3); }
 .uar-pop code { background: var(--color-teal-10); padding: 1px 5px; border-radius: 4px; }
-.uar-spin { animation: uar-spin .7s linear infinite; }
-@keyframes uar-spin { to { transform: rotate(360deg); } }
 `

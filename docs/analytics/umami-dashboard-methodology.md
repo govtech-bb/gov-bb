@@ -12,19 +12,20 @@ window is **last 30 days**. Data is fetched per request and deduped by a ~60s
 in-memory TTL, so `queried` is when the underlying data was actually pulled (at
 most ~60s before the page render).
 
-## Form funnel — distinct visitors (#1914)
+## Form detail — headline stats (distinct visitors) (#1914)
 
-The headline funnel (**Start → Review → Submit**) uses Umami's **funnel report**
-(`POST /reports/funnel`) with event steps
-`<formId>:form-start → <formId>:form-review → <formId>:form-submit`. Umami counts
-**distinct visitors** reaching each step and the drop-off from the previous step
-— it is **not** a raw event count, so reloads and back-navigation don't inflate
-it. This is the single source of truth for funnel shape and matches the intent
-of the retired Journeys app (which deduped by session).
+The top of each form page shows **Starts**, **Completion rate** and **Avg time
+to complete** as **distinct visitors**, from Umami's **funnel report**
+(`POST /reports/funnel`, `<formId>:form-start → …:form-submit`) — deduped, not
+raw event counts. Avg time is the weighted average of the `duration_seconds`
+carried on `form-submit`. Alongside sit the field-error and step counters
+(`Field errors / start`, `Total field errors`, `Step back`, `Step edit`,
+`Reviewed`), which are **event counts**. The `category`/"uncategorised" label is
+deliberately not shown.
 
 > Unit note: Umami's funnel report dedupes by **visitor**, whereas the old
-> Journeys app deduped by **session**. They are equivalent for this purpose
-> ("how many people got this far"); the number is distinct either way.
+> Journeys app deduped by **session**. Equivalent for "how many people got this
+> far"; distinct either way.
 
 ## Overview forms table — starts & completion
 
@@ -61,29 +62,26 @@ of visits taking that step-to-step transition.
 It's a hand-rolled SVG (no charting dependency): one teal hue for ribbons, a
 green accent for "Start", sized by visit count, with per-node/per-ribbon hover.
 
-## Per-step: reached vs completed (#1915)
+## Form detail — step funnel (#1915)
 
-A companion table breaks the funnel down by the form's declared steps:
+The form page shows a **Start → Step 1…N → Submit** funnel: `Start` =
+`form-start`, each `Step N` = the `<formId>:form-step-<n>` count, `Submit` =
+`form-submit` (`aggregateFormEvents` + `buildFunnel`). Each row shows the
+step-over-step change — a **red −%** when fewer than the previous step reached
+it, a **green +%** when more (a step revisited/looped). Two tables follow:
 
-- **Reached** = the `<formId>:form-step-view` event count for that step
-  (`eventDataValues(..., propertyName: "step")`). `form-step-view` fires when a
-  step is *rendered*, i.e. **reached**.
-- **Completed** = the reached count of the **next** step in the form's declared
-  order — advancing to the next step is completing the current one. The final
-  step has no successor and counts as fully completed.
-- **Abandoned** = `reached − completed` (never negative).
+- **Field errors — which fields fail** — `tallyFields(eventDataValues(
+  <formId>:form-validation-error, "fields"))`, with each field's % of starts.
+- **Why fields fail — validation reasons** — `tallyFields(eventDataValues(
+  <formId>:form-validation-error, "errorTypes"))`; known codes (`required`,
+  `invalid_format`, …) get a friendly label, the form's own messages pass
+  through unchanged.
 
-Step order comes from the served form definition
-(`GET /form-definitions/:formId` → `steps[].stepId`), which matches the `step`
-property the events carry.
-
-> **Caveat (unit differs from the funnel above).** `form-step-view` is an
-> **event count**, so a reload or a back-then-forward re-fires it — this view is
-> **not deduped** the way the distinct-visitor funnel is. It answers "where do
-> people stall within the flow", not "how many distinct people". A true
-> distinct-per-step funnel needs the step in the page URL so a path-based funnel
-> report can dedupe it — tracked in **#1931**. Conditional/skipped steps can also
-> make a later step's "reached" exceed an earlier one; abandoned is clamped at 0.
+> **Caveat (unit).** The step funnel and the counters/tables are **event
+> counts** — a reload or back-then-forward re-fires them, so a later step can
+> exceed an earlier one (hence the green +%). They answer "where do people stall
+> within the flow", not "how many distinct people". The headline Starts/Completed
+> above are distinct; true distinct-per-step needs the step in the URL (**#1931**).
 
 ## Submit reliability — form-submit-error (#1916)
 

@@ -7,9 +7,13 @@
 // stay unit-testable.
 import {
   UmamiClient,
+  aggregateFormEvents,
+  buildFormDetail,
   buildSources,
   startOfDayInTz,
   tzOffsetMs,
+  weightedAverage,
+  weightedSum,
   type EventDataValue,
   type FunnelStage,
   type FunnelStepInput,
@@ -145,13 +149,33 @@ export interface SubmitError {
   byReason: { reason: string; count: number }[]
 }
 
+export interface FieldCount {
+  field: string
+  count: number
+}
+
 export interface FormDetailData {
   formId: string
   title: string
+  // Headline — distinct visitors (Umami funnel report).
+  starts: number
+  completed: number
+  completionPct: number
+  avgDurationSeconds: number | null
+  // Secondary stats (event counts).
+  totalFieldErrors: number
+  avgFieldErrors: number
+  stepBack: number
+  stepEdit: number
+  reviewed: number
+  /** Start → Step N → Submit, with step-over-step % (dropoffPct). Event counts. */
   funnel: FunnelStage[]
-  steps: StepStat[]
+  /** which fields fail most, descending. */
+  fieldErrors: FieldCount[]
+  /** why fields fail (validation reason codes/messages), descending. */
+  validationReasons: FieldCount[]
+  /** submit reliability (#1916). */
   submitError: SubmitError
-  journey: JourneyPath[]
   generatedAt: string
   window: string
   range: string
@@ -558,47 +582,109 @@ export async function fetchFormDetailData(
   return memoize(`form:${formId}:${range}`, TTL_MS, async () => {
     const client = new UmamiClient({ apiKey: cfg.apiKey })
     const r = rangeForKey(range)
-    const [funnelRows, journeyRows, events, reachedRows, reasonRows, def] =
-      await Promise.all([
-        client.reportFunnel(cfg.formsWebsiteId, {
-          steps: buildFunnelSteps(formId),
-          window: FUNNEL_WINDOW_MIN,
-          range: r,
-        }),
-        client.reportJourney(cfg.formsWebsiteId, { steps: 5, range: r }),
-        client.metricsEvents(cfg.formsWebsiteId, r),
-        client.eventDataValues(
-          cfg.formsWebsiteId,
-          `${formId}:form-step-view`,
-          'step',
-          r,
-        ),
-        client.eventDataValues(
-          cfg.formsWebsiteId,
-          `${formId}:form-submit-error`,
-          'errors',
-          r,
-        ),
-        fetchFormDefinition(cfg, formId),
-      ])
+    const [
+      funnelRows,
+      events,
+      duration,
+      errorCount,
+      fields,
+      errorTypes,
+      submitErrRows,
+      def,
+    ] = await Promise.all([
+      client.reportFunnel(cfg.formsWebsiteId, {
+        steps: buildFunnelSteps(formId),
+        window: FUNNEL_WINDOW_MIN,
+        range: r,
+      }),
+      client.metricsEvents(cfg.formsWebsiteId, r),
+      eventValues(client, cfg, `${formId}:form-submit`, 'duration_seconds', r),
+      eventValues(
+        client,
+        cfg,
+        `${formId}:form-validation-error`,
+        'errorCount',
+        r,
+      ),
+      eventValues(client, cfg, `${formId}:form-validation-error`, 'fields', r),
+      eventValues(
+        client,
+        cfg,
+        `${formId}:form-validation-error`,
+        'errorTypes',
+        r,
+      ),
+      eventValues(client, cfg, `${formId}:form-submit-error`, 'errors', r),
+      fetchFormDefinition(cfg, formId),
+    ])
 
-    const submitTotal =
-      events.find((e) => e.x === `${formId}:form-submit`)?.y ?? 0
-    const errorTotal =
-      events.find((e) => e.x === `${formId}:form-submit-error`)?.y ?? 0
-    const reachedByStep: Record<string, number> = {}
-    for (const row of reachedRows) reachedByStep[String(row.value)] = row.total
+    // Headline: distinct visitors from the funnel report (start → … → submit).
+    const starts = funnelRows[0]?.visitors ?? 0
+    const completed = funnelRows[funnelRows.length - 1]?.visitors ?? 0
+    const completionPct = starts
+      ? Math.round((completed / starts) * 1000) / 10
+      : 0
+    const avgDuration = weightedAverage(duration)
+    const totalFieldErrors = weightedSum(errorCount)
+
+    // Event-count aggregation for the step funnel, counters and field/reason
+    // tables (per-step distinct isn't available — these are event counts).
+    const entry = aggregateFormEvents(events).get(formId) ?? {
+      counts: {},
+      steps: [],
+    }
+    const detail = buildFormDetail(formId, entry, {
+      duration,
+      errorCount,
+      fields,
+      errorTypes,
+    })
 
     return {
       formId,
       title: def.title,
-      funnel: shapeFunnel(funnelRows),
-      steps: shapeSteps(def.steps, reachedByStep),
-      submitError: shapeSubmitError(submitTotal, errorTotal, reasonRows),
-      journey: shapeJourneys(journeyRows, formId),
+      starts,
+      completed,
+      completionPct,
+      avgDurationSeconds: avgDuration === null ? null : Math.round(avgDuration),
+      totalFieldErrors,
+      avgFieldErrors: starts
+        ? Math.round((totalFieldErrors / starts) * 100) / 100
+        : 0,
+      stepBack: detail.stepBack,
+      stepEdit: detail.stepEdit,
+      reviewed: detail.review,
+      funnel: detail.funnel,
+      fieldErrors: detail.fieldErrors,
+      validationReasons: detail.errorTypes,
+      submitError: shapeSubmitError(
+        entry.counts['form-submit'] ?? 0,
+        entry.counts['form-submit-error'] ?? 0,
+        submitErrRows,
+      ),
       generatedAt: new Date().toISOString(),
       window: rangeLabel(range),
       range,
     }
   })
+}
+
+/** eventDataValues that degrades to [] on error (a form may lack a given event). */
+async function eventValues(
+  client: UmamiClient,
+  cfg: UmamiConfig,
+  event: string,
+  propertyName: string,
+  r: Range,
+): Promise<EventDataValue[]> {
+  try {
+    return await client.eventDataValues(
+      cfg.formsWebsiteId,
+      event,
+      propertyName,
+      r,
+    )
+  } catch {
+    return []
+  }
 }
