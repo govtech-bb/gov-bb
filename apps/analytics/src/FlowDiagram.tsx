@@ -13,12 +13,14 @@ const GAP = 14
 const LABEL_PAD = 220 // room to the right of the last column for its labels
 
 const fmtInt = (n: number) => n.toLocaleString()
+const fmtPct = (frac: number) => `${Math.round(frac * 100)}%`
 
 interface LaidNode {
   id: string
   column: number
   label: string
   value: number
+  pct: number
   x: number
   y: number
   h: number
@@ -104,8 +106,11 @@ function layout(flow: FlowData) {
       return {
         key: `${l.source}~${l.target}`,
         d,
-        label: `${s.label} → ${t.label}`,
+        source: s.label,
+        target: t.label,
         value: l.value,
+        // share of the source node's visitors that took this step
+        pctOfSource: s.value ? l.value / s.value : 0,
       }
     })
     .filter((r): r is NonNullable<typeof r> => r !== null)
@@ -138,7 +143,8 @@ export function FlowDiagram({ flow }: { flow: FlowData }) {
               {ribbons.map((r) => (
                 <path key={r.key} d={r.d} className="uar-ribbon">
                   <title>
-                    {r.label} — {fmtInt(r.value)} visits
+                    {r.source} → {r.target} — {fmtInt(r.value)} visits (
+                    {fmtPct(r.pctOfSource)} of {r.source})
                   </title>
                 </path>
               ))}
@@ -158,7 +164,8 @@ export function FlowDiagram({ flow }: { flow: FlowData }) {
                   }
                 >
                   <title>
-                    {n.label} — {fmtInt(n.value)} visits
+                    {n.label} — {fmtInt(n.value)} visits ({fmtPct(n.pct)} of
+                    entries)
                   </title>
                 </rect>
                 <text
@@ -169,6 +176,7 @@ export function FlowDiagram({ flow }: { flow: FlowData }) {
                   fill="currentColor"
                 >
                   {n.label}
+                  <tspan className="uar-pct"> {fmtPct(n.pct)}</tspan>
                 </text>
               </g>
             ))}
@@ -176,9 +184,10 @@ export function FlowDiagram({ flow }: { flow: FlowData }) {
         </div>
       )}
       <Text as="p" size="small-caption" className="mt-xs text-mid-grey-00">
-        Each column is one step into the visit (column 1 = landing page); ribbon
-        width = number of visits. Low-traffic steps are grouped as “Other”. Hover
-        for counts.
+        Column 1 is the entry page; each column is the next step. Percentages are
+        each node’s share of all entry visits; ribbon width = number of visits
+        (hover for the share of the previous step). Low-traffic steps in a column
+        are grouped as “Other (N)”.
       </Text>
     </section>
   )
@@ -200,4 +209,5 @@ function FlowHeader() {
 const FLOW_CSS = `
 .uar-flow .uar-ribbon { fill-opacity: .28; transition: fill-opacity .15s; }
 .uar-flow .uar-ribbon:hover { fill-opacity: .6; }
+.uar-flow .uar-pct { fill: var(--color-mid-grey-00); font-weight: 700; }
 `

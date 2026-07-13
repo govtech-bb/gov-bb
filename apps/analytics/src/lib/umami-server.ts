@@ -271,6 +271,8 @@ export interface FlowNode {
   column: number
   label: string
   value: number
+  /** share of total entry visits (0–1). */
+  pct: number
 }
 export interface FlowLink {
   source: string
@@ -280,6 +282,8 @@ export interface FlowLink {
 export interface FlowData {
   nodes: FlowNode[]
   links: FlowLink[]
+  /** total visits entering the flow (sum of column-0 nodes). */
+  total: number
 }
 
 const SEP = '\u241F' // node-id separator
@@ -304,30 +308,40 @@ export function humanizeStep(raw: string): string {
 }
 
 /**
- * Build a layered flow (Sankey) from journey paths: column `c` is the c-th step
- * into the visit, links are visit counts between consecutive steps, and the
- * lowest-traffic nodes in each column are bucketed into "Other" (like the
- * reference diagram). Node identity is per-(column, raw step), so the same page
- * at different depths — or two forms' "Start" — stay distinct.
+ * Build a layered flow (Sankey) from journey paths. Column `c` is the c-th step
+ * into the visit (column 0 = entry page); links are visit counts between
+ * consecutive steps. Nodes are keyed by (column, humanized **label**), so every
+ * form's "Start"/"Form" merges into one node per column — the diagram reads as
+ * entry → onward pages/goal, not one lane per form. Only real page paths and the
+ * `form-start` goal are kept (tracking pseudo-events dropped, which collapses
+ * A → pseudo → B into A → B), consecutive repeats are de-duped, the lowest-
+ * traffic labels per column fold into "Other (N)", and every node carries its
+ * share (`pct`) of total entry visits.
  */
 export function shapeFlow(
   journeys: JourneyPath[],
   depth = 4,
-  topPerColumn = 6,
+  topPerColumn = 8,
 ): FlowData {
-  // 1. count links between consecutive steps, keyed by source column. Keep only
-  // real page-navigation steps plus the `form-start` goal — internal tracking
-  // pseudo-events (`…:page-service-view`, `…:search`, chat events, …) are
-  // dropped so the flow reads as pages → Start, not raw event noise. Filtering
-  // before slicing collapses A → pseudo → B into A → B.
-  const rawLink = new Map<string, number>() // `${c}${SEP}${src}${SEP}${tgt}` -> count
+  // 1. per path → ordered labels (filtered, de-duped, capped), then count
+  //    label→label links per source column.
+  const rawLink = new Map<string, number>() // `${c}${SEP}${srcLabel}${SEP}${tgtLabel}`
   for (const j of journeys) {
-    const items = j.items
-      .filter(Boolean)
-      .filter((it) => it.startsWith('/') || it.endsWith(':form-start'))
-      .slice(0, depth)
-    for (let c = 0; c + 1 < items.length; c++) {
-      const k = `${c}${SEP}${items[c]}${SEP}${items[c + 1]}`
+    const labels: string[] = []
+    for (const it of j.items) {
+      if (!it) continue
+      const isFormStart = it.endsWith(':form-start')
+      if (!(it.startsWith('/') || isFormStart)) continue
+      // Entry (column 0) must be a page, not the "Start" event — skip a
+      // form-start until at least one page has been recorded.
+      if (isFormStart && labels.length === 0) continue
+      const label = humanizeStep(it)
+      if (labels[labels.length - 1] === label) continue // drop consecutive repeat
+      labels.push(label)
+      if (labels.length >= depth) break
+    }
+    for (let c = 0; c + 1 < labels.length; c++) {
+      const k = `${c}${SEP}${labels[c]}${SEP}${labels[c + 1]}`
       rawLink.set(k, (rawLink.get(k) ?? 0) + j.count)
     }
   }
@@ -357,10 +371,15 @@ export function shapeFlow(
     else byColumn.set(c, [id])
   }
   const remap = new Map<string, string>()
+  const otherCount = new Map<number, number>()
   for (const [c, ids] of byColumn) {
     ids.sort((a, b) => throughput(b) - throughput(a))
     ids.forEach((id, i) => {
-      remap.set(id, i < topPerColumn ? id : `${c}${SEP}${OTHER}`)
+      if (i < topPerColumn) remap.set(id, id)
+      else {
+        remap.set(id, `${c}${SEP}${OTHER}`)
+        otherCount.set(c, (otherCount.get(c) ?? 0) + 1)
+      }
     })
   }
 
@@ -373,6 +392,7 @@ export function shapeFlow(
     const c = Number(cStr)
     const s = remap.get(`${c}${SEP}${src}`) ?? `${c}${SEP}${src}`
     const t = remap.get(`${c + 1}${SEP}${tgt}`) ?? `${c + 1}${SEP}${tgt}`
+    if (s === t) continue // e.g. two tail pages that both fell into Other
     const mk = `${s}${LSEP}${t}`
     merged.set(mk, (merged.get(mk) ?? 0) + v)
   }
@@ -388,16 +408,24 @@ export function shapeFlow(
     links.push({ source: s, target: t, value: v })
   }
   const ids = new Set<string>([...mOut.keys(), ...mIn.keys()])
-  const nodes: FlowNode[] = [...ids].map((id) => {
-    const [cStr, raw] = id.split(SEP)
+  const bare = [...ids].map((id) => {
+    const [cStr, label] = id.split(SEP)
+    const column = Number(cStr)
     return {
       id,
-      column: Number(cStr),
-      label: raw === OTHER ? 'Other' : humanizeStep(raw),
+      column,
+      label: label === OTHER ? `Other (${otherCount.get(column) ?? 0})` : label,
       value: Math.max(mOut.get(id) ?? 0, mIn.get(id) ?? 0),
     }
   })
-  return { nodes, links }
+  const total = bare
+    .filter((n) => n.column === 0)
+    .reduce((s, n) => s + n.value, 0)
+  const nodes: FlowNode[] = bare.map((n) => ({
+    ...n,
+    pct: total ? n.value / total : 0,
+  }))
+  return { nodes, links, total }
 }
 
 /** Drop the null padding the journey report returns and keep form-relevant paths. */

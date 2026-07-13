@@ -39,14 +39,24 @@ is sortable by clicking a column heading.
 ## The flow (Sankey)
 
 The homepage flow diagram is built from Umami's **journey report**
-(`POST /reports/journey`, landing website, first 4 steps). Each column is one
-step into the visit; a link's width is the number of visits taking that
-step-to-step transition. Steps are filtered to real page paths plus the
-`form-start` "Start" goal (internal tracking pseudo-events like
-`…:page-service-view` are dropped, collapsing A → pseudo → B into A → B), and
-the lowest-traffic node in each column is bucketed into **"Other"**. It's a
-hand-rolled SVG (no charting dependency): one teal hue for ribbons, a green
-accent for "Start", sized by visit count, with per-node/per-ribbon hover counts.
+(`POST /reports/journey`, landing website, first 4 steps). **Column 0 is the
+entry page**; each later column is the next step; a link's width is the number
+of visits taking that step-to-step transition.
+
+- **Merged by label.** Nodes are keyed by (column, humanized label), so every
+  form's "Start"/"Form" collapses into one node per column — the diagram reads
+  as entry → onward pages/goal, not one lane per form.
+- **Steps kept.** Real page paths plus the `form-start` goal; internal tracking
+  pseudo-events (`…:page-service-view`, `…:search`, chat, …) are dropped
+  (collapsing A → pseudo → B into A → B), consecutive repeats are de-duped, and
+  a sequence may not *begin* with the `form-start` event (entries are pages).
+- **Percentages.** Each node shows its share of total entry visits; a ribbon's
+  hover shows its count and its share of the previous step.
+- **Other (N).** The lowest-traffic labels in a column fold into "Other (N)"
+  (N = how many were grouped).
+
+It's a hand-rolled SVG (no charting dependency): one teal hue for ribbons, a
+green accent for "Start", sized by visit count, with per-node/per-ribbon hover.
 
 ## Per-step: reached vs completed (#1915)
 

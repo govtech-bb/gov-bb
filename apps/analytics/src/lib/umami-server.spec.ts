@@ -103,7 +103,7 @@ describe('humanizeStep', () => {
 })
 
 describe('shapeFlow (Sankey)', () => {
-  it('builds layered nodes + links from journey paths and dedupes columns', () => {
+  it('merges by label per column, computes entry total and node share', () => {
     const flow = shapeFlow(
       [
         { items: ['/', '/passport', 'passport:form-start'], count: 50 },
@@ -111,30 +111,36 @@ describe('shapeFlow (Sankey)', () => {
         { items: ['/', '/births', 'births:form-start'], count: 20 },
       ],
       4,
-      6,
+      8,
     )
-    // column 0 has Home; column 1 has passport + births; column 2 has the Starts
+    // column 0 = entry: only Home, carrying every visit → total 80, pct 100%.
+    expect(flow.total).toBe(80)
     const home = flow.nodes.find((n) => n.column === 0 && n.label === 'Home')
-    expect(home?.value).toBe(80) // 50 + 10 + 20 out of Home
-    const link = flow.links.find(
+    expect(home?.value).toBe(80)
+    expect(home?.pct).toBe(1)
+    // Home → Passport = 60 (50 + 10); its share of Home is 75%.
+    const toPassport = flow.links.find(
       (l) =>
         l.source === home?.id &&
         flow.nodes.find((n) => n.id === l.target)?.label === 'Passport',
     )
-    expect(link?.value).toBe(60) // 50 + 10 Home→Passport
-    expect(flow.nodes.filter((n) => n.column === 2).length).toBe(2) // two Starts
+    expect(toPassport?.value).toBe(60)
+    // Both forms' `form-start` merge into ONE "Start" node at column 2.
+    const col2 = flow.nodes.filter((n) => n.column === 2)
+    expect(col2.length).toBe(1)
+    expect(col2[0].label).toBe('Start')
   })
 
-  it('buckets low-traffic nodes in a column into "Other"', () => {
+  it('buckets low-traffic labels in a column into "Other (N)"', () => {
     const journeys = Array.from({ length: 8 }, (_, i) => ({
       items: ['/', `/service-${i}`],
       count: 10 - i, // descending so the last few are the smallest
     }))
     const flow = shapeFlow(journeys, 4, 3) // keep top 3 per column
     const col1 = flow.nodes.filter((n) => n.column === 1)
-    expect(col1.some((n) => n.label === 'Other')).toBe(true)
-    // top 3 kept + 1 Other = 4 nodes in column 1
+    // top 3 kept + 1 Other = 4 nodes; Other groups the remaining 5.
     expect(col1.length).toBe(4)
+    expect(col1.some((n) => n.label === 'Other (5)')).toBe(true)
   })
 })
 
