@@ -85,6 +85,7 @@ jobs:
       chat: ${{ steps.affected.outputs.chat }}
       fb-app: ${{ steps.affected.outputs.fb-app }}
       ff-app: ${{ steps.affected.outputs.ff-app }}
+      analytics: ${{ steps.affected.outputs.analytics }}
       migrations: ${{ steps.affected.outputs.migrations }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
     steps:
@@ -127,6 +128,7 @@ jobs:
           echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
           echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
           echo "ff-app=$(has feature-flagging-app)" >> "$GITHUB_OUTPUT"
+          echo "analytics=$(has analytics-app)" >> "$GITHUB_OUTPUT"
 
           # Migrations: precise path-grep (from PR #216) on the unified base. The
           # migration task is a ~1.5-3 min cold Fargate run; migration:run is
@@ -623,6 +625,79 @@ jobs:
       artifact_name: ${{ matrix.artifact_name }}
     secrets:
       smoke_submission_token: ${{ secrets.SMOKE_SUBMISSION_TOKEN }}
+
+  amplify-analytics:
+    name: Amplify build (analytics)
+    needs: setup
+    if: needs.setup.outputs.analytics == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Trigger and monitor Amplify build
+        env:
+          AMPLIFY_APP_ID: d363pae4e63dc6
+          AMPLIFY_BRANCH: sandbox
+          # Needed for the CANCELLED→superseded check below to call gh api.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_LABEL: analytics
+          APP_URL: https://analytics.sandbox.alpha.gov.bb
+        run: |
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE \
+            --region "$AWS_REGION" \
+            --query jobSummary.jobId \
+            --output text)
+          echo "Amplify $APP_LABEL job started: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" \
+              --region "$AWS_REGION" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify $APP_LABEL build succeeded — running smoke test on $APP_URL"
+              for j in 1 2 3 4 5; do
+                CODE=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL" 2>/dev/null || echo "000")
+                if [ "$CODE" = "200" ]; then
+                  echo "✅ $APP_LABEL smoke test passed (HTTP 200)"
+                  exit 0
+                fi
+                echo "[$j/5] smoke test got HTTP $CODE, retrying in 5s..."
+                sleep 5
+              done
+              echo "❌ $APP_LABEL smoke test failed — $APP_URL not responding 200 after deploy"
+              exit 1
+            elif [ "$STATUS" = "FAILED" ]; then
+              echo "❌ Amplify $APP_LABEL build FAILED"
+              exit 1
+            elif [ "$STATUS" = "CANCELLED" ]; then
+              # Amplify cancels in-flight builds when a newer commit lands on
+              # the same branch (configured in #441). If sandbox HEAD has
+              # advanced past us, the cancellation is correct — exit clean so
+              # rapid-fire merges don't spam this workflow with red runs that
+              # mean nothing.
+              CURRENT_HEAD=$(gh api "repos/${{ github.repository }}/commits/sandbox" --jq '.sha' 2>/dev/null || echo "")
+              if [ -n "$CURRENT_HEAD" ] && [ "$CURRENT_HEAD" != "${{ github.sha }}" ]; then
+                echo "✅ Amplify $APP_LABEL build CANCELLED — superseded by ${CURRENT_HEAD:0:7}; not failing"
+                exit 0
+              fi
+              echo "❌ Amplify $APP_LABEL build CANCELLED (no newer commit on sandbox — likely manual cancel or Amplify infra issue)"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
+          exit 1
 
   amplify-landing:
     name: Amplify build (landing)
