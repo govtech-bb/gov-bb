@@ -29,6 +29,11 @@ on:
       - ".github/PULL_REQUEST_TEMPLATE.md"
       - ".github/dependabot.yml"
   workflow_dispatch:
+    inputs:
+      force_analytics:
+        description: "Force an analytics Amplify build/deploy even when nx-affected didn't flag apps/analytics (e.g. first deploy after wiring, or a config-only redeploy)."
+        type: boolean
+        default: false
 
 permissions:
   # Single-purpose deploy workflow: every job assumes the AWS deploy role via
@@ -629,7 +634,7 @@ jobs:
   amplify-analytics:
     name: Amplify build (analytics)
     needs: setup
-    if: needs.setup.outputs.analytics == 'true' || needs.setup.outputs.amplify-config == 'true'
+    if: needs.setup.outputs.analytics == 'true' || needs.setup.outputs.amplify-config == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_analytics)
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
