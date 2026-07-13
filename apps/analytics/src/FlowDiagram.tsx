@@ -191,7 +191,7 @@ function FlowHeader() {
   return (
     <div className="mb-s flex items-center justify-between gap-s">
       <Heading as="h2" size="h3">
-        The flow
+        Most common journeys
       </Heading>
       <Text as="span" size="small-caption" className="text-mid-grey-00">
         first few steps — width = number of visits
