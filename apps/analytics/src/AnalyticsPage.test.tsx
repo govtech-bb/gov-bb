@@ -15,7 +15,14 @@ vi.mock('@tanstack/react-router', () => ({
 
 const overview: OverviewPayload = {
   configured: true,
-  stats: { visitors: 10, pageviews: 20 },
+  stats: {
+    visitors: 10,
+    pageviews: 20,
+    sessions: 12,
+    bounceRate: 0.25,
+    avgStepsPerVisit: 1.7,
+    searches: 3,
+  },
   pages: [
     {
       path: '/',
@@ -38,17 +45,25 @@ const overview: OverviewPayload = {
   ],
   flow: { nodes: [], links: [], total: 0 },
   journeys: [],
+  period: { start: '2026-06-14', end: '2026-07-13' },
   generatedAt: '2026-07-10T12:00:00.000Z',
   window: 'last 30 days',
   range: 'past-30-days',
 }
 
 describe('AnalyticsPage', () => {
-  it('renders the overview and the linked form list', () => {
+  it('renders the summary cards, period text and the linked form list', () => {
     render(<AnalyticsPage overview={overview} />)
     expect(screen.getByText('Most visited pages')).toBeTruthy()
     expect(screen.getByText('Get a birth certificate')).toBeTruthy()
-    expect(screen.getByText(/10 visitors/)).toBeTruthy()
+    // summary cards
+    expect(screen.getByText('Bounce rate')).toBeTruthy()
+    expect(screen.getByText('25%')).toBeTruthy() // bounceRate 0.25
+    expect(screen.getByText('Avg steps / visit')).toBeTruthy()
+    // period sentence
+    expect(
+      screen.getByText(/Showing aggregate visitor data from 2026-06-14 to 2026-07-13/),
+    ).toBeTruthy()
   })
 
   it('shows per-form starts and completion', () => {
@@ -84,11 +99,19 @@ describe('AnalyticsPage', () => {
       <AnalyticsPage
         overview={{
           configured: false,
-          stats: { visitors: 0, pageviews: 0 },
+          stats: {
+            visitors: 0,
+            pageviews: 0,
+            sessions: 0,
+            bounceRate: 0,
+            avgStepsPerVisit: 0,
+            searches: 0,
+          },
           pages: [],
           forms: [],
           flow: { nodes: [], links: [], total: 0 },
-  journeys: [],
+          journeys: [],
+          period: { start: '', end: '' },
           generatedAt: '',
           window: 'last 30 days',
           range: 'past-30-days',

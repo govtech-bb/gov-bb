@@ -67,9 +67,7 @@ export default function FormPage({ detail }: { detail: FormDetailData }) {
         }
       />
       <div className="container py-8">
-        <Link to="/" className="text-caption text-teal-00 underline">
-          ← All forms
-        </Link>
+       
         <header className="mt-s mb-l">
           <Heading as="h1" size="h1">
             {detail.title}

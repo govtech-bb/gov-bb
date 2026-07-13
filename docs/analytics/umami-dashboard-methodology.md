@@ -12,6 +12,16 @@ window is **last 30 days**. Data is fetched per request and deduped by a ~60s
 in-memory TTL, so `queried` is when the underlying data was actually pulled (at
 most ~60s before the page render).
 
+## Overview summary cards
+
+The homepage leads with six cards from the landing `/stats` (+ events): **Sessions**
+(`visits`), **Pageviews**, **Avg steps / visit** (pageviews ÷ visits), **Bounce
+rate** (bounces ÷ visits), **Forms tracked** (count of published forms), and
+**Searches** (`search-submit` events). Below them a line states the resolved
+window — "Showing aggregate visitor data for `yyyy-mm-dd`" (single day) or
+"… from `yyyy-mm-dd` to `yyyy-mm-dd`" — with dates in the site timezone
+(America/Barbados).
+
 ## Form detail — headline stats (distinct visitors) (#1914)
 
 The top of each form page shows **Starts**, **Completion rate** and **Avg time

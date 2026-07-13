@@ -40,11 +40,19 @@ export type OverviewPayload = { configured: boolean } & OverviewData
 function emptyOverview(range: string): OverviewPayload {
   return {
     configured: false,
-    stats: { visitors: 0, pageviews: 0 },
+    stats: {
+      visitors: 0,
+      pageviews: 0,
+      sessions: 0,
+      bounceRate: 0,
+      avgStepsPerVisit: 0,
+      searches: 0,
+    },
     pages: [],
     forms: [],
     flow: { nodes: [], links: [], total: 0 },
     journeys: [],
+    period: { start: '', end: '' },
     generatedAt: '',
     window: rangeLabel(range),
     range,

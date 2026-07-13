@@ -120,6 +120,14 @@ export interface FormListItem {
 export interface SiteStats {
   visitors: number
   pageviews: number
+  /** visits (Umami sessions). */
+  sessions: number
+  /** bounces ÷ sessions, 0–1. */
+  bounceRate: number
+  /** pageviews ÷ sessions. */
+  avgStepsPerVisit: number
+  /** `search-submit` events (search-box submissions). */
+  searches: number
 }
 export interface OverviewData {
   stats: SiteStats
@@ -129,6 +137,8 @@ export interface OverviewData {
   flow: FlowData
   /** the same journeys as a ranked breadcrumb list (table view of the flow). */
   journeys: JourneyRow[]
+  /** the resolved window as `yyyy-mm-dd` bounds (start === end ⇒ single day). */
+  period: { start: string; end: string }
   generatedAt: string
   window: string
   range: string
@@ -552,6 +562,18 @@ export function shapeJourneys(
 interface UmamiStats {
   pageviews?: number
   visitors?: number
+  visits?: number
+  bounces?: number
+}
+
+/** `yyyy-mm-dd` for an epoch-ms instant, in the site timezone. */
+function ymd(ms: number): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(ms))
 }
 
 async function fetchFormList(cfg: UmamiConfig): Promise<FormListItem[]> {
@@ -591,13 +613,15 @@ export async function fetchOverviewData(
   return memoize(`overview:${range}`, TTL_MS, async () => {
     const client = new UmamiClient({ apiKey: cfg.apiKey })
     const r = rangeForKey(range)
-    const [statsRaw, urls, forms, formEvents, journeyRows] = await Promise.all([
-      client.stats(cfg.landingWebsiteId, r) as Promise<UmamiStats>,
-      client.metricsUrls(cfg.landingWebsiteId, r),
-      fetchFormList(cfg),
-      client.metricsEvents(cfg.formsWebsiteId, r),
-      client.reportJourney(cfg.landingWebsiteId, { steps: 4, range: r }),
-    ])
+    const [statsRaw, urls, forms, formEvents, landingEvents, journeyRows] =
+      await Promise.all([
+        client.stats(cfg.landingWebsiteId, r) as Promise<UmamiStats>,
+        client.metricsUrls(cfg.landingWebsiteId, r),
+        fetchFormList(cfg),
+        client.metricsEvents(cfg.formsWebsiteId, r),
+        client.metricsEvents(cfg.landingWebsiteId, r),
+        client.reportJourney(cfg.landingWebsiteId, { steps: 4, range: r }),
+      ])
     const topPages = urls
       .map((row) => ({
         path: row.x ?? row.name ?? '',
@@ -644,10 +668,18 @@ export async function fetchOverviewData(
       }),
     )
 
+    const pageviews = statsRaw.pageviews ?? 0
+    const sessions = statsRaw.visits ?? 0
+    const searches = landingEvents.find((e) => e.x === 'search-submit')?.y ?? 0
+
     return {
       stats: {
         visitors: statsRaw.visitors ?? 0,
-        pageviews: statsRaw.pageviews ?? 0,
+        pageviews,
+        sessions,
+        bounceRate: sessions ? (statsRaw.bounces ?? 0) / sessions : 0,
+        avgStepsPerVisit: sessions ? pageviews / sessions : 0,
+        searches,
       },
       pages,
       forms: shapeFormList(forms, formEvents).sort((a, b) =>
@@ -658,6 +690,7 @@ export async function fetchOverviewData(
         ...j,
         topSources: srcByPath.get(j.entryPath) ?? [],
       })),
+      period: { start: ymd(r.startAt), end: ymd(r.endAt) },
       generatedAt: new Date().toISOString(),
       window: rangeLabel(range),
       range,
