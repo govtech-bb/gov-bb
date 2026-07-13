@@ -131,6 +131,9 @@ export default function AnalyticsPage({
         </Text>
 
         <div>
+        {/* Most common journeys (flowchart + table) */}
+        <JourneysSection flow={overview.flow} journeys={overview.journeys} />
+
         {/* Most visited pages */}
         <section className="mb-l">
           <div className="mb-s flex items-center justify-between gap-s">
@@ -185,9 +188,6 @@ export default function AnalyticsPage({
           </Text>
           <FormsTable forms={overview.forms} range={overview.range} />
         </section>
-
-        {/* Most common journeys (flowchart + table) */}
-        <JourneysSection flow={overview.flow} journeys={overview.journeys} />
       </div>
 
       {srcPop ? (
