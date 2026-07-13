@@ -20,7 +20,6 @@ export function AnalyticsHeader({
   const showFilter = range !== undefined && onRangeChange !== undefined
   return (
     <div className="bg-blue-00 text-white-00">
-      <style>{SPIN_CSS}</style>
       <div className="container flex h-16 items-center gap-m">
         <Link
           to="/"
@@ -36,15 +35,6 @@ export function AnalyticsHeader({
 
         {showFilter ? (
           <div className="ml-auto flex items-center gap-s text-caption">
-            {isLoading ? (
-              <span
-                role="status"
-                className="flex items-center gap-xs text-blue-40"
-              >
-                <Spinner />
-                Updating…
-              </span>
-            ) : null}
             <label className="flex items-center gap-xs">
               <span className="sr-only">Date range</span>
               <select
@@ -72,16 +62,3 @@ export function AnalyticsHeader({
   )
 }
 
-function Spinner() {
-  return (
-    <span
-      aria-hidden="true"
-      className="uar-spin inline-block h-[14px] w-[14px] rounded-full border-2 border-blue-40 border-t-white-00"
-    />
-  )
-}
-
-const SPIN_CSS = `
-.uar-spin { animation: uar-spin .7s linear infinite; }
-@keyframes uar-spin { to { transform: rotate(360deg); } }
-`

@@ -1,5 +1,5 @@
 import { Heading, Text } from '@govtech-bb/react'
-import { useNavigate, useRouterState } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import * as React from 'react'
 import { JourneysSection } from './JourneysSection'
 import { AnalyticsChrome } from './components/AnalyticsChrome'
@@ -76,8 +76,6 @@ export default function AnalyticsPage({
 }) {
   const navigate = useNavigate()
   const [srcPop, setSrcPop] = React.useState<SrcPop | null>(null)
-  // True while a navigation (e.g. a range change) is running its loader.
-  const isLoading = useRouterState({ select: (s) => s.isLoading })
 
   const pageSort = useTableSort(
     overview.pages,
@@ -132,10 +130,7 @@ export default function AnalyticsPage({
             : `from ${overview.period.start} to ${overview.period.end}`}
         </Text>
 
-        <div
-          aria-busy={isLoading}
-          className={`transition-opacity ${isLoading ? 'pointer-events-none opacity-50' : ''}`}
-        >
+        <div>
         {/* Most visited pages */}
         <section className="mb-l">
           <div className="mb-s flex items-center justify-between gap-s">
