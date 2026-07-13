@@ -36,7 +36,6 @@ export function useTableSort<T>(
       return dir === 'asc' ? cmp : -cmp
     })
     // accessors is a stable literal per render site; key/dir drive re-sorts.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, sortKey, dir])
 
   const toggle = (key: string) => {

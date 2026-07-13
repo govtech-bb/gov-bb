@@ -633,7 +633,7 @@ export async function fetchOverviewData(
     // Top referrers per page (one call each, throttled) → the "Top source" col.
     const pages: PageRow[] = await Promise.all(
       topPages.map(async (p) => {
-        let topSources: SourceRow[] = []
+        let topSources: SourceRow[]
         try {
           topSources = buildSources(
             await client.metricsReferrers(cfg.landingWebsiteId, p.path, r),
