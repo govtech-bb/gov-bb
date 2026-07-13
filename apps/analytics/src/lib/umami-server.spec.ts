@@ -5,6 +5,7 @@ import {
   shapeFlow,
   shapeFormList,
   shapeFunnel,
+  shapeJourneyList,
   shapeSteps,
   shapeSubmitError,
 } from './umami-server'
@@ -153,6 +154,23 @@ describe('shapeFlow (Sankey)', () => {
     // top 3 kept + 1 Other = 4 nodes; Other groups the remaining 5.
     expect(col1.length).toBe(4)
     expect(col1.some((n) => n.label === 'Other (5)')).toBe(true)
+  })
+})
+
+describe('shapeJourneyList', () => {
+  it('ranks merged breadcrumb journeys with unqualified Start labels + share', () => {
+    const rows = shapeJourneyList([
+      { items: ['/', '/passport', 'passport:form-start'], count: 40 },
+      { items: ['/', '/passport'], count: 30 },
+      // merges with the first (same humanized sequence)
+      { items: ['/', '/passport', 'passport:form-start'], count: 10 },
+    ])
+    expect(rows[0].items).toEqual(['Home', 'Passport', 'Start'])
+    expect(rows[0].sessions).toBe(50) // 40 + 10 merged
+    expect(rows[1].items).toEqual(['Home', 'Passport'])
+    expect(rows[1].sessions).toBe(30)
+    // share is of all journey sessions (50 + 30 = 80)
+    expect(rows[0].share).toBeCloseTo(50 / 80)
   })
 })
 

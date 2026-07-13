@@ -44,6 +44,7 @@ function emptyOverview(range: string): OverviewPayload {
     pages: [],
     forms: [],
     flow: { nodes: [], links: [], total: 0 },
+    journeys: [],
     generatedAt: '',
     window: rangeLabel(range),
     range,

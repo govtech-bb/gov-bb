@@ -127,6 +127,8 @@ export interface OverviewData {
   forms: FormListItem[]
   /** layered visitor-flow (Sankey) of the first few steps into a visit. */
   flow: FlowData
+  /** the same journeys as a ranked breadcrumb list (table view of the flow). */
+  journeys: JourneyRow[]
   generatedAt: string
   window: string
   range: string
@@ -321,16 +323,18 @@ function humanizeSlug(s: string): string {
  * Turn a raw journey step (path or `<form>:<event>`) into a short label. The
  * generic "Start" (form-start event or a `/…/start` page) and "Form"
  * (`/…/form` page) steps are qualified with their root service — e.g.
- * "Get birth certificate · Start" — so they're not ambiguous in the flow.
+ * "Get birth certificate · Start" — so they're not ambiguous in the flow. Pass
+ * `qualifyGoal = false` (used by the journey breadcrumb list, where the
+ * preceding step already gives the context) to get the bare "Start"/"Form".
  */
-export function humanizeStep(raw: string): string {
+export function humanizeStep(raw: string, qualifyGoal = true): string {
   if (!raw) return ''
   if (!raw.startsWith('/') && raw.includes(':')) {
     const form = raw.slice(0, raw.indexOf(':'))
     const event = raw.slice(raw.indexOf(':') + 1)
-    return event === 'form-start'
-      ? `${humanizeSlug(form)} · Start`
-      : humanizeSlug(event)
+    if (event === 'form-start')
+      return qualifyGoal ? `${humanizeSlug(form)} · Start` : 'Start'
+    return humanizeSlug(event)
   }
   const path = raw.split('?')[0].replace(/\/+$/, '')
   const segs = path.split('/').filter(Boolean)
@@ -338,8 +342,10 @@ export function humanizeStep(raw: string): string {
   const last = segs[segs.length - 1]
   // A form's start/form page: qualify with the service segment above it.
   if ((last === 'start' || last === 'form') && segs.length >= 2) {
-    const service = humanizeSlug(segs[segs.length - 2])
-    return `${service} · ${last === 'start' ? 'Start' : 'Form'}`
+    const step = last === 'start' ? 'Start' : 'Form'
+    return qualifyGoal
+      ? `${humanizeSlug(segs[segs.length - 2])} · ${step}`
+      : step
   }
   return humanizeSlug(last)
 }
@@ -465,6 +471,51 @@ export function shapeFlow(
   return { nodes, links, total }
 }
 
+/** One row of the "most common journeys" table: an ordered step breadcrumb. */
+export interface JourneyRow {
+  items: string[]
+  sessions: number
+  share: number
+}
+
+/**
+ * The top complete journeys as an ordered breadcrumb list (the table view of the
+ * flow). Same filtering as the flow — real page steps + the `form-start` goal —
+ * but labels are unqualified ("Start"), since the preceding step gives context.
+ * Identical humanized sequences merge; share is of all captured journeys.
+ */
+export function shapeJourneyList(
+  journeys: JourneyPath[],
+  depth = 4,
+  topN = 12,
+): JourneyRow[] {
+  const merged = new Map<string, { items: string[]; sessions: number }>()
+  for (const j of journeys) {
+    const items: string[] = []
+    for (const it of j.items) {
+      if (!it) continue
+      const isFormStart = it.endsWith(':form-start')
+      if (!(it.startsWith('/') || isFormStart)) continue
+      if (isFormStart && items.length === 0) continue
+      const label = humanizeStep(it, false)
+      if (items[items.length - 1] === label) continue
+      items.push(label)
+      if (items.length >= depth) break
+    }
+    if (items.length === 0) continue
+    const key = items.join('␟')
+    const existing = merged.get(key)
+    if (existing) existing.sessions += j.count
+    else merged.set(key, { items, sessions: j.count })
+  }
+  const all = [...merged.values()].sort((a, b) => b.sessions - a.sessions)
+  const total = all.reduce((s, r) => s + r.sessions, 0)
+  return all.slice(0, topN).map((r) => ({
+    ...r,
+    share: total ? r.sessions / total : 0,
+  }))
+}
+
 /** Drop the null padding the journey report returns and keep form-relevant paths. */
 export function shapeJourneys(
   rows: JourneyPath[],
@@ -564,6 +615,7 @@ export async function fetchOverviewData(
         a.title.localeCompare(b.title),
       ),
       flow: shapeFlow(journeyRows),
+      journeys: shapeJourneyList(journeyRows),
       generatedAt: new Date().toISOString(),
       window: rangeLabel(range),
       range,

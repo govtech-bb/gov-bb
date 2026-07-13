@@ -1,7 +1,7 @@
 import { Heading, Text } from '@govtech-bb/react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import * as React from 'react'
-import { FlowDiagram } from './FlowDiagram'
+import { JourneysSection } from './JourneysSection'
 import { AnalyticsChrome } from './components/AnalyticsChrome'
 import { FormsTable } from './components/FormsTable'
 import { SortHeader, useTableSort } from './components/SortableTable'
@@ -149,8 +149,8 @@ export default function AnalyticsPage({
           <FormsTable forms={overview.forms} range={overview.range} />
         </section>
 
-        {/* The flow (Sankey) */}
-        <FlowDiagram flow={overview.flow} />
+        {/* Most common journeys (flowchart + table) */}
+        <JourneysSection flow={overview.flow} journeys={overview.journeys} />
       </div>
 
       {srcPop ? (

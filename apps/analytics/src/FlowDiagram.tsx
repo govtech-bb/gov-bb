@@ -1,4 +1,4 @@
-import { Heading, Text } from '@govtech-bb/react'
+import { Text } from '@govtech-bb/react'
 import type { FlowData, FlowLink } from './lib/umami-server'
 
 // Hand-rolled layered Sankey. A fixed shallow depth (the journey report's first
@@ -122,8 +122,7 @@ function layout(flow: FlowData) {
 export function FlowDiagram({ flow }: { flow: FlowData }) {
   const { laidNodes, ribbons, width, height } = layout(flow)
   return (
-    <section className="mb-l">
-      <FlowHeader />
+    <>
       {laidNodes.length === 0 ? (
         <Text as="p" size="caption" className="text-mid-grey-00">
           Not enough multi-step visits in this range to draw a flow.
@@ -183,20 +182,7 @@ export function FlowDiagram({ flow }: { flow: FlowData }) {
         (hover for the share of the previous step). Low-traffic steps in a column
         are grouped as “Other (N)”.
       </Text>
-    </section>
-  )
-}
-
-function FlowHeader() {
-  return (
-    <div className="mb-s flex items-center justify-between gap-s">
-      <Heading as="h2" size="h3">
-        Most common journeys
-      </Heading>
-      <Text as="span" size="small-caption" className="text-mid-grey-00">
-        first few steps — width = number of visits
-      </Text>
-    </div>
+    </>
   )
 }
 
