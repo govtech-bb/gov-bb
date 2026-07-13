@@ -122,3 +122,26 @@ export interface ReportModel {
   timezone: string;
   presets: PresetReport[];
 }
+
+/** One requested funnel step (Umami `parameters.steps[]`). */
+export interface FunnelStepInput {
+  type: "event" | "path";
+  value: string;
+}
+
+/** One row of the funnel report response. */
+export interface FunnelStepResult {
+  type: string;
+  value: string;
+  visitors: number;
+  /** absent on the first step */
+  dropped?: number;
+  /** null on the first step; fraction 0–1 thereafter */
+  dropoff: number | null;
+}
+
+/** One journey path row. */
+export interface JourneyPath {
+  items: string[];
+  count: number;
+}

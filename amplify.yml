@@ -206,7 +206,7 @@ applications:
           commands:
             - pnpm exec nx run analytics-app:build
       artifacts:
-        baseDirectory: apps/analytics/dist
+        baseDirectory: apps/analytics/.amplify-hosting
         files:
           - "**/*"
       cache:

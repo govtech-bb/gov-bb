@@ -317,8 +317,8 @@ describe("EmailProcessor", () => {
         makeBodyBuilder(),
         makeFilesService(),
         makeFormConfigService(),
-      makeNotificationLog(),
-    );
+        makeNotificationLog(),
+      );
       await processor.process(makePayload());
 
       expect(getSentInput().ConfigurationSetName).toBe("modular-forms-prod");
@@ -385,8 +385,8 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
-      makeNotificationLog(),
-    );
+        makeNotificationLog(),
+      );
       const payload = makePayload({ recipientField: "contactDetails.email" });
 
       const err = await proc.process(payload).catch((e) => e);
@@ -412,8 +412,8 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
-      makeNotificationLog(),
-    );
+        makeNotificationLog(),
+      );
       const payload = makePayload({ recipientField: "contactDetails.email" });
 
       await processor.process(payload);
@@ -448,8 +448,8 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
-      makeNotificationLog(),
-    );
+        makeNotificationLog(),
+      );
       const payload = makePayload();
       payload.processors = [
         { type: "email", config: { recipientField: "personal.email" } },
@@ -472,8 +472,8 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
-      makeNotificationLog(),
-    );
+        makeNotificationLog(),
+      );
       const payload = makePayload();
       payload.processors = [
         { type: "email", config: { recipientField: "personal.email" } },
@@ -500,8 +500,8 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
-      makeNotificationLog(),
-    );
+        makeNotificationLog(),
+      );
       const payload = makePayload();
       payload.processors = [
         { type: "email", config: { recipientField: "personal.email" } },
@@ -531,8 +531,8 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
-      makeNotificationLog(),
-    );
+        makeNotificationLog(),
+      );
       // contactDetails has no `fax` key.
       const payload = makePayload({ recipientField: "contactDetails.fax" });
 
@@ -554,8 +554,8 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
-      makeNotificationLog(),
-    );
+        makeNotificationLog(),
+      );
       const payload = makePayload({ recipientField: "contactDetails.address" });
 
       await expect(processor.process(payload)).rejects.toThrow(

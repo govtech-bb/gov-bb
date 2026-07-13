@@ -1,62 +1,60 @@
-import { Heading, Select, Text } from '@govtech-bb/react'
+import { Heading, Text } from '@govtech-bb/react'
+import { useNavigate } from '@tanstack/react-router'
 import * as React from 'react'
-import { REPORT } from './lib/report'
-import type { FormDetail, FormRow, SearchReport } from './lib/report'
+import { JourneysSection } from './JourneysSection'
+import { AnalyticsChrome } from './components/AnalyticsChrome'
+import { FormsTable } from './components/FormsTable'
+import { SortHeader, useTableSort } from './components/SortableTable'
+import type { OverviewPayload } from './lib/report'
+import type { SiteStats } from './lib/umami-server'
 
-const DEFAULT_PRESET = 'last-30-days'
-
-// --- formatting helpers ---
 const fmtInt = (n: number) => n.toLocaleString()
 const fmtPct = (n: number) => `${n.toFixed(1).replace(/\.0$/, '')}%`
-const fmtDur = (s: number | null) =>
-  s == null ? '—' : s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`
 
-function fmtUpdated(iso: string, tz: string): string {
-  if (!iso) return 'not yet generated'
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-    timeZone: tz,
-    timeZoneName: 'short',
-  }).format(new Date(iso))
+function SummaryCards({
+  stats,
+  formsTracked,
+}: {
+  stats: SiteStats
+  formsTracked: number
+}) {
+  const cards = [
+    { label: 'Sessions', value: fmtInt(stats.sessions) },
+    { label: 'Pageviews', value: fmtInt(stats.pageviews) },
+    { label: 'Avg steps / visit', value: stats.avgStepsPerVisit.toFixed(1) },
+    { label: 'Bounce rate', value: fmtPct(stats.bounceRate * 100) },
+    { label: 'Forms tracked', value: fmtInt(formsTracked) },
+    { label: 'Searches', value: fmtInt(stats.searches) },
+  ]
+  return (
+    <div className="mt-s flex flex-wrap gap-s">
+      {cards.map((c) => (
+        <div
+          key={c.label}
+          className="min-w-[130px] flex-1 rounded-lg border border-grey-00 px-m py-s"
+        >
+          <div className="text-[1.75rem] font-bold leading-tight">
+            {c.value}
+          </div>
+          <Text as="span" size="small-caption" className="text-mid-grey-00">
+            {c.label}
+          </Text>
+        </div>
+      ))}
+    </div>
+  )
 }
 
-const REASONS: Record<string, string> = {
-  required: 'Required field left blank',
-  invalid_format: 'Invalid format (e.g. email, date, number)',
-  invalid_type: 'Wrong type of value',
-  invalid_string: 'Invalid text',
-  invalid_enum_value: 'Not one of the allowed options',
-  too_small: 'Too short / below the minimum',
-  too_big: 'Too long / above the maximum',
-  not_multiple_of: 'Not an allowed increment',
-  pattern: "Doesn't match the required pattern",
-  custom: 'Failed a custom validation rule',
-}
-const reasonLabel = (code: string) => REASONS[code] ?? code
-
-// --- shared class fragments (design-system tokens) ---
 const TH =
   'px-s py-s text-left text-caption font-bold uppercase tracking-wide text-mid-grey-00'
 const TD = 'px-s py-s align-top text-caption border-t border-grey-00'
 const NUM = 'text-right tabular-nums'
 const CARD = 'overflow-x-auto rounded-lg border border-grey-00'
 
-function SubHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <Text
-      as="span"
-      size="caption"
-      weight="bold"
-      className="mt-m mb-xs block uppercase tracking-wide text-mid-grey-00"
-    >
-      {children}
-    </Text>
-  )
+interface SrcPop {
+  sources: { referrer: string; count: number }[]
+  x: number
+  y: number
 }
 
 function HowToButton({ target }: { target: string }) {
@@ -71,222 +69,126 @@ function HowToButton({ target }: { target: string }) {
   )
 }
 
-interface SrcPop {
-  sources: { referrer: string; count: number }[]
-  x: number
-  y: number
-}
-
-export default function AnalyticsPage() {
-  const { presets, generatedAt, timezone } = REPORT
-  const [presetKey, setPresetKey] = React.useState(
-    presets.find((p) => p.key === DEFAULT_PRESET)?.key ?? presets[0]?.key ?? '',
-  )
-  const [activeForm, setActiveForm] = React.useState<string | null>(null)
+export default function AnalyticsPage({
+  overview,
+}: {
+  overview: OverviewPayload
+}) {
+  const navigate = useNavigate()
   const [srcPop, setSrcPop] = React.useState<SrcPop | null>(null)
 
-  const current = presets.find((p) => p.key === presetKey) ?? presets[0] ?? null
+  const pageSort = useTableSort(
+    overview.pages,
+    {
+      path: (p) => p.path,
+      pageviews: (p) => p.pageviews,
+      visitors: (p) => p.visitors,
+      source: (p) => p.topSources[0]?.count ?? 0,
+    },
+    'pageviews',
+    'desc',
+  )
+  const header = (
+    <AnalyticsChrome
+      range={overview.range}
+      onRangeChange={(range) => navigate({ to: '/', search: { range } })}
+    />
+  )
 
-  if (!current) {
+  if (!overview.configured) {
     return (
-      <div className="container py-8">
-        <Heading as="h1" size="h1">
-          Umami Analytics
-        </Heading>
-        <Text as="p" className="mt-s text-mid-grey-00">
-          The analytics snapshot is empty. Regenerate it with{' '}
-          <code>pnpm run generate:analytics</code> and commit the result.
-        </Text>
-      </div>
+      <>
+        {header}
+        <div className="container py-8">
+          <Text as="p" className="text-mid-grey-00">
+            Analytics is not configured. Set <code>UMAMI_API_KEY</code>,{' '}
+            <code>UMAMI_LANDING_WEBSITE_ID</code> and{' '}
+            <code>UMAMI_FORMS_WEBSITE_ID</code> on the deployment.
+          </Text>
+        </div>
+      </>
     )
   }
 
-  const forms = current.forms
-  const activeRow = forms.find((f) => f.formId === activeForm) ?? null
-  const activeDetail: FormDetail | null = activeForm
-    ? (current.details[activeForm] ?? null)
-    : null
-
-  function changePreset(key: string) {
-    setActiveForm(null)
-    setPresetKey(key)
-  }
-
-  function toggleForm(formId: string) {
-    setActiveForm((cur) => (cur === formId ? null : formId))
-  }
-
   return (
-    <div className="container py-8">
-      <style>{POPOVER_CSS}</style>
+    <>
+      {header}
+      <div className="container py-8">
+        <style>{POPOVER_CSS}</style>
 
-      <header className="mb-l">
-        <Heading as="h1" size="h1">
-          Umami Analytics
+        <Heading as="h1" size="h1" className="sr-only">
+          Alpha.gov.bb analytics
         </Heading>
-        <Text as="p" size="caption" className="text-mid-grey-00">
-          Last updated {fmtUpdated(generatedAt, timezone)}
+        <SummaryCards
+          stats={overview.stats}
+          formsTracked={overview.forms.length}
+        />
+        <Text as="p" size="caption" className="mt-s mb-l text-mid-grey-00">
+          Showing aggregate visitor data{' '}
+          {overview.period.start === overview.period.end
+            ? `for ${overview.period.start}`
+            : `from ${overview.period.start} to ${overview.period.end}`}
         </Text>
-        <div className="mt-s max-w-[220px]">
-          <Select
-            label="Date range"
-            value={presetKey}
-            onChange={(e) => changePreset(e.target.value)}
-          >
-            {presets.map((p) => (
-              <option key={p.key} value={p.key}>
-                {p.label}
-              </option>
-            ))}
-          </Select>
-        </div>
-      </header>
 
-      {/* Top pages */}
-      <section className="mb-l">
-        <div className="mb-s flex items-center justify-between gap-s">
-          <Heading as="h2" size="h3">
-            Top pages
-          </Heading>
-          <HowToButton target="uar-howto-pages" />
-        </div>
-        <div className={CARD}>
-          <table className="min-w-full">
-            <thead>
-              <tr>
-                <th className={TH}>Path</th>
-                <th className={`${TH} ${NUM}`}>Pageviews</th>
-                <th className={`${TH} ${NUM}`}>Visitors</th>
-                <th className={TH}>Top source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {current.pages.length === 0 ? (
-                <tr>
-                  <td className={`${TD} text-mid-grey-00`} colSpan={4}>
-                    No page data for this range.
-                  </td>
-                </tr>
-              ) : (
-                current.pages.map((p) => (
-                  <tr key={p.path}>
-                    <td className={TD}>{p.path}</td>
-                    <td className={`${TD} ${NUM}`}>{fmtInt(p.pageviews)}</td>
-                    <td className={`${TD} ${NUM}`}>{fmtInt(p.visitors)}</td>
-                    <SourceCell sources={p.topSources} onShow={setSrcPop} />
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+        <div>
+        {/* Most common journeys (flowchart + table) */}
+        <JourneysSection flow={overview.flow} journeys={overview.journeys} />
 
-      {/* Top forms */}
-      <section className="mb-l">
-        <div className="mb-s flex items-center justify-between gap-s">
-          <Heading as="h2" size="h3">
-            Top forms
-          </Heading>
-          <HowToButton target="uar-howto-forms" />
-        </div>
-        <div className={CARD}>
-          <table className="min-w-full">
-            <thead>
-              <tr>
-                <th className={TH}>Form</th>
-                <th className={`${TH} ${NUM}`}>Starts</th>
-                <th className={`${TH} ${NUM}`}>Completion</th>
-              </tr>
-            </thead>
-            <tbody>
-              {forms.length === 0 ? (
-                <tr>
-                  <td className={`${TD} text-mid-grey-00`} colSpan={3}>
-                    No form data for this range.
-                  </td>
-                </tr>
-              ) : (
-                forms.map((f) => (
-                  <tr
-                    key={f.formId}
-                    tabIndex={0}
-                    onClick={() => toggleForm(f.formId)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        toggleForm(f.formId)
-                      }
-                    }}
-                    className={`cursor-pointer hover:bg-teal-10 ${activeForm === f.formId ? 'bg-teal-10' : ''}`}
-                  >
-                    <td className={TD}>
-                      <Text as="span" size="caption" weight="bold">
-                        {f.title}
-                      </Text>
-                      <Text
-                        as="span"
-                        size="small-caption"
-                        className="block text-mid-grey-00"
-                      >
-                        {f.category}
-                      </Text>
-                    </td>
-                    <td className={`${TD} ${NUM}`}>{fmtInt(f.starts)}</td>
-                    <td className={`${TD} ${NUM}`}>
-                      {fmtPct(f.completionPct)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* Search */}
-      <section className="mb-l">
-        <div className="mb-s flex items-center justify-between gap-s">
-          <Heading as="h2" size="h3">
-            Search queries
-          </Heading>
-          <HowToButton target="uar-howto-search" />
-        </div>
-        <SearchSection search={current.search} />
-      </section>
-
-      {activeForm ? (
-        <>
-          <button
-            type="button"
-            aria-label="Close details"
-            className="fixed inset-0 z-40 bg-black-00/40"
-            onClick={() => setActiveForm(null)}
-          />
-          <aside className="fixed top-0 right-0 z-50 h-full w-[min(580px,94vw)] overflow-y-auto border-l border-grey-00 bg-white-00 p-l shadow-2xl">
-            <button
-              type="button"
-              onClick={() => setActiveForm(null)}
-              className="float-right rounded-md border border-grey-00 px-s py-xs text-caption"
-            >
-              Close ✕
-            </button>
-            <Heading as="h3" size="h4">
-              {activeRow?.title ?? activeForm}
+        {/* Most visited pages */}
+        <section className="mb-l">
+          <div className="mb-s flex items-center justify-between gap-s">
+            <Heading as="h2" size="h3">
+              Most visited pages
             </Heading>
-            <Text as="p" size="small-caption" className="mb-s text-mid-grey-00">
-              {activeForm} · {activeRow?.category}
-            </Text>
-            {activeRow && activeDetail ? (
-              <FormDetailBody row={activeRow} detail={activeDetail} />
-            ) : (
-              <Text as="p" className="text-mid-grey-00">
-                No detail recorded for this form in this range.
-              </Text>
-            )}
-          </aside>
-        </>
-      ) : null}
+            <HowToButton target="uar-howto-pages" />
+          </div>
+          <div className={CARD}>
+            <table className="min-w-full">
+              <thead>
+                <tr>
+                  <SortHeader label="Path" colKey="path" sort={pageSort} className={TH} />
+                  <SortHeader label="Pageviews" colKey="pageviews" sort={pageSort} className={`${TH} ${NUM}`} />
+                  <SortHeader label="Visitors" colKey="visitors" sort={pageSort} className={`${TH} ${NUM}`} />
+                  <SortHeader label="Top source" colKey="source" sort={pageSort} className={TH} />
+                </tr>
+              </thead>
+              <tbody>
+                {pageSort.sorted.length === 0 ? (
+                  <tr>
+                    <td className={`${TD} text-mid-grey-00`} colSpan={4}>
+                      No page data.
+                    </td>
+                  </tr>
+                ) : (
+                  pageSort.sorted.map((p) => (
+                    <tr key={p.path}>
+                      <td className={TD}>{p.path}</td>
+                      <td className={`${TD} ${NUM}`}>{fmtInt(p.pageviews)}</td>
+                      <td className={`${TD} ${NUM}`}>{fmtInt(p.visitors)}</td>
+                      <SourceCell sources={p.topSources} onShow={setSrcPop} />
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Forms */}
+        <section className="mb-l">
+          <div className="mb-s flex items-center justify-between gap-s">
+            <Heading as="h2" size="h3">
+              Most visited forms
+            </Heading>
+            <HowToButton target="uar-howto-forms" />
+          </div>
+          <Text as="p" size="caption" className="mb-s text-mid-grey-00">
+            Starts and completion for each form; open one for its funnel,
+            per-step drop-off and submit reliability.
+          </Text>
+          <FormsTable forms={overview.forms} range={overview.range} />
+        </section>
+      </div>
 
       {srcPop ? (
         <div
@@ -313,32 +215,8 @@ export default function AnalyticsPage() {
       ) : null}
 
       <HowToPopovers />
-    </div>
-  )
-}
-
-function StatGrid({
-  items,
-}: {
-  items: { label: string; value: React.ReactNode }[]
-}) {
-  return (
-    <div className="flex flex-wrap gap-m rounded-lg bg-teal-10 p-s">
-      {items.map((it) => (
-        <div key={it.label}>
-          <Text
-            as="span"
-            size="small-caption"
-            className="block text-mid-grey-00"
-          >
-            {it.label}
-          </Text>
-          <Text as="span" size="body" weight="bold">
-            {it.value}
-          </Text>
-        </div>
-      ))}
-    </div>
+      </div>
+    </>
   )
 }
 
@@ -374,297 +252,29 @@ function SourceCell({
   )
 }
 
-function FormDetailBody({
-  row,
-  detail: d,
-}: {
-  row: FormRow
-  detail: FormDetail
-}) {
-  const max = Math.max(1, ...d.funnel.map((s) => s.count))
-  const starts = row.starts
-  const ofStarts = (n: number) =>
-    starts ? fmtPct(Math.round((n / starts) * 1000) / 10) : '—'
-  const totalFieldErrors = d.fieldErrors.reduce((a, f) => a + f.count, 0)
-  const totalReasons = d.errorTypes.reduce((a, t) => a + t.count, 0)
-  return (
-    <>
-      <StatGrid
-        items={[
-          { label: 'Starts', value: fmtInt(starts) },
-          {
-            label: 'Completed',
-            value: (
-              <>
-                {fmtInt(row.completes)}{' '}
-                <span className="text-mid-grey-00">
-                  ({fmtPct(row.completionPct)})
-                </span>
-              </>
-            ),
-          },
-          {
-            label: 'Avg time to complete',
-            value: fmtDur(row.avgDurationSeconds),
-          },
-          { label: 'Field errors / start', value: row.avgFieldErrors },
-          { label: 'Total field errors', value: fmtInt(totalFieldErrors) },
-        ]}
-      />
-      <div className="mt-s flex flex-wrap gap-m">
-        {[
-          { label: 'Step back', value: d.stepBack },
-          { label: 'Step edit', value: d.stepEdit },
-          { label: 'Reviewed', value: d.review },
-        ].map((it) => (
-          <div key={it.label}>
-            <Text
-              as="span"
-              size="small-caption"
-              className="block text-mid-grey-00"
-            >
-              {it.label}
-            </Text>
-            <Text as="span" size="body" weight="bold">
-              {fmtInt(it.value)}
-            </Text>
-          </div>
-        ))}
-      </div>
-
-      <SubHeading>Funnel</SubHeading>
-      <div className="flex max-w-[560px] flex-col gap-xs">
-        {d.funnel.map((s) => (
-          <div
-            key={s.label}
-            className="grid grid-cols-[90px_1fr_130px] items-center gap-s text-caption"
-          >
-            <span>{s.label}</span>
-            <span className="rounded bg-teal-10">
-              <span
-                className="block h-[22px] min-w-[2px] rounded bg-teal-00"
-                style={{ width: `${(100 * s.count) / max}%` }}
-              />
-            </span>
-            <span className={NUM}>
-              {fmtInt(s.count)}
-              {/* dropoffPct > 0 = fewer than the previous step (drop-off, red);
-                  < 0 = more than the previous step (increase, green). */}
-              {s.dropoffPct ? (
-                <span
-                  className={s.dropoffPct < 0 ? 'text-green-00' : 'text-red-00'}
-                >
-                  {' '}
-                  {s.dropoffPct < 0 ? '+' : '-'}
-                  {fmtPct(Math.abs(s.dropoffPct))}
-                </span>
-              ) : null}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <SubHeading>Field errors — which fields fail and how often</SubHeading>
-      {d.fieldErrors.length === 0 ? (
-        <Text as="p" size="caption" className="text-mid-grey-00">
-          No field validation errors recorded.
-        </Text>
-      ) : (
-        <div className="max-w-[600px] overflow-x-auto rounded-lg border border-grey-00">
-          <table className="min-w-full">
-            <thead>
-              <tr>
-                <th className={TH}>Field</th>
-                <th className={`${TH} ${NUM}`}>Errors</th>
-                <th className={`${TH} ${NUM}`}>% of starts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {d.fieldErrors.map((f) => (
-                <tr key={f.field}>
-                  <td className={TD}>{f.field}</td>
-                  <td className={`${TD} ${NUM}`}>{fmtInt(f.count)}</td>
-                  <td className={`${TD} ${NUM}`}>{ofStarts(f.count)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <SubHeading>Why fields fail — validation reasons</SubHeading>
-      {d.errorTypes.length === 0 ? (
-        <Text as="p" size="caption" className="text-mid-grey-00">
-          No validation-error reasons recorded.
-        </Text>
-      ) : (
-        <div className="max-w-[600px] overflow-x-auto rounded-lg border border-grey-00">
-          <table className="min-w-full">
-            <thead>
-              <tr>
-                <th className={TH}>Why it failed</th>
-                <th className={TH}>Reason code</th>
-                <th className={`${TH} ${NUM}`}>Occurrences</th>
-                <th className={`${TH} ${NUM}`}>Share</th>
-              </tr>
-            </thead>
-            <tbody>
-              {d.errorTypes.map((t) => (
-                <tr key={t.field}>
-                  <td className={TD}>{reasonLabel(t.field)}</td>
-                  <td className={TD}>
-                    <code className="rounded bg-teal-10 px-xs text-small-caption">
-                      {t.field}
-                    </code>
-                  </td>
-                  <td className={`${TD} ${NUM}`}>{fmtInt(t.count)}</td>
-                  <td className={`${TD} ${NUM}`}>
-                    {fmtPct(
-                      totalReasons
-                        ? Math.round((t.count / totalReasons) * 1000) / 10
-                        : 0,
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </>
-  )
-}
-
-function SearchSection({ search: s }: { search: SearchReport }) {
-  if (!s || (!s.submitTotal && !s.total)) {
-    return (
-      <Text as="p" size="caption" className="text-mid-grey-00">
-        No search activity for this range.
-      </Text>
-    )
-  }
-  const QueryTable = ({
-    rows,
-  }: {
-    rows: { query: string; count: number }[]
-  }) =>
-    rows.length === 0 ? (
-      <Text as="p" size="caption" className="text-mid-grey-00">
-        No queries recorded.
-      </Text>
-    ) : (
-      <div className="max-w-[600px] overflow-x-auto rounded-lg border border-grey-00">
-        <table className="min-w-full">
-          <thead>
-            <tr>
-              <th className={TH}>Query</th>
-              <th className={`${TH} ${NUM}`}>Searches</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((q) => (
-              <tr key={q.query}>
-                <td className={TD}>{q.query}</td>
-                <td className={`${TD} ${NUM}`}>{fmtInt(q.count)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )
-  return (
-    <div>
-      <SubHeading>Search submissions (search-submit)</SubHeading>
-      <StatGrid
-        items={[{ label: 'Search submissions', value: fmtInt(s.submitTotal) }]}
-      />
-      {s.submitBySource.length ? (
-        <>
-          <SubHeading>By source</SubHeading>
-          <div className="flex flex-wrap gap-xs">
-            {s.submitBySource.map((b) => (
-              <span
-                key={b.source}
-                className="rounded-full border border-grey-00 bg-teal-10 px-s py-xs text-small-caption"
-              >
-                {b.source} · {fmtInt(b.count)}
-              </span>
-            ))}
-          </div>
-        </>
-      ) : null}
-      <SubHeading>Top search queries (submitted)</SubHeading>
-      <QueryTable rows={s.submitTopQueries} />
-
-      <SubHeading>Results-page searches (search)</SubHeading>
-      {s.total ? (
-        <>
-          <StatGrid
-            items={[
-              { label: 'Searches with results page', value: fmtInt(s.total) },
-              {
-                label: 'Returned no results',
-                value: (
-                  <>
-                    {fmtInt(s.zeroResults)}{' '}
-                    <span className="text-mid-grey-00">
-                      ({fmtPct(s.zeroResultsPct)})
-                    </span>
-                  </>
-                ),
-              },
-            ]}
-          />
-          <SubHeading>Top queries (results page)</SubHeading>
-          <QueryTable rows={s.topQueries} />
-        </>
-      ) : (
-        <Text as="p" size="caption" className="text-mid-grey-00">
-          No results-page <code>search</code> events in this range (only
-          submissions above).
-        </Text>
-      )}
-      <Text as="p" size="small-caption" className="mt-s text-mid-grey-00">
-        Click-through rate is not shown: result clicks are not tracked yet. The
-        no-results rate is the closest search-quality signal.
-      </Text>
-    </div>
-  )
-}
-
 function HowToPopovers() {
   return (
     <>
       <div id="uar-howto-pages" popover="auto" className="uar-pop">
         <Heading as="h3" size="h5">
-          Top pages — how it works
+          Most visited pages — how it works
         </Heading>
         <Text as="p" size="caption" className="mt-xs">
-          Most-visited landing pages over the selected range (Umami pageviews),
-          top 10. <b>Top source</b> lists the leading referrers to each page —
-          hover to see all; <code>(direct)</code> = no referrer.
+          Most-visited landing pages over the selected range (Umami pageviews).
+          <b> Top source</b> lists the leading referrers to each page — hover to
+          see all; <code>(direct)</code> = no referrer. Click any column heading
+          to sort.
         </Text>
       </div>
       <div id="uar-howto-forms" popover="auto" className="uar-pop">
         <Heading as="h3" size="h5">
-          Top forms — how it works
+          Most visited forms — how it works
         </Heading>
         <Text as="p" size="caption" className="mt-xs">
-          Per form over the range, by starts (top 10). <b>Completion</b> =
-          successful submits ÷ starts. Click a row for avg time, field errors
-          per start, the step funnel, the fields that fail most, and{' '}
-          <em>why</em> they fail.
-        </Text>
-      </div>
-      <div id="uar-howto-search" popover="auto" className="uar-pop">
-        <Heading as="h3" size="h5">
-          Search queries — how it works
-        </Heading>
-        <Text as="p" size="caption" className="mt-xs">
-          <b>Search submissions</b> (<code>search-submit</code>) is every
-          search-box submission, with top queries and a breakdown by where the
-          search ran. <b>Results-page searches</b> (<code>search</code>) gives
-          the no-results rate; it may be empty when only submissions fired.
+          <b>Starts</b> = <code>form-start</code> events; <b>Completion</b> =
+          successful submits ÷ starts (submit count in brackets), over the
+          selected range. Open a form for its distinct-visitor funnel, per-step
+          drop-off and submit-error rate. Click any column to sort.
         </Text>
       </div>
     </>
@@ -674,7 +284,7 @@ function HowToPopovers() {
 // Only the native popover needs raw CSS (it's a top-layer element with a
 // backdrop); the rest of the page is design-system components + Tailwind tokens.
 const POPOVER_CSS = `
-.uar-pop { max-width: min(460px, 92vw); border: 1px solid var(--color-grey-00); border-radius: 12px; padding: 18px 20px; box-shadow: 0 16px 48px rgba(0,0,0,.22); background: #fff; }
+.uar-pop { position: fixed; inset: 0; margin: auto; height: fit-content; max-width: min(460px, 92vw); border: 1px solid var(--color-grey-00); border-radius: 12px; padding: 18px 20px; box-shadow: 0 16px 48px rgba(0,0,0,.22); background: #fff; }
 .uar-pop::backdrop { background: rgba(0,0,0,.3); }
 .uar-pop code { background: var(--color-teal-10); padding: 1px 5px; border-radius: 4px; }
 `

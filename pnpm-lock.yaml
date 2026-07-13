@@ -228,6 +228,18 @@ importers:
       '@govtech-bb/umami-analytics':
         specifier: workspace:*
         version: link:../../packages/umami-analytics
+      '@tanstack/react-router':
+        specifier: 'catalog:'
+        version: 1.170.16(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@tanstack/react-start':
+        specifier: 'catalog:'
+        version: 1.168.26(crossws@0.4.6(srvx@0.11.17))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@tanstack/router-plugin':
+        specifier: 'catalog:'
+        version: 1.168.18(@tanstack/react-router@1.170.16(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      nitro:
+        specifier: 3.0.260429-beta
+        version: 3.0.260429-beta(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(pg@8.22.0))(jiti@2.7.0)(lru-cache@11.5.1)(rollup@4.62.2)(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
       react:
         specifier: 'catalog:'
         version: 19.2.7
@@ -268,9 +280,6 @@ importers:
       tailwindcss:
         specifier: ^4.3.0
         version: 4.3.1
-      tsx:
-        specifier: ^4.22.3
-        version: 4.22.4
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
