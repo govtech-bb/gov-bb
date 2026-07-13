@@ -645,7 +645,29 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APP_LABEL: analytics
           APP_URL: https://analytics.sandbox.alpha.gov.bb
+          # Umami build-time config, from the repo secrets already used by the
+          # (reverted) snapshot workflow. analytics is a TanStack SSR app now
+          # (#1934/#1959): these are read at BUILD time and baked into the Nitro
+          # server runtime. Amplify — not GitHub Actions — runs that build, so
+          # we sync them onto the app right before start-job (below). GitHub
+          # masks these in logs; we also send the update-app output to /dev/null.
+          UMAMI_API_KEY: ${{ secrets.UMAMI_API_KEY }}
+          UMAMI_LANDING_WEBSITE_ID: ${{ secrets.UMAMI_LANDING_WEBSITE_ID }}
+          UMAMI_FORMS_WEBSITE_ID: ${{ secrets.UMAMI_FORMS_WEBSITE_ID }}
+          VITE_FORMS_API_URL: https://forms.api.sandbox.alpha.gov.bb
         run: |
+          # Sync the build env (app-level, full map incl. the monorepo build
+          # selectors) from the repo secrets before building. autoBuild is OFF
+          # and this is the only trigger, so no Amplify build ever runs without
+          # this having set the env first — a stray tofu apply that resets the
+          # env is inert until the next deploy, which re-asserts it here.
+          aws amplify update-app \
+            --app-id "$AMPLIFY_APP_ID" \
+            --region "$AWS_REGION" \
+            --environment-variables "AMPLIFY_DIFF_DEPLOY=false,AMPLIFY_MONOREPO_APP_ROOT=apps/analytics,UMAMI_API_KEY=$UMAMI_API_KEY,UMAMI_LANDING_WEBSITE_ID=$UMAMI_LANDING_WEBSITE_ID,UMAMI_FORMS_WEBSITE_ID=$UMAMI_FORMS_WEBSITE_ID,VITE_FORMS_API_URL=$VITE_FORMS_API_URL" \
+            >/dev/null
+          echo "Synced analytics build env vars onto $AMPLIFY_APP_ID (values hidden)"
+
           JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
             --branch-name "$AMPLIFY_BRANCH" \
