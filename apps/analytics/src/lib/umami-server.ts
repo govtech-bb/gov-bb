@@ -295,16 +295,31 @@ function humanizeSlug(s: string): string {
   return spaced ? spaced[0].toUpperCase() + spaced.slice(1) : s
 }
 
-/** Turn a raw journey step (path or `<form>:<event>`) into a short label. */
+/**
+ * Turn a raw journey step (path or `<form>:<event>`) into a short label. The
+ * generic "Start" (form-start event or a `/…/start` page) and "Form"
+ * (`/…/form` page) steps are qualified with their root service — e.g.
+ * "Get birth certificate · Start" — so they're not ambiguous in the flow.
+ */
 export function humanizeStep(raw: string): string {
   if (!raw) return ''
   if (!raw.startsWith('/') && raw.includes(':')) {
+    const form = raw.slice(0, raw.indexOf(':'))
     const event = raw.slice(raw.indexOf(':') + 1)
-    return event === 'form-start' ? 'Start' : humanizeSlug(event)
+    return event === 'form-start'
+      ? `${humanizeSlug(form)} · Start`
+      : humanizeSlug(event)
   }
   const path = raw.split('?')[0].replace(/\/+$/, '')
   const segs = path.split('/').filter(Boolean)
-  return segs.length ? humanizeSlug(segs[segs.length - 1]) : 'Home'
+  if (!segs.length) return 'Home'
+  const last = segs[segs.length - 1]
+  // A form's start/form page: qualify with the service segment above it.
+  if ((last === 'start' || last === 'form') && segs.length >= 2) {
+    const service = humanizeSlug(segs[segs.length - 2])
+    return `${service} · ${last === 'start' ? 'Start' : 'Form'}`
+  }
+  return humanizeSlug(last)
 }
 
 /**

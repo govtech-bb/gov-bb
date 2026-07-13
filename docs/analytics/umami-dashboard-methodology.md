@@ -43,9 +43,12 @@ The homepage flow diagram is built from Umami's **journey report**
 entry page**; each later column is the next step; a link's width is the number
 of visits taking that step-to-step transition.
 
-- **Merged by label.** Nodes are keyed by (column, humanized label), so every
-  form's "Start"/"Form" collapses into one node per column — the diagram reads
-  as entry → onward pages/goal, not one lane per form.
+- **Nodes keyed by label.** Nodes are keyed by (column, humanized label), so
+  identical steps merge. The generic "Start" (form-start event / `/…/start`
+  page) and "Form" (`/…/form` page) labels are **qualified with their root
+  service** — e.g. "Get birth certificate · Start" — so they're never ambiguous.
+- **Entry pages list.** Below the diagram, the column-0 nodes are listed as an
+  "Entry pages" table (visits + share of total entry visits).
 - **Steps kept.** Real page paths plus the `form-start` goal; internal tracking
   pseudo-events (`…:page-service-view`, `…:search`, chat, …) are dropped
   (collapsing A → pseudo → B into A → B), consecutive repeats are de-duped, and

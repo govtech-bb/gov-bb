@@ -93,12 +93,22 @@ describe('shapeFormList (per-form starts + completion)', () => {
 })
 
 describe('humanizeStep', () => {
-  it('labels paths, the home path, and form-start events', () => {
+  it('labels service pages, the home path, and qualifies Start/Form with the root', () => {
     expect(
       humanizeStep('/family-birth-relationships/get-birth-certificate'),
     ).toBe('Get birth certificate')
     expect(humanizeStep('/')).toBe('Home')
-    expect(humanizeStep('get-birth-certificate:form-start')).toBe('Start')
+    // form-start event → "<root> · Start"
+    expect(humanizeStep('get-birth-certificate:form-start')).toBe(
+      'Get birth certificate · Start',
+    )
+    // /start and /form pages are qualified with the service segment above them
+    expect(
+      humanizeStep('/money-financial-support/get-a-textbook-grant/start'),
+    ).toBe('Get a textbook grant · Start')
+    expect(
+      humanizeStep('/money-financial-support/get-a-textbook-grant/form'),
+    ).toBe('Get a textbook grant · Form')
   })
 })
 
@@ -125,10 +135,12 @@ describe('shapeFlow (Sankey)', () => {
         flow.nodes.find((n) => n.id === l.target)?.label === 'Passport',
     )
     expect(toPassport?.value).toBe(60)
-    // Both forms' `form-start` merge into ONE "Start" node at column 2.
+    // Start nodes are qualified by their root, so they stay distinct.
     const col2 = flow.nodes.filter((n) => n.column === 2)
-    expect(col2.length).toBe(1)
-    expect(col2[0].label).toBe('Start')
+    expect(col2.map((n) => n.label).sort()).toEqual([
+      'Births · Start',
+      'Passport · Start',
+    ])
   })
 
   it('buckets low-traffic labels in a column into "Other (N)"', () => {
