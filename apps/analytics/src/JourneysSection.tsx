@@ -1,5 +1,6 @@
 import { Heading, Text } from '@govtech-bb/react'
 import * as React from 'react'
+import type { SourceRow } from '@govtech-bb/umami-analytics'
 import { FlowDiagram } from './FlowDiagram'
 import type { FlowData, JourneyRow } from './lib/umami-server'
 
@@ -76,7 +77,9 @@ export function JourneysSection({
           sequences), with session counts and share; single-page visits (bounces)
           are excluded. Because one aggregates transitions and the other exact
           sequences, their ordering differs. <code>Start</code>/<code>Form</code>{' '}
-          are the service's start and form pages.
+          are the service's start and form pages. <b>Entry source</b> is the top
+          referrer to the journey's first page; <b>% of journeys</b> is the row's
+          share of all listed journey sessions.
         </Text>
       </div>
     </section>
@@ -98,8 +101,9 @@ function JourneyTable({ journeys }: { journeys: JourneyRow[] }) {
           <tr>
             <th className={`${TH} ${NUM}`}>#</th>
             <th className={TH}>Journey</th>
+            <th className={TH}>Entry source</th>
             <th className={`${TH} ${NUM}`}>Sessions</th>
-            <th className={`${TH} ${NUM}`}>Share</th>
+            <th className={`${TH} ${NUM}`}>% of journeys</th>
           </tr>
         </thead>
         <tbody>
@@ -122,6 +126,7 @@ function JourneyTable({ journeys }: { journeys: JourneyRow[] }) {
                   ))}
                 </span>
               </td>
+              <SourceCell sources={j.topSources} />
               <td className={`${TD} ${NUM}`}>{fmtInt(j.sessions)}</td>
               <td className={`${TD} ${NUM}`}>{fmtPct(j.share)}</td>
             </tr>
@@ -129,5 +134,22 @@ function JourneyTable({ journeys }: { journeys: JourneyRow[] }) {
         </tbody>
       </table>
     </div>
+  )
+}
+
+// Top referrer to the journey's entry page; the full list is on hover.
+function SourceCell({ sources }: { sources: SourceRow[] }) {
+  if (!sources || sources.length === 0)
+    return <td className={`${TD} text-mid-grey-00`}>—</td>
+  const top = sources[0]
+  const more = sources.length - 1
+  return (
+    <td
+      className={TD}
+      title={sources.map((s) => `${s.referrer} (${fmtInt(s.count)})`).join(', ')}
+    >
+      {top.referrer} <span className="text-mid-grey-00">({fmtInt(top.count)})</span>
+      {more > 0 ? <span className="text-mid-grey-00"> +{more}</span> : null}
+    </td>
   )
 }

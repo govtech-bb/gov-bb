@@ -60,7 +60,11 @@ dropped), so a form visit reads as its pages (**service → Start → Form**, wh
 Start/Form are the `/…/start` and `/…/form` pages) and the many event-ordering
 variants **merge into one row** instead of fragmenting. **Single-page visits
 (bounces) are excluded** — a journey is a path (≥ 2 steps). Identical sequences
-merge; share is of all listed journeys.
+merge. The **entry step is service-qualified** when it is a start/form page (so a
+journey beginning on `/…/start` reads "Get birth certificate · Start", not a bare
+"Start"). Columns: **Entry source** (top referrer to the journey's first page,
+reusing the top-pages referrer lookup) and **% of journeys** (the row's share of
+all listed journey sessions).
 
 > The two therefore rank differently on purpose: the flowchart is
 > transition-weighted; the table is exact-sequence-weighted. The raw report is

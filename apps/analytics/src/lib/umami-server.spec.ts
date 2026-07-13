@@ -182,6 +182,24 @@ describe('shapeJourneyList', () => {
     // bounce excluded → total is 79 + 20 = 99, not 599
     expect(rows[0].share).toBeCloseTo(79 / 99)
     expect(rows.some((r) => r.items.length < 2)).toBe(false)
+    expect(rows[0].entryPath).toBe('/') // entry step is Home
+  })
+
+  it('qualifies the entry step with its service when it is a start/form page', () => {
+    const rows = shapeJourneyList([
+      {
+        items: [
+          '/money-financial-support/get-a-textbook-grant/start',
+          '/money-financial-support/get-a-textbook-grant/form',
+        ],
+        count: 12,
+      },
+    ])
+    // entry is a /start page → qualified; later steps stay bare
+    expect(rows[0].items).toEqual(['Get a textbook grant · Start', 'Form'])
+    expect(rows[0].entryPath).toBe(
+      '/money-financial-support/get-a-textbook-grant/start',
+    )
   })
 })
 

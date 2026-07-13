@@ -476,6 +476,10 @@ export interface JourneyRow {
   items: string[]
   sessions: number
   share: number
+  /** raw path of the entry step, for the referrer lookup. */
+  entryPath: string
+  /** top referrers to the entry page (filled by fetchOverviewData). */
+  topSources: SourceRow[]
 }
 
 /**
@@ -492,14 +496,23 @@ export function shapeJourneyList(
   depth = 4,
   topN = 12,
 ): JourneyRow[] {
-  const merged = new Map<string, { items: string[]; sessions: number }>()
+  const merged = new Map<
+    string,
+    { items: string[]; sessions: number; entryPath: string }
+  >()
   for (const j of journeys) {
     const items: string[] = []
+    let entryPath = ''
     for (const it of j.items) {
       // page paths only — events (…:form-start, chat-*, search) are excluded.
       if (!it || !it.startsWith('/')) continue
-      const label = humanizeStep(it, false)
+      // Qualify only the entry step, so a journey that begins on a `/…/start`
+      // or `/…/form` page shows the service ("Get birth certificate · Start")
+      // rather than a bare "Start"; later steps stay bare (context is implied).
+      const first = items.length === 0
+      const label = humanizeStep(it, first)
       if (items[items.length - 1] === label) continue
+      if (first) entryPath = it.split('?')[0]
       items.push(label)
       if (items.length >= depth) break
     }
@@ -508,12 +521,13 @@ export function shapeJourneyList(
     const key = items.join('␟')
     const existing = merged.get(key)
     if (existing) existing.sessions += j.count
-    else merged.set(key, { items, sessions: j.count })
+    else merged.set(key, { items, sessions: j.count, entryPath })
   }
   const all = [...merged.values()].sort((a, b) => b.sessions - a.sessions)
   const total = all.reduce((s, r) => s + r.sessions, 0)
   return all.slice(0, topN).map((r) => ({
     ...r,
+    topSources: [],
     share: total ? r.sessions / total : 0,
   }))
 }
@@ -607,6 +621,29 @@ export async function fetchOverviewData(
         return { ...p, topSources }
       }),
     )
+    // Attach top referrers to each journey's entry page. Reuse the top-pages
+    // referrers already fetched; fetch only for entry paths not among them.
+    const journeys = shapeJourneyList(journeyRows)
+    const srcByPath = new Map(pages.map((p) => [p.path, p.topSources]))
+    const missing = [...new Set(journeys.map((j) => j.entryPath))].filter(
+      (p) => p && !srcByPath.has(p),
+    )
+    await Promise.all(
+      missing.map(async (p) => {
+        try {
+          srcByPath.set(
+            p,
+            buildSources(
+              await client.metricsReferrers(cfg.landingWebsiteId, p, r),
+              5,
+            ),
+          )
+        } catch {
+          srcByPath.set(p, [])
+        }
+      }),
+    )
+
     return {
       stats: {
         visitors: statsRaw.visitors ?? 0,
@@ -617,7 +654,10 @@ export async function fetchOverviewData(
         a.title.localeCompare(b.title),
       ),
       flow: shapeFlow(journeyRows),
-      journeys: shapeJourneyList(journeyRows),
+      journeys: journeys.map((j) => ({
+        ...j,
+        topSources: srcByPath.get(j.entryPath) ?? [],
+      })),
       generatedAt: new Date().toISOString(),
       window: rangeLabel(range),
       range,
