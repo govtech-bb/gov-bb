@@ -36,6 +36,18 @@ per-form summary. The per-form page's funnel (below) is the deduped,
 distinct-visitor view; the two can differ, by design. Every table on both pages
 is sortable by clicking a column heading.
 
+## The flow (Sankey)
+
+The homepage flow diagram is built from Umami's **journey report**
+(`POST /reports/journey`, landing website, first 4 steps). Each column is one
+step into the visit; a link's width is the number of visits taking that
+step-to-step transition. Steps are filtered to real page paths plus the
+`form-start` "Start" goal (internal tracking pseudo-events like
+`…:page-service-view` are dropped, collapsing A → pseudo → B into A → B), and
+the lowest-traffic node in each column is bucketed into **"Other"**. It's a
+hand-rolled SVG (no charting dependency): one teal hue for ribbons, a green
+accent for "Start", sized by visit count, with per-node/per-ribbon hover counts.
+
 ## Per-step: reached vs completed (#1915)
 
 A companion table breaks the funnel down by the form's declared steps:

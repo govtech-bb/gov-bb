@@ -121,6 +121,8 @@ export interface OverviewData {
   stats: SiteStats
   pages: PageRow[]
   forms: FormListItem[]
+  /** layered visitor-flow (Sankey) of the first few steps into a visit. */
+  flow: FlowData
   generatedAt: string
   window: string
   range: string
@@ -262,6 +264,142 @@ export function shapeFormList(
   })
 }
 
+// --- flow (Sankey) ---------------------------------------------------------
+
+export interface FlowNode {
+  id: string
+  column: number
+  label: string
+  value: number
+}
+export interface FlowLink {
+  source: string
+  target: string
+  value: number
+}
+export interface FlowData {
+  nodes: FlowNode[]
+  links: FlowLink[]
+}
+
+const SEP = '\u241F' // node-id separator
+const LSEP = '\u241E' // link-key separator
+const OTHER = '__other__'
+
+function humanizeSlug(s: string): string {
+  const spaced = s.replace(/[-_]/g, ' ').trim()
+  return spaced ? spaced[0].toUpperCase() + spaced.slice(1) : s
+}
+
+/** Turn a raw journey step (path or `<form>:<event>`) into a short label. */
+export function humanizeStep(raw: string): string {
+  if (!raw) return ''
+  if (!raw.startsWith('/') && raw.includes(':')) {
+    const event = raw.slice(raw.indexOf(':') + 1)
+    return event === 'form-start' ? 'Start' : humanizeSlug(event)
+  }
+  const path = raw.split('?')[0].replace(/\/+$/, '')
+  const segs = path.split('/').filter(Boolean)
+  return segs.length ? humanizeSlug(segs[segs.length - 1]) : 'Home'
+}
+
+/**
+ * Build a layered flow (Sankey) from journey paths: column `c` is the c-th step
+ * into the visit, links are visit counts between consecutive steps, and the
+ * lowest-traffic nodes in each column are bucketed into "Other" (like the
+ * reference diagram). Node identity is per-(column, raw step), so the same page
+ * at different depths — or two forms' "Start" — stay distinct.
+ */
+export function shapeFlow(
+  journeys: JourneyPath[],
+  depth = 4,
+  topPerColumn = 6,
+): FlowData {
+  // 1. count links between consecutive steps, keyed by source column. Keep only
+  // real page-navigation steps plus the `form-start` goal — internal tracking
+  // pseudo-events (`…:page-service-view`, `…:search`, chat events, …) are
+  // dropped so the flow reads as pages → Start, not raw event noise. Filtering
+  // before slicing collapses A → pseudo → B into A → B.
+  const rawLink = new Map<string, number>() // `${c}${SEP}${src}${SEP}${tgt}` -> count
+  for (const j of journeys) {
+    const items = j.items
+      .filter(Boolean)
+      .filter((it) => it.startsWith('/') || it.endsWith(':form-start'))
+      .slice(0, depth)
+    for (let c = 0; c + 1 < items.length; c++) {
+      const k = `${c}${SEP}${items[c]}${SEP}${items[c + 1]}`
+      rawLink.set(k, (rawLink.get(k) ?? 0) + j.count)
+    }
+  }
+
+  // 2. per-node in/out throughput and column, keyed by `${column}${SEP}${raw}`.
+  const colOf = new Map<string, number>()
+  const outSum = new Map<string, number>()
+  const inSum = new Map<string, number>()
+  for (const [k, v] of rawLink) {
+    const [cStr, src, tgt] = k.split(SEP)
+    const c = Number(cStr)
+    const sId = `${c}${SEP}${src}`
+    const tId = `${c + 1}${SEP}${tgt}`
+    colOf.set(sId, c)
+    colOf.set(tId, c + 1)
+    outSum.set(sId, (outSum.get(sId) ?? 0) + v)
+    inSum.set(tId, (inSum.get(tId) ?? 0) + v)
+  }
+  const throughput = (id: string) =>
+    Math.max(outSum.get(id) ?? 0, inSum.get(id) ?? 0)
+
+  // 3. keep the top N per column; everything else remaps to that column's Other.
+  const byColumn = new Map<number, string[]>()
+  for (const [id, c] of colOf) {
+    const list = byColumn.get(c)
+    if (list) list.push(id)
+    else byColumn.set(c, [id])
+  }
+  const remap = new Map<string, string>()
+  for (const [c, ids] of byColumn) {
+    ids.sort((a, b) => throughput(b) - throughput(a))
+    ids.forEach((id, i) => {
+      remap.set(id, i < topPerColumn ? id : `${c}${SEP}${OTHER}`)
+    })
+  }
+
+  // 4. rebuild links against the remapped (bucketed) node ids. The merged key
+  // joins two node ids (each of which contains SEP) with the distinct LSEP so
+  // the split is unambiguous.
+  const merged = new Map<string, number>() // `${srcId}${LSEP}${tgtId}` -> count
+  for (const [k, v] of rawLink) {
+    const [cStr, src, tgt] = k.split(SEP)
+    const c = Number(cStr)
+    const s = remap.get(`${c}${SEP}${src}`) ?? `${c}${SEP}${src}`
+    const t = remap.get(`${c + 1}${SEP}${tgt}`) ?? `${c + 1}${SEP}${tgt}`
+    const mk = `${s}${LSEP}${t}`
+    merged.set(mk, (merged.get(mk) ?? 0) + v)
+  }
+
+  // 5. materialise nodes + links; node value = max(in, out) of merged links.
+  const mOut = new Map<string, number>()
+  const mIn = new Map<string, number>()
+  const links: FlowLink[] = []
+  for (const [mk, v] of merged) {
+    const [s, t] = mk.split(LSEP)
+    mOut.set(s, (mOut.get(s) ?? 0) + v)
+    mIn.set(t, (mIn.get(t) ?? 0) + v)
+    links.push({ source: s, target: t, value: v })
+  }
+  const ids = new Set<string>([...mOut.keys(), ...mIn.keys()])
+  const nodes: FlowNode[] = [...ids].map((id) => {
+    const [cStr, raw] = id.split(SEP)
+    return {
+      id,
+      column: Number(cStr),
+      label: raw === OTHER ? 'Other' : humanizeStep(raw),
+      value: Math.max(mOut.get(id) ?? 0, mIn.get(id) ?? 0),
+    }
+  })
+  return { nodes, links }
+}
+
 /** Drop the null padding the journey report returns and keep form-relevant paths. */
 export function shapeJourneys(
   rows: JourneyPath[],
@@ -321,11 +459,12 @@ export async function fetchOverviewData(
   return memoize(`overview:${range}`, TTL_MS, async () => {
     const client = new UmamiClient({ apiKey: cfg.apiKey })
     const r = rangeForKey(range)
-    const [statsRaw, urls, forms, formEvents] = await Promise.all([
+    const [statsRaw, urls, forms, formEvents, journeyRows] = await Promise.all([
       client.stats(cfg.landingWebsiteId, r) as Promise<UmamiStats>,
       client.metricsUrls(cfg.landingWebsiteId, r),
       fetchFormList(cfg),
       client.metricsEvents(cfg.formsWebsiteId, r),
+      client.reportJourney(cfg.landingWebsiteId, { steps: 4, range: r }),
     ])
     const topPages = urls
       .map((row) => ({
@@ -359,6 +498,7 @@ export async function fetchOverviewData(
       forms: shapeFormList(forms, formEvents).sort((a, b) =>
         a.title.localeCompare(b.title),
       ),
+      flow: shapeFlow(journeyRows),
       generatedAt: new Date().toISOString(),
       window: rangeLabel(range),
       range,

@@ -1,6 +1,7 @@
 import { Heading, Select, Text } from '@govtech-bb/react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import * as React from 'react'
+import { FlowDiagram } from './FlowDiagram'
 import { FreshnessBanner } from './components/FreshnessBanner'
 import { SortHeader, useTableSort } from './components/SortableTable'
 import type { OverviewPayload } from './lib/report'
@@ -225,6 +226,9 @@ export default function AnalyticsPage({
             </table>
           </div>
         </section>
+
+        {/* The flow (Sankey) */}
+        <FlowDiagram flow={overview.flow} />
       </div>
 
       {srcPop ? (
