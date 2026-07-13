@@ -61,8 +61,6 @@ export default function FormPage({ detail }: { detail: FormDetailData }) {
         subtitle={detail.formId}
         backTo="/"
         range={detail.range}
-        window={detail.window}
-        generatedAt={detail.generatedAt}
         onRangeChange={(range) =>
           navigate({
             to: '/analytics/forms/$formId',
@@ -74,7 +72,6 @@ export default function FormPage({ detail }: { detail: FormDetailData }) {
 
       <Stats detail={detail} />
       <Funnel detail={detail} />
-      <FieldErrors detail={detail} />
       <ValidationReasons detail={detail} />
       <SubmitReliability detail={detail} />
     </div>
@@ -171,42 +168,6 @@ function Funnel({ detail }: { detail: FormDetailData }) {
         Visitors reaching each step, with the change from the previous step.
         Step counts are events (a reload or back re-fires).
       </Text>
-    </section>
-  )
-}
-
-function FieldErrors({ detail }: { detail: FormDetailData }) {
-  const ofStarts = (n: number) =>
-    detail.starts ? fmtPct(Math.round((n / detail.starts) * 1000) / 10) : '—'
-  return (
-    <section>
-      <SubHeading>Field errors — which fields fail</SubHeading>
-      {detail.fieldErrors.length === 0 ? (
-        <Text as="p" size="caption" className="text-mid-grey-00">
-          No field validation errors recorded.
-        </Text>
-      ) : (
-        <div className={CARD}>
-          <table className="min-w-full">
-            <thead>
-              <tr>
-                <th className={TH}>Field</th>
-                <th className={`${TH} ${NUM}`}>Errors</th>
-                <th className={`${TH} ${NUM}`}>% of starts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {detail.fieldErrors.map((f) => (
-                <tr key={f.field}>
-                  <td className={TD}>{f.field}</td>
-                  <td className={`${TD} ${NUM}`}>{fmtInt(f.count)}</td>
-                  <td className={`${TD} ${NUM}`}>{ofStarts(f.count)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </section>
   )
 }

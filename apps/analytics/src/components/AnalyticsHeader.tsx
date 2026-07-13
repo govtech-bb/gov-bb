@@ -2,28 +2,23 @@ import { Heading, Select, Text } from '@govtech-bb/react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { RANGE_OPTIONS } from '../lib/umami-server'
-import { FreshnessBanner } from './FreshnessBanner'
 
 // Standard header shared by the overview and per-form pages: title, optional
-// subtitle + back-link, the Date range selector (with an "Updating…" spinner
-// while the loader re-runs) and the freshness banner. Range changes are handled
-// by the caller so each page can navigate to its own route with full type
-// safety; this component owns the selector UI and loading state.
+// subtitle + back-link, and the Date range selector (with an "Updating…" spinner
+// while the loader re-runs). Range changes are handled by the caller so each
+// page can navigate to its own route with full type safety; this component owns
+// the selector UI and loading state.
 export function AnalyticsHeader({
   title,
   subtitle,
   backTo,
   range,
-  window,
-  generatedAt,
   onRangeChange,
 }: {
   title: string
   subtitle?: ReactNode
   backTo?: string
   range: string
-  window: string
-  generatedAt: string
   onRangeChange: (range: string) => void
 }) {
   // True while a navigation (e.g. a range change) is running its loader.
@@ -70,7 +65,6 @@ export function AnalyticsHeader({
           </span>
         ) : null}
       </div>
-      <FreshnessBanner window={window} generatedAt={generatedAt} />
     </header>
   )
 }

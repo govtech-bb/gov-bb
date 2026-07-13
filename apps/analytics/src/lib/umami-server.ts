@@ -170,8 +170,6 @@ export interface FormDetailData {
   reviewed: number
   /** Start → Step N → Submit, with step-over-step % (dropoffPct). Event counts. */
   funnel: FunnelStage[]
-  /** which fields fail most, descending. */
-  fieldErrors: FieldCount[]
   /** why fields fail (validation reason codes/messages), descending. */
   validationReasons: FieldCount[]
   /** submit reliability (#1916). */
@@ -587,7 +585,6 @@ export async function fetchFormDetailData(
       events,
       duration,
       errorCount,
-      fields,
       errorTypes,
       submitErrRows,
       def,
@@ -606,7 +603,6 @@ export async function fetchFormDetailData(
         'errorCount',
         r,
       ),
-      eventValues(client, cfg, `${formId}:form-validation-error`, 'fields', r),
       eventValues(
         client,
         cfg,
@@ -636,7 +632,7 @@ export async function fetchFormDetailData(
     const detail = buildFormDetail(formId, entry, {
       duration,
       errorCount,
-      fields,
+      fields: [],
       errorTypes,
     })
 
@@ -655,7 +651,6 @@ export async function fetchFormDetailData(
       stepEdit: detail.stepEdit,
       reviewed: detail.review,
       funnel: detail.funnel,
-      fieldErrors: detail.fieldErrors,
       validationReasons: detail.errorTypes,
       submitError: shapeSubmitError(
         entry.counts['form-submit'] ?? 0,

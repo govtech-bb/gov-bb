@@ -69,7 +69,7 @@ export default function AnalyticsPage({
     return (
       <div className="container py-8">
         <Heading as="h1" size="h1">
-          Umami Analytics
+          Alpha.gov.bb analytics
         </Heading>
         <Text as="p" className="mt-s text-mid-grey-00">
           Analytics is not configured. Set <code>UMAMI_API_KEY</code>,{' '}
@@ -85,7 +85,7 @@ export default function AnalyticsPage({
       <style>{POPOVER_CSS}</style>
 
       <AnalyticsHeader
-        title="Umami Analytics"
+        title="Alpha.gov.bb analytics"
         subtitle={
           <>
             {fmtInt(overview.stats.visitors)} visitors ·{' '}
@@ -93,8 +93,6 @@ export default function AnalyticsPage({
           </>
         }
         range={overview.range}
-        window={overview.window}
-        generatedAt={overview.generatedAt}
         onRangeChange={(range) => navigate({ to: '/', search: { range } })}
       />
 
@@ -102,11 +100,11 @@ export default function AnalyticsPage({
         aria-busy={isLoading}
         className={`transition-opacity ${isLoading ? 'pointer-events-none opacity-50' : ''}`}
       >
-        {/* Top pages */}
+        {/* Most visited pages */}
         <section className="mb-l">
           <div className="mb-s flex items-center justify-between gap-s">
             <Heading as="h2" size="h3">
-              Top pages
+              Most visited pages
             </Heading>
             <HowToButton target="uar-howto-pages" />
           </div>
@@ -146,7 +144,7 @@ export default function AnalyticsPage({
         <section className="mb-l">
           <div className="mb-s flex items-center justify-between gap-s">
             <Heading as="h2" size="h3">
-              Forms
+              Most visited forms
             </Heading>
             <HowToButton target="uar-howto-forms" />
           </div>
@@ -269,7 +267,7 @@ function HowToPopovers() {
     <>
       <div id="uar-howto-pages" popover="auto" className="uar-pop">
         <Heading as="h3" size="h5">
-          Top pages — how it works
+          Most visited pages — how it works
         </Heading>
         <Text as="p" size="caption" className="mt-xs">
           Most-visited landing pages over the selected range (Umami pageviews).
@@ -280,7 +278,7 @@ function HowToPopovers() {
       </div>
       <div id="uar-howto-forms" popover="auto" className="uar-pop">
         <Heading as="h3" size="h5">
-          Forms — how it works
+          Most visited forms — how it works
         </Heading>
         <Text as="p" size="caption" className="mt-xs">
           <b>Starts</b> = <code>form-start</code> events; <b>Completion</b> =

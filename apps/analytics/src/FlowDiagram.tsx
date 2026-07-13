@@ -183,53 +183,7 @@ export function FlowDiagram({ flow }: { flow: FlowData }) {
         (hover for the share of the previous step). Low-traffic steps in a column
         are grouped as “Other (N)”.
       </Text>
-
-      <EntryPages flow={flow} />
     </section>
-  )
-}
-
-const TH =
-  'px-s py-s text-left text-caption font-bold uppercase tracking-wide text-mid-grey-00'
-const TD = 'px-s py-s align-top text-caption border-t border-grey-00'
-const NUM = 'text-right tabular-nums'
-
-// The entry-page distribution = the flow's column-0 nodes, listed with stats.
-function EntryPages({ flow }: { flow: FlowData }) {
-  const entries = flow.nodes
-    .filter((n) => n.column === 0)
-    .sort((a, b) => b.value - a.value)
-  if (entries.length === 0) return null
-  return (
-    <div className="mt-m">
-      <Heading as="h3" size="h4" className="mb-s">
-        Entry pages
-      </Heading>
-      <Text as="p" size="small-caption" className="mb-s text-mid-grey-00">
-        Where visits begin (first page of the visit), of {fmtInt(flow.total)}{' '}
-        entry visits in this range.
-      </Text>
-      <div className="overflow-x-auto rounded-lg border border-grey-00">
-        <table className="min-w-full">
-          <thead>
-            <tr>
-              <th className={TH}>Entry page</th>
-              <th className={`${TH} ${NUM}`}>Visits</th>
-              <th className={`${TH} ${NUM}`}>Share</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((n) => (
-              <tr key={n.id}>
-                <td className={TD}>{n.label}</td>
-                <td className={`${TD} ${NUM}`}>{fmtInt(n.value)}</td>
-                <td className={`${TD} ${NUM}`}>{fmtPct(n.pct)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
   )
 }
 

@@ -42,12 +42,11 @@ const overview: OverviewPayload = {
 }
 
 describe('AnalyticsPage', () => {
-  it('renders the overview, freshness banner and the linked form list', () => {
+  it('renders the overview and the linked form list', () => {
     render(<AnalyticsPage overview={overview} />)
-    expect(screen.getByText('Top pages')).toBeTruthy()
+    expect(screen.getByText('Most visited pages')).toBeTruthy()
     expect(screen.getByText('Get a birth certificate')).toBeTruthy()
     expect(screen.getByText(/10 visitors/)).toBeTruthy()
-    expect(screen.getByText(/last 30 days/)).toBeTruthy()
   })
 
   it('shows per-form starts and completion', () => {

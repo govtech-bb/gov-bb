@@ -29,10 +29,6 @@ const detail: FormDetailData = {
     { label: 'Step 2', count: 90, dropoffPct: -60.7 },
     { label: 'Submit', count: 56, dropoffPct: 12 },
   ],
-  fieldErrors: [
-    { field: 'firstName', count: 30 },
-    { field: 'parish', count: 12 },
-  ],
   validationReasons: [
     { field: 'required', count: 40 },
     { field: 'Parish is required', count: 8 },
@@ -66,16 +62,13 @@ describe('FormPage', () => {
     // funnel
     expect(screen.getByText('Funnel')).toBeTruthy()
     expect(screen.getByText('Step 1')).toBeTruthy()
-    // field-error + validation-reason tables
-    expect(screen.getByText('firstName')).toBeTruthy()
+    // validation-reason table
     expect(screen.getByText('Required field left blank')).toBeTruthy()
     // unmapped reason shows as both label and code, hence getAllByText
     expect(screen.getAllByText('Parish is required').length).toBeGreaterThan(0)
     // submit reliability (#1916)
     expect(screen.getByText('Submit reliability')).toBeTruthy()
     expect(screen.getByText('15%')).toBeTruthy()
-    // freshness (#1917)
-    expect(screen.getByText(/last 30 days/)).toBeTruthy()
   })
 
   it('does not display the category', () => {
