@@ -158,19 +158,30 @@ describe('shapeFlow (Sankey)', () => {
 })
 
 describe('shapeJourneyList', () => {
-  it('ranks merged breadcrumb journeys with unqualified Start labels + share', () => {
+  it('uses pages only, drops form-start-event variants so journeys merge', () => {
     const rows = shapeJourneyList([
-      { items: ['/', '/passport', 'passport:form-start'], count: 40 },
-      { items: ['/', '/passport'], count: 30 },
-      // merges with the first (same humanized sequence)
-      { items: ['/', '/passport', 'passport:form-start'], count: 10 },
+      // these three are the same page journey with different event noise — they
+      // must all collapse to Home › Passport › Start
+      {
+        items: ['/', '/passport', '/passport/start', 'passport:form-start'],
+        count: 40,
+      },
+      {
+        items: ['/', '/passport', 'passport:form-start', '/passport/start'],
+        count: 30,
+      },
+      { items: ['/', '/passport', '/passport/start'], count: 9 },
+      { items: ['/', '/births'], count: 20 },
+      // single-page visit (bounce) — excluded
+      { items: ['/', null, null], count: 500 },
     ])
     expect(rows[0].items).toEqual(['Home', 'Passport', 'Start'])
-    expect(rows[0].sessions).toBe(50) // 40 + 10 merged
-    expect(rows[1].items).toEqual(['Home', 'Passport'])
-    expect(rows[1].sessions).toBe(30)
-    // share is of all journey sessions (50 + 30 = 80)
-    expect(rows[0].share).toBeCloseTo(50 / 80)
+    expect(rows[0].sessions).toBe(79) // 40 + 30 + 9 merged
+    expect(rows[1].items).toEqual(['Home', 'Births'])
+    expect(rows[1].sessions).toBe(20)
+    // bounce excluded → total is 79 + 20 = 99, not 599
+    expect(rows[0].share).toBeCloseTo(79 / 99)
+    expect(rows.some((r) => r.items.length < 2)).toBe(false)
   })
 })
 

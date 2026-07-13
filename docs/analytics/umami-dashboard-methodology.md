@@ -37,30 +37,35 @@ per-form summary. The per-form page's funnel (below) is the deduped,
 distinct-visitor view; the two can differ, by design. Every table on both pages
 is sortable by clicking a column heading.
 
-## The flow (Sankey)
+## Most common journeys (flowchart + table)
 
-The homepage flow diagram is built from Umami's **journey report**
-(`POST /reports/journey`, landing website, first 4 steps). **Column 0 is the
-entry page**; each later column is the next step; a link's width is the number
-of visits taking that step-to-step transition.
+Both views come from Umami's **journey report** (`POST /reports/journey`,
+landing website, first 4 steps) but aggregate it differently — which is why
+their ordering differs:
 
-- **Nodes keyed by label.** Nodes are keyed by (column, humanized label), so
-  identical steps merge. The generic "Start" (form-start event / `/…/start`
-  page) and "Form" (`/…/form` page) labels are **qualified with their root
-  service** — e.g. "Get birth certificate · Start" — so they're never ambiguous.
-- **Entry pages list.** Below the diagram, the column-0 nodes are listed as an
-  "Entry pages" table (visits + share of total entry visits).
-- **Steps kept.** Real page paths plus the `form-start` goal; internal tracking
-  pseudo-events (`…:page-service-view`, `…:search`, chat, …) are dropped
-  (collapsing A → pseudo → B into A → B), consecutive repeats are de-duped, and
-  a sequence may not *begin* with the `form-start` event (entries are pages).
-- **Percentages.** Each node shows its share of total entry visits; a ribbon's
-  hover shows its count and its share of the previous step.
-- **Other (N).** The lowest-traffic labels in a column fold into "Other (N)"
-  (N = how many were grouped).
+**Flowchart (Sankey)** — aggregates step-to-step **transitions**. Column 0 is the
+entry page; each later column is the next step; a ribbon's width is the number of
+visits making that transition. Nodes are keyed by (column, humanized label), so
+identical steps merge; "Start"/"Form" nodes are qualified with their root service
+(e.g. "Get birth certificate · Start"). Steps kept = real page paths + the
+`form-start` goal (tracking pseudo-events like `…:page-service-view` dropped);
+consecutive repeats de-duped; a sequence may not *begin* with the form-start
+event. Low-traffic labels per column fold into "Other (N)". Because it aggregates
+transitions, a common step appears even when the full paths differ — so
+single-step visits (which have no transition) never show here. Hand-rolled SVG.
 
-It's a hand-rolled SVG (no charting dependency): one teal hue for ribbons, a
-green accent for "Start", sized by visit count, with per-node/per-ribbon hover.
+**Table** — lists the top **complete** journeys as exact end-to-end sequences.
+It uses **page navigation only** (all events, including `form-start`, are
+dropped), so a form visit reads as its pages (**service → Start → Form**, where
+Start/Form are the `/…/start` and `/…/form` pages) and the many event-ordering
+variants **merge into one row** instead of fragmenting. **Single-page visits
+(bounces) are excluded** — a journey is a path (≥ 2 steps). Identical sequences
+merge; share is of all listed journeys.
+
+> The two therefore rank differently on purpose: the flowchart is
+> transition-weighted; the table is exact-sequence-weighted. The raw report is
+> dominated by single-step rows (bounces), which the flow ignores and the table
+> excludes.
 
 ## Form detail — step funnel (#1915)
 

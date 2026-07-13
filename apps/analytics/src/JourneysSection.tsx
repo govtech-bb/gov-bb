@@ -69,10 +69,14 @@ export function JourneysSection({
         </Heading>
         <Text as="p" size="caption" className="mt-xs">
           The paths visitors take through the first few steps of a visit, from
-          Umami's journey report. The <b>Flowchart</b> is a Sankey (ribbon width =
-          visits); the <b>Table</b> lists the top complete journeys with their
-          session counts and share of all journeys. <code>Start</code> = a form
-          was started.
+          Umami's journey report (page navigation). The <b>Flowchart</b> is a
+          Sankey that aggregates step-to-step <em>transitions</em> (ribbon width =
+          visits), so a common step shows even if the full paths differ. The{' '}
+          <b>Table</b> lists the top <em>complete</em> multi-step journeys (exact
+          sequences), with session counts and share; single-page visits (bounces)
+          are excluded. Because one aggregates transitions and the other exact
+          sequences, their ordering differs. <code>Start</code>/<code>Form</code>{' '}
+          are the service's start and form pages.
         </Text>
       </div>
     </section>

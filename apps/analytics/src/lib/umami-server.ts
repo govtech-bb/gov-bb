@@ -479,10 +479,13 @@ export interface JourneyRow {
 }
 
 /**
- * The top complete journeys as an ordered breadcrumb list (the table view of the
- * flow). Same filtering as the flow — real page steps + the `form-start` goal —
- * but labels are unqualified ("Start"), since the preceding step gives context.
- * Identical humanized sequences merge; share is of all captured journeys.
+ * The top multi-step journeys as an ordered breadcrumb list (the table view of
+ * the flow). Uses **page navigation only** — the `form-start` (and other) events
+ * are dropped, so a form visit reads as its pages (service → Start → Form) and
+ * the many event-ordering variants merge into one row instead of fragmenting.
+ * Single-page visits (bounces) are excluded so the list is actual journeys, and
+ * "Start"/"Form" are the `/…/start` and `/…/form` pages. Identical sequences
+ * merge; share is of all listed (multi-step) journeys.
  */
 export function shapeJourneyList(
   journeys: JourneyPath[],
@@ -493,16 +496,15 @@ export function shapeJourneyList(
   for (const j of journeys) {
     const items: string[] = []
     for (const it of j.items) {
-      if (!it) continue
-      const isFormStart = it.endsWith(':form-start')
-      if (!(it.startsWith('/') || isFormStart)) continue
-      if (isFormStart && items.length === 0) continue
+      // page paths only — events (…:form-start, chat-*, search) are excluded.
+      if (!it || !it.startsWith('/')) continue
       const label = humanizeStep(it, false)
       if (items[items.length - 1] === label) continue
       items.push(label)
       if (items.length >= depth) break
     }
-    if (items.length === 0) continue
+    // A journey is a path — drop single-page visits (bounces).
+    if (items.length < 2) continue
     const key = items.join('␟')
     const existing = merged.get(key)
     if (existing) existing.sessions += j.count
