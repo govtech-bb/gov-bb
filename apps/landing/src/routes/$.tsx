@@ -30,6 +30,10 @@ import {
 import { shouldHideStartLink } from '../lib/hide-start-link'
 import { checkFormAccessible } from '../lib/preview-form-access'
 import { seoTags } from '../lib/page-head'
+import {
+  buildGovernmentServiceLd,
+  buildBreadcrumbLd,
+} from '../lib/structured-data'
 import { trackEvent } from '../lib/analytics'
 import { pageViewEvent } from './-page-view-event'
 
@@ -207,6 +211,22 @@ export const Route = createFileRoute('/$')({
           ...(seo?.meta ?? []),
         ],
         ...(seo ? { links: seo.links } : {}),
+        // Structured data only for indexable pages — a gated page is noindex,
+        // so it gets no JSON-LD (mirrors the canonical/OG gating above).
+        ...(isPublic
+          ? {
+              scripts: [
+                {
+                  type: 'application/ld+json',
+                  children: JSON.stringify(buildGovernmentServiceLd(page)),
+                },
+                {
+                  type: 'application/ld+json',
+                  children: JSON.stringify(buildBreadcrumbLd(page)),
+                },
+              ],
+            }
+          : {}),
       }
     }
     if (loaderData.kind === 'subcategory') {
