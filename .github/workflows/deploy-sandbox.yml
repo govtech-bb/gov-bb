@@ -694,7 +694,7 @@ jobs:
             if [ "$STATUS" = "SUCCEED" ]; then
               echo "✅ Amplify $APP_LABEL build succeeded — running smoke test on $APP_URL"
               for j in 1 2 3 4 5; do
-                CODE=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL" 2>/dev/null || echo "000")
+                CODE=$(curl -fsSL -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL" 2>/dev/null || echo "000")
                 if [ "$CODE" = "200" ]; then
                   echo "✅ $APP_LABEL smoke test passed (HTTP 200)"
                   exit 0
