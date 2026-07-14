@@ -112,9 +112,11 @@ interface AiSidebarProps {
   ) => Promise<ApplyRecipeResult>;
 }
 
-// Hard cap for the direct-to-S3 upload. The browser PUTs the raw file straight
-// to a presigned S3 URL (no base64, no Amplify Lambda body limit), so this can
-// be the same ceiling the API enforces on its presign side — 20 MB.
+// Friendly early cap for the direct-to-S3 upload (no base64, no Amplify Lambda
+// body limit). This is only a client-side courtesy check — the real 20 MB
+// enforcement is the content-length-range condition signed into the presigned
+// POST policy server-side (gov-bb-security#8), which S3 rejects regardless of
+// the client. Keep this in sync with the server's MAX_PDF_BYTES.
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
 
 export function AiSidebar({ draft, onApplyRecipe }: AiSidebarProps) {
@@ -270,14 +272,22 @@ export function AiSidebar({ draft, onApplyRecipe }: AiSidebarProps) {
     pollAbortRef.current = abort;
 
     try {
-      const { url, s3Key } = await presignPdfUpload();
-      const putResponse = await fetch(url, {
-        method: "PUT",
-        headers: { "Content-Type": "application/pdf" },
-        body: pdfFile,
+      const { url, fields, s3Key } = await presignPdfUpload();
+      // Presigned POST: the signed policy fields go first and the file must be
+      // the LAST form field (S3 requirement). The 20 MB content-length-range is
+      // signed into the policy, so S3 — not just the browser — rejects an
+      // oversized upload. No Content-Type header: it rides as a policy field.
+      const form = new FormData();
+      for (const [key, value] of Object.entries(fields)) {
+        form.append(key, value);
+      }
+      form.append("file", pdfFile);
+      const uploadResponse = await fetch(url, {
+        method: "POST",
+        body: form,
         signal: abort.signal,
       });
-      if (!putResponse.ok) {
+      if (!uploadResponse.ok) {
         throw new Error("Upload failed — please refresh and try again.");
       }
 
