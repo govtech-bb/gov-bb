@@ -151,4 +151,49 @@ At its most basic, a primitive consists of:
 - htmlType: A semantic type that indicates what type of data the field is expecting.
 - validations: An object containing validation rules for how data provided to the field should be validated.
 
-## Consuming a Service Contract
+### Understanding Behaviours
+
+Behaviours are a way to affect the journey a user takes while filling out a form, along with dynamically affecting the content required for the form to be marked as "complete".
+
+Behaviours are defined and supported by the provider service, and are documented in the service contract on "Steps" and "Elements".
+
+In this system, we have the following behaviours:
+
+- ConditionalOn: A conditional behaviour that will only show the element if a set condition is met. This has a `field` and a `step` variant.
+- OptionalIf: Makes an element optional if a set condition is met, but does not affect visibility.
+- Repeatable: Allows for a step to be repeated a specified number of times, to collect different copies of the same information. For example, requesting a user to enter their previous work experiences.
+- SharedFields: This is used alongside the `Repeatable` behaviour, and allows for a specified set of fields to become shared across the different repeatable instances, so a user does not have to provide the same information multiple times.
+- FieldArray: Allows for a field to be repeated a specified number of times, to collect different copies of the same information. For example, requesting a user to add another phone number.
+
+### Processors
+
+Processors are actions that are to be taken after a successful submission of a form, and are defined in the service contract. For example, these could be requesting payments, sending emails, calling webhooks, or the like.
+
+If there is an API provider, then the processors can be stripped out of the contract sent to the client, such that the client does not have knowledge of them, allowing the client to focus on just collecting the values, and submitting them. However, certain processors will require the client to perform some additional actions, as such, a flag should be set in the `Meta` of the service contract, which will let the client know what kind of responses the server will return, and how to respond to them.
+
+### Service Contract Meta
+
+The `Meta` object is used to provide additioanl information about the specific service contract, and is shared between the client and provider.
+
+In this system, we store the following information in the `Meta` object:
+
+- version: The version of this service contract.
+- visibility: Whether the service is public, hidden, draft, or under maintenance.
+- requiresPayment: Whether the service requires payment to be submitted. This should be present and set to `true` when a payment processor is included so the client knows that it may need to handle payments.
+- closeAfter: The date after which the service is no longer available for submissions.
+- createdAt: The date the service contract was created.
+- updatedAt: The date the service contract was last updated.
+
+This object can be extended in the future to include additional information, so it is very important that a provider lets the clients know what options are available, and how to handle them.
+
+## Using Service Contracts
+
+The source of truth for a service contract is on the provider side, which in most cases, will be an API, which will be responsible for processing form submissions.
+
+Therefore, the service contracts for a service are to be built, and be accessible via the provider.
+
+An intended client that wants to use the service contract, will request the contract from the provider, and then be able to render the service and present to the user, keeping in mind custom behaviours that can affect a user's journey through the form.
+
+A client that is to consume a service contract, should primarily be concerned with being able to take in the information from a user that the contract is requesting, and account for the behaviours related to the fields and steps.
+
+The provider should provide a package that should be used for validation, so a client does not necessarily need to handle validation on its own, only needing to do as such to provide a better user experience.
