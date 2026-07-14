@@ -100,6 +100,11 @@ const baseSchema = z
     SQS_ENDPOINT: z.url().optional(), // LocalStack / custom endpoint
     SQS_QUEUE_URL: urlOrEmpty().optional(),
 
+    // SES delivery-events queue (optional). When set, the SesEventConsumer
+    // polls it to reconcile notification_log.delivery_status; empty = disabled.
+    SES_EVENTS_QUEUE_URL: urlOrEmpty().optional(),
+    SES_EVENTS_REGION: z.string().optional(),
+
     // Public forms site origin for the EzPay return redirect. Empty = fall back
     // to the first CORS_ORIGIN entry in the consuming code.
     FORMS_BASE_URL: urlOrEmpty().default(""),
