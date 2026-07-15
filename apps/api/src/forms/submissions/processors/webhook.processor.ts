@@ -78,6 +78,7 @@ export class WebhookProcessor implements ISubmissionProcessor {
             mapping,
             values: payload.values,
             referenceCode: payload.referenceCode,
+            submissionId: payload.submissionId,
             submittedAt: payload.meta.submittedAt,
           }),
         )

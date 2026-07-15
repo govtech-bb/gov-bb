@@ -1,4 +1,4 @@
-import type { ServiceCode } from "./application-code";
+import type { ServiceCode } from "../forms/submissions/processors/application-code";
 
 /**
  * Maps a submission's `formId` to the programme/service code the case-management
