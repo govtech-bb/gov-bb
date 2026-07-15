@@ -60,7 +60,7 @@ const RootLayout = () => (
       logoAlt="Barbados Coat of Arms"
       copyrightText={`© ${new Date().getFullYear()} Government of Barbados`}
     />
-    <TanStackRouterDevtools />
+    {import.meta.env.DEV && <TanStackRouterDevtools />}
   </div>
 );
 
