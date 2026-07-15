@@ -14,6 +14,10 @@ export interface NotificationLogRow {
   recipient: string | null;
   outcome: string;
   providerMessageId: string | null;
+  /** SES-reconciled delivery truth (delivered/bounced/complained/rejected);
+   *  null until the SesEventConsumer fills it. The console prefers this over
+   *  its address-shape bounce heuristic. */
+  deliveryStatus: string | null;
   createdAt: string;
 }
 
@@ -57,6 +61,7 @@ export class MonitoringController {
       recipient: r.recipient,
       outcome: r.outcome,
       providerMessageId: r.providerMessageId,
+      deliveryStatus: r.deliveryStatus,
       createdAt:
         r.createdAt instanceof Date
           ? r.createdAt.toISOString()
