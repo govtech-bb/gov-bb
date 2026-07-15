@@ -1,5 +1,4 @@
 import type { Mock } from "vitest";
-import { Logger } from "@nestjs/common";
 import type { HttpService } from "@nestjs/axios";
 import { of } from "rxjs";
 import { createHmac } from "crypto";
@@ -10,6 +9,7 @@ vi.mock("node:dns/promises", () => ({ lookup: vi.fn() }));
 import { lookup } from "node:dns/promises";
 
 import { WebhookProcessor } from "./webhook.processor";
+import { WebhookConfigError, WebhookDeliveryError } from "./webhook-errors";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
 const request = vi.fn();
@@ -157,21 +157,16 @@ describe("WebhookProcessor", () => {
     expect(reqConfig().headers["X-Idempotency-Key"]).toBe("sub-100:0");
   });
 
-  it("skips and warns when no url is configured", async () => {
-    const warn = vi
-      .spyOn(Logger.prototype, "warn")
-      .mockImplementation(() => {});
+  it("throws WebhookConfigError (fail loud) when neither url nor endpoint is configured", async () => {
     const payload = makePayload();
     payload.processors = [
       { type: "webhook", config: {} },
     ] as SubmissionCreatedEvent["processors"];
 
-    const result = await processor.process(payload);
-
+    await expect(processor.process(payload)).rejects.toBeInstanceOf(
+      WebhookConfigError,
+    );
     expect(request).not.toHaveBeenCalled();
-    expect(result).toEqual({ kind: "completed" });
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("No url"));
-    warn.mockRestore();
   });
 
   it("rejects an internal-IP url and never fetches (SSRF guard, #287)", async () => {
@@ -210,9 +205,11 @@ describe("WebhookProcessor", () => {
     expect(reqConfig().maxRedirects).toBe(0);
   });
 
-  it("throws when the endpoint responds with a non-2xx status", async () => {
+  it("throws WebhookDeliveryError (preserving the status) on a non-2xx response", async () => {
     request.mockReturnValue(of({ status: 502, data: {} }));
-    await expect(processor.process(makePayload())).rejects.toThrow("HTTP 502");
+    const err = await processor.process(makePayload()).catch((e) => e);
+    expect(err).toBeInstanceOf(WebhookDeliveryError);
+    expect(String(err.message)).toContain("HTTP 502");
   });
 
   it("applies the configured timeout so the request can time out", async () => {
@@ -308,16 +305,19 @@ describe("WebhookProcessor — mapped mode", () => {
     });
   });
 
-  it("skips (no request) when the endpoint env var is unset", async () => {
+  it("throws WebhookConfigError (fail loud) when the endpoint env var is unset", async () => {
     delete process.env.WEBHOOK_URL;
-    const result = await processor.process(makeMappedPayload());
+    await expect(processor.process(makeMappedPayload())).rejects.toBeInstanceOf(
+      WebhookConfigError,
+    );
     expect(request).not.toHaveBeenCalled();
-    expect(result).toEqual({ kind: "completed" });
   });
 
-  it("skips when the apiKey secret env var is unset", async () => {
+  it("throws WebhookConfigError when the apiKey secret env var is unset", async () => {
     delete process.env.WEBHOOK_SECRET;
-    await processor.process(makeMappedPayload());
+    await expect(processor.process(makeMappedPayload())).rejects.toBeInstanceOf(
+      WebhookConfigError,
+    );
     expect(request).not.toHaveBeenCalled();
   });
 });
