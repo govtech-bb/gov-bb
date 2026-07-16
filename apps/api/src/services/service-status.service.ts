@@ -9,6 +9,15 @@ export interface ServiceStatusView {
   status: ServiceStatus;
 }
 
+/**
+ * Result of a status update — carries the prior status so callers can detect an
+ * actual change (and word a "from → to" message). `null` when the service had
+ * no row yet; equal to `status` when the update was an idempotent no-op.
+ */
+export interface ServiceStatusUpdateView extends ServiceStatusView {
+  previousStatus: ServiceStatus | null;
+}
+
 /** A single audit-log entry for a service's status change. */
 export interface ServiceStatusAuditView {
   slug: string;
@@ -59,11 +68,13 @@ export class ServiceStatusService {
     slug: string,
     status: ServiceStatus,
     author: string,
-  ): Promise<ServiceStatusView> {
+  ): Promise<ServiceStatusUpdateView> {
+    let previousStatus: ServiceStatus | null = null;
     await this.statusRepo.tx(async (statusRepo) => {
       const auditRepo = statusRepo.withRepo(this.auditRepo);
       const existing = await statusRepo.findOne({ where: { slug } });
       const oldState = existing?.status ?? null;
+      previousStatus = oldState;
 
       if (oldState === status) return;
 
@@ -79,6 +90,6 @@ export class ServiceStatusService {
       );
     });
 
-    return { slug, status };
+    return { slug, status, previousStatus };
   }
 }
