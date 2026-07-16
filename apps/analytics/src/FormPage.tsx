@@ -80,7 +80,6 @@ export default function FormPage({ detail }: { detail: FormDetailData }) {
 
         <Stats detail={detail} />
         <Funnel detail={detail} />
-        <Steps detail={detail} />
         <ValidationReasons detail={detail} />
         <SubmitReliability detail={detail} />
       </div>
@@ -88,45 +87,59 @@ export default function FormPage({ detail }: { detail: FormDetailData }) {
   )
 }
 
-// Headline stats: starts, completion rate and avg time to complete (distinct
-// visitors), plus field-error and step counters.
+// A big value with a small grey sub-line of context (e.g. "159 of 177 visits").
+function withSub(value: ReactNode, sub: string): ReactNode {
+  return (
+    <>
+      {value}
+      <span className="block text-caption font-normal text-mid-grey-00">
+        {sub}
+      </span>
+    </>
+  )
+}
+
+// Headline: the four conversion/quality metrics for the form.
 function Stats({ detail }: { detail: FormDetailData }) {
   return (
     <>
       <StatCards
         cards={[
-          { label: 'Starts', value: fmtInt(detail.starts) },
           {
-            label: 'Completed',
-            value: (
-              <>
-                {fmtInt(detail.completed)}{' '}
-                <span className="text-[1rem] font-normal text-mid-grey-00">
-                  ({fmtPct(detail.completionPct)})
-                </span>
-              </>
+            label: 'Visits that started',
+            value: withSub(
+              fmtPct(detail.visitsToStartsPct),
+              `${fmtInt(detail.starts)} of ${fmtInt(detail.visits)} visits`,
+            ),
+          },
+          {
+            label: 'Completion rate',
+            value: withSub(
+              fmtPct(detail.completionPct),
+              `${fmtInt(detail.completed)} of ${fmtInt(detail.starts)} starts`,
             ),
           },
           {
             label: 'Avg time to complete',
             value: fmtDur(detail.avgDurationSeconds),
           },
-          { label: 'Field errors / start', value: detail.avgFieldErrors },
-          { label: 'Total field errors', value: fmtInt(detail.totalFieldErrors) },
-          { label: 'Step back', value: fmtInt(detail.stepBack) },
-          { label: 'Step edit', value: fmtInt(detail.stepEdit) },
-          { label: 'Reviewed', value: fmtInt(detail.reviewed) },
+          {
+            label: 'Field validation errors',
+            value: fmtInt(detail.totalFieldErrors),
+          },
         ]}
       />
       <Text as="p" size="small-caption" className="mt-xs text-mid-grey-00">
-        Starts, Completed and completion rate are <b>distinct visitors</b>. The
-        remaining counters are events.
+        Visits, starts and completion are <b>distinct visitors</b> (Umami funnel
+        report). Field validation errors are an event count.
       </Text>
     </>
   )
 }
 
-// Step funnel: Start → Step N → Submit, with the step-over-step change.
+// Step funnel: Start → each defined step (with its title) → Submit. Rows are
+// keyed by step identity (the form-step-view stepId), so a conditional step a
+// visitor's answers skip shows fewer or zero views.
 function Funnel({ detail }: { detail: FormDetailData }) {
   const max = Math.max(1, ...detail.funnel.map((s) => s.count))
   return (
@@ -137,11 +150,11 @@ function Funnel({ detail }: { detail: FormDetailData }) {
           No step data for this form in this range.
         </Text>
       ) : (
-        <div className="flex max-w-[620px] flex-col gap-xs">
+        <div className="flex flex-col gap-xs">
           {detail.funnel.map((s) => (
             <div
               key={s.label}
-              className="grid grid-cols-[90px_1fr_130px] items-center gap-s text-caption"
+              className="grid grid-cols-[minmax(0,1fr)_140px_70px] items-center gap-s text-caption"
             >
               <span>{s.label}</span>
               <span className="rounded bg-teal-10">
@@ -150,72 +163,15 @@ function Funnel({ detail }: { detail: FormDetailData }) {
                   style={{ width: `${(100 * s.count) / max}%` }}
                 />
               </span>
-              <span className={NUM}>
-                {fmtInt(s.count)}
-                {/* dropoffPct > 0 = fewer than the previous step (drop, red);
-                    < 0 = more than the previous step (increase, green). */}
-                {s.dropoffPct > 0 ? (
-                  <span className="text-red-00"> -{fmtPct(s.dropoffPct)}</span>
-                ) : s.dropoffPct < 0 ? (
-                  <span className="text-green-00">
-                    {' '}
-                    +{fmtPct(Math.abs(s.dropoffPct))}
-                  </span>
-                ) : null}
-              </span>
+              <span className={NUM}>{fmtInt(s.count)}</span>
             </div>
           ))}
         </div>
       )}
       <Text as="p" size="small-caption" className="mt-xs text-mid-grey-00">
-        Visitors reaching each step, with the change from the previous step.
-        Step counts are events (a reload or back re-fires).
+        Times each step was viewed (events; a reload or back re-fires). Steps a
+        visitor's answers skip show fewer or zero views.
       </Text>
-    </section>
-  )
-}
-
-// Per-step views keyed by step identity (in the form's declared order), with
-// the step title. Unlike the funnel's positional "Step N", each row is a
-// specific defined step, so a conditional step that a visitor's answers skip
-// reads as fewer or zero views.
-function Steps({ detail }: { detail: FormDetailData }) {
-  const max = Math.max(1, ...detail.steps.map((s) => s.reached))
-  return (
-    <section>
-      <SubHeading>Steps</SubHeading>
-      {detail.steps.length === 0 ? (
-        <Text as="p" size="caption" className="text-mid-grey-00">
-          No step definition for this form.
-        </Text>
-      ) : (
-        <>
-          <div className="flex flex-col gap-xs">
-            {detail.steps.map((s, i) => (
-              <div
-                key={s.stepId}
-                className="grid grid-cols-[minmax(0,1fr)_120px_90px] items-center gap-s text-caption"
-              >
-                <span>
-                  <span className="text-mid-grey-00">Step {i + 1}:</span>{' '}
-                  {s.title}
-                </span>
-                <span className="rounded bg-teal-10">
-                  <span
-                    className="block h-[22px] min-w-[2px] rounded bg-teal-00"
-                    style={{ width: `${(100 * s.reached) / max}%` }}
-                  />
-                </span>
-                <span className={NUM}>{fmtInt(s.reached)}</span>
-              </div>
-            ))}
-          </div>
-          <Text as="p" size="small-caption" className="mt-xs text-mid-grey-00">
-            Times each step was viewed (events; a reload or back re-fires). Steps
-            a visitor's answers skip show fewer or zero views.
-          </Text>
-        </>
-      )}
     </section>
   )
 }
