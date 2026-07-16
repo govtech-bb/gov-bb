@@ -153,6 +153,7 @@ describe("ServiceStatusService", () => {
       expect(result).toEqual({
         slug: "passport-renewal",
         status: ServiceStatus.DISABLED,
+        previousStatus: null,
       });
     });
 
@@ -163,7 +164,7 @@ describe("ServiceStatusService", () => {
       statusRepo.findOne.mockResolvedValue(existing);
       const service = new ServiceStatusService(statusRepo, auditRepo);
 
-      await service.setStatus(
+      const result = await service.setStatus(
         "passport-renewal",
         ServiceStatus.FORM_DISABLED,
         "admin@govtech.bb",
@@ -179,6 +180,11 @@ describe("ServiceStatusService", () => {
           author: "admin@govtech.bb",
         }),
       );
+      expect(result).toEqual({
+        slug: "passport-renewal",
+        status: ServiceStatus.FORM_DISABLED,
+        previousStatus: ServiceStatus.ENABLED,
+      });
     });
 
     it("is an idempotent no-op when the status is unchanged", async () => {
@@ -200,6 +206,7 @@ describe("ServiceStatusService", () => {
       expect(result).toEqual({
         slug: "passport-renewal",
         status: ServiceStatus.ENABLED,
+        previousStatus: ServiceStatus.ENABLED,
       });
     });
   });

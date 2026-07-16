@@ -13,6 +13,7 @@ import { Throttle } from "@nestjs/throttler";
 import {
   ServiceStatusService,
   type ServiceStatusAuditView,
+  type ServiceStatusUpdateView,
   type ServiceStatusView,
 } from "./service-status.service";
 import { ServiceStatusAuditQueryDto, UpdateServiceStatusDto } from "./dto";
@@ -68,7 +69,7 @@ export class ServiceStatusController {
   async update(
     @Body() body: UpdateServiceStatusDto,
     @GitHubLogin() author: string,
-  ): Promise<ApiResponseShape<ServiceStatusView>> {
+  ): Promise<ApiResponseShape<ServiceStatusUpdateView>> {
     const data = await this.serviceStatus.setStatus(
       body.slug,
       body.status,

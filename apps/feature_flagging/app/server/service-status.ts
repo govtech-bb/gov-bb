@@ -13,6 +13,7 @@ import {
   SERVICE_STATUS_VALUES,
   type ServiceStatus,
 } from "../lib/service-status";
+import { sendSlackNotification } from "./slack-notif";
 
 export interface AuditEntry {
   slug: string;
@@ -20,6 +21,11 @@ export interface AuditEntry {
   newState: ServiceStatus;
   author: string;
   changedAt: string;
+}
+
+/** The PUT /service_status response — StatusRow plus the pre-update status. */
+interface StatusUpdateResult extends StatusRow {
+  previousStatus: ServiceStatus | null;
 }
 
 /** One entry from the api's `GET /services` content index. */
@@ -86,11 +92,21 @@ export const setServiceStatus = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }): Promise<StatusRow> => {
-    return api.put<StatusRow>(
+    const result = await api.put<StatusUpdateResult>(
       "/service_status",
       { slug: data.slug, status: data.status },
       context.session.accessToken,
     );
+
+    // Notify Slack only when the status actually changed. The API reports the
+    // pre-update status as `previousStatus` (an idempotent no-op returns
+    // previousStatus === status; a first-ever set returns null).
+    if (result.previousStatus !== result.status) {
+      const message = `${data.slug} status changed from ${result.previousStatus ?? "unset"} to ${result.status}`;
+      await sendSlackNotification(message);
+    }
+
+    return result;
   });
 
 /** A service's status-change history, newest first. */
