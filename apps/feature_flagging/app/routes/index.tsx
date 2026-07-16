@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SiteHeader } from "@govtech-bb/admin-ui";
+import { Button } from "@govtech-bb/react";
 import { checkSession, logoutSession } from "../server/auth";
 import { listServices, setServiceStatus } from "../server/service-status";
 import {
@@ -431,40 +432,45 @@ function ConfirmStatusChange({
 }) {
   const { row, next } = pending;
   return (
-    <div className="modal-backdrop" role="presentation" onClick={onCancel}>
+    <div
+      className="fixed inset-0 z-10 flex items-center justify-center bg-black-00/40 p-xm"
+      role="presentation"
+      onClick={onCancel}
+    >
       <div
-        className="modal"
+        className="w-full max-w-[460px] rounded-md border border-grey-00 bg-white-00 p-xm"
         role="dialog"
         aria-modal="true"
         aria-label="Confirm status change"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2>Change service status?</h2>
-        <p>
+        <h2 className="mb-s mt-0 text-h4 font-bold">Change service status?</h2>
+        <p className="mb-s text-caption">
           <strong>{row.title}</strong>
           <br />
-          <span className="svc-slug">{row.slug}</span>
+          <span className="font-mono text-caption-sm text-mid-grey-00">
+            {row.slug}
+          </span>
         </p>
-        <p>
+        <p className="mb-s text-caption">
           Status will change from{" "}
-          <span className={`status-${row.status}`}>
+          <span className={STATUS_TEXT[row.status]}>
             {STATUS_LABELS[row.status]}
           </span>{" "}
-          to{" "}
-          <span className={`status-${next}`}>{STATUS_LABELS[next]}</span>.
+          to <span className={STATUS_TEXT[next]}>{STATUS_LABELS[next]}</span>.
         </p>
-        <p className="modal-warn">
+        <p className="rounded-sm border border-yellow-40 bg-yellow-10 px-s py-xs text-caption">
           This changes what the public can see for this service. The change is
           saved immediately, but the public site caches service statuses for up
           to 60 seconds — so it can take a little over a minute to appear live.
         </p>
-        <div className="modal-actions">
-          <button type="button" className="btn-secondary" onClick={onCancel}>
+        <div className="mt-xm flex justify-end gap-xs">
+          <Button type="button" variant="secondary" onClick={onCancel}>
             Cancel
-          </button>
-          <button type="button" className="btn-primary" onClick={onConfirm}>
+          </Button>
+          <Button type="button" onClick={onConfirm}>
             Change status
-          </button>
+          </Button>
         </div>
       </div>
     </div>
