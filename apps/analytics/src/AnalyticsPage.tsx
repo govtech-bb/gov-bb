@@ -5,6 +5,7 @@ import { JourneysSection } from './JourneysSection'
 import { AnalyticsChrome } from './components/AnalyticsChrome'
 import { FormsTable } from './components/FormsTable'
 import { SortHeader, useTableSort } from './components/SortableTable'
+import { StatCards } from './components/StatCards'
 import type { OverviewPayload } from './lib/report'
 import type { SiteStats } from './lib/umami-server'
 
@@ -18,30 +19,17 @@ function SummaryCards({
   stats: SiteStats
   formsTracked: number
 }) {
-  const cards = [
-    { label: 'Sessions', value: fmtInt(stats.sessions) },
-    { label: 'Pageviews', value: fmtInt(stats.pageviews) },
-    { label: 'Avg steps / visit', value: stats.avgStepsPerVisit.toFixed(1) },
-    { label: 'Bounce rate', value: fmtPct(stats.bounceRate * 100) },
-    { label: 'Forms tracked', value: fmtInt(formsTracked) },
-    { label: 'Searches', value: fmtInt(stats.searches) },
-  ]
   return (
-    <div className="mt-s flex flex-wrap gap-s">
-      {cards.map((c) => (
-        <div
-          key={c.label}
-          className="min-w-[130px] flex-1 rounded-lg border border-grey-00 px-m py-s"
-        >
-          <div className="text-[1.75rem] font-bold leading-tight">
-            {c.value}
-          </div>
-          <Text as="span" size="small-caption" className="text-mid-grey-00">
-            {c.label}
-          </Text>
-        </div>
-      ))}
-    </div>
+    <StatCards
+      cards={[
+        { label: 'Sessions', value: fmtInt(stats.sessions) },
+        { label: 'Pageviews', value: fmtInt(stats.pageviews) },
+        { label: 'Avg steps / visit', value: stats.avgStepsPerVisit.toFixed(1) },
+        { label: 'Bounce rate', value: fmtPct(stats.bounceRate * 100) },
+        { label: 'Forms tracked', value: fmtInt(formsTracked) },
+        { label: 'Searches', value: fmtInt(stats.searches) },
+      ]}
+    />
   )
 }
 

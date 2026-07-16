@@ -2,6 +2,7 @@ import { Heading, Text } from '@govtech-bb/react'
 import { useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { AnalyticsChrome } from './components/AnalyticsChrome'
+import { StatCards } from './components/StatCards'
 import type { FormDetailData } from './lib/umami-server'
 
 const fmtInt = (n: number) => n.toLocaleString()
@@ -92,38 +93,31 @@ export default function FormPage({ detail }: { detail: FormDetailData }) {
 function Stats({ detail }: { detail: FormDetailData }) {
   return (
     <>
-      <div className="mt-s rounded-lg bg-teal-10 p-m">
-        <div className="flex flex-wrap gap-l">
-          <Stat label="Starts" value={fmtInt(detail.starts)} />
-          <Stat
-            label="Completed"
-            value={
+      <StatCards
+        cards={[
+          { label: 'Starts', value: fmtInt(detail.starts) },
+          {
+            label: 'Completed',
+            value: (
               <>
                 {fmtInt(detail.completed)}{' '}
-                <span className="text-mid-grey-00">
+                <span className="text-[1rem] font-normal text-mid-grey-00">
                   ({fmtPct(detail.completionPct)})
                 </span>
               </>
-            }
-          />
-          <Stat
-            label="Avg time to complete"
-            value={fmtDur(detail.avgDurationSeconds)}
-          />
-        </div>
-        <div className="mt-m flex flex-wrap gap-l">
-          <Stat label="Field errors / start" value={detail.avgFieldErrors} />
-          <Stat
-            label="Total field errors"
-            value={fmtInt(detail.totalFieldErrors)}
-          />
-        </div>
-      </div>
-      <div className="mt-s flex flex-wrap gap-l">
-        <Stat label="Step back" value={fmtInt(detail.stepBack)} />
-        <Stat label="Step edit" value={fmtInt(detail.stepEdit)} />
-        <Stat label="Reviewed" value={fmtInt(detail.reviewed)} />
-      </div>
+            ),
+          },
+          {
+            label: 'Avg time to complete',
+            value: fmtDur(detail.avgDurationSeconds),
+          },
+          { label: 'Field errors / start', value: detail.avgFieldErrors },
+          { label: 'Total field errors', value: fmtInt(detail.totalFieldErrors) },
+          { label: 'Step back', value: fmtInt(detail.stepBack) },
+          { label: 'Step edit', value: fmtInt(detail.stepEdit) },
+          { label: 'Reviewed', value: fmtInt(detail.reviewed) },
+        ]}
+      />
       <Text as="p" size="small-caption" className="mt-xs text-mid-grey-00">
         Starts, Completed and completion rate are <b>distinct visitors</b>. The
         remaining counters are events.
