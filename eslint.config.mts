@@ -1,13 +1,22 @@
 import js from "@eslint/js";
 import globals from "globals";
 import tseslint from "typescript-eslint";
+import reactHooks from "eslint-plugin-react-hooks";
 import json from "@eslint/json";
 import css from "@eslint/css";
 import { tailwind4 } from "tailwind-csstree";
 import { defineConfig } from "eslint/config";
 
 export default defineConfig([
-  { ignores: ["apps/forms/**", "**/*.gen.ts", "**/dist/**", "**/node_modules/**"] },
+  {
+    ignores: [
+      "apps/forms/**",
+      "**/*.gen.ts",
+      "**/dist/**",
+      "**/.amplify-hosting/**",
+      "**/node_modules/**",
+    ],
+  },
   { files: ["**/*.{js,mjs,cjs,ts,mts,cts}"], plugins: { js }, extends: ["js/recommended"], languageOptions: { globals: {...globals.browser, ...globals.node} } },
   tseslint.configs.recommended,
   {
@@ -28,6 +37,20 @@ export default defineConfig([
           ignoreRestSiblings: true,
         },
       ],
+    },
+  },
+  // React Hooks lint for the apps governed by this root config (form_builder,
+  // feature_flagging). Only the two classic rules: rules-of-hooks (error) and
+  // exhaustive-deps (warn). react-hooks@7 also ships broader React-Compiler
+  // rules via its `recommended` preset — deliberately left off (#1976 scopes to
+  // these two). apps/forms and apps/landing enable the same rules in their own
+  // eslint configs.
+  {
+    files: ["**/*.{jsx,tsx}"],
+    plugins: { "react-hooks": reactHooks },
+    rules: {
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
     },
   },
   { files: ["**/*.json"], plugins: { json }, language: "json/json", extends: ["json/recommended"] },
