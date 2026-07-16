@@ -192,6 +192,7 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
     } catch (err) {
       throw new Error(
         `Failed to parse recipe ${filePath}: ${(err as Error).message}`,
+        { cause: err },
       );
     }
     const result = serviceContractRecipeSchema.safeParse(parsed);

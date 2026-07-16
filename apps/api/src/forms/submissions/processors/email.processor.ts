@@ -258,6 +258,7 @@ export class EmailProcessor implements ISubmissionProcessor {
       });
       throw new Error(
         `Failed to send email for recipientField "${recipientField}" on submission ${payload.submissionId}: ${reason}`,
+        { cause: err },
       );
     }
   }
