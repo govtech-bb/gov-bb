@@ -277,6 +277,23 @@ jobs:
     secrets:
       smoke_submission_token: ${{ secrets.SMOKE_SUBMISSION_TOKEN }}
 
+  # Live accessibility (axe) scan of the per-PR forms preview. Loads key pages
+  # and scans the rendered DOM — it NEVER submits, so (unlike the smoke above) it
+  # has no contract-skew dependency and runs on every previewed PR, prod-targeted
+  # or not. Fails only on serious/critical WCAG A/AA violations. Steps live in
+  # .github/workflows/forms-a11y.yml; the preview URL from preview-forms is
+  # passed as base_url.
+  a11y-forms-preview:
+    name: A11y scan forms preview
+    needs: [setup, preview-forms]
+    if: >
+      needs.preview-forms.result == 'success'
+      && needs.preview-forms.outputs.status == 'SUCCEED'
+    uses: ./.github/workflows/forms-a11y.yml
+    with:
+      base_url: ${{ needs.preview-forms.outputs.url }}
+      artifact_name: forms-preview-a11y-trace
+
   preview-landing:
     name: Preview (landing)
     needs: setup
