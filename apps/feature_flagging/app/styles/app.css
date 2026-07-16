@@ -141,6 +141,15 @@ tr:last-child td {
   font-weight: 600;
 }
 
+.svc-title a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.svc-title a:hover {
+  text-decoration: underline;
+}
+
 .svc-slug {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;

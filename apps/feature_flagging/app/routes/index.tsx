@@ -25,6 +25,7 @@ import {
   type StatusFilter,
 } from "../lib/search-params";
 import { useRowAnimations } from "../lib/use-row-animations";
+import { serviceUrl } from "../lib/service-url";
 import { AuditDrawer } from "./-audit-drawer";
 
 export const Route = createFileRoute("/")({
@@ -288,7 +289,9 @@ function ServicesPage() {
             {visible.map((row) => (
               <tr key={row.slug} ref={anim.register(row.slug)}>
                 <td>
-                  <div className="svc-title">{row.title}</div>
+                  <div className="svc-title">
+                    <ServiceTitle row={row} />
+                  </div>
                   <div className="svc-slug">{row.slug}</div>
                   {errors[row.slug] && (
                     <div className="row-error">{errors[row.slug]}</div>
@@ -365,6 +368,19 @@ function ServicesPage() {
         />
       )}
     </div>
+  );
+}
+
+// The service title links to its public page (landing content page, or the form
+// for form-only services) in the current environment, opened in a new tab.
+// Orphans have no page, so their title stays plain text.
+function ServiceTitle({ row }: { row: ServiceRow }) {
+  const url = serviceUrl(row);
+  if (!url) return <>{row.title}</>;
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer">
+      {row.title}
+    </a>
   );
 }
 
