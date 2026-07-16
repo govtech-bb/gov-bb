@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
+import tailwindcss from "@tailwindcss/vite";
 
 const preset = process.env.NITRO_PRESET || "aws_amplify";
 
@@ -51,6 +52,7 @@ export default defineConfig(({ mode }) => {
       "process.env.GITHUB_TEAM_SLUG": JSON.stringify(pick("GITHUB_TEAM_SLUG")),
     },
     plugins: [
+      tailwindcss(),
       nitro({
         config: {
           preset,

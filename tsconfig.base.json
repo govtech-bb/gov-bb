@@ -20,6 +20,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "paths": {
+      "@govtech-bb/admin-ui": ["packages/admin-ui/src/index.ts"],
       "@govtech-bb/analytics": ["packages/analytics/src/index.ts"],
       "@govtech-bb/content": ["packages/content/src/index.ts"],
       "@govtech-bb/content/categories": ["packages/content/src/categories.ts"],
