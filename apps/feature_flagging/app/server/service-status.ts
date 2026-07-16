@@ -13,6 +13,7 @@ import {
   SERVICE_STATUS_VALUES,
   type ServiceStatus,
 } from "../lib/service-status";
+import { sendSlackNotification } from "../lib/slack-notif";
 
 export interface AuditEntry {
   slug: string;
@@ -86,11 +87,19 @@ export const setServiceStatus = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }): Promise<StatusRow> => {
-    return api.put<StatusRow>(
+    const result = await api.put<StatusRow>(
       "/service_status",
       { slug: data.slug, status: data.status },
       context.session.accessToken,
     );
+
+    // Send a Slack notification if the status changed.
+    if (result.status !== data.status) {
+      const message = `${data.slug} status changed from ${result.status} to ${data.status}`;
+      sendSlackNotification(message);
+    }
+
+    return result;
   });
 
 /** A service's status-change history, newest first. */
