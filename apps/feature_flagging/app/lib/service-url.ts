@@ -24,9 +24,19 @@ export function buildServiceUrl(
   landingBase: string,
   formsBase: string,
 ): string | null {
-  if (row.landingUrl) return `${landingBase}/${row.landingUrl}`;
+  if (row.landingUrl)
+    return `${landingBase}/${landingPath(row.landingUrl, row.category)}`;
   if (row.hasForm) return `${formsBase}/forms/${row.slug}`;
   return null;
+}
+
+// The category-prefixed landing path. A nested content slug already carries its
+// category (e.g. "health-and-emergency-services/stormready"), but a top-level
+// slug is the bare leaf ("get-birth-certificate") and must have the category
+// prepended to match the canonical landing URL.
+function landingPath(landingUrl: string, category?: string): string {
+  if (landingUrl.includes("/") || !category) return landingUrl;
+  return `${category}/${landingUrl}`;
 }
 
 /** `buildServiceUrl` against the environment's baked base URLs. */
