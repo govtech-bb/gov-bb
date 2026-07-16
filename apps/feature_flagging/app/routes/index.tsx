@@ -4,6 +4,7 @@ import {
   type SearchSchemaInput,
 } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SiteHeader } from "@govtech-bb/admin-ui";
 import { checkSession, logoutSession } from "../server/auth";
 import { listServices, setServiceStatus } from "../server/service-status";
 import {
@@ -183,14 +184,13 @@ function ServicesPage() {
   }
 
   return (
-    <div className="page">
-      <div className="page-head">
-        <h1>Service visibility</h1>
-        <span className="who">
+    <>
+      <SiteHeader label="Service visibility">
+        <span className="text-mid-grey-00">
           {login} ·{" "}
           <button
             type="button"
-            className="linklike"
+            className="text-white-00 underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100"
             onClick={() =>
               void logoutSession().then(() => window.location.assign("/"))
             }
@@ -198,60 +198,66 @@ function ServicesPage() {
             Sign out
           </button>
         </span>
-      </div>
-      <p className="page-sub">
-        {isFiltered
-          ? `Showing ${visible.length} of ${rows.length} services.`
-          : `${rows.length} services.`}{" "}
-        Changing a status writes to the service_status audit log against your
-        GitHub login.
-      </p>
+      </SiteHeader>
 
-      <div className="toolbar">
-        <input
-          type="search"
-          placeholder="Search by title, slug or category…"
-          value={qInput}
-          onChange={(e) => onQueryChange(e.target.value)}
-          aria-label="Search services"
-        />
-        <select
-          value={categoryFilter}
-          onChange={(e) => update({ category: e.target.value })}
-          aria-label="Filter by category"
-        >
-          <option value="all">All categories</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-        <select
-          value={typeFilter}
-          onChange={(e) => update({ type: e.target.value })}
-          aria-label="Filter by type"
-        >
-          <option value="all">All types</option>
-          {types.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-        <select
-          value={statusFilter}
-          onChange={(e) => update({ status: e.target.value as StatusFilter })}
-          aria-label="Filter by status"
-        >
-          <option value="all">All statuses</option>
-          {SERVICE_STATUS_VALUES.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABELS[s]}
-            </option>
-          ))}
-        </select>
-      </div>
+      <div className="container max-w-[1100px] py-m">
+        <p className="mt-0 mb-xm text-caption text-mid-grey-00">
+          {isFiltered
+            ? `Showing ${visible.length} of ${rows.length} services.`
+            : `${rows.length} services.`}{" "}
+          Changing a status writes to the service_status audit log against your
+          GitHub login.
+        </p>
+
+        <div className="mb-s flex flex-wrap gap-xs">
+          <input
+            type="search"
+            placeholder="Search by title, slug or category…"
+            value={qInput}
+            onChange={(e) => onQueryChange(e.target.value)}
+            aria-label="Search services"
+            className="min-w-[220px] flex-1 rounded-sm border border-grey-00 bg-white-00 px-s py-xs text-caption focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100"
+          />
+          <select
+            value={categoryFilter}
+            onChange={(e) => update({ category: e.target.value })}
+            aria-label="Filter by category"
+            className="rounded-sm border border-grey-00 bg-white-00 px-s py-xs text-caption focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100"
+          >
+            <option value="all">All categories</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <select
+            value={typeFilter}
+            onChange={(e) => update({ type: e.target.value })}
+            aria-label="Filter by type"
+            className="rounded-sm border border-grey-00 bg-white-00 px-s py-xs text-caption focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100"
+          >
+            <option value="all">All types</option>
+            {types.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => update({ status: e.target.value as StatusFilter })}
+            aria-label="Filter by status"
+            className="rounded-sm border border-grey-00 bg-white-00 px-s py-xs text-caption focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100"
+          >
+            <option value="all">All statuses</option>
+            {SERVICE_STATUS_VALUES.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABELS[s]}
+              </option>
+            ))}
+          </select>
+        </div>
 
       <div className="table-wrap">
         <table>
@@ -364,7 +370,8 @@ function ServicesPage() {
           onClose={() => setAudit(null)}
         />
       )}
-    </div>
+      </div>
+    </>
   );
 }
 
