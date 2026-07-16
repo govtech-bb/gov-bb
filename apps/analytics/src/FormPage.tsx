@@ -195,31 +195,33 @@ function Steps({ detail }: { detail: FormDetailData }) {
           No step definition for this form.
         </Text>
       ) : (
-        <div className="flex flex-col gap-xs">
-          {detail.steps.map((s, i) => (
-            <div
-              key={s.stepId}
-              className="grid grid-cols-[minmax(0,1fr)_120px_90px] items-center gap-s text-caption"
-            >
-              <span>
-                <span className="text-mid-grey-00">Step {i + 1}:</span>{' '}
-                {s.title}
-              </span>
-              <span className="rounded bg-teal-10">
-                <span
-                  className="block h-[22px] min-w-[2px] rounded bg-teal-00"
-                  style={{ width: `${(100 * s.reached) / max}%` }}
-                />
-              </span>
-              <span className={NUM}>{fmtInt(s.reached)}</span>
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="flex flex-col gap-xs">
+            {detail.steps.map((s, i) => (
+              <div
+                key={s.stepId}
+                className="grid grid-cols-[minmax(0,1fr)_120px_90px] items-center gap-s text-caption"
+              >
+                <span>
+                  <span className="text-mid-grey-00">Step {i + 1}:</span>{' '}
+                  {s.title}
+                </span>
+                <span className="rounded bg-teal-10">
+                  <span
+                    className="block h-[22px] min-w-[2px] rounded bg-teal-00"
+                    style={{ width: `${(100 * s.reached) / max}%` }}
+                  />
+                </span>
+                <span className={NUM}>{fmtInt(s.reached)}</span>
+              </div>
+            ))}
+          </div>
+          <Text as="p" size="small-caption" className="mt-xs text-mid-grey-00">
+            Times each step was viewed (events; a reload or back re-fires). Steps
+            a visitor's answers skip show fewer or zero views.
+          </Text>
+        </>
       )}
-      <Text as="p" size="small-caption" className="mt-xs text-mid-grey-00">
-        Times each step was viewed (events; a reload or back re-fires). Steps a
-        visitor's answers skip show fewer or zero views.
-      </Text>
     </section>
   )
 }
