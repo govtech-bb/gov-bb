@@ -603,9 +603,21 @@ importers:
 
   apps/feature_flagging:
     dependencies:
+      '@fontsource/figtree':
+        specifier: ^5.2.10
+        version: 5.2.10
+      '@govtech-bb/admin-ui':
+        specifier: workspace:*
+        version: link:../../packages/admin-ui
       '@govtech-bb/aws-secrets':
         specifier: workspace:*
         version: link:../../packages/aws-secrets
+      '@govtech-bb/design':
+        specifier: ^1.0.0-alpha.17
+        version: 1.0.0-alpha.17
+      '@govtech-bb/react':
+        specifier: ^1.0.0-alpha.17
+        version: 1.0.0-alpha.17(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)
       '@tanstack/react-router':
         specifier: 'catalog:'
         version: 1.170.16(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -625,6 +637,9 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.3.0
+        version: 4.3.1(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
       '@tanstack/router-plugin':
         specifier: 'catalog:'
         version: 1.168.18(@tanstack/react-router@1.170.16(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -649,6 +664,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.2
         version: 6.0.2(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      tailwindcss:
+        specifier: ^4.3.0
+        version: 4.3.1
       typescript:
         specifier: 'catalog:'
         version: 5.9.3

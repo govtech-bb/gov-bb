@@ -1,31 +1,45 @@
-:root {
-  --bg: #f5f6f7;
-  --surface: #ffffff;
-  --border: #d7dbe0;
-  --text: #1a1a1a;
-  --muted: #5a636e;
-  --accent: #0b5cab;
-  --ok: #0a7d3f;
-  --warn: #9a6700;
-  --off: #a3161c;
-  font-family:
-    system-ui,
-    -apple-system,
-    Segoe UI,
-    Roboto,
-    Helvetica,
-    Arial,
-    sans-serif;
+@import '@fontsource/figtree/400.css';
+@import '@fontsource/figtree/500.css';
+@import '@fontsource/figtree/600.css';
+@import '@fontsource/figtree/700.css';
+@import '@fontsource/figtree/800.css';
+@import 'tailwindcss';
+/* Design tokens */
+@import '@govtech-bb/design';
+
+/* Scan compiled DS output + the shared admin-ui source for class names */
+@source "../../../../node_modules/@govtech-bb/react/dist/**/*.{js,cjs}";
+@source "../../../../packages/admin-ui/src/**/*.{ts,tsx}";
+
+@theme {
+  --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
+  padding: 0;
+  background: var(--color-white-00);
+  color: var(--color-black-00);
+  font-family: var(--font-family-base);
+}
+
+.container {
+  margin-inline: auto;
+  width: 100%;
+  padding-inline: var(--spacing-s); /* 16px */
+
+  @media (width >= 640px) {
+    padding-inline: var(--spacing-m); /* 32px */
+  }
+
+  @media (width >= 1280px) {
+    padding-inline: var(--spacing-l); /* 64px */
+  }
 }
 
 .page {
