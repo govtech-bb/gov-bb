@@ -65,7 +65,6 @@ async function pollUntilDone<T extends { status: string }>(
   // tolerate up to 2 consecutive failed polls, surfacing only the 3rd. The
   // loop's own sleep is the backoff and the overall deadline never resets.
   let consecutiveFailures = 0;
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     if (abort.signal.aborted) throw new DOMException("Aborted", "AbortError");
     await new Promise((r) => setTimeout(r, delay));
