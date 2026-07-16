@@ -33,6 +33,22 @@ const detail: FormDetailData = {
     { label: 'Step 2', count: 90, dropoffPct: -60.7 },
     { label: 'Submit', count: 56, dropoffPct: 12 },
   ],
+  steps: [
+    {
+      stepId: 'applicant-details',
+      title: 'Tell us about yourself',
+      reached: 260,
+      completed: 200,
+      abandoned: 60,
+    },
+    {
+      stepId: 'applying-for-yourself',
+      title: 'Are you applying for yourself?',
+      reached: 200,
+      completed: 120,
+      abandoned: 80,
+    },
+  ],
   validationReasons: [
     { field: 'required', count: 40 },
     { field: 'Parish is required', count: 8 },
@@ -66,6 +82,10 @@ describe('FormPage', () => {
     // funnel
     expect(screen.getByText('Funnel')).toBeTruthy()
     expect(screen.getByText('Step 1')).toBeTruthy()
+    // per-step breakdown (by stepId, with titles)
+    expect(screen.getByText('Steps')).toBeTruthy()
+    expect(screen.getByText('Tell us about yourself')).toBeTruthy()
+    expect(screen.getByText('Are you applying for yourself?')).toBeTruthy()
     // validation-reason table
     expect(screen.getByText('Required field left blank')).toBeTruthy()
     // unmapped reason shows as both label and code, hence getAllByText

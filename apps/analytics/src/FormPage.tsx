@@ -79,6 +79,7 @@ export default function FormPage({ detail }: { detail: FormDetailData }) {
 
         <Stats detail={detail} />
         <Funnel detail={detail} />
+        <Steps detail={detail} />
         <ValidationReasons detail={detail} />
         <SubmitReliability detail={detail} />
       </div>
@@ -175,6 +176,49 @@ function Funnel({ detail }: { detail: FormDetailData }) {
       <Text as="p" size="small-caption" className="mt-xs text-mid-grey-00">
         Visitors reaching each step, with the change from the previous step.
         Step counts are events (a reload or back re-fires).
+      </Text>
+    </section>
+  )
+}
+
+// Per-step views keyed by step identity (in the form's declared order), with
+// the step title. Unlike the funnel's positional "Step N", each row is a
+// specific defined step, so a conditional step that a visitor's answers skip
+// reads as fewer or zero views.
+function Steps({ detail }: { detail: FormDetailData }) {
+  const max = Math.max(1, ...detail.steps.map((s) => s.reached))
+  return (
+    <section>
+      <SubHeading>Steps</SubHeading>
+      {detail.steps.length === 0 ? (
+        <Text as="p" size="caption" className="text-mid-grey-00">
+          No step definition for this form.
+        </Text>
+      ) : (
+        <div className="flex flex-col gap-xs">
+          {detail.steps.map((s, i) => (
+            <div
+              key={s.stepId}
+              className="grid grid-cols-[minmax(0,1fr)_120px_90px] items-center gap-s text-caption"
+            >
+              <span>
+                <span className="text-mid-grey-00">Step {i + 1}:</span>{' '}
+                {s.title}
+              </span>
+              <span className="rounded bg-teal-10">
+                <span
+                  className="block h-[22px] min-w-[2px] rounded bg-teal-00"
+                  style={{ width: `${(100 * s.reached) / max}%` }}
+                />
+              </span>
+              <span className={NUM}>{fmtInt(s.reached)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <Text as="p" size="small-caption" className="mt-xs text-mid-grey-00">
+        Times each step was viewed (events; a reload or back re-fires). Steps a
+        visitor's answers skip show fewer or zero views.
       </Text>
     </section>
   )

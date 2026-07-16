@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildFunnelSteps,
+  funnelHeadline,
   humanizeStep,
   shapeFlow,
   shapeFormList,
@@ -65,26 +66,37 @@ describe('shapeSteps (#1915 reached vs completed)', () => {
   })
 })
 
+describe('funnelHeadline', () => {
+  it('takes distinct-visitor starts (first row) and completed (last row)', () => {
+    expect(
+      funnelHeadline([
+        { type: 'event', value: 'f:form-start', visitors: 158, dropoff: null },
+        { type: 'event', value: 'f:form-review', visitors: 90, dropoff: 0.43 },
+        { type: 'event', value: 'f:form-submit', visitors: 59, dropoff: 0.34 },
+      ]),
+    ).toEqual({ starts: 158, completed: 59 })
+  })
+
+  it('is zeros for an empty funnel', () => {
+    expect(funnelHeadline([])).toEqual({ starts: 0, completed: 0 })
+  })
+})
+
 describe('shapeFormList (per-form starts + completion)', () => {
-  it('derives starts, completions and completion% per form from event counts', () => {
+  it('derives starts, completions and completion% per form from funnel headlines', () => {
     const forms = [
       { formId: 'a', title: 'Form A' },
       { formId: 'b', title: 'Form B' },
     ]
-    const events = [
-      { x: 'a:form-start', y: 200 },
-      { x: 'a:form-submit', y: 50 },
-      { x: 'a:form-step-view', y: 999 },
-      { x: 'b:form-start', y: 0 },
-    ]
-    const out = shapeFormList(forms, events)
+    const headlines = new Map([['a', { starts: 200, completed: 50 }]])
+    const out = shapeFormList(forms, headlines)
     expect(out[0]).toMatchObject({
       formId: 'a',
       starts: 200,
       completions: 50,
       completionPct: 25,
     })
-    // no starts → 0% (not NaN/Infinity)
+    // no headline for the form → zeros, 0% (not NaN/Infinity)
     expect(out[1]).toMatchObject({
       starts: 0,
       completions: 0,

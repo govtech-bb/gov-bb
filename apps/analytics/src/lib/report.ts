@@ -73,6 +73,7 @@ function emptyDetail(formId: string, range: string): FormDetailData {
     stepEdit: 0,
     reviewed: 0,
     funnel: [],
+    steps: [],
     validationReasons: [],
     submitError: { total: 0, attempts: 0, rate: null, byReason: [] },
     generatedAt: '',
