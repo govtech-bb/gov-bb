@@ -105,11 +105,11 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-national-science-camp-2026",
-    title: "Apply for National Science Camp 2026",
+    title: "Apply for National Summer Camp Science Programme 2026",
     category: "education",
     formId:
       "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026",
-    visibility: "preview",
+    visibility: "public",
   },
   {
     slug: "apply-to-be-a-project-protege-mentor",
@@ -162,6 +162,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   {
     slug: "apply-to-volunteer-at-a-sports-camp",
     title: "Apply to volunteer at a sports camp",
+    category: "work-employment",
+    visibility: "public",
+  },
+  {
+    slug: "bank-holiday-calendar",
+    title: "Check bank holiday dates",
     category: "work-employment",
     visibility: "public",
   },
@@ -255,6 +261,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     slug: "get-support-for-a-victim-of-domestic-abuse",
     title: "Get support for a victim of domestic abuse",
     category: "public-safety",
+    visibility: "public",
+  },
+  {
+    slug: "health-and-emergency-services/find-an-emergency-shelter",
+    title: "Find an emergency shelter",
+    category: "health-and-emergency-services",
     visibility: "public",
   },
   {
