@@ -3,6 +3,11 @@ import { vi } from "vitest";
 const { put, get } = vi.hoisted(() => ({ put: vi.fn(), get: vi.fn() }));
 vi.mock("./api-client", () => ({ api: { put, get } }));
 
+const { sendSlackNotification } = vi.hoisted(() => ({
+  sendSlackNotification: vi.fn(),
+}));
+vi.mock("./slack-notif", () => ({ sendSlackNotification }));
+
 import {
   getServiceAudit,
   listServices,
@@ -95,7 +100,11 @@ describe("listServices", () => {
 
 describe("setServiceStatus", () => {
   it("forwards the GitHub token and sends no author in the body", async () => {
-    put.mockResolvedValue({ slug: "passport-renewal", status: "disabled" });
+    put.mockResolvedValue({
+      slug: "passport-renewal",
+      status: "disabled",
+      previousStatus: "enabled",
+    });
 
     const result = await setServiceStatus({
       data: { slug: "passport-renewal", status: "disabled" },
@@ -109,7 +118,66 @@ describe("setServiceStatus", () => {
       { slug: "passport-renewal", status: "disabled" },
       "gh_tok",
     );
-    expect(result).toEqual({ slug: "passport-renewal", status: "disabled" });
+    expect(result).toEqual({
+      slug: "passport-renewal",
+      status: "disabled",
+      previousStatus: "enabled",
+    });
+  });
+
+  it("notifies Slack when the status actually changed", async () => {
+    put.mockResolvedValue({
+      slug: "passport-renewal",
+      status: "disabled",
+      previousStatus: "enabled",
+    });
+
+    await setServiceStatus({
+      data: { slug: "passport-renewal", status: "disabled" },
+      context: {
+        session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
+      },
+    } as never);
+
+    expect(sendSlackNotification).toHaveBeenCalledWith(
+      "passport-renewal status changed from enabled to disabled",
+    );
+  });
+
+  it("notifies with 'unset' as the origin on a service's first-ever status set", async () => {
+    put.mockResolvedValue({
+      slug: "passport-renewal",
+      status: "disabled",
+      previousStatus: null,
+    });
+
+    await setServiceStatus({
+      data: { slug: "passport-renewal", status: "disabled" },
+      context: {
+        session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
+      },
+    } as never);
+
+    expect(sendSlackNotification).toHaveBeenCalledWith(
+      "passport-renewal status changed from unset to disabled",
+    );
+  });
+
+  it("does not notify Slack on an idempotent no-op (previousStatus === status)", async () => {
+    put.mockResolvedValue({
+      slug: "passport-renewal",
+      status: "disabled",
+      previousStatus: "disabled",
+    });
+
+    await setServiceStatus({
+      data: { slug: "passport-renewal", status: "disabled" },
+      context: {
+        session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
+      },
+    } as never);
+
+    expect(sendSlackNotification).not.toHaveBeenCalled();
   });
 });
 
