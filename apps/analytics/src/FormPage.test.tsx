@@ -54,19 +54,25 @@ const detail: FormDetailData = {
 }
 
 describe('FormPage', () => {
-  it('renders the four headline metrics, the titled funnel and the tables', () => {
+  it('renders the five headline metrics, the titled funnel and the tables', () => {
     render(<FormPage detail={detail} />)
     expect(screen.getByText('Get a birth certificate')).toBeTruthy()
-    // headline metrics
-    expect(screen.getByText('Visits that started')).toBeTruthy()
+    // headline metrics — each label appears twice (card label + hover title)
+    expect(screen.getAllByText('Visits that started').length).toBeGreaterThan(0)
     expect(screen.getByText('83.4%')).toBeTruthy()
     expect(screen.getByText('267 of 320 visits')).toBeTruthy()
-    expect(screen.getByText('Completion rate')).toBeTruthy()
+    expect(screen.getAllByText('Completion rate').length).toBeGreaterThan(0)
     expect(screen.getByText('56 of 267 starts')).toBeTruthy()
-    expect(screen.getByText('Avg time to complete')).toBeTruthy()
+    expect(screen.getAllByText('Avg time to complete').length).toBeGreaterThan(0)
     expect(screen.getByText('15m 58s')).toBeTruthy() // 958s
-    expect(screen.getByText('Field validation errors')).toBeTruthy()
+    expect(
+      screen.getAllByText('Field validation errors').length,
+    ).toBeGreaterThan(0)
     expect(screen.getByText('198')).toBeTruthy()
+    // form failures card + its hover breakdown (submit-error events)
+    expect(screen.getAllByText('Form failures').length).toBeGreaterThan(0)
+    expect(screen.getByText('15')).toBeTruthy() // submitError.total
+    expect(screen.getByText('form-submit-error')).toBeTruthy() // hint content
     // titled funnel: each step shows its title next to the step order
     expect(screen.getByText('Funnel')).toBeTruthy()
     expect(screen.getByText('Step 1: Tell us about yourself')).toBeTruthy()
@@ -77,9 +83,6 @@ describe('FormPage', () => {
     expect(screen.getByText('Required field left blank')).toBeTruthy()
     // unmapped reason shows as both label and code, hence getAllByText
     expect(screen.getAllByText('Parish is required').length).toBeGreaterThan(0)
-    // submit reliability (#1916)
-    expect(screen.getByText('Submit reliability')).toBeTruthy()
-    expect(screen.getByText('15%')).toBeTruthy()
   })
 
   it('does not display the category', () => {
