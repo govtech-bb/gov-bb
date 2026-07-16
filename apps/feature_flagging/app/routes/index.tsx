@@ -51,6 +51,14 @@ export const Route = createFileRoute("/")({
   component: ServicesPage,
 });
 
+// Status option text colour, using the darkest token in each family for
+// on-white contrast.
+const STATUS_TEXT: Record<ServiceStatus, string> = {
+  enabled: "text-green-00",
+  form_disabled: "text-yellow-00",
+  disabled: "text-red-00",
+};
+
 function ServicesPage() {
   const initial = Route.useLoaderData();
   const { login } = Route.useRouteContext();
@@ -259,97 +267,87 @@ function ServicesPage() {
           </select>
         </div>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <SortHeader
-                label="Service"
-                col="service"
-                sort={sort}
-                onSort={toggleSort}
-              />
-              <SortHeader
-                label="Category"
-                col="category"
-                sort={sort}
-                onSort={toggleSort}
-              />
-              <SortHeader
-                label="Type"
-                col="type"
-                sort={sort}
-                onSort={toggleSort}
-              />
-              <SortHeader
-                label="Status"
-                col="status"
-                sort={sort}
-                onSort={toggleSort}
-              />
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((row) => (
-              <tr key={row.slug} ref={anim.register(row.slug)}>
-                <td>
-                  <div className="svc-title">{row.title}</div>
-                  <div className="svc-slug">{row.slug}</div>
-                  {errors[row.slug] && (
-                    <div className="row-error">{errors[row.slug]}</div>
-                  )}
-                </td>
-                <td>{row.category ?? "—"}</td>
-                <td>
-                  <TypeBadge row={row} />
-                  {row.orphan && <span className="badge orphan">Orphan</span>}
-                </td>
-                <td>
-                  <select
-                    className={`status status-${row.status}`}
-                    value={row.status}
-                    disabled={saving[row.slug]}
-                    onChange={(e) => {
-                      const next = e.target.value as ServiceStatus;
-                      if (next !== row.status) setPending({ row, next });
-                    }}
-                    aria-label={`Status for ${row.title}`}
-                  >
-                    {SERVICE_STATUS_VALUES.map((s) => (
-                      <option
-                        key={s}
-                        value={s}
-                        disabled={s === "form_disabled" && !row.hasForm}
-                      >
-                        {STATUS_LABELS[s]}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    className="linklike"
-                    onClick={() =>
-                      setAudit({ slug: row.slug, title: row.title })
-                    }
-                  >
-                    History
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {visible.length === 0 && (
+        <div className="overflow-x-auto rounded-md border border-grey-00 bg-white-00">
+          <table className="w-full border-collapse text-caption">
+            <thead>
               <tr>
-                <td colSpan={5} className="empty">
-                  No services match your filters.
-                </td>
+                <SortHeader label="Service" col="service" sort={sort} onSort={toggleSort} />
+                <SortHeader label="Category" col="category" sort={sort} onSort={toggleSort} />
+                <SortHeader label="Type" col="type" sort={sort} onSort={toggleSort} />
+                <SortHeader label="Status" col="status" sort={sort} onSort={toggleSort} />
+                <th className="border-b border-grey-00 bg-white-00 px-s py-xs" />
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {visible.map((row) => (
+                <tr key={row.slug} ref={anim.register(row.slug)}>
+                  <td className="border-b border-grey-00 px-s py-xs align-middle">
+                    <div className="font-bold">{row.title}</div>
+                    <div className="font-mono text-caption-sm text-mid-grey-00">
+                      {row.slug}
+                    </div>
+                    {errors[row.slug] && (
+                      <div className="mt-xxs text-caption-sm text-red-00">
+                        {errors[row.slug]}
+                      </div>
+                    )}
+                  </td>
+                  <td className="border-b border-grey-00 px-s py-xs align-middle">
+                    {row.category ?? "—"}
+                  </td>
+                  <td className="border-b border-grey-00 px-s py-xs align-middle">
+                    <TypeBadge row={row} />
+                    {row.orphan && (
+                      <span className="ml-xxs inline-block whitespace-nowrap rounded-full border border-red-40 px-xs py-[2px] text-caption-sm text-red-00">
+                        Orphan
+                      </span>
+                    )}
+                  </td>
+                  <td className="border-b border-grey-00 px-s py-xs align-middle">
+                    <select
+                      className={`rounded-sm border border-grey-00 bg-white-00 px-xs py-[6px] text-caption disabled:opacity-50 ${STATUS_TEXT[row.status]}`}
+                      value={row.status}
+                      disabled={saving[row.slug]}
+                      onChange={(e) => {
+                        const next = e.target.value as ServiceStatus;
+                        if (next !== row.status) setPending({ row, next });
+                      }}
+                      aria-label={`Status for ${row.title}`}
+                    >
+                      {SERVICE_STATUS_VALUES.map((s) => (
+                        <option
+                          key={s}
+                          value={s}
+                          disabled={s === "form_disabled" && !row.hasForm}
+                        >
+                          {STATUS_LABELS[s]}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="border-b border-grey-00 px-s py-xs align-middle">
+                    <button
+                      type="button"
+                      className="cursor-pointer border-0 bg-transparent p-0 text-blue-100 underline hover:no-underline"
+                      onClick={() =>
+                        setAudit({ slug: row.slug, title: row.title })
+                      }
+                    >
+                      History
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {visible.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-m py-m text-center text-mid-grey-00">
+                    No services match your filters.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
 
       {pending && (
         <ConfirmStatusChange
@@ -378,7 +376,17 @@ function ServicesPage() {
 function TypeBadge({ row }: { row: ServiceRow }) {
   const label = serviceTypeLabel(row);
   if (!label) return null;
-  return <span className={`badge${row.hasForm ? " form" : ""}`}>{label}</span>;
+  return (
+    <span
+      className={`inline-block whitespace-nowrap rounded-full border px-xs py-[2px] text-caption-sm ${
+        row.hasForm
+          ? "border-blue-40 text-blue-100"
+          : "border-grey-00 text-mid-grey-00"
+      }`}
+    >
+      {label}
+    </span>
+  );
 }
 
 function SortHeader({
@@ -394,10 +402,19 @@ function SortHeader({
 }) {
   const active = sort.key === col;
   return (
-    <th aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
-      <button type="button" className="th-sort" onClick={() => onSort(col)}>
+    <th
+      aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+      className="border-b border-grey-00 bg-white-00 px-s py-xs text-left text-caption-sm font-normal uppercase tracking-wide text-mid-grey-00"
+    >
+      <button
+        type="button"
+        className="inline-flex cursor-pointer items-center gap-xxs border-0 bg-transparent p-0 font-[inherit] uppercase tracking-[inherit] text-inherit hover:text-black-00"
+        onClick={() => onSort(col)}
+      >
         {label}
-        <span className="sort-ind">{active ? (sort.dir === "asc" ? "▲" : "▼") : "↕"}</span>
+        <span className="text-[10px] opacity-70">
+          {active ? (sort.dir === "asc" ? "▲" : "▼") : "↕"}
+        </span>
       </button>
     </th>
   );
