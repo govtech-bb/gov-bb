@@ -4,6 +4,8 @@ import {
   type SearchSchemaInput,
 } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SiteHeader } from "@govtech-bb/admin-ui";
+import { Button } from "@govtech-bb/react";
 import { checkSession, logoutSession } from "../server/auth";
 import { listServices, setServiceStatus } from "../server/service-status";
 import {
@@ -49,6 +51,14 @@ export const Route = createFileRoute("/")({
   loader: () => listServices(),
   component: ServicesPage,
 });
+
+// Status option text colour, using the darkest token in each family for
+// on-white contrast.
+const STATUS_TEXT: Record<ServiceStatus, string> = {
+  enabled: "text-green-00",
+  form_disabled: "text-yellow-00",
+  disabled: "text-red-00",
+};
 
 function ServicesPage() {
   const initial = Route.useLoaderData();
@@ -183,14 +193,13 @@ function ServicesPage() {
   }
 
   return (
-    <div className="page">
-      <div className="page-head">
-        <h1>Service visibility</h1>
-        <span className="who">
+    <>
+      <SiteHeader label="Service visibility">
+        <span className="text-mid-grey-00">
           {login} ·{" "}
           <button
             type="button"
-            className="linklike"
+            className="text-white-00 underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100"
             onClick={() =>
               void logoutSession().then(() => window.location.assign("/"))
             }
@@ -198,152 +207,148 @@ function ServicesPage() {
             Sign out
           </button>
         </span>
-      </div>
-      <p className="page-sub">
-        {isFiltered
-          ? `Showing ${visible.length} of ${rows.length} services.`
-          : `${rows.length} services.`}{" "}
-        Changing a status writes to the service_status audit log against your
-        GitHub login.
-      </p>
+      </SiteHeader>
 
-      <div className="toolbar">
-        <input
-          type="search"
-          placeholder="Search by title, slug or category…"
-          value={qInput}
-          onChange={(e) => onQueryChange(e.target.value)}
-          aria-label="Search services"
-        />
-        <select
-          value={categoryFilter}
-          onChange={(e) => update({ category: e.target.value })}
-          aria-label="Filter by category"
-        >
-          <option value="all">All categories</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-        <select
-          value={typeFilter}
-          onChange={(e) => update({ type: e.target.value })}
-          aria-label="Filter by type"
-        >
-          <option value="all">All types</option>
-          {types.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-        <select
-          value={statusFilter}
-          onChange={(e) => update({ status: e.target.value as StatusFilter })}
-          aria-label="Filter by status"
-        >
-          <option value="all">All statuses</option>
-          {SERVICE_STATUS_VALUES.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABELS[s]}
-            </option>
-          ))}
-        </select>
-      </div>
+      <div className="container max-w-[1100px] py-m">
+        <p className="mt-0 mb-xm text-caption text-mid-grey-00">
+          {isFiltered
+            ? `Showing ${visible.length} of ${rows.length} services.`
+            : `${rows.length} services.`}{" "}
+          Changing a status writes to the service_status audit log against your
+          GitHub login.
+        </p>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <SortHeader
-                label="Service"
-                col="service"
-                sort={sort}
-                onSort={toggleSort}
-              />
-              <SortHeader
-                label="Category"
-                col="category"
-                sort={sort}
-                onSort={toggleSort}
-              />
-              <SortHeader
-                label="Type"
-                col="type"
-                sort={sort}
-                onSort={toggleSort}
-              />
-              <SortHeader
-                label="Status"
-                col="status"
-                sort={sort}
-                onSort={toggleSort}
-              />
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((row) => (
-              <tr key={row.slug} ref={anim.register(row.slug)}>
-                <td>
-                  <div className="svc-title">{row.title}</div>
-                  <div className="svc-slug">{row.slug}</div>
-                  {errors[row.slug] && (
-                    <div className="row-error">{errors[row.slug]}</div>
-                  )}
-                </td>
-                <td>{row.category ?? "—"}</td>
-                <td>
-                  <TypeBadge row={row} />
-                  {row.orphan && <span className="badge orphan">Orphan</span>}
-                </td>
-                <td>
-                  <select
-                    className={`status status-${row.status}`}
-                    value={row.status}
-                    disabled={saving[row.slug]}
-                    onChange={(e) => {
-                      const next = e.target.value as ServiceStatus;
-                      if (next !== row.status) setPending({ row, next });
-                    }}
-                    aria-label={`Status for ${row.title}`}
-                  >
-                    {SERVICE_STATUS_VALUES.map((s) => (
-                      <option
-                        key={s}
-                        value={s}
-                        disabled={s === "form_disabled" && !row.hasForm}
-                      >
-                        {STATUS_LABELS[s]}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    className="linklike"
-                    onClick={() =>
-                      setAudit({ slug: row.slug, title: row.title })
-                    }
-                  >
-                    History
-                  </button>
-                </td>
-              </tr>
+        <div className="mb-s flex flex-wrap gap-xs">
+          <input
+            type="search"
+            placeholder="Search by title, slug or category…"
+            value={qInput}
+            onChange={(e) => onQueryChange(e.target.value)}
+            aria-label="Search services"
+            className="min-w-[220px] flex-1 rounded-sm border border-grey-00 bg-white-00 px-s py-xs text-caption focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100"
+          />
+          <select
+            value={categoryFilter}
+            onChange={(e) => update({ category: e.target.value })}
+            aria-label="Filter by category"
+            className="rounded-sm border border-grey-00 bg-white-00 px-s py-xs text-caption focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100"
+          >
+            <option value="all">All categories</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
             ))}
-            {visible.length === 0 && (
+          </select>
+          <select
+            value={typeFilter}
+            onChange={(e) => update({ type: e.target.value })}
+            aria-label="Filter by type"
+            className="rounded-sm border border-grey-00 bg-white-00 px-s py-xs text-caption focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100"
+          >
+            <option value="all">All types</option>
+            {types.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => update({ status: e.target.value as StatusFilter })}
+            aria-label="Filter by status"
+            className="rounded-sm border border-grey-00 bg-white-00 px-s py-xs text-caption focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100"
+          >
+            <option value="all">All statuses</option>
+            {SERVICE_STATUS_VALUES.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABELS[s]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="overflow-x-auto rounded-md border border-grey-00 bg-white-00">
+          <table className="w-full border-collapse text-caption">
+            <thead>
               <tr>
-                <td colSpan={5} className="empty">
-                  No services match your filters.
-                </td>
+                <SortHeader label="Service" col="service" sort={sort} onSort={toggleSort} />
+                <SortHeader label="Category" col="category" sort={sort} onSort={toggleSort} />
+                <SortHeader label="Type" col="type" sort={sort} onSort={toggleSort} />
+                <SortHeader label="Status" col="status" sort={sort} onSort={toggleSort} />
+                <th className="border-b border-grey-00 bg-white-00 px-s py-xs" />
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {visible.map((row) => (
+                <tr key={row.slug} ref={anim.register(row.slug)}>
+                  <td className="border-b border-grey-00 px-s py-xs align-middle">
+                    <div className="font-bold">{row.title}</div>
+                    <div className="font-mono text-caption-sm text-mid-grey-00">
+                      {row.slug}
+                    </div>
+                    {errors[row.slug] && (
+                      <div className="mt-xxs text-caption-sm text-red-00">
+                        {errors[row.slug]}
+                      </div>
+                    )}
+                  </td>
+                  <td className="border-b border-grey-00 px-s py-xs align-middle">
+                    {row.category ?? "—"}
+                  </td>
+                  <td className="border-b border-grey-00 px-s py-xs align-middle">
+                    <TypeBadge row={row} />
+                    {row.orphan && (
+                      <span className="ml-xxs inline-block whitespace-nowrap rounded-full border border-red-40 px-xs py-[2px] text-caption-sm text-red-00">
+                        Orphan
+                      </span>
+                    )}
+                  </td>
+                  <td className="border-b border-grey-00 px-s py-xs align-middle">
+                    <select
+                      className={`rounded-sm border border-grey-00 bg-white-00 px-xs py-[6px] text-caption disabled:opacity-50 ${STATUS_TEXT[row.status]}`}
+                      value={row.status}
+                      disabled={saving[row.slug]}
+                      onChange={(e) => {
+                        const next = e.target.value as ServiceStatus;
+                        if (next !== row.status) setPending({ row, next });
+                      }}
+                      aria-label={`Status for ${row.title}`}
+                    >
+                      {SERVICE_STATUS_VALUES.map((s) => (
+                        <option
+                          key={s}
+                          value={s}
+                          disabled={s === "form_disabled" && !row.hasForm}
+                        >
+                          {STATUS_LABELS[s]}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="border-b border-grey-00 px-s py-xs align-middle">
+                    <button
+                      type="button"
+                      className="cursor-pointer border-0 bg-transparent p-0 text-blue-100 underline hover:no-underline"
+                      onClick={() =>
+                        setAudit({ slug: row.slug, title: row.title })
+                      }
+                    >
+                      History
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {visible.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-m py-m text-center text-mid-grey-00">
+                    No services match your filters.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
 
       {pending && (
         <ConfirmStatusChange
@@ -364,14 +369,25 @@ function ServicesPage() {
           onClose={() => setAudit(null)}
         />
       )}
-    </div>
+      </div>
+    </>
   );
 }
 
 function TypeBadge({ row }: { row: ServiceRow }) {
   const label = serviceTypeLabel(row);
   if (!label) return null;
-  return <span className={`badge${row.hasForm ? " form" : ""}`}>{label}</span>;
+  return (
+    <span
+      className={`inline-block whitespace-nowrap rounded-full border px-xs py-[2px] text-caption-sm ${
+        row.hasForm
+          ? "border-blue-40 text-blue-100"
+          : "border-grey-00 text-mid-grey-00"
+      }`}
+    >
+      {label}
+    </span>
+  );
 }
 
 function SortHeader({
@@ -387,10 +403,19 @@ function SortHeader({
 }) {
   const active = sort.key === col;
   return (
-    <th aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
-      <button type="button" className="th-sort" onClick={() => onSort(col)}>
+    <th
+      aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+      className="border-b border-grey-00 bg-white-00 px-s py-xs text-left text-caption-sm font-normal uppercase tracking-wide text-mid-grey-00"
+    >
+      <button
+        type="button"
+        className="inline-flex cursor-pointer items-center gap-xxs border-0 bg-transparent p-0 font-[inherit] uppercase tracking-[inherit] text-inherit hover:text-black-00"
+        onClick={() => onSort(col)}
+      >
         {label}
-        <span className="sort-ind">{active ? (sort.dir === "asc" ? "▲" : "▼") : "↕"}</span>
+        <span className="text-[10px] opacity-70">
+          {active ? (sort.dir === "asc" ? "▲" : "▼") : "↕"}
+        </span>
       </button>
     </th>
   );
@@ -407,40 +432,45 @@ function ConfirmStatusChange({
 }) {
   const { row, next } = pending;
   return (
-    <div className="modal-backdrop" role="presentation" onClick={onCancel}>
+    <div
+      className="fixed inset-0 z-10 flex items-center justify-center bg-black-00/40 p-xm"
+      role="presentation"
+      onClick={onCancel}
+    >
       <div
-        className="modal"
+        className="w-full max-w-[460px] rounded-md border border-grey-00 bg-white-00 p-xm"
         role="dialog"
         aria-modal="true"
         aria-label="Confirm status change"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2>Change service status?</h2>
-        <p>
+        <h2 className="mb-s mt-0 text-h4 font-bold">Change service status?</h2>
+        <p className="mb-s text-caption">
           <strong>{row.title}</strong>
           <br />
-          <span className="svc-slug">{row.slug}</span>
+          <span className="font-mono text-caption-sm text-mid-grey-00">
+            {row.slug}
+          </span>
         </p>
-        <p>
+        <p className="mb-s text-caption">
           Status will change from{" "}
-          <span className={`status-${row.status}`}>
+          <span className={STATUS_TEXT[row.status]}>
             {STATUS_LABELS[row.status]}
           </span>{" "}
-          to{" "}
-          <span className={`status-${next}`}>{STATUS_LABELS[next]}</span>.
+          to <span className={STATUS_TEXT[next]}>{STATUS_LABELS[next]}</span>.
         </p>
-        <p className="modal-warn">
+        <p className="rounded-sm border border-yellow-40 bg-yellow-10 px-s py-xs text-caption">
           This changes what the public can see for this service. The change is
           saved immediately, but the public site caches service statuses for up
           to 60 seconds — so it can take a little over a minute to appear live.
         </p>
-        <div className="modal-actions">
-          <button type="button" className="btn-secondary" onClick={onCancel}>
+        <div className="mt-xm flex justify-end gap-xs">
+          <Button type="button" variant="secondary" onClick={onCancel}>
             Cancel
-          </button>
-          <button type="button" className="btn-primary" onClick={onConfirm}>
+          </Button>
+          <Button type="button" onClick={onConfirm}>
             Change status
-          </button>
+          </Button>
         </div>
       </div>
     </div>
