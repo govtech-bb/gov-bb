@@ -21,3 +21,15 @@ export async function sendSlackNotification(message: string): Promise<void> {
     // failure must never break an already-successful status change.
   }
 }
+
+/**
+ * Escape Slack mrkdwn control characters (`&`, `<`, `>`) so interpolated text
+ * renders verbatim and cannot break out of a `<url|text>` link.
+ * https://docs.slack.dev/messaging/formatting-message-text#escaping
+ */
+export function mrkdwnEscape(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}

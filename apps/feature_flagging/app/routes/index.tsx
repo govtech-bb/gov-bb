@@ -178,7 +178,14 @@ function ServicesPage() {
     setErrors((e) => ({ ...e, [row.slug]: "" }));
     setSaving((s) => ({ ...s, [row.slug]: true }));
     try {
-      await setServiceStatus({ data: { slug: row.slug, status: next } });
+      await setServiceStatus({
+        data: {
+          slug: row.slug,
+          status: next,
+          title: row.title,
+          url: serviceUrl(row) ?? undefined,
+        },
+      });
     } catch (err: unknown) {
       setRows((rs) =>
         rs.map((r) => (r.slug === row.slug ? { ...r, status: prev } : r)),

@@ -5,7 +5,7 @@ const { getSlackWebhookUrl } = vi.hoisted(() => ({
 }));
 vi.mock("./secrets", () => ({ getSlackWebhookUrl }));
 
-import { sendSlackNotification } from "./slack-notif";
+import { mrkdwnEscape, sendSlackNotification } from "./slack-notif";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -56,5 +56,19 @@ describe("sendSlackNotification", () => {
     getSlackWebhookUrl.mockResolvedValue("https://hooks.slack.com/services/x");
 
     await expect(sendSlackNotification("hello")).resolves.toBeUndefined();
+  });
+});
+
+describe("mrkdwnEscape", () => {
+  it("escapes &, < and > so text cannot break mrkdwn link syntax", () => {
+    expect(mrkdwnEscape("Fish & chips <deluxe>")).toBe(
+      "Fish &amp; chips &lt;deluxe&gt;",
+    );
+  });
+
+  it("leaves plain titles untouched", () => {
+    expect(mrkdwnEscape("Get a copy of a birth certificate")).toBe(
+      "Get a copy of a birth certificate",
+    );
   });
 });
