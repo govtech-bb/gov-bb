@@ -16,6 +16,8 @@ export interface ServiceStatusView {
  */
 export interface ServiceStatusUpdateView extends ServiceStatusView {
   previousStatus: ServiceStatus | null;
+  /** The guard-verified GitHub login recorded as the audit author. */
+  author: string;
 }
 
 /** A single audit-log entry for a service's status change. */
@@ -90,6 +92,6 @@ export class ServiceStatusService {
       );
     });
 
-    return { slug, status, previousStatus };
+    return { slug, status, previousStatus, author };
   }
 }
