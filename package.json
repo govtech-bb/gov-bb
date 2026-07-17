@@ -22,6 +22,7 @@
     "start:api": "ln -sfn ../dist/apps/api/src node_modules/@ && nx start api",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "generate:architecture-diagram": "tsx scripts/generate-architecture-diagram.ts",
     "generate:form-categories": "tsx scripts/generate-form-categories.ts",
     "generate:services-index": "tsx scripts/generate-services-index.ts",
     "generate:service-status-seed": "tsx scripts/generate-service-status-seed.ts",
