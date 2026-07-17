@@ -154,6 +154,7 @@ describe("ServiceStatusService", () => {
         slug: "passport-renewal",
         status: ServiceStatus.DISABLED,
         previousStatus: null,
+        author: "admin@govtech.bb",
       });
     });
 
@@ -184,6 +185,7 @@ describe("ServiceStatusService", () => {
         slug: "passport-renewal",
         status: ServiceStatus.FORM_DISABLED,
         previousStatus: ServiceStatus.ENABLED,
+        author: "admin@govtech.bb",
       });
     });
 
@@ -207,6 +209,7 @@ describe("ServiceStatusService", () => {
         slug: "passport-renewal",
         status: ServiceStatus.ENABLED,
         previousStatus: ServiceStatus.ENABLED,
+        author: "admin@govtech.bb",
       });
     });
   });

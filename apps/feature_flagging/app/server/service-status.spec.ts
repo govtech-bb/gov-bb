@@ -6,7 +6,10 @@ vi.mock("./api-client", () => ({ api: { put, get } }));
 const { sendSlackNotification } = vi.hoisted(() => ({
   sendSlackNotification: vi.fn(),
 }));
-vi.mock("./slack-notif", () => ({ sendSlackNotification }));
+vi.mock("./slack-notif", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./slack-notif")>()),
+  sendSlackNotification,
+}));
 
 import {
   getServiceAudit,
@@ -99,15 +102,21 @@ describe("listServices", () => {
 });
 
 describe("setServiceStatus", () => {
-  it("forwards the GitHub token and sends no author in the body", async () => {
+  it("forwards the GitHub token and sends neither author, title nor url in the body", async () => {
     put.mockResolvedValue({
       slug: "passport-renewal",
       status: "disabled",
       previousStatus: "enabled",
+      author: "audit-author",
     });
 
     const result = await setServiceStatus({
-      data: { slug: "passport-renewal", status: "disabled" },
+      data: {
+        slug: "passport-renewal",
+        status: "disabled",
+        title: "Renew a passport",
+        url: "https://forms.example.gov.bb/forms/passport-renewal",
+      },
       context: {
         session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
       },
@@ -122,25 +131,131 @@ describe("setServiceStatus", () => {
       slug: "passport-renewal",
       status: "disabled",
       previousStatus: "enabled",
+      author: "audit-author",
     });
   });
 
-  it("notifies Slack when the status actually changed", async () => {
+  it("notifies Slack with a linked title and the audit author on a change", async () => {
     put.mockResolvedValue({
       slug: "passport-renewal",
       status: "disabled",
       previousStatus: "enabled",
+      author: "audit-author",
     });
 
     await setServiceStatus({
-      data: { slug: "passport-renewal", status: "disabled" },
+      data: {
+        slug: "passport-renewal",
+        status: "disabled",
+        title: "Renew a passport",
+        url: "https://forms.example.gov.bb/forms/passport-renewal",
+      },
       context: {
         session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
       },
     } as never);
 
     expect(sendSlackNotification).toHaveBeenCalledWith(
-      "passport-renewal status changed from enabled to disabled",
+      '"<https://forms.example.gov.bb/forms/passport-renewal|Renew a passport>" has been changed from enabled to disabled by audit-author',
+    );
+  });
+
+  it("keeps the title plain when the service has no public URL", async () => {
+    put.mockResolvedValue({
+      slug: "orphan-service",
+      status: "disabled",
+      previousStatus: "enabled",
+      author: "audit-author",
+    });
+
+    await setServiceStatus({
+      data: {
+        slug: "orphan-service",
+        status: "disabled",
+        title: "orphan-service",
+      },
+      context: {
+        session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
+      },
+    } as never);
+
+    expect(sendSlackNotification).toHaveBeenCalledWith(
+      '"orphan-service" has been changed from enabled to disabled by audit-author',
+    );
+  });
+
+  it("escapes mrkdwn control characters in the title", async () => {
+    put.mockResolvedValue({
+      slug: "passport-renewal",
+      status: "disabled",
+      previousStatus: "enabled",
+      author: "audit-author",
+    });
+
+    await setServiceStatus({
+      data: {
+        slug: "passport-renewal",
+        status: "disabled",
+        title: "Passports & visas <fast-track>",
+        url: "https://forms.example.gov.bb/forms/passport-renewal",
+      },
+      context: {
+        session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
+      },
+    } as never);
+
+    expect(sendSlackNotification).toHaveBeenCalledWith(
+      '"<https://forms.example.gov.bb/forms/passport-renewal|Passports &amp; visas &lt;fast-track&gt;>" has been changed from enabled to disabled by audit-author',
+    );
+  });
+
+  it("does not link a url containing mrkdwn control characters", async () => {
+    put.mockResolvedValue({
+      slug: "passport-renewal",
+      status: "disabled",
+      previousStatus: "enabled",
+      author: "audit-author",
+    });
+
+    await setServiceStatus({
+      data: {
+        slug: "passport-renewal",
+        status: "disabled",
+        title: "Renew a passport",
+        url: "https://forms.example.gov.bb/forms/x|evil>injection",
+      },
+      context: {
+        session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
+      },
+    } as never);
+
+    expect(sendSlackNotification).toHaveBeenCalledWith(
+      '"Renew a passport" has been changed from enabled to disabled by audit-author',
+    );
+  });
+
+  it("does not link a non-http(s) url", async () => {
+    put.mockResolvedValue({
+      slug: "passport-renewal",
+      status: "disabled",
+      previousStatus: "enabled",
+      author: "audit-author",
+    });
+
+    await setServiceStatus({
+      data: {
+        slug: "passport-renewal",
+        status: "disabled",
+        title: "Renew a passport",
+        url: "javascript:alert(1)",
+      },
+      context: {
+        session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
+      },
+    } as never);
+
+    expect(sendSlackNotification).toHaveBeenCalledWith(
+      '"Renew a passport" has been changed from enabled to disabled by audit-author',
     );
   });
 
@@ -149,17 +264,47 @@ describe("setServiceStatus", () => {
       slug: "passport-renewal",
       status: "disabled",
       previousStatus: null,
+      author: "audit-author",
     });
 
     await setServiceStatus({
-      data: { slug: "passport-renewal", status: "disabled" },
+      data: {
+        slug: "passport-renewal",
+        status: "disabled",
+        title: "Renew a passport",
+        url: "https://forms.example.gov.bb/forms/passport-renewal",
+      },
       context: {
         session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
       },
     } as never);
 
     expect(sendSlackNotification).toHaveBeenCalledWith(
-      "passport-renewal status changed from unset to disabled",
+      '"<https://forms.example.gov.bb/forms/passport-renewal|Renew a passport>" has been changed from unset to disabled by audit-author',
+    );
+  });
+
+  it("falls back to the session login when the API response has no author", async () => {
+    put.mockResolvedValue({
+      slug: "passport-renewal",
+      status: "disabled",
+      previousStatus: "enabled",
+    });
+
+    await setServiceStatus({
+      data: {
+        slug: "passport-renewal",
+        status: "disabled",
+        title: "Renew a passport",
+        url: "https://forms.example.gov.bb/forms/passport-renewal",
+      },
+      context: {
+        session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
+      },
+    } as never);
+
+    expect(sendSlackNotification).toHaveBeenCalledWith(
+      '"<https://forms.example.gov.bb/forms/passport-renewal|Renew a passport>" has been changed from enabled to disabled by octocat',
     );
   });
 
@@ -168,10 +313,16 @@ describe("setServiceStatus", () => {
       slug: "passport-renewal",
       status: "disabled",
       previousStatus: "disabled",
+      author: "audit-author",
     });
 
     await setServiceStatus({
-      data: { slug: "passport-renewal", status: "disabled" },
+      data: {
+        slug: "passport-renewal",
+        status: "disabled",
+        title: "Renew a passport",
+        url: "https://forms.example.gov.bb/forms/passport-renewal",
+      },
       context: {
         session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
       },
