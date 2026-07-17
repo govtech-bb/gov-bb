@@ -156,7 +156,7 @@ describe("setServiceStatus", () => {
     } as never);
 
     expect(sendSlackNotification).toHaveBeenCalledWith(
-      '"<https://forms.example.gov.bb/forms/passport-renewal|Renew a passport>" has been changed from enabled to disabled by audit-author',
+      '"<https://forms.example.gov.bb/forms/passport-renewal|Renew a passport>" has been changed from `enabled` to `disabled` by `audit-author`',
     );
   });
 
@@ -180,7 +180,7 @@ describe("setServiceStatus", () => {
     } as never);
 
     expect(sendSlackNotification).toHaveBeenCalledWith(
-      '"orphan-service" has been changed from enabled to disabled by audit-author',
+      '"orphan-service" has been changed from `enabled` to `disabled` by `audit-author`',
     );
   });
 
@@ -205,7 +205,7 @@ describe("setServiceStatus", () => {
     } as never);
 
     expect(sendSlackNotification).toHaveBeenCalledWith(
-      '"<https://forms.example.gov.bb/forms/passport-renewal|Passports &amp; visas &lt;fast-track&gt;>" has been changed from enabled to disabled by audit-author',
+      '"<https://forms.example.gov.bb/forms/passport-renewal|Passports &amp; visas &lt;fast-track&gt;>" has been changed from `enabled` to `disabled` by `audit-author`',
     );
   });
 
@@ -230,7 +230,7 @@ describe("setServiceStatus", () => {
     } as never);
 
     expect(sendSlackNotification).toHaveBeenCalledWith(
-      '"Renew a passport" has been changed from enabled to disabled by audit-author',
+      '"Renew a passport" has been changed from `enabled` to `disabled` by `audit-author`',
     );
   });
 
@@ -255,7 +255,7 @@ describe("setServiceStatus", () => {
     } as never);
 
     expect(sendSlackNotification).toHaveBeenCalledWith(
-      '"Renew a passport" has been changed from enabled to disabled by audit-author',
+      '"Renew a passport" has been changed from `enabled` to `disabled` by `audit-author`',
     );
   });
 
@@ -280,7 +280,7 @@ describe("setServiceStatus", () => {
     } as never);
 
     expect(sendSlackNotification).toHaveBeenCalledWith(
-      '"<https://forms.example.gov.bb/forms/passport-renewal|Renew a passport>" has been changed from unset to disabled by audit-author',
+      '"<https://forms.example.gov.bb/forms/passport-renewal|Renew a passport>" has been changed from `unset` to `disabled` by `audit-author`',
     );
   });
 
@@ -304,7 +304,7 @@ describe("setServiceStatus", () => {
     } as never);
 
     expect(sendSlackNotification).toHaveBeenCalledWith(
-      '"<https://forms.example.gov.bb/forms/passport-renewal|Renew a passport>" has been changed from enabled to disabled by octocat',
+      '"<https://forms.example.gov.bb/forms/passport-renewal|Renew a passport>" has been changed from `enabled` to `disabled` by `octocat`',
     );
   });
 

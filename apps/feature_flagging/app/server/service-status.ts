@@ -120,7 +120,7 @@ export const setServiceStatus = createServerFn({ method: "POST" })
           ? data.url
           : undefined;
       const subject = url ? `<${url}|${title}>` : title;
-      const message = `"${subject}" has been changed from ${result.previousStatus ?? "unset"} to ${result.status} by ${author}`;
+      const message = `"${subject}" has been changed from \`${result.previousStatus ?? "unset"}\` to \`${result.status}\` by \`${author}\``;
       await sendSlackNotification(message);
     }
 
