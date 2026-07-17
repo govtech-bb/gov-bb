@@ -209,6 +209,56 @@ describe("setServiceStatus", () => {
     );
   });
 
+  it("does not link a url containing mrkdwn control characters", async () => {
+    put.mockResolvedValue({
+      slug: "passport-renewal",
+      status: "disabled",
+      previousStatus: "enabled",
+      author: "audit-author",
+    });
+
+    await setServiceStatus({
+      data: {
+        slug: "passport-renewal",
+        status: "disabled",
+        title: "Renew a passport",
+        url: "https://forms.example.gov.bb/forms/x|evil>injection",
+      },
+      context: {
+        session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
+      },
+    } as never);
+
+    expect(sendSlackNotification).toHaveBeenCalledWith(
+      '"Renew a passport" has been changed from enabled to disabled by audit-author',
+    );
+  });
+
+  it("does not link a non-http(s) url", async () => {
+    put.mockResolvedValue({
+      slug: "passport-renewal",
+      status: "disabled",
+      previousStatus: "enabled",
+      author: "audit-author",
+    });
+
+    await setServiceStatus({
+      data: {
+        slug: "passport-renewal",
+        status: "disabled",
+        title: "Renew a passport",
+        url: "javascript:alert(1)",
+      },
+      context: {
+        session: { login: "octocat", accessToken: "gh_tok", expiresAt: 0 },
+      },
+    } as never);
+
+    expect(sendSlackNotification).toHaveBeenCalledWith(
+      '"Renew a passport" has been changed from enabled to disabled by audit-author',
+    );
+  });
+
   it("notifies with 'unset' as the origin on a service's first-ever status set", async () => {
     put.mockResolvedValue({
       slug: "passport-renewal",

@@ -95,7 +95,7 @@ export const setServiceStatus = createServerFn({ method: "POST" })
       url: z.url().max(500).optional(),
     }),
   )
-  .handler(async ({ data, context }): Promise<StatusRow> => {
+  .handler(async ({ data, context }): Promise<StatusUpdateResult> => {
     const result = await api.put<StatusUpdateResult>(
       "/service_status",
       { slug: data.slug, status: data.status },
@@ -112,7 +112,14 @@ export const setServiceStatus = createServerFn({ method: "POST" })
     if (result.previousStatus !== result.status) {
       const author = result.author ?? context.session.login;
       const title = mrkdwnEscape(data.title);
-      const subject = data.url ? `<${data.url}|${title}>` : title;
+      // Link only http(s) URLs free of mrkdwn control characters — a `>` or
+      // `|` inside the URL would break out of the `<url|text>` link syntax
+      // (the same breakout class mrkdwnEscape closes for the title).
+      const url =
+        data.url && /^https?:\/\//.test(data.url) && !/[<>|]/.test(data.url)
+          ? data.url
+          : undefined;
+      const subject = url ? `<${url}|${title}>` : title;
       const message = `"${subject}" has been changed from ${result.previousStatus ?? "unset"} to ${result.status} by ${author}`;
       await sendSlackNotification(message);
     }
