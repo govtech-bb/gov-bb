@@ -754,8 +754,9 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
-          # persist-credentials (default) keeps the token configured so the
-          # force-push below can authenticate.
+          # Don't leave the token in git config (zizmor artipacked). The push
+          # below authenticates with an explicit one-shot token URL instead.
+          persist-credentials: false
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
@@ -768,11 +769,13 @@ jobs:
           APP_LABEL: feature-flagging
           PREVIEW_BRANCH: ff-preview
           URL: https://preview.feature-flagging.sandbox.alpha.gov.bb
+          GH_TOKEN: ${{ github.token }}
         run: |
           # Force-push this PR's commit onto the git branch the ff-preview Amplify
-          # branch tracks. Amplify auto-build is off, so the push alone doesn't
+          # branch tracks, using a one-shot token URL (creds aren't persisted in
+          # git config). Amplify auto-build is off, so the push alone doesn't
           # build — start-job below does. Concurrent FF PRs share the slot.
-          git push --force origin "HEAD:refs/heads/${PREVIEW_BRANCH}"
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${PREVIEW_BRANCH}"
           echo "Force-pushed $(git rev-parse --short HEAD) to ${PREVIEW_BRANCH}"
 
           echo "url=$URL" >> "$GITHUB_OUTPUT"
