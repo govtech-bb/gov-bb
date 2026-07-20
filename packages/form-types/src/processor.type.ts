@@ -116,12 +116,6 @@ const webhookAuthSchema = z.discriminatedUnion("scheme", [
 // an ordered list joined with spaces (e.g. first + last name).
 const webhookMappingSchema = z.object({
   programmeCode: z.string().min(1),
-  // When set, the payload `code` is a service-prefixed application code
-  // (generateApplicationCode) instead of the submission reference code. Must be
-  // a known ServiceCode — the processor runtime-guards it and fails loud on an
-  // unknown value. Kept a plain string here (form-types can't import the api's
-  // ServiceCode); the CI recipe-lint validates the value.
-  codeService: z.string().min(1).optional(),
   applicant: z.object({
     name: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
     email: z.string().min(1),

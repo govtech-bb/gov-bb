@@ -1,7 +1,5 @@
 import type { WebhookMapping } from "@govtech-bb/form-types";
 import type { SubmissionValues } from "../submissions.types";
-import { generateApplicationCode, isServiceCode } from "./application-code";
-import { WebhookConfigError } from "./webhook-errors";
 
 /**
  * Builds the external "case" payload from a submission using the recipe's
@@ -103,42 +101,19 @@ export interface MappedCasePayload {
   submitted_at: string;
 }
 
-/**
- * The case `code`: a deterministic service-prefixed application code when the
- * recipe sets `mapping.codeService`, otherwise the submission reference code.
- * An unknown `codeService` is a misconfiguration — throw (fail loud → DLQ)
- * rather than silently falling back.
- */
-function resolveCode(
-  mapping: WebhookMapping,
-  referenceCode: string,
-  submissionId: string,
-  submittedAt: string,
-): string {
-  const codeService = mapping.codeService;
-  if (!codeService) return referenceCode;
-  if (!isServiceCode(codeService)) {
-    throw new WebhookConfigError(
-      `[webhook] mapping.codeService "${codeService}" is not a known service code`,
-    );
-  }
-  return generateApplicationCode(codeService, submissionId, submittedAt);
-}
-
 export function buildMappedCasePayload(args: {
   mapping: WebhookMapping;
   values: SubmissionValues;
   referenceCode: string;
-  submissionId: string;
   submittedAt: string;
 }): MappedCasePayload {
-  const { mapping, values, referenceCode, submissionId, submittedAt } = args;
+  const { mapping, values, referenceCode, submittedAt } = args;
   const namePaths = Array.isArray(mapping.applicant.name)
     ? mapping.applicant.name
     : [mapping.applicant.name];
 
   return {
-    code: resolveCode(mapping, referenceCode, submissionId, submittedAt),
+    code: referenceCode,
     programme_code: mapping.programmeCode,
     applicant: {
       name: readName(values, mapping.applicant.name),
