@@ -2,6 +2,27 @@
 
 Guidance for working in this repo. Use **pnpm** for everything — never `npm`.
 
+## Trunk-based: open PRs against `main`
+
+`main` is the trunk and the default base for pull requests. Branch off `main`,
+keep the branch short-lived, and open the PR **against `main`** — never against
+`sandbox`/`staging`/`prod`. Merges to `main` are CI-gated (the "Main CI
+Required" ruleset: PR + status checks, no review required for now).
+
+Merging to `main` drives a **sequential deploy fan-out**:
+
+- **sandbox** — deploys automatically on every merge to `main`.
+- **staging** — deploys automatically, but only once the sandbox deploy is
+  fully green.
+- **prod** — **manual, windowed**: run the "Deploy Production" workflow from the
+  `staging` branch (Actions → Deploy Production → Run workflow → Branch:
+  `staging`). Never automatic.
+
+`sandbox`/`staging`/`prod` are **deploy pointers** the pipeline fast-forwards —
+they are not workspaces. Don't develop on them or open PRs against them; branch
+names must not contain a `.` (Amplify preview cert constraint). Full model:
+[docs/trunk-based-development.md](docs/trunk-based-development.md).
+
 ## Behavioral Guidelines
 
 These are the guidelines that you should adhere to as you work in this codebase.
@@ -126,6 +147,18 @@ error in one package fails the whole "Build all packages" step.
 a fully offline `build` fails on that package. When verifying locally,
 run `pnpm exec nx run-many -t build --exclude=landing` and let CI build
 everything.
+
+### Pin GitHub Actions with the exact version comment, never a major alias
+
+When SHA-pinning an action, the trailing comment must be the **exact release
+tag** the SHA resolves to (`# v4.36.2`), never a moving major alias (`# v4`).
+zizmor's online `ref-version-mismatch` audit resolves that comment against
+upstream and requires the tag to still point at the pinned SHA — a major tag
+moves on every vendor release, so a `# vN` comment silently drifts and fails
+CI on a later, unrelated PR. Resolve the exact tag with `git ls-remote --tags
+<repo>` (match the pinned SHA). Dependabot already writes exact comments and
+bumps SHA+comment together. The `zizmor.yml` "Enforce exact action version
+comments" step fails fast on any `# vN` comment.
 
 ### Monorepo build gotcha: new packages must be buildable AND referenced
 

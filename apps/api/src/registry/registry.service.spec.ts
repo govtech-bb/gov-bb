@@ -334,6 +334,25 @@ describe("hydrateForm", () => {
     const result = await hydrateForm(baseRecipe, resolver);
     expect(result.contactDetails).toBeUndefined();
   });
+
+  it("lifts meta.closingDateTime onto the served contract (#1936)", async () => {
+    const result = await hydrateForm(
+      {
+        ...baseRecipe,
+        meta: {
+          visibility: "public",
+          closingDateTime: "2026-07-09T23:59:00-04:00",
+        },
+      },
+      resolver,
+    );
+    expect(result.closingDateTime).toBe("2026-07-09T23:59:00-04:00");
+  });
+
+  it("leaves closingDateTime undefined when the recipe sets none", async () => {
+    const result = await hydrateForm(baseRecipe, resolver);
+    expect(result.closingDateTime).toBeUndefined();
+  });
 });
 
 // ─── RegistryService ───────────────────────────────────────────────────────

@@ -2,7 +2,13 @@ name: Deploy Sandbox
 
 on:
   push:
-    branches: [sandbox]
+    # TRUNK: sandbox is the FIRST deploy target off the trunk. A merge to `main`
+    # deploys to sandbox; on success this workflow dispatches deploy-staging
+    # (see the `promote-to-staging` job). sandbox/staging/prod are deploy
+    # POINTERS, not workspaces — the `advance-sandbox` job fast-forwards the
+    # `sandbox` branch to the merged commit so Amplify (which builds the
+    # `sandbox` branch) ships the trunk code.
+    branches: [main]
     # Skip the whole pipeline for changes that can't affect any deploy target.
     # Keep the list conservative — when in doubt, let nx-affected gate the
     # individual jobs (it already skips unchanged apps). The point of this
@@ -23,11 +29,18 @@ on:
       - ".github/PULL_REQUEST_TEMPLATE.md"
       - ".github/dependabot.yml"
   workflow_dispatch:
+    inputs:
+      force_analytics:
+        description: "Force an analytics Amplify build/deploy even when nx-affected didn't flag apps/analytics (e.g. first deploy after wiring, or a config-only redeploy)."
+        type: boolean
+        default: false
 
 permissions:
   # Single-purpose deploy workflow: every job assumes the AWS deploy role via
   # OIDC, so a workflow-level id-token grant is intentional. Per-job scoping
-  # tracked in #1462.
+  # tracked in #1462. The write scopes needed for branch-advance / dispatch are
+  # granted at the JOB level (advance-sandbox, promote-to-staging) so the deploy
+  # jobs stay read-only.
   id-token: write # zizmor: ignore[excessive-permissions]
   contents: read
 
@@ -44,12 +57,30 @@ env:
   ECS_SERVICE: modular-forms-api-sandbox
 
 jobs:
+  # Move the `sandbox` deploy pointer to the merged trunk commit BEFORE any
+  # Amplify job runs — Amplify builds the `sandbox` branch, so it must point at
+  # this code. force=false makes it a fast-forward-only update: a stale or
+  # rewound push can never silently roll sandbox back.
+  advance-sandbox:
+    name: Advance sandbox branch to trunk
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # fast-forward the sandbox branch ref
+    steps:
+      - name: Fast-forward sandbox → ${{ github.sha }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api -X PATCH "repos/${{ github.repository }}/git/refs/heads/sandbox" \
+            -f sha="${{ github.sha }}" -F force=false
+
   # Decide which deploy targets actually changed, so unchanged apps are skipped.
   # The base is the last SUCCESSFUL deploy (nx-set-shas), not the push range:
   # a target that failed to deploy stays "affected" until it ships green, where
   # a github.event.before diff would wrongly skip it on the next unrelated push.
   setup:
     name: Detect affected targets
+    needs: advance-sandbox
     runs-on: ubuntu-latest
     outputs:
       api: ${{ steps.affected.outputs.api }}
@@ -58,11 +89,13 @@ jobs:
       landing: ${{ steps.affected.outputs.landing }}
       chat: ${{ steps.affected.outputs.chat }}
       fb-app: ${{ steps.affected.outputs.fb-app }}
+      ff-app: ${{ steps.affected.outputs.ff-app }}
+      analytics: ${{ steps.affected.outputs.analytics }}
       migrations: ${{ steps.affected.outputs.migrations }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
           # Full history so nx-set-shas can find the last successful deploy and
@@ -70,18 +103,19 @@ jobs:
           fetch-depth: 0
 
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
 
       - name: Derive base/head SHAs
-        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4
+        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
         with:
-          # MUST be sandbox: the default "main" makes nx-set-shas search a branch
-          # this workflow never runs on, so it falls back to HEAD~1 every time.
-          main-branch-name: sandbox
+          # This workflow runs on `main` now (trunk), so the affected base is the
+          # last successful deploy-sandbox run on main. (Was `sandbox` when the
+          # workflow triggered on push:sandbox.)
+          main-branch-name: main
           workflow-id: deploy-sandbox.yml
 
       - name: Compute affected deploy targets
@@ -98,6 +132,8 @@ jobs:
           echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
           echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
           echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
+          echo "ff-app=$(has feature-flagging-app)" >> "$GITHUB_OUTPUT"
+          echo "analytics=$(has analytics-app)" >> "$GITHUB_OUTPUT"
 
           # Migrations: precise path-grep (from PR #216) on the unified base. The
           # migration task is a ~1.5-3 min cold Fargate run; migration:run is
@@ -131,19 +167,19 @@ jobs:
       image: ${{ steps.build.outputs.image }}
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
         id: ecr-login
-        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
 
       - name: Build and push image
         id: build
@@ -173,7 +209,7 @@ jobs:
 
       - name: Update task definition with new image
         id: new-task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@6853cfae8c3a7d978fbf68b5a55453395541dfbb # v1
+        uses: aws-actions/amazon-ecs-render-task-definition@6853cfae8c3a7d978fbf68b5a55453395541dfbb # v1.8.5
         with:
           task-definition: task-def.json
           container-name: api
@@ -225,7 +261,7 @@ jobs:
           echo "✅ Migrations completed successfully"
 
       - name: Deploy to ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@a310a830f5c14e583e35d84e4e1ec7dd177c3c9c # v2
+        uses: aws-actions/amazon-ecs-deploy-task-definition@a310a830f5c14e583e35d84e4e1ec7dd177c3c9c # v2.6.2
         with:
           task-definition: ${{ steps.new-task-def.outputs.task-definition }}
           service: ${{ env.ECS_SERVICE }}
@@ -280,19 +316,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
         id: ecr-login
-        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
 
       - name: Build and push form-builder image
         id: build-form-builder
@@ -381,7 +417,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -438,6 +474,82 @@ jobs:
               # advanced past us, the cancellation is correct — exit clean so
               # rapid-fire merges don't spam this workflow with red runs that
               # mean nothing.
+              CURRENT_HEAD=$(gh api "repos/${{ github.repository }}/commits/sandbox" --jq '.sha' 2>/dev/null || echo "")
+              if [ -n "$CURRENT_HEAD" ] && [ "$CURRENT_HEAD" != "${{ github.sha }}" ]; then
+                echo "✅ Amplify $APP_LABEL build CANCELLED — superseded by ${CURRENT_HEAD:0:7}; not failing"
+                exit 0
+              fi
+              echo "❌ Amplify $APP_LABEL build CANCELLED (no newer commit on sandbox — likely manual cancel or Amplify infra issue)"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
+          exit 1
+
+  amplify-feature-flagging:
+    name: Amplify build (feature-flagging)
+    needs: setup
+    if: needs.setup.outputs.ff-app == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Trigger and monitor Amplify build
+        env:
+          # Feature-flagging admin UI (apps/feature_flagging SSR) at
+          # feature-flagging.sandbox.alpha.gov.bb (gov-bb #1924).
+          AMPLIFY_APP_ID: d170ysh10vddy3
+          AMPLIFY_BRANCH: sandbox
+          # Needed for the CANCELLED→superseded check below to call gh api.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_LABEL: feature-flagging
+          APP_URL: https://feature-flagging.sandbox.alpha.gov.bb
+        run: |
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE \
+            --region "$AWS_REGION" \
+            --query jobSummary.jobId \
+            --output text)
+          echo "Amplify $APP_LABEL job started: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" \
+              --region "$AWS_REGION" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify $APP_LABEL build succeeded — running smoke test on $APP_URL"
+              # Feature-flagging is auth-gated: an unauthenticated request 307-
+              # redirects to the GitHub login flow rather than serving 200, so
+              # treat 200 OR 307 as healthy (a 5xx/000 is a real failure).
+              for j in 1 2 3 4 5; do
+                CODE=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL" 2>/dev/null || echo "000")
+                if [ "$CODE" = "200" ] || [ "$CODE" = "307" ]; then
+                  echo "✅ $APP_LABEL smoke test passed (HTTP $CODE)"
+                  exit 0
+                fi
+                echo "[$j/5] smoke test got HTTP $CODE, retrying in 5s..."
+                sleep 5
+              done
+              echo "❌ $APP_LABEL smoke test failed — $APP_URL not responding 200/307 after deploy"
+              exit 1
+            elif [ "$STATUS" = "FAILED" ]; then
+              echo "❌ Amplify $APP_LABEL build FAILED"
+              exit 1
+            elif [ "$STATUS" = "CANCELLED" ]; then
+              # Amplify cancels in-flight builds when a newer commit lands on the
+              # same branch (#441). If sandbox HEAD has advanced past us, the
+              # cancellation is correct — exit clean.
               CURRENT_HEAD=$(gh api "repos/${{ github.repository }}/commits/sandbox" --jq '.sha' 2>/dev/null || echo "")
               if [ -n "$CURRENT_HEAD" ] && [ "$CURRENT_HEAD" != "${{ github.sha }}" ]; then
                 echo "✅ Amplify $APP_LABEL build CANCELLED — superseded by ${CURRENT_HEAD:0:7}; not failing"
@@ -519,6 +631,101 @@ jobs:
     secrets:
       smoke_submission_token: ${{ secrets.SMOKE_SUBMISSION_TOKEN }}
 
+  amplify-analytics:
+    name: Amplify build (analytics)
+    needs: setup
+    if: needs.setup.outputs.analytics == 'true' || needs.setup.outputs.amplify-config == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_analytics)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Trigger and monitor Amplify build
+        env:
+          AMPLIFY_APP_ID: d363pae4e63dc6
+          AMPLIFY_BRANCH: sandbox
+          # Needed for the CANCELLED→superseded check below to call gh api.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_LABEL: analytics
+          APP_URL: https://analytics.sandbox.alpha.gov.bb
+          # Umami build-time config, from the repo secrets already used by the
+          # (reverted) snapshot workflow. analytics is a TanStack SSR app now
+          # (#1934/#1959): these are read at BUILD time and baked into the Nitro
+          # server runtime. Amplify — not GitHub Actions — runs that build, so
+          # we sync them onto the app right before start-job (below). GitHub
+          # masks these in logs; we also send the update-app output to /dev/null.
+          UMAMI_API_KEY: ${{ secrets.UMAMI_API_KEY }}
+          UMAMI_LANDING_WEBSITE_ID: ${{ secrets.UMAMI_LANDING_WEBSITE_ID }}
+          UMAMI_FORMS_WEBSITE_ID: ${{ secrets.UMAMI_FORMS_WEBSITE_ID }}
+          VITE_FORMS_API_URL: https://forms.api.sandbox.alpha.gov.bb
+        run: |
+          # Sync the build env (app-level, full map incl. the monorepo build
+          # selectors) from the repo secrets before building. autoBuild is OFF
+          # and this is the only trigger, so no Amplify build ever runs without
+          # this having set the env first — a stray tofu apply that resets the
+          # env is inert until the next deploy, which re-asserts it here.
+          aws amplify update-app \
+            --app-id "$AMPLIFY_APP_ID" \
+            --region "$AWS_REGION" \
+            --environment-variables "AMPLIFY_DIFF_DEPLOY=false,AMPLIFY_MONOREPO_APP_ROOT=apps/analytics,UMAMI_API_KEY=$UMAMI_API_KEY,UMAMI_LANDING_WEBSITE_ID=$UMAMI_LANDING_WEBSITE_ID,UMAMI_FORMS_WEBSITE_ID=$UMAMI_FORMS_WEBSITE_ID,VITE_FORMS_API_URL=$VITE_FORMS_API_URL" \
+            >/dev/null
+          echo "Synced analytics build env vars onto $AMPLIFY_APP_ID (values hidden)"
+
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE \
+            --region "$AWS_REGION" \
+            --query jobSummary.jobId \
+            --output text)
+          echo "Amplify $APP_LABEL job started: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" \
+              --region "$AWS_REGION" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify $APP_LABEL build succeeded — running smoke test on $APP_URL"
+              for j in 1 2 3 4 5; do
+                CODE=$(curl -fsSL -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL" 2>/dev/null || echo "000")
+                if [ "$CODE" = "200" ]; then
+                  echo "✅ $APP_LABEL smoke test passed (HTTP 200)"
+                  exit 0
+                fi
+                echo "[$j/5] smoke test got HTTP $CODE, retrying in 5s..."
+                sleep 5
+              done
+              echo "❌ $APP_LABEL smoke test failed — $APP_URL not responding 200 after deploy"
+              exit 1
+            elif [ "$STATUS" = "FAILED" ]; then
+              echo "❌ Amplify $APP_LABEL build FAILED"
+              exit 1
+            elif [ "$STATUS" = "CANCELLED" ]; then
+              # Amplify cancels in-flight builds when a newer commit lands on
+              # the same branch (configured in #441). If sandbox HEAD has
+              # advanced past us, the cancellation is correct — exit clean so
+              # rapid-fire merges don't spam this workflow with red runs that
+              # mean nothing.
+              CURRENT_HEAD=$(gh api "repos/${{ github.repository }}/commits/sandbox" --jq '.sha' 2>/dev/null || echo "")
+              if [ -n "$CURRENT_HEAD" ] && [ "$CURRENT_HEAD" != "${{ github.sha }}" ]; then
+                echo "✅ Amplify $APP_LABEL build CANCELLED — superseded by ${CURRENT_HEAD:0:7}; not failing"
+                exit 0
+              fi
+              echo "❌ Amplify $APP_LABEL build CANCELLED (no newer commit on sandbox — likely manual cancel or Amplify infra issue)"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
+          exit 1
+
   amplify-landing:
     name: Amplify build (landing)
     needs: setup
@@ -526,7 +733,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -599,7 +806,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -690,19 +897,19 @@ jobs:
       image: ${{ steps.build.outputs.image }}
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
         id: ecr-login
-        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
 
       - name: Build and push chat-ingest image
         id: build
@@ -790,7 +997,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -847,7 +1054,7 @@ jobs:
 
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, deploy-chat-ingest, amplify-form-builder]
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, deploy-chat-ingest, amplify-form-builder, amplify-feature-flagging]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -859,6 +1066,7 @@ jobs:
           LANDING_RESULT: ${{ needs.amplify-landing.result }}
           CHAT_RESULT: ${{ needs.amplify-chat.result }}
           FB_APP_RESULT: ${{ needs.amplify-form-builder.result }}
+          FF_APP_RESULT: ${{ needs.amplify-feature-flagging.result }}
           CHAT_INGEST_RESULT: ${{ needs.deploy-chat-ingest.result }}
           MIGRATIONS_GATE: ${{ needs.setup.outputs.migrations }}
         run: |
@@ -900,6 +1108,7 @@ jobs:
             echo "| Amplify landing | $(outcome "$LANDING_RESULT") |"
             echo "| Amplify chat | $(outcome "$CHAT_RESULT") |"
             echo "| Amplify form-builder | $(outcome "$FB_APP_RESULT") |"
+            echo "| Amplify feature-flagging | $(outcome "$FF_APP_RESULT") |"
             echo "| chat-ingest image | $(outcome "$CHAT_INGEST_RESULT") |"
             echo ""
             echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb"
@@ -907,11 +1116,12 @@ jobs:
             echo "**Forms URL:** https://forms.sandbox.alpha.gov.bb"
             echo "**Chat URL:** https://chat.sandbox.alpha.gov.bb"
             echo "**Form Builder URL:** https://builder.sandbox.alpha.gov.bb"
+            echo "**Feature Flagging URL:** https://feature-flagging.sandbox.alpha.gov.bb"
           } >> "$GITHUB_STEP_SUMMARY"
 
   notify-failure:
     name: Notify Slack on failure
-    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, deploy-chat-ingest, amplify-form-builder]
+    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, deploy-chat-ingest, amplify-form-builder, amplify-feature-flagging]
     if: always() && contains(needs.*.result, 'failure')
     runs-on: ubuntu-latest
     steps:
@@ -924,3 +1134,33 @@ jobs:
             {
               "text": ":x: *Sandbox deploy failed*\n*Workflow:* ${{ github.workflow }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* `${{ github.sha }}`\n*Triggered by:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View failed run>"
             }
+
+  # SEQUENTIAL DEPLOY GATE: staging deploys ONLY after sandbox is fully green.
+  # Runs only on a real trunk merge (not a manual sandbox re-run) and only when
+  # every affected target deployed cleanly — a skipped/unaffected job is fine,
+  # but any failure or cancellation stops the chain, so staging never receives
+  # code sandbox couldn't ship.
+  promote-to-staging:
+    name: Promote to staging (on sandbox green)
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, deploy-chat-ingest, amplify-form-builder, amplify-feature-flagging]
+    if: ${{ github.event_name == 'push' && !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write # dispatch deploy-staging via the built-in token
+      contents: read
+    steps:
+      - name: Dispatch deploy-staging for ${{ github.sha }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # This job has no checkout, so gh can't infer the repo from a local
+          # .git dir — give it explicitly. GH_REPO also removes the need for a
+          # --repo flag.
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # Built-in GITHUB_TOKEN: workflow_dispatch is exempt from the token's
+          # no-recursion guard, so this fires deploy-staging with NO PAT.
+          # --ref main runs main's deploy-staging.yml regardless of the default
+          # branch, and passes the exact commit sandbox proved so staging
+          # advances to the same SHA.
+          gh workflow run deploy-staging.yml --ref main \
+            -f promoted_sha="${{ github.sha }}"

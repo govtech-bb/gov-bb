@@ -1,9 +1,9 @@
 import { HttpService } from "@nestjs/axios";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
-import { firstValueFrom } from "rxjs";
 import webhooksConfig from "../config/webhooks.config";
 import { sanitizeForLog } from "./log-sanitize";
+import { timedPost } from "@/forms/submissions/processors/http-post";
 
 /**
  * Body posted to the case-management webhook. Field names are snake_case to
@@ -68,17 +68,20 @@ export class YouthOpportunityWebhookService {
     };
 
     try {
-      const response = await firstValueFrom(
-        this.http.post(endpoint, body, {
-          timeout: this.config.timeoutMs,
-          headers: {
-            "Content-Type": "application/json",
-            "X-API-Key": this.config.secret,
-          },
-        }),
-      );
+      // Send via the shared timedPost primitive so maxRedirects:0 blocks a 3xx
+      // to an internal host (e.g. cloud metadata) — the SSRF vector for an
+      // otherwise-trusted, operator-configured endpoint (#2000). The env URL is
+      // deliberately NOT run through assertSafeUrl: per #287 an operator's
+      // deploy config may legitimately be internal, so env endpoints are exempt.
+      await timedPost(this.http, endpoint, JSON.stringify(body), {
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": this.config.secret,
+        },
+        timeoutMs: this.config.timeoutMs,
+      });
       this.logger.log(
-        `[case-management] Delivered ${sanitizeForLog(payload.code)} (${sanitizeForLog(payload.programmeCode)}) — HTTP ${response.status}`,
+        `[case-management] Delivered ${sanitizeForLog(payload.code)} (${sanitizeForLog(payload.programmeCode)})`,
       );
     } catch (err) {
       this.logger.error(

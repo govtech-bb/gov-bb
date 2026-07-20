@@ -6,19 +6,21 @@ import {
   MaxLength,
 } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
+import { SUBMISSION_KEY_PATTERN } from "../submission-key";
 
-// Matches buildKey output: uploads/<formId>/<yyyy>/<mm>/<uuid>-<sanitized>
-const KEY_PATTERN =
-  /^uploads\/[a-z0-9-]+\/\d{4}\/\d{2}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[a-z0-9._-]+$/;
 const FORM_ID_PATTERN = /^[a-z0-9-]+$/i;
 const SLUG_PATTERN = /^[a-z0-9-]+$/i;
+// fieldId is embedded in the S3 key path (#284), so it must be path-safe — no
+// "/" or ".." that could escape the prefix. Allows the camelCase recipe field
+// ids in use (e.g. "policeCertificate").
+const FIELD_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 export class ConfirmUploadDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
   @MaxLength(512)
-  @Matches(KEY_PATTERN)
+  @Matches(SUBMISSION_KEY_PATTERN)
   key!: string;
 
   // formId/formVersion/stepId/fieldId are re-asserted so confirm can verify
@@ -49,5 +51,6 @@ export class ConfirmUploadDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
+  @Matches(FIELD_ID_PATTERN)
   fieldId!: string;
 }

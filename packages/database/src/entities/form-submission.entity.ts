@@ -52,4 +52,10 @@ export class FormSubmissionEntity extends TimestampedEntity {
 
   @Column({ name: "submitted_at", type: "timestamp", nullable: true })
   submittedAt!: Date | null;
+
+  // Processor entries (snapshot indices) that failed to dispatch async. Null =
+  // all entries dispatched (or none ran); a non-empty array marks the indices a
+  // reconciliation/retry job should re-dispatch (#1747).
+  @Column({ name: "processors_failed", type: "jsonb", nullable: true })
+  processorsFailed!: number[] | null;
 }

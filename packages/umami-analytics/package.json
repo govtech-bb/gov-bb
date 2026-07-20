@@ -1,0 +1,10 @@
+{
+  "name": "@govtech-bb/umami-analytics",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "scripts": {
+    "test": "vitest run"
+  }
+}

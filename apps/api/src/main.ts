@@ -5,6 +5,7 @@ import { ConfigService } from "@nestjs/config";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { DataSource } from "typeorm";
 import helmet from "helmet";
+import express from "express";
 import { AppModule } from "./app.module";
 import { GlobalExceptionFilter } from "./common/exception.filter";
 import { ResponseInterceptor } from "./common/response.interceptor";
@@ -14,11 +15,17 @@ import { runSeed } from "./database/seed";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
+
+  // Enable NestJS lifecycle shutdown hooks so onApplicationShutdown() fires on
+  // SIGTERM/SIGINT (e.g. on deploy). Without this the SQS consumer can't drain
+  // in-flight submissions gracefully — the process is just killed.
+  app.enableShutdownHooks();
+
   const config = app.get(ConfigService);
   const metricsService = app.get(MetricsService);
   const port = config.get<number>("app.port") ?? 3001;
 
-  app.use(require("express").json({ limit: "1mb" }));
+  app.use(express.json({ limit: "1mb" }));
   const corsOrigin =
     config.get<string>("app.corsOrigin") ?? "http://localhost:3000";
   const corsOrigins: (string | RegExp)[] = corsOrigin

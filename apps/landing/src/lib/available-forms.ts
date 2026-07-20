@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
-import { requireEnv } from '@/config/env'
+import { resolveCachedValue } from './cached-resolver'
+import { formsApiBase } from './forms-api-url'
 
 /**
  * Runtime resolution of the available forms list.
@@ -29,7 +30,6 @@ import { requireEnv } from '@/config/env'
  * (supersedes 0005).
  */
 
-const DEFAULT_API_URL = 'https://forms.api.sandbox.alpha.gov.bb'
 const FETCH_TIMEOUT_MS = 15_000
 
 /** How long a fetched list is served before the next request refetches it. */
@@ -42,16 +42,6 @@ const TTL_MS = 60_000
  * than make a visitor wait during an outage.
  */
 const COLD_START_RETRIES = 3
-
-/** Backoff between cold-start retries; the last value repeats if exceeded. */
-const RETRY_DELAYS_MS = [200, 500, 1000]
-
-function retryDelayMs(attempt: number): number {
-  return RETRY_DELAYS_MS[Math.min(attempt - 1, RETRY_DELAYS_MS.length - 1)]
-}
-
-const defaultSleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms))
 
 /** Canonical form IDs are kebab-case (ADR-0028). */
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/
@@ -131,16 +121,6 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
   }
 }
 
-/** Base URL of the forms API, trailing slashes trimmed. Hardened env handling:
- * requireEnv fails fast / falls back to DEFAULT_API_URL per #1366. */
-function formsApiBase(): string {
-  return requireEnv(
-    process.env.VITE_FORMS_API_URL,
-    'VITE_FORMS_API_URL',
-    DEFAULT_API_URL,
-  ).replace(/\/+$/, '')
-}
-
 /** Fetch and validate the canonical list of available form IDs. */
 async function fetchFormIds(): Promise<string[]> {
   const response = await fetchWithTimeout(
@@ -165,6 +145,19 @@ async function fetchMaintenanceFormIds(): Promise<string[]> {
   return parseMaintenanceIds(await response.json())
 }
 
+/** Fetch and validate the IDs of forms whose application window has closed (#1936). */
+async function fetchClosedFormIds(): Promise<string[]> {
+  const response = await fetchWithTimeout(
+    `${formsApiBase()}/form-definitions/closed`,
+    FETCH_TIMEOUT_MS,
+  )
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText}`)
+  }
+  // Same bare `{status,data:[ids]}` shape as /maintenance.
+  return parseMaintenanceIds(await response.json())
+}
+
 /**
  * Resolve the available form IDs through the cache. Pure with respect to time
  * and I/O — `now`, the `fetcher`, and the `cache` holder are injected so the
@@ -183,7 +176,7 @@ export async function resolveAvailableForms({
   fetcher,
   cache,
   coldStartRetries = 0,
-  sleep = defaultSleep,
+  sleep,
 }: {
   now: number
   ttlMs: number
@@ -194,41 +187,28 @@ export async function resolveAvailableForms({
   /** Injectable delay so tests don't wait on real timers. */
   sleep?: (ms: number) => Promise<void>
 }): Promise<string[]> {
-  const cached = cache.current
-  if (cached && now - cached.fetchedAt < ttlMs) {
-    return cached.ids
-  }
-
-  // One attempt for a warm (stale) instance; on a cold start, retry a few times
-  // before giving up so a momentary blip on the first-ever request doesn't blank
-  // the buttons.
-  const maxAttempts = cached ? 1 : 1 + Math.max(0, coldStartRetries)
-  let lastErr: unknown
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      const ids = await fetcher()
-      cache.current = { ids, fetchedAt: now }
-      return ids
-    } catch (err) {
-      lastErr = err
-      if (attempt < maxAttempts) await sleep(retryDelayMs(attempt))
-    }
-  }
-
-  if (cached) {
-    // Stale but present: keep serving the last-known-good list, and stamp the
-    // attempt so a down API isn't re-fetched (and blocked on the full timeout)
-    // on every request — it gets a fresh `ttlMs` cooldown before the next try.
-    cache.current = { ids: cached.ids, fetchedAt: now }
-    return cached.ids
-  }
-
-  console.warn(
-    '[available-forms] could not fetch the forms list and have no cached ' +
-      'copy — Start now buttons are suppressed until the next successful ' +
-      `fetch. Cause: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`,
-  )
-  return []
+  return resolveCachedValue<string[]>({
+    now,
+    ttlMs,
+    fetcher,
+    getCached: () =>
+      cache.current
+        ? { value: cache.current.ids, fetchedAt: cache.current.fetchedAt }
+        : null,
+    setCached: (entry) => {
+      cache.current = { ids: entry.value, fetchedAt: entry.fetchedAt }
+    },
+    emptyValue: [],
+    coldStartRetries,
+    sleep,
+    onFetchFailure: (err) => {
+      console.warn(
+        '[available-forms] could not fetch the forms list and have no cached ' +
+          'copy — Start now buttons are suppressed until the next successful ' +
+          `fetch. Cause: ${err instanceof Error ? err.message : String(err)}`,
+      )
+    },
+  })
 }
 
 /** Per-instance cache, shared across requests served by this server process. */
@@ -277,6 +257,29 @@ function resolveMaintenanceFromModuleCache(): Promise<string[]> {
  */
 export const getMaintenanceForms = createServerFn().handler(
   async (): Promise<string[]> => resolveMaintenanceFromModuleCache(),
+)
+
+/** Per-instance cache for the closed-forms list, separate from the others. */
+const closedCache: CacheRef = { current: null }
+
+/** Resolve the closed-forms list through its own per-instance cache. */
+function resolveClosedFromModuleCache(): Promise<string[]> {
+  return resolveAvailableForms({
+    now: Date.now(),
+    ttlMs: TTL_MS,
+    fetcher: fetchClosedFormIds,
+    cache: closedCache,
+    coldStartRetries: COLD_START_RETRIES,
+  })
+}
+
+/**
+ * Server function returning the IDs of forms whose application window has closed
+ * (#1936), backed by its own per-instance cache. A failed fetch degrades safely
+ * to `[]` — the closed notice is suppressed and the Start button stays as-is.
+ */
+export const getClosedForms = createServerFn().handler(
+  async (): Promise<string[]> => resolveClosedFromModuleCache(),
 )
 
 // Warm the cache as soon as this module loads on the server, so the first

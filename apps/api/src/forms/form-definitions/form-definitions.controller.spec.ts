@@ -5,6 +5,7 @@ const mockService = {
   findAll: vi.fn(),
   findByFormId: vi.fn(),
   findMaintenanceFormIds: vi.fn(),
+  findClosedFormIds: vi.fn(),
 };
 
 const mockOverridesService = {
@@ -92,6 +93,66 @@ describe("FormDefinitionsController", () => {
 
       expect(result).toMatchObject({ status: "success", data: list });
     });
+
+    describe("X-Recipe-Preview token (authoring list, #1835)", () => {
+      it("includes non-public forms and sets Cache-Control: no-store when the token is valid", async () => {
+        mockConfigService.get.mockReturnValue("s3cret");
+        mockService.findAll.mockResolvedValue([
+          { formId: "public-form", title: "Public", version: "1.0.0" },
+          {
+            formId: "preview-form",
+            title: "Preview",
+            version: "1.0.0",
+            visibility: "preview",
+          },
+        ]);
+
+        const result = await controller.getAll("s3cret", res as never);
+
+        expect(mockService.findAll).toHaveBeenCalledWith(true);
+        expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
+        expect(result.data.map((f) => f.formId)).toEqual([
+          "public-form",
+          "preview-form",
+        ]);
+      });
+
+      it("returns the public-only list and sets no Cache-Control when the token is wrong", async () => {
+        mockConfigService.get.mockReturnValue("s3cret");
+        mockService.findAll.mockResolvedValue([
+          { formId: "public-form", title: "Public", version: "1.0.0" },
+        ]);
+
+        await controller.getAll("nope", res as never);
+
+        expect(mockService.findAll).toHaveBeenCalledWith(false);
+        expect(res.setHeader).not.toHaveBeenCalled();
+      });
+
+      it("returns the public-only list when no token header is present", async () => {
+        mockConfigService.get.mockReturnValue("s3cret");
+        mockService.findAll.mockResolvedValue([
+          { formId: "public-form", title: "Public", version: "1.0.0" },
+        ]);
+
+        await controller.getAll(undefined, res as never);
+
+        expect(mockService.findAll).toHaveBeenCalledWith(false);
+        expect(res.setHeader).not.toHaveBeenCalled();
+      });
+
+      it("fails closed (public-only) when RECIPE_PREVIEW_TOKEN is unset even if a header is sent", async () => {
+        mockConfigService.get.mockReturnValue("");
+        mockService.findAll.mockResolvedValue([
+          { formId: "public-form", title: "Public", version: "1.0.0" },
+        ]);
+
+        await controller.getAll("s3cret", res as never);
+
+        expect(mockService.findAll).toHaveBeenCalledWith(false);
+        expect(res.setHeader).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe("getMaintenance (GET /form-definitions/maintenance)", () => {
@@ -117,6 +178,32 @@ describe("FormDefinitionsController", () => {
       mockService.findMaintenanceFormIds.mockResolvedValue([]);
 
       const result = await controller.getMaintenance();
+
+      expect(result.data).toEqual([]);
+    });
+  });
+
+  describe("getClosed (GET /form-definitions/closed)", () => {
+    it("returns the closed form IDs in the success shape", async () => {
+      mockService.findClosedFormIds.mockResolvedValue([
+        "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026",
+      ]);
+
+      const result = await controller.getClosed();
+
+      expect(mockService.findClosedFormIds).toHaveBeenCalled();
+      expect(result).toMatchObject({
+        status: "success",
+        data: [
+          "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026",
+        ],
+      });
+    });
+
+    it("returns an empty list when nothing is closed", async () => {
+      mockService.findClosedFormIds.mockResolvedValue([]);
+
+      const result = await controller.getClosed();
 
       expect(result.data).toEqual([]);
     });

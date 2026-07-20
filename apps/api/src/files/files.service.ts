@@ -11,10 +11,10 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { v4 as uuid } from "uuid";
 import type { Primitive, ServiceContract } from "@govtech-bb/form-types";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import { isValidSecretToken } from "../common/secret-token";
+import { buildSubmissionKey, parseSubmissionKey } from "./submission-key";
 import type {
   SubmissionValues,
   ValidationErrorBundle,
@@ -92,7 +92,12 @@ export class FilesService {
       throw new BadRequestException(`File exceeds max size (${maxSize} bytes)`);
     }
 
-    const key = this.buildKey(dto.formId, dto.fileName);
+    const key = buildSubmissionKey(
+      dto.formId,
+      dto.stepId,
+      dto.fieldId,
+      dto.fileName,
+    );
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
@@ -112,11 +117,25 @@ export class FilesService {
     draftToken?: string,
   ): Promise<FileAttachmentDto> {
     this.assertConfigured();
-    // TODO(security): the (formId, stepId, fieldId) the client supplies here
-    // is NOT cryptographically bound to the S3 key — a caller could presign
-    // for one field and confirm under another, escaping the stricter policy.
-    // Fix once these endpoints get auth: embed the tuple in the key prefix
-    // (or sign a token at presign and require it here).
+    // Bind confirm to presign (#284): the key embeds the (formId, stepId,
+    // fieldId) it was presigned under. Reject when the client confirms under a
+    // different field than the key was issued for — otherwise a caller could
+    // presign a lenient field and confirm under a stricter one to dodge its
+    // content-type/size policy. A caller can only HeadObject-confirm a key they
+    // actually presigned, so the embedded tuple is authoritative. Legacy
+    // tuple-less keys (in flight across deploy) skip the check and fall back to
+    // the prior client-supplied behaviour.
+    const keyTuple = parseSubmissionKey(dto.key);
+    if (
+      keyTuple &&
+      (keyTuple.formId !== dto.formId ||
+        keyTuple.stepId !== dto.stepId ||
+        keyTuple.fieldId !== dto.fieldId)
+    ) {
+      throw new BadRequestException(
+        "Upload key does not match the confirmed field",
+      );
+    }
     const field = await this.resolveFileField(
       dto.formId,
       dto.stepId,
@@ -438,22 +457,6 @@ export class FilesService {
     return typeof fromValidation === "number" && fromValidation > 0
       ? fromValidation
       : this.globalMaxSize;
-  }
-
-  private buildKey(formId: string, fileName: string): string {
-    const now = new Date();
-    const yyyy = now.getUTCFullYear();
-    const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
-    return `uploads/${formId}/${yyyy}/${mm}/${uuid()}-${this.sanitizeFileName(
-      fileName,
-    )}`;
-  }
-
-  private sanitizeFileName(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/\s+/g, "_")
-      .replace(/[^a-z0-9._-]/g, "");
   }
 
   private extractOriginalName(key: string): string {

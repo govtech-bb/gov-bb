@@ -12,6 +12,9 @@ import { MdaContactEntity } from "./entities/mda-contact.entity";
 import { FormConfigEntity } from "./entities/form-config.entity";
 import { FormDisabledOverrideEntity } from "./entities/form-disabled-override.entity";
 import { FormEditingSessionEntity } from "./entities/form-editing-session.entity";
+import { ServiceStatusEntity } from "./entities/service-status.entity";
+import { ServiceStatusAuditLogEntity } from "./entities/service-status-audit-log.entity";
+import { NotificationLogEntity } from "./entities/notification-log.entity";
 
 // Migrations
 import { CreateFormsTables1774544962999 } from "./migrations/1774544962999-CreateFormsTables";
@@ -28,6 +31,11 @@ import { CreateMdaContactAndFormConfig1780520220084 } from "./migrations/1780520
 import { CreateFormEditingSessions1780924594196 } from "./migrations/1780924594196-CreateFormEditingSessions";
 import { MakeFormVersionNullable1781000000000 } from "./migrations/1781000000000-MakeFormVersionNullable";
 import { DedupFormDefinitionsUniqueFormId1781100000000 } from "./migrations/1781100000000-DedupFormDefinitionsUniqueFormId";
+import { AddProcessorsFailedToFormSubmissions1781200000000 } from "./migrations/1781200000000-AddProcessorsFailedToFormSubmissions";
+import { CreateServiceStatusTables1783356461699 } from "./migrations/1783356461699-CreateServiceStatusTables";
+import { RenameServiceStatusFormIdToSlug1783440984875 } from "./migrations/1783440984875-RenameServiceStatusFormIdToSlug";
+import { CreateNotificationLog1783458705143 } from "./migrations/1783458705143-CreateNotificationLog";
+import { SeedServiceStatus1783520007424 } from "./migrations/1783520007424-SeedServiceStatus";
 
 export const entities = [
   FormComponentEntity,
@@ -41,6 +49,9 @@ export const entities = [
   FormConfigEntity,
   FormDisabledOverrideEntity,
   FormEditingSessionEntity,
+  ServiceStatusEntity,
+  ServiceStatusAuditLogEntity,
+  NotificationLogEntity,
 ];
 
 export const migrations = [
@@ -58,6 +69,11 @@ export const migrations = [
   CreateFormEditingSessions1780924594196,
   MakeFormVersionNullable1781000000000,
   DedupFormDefinitionsUniqueFormId1781100000000,
+  AddProcessorsFailedToFormSubmissions1781200000000,
+  CreateServiceStatusTables1783356461699,
+  RenameServiceStatusFormIdToSlug1783440984875,
+  CreateNotificationLog1783458705143,
+  SeedServiceStatus1783520007424,
 ];
 
 /**

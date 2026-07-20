@@ -63,6 +63,11 @@ const envSchema = z.object({
   // hung upstream once the main stream is in flight so a connection can't pin
   // forever. Default 60s — generous against a maxTokens=600 answer.
   TURN_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+  // Per-IP request cap for the public POST /api/chat endpoint, per 60s window.
+  // Defense-in-depth alongside the WAF (see lib/chat/rate-limit.ts) — retune
+  // here rather than widening in code. Default 20/min comfortably covers a real
+  // conversation while blocking scripted floods.
+  CHAT_RATE_LIMIT: z.coerce.number().int().positive().default(20),
 });
 
 export type ServerEnv = z.infer<typeof envSchema>;
@@ -106,4 +111,5 @@ export const getServerEnv = (): ServerEnv =>
     LLM_MOCK: orUndef(process.env.LLM_MOCK),
     LLM_MOCK_FORM: orUndef(process.env.LLM_MOCK_FORM),
     TURN_TIMEOUT_MS: orUndef(process.env.TURN_TIMEOUT_MS),
+    CHAT_RATE_LIMIT: orUndef(process.env.CHAT_RATE_LIMIT),
   });

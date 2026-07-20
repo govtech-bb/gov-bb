@@ -39,6 +39,33 @@ export function isLeafName(name: string): boolean {
 // multiple change events) into one reload.
 const WATCH_DEBOUNCE_MS = 250;
 
+/**
+ * The per-form webhook destination env-var names a recipe references — every
+ * `endpoint.env` and apiKey `auth.secretEnv` across its webhook processors
+ * (#1920). Pure; exported for testing and reused by the boot-time env audit.
+ */
+export function collectWebhookEnvNames(recipe: unknown): string[] {
+  const processors = (recipe as { processors?: unknown }).processors;
+  if (!Array.isArray(processors)) return [];
+  const names: string[] = [];
+  for (const raw of processors) {
+    const p = raw as {
+      type?: string;
+      config?: {
+        endpoint?: { env?: string };
+        auth?: { scheme?: string; secretEnv?: string };
+      };
+    };
+    if (p?.type !== "webhook") continue;
+    const cfg = p.config ?? {};
+    if (cfg.endpoint?.env) names.push(cfg.endpoint.env);
+    if (cfg.auth?.scheme === "apiKey" && cfg.auth.secretEnv) {
+      names.push(cfg.auth.secretEnv);
+    }
+  }
+  return names;
+}
+
 @Injectable()
 export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RecipeFileLoaderService.name);
@@ -175,6 +202,36 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
 
     this.recipes = next;
     this.logger.log(`Loaded ${next.size} forms from ${this.recipesRoot}`);
+    this.auditWebhookEnv();
+  }
+
+  /**
+   * Recipe-referenced webhook destination env vars that aren't set (unset or
+   * empty). Surfaces a provisioning gap at deploy rather than at the first
+   * submission (which, under fail-loud, would DLQ). Public so a health/
+   * diagnostics endpoint can report it.
+   */
+  missingWebhookEnv(): { formId: string; envName: string }[] {
+    const missing: { formId: string; envName: string }[] = [];
+    for (const [formId, recipe] of this.recipes) {
+      for (const envName of collectWebhookEnvNames(recipe)) {
+        if (!process.env[envName]) missing.push({ formId, envName });
+      }
+    }
+    return missing;
+  }
+
+  /** Warn (non-fatal) about unprovisioned webhook env vars after each load. A
+   * missing var must not down the whole API — provisioning is handed off and
+   * fail-loud + the DLQ alarm are the runtime backstop. */
+  private auditWebhookEnv(): void {
+    const missing = this.missingWebhookEnv();
+    if (missing.length === 0) return;
+    this.logger.warn(
+      `[webhook] ${missing.length} unprovisioned env var(s) referenced by recipes — ` +
+        `these forms fail-loud (DLQ) on submit until provisioned: ` +
+        missing.map((m) => `${m.envName} (${m.formId})`).join(", "),
+    );
   }
 
   /**
@@ -192,6 +249,7 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
     } catch (err) {
       throw new Error(
         `Failed to parse recipe ${filePath}: ${(err as Error).message}`,
+        { cause: err },
       );
     }
     const result = serviceContractRecipeSchema.safeParse(parsed);
@@ -203,13 +261,17 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
     return result.data;
   }
 
+  /**
+   * List every loaded form, each always carrying its recipe `visibility`
+   * (#1896). The public/authoring split and the maintenance list are no
+   * longer this loader's job — FormDefinitionsService applies one shared gate
+   * (recipe visibility overridden by any `service_status` row) over these raw
+   * (formId, visibility) pairs, for both the public list (#1646/#1835) and
+   * the maintenance list (#1694).
+   */
   findAll(): PublicFormSummary[] {
     const out: PublicFormSummary[] = [];
     for (const [formId, recipe] of this.recipes) {
-      // Hide non-public forms from the list (#1646) — the list carries no
-      // preview token, so preview/draft forms are unlisted for everyone,
-      // matching the 404 their single-form GET returns to the public.
-      if (getRecipeVisibility(recipe) !== "public") continue;
       out.push({
         formId,
         title: recipe.title,
@@ -222,21 +284,13 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
         ...(recipe.contactDetails?.title && {
           category: recipe.contactDetails.title,
         }),
+        visibility: getRecipeVisibility(recipe),
+        // Carry the application deadline (#1936) so findClosedFormIds can tell
+        // which public forms have passed it. Omitted when the recipe has none.
+        ...(recipe.meta?.closingDateTime && {
+          closingDateTime: recipe.meta.closingDateTime,
+        }),
       });
-    }
-    return out;
-  }
-
-  /**
-   * Form IDs whose recipe is under maintenance (#1694). Unlike preview/draft —
-   * which are hidden outright — a maintenance form is advertised publicly so the
-   * landing page can show an "under maintenance" notice. It stays absent from
-   * findAll (it is non-public), so its "Start now" button is still gated.
-   */
-  findMaintenanceFormIds(): string[] {
-    const out: string[] = [];
-    for (const [formId, recipe] of this.recipes) {
-      if (getRecipeVisibility(recipe) === "maintenance") out.push(formId);
     }
     return out;
   }

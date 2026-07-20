@@ -51,6 +51,11 @@ const envSchema = z
     // (#1400) — promoted to a boot-time failure in prod here.
     GITHUB_ORG: z.string().optional(),
     PUBLISH_BASE_BRANCH: z.string().default("dev"),
+    // Recipe-preview token forwarded to apps/api so the published-forms proxy
+    // gets the authoring list (non-public forms + visibility, #1835). Optional
+    // everywhere — never required at boot; when unset the proxy omits the
+    // header and falls back to the public-only list (degraded, never a crash).
+    RECIPE_PREVIEW_TOKEN: z.string().optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== "production") return;

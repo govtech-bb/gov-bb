@@ -69,13 +69,34 @@ export class FormDefinitionsController {
   ) {}
 
   @Get()
-  async getAll(): Promise<ApiResponseShape<PublicFormSummary[]>> {
+  async getAll(
+    // A valid `x-recipe-preview` token turns this into the authoring list
+    // (#1835): non-public forms are included and each entry carries its
+    // `visibility`. Reuses the same RECIPE_PREVIEW_TOKEN contract the
+    // single-form GET uses for its visibility bypass (#1646/#1682). With no
+    // token the response is byte-for-byte unchanged (public-only) — the
+    // shared-sandbox smoke path sends no token and is unaffected.
+    @Headers("x-recipe-preview") previewToken?: string,
+    @Res({ passthrough: true }) res?: Response,
+  ): Promise<ApiResponseShape<PublicFormSummary[]>> {
+    const configuredToken = this.configService.get<string>(
+      "RECIPE_PREVIEW_TOKEN",
+      "",
+    );
+    const includeNonPublic = isValidSecretToken(configuredToken, previewToken);
+    if (includeNonPublic) {
+      // A non-public list must never be cached by a CDN/proxy/browser (same as
+      // the single-form preview path).
+      res?.setHeader("Cache-Control", "no-store");
+    }
+
     // Exclude disabled (tombstoned) forms so the public list matches the 410
     // Gone the single-form GET returns for them — otherwise a disabled form
     // still shows on the forms index and as a landing "Start now" button
-    // (issue #615).
+    // (issue #615). This exclusion applies to the authoring list too (#1835 is
+    // strictly the visibility gate; disabled interactions are out of scope).
     const [data, disabledFormIds] = await Promise.all([
-      this.formDefinitionsService.findAll(),
+      this.formDefinitionsService.findAll(includeNonPublic),
       this.disabledOverridesService.findAllFormIds(),
     ]);
     const disabled = new Set(disabledFormIds);
@@ -93,6 +114,18 @@ export class FormDefinitionsController {
     const formIds = await this.formDefinitionsService.findMaintenanceFormIds();
     return AppApiResponse.success(formIds, {
       message: "Forms under maintenance retrieved",
+    });
+  }
+
+  // Declared before `:formId` (like "maintenance") so it routes here. Public:
+  // the closed formIds let landing hide "Start now" and show a closed notice
+  // (#1936). Closed forms stay public/served — the closed page needs the
+  // contract's contactDetails — so this list is purely advisory to landing.
+  @Get("closed")
+  async getClosed(): Promise<ApiResponseShape<string[]>> {
+    const formIds = await this.formDefinitionsService.findClosedFormIds();
+    return AppApiResponse.success(formIds, {
+      message: "Closed forms retrieved",
     });
   }
 
