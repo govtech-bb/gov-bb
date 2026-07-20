@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
 import type { SubmissionCreatedEvent } from "../forms/submissions/submissions.types";
-import { generateApplicationCode } from "../forms/submissions/processors/application-code";
+import { generateApplicationCodeForService } from "./application-code";
 import { buildWebhookFormData, extractApplicant } from "./applicant-extractor";
 import { sanitizeForLog } from "./log-sanitize";
 import { resolveServiceCodeFromFormId } from "./youth-opportunity-codes";
@@ -41,11 +41,7 @@ export class YouthOpportunityWebhookListener {
     }
 
     const applicant = extractApplicant(event.values);
-    const code = generateApplicationCode(
-      serviceCode,
-      event.submissionId,
-      event.meta.submittedAt,
-    );
+    const code = generateApplicationCodeForService(serviceCode);
 
     await this.webhook.dispatch({
       code,
