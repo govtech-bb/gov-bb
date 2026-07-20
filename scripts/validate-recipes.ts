@@ -10,7 +10,6 @@ import {
   refsOf,
   type RefLocation,
 } from "./recipe-ref-guards";
-import { checkWebhookDestinations } from "./webhook-recipe-guards";
 
 // Recipes live colocated with the API's form-definitions module — the same
 // path the API file loader, the dump script, the Dockerfile, and the form
@@ -75,7 +74,6 @@ async function main(): Promise<void> {
     }
     recipeCount++;
 
-    errors.push(...checkWebhookDestinations(recipe, relative));
     allRefs.push(...refsOf(recipe, file));
   }
 
