@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { randomInt } from "node:crypto";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; // 36 chars
 
@@ -7,6 +7,10 @@ const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; // 36 chars
  * (src/lib/application-code.ts) so the reference codes this backend issues to
  * the case-management webhook stay byte-for-byte compatible with the codes the
  * frontend issued before the dispatch moved server-side.
+ *
+ * BRIDGE ("Bridge to the Future Workshop") and JOY ("Spreading Joy at
+ * Christmas") were dropped: those forms have been removed from staging and are
+ * no longer offered.
  *
  * Using a const object gives a compile-time-checked union type, so an invalid
  * prefix is a TypeScript error rather than a runtime surprise.
@@ -34,8 +38,27 @@ export const SERVICES = {
 
 export type ServiceCode = keyof typeof SERVICES;
 
+/** 3-char base36 counter capacity (no persistent counter is wired up). */
+const COUNTER_CAPACITY = 36 ** 3;
+
 export function isServiceCode(value: string): value is ServiceCode {
   return value in SERVICES;
+}
+
+function encodeBase36(n: number, width: number): string {
+  if (n < 0) throw new Error("Counter must be non-negative");
+  if (n >= 36 ** width) {
+    throw new Error(`Counter ${n} exceeds capacity for width ${width}`);
+  }
+  return n.toString(36).toUpperCase().padStart(width, "0");
+}
+
+function randomSuffix(length: number): string {
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += ALPHABET[randomInt(0, ALPHABET.length)];
+  }
+  return result;
 }
 
 function formatDDMM(date: Date): string {
@@ -45,35 +68,26 @@ function formatDDMM(date: Date): string {
 }
 
 /**
- * Deterministic base36 suffix from a seed — each of the first `length` bytes of
- * a SHA-256 digest mapped into the 36-char alphabet. Same seed → same suffix.
- */
-function deterministicSuffix(seed: string, length: number): string {
-  const digest = createHash("sha256").update(seed).digest();
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    result += ALPHABET[digest[i] % ALPHABET.length];
-  }
-  return result;
-}
-
-/**
  * Generate an application tracking code:
- *   <SERVICE>-<DDMM>-<7 base36 chars>   e.g. BYAC-0306-A1Z9QF3
+ *   <SERVICE>-<DDMM>-<counter><random>   e.g. BYAC-0306-A1Z9QF
  *
- * Deterministic: a pure function of `service`, `submissionId` and the
- * submission date. The old implementation drew the suffix from a CSPRNG at
- * dispatch time, which produced a DIFFERENT code on every SQS retry of the same
- * submission — now that case-management dispatch runs through the retried
- * submission-processor pipeline, the code must be stable across retries (and
- * unique, from the submission UUID). Format is unchanged for the CM system.
+ * The 3-char counter slot is filled with a CSPRNG integer (no persistent
+ * counter exists); the 4-char random suffix keeps collision risk negligible.
  */
 export function generateApplicationCode(
   service: ServiceCode,
-  submissionId: string,
-  submittedAt: string,
+  applicationId: number,
+  date: Date = new Date(),
 ): string {
-  const datePart = formatDDMM(new Date(submittedAt));
-  const suffix = deterministicSuffix(`${service}:${submissionId}`, 7);
-  return `${service}-${datePart}-${suffix}`;
+  const datePart = formatDDMM(date);
+  const counterPart = encodeBase36(applicationId, 3);
+  const randomPart = randomSuffix(4);
+  return `${service}-${datePart}-${counterPart}${randomPart}`;
+}
+
+/** Issue a fresh tracking code for a service, mirroring the frontend action. */
+export function generateApplicationCodeForService(
+  service: ServiceCode,
+): string {
+  return generateApplicationCode(service, randomInt(0, COUNTER_CAPACITY));
 }

@@ -148,15 +148,6 @@ export { SEMVER_PATTERN, SEMVER_ERROR, semverSchema } from "./version-pattern";
 
 export { dynamic } from "./dynamic";
 
-export {
-  WEBHOOK_URL_PREFIX,
-  WEBHOOK_SECRET_PREFIX,
-  webhookUrlEnv,
-  webhookSecretEnv,
-  webhookUrlToken,
-  webhookSecretToken,
-} from "./webhook-env";
-
 export { shallowMergeDefined } from "./merge";
 export { applyFieldOverrides } from "./resolution-merge";
 
