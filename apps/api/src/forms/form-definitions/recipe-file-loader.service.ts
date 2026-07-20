@@ -39,33 +39,6 @@ export function isLeafName(name: string): boolean {
 // multiple change events) into one reload.
 const WATCH_DEBOUNCE_MS = 250;
 
-/**
- * The per-form webhook destination env-var names a recipe references — every
- * `endpoint.env` and apiKey `auth.secretEnv` across its webhook processors
- * (#1920). Pure; exported for testing and reused by the boot-time env audit.
- */
-export function collectWebhookEnvNames(recipe: unknown): string[] {
-  const processors = (recipe as { processors?: unknown }).processors;
-  if (!Array.isArray(processors)) return [];
-  const names: string[] = [];
-  for (const raw of processors) {
-    const p = raw as {
-      type?: string;
-      config?: {
-        endpoint?: { env?: string };
-        auth?: { scheme?: string; secretEnv?: string };
-      };
-    };
-    if (p?.type !== "webhook") continue;
-    const cfg = p.config ?? {};
-    if (cfg.endpoint?.env) names.push(cfg.endpoint.env);
-    if (cfg.auth?.scheme === "apiKey" && cfg.auth.secretEnv) {
-      names.push(cfg.auth.secretEnv);
-    }
-  }
-  return names;
-}
-
 @Injectable()
 export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RecipeFileLoaderService.name);
@@ -202,36 +175,6 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
 
     this.recipes = next;
     this.logger.log(`Loaded ${next.size} forms from ${this.recipesRoot}`);
-    this.auditWebhookEnv();
-  }
-
-  /**
-   * Recipe-referenced webhook destination env vars that aren't set (unset or
-   * empty). Surfaces a provisioning gap at deploy rather than at the first
-   * submission (which, under fail-loud, would DLQ). Public so a health/
-   * diagnostics endpoint can report it.
-   */
-  missingWebhookEnv(): { formId: string; envName: string }[] {
-    const missing: { formId: string; envName: string }[] = [];
-    for (const [formId, recipe] of this.recipes) {
-      for (const envName of collectWebhookEnvNames(recipe)) {
-        if (!process.env[envName]) missing.push({ formId, envName });
-      }
-    }
-    return missing;
-  }
-
-  /** Warn (non-fatal) about unprovisioned webhook env vars after each load. A
-   * missing var must not down the whole API — provisioning is handed off and
-   * fail-loud + the DLQ alarm are the runtime backstop. */
-  private auditWebhookEnv(): void {
-    const missing = this.missingWebhookEnv();
-    if (missing.length === 0) return;
-    this.logger.warn(
-      `[webhook] ${missing.length} unprovisioned env var(s) referenced by recipes — ` +
-        `these forms fail-loud (DLQ) on submit until provisioned: ` +
-        missing.map((m) => `${m.envName} (${m.formId})`).join(", "),
-    );
   }
 
   /**
