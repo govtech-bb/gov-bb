@@ -147,7 +147,10 @@ export const createFormDraft = async (
     lastActiveStep,
   };
 
-  makeFetch(
+  // Await so a save failure rejects this promise (throws FormFetchError)
+  // instead of being silently lost as an unhandled rejection — callers can
+  // surface it. NOTE: currently unused; wired here for correctness on adoption.
+  await makeFetch(
     endpoint,
     {},
     {
