@@ -6,15 +6,12 @@ import {
   MaxLength,
 } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
+import { SUBMISSION_KEY_PATTERN } from "../submission-key";
 
-// Matches buildKey output. The (stepId/fieldId) segments are optional so keys
-// presigned before the binding change (#284) still validate during rollout:
-//   uploads/<formId>/[<stepId>/<fieldId>/]<yyyy>/<mm>/<uuid>-<sanitized>
-const KEY_PATTERN =
-  /^uploads\/[a-z0-9-]+\/(?:[A-Za-z0-9-]+\/[A-Za-z0-9_-]+\/)?\d{4}\/\d{2}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[a-z0-9._-]+$/;
 // Lowercase-only (no `i` flag): a formId is a canonical lowercase kebab-case id
-// (ADR 0028). Rejecting uppercase here matches KEY_PATTERN's lowercase formId
-// segment, so an uppercase id can't presign then fail at confirm (#1853).
+// (ADR 0028). Rejecting uppercase here matches SUBMISSION_KEY_PATTERN's
+// lowercase formId segment, so an uppercase id can't presign then fail at
+// confirm (#1853).
 const FORM_ID_PATTERN = /^[a-z0-9-]+$/;
 const SLUG_PATTERN = /^[a-z0-9-]+$/i;
 // fieldId is embedded in the S3 key path (#284), so it must be path-safe — no
@@ -27,7 +24,7 @@ export class ConfirmUploadDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(512)
-  @Matches(KEY_PATTERN)
+  @Matches(SUBMISSION_KEY_PATTERN)
   key!: string;
 
   // formId/formVersion/stepId/fieldId are re-asserted so confirm can verify

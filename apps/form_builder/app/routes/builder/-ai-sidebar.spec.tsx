@@ -156,22 +156,42 @@ describe("AiSidebar — Edit Form", () => {
   });
 
   it("shows an interrupted message when the edit session is not found (404)", async () => {
-    // A single-task restart mid-edit loses the in-memory job; the next status
-    // poll 404s, surfaced by the API client as the expired-session message.
+    // A single-task restart mid-edit loses the in-memory job; every status
+    // poll 404s, surfaced by the API client as the expired-session message
+    // once the 3-consecutive-failure retry budget (#1531) is spent.
+    vi.useFakeTimers();
+    const user = userEvent.setup({
+      advanceTimers: (ms) => {
+        if (vi.isFakeTimers()) vi.advanceTimersByTime(ms);
+      },
+    });
     startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
     getEditStatus.mockRejectedValue(
       new Error("This edit session expired — please try again."),
     );
     setup();
 
-    await userEvent.type(
+    await user.type(
       screen.getByPlaceholderText(/make the email field required/i),
       "do a huge edit",
     );
-    await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
+    await user.click(screen.getByRole("button", { name: /edit form/i }));
 
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(/edit session expired/i);
+    // Three failed polls: 400ms first poll, then 2s between retries.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(/edit session expired/i),
+    );
+    vi.useRealTimers();
   });
 
   it("surfaces a validation error returned by the apply pipeline", async () => {
@@ -373,6 +393,162 @@ describe("AiSidebar — outcome feedback", () => {
   });
 });
 
+describe("AiSidebar — apply failure + Retry apply (#1532 #1871 #1873)", () => {
+  // A *rejection* of onApplyRecipe (the editor pipeline crashed, distinct from
+  // a resolved { error } validation verdict) must surface an apply-specific
+  // message and offer a Retry apply action that re-applies the stashed recipe
+  // from memory — no re-run of the billed generation.
+  const RECIPE = { formId: "contact", steps: [] };
+
+  // Drives the edit path up to a rejected apply and returns the retry button.
+  async function editToApplyFailure(
+    onApplyRecipe: Parameters<typeof setup>[0],
+    unresolvableRefs: unknown[] = [],
+  ) {
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue(
+      doneStatus(RECIPE, "Here you go.", unresolvableRefs),
+    );
+    setup(onApplyRecipe);
+
+    await userEvent.type(
+      screen.getByPlaceholderText(/make the email field required/i),
+      "add a step",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
+    return await screen.findByRole("button", { name: /retry apply/i });
+  }
+
+  it("shows an apply-specific error, not the raw rejection, when apply rejects on the edit path (#1871)", async () => {
+    const onApplyRecipe = vi
+      .fn()
+      .mockRejectedValue(new Error("editor pipeline crashed"));
+    await editToApplyFailure(onApplyRecipe);
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(/couldn't apply the recipe to the editor/i);
+    // Pre-fix behavior routed the rejection through the generic edit catch.
+    expect(alert).not.toHaveTextContent(/editor pipeline crashed/i);
+  });
+
+  it("retries with the stashed recipe + refs without re-calling any AI/upload server fn", async () => {
+    const unresolvableRefs = [
+      { ref: "components/generic/text", path: "steps[step-1].elements[0].ref" },
+    ];
+    const onApplyRecipe = vi.fn().mockRejectedValue(new Error("boom"));
+    const retry = await editToApplyFailure(onApplyRecipe, unresolvableRefs);
+
+    await userEvent.click(retry);
+
+    await waitFor(() => expect(onApplyRecipe).toHaveBeenCalledTimes(2));
+    expect(onApplyRecipe).toHaveBeenNthCalledWith(2, RECIPE, unresolvableRefs);
+    expect(startEditRecipe).toHaveBeenCalledTimes(1);
+    expect(presignPdfUpload).not.toHaveBeenCalled();
+    expect(startPdfConvert).not.toHaveBeenCalled();
+  });
+
+  it("clears the error and pending state and reports applied when the retry succeeds", async () => {
+    const onApplyRecipe = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValue({ applied: true });
+    const retry = await editToApplyFailure(onApplyRecipe);
+
+    await userEvent.click(retry);
+
+    expect(await screen.findByText(/applied to the editor/i)).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /retry apply/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the error and the retry action when the retry rejects again", async () => {
+    const onApplyRecipe = vi.fn().mockRejectedValue(new Error("boom"));
+    const retry = await editToApplyFailure(onApplyRecipe);
+
+    await userEvent.click(retry);
+
+    await waitFor(() => expect(onApplyRecipe).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /couldn't apply the recipe to the editor/i,
+    );
+    expect(
+      screen.getByRole("button", { name: /retry apply/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the retry action when the retried apply is cancelled at the overwrite prompt", async () => {
+    // Declining the dirty-form confirm resolves { reason: "cancelled" } — the
+    // stash must survive so the user can still retry after saving, instead of
+    // being forced back through a billed regeneration.
+    const onApplyRecipe = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValue({ applied: false, reason: "cancelled" });
+    const retry = await editToApplyFailure(onApplyRecipe);
+
+    await userEvent.click(retry);
+
+    await waitFor(() => expect(onApplyRecipe).toHaveBeenCalledTimes(2));
+    expect(
+      screen.getByRole("button", { name: /retry apply/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("disables Retry apply and blocks new jobs while a retry is in flight", async () => {
+    // The apply pipeline is NOT synchronous — it validates over the network
+    // before any confirm — so an unguarded window lets a double-click fire two
+    // applies, or a fresh job start whose state the stale retry then clobbers.
+    let resolveRetry!: (value: unknown) => void;
+    const onApplyRecipe = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockImplementationOnce(() => new Promise((r) => (resolveRetry = r)));
+    const retry = await editToApplyFailure(onApplyRecipe);
+
+    await userEvent.click(retry);
+
+    // In flight: the retry button and both job starters are locked out.
+    expect(retry).toBeDisabled();
+    await userEvent.click(retry); // no-op — must not fire a second apply
+    expect(screen.getByRole("button", { name: /edit form/i })).toBeDisabled();
+    await userEvent.type(
+      screen.getByPlaceholderText(/make the email field required/i),
+      "another edit",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
+    expect(startEditRecipe).toHaveBeenCalledTimes(1);
+    expect(onApplyRecipe).toHaveBeenCalledTimes(2);
+
+    resolveRetry({ applied: true });
+    expect(await screen.findByText(/applied to the editor/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /retry apply/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("clears the pending retry and error when a new edit job starts", async () => {
+    const onApplyRecipe = vi.fn().mockRejectedValue(new Error("boom"));
+    await editToApplyFailure(onApplyRecipe);
+
+    // Second job hangs in "processing" so we can observe the cleared state
+    // right after the job starts.
+    getEditStatus.mockResolvedValue({ status: "processing" });
+    await userEvent.type(
+      screen.getByPlaceholderText(/make the email field required/i),
+      "another edit",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
+
+    await waitFor(() => expect(startEditRecipe).toHaveBeenCalledTimes(2));
+    expect(
+      screen.queryByRole("button", { name: /retry apply/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
 describe("AiSidebar — collapse", () => {
   it("collapses and re-expands", async () => {
     setup();
@@ -462,6 +638,74 @@ describe("AiSidebar — Upload", () => {
     });
 
     await waitFor(() => expect(onApplyRecipe).toHaveBeenCalled());
+    vi.useRealTimers();
+  });
+
+  it("tolerates two transient poll failures then applies the recipe on recovery", async () => {
+    // A 502/503 blip mid-poll must not kill a billed Textract + Bedrock run —
+    // two consecutive failures are swallowed and the job recovers on the third.
+    vi.useFakeTimers();
+    const user = setupUser();
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    startPdfConvert.mockResolvedValue({ jobId: "job-1" });
+    getPdfConvertStatus
+      .mockRejectedValueOnce(new Error("502 Bad Gateway"))
+      .mockRejectedValueOnce(new Error("503 Service Unavailable"))
+      .mockResolvedValueOnce({
+        status: "done",
+        recipe: { formId: "f", steps: [] },
+        reply: "Done.",
+        unresolvableRefs: [],
+      });
+    const { onApplyRecipe } = setup();
+
+    await pickPdf(user);
+    await user.click(screen.getByRole("button", { name: /upload/i }));
+
+    // Three polls: reject → reject → done. The two failures never surface.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    await waitFor(() => expect(onApplyRecipe).toHaveBeenCalled());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it("surfaces the error only after three consecutive poll failures", async () => {
+    vi.useFakeTimers();
+    const user = setupUser();
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    startPdfConvert.mockResolvedValue({ jobId: "job-1" });
+    getPdfConvertStatus.mockRejectedValue(new Error("502 Bad Gateway"));
+    setup();
+
+    await pickPdf(user);
+    await user.click(screen.getByRole("button", { name: /upload/i }));
+
+    // No alert after the first two failures — the retry budget isn't spent yet.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    // The third consecutive failure surfaces the error and stops polling.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(/502 bad gateway/i),
+    );
+    expect(getPdfConvertStatus).toHaveBeenCalledTimes(3);
     vi.useRealTimers();
   });
 
@@ -575,6 +819,48 @@ describe("AiSidebar — Upload", () => {
     );
     // The context is back in the box so the user doesn't have to retype it.
     expect((box as HTMLTextAreaElement).value).toBe("skip the payment page");
+  });
+
+  it("shows an apply-specific error, not an upload error, when apply rejects after a successful convert (#1532)", async () => {
+    vi.useFakeTimers();
+    const user = setupUser();
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    startPdfConvert.mockResolvedValue({ jobId: "job-1" });
+    getPdfConvertStatus.mockResolvedValue({
+      status: "done",
+      recipe: { formId: "f", steps: [] },
+      reply: "Done.",
+      unresolvableRefs: [],
+    });
+    const onApplyRecipe = vi
+      .fn()
+      .mockRejectedValue(new Error("editor pipeline crashed"));
+    setup(onApplyRecipe);
+
+    // Typed context rides along with the upload; a *successful* upload consumes
+    // it, so an apply failure must NOT restore it to the box (the restore is
+    // for genuine upload failures only).
+    const box = screen.getByPlaceholderText(/make the email field required/i);
+    await user.type(box, "make every field optional");
+    await pickPdf(user);
+    await user.click(screen.getByRole("button", { name: /upload/i }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000); // → done
+    });
+
+    await waitFor(() => expect(onApplyRecipe).toHaveBeenCalled());
+    await waitFor(() => {
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent(/couldn't apply the recipe to the editor/i);
+      expect(alert).not.toHaveTextContent(/upload failed/i);
+      expect(alert).not.toHaveTextContent(/editor pipeline crashed/i);
+    });
+    expect(
+      screen.getByRole("button", { name: /retry apply/i }),
+    ).toBeInTheDocument();
+    expect((box as HTMLTextAreaElement).value).toBe("");
+    vi.useRealTimers();
   });
 
   it("omits context and keeps the box untouched when the prompt is empty", async () => {

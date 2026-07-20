@@ -9,6 +9,35 @@
         "recipientField": "applicant-details.applicant-email",
         "subject": "Your application for Cyber Security Training Workshop has been received"
       }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "endpoint": {
+          "env": "WEBHOOK_URL"
+        },
+        "auth": {
+          "scheme": "apiKey",
+          "header": "X-API-Key",
+          "secretEnv": "WEBHOOK_SECRET"
+        },
+        "mapping": {
+          "programmeCode": "CYBER",
+          "applicant": {
+            "name": [
+              "applicant-details.applicant-first-name",
+              "applicant-details.applicant-last-name"
+            ],
+            "email": "applicant-details.applicant-email",
+            "phone": "applicant-details.phone-number"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ]
+        }
+      }
     }
   ],
   "steps": [

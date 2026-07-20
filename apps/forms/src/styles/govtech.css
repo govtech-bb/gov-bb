@@ -394,6 +394,9 @@
 
 .form-page__contact {
   margin-top: var(--spacing-m);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s); /* 16px between inner elements */
 }
 
 .form-page__contact-body {
@@ -410,6 +413,22 @@
 
 .form-page__contact-label {
   font-weight: var(--font-weight-bold);
+}
+
+/* ---- Applications-closed page (#1936) ------------------------------------ *
+ * The "Application closed" inset: a light-blue panel with a navy left rule
+ * (same tokens as the service-title caption and payment panel), a small bold
+ * grey label, and the formatted closing datetime beneath it. */
+.form-page__closed-panel {
+  padding: var(--spacing-s) var(--spacing-s);
+  background: var(--color-blue-10);
+  border-left: var(--color-blue-40) 0.25rem solid;
+}
+
+.form-page__closed-panel-label {
+  margin-bottom: var(--spacing-xxs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-mid-grey-00);
 }
 
 /* ---- Markdown content (recipe-authored confirmation copy) ---------------- *

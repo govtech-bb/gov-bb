@@ -1,9 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
 import type { SubmissionCreatedEvent } from "../forms/submissions/submissions.types";
-import { generateApplicationCodeForService } from "./application-code";
+import { generateApplicationCode } from "../forms/submissions/processors/application-code";
 import { buildWebhookFormData, extractApplicant } from "./applicant-extractor";
-import { sanitizeForLog } from "./log-sanitize";
 import { resolveServiceCodeFromFormId } from "./youth-opportunity-codes";
 import { YouthOpportunityWebhookService } from "./youth-opportunity-webhook.service";
 
@@ -28,20 +27,21 @@ export class YouthOpportunityWebhookListener {
     // not suppress it — short-circuit explicitly (#1252).
     if (event.isSmokeSubmission) return;
 
+    // #841/#1458: FORM_ID_SERVICE_CODES is drained — every programme now
+    // dispatches via the `webhook` processor in its recipe (code = the
+    // submission's referenceCode). This listener is dormant: it resolves nothing
+    // and dispatches nothing. Kept in place for a phased cutover; no "unmapped"
+    // warning, since a youth-opportunity formId not being here is now expected,
+    // not a misconfiguration.
     const serviceCode = resolveServiceCodeFromFormId(event.formId);
-    if (!serviceCode) {
-      // Either not a youth-opportunity form, or an unmapped one. Non-youth
-      // forms are silently ignored; an unmapped youth form is worth flagging.
-      if (event.formId.startsWith("youth-opportunity-")) {
-        this.logger.warn(
-          `[case-management] Unmapped youth-opportunity formId="${sanitizeForLog(event.formId)}" — no dispatch`,
-        );
-      }
-      return;
-    }
+    if (!serviceCode) return;
 
     const applicant = extractApplicant(event.values);
-    const code = generateApplicationCodeForService(serviceCode);
+    const code = generateApplicationCode(
+      serviceCode,
+      event.submissionId,
+      event.meta.submittedAt,
+    );
 
     await this.webhook.dispatch({
       code,

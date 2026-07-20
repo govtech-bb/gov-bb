@@ -210,6 +210,61 @@ export default function FormRenderer({
 
   if (!currentStep) return null;
 
+  // The step body (and all its hooks) lives in a child that only mounts once we
+  // have a step, so those hooks are never called conditionally — mirrors the
+  // RouteComponent → FormView split in routes/forms/$formId (#1981).
+  return (
+    <ActiveStep
+      form={form}
+      formMeta={formMeta}
+      stepId={stepId}
+      currentStep={currentStep}
+      stepIndex={stepIndex}
+      hidePrevious={hidePrevious}
+      visibleSteps={visibleSteps}
+      repeatableStepSettingsRef={repeatableStepSettingsRef}
+      submissionState={submissionState}
+      isDraft={isDraft}
+      previewToken={previewToken}
+      draftToken={draftToken}
+      navigateToStep={navigateToStep}
+      completeAndContinue={completeAndContinue}
+    />
+  );
+}
+
+type StepGuard = ReturnType<typeof useStepGuard>;
+
+interface ActiveStepProps extends FormRendererProps {
+  currentStep: FormRendererProps["visibleSteps"][number];
+  stepIndex: number;
+  hidePrevious: boolean;
+  navigateToStep: StepGuard["navigateToStep"];
+  completeAndContinue: StepGuard["completeAndContinue"];
+}
+
+/**
+ * Renders the active step. Split out of FormRenderer so every hook here runs
+ * unconditionally — FormRenderer's `if (!currentStep) return null` guard sits
+ * above this component, so `currentStep` is always present by the time we're
+ * here (#1981).
+ */
+function ActiveStep({
+  form,
+  formMeta,
+  stepId,
+  currentStep,
+  stepIndex,
+  hidePrevious,
+  visibleSteps,
+  repeatableStepSettingsRef,
+  submissionState,
+  isDraft = false,
+  previewToken,
+  draftToken,
+  navigateToStep,
+  completeAndContinue,
+}: ActiveStepProps) {
   const currentFields = [...currentStep.fields];
 
   // #801: distinguish repeat instances beyond the first. undefined for base
@@ -647,9 +702,9 @@ export default function FormRenderer({
             isLastFormStep &&
             isDraft && (
               <p className="govbb-hint" data-testid="draft-submit-hint">
-                Submitting is disabled for an unpublished draft. Set the form's
-                visibility to Preview or Public and publish it to enable
-                submission.
+                Submitting is disabled for an unpublished draft. Set the
+                form&apos;s visibility to Preview or Public and publish it to
+                enable submission.
               </p>
             )}
         </div>

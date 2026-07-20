@@ -4,6 +4,7 @@ import { ConfigModule } from "@nestjs/config";
 import { SubmissionsController } from "./submissions.controller";
 import { SubmissionsService } from "./submissions.service";
 import { FormSubmissionRepository } from "./form-submission.repository";
+import { NotificationLogRepository } from "./notification-log.repository";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { SubmissionProcessorListener } from "./submission-processor.listener";
 import {
@@ -22,7 +23,9 @@ import { PaymentsModule } from "@/payments/payments.module";
 import { FilesModule } from "@/files/files.module";
 import { SqsProducerService } from "./sqs/sqs-producer.service";
 import { SqsConsumerService } from "./sqs/sqs-consumer.service";
+import { SesEventConsumerService } from "./sqs/ses-event-consumer.service";
 import sqsConfig from "@/config/sqs.config";
+import sesEventsConfig from "@/config/ses-events.config";
 import { ExpressionsModule } from "@/expressions/expressions.module";
 import { EmailTemplateService } from "@/email/email-template.service";
 import { EmailBodyBuilder } from "@/email/email-body.builder";
@@ -38,12 +41,14 @@ import { PaymentRequiredListener } from "@/email/payment-required.listener";
     PaymentsModule,
     FilesModule,
     ConfigModule.forFeature(sqsConfig),
+    ConfigModule.forFeature(sesEventsConfig),
     ExpressionsModule,
   ],
   controllers: [SubmissionsController],
   providers: [
     SubmissionsService,
     FormSubmissionRepository,
+    NotificationLogRepository,
     SubmissionPipelineService,
     SesMailer,
     PaymentRequiredListener,
@@ -75,6 +80,7 @@ import { PaymentRequiredListener } from "@/email/payment-required.listener";
     ProcessorFactory,
     SqsProducerService,
     SqsConsumerService,
+    SesEventConsumerService,
     SubmissionProcessorListener,
   ],
   exports: [SubmissionsService],

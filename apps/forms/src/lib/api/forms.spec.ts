@@ -22,6 +22,7 @@ import {
   fetchFormDefinitions,
   fetchFormDraft,
   patchFormDraft,
+  createFormDraft,
   deleteFormDraft,
   postFormSubmission,
   formatDataForSubmission,
@@ -350,9 +351,31 @@ describe("deleteFormDraft", () => {
     const calledUrl = mockFetch.mock.calls[0][0] as string;
     const fetchArgs = mockFetch.mock.calls[0][1] as RequestInit;
     expect(fetchArgs.method).toBe("DELETE");
-    // Currently RED: forms.ts:200 has typo `/form-drafs/${draftId}` (missing 't').
-    // Source fix tracked separately.
     expect(calledUrl).toContain("/form-drafts/draft-123");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createFormDraft
+// ---------------------------------------------------------------------------
+
+describe("createFormDraft", () => {
+  const meta = { formId: "test-form" } as FormMeta;
+
+  it("POSTs the draft to /form-drafts", async () => {
+    mockFetch.mockResolvedValue(makeOkResponse(null, 201));
+    await createFormDraft(meta, "draft-1", {}, "step-1");
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    const fetchArgs = mockFetch.mock.calls[0][1] as RequestInit;
+    expect(fetchArgs.method).toBe("POST");
+    expect(calledUrl).toContain("/form-drafts");
+  });
+
+  it("rejects (surfaces the failure) when the save fails, instead of swallowing it", async () => {
+    mockFetch.mockResolvedValue(makeErrorResponse(500));
+    await expect(
+      createFormDraft(meta, "draft-1", {}, "step-1"),
+    ).rejects.toThrow(FormFetchError);
   });
 });
 

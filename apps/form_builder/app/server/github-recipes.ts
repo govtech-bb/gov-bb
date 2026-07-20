@@ -33,7 +33,7 @@ async function ghGet(
 ): Promise<{ status: number; body: unknown }> {
   const res = await fetch(url, { headers: ghHeaders(token) });
   const text = await res.text();
-  let body: unknown = null;
+  let body: unknown;
   try {
     body = text ? JSON.parse(text) : null;
   } catch {

@@ -6,17 +6,21 @@
   "scripts": {
     "dev": "vite dev --port 3100",
     "build": "vite build",
-    "preview": "vite preview",
+    "preview": "nitro preview",
+    "start": "node .amplify-hosting/compute/default/server.js",
     "test": "vitest run",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
-    "generate:analytics": "tsx scripts/generate-analytics-snapshot.ts"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@fontsource/figtree": "^5.2.10",
     "@govtech-bb/design": "^1.0.0-alpha.17",
     "@govtech-bb/react": "^1.0.0-alpha.17",
     "@govtech-bb/umami-analytics": "workspace:*",
+    "@tanstack/react-router": "catalog:",
+    "@tanstack/react-start": "catalog:",
+    "@tanstack/router-plugin": "catalog:",
+    "nitro": "3.0.260429-beta",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
@@ -32,7 +36,6 @@
     "eslint": "^10.2.0",
     "jsdom": "^28.1.0",
     "tailwindcss": "^4.3.0",
-    "tsx": "^4.22.3",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "^4.1.8"
