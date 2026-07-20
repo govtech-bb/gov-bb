@@ -743,11 +743,14 @@ jobs:
       - name: Create branch and trigger preview build
         id: build
         env:
-          # feature-flagging admin UI (apps/feature_flagging SSR) at
-          # feature-flagging.sandbox.alpha.gov.bb. NOTE: GitHub OAuth sign-in is
-          # pinned to that custom-domain callback, so on the preview URL the app
-          # builds and loads but LOGIN WILL FAIL (redirect_uri mismatch). The
-          # preview is for UI/build validation, not authenticated flows.
+          # feature-flagging admin UI (apps/feature_flagging SSR). Served on a
+          # CUSTOM DOMAIN — <branch>.feature-flagging.sandbox.alpha.gov.bb — not
+          # amplifyapp.com, because that host is a SUBDOMAIN of the OAuth callback
+          # host, which GitHub accepts, so GitHub LOGIN WORKS on previews.
+          # (alpha-infra: auto-subdomain association + network wildcard DNS/cert.)
+          # OAUTH_REDIRECT_BASE + the GitHub/API config aren't app-level (they
+          # live on the sandbox branch), so we set them branch-scoped below.
+          # NOTE: previews read/write SANDBOX flag data via the sandbox forms API.
           AMPLIFY_APP_ID: d170ysh10vddy3
           APP_LABEL: feature-flagging
           BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
@@ -765,8 +768,23 @@ jobs:
             echo "Amplify branch $BRANCH_NAME already exists on $AMPLIFY_APP_ID"
           fi
 
+          # Custom-domain host (NOT amplifyapp.com). Amplify auto-subdomain maps
+          # this branch to <SUBDOMAIN>.feature-flagging.sandbox.alpha.gov.bb.
           SUBDOMAIN="${BRANCH_NAME//\//-}"
-          URL="https://${SUBDOMAIN}.${AMPLIFY_APP_ID}.amplifyapp.com"
+          URL="https://${SUBDOMAIN}.feature-flagging.sandbox.alpha.gov.bb"
+
+          # Branch-scoped SSR config (baked into the bundle via Vite define at
+          # build time). Mirrors the sandbox branch's env, but OAUTH_REDIRECT_BASE
+          # points at THIS preview host so the OAuth dance stays same-origin and
+          # GitHub accepts the redirect_uri (a subdomain of the callback host).
+          aws amplify update-branch \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --region "$AWS_REGION" \
+            --environment-variables "OAUTH_REDIRECT_BASE=$URL,GITHUB_ORG=govtech-bb,GITHUB_TEAM_SLUG=content-and-feature-management,FEATURE_FLAGGING_API_URL=https://forms-sandbox.alpha.gov.bb" \
+            >/dev/null
+          echo "Set feature-flagging config on branch $BRANCH_NAME (OAUTH_REDIRECT_BASE=$URL)"
+
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "Preview URL: $URL"
 
@@ -913,7 +931,7 @@ jobs:
             echo ""
             echo "_Commit: \`${COMMIT_SHA:0:7}\`_  ·  _Branches auto-delete when this PR closes._"
             echo ""
-            echo "> ℹ️ **feature-flagging** preview is for UI/build review only — GitHub sign-in is pinned to the sandbox domain, so login won't work on the preview URL."
+            echo "> ℹ️ **feature-flagging** preview supports GitHub login (custom-domain preview). First build of a new branch may take a few minutes for the subdomain cert to provision. It reads/writes **sandbox** flag data."
           } > comment.md
 
           # Hand the file path to the next step.
