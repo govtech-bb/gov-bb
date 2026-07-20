@@ -13,11 +13,15 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, closed]
 
 permissions:
-  # id-token (AWS OIDC) and pull-requests (sticky preview comment) are used by
-  # this workflow's jobs; per-job scoping tracked in #1462.
-  id-token: write       # zizmor: ignore[excessive-permissions] OIDC for the AWS role
-  contents: read        # checkout
-  pull-requests: write  # zizmor: ignore[excessive-permissions] sticky comment
+  # Minimal workflow-level default. The elevated grants are scoped per job to
+  # the jobs that actually need them (gov-bb-security#4): only the preview jobs
+  # and teardown request `id-token: write` (AWS OIDC), and only `comment`
+  # requests `pull-requests: write` (sticky comment). The `setup` job — which
+  # checks out PR code and runs `pnpm install` — gets `contents: read` only, so
+  # a poisoned dependency lifecycle script can't reach the OIDC token. The
+  # forms-smoke / forms-a11y reusable-workflow calls inherit this default (they
+  # need only checkout + artifact upload).
+  contents: read
 
 # Per-PR concurrency; cancel in-flight runs on new push. Mirrors
 # Vercel-style "latest commit wins" for ephemeral previews.
@@ -41,6 +45,9 @@ jobs:
     name: Detect affected apps
     if: github.event.action != 'closed' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    # Checks out PR code and runs `pnpm install` — no AWS/OIDC token in scope.
+    permissions:
+      contents: read
     outputs:
       forms: ${{ steps.affected.outputs.forms }}
       landing: ${{ steps.affected.outputs.landing }}
@@ -90,7 +97,11 @@ jobs:
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
-      - run: pnpm install --frozen-lockfile
+      # --ignore-scripts: this job only needs the dependency graph for `nx show
+      # projects --affected` — nothing here needs a build/lifecycle script.
+      # Disable them as defense-in-depth so a poisoned lifecycle script in a
+      # PR-added dependency can't execute on the runner (gov-bb-security#4).
+      - run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Compute affected apps
         id: affected
@@ -144,6 +155,9 @@ jobs:
     needs: setup
     if: needs.setup.outputs.forms == 'true' || needs.setup.outputs.amplify-config == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC for the AWS role (configure-aws-credentials)
+      contents: read
     outputs:
       status: ${{ steps.build.outputs.status }}
       url: ${{ steps.build.outputs.url }}
@@ -305,6 +319,9 @@ jobs:
     needs: setup
     if: needs.setup.outputs.landing == 'true' || needs.setup.outputs.amplify-config == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC for the AWS role (configure-aws-credentials)
+      contents: read
     outputs:
       status: ${{ steps.build.outputs.status }}
       url: ${{ steps.build.outputs.url }}
@@ -406,6 +423,9 @@ jobs:
     needs: setup
     if: needs.setup.outputs.chat == 'true' || needs.setup.outputs.amplify-config == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC for the AWS role (configure-aws-credentials)
+      contents: read
     outputs:
       status: ${{ steps.build.outputs.status }}
       url: ${{ steps.build.outputs.url }}
@@ -507,6 +527,9 @@ jobs:
     needs: setup
     if: needs.setup.outputs.fb-app == 'true' || needs.setup.outputs.amplify-config == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC for the AWS role (configure-aws-credentials)
+      contents: read
     outputs:
       status: ${{ steps.build.outputs.status }}
       url: ${{ steps.build.outputs.url }}
@@ -608,6 +631,9 @@ jobs:
     needs: setup
     if: needs.setup.outputs.analytics == 'true' || needs.setup.outputs.amplify-config == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC for the AWS role (configure-aws-credentials)
+      contents: read
     outputs:
       status: ${{ steps.build.outputs.status }}
       url: ${{ steps.build.outputs.url }}
@@ -847,6 +873,8 @@ jobs:
       && github.event.action != 'closed'
       && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write # sticky preview comment
     steps:
       - name: Render comment body
         id: render
@@ -937,6 +965,9 @@ jobs:
     name: Delete preview branches
     if: github.event.action == 'closed'
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC for the AWS role (configure-aws-credentials)
+      contents: read
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
