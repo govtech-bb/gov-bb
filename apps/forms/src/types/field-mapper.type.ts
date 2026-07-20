@@ -52,6 +52,7 @@ export interface ClientServiceContract {
   title: string;
   description?: string;
   contactDetails?: ContactDetails;
+  closingDateTime?: DateTimeFormat;
   steps: ClientFormStep[];
   createdAt: DateTimeFormat;
   updatedAt: DateTimeFormat;

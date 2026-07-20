@@ -1,21 +1,16 @@
-# gov-bb
+# Simple Service Builder (SSB)
 
-The **alpha.gov.bb** platform — a modular form component system and service
-portal for Government of Barbados digital services. This is a TypeScript
-monorepo (pnpm workspaces + Nx) housing the public-facing apps, the form
-authoring tools, the backend APIs, and the shared `@govtech-bb/*` libraries
-that keep form schemas, validation, and persistence aligned across them.
+Platform for building and delivering Barbados government digital services —
+online forms, a no-code form builder, a services landing site, and an assistant
+chatbot.
 
-For a fuller architectural overview see [SPEC.md](SPEC.md). For how we work —
-AI-assisted development, the test-first style, and the coverage policy — see
-[CONTRIBUTING.md](CONTRIBUTING.md). For working on form recipes see
-[FORM-CREATION-GUIDE.md](FORM-CREATION-GUIDE.md) and [FORMS.md](FORMS.md).
+> The npm/monorepo package is still named `@govtech-bb/modular-forms-monorepo`
+> for historical reasons; the product is **SSB**.
 
 ## Prerequisites
 
 - Node.js >= 20
-- pnpm 11.6.0 — run `corepack enable` (the version is pinned via
-  `packageManager` in `package.json`, so corepack provisions it automatically)
+- pnpm 11 (`corepack enable`, pinned to `pnpm@11.6.0` via `packageManager`)
 
 ## Getting started
 
@@ -25,113 +20,233 @@ pnpm install
 
 ## Project structure
 
+This is an **nx + TypeScript project-references monorepo** using pnpm workspaces.
+
 ```
 apps/
-  api/                NestJS backend — form definitions, submissions, processors (port 3001)
-  forms/              Public forms SPA — Vite + TanStack Router/Form (dev 3000, Docker host 4200)
-  landing/            Public discovery site — TanStack Start + Nitro SSR (port 3000)
-  chat/               "Ask alpha.gov.bb" RAG assistant — TanStack Start + AWS Bedrock (port 3000)
-  form_builder/       Form recipe authoring tool — Vite + TanStack Start (Nitro/Amplify)
-  form_builder_api/   Backend for the builder — Express 5 (port 3003)
-  analytics/          Internal analytics dashboard — Vite + React, renders a committed Umami snapshot (dev 3100)
+  api/               NestJS backend — forms, recipes, submissions, and per-form
+                     processors (email, payment, uploads). Postgres via TypeORM.
+                     Runs as a container on ECS/Fargate.
+  forms/             Citizen-facing form renderer (Vite + React, static site).
+                     Deployed on Amplify.
+  form_builder/      No-code form-authoring app (SSR, GitHub-OAuth gated).
+                     Deployed on Amplify (compute).
+  form_builder_api/  Backend for the builder — publishes recipes via git and
+                     issues presigned S3 upload URLs. Container on ECS.
+  landing/           gov.bb services landing site (TanStack Start SSR).
+                     Deployed on Amplify (compute).
+  chat/              Assistant chatbot (SSR) plus a RAG ingest task. Uses AWS
+                     Bedrock. Amplify (compute) + a Fargate ingest job.
 
 packages/
-  form-types/         Foundational TS + Zod types for the form domain (consumed everywhere)
-  registry/           Built-in field/component definitions, single source of truth
-  form-builder/       Recipe authoring & hydration utilities
-  form-conditions/    Conditional-rendering logic primitives
-  form-validation/    Field validation rules and runtime checks
-  expressions/        JSON Logic + Luxon expression evaluation engine
-  database/           TypeORM-backed persistence layer
-  content/            Browser-safe Markdown/YAML content loading with Zod validation
-  analytics/          Shared Umami analytics helper (forms, landing)
-  ai-bedrock/         AWS Bedrock / Claude adapter (chat, form_builder_api)
-  aws-secrets/        Shared AWS Secrets Manager helper
-  git-publish/        Shared GitHub publish client for recipe deploys
+  form-types/        Shared TypeScript types for forms and recipes.
+  registry/          Canonical registry of built-in field & component definitions.
+  form-conditions/   Conditional show/hide evaluation.
+  form-validation/   Field-level validation rules.
+  expressions/       Expression evaluation engine.
+  form-builder/      Shared form-builder logic and components.
+  database/          TypeORM entities, DB access, and recipe file loaders.
+  git-publish/       Publishes recipes to the repo via git commits.
+  ai-bedrock/        AWS Bedrock client wrapper.
+  analytics/         Analytics event tracking.
+  aws-secrets/       AWS Secrets Manager helpers.
+  content/           Shared content / markdown loaders.
 ```
 
-> **Note:** `apps/cms`, `apps/web`, and `packages/preview-comments` are empty
-> stubs (no `package.json` or source) and are candidates for removal — see
-> [SPEC.md](SPEC.md).
+> **Adding a new package?** It must be a buildable nx project *and* be listed in
+> the consuming project's `tsconfig.json` `references`, or the strict `tsc`
+> build fails with `TS6059`/`TS6307`. See `CLAUDE.md` → "Monorepo build gotcha".
 
-The workspace globs are declared in `pnpm-workspace.yaml` (`apps/*`,
-`packages/*`).
+## Architecture
+
+Runtime topology only — apps and the external services they call. Solid arrows
+are app-to-app calls (inferred from URL env vars in each app's
+`.env.example`); dashed arrows are calls out to AWS, the database, or another
+third party (inferred from the workspace dep graph, walked transitively).
+Shared workspace packages are omitted on purpose. Regenerate with
+`pnpm generate:architecture-diagram`.
+
+<!-- ARCHITECTURE_DIAGRAM_START -->
+
+```mermaid
+---
+config:
+  layout: elk
+---
+%% Auto-generated by scripts/generate-architecture-diagram.ts.
+%% Run `pnpm generate:architecture-diagram` to regenerate.
+flowchart TB
+  subgraph frontends_group [Frontends]
+    direction LR
+    analytics_app["analytics-app"]
+    chat["chat"]
+    feature_flagging_app["feature-flagging-app"]
+    form_builder_app["form-builder-app"]
+    forms["forms"]
+    landing["landing"]
+  end
+  subgraph backends_group [Backends]
+    direction LR
+    api["api"]
+    form_builder_api["form-builder-api"]
+  end
+  subgraph externals_group [External services]
+    direction LR
+    subgraph aws_group [AWS]
+      direction TB
+      aws_bedrock["Bedrock"]
+      aws_s3["S3"]
+      aws_secrets_mgr["Secrets Manager"]
+      aws_ses["SES"]
+      aws_sqs["SQS"]
+      aws_textract["Textract"]
+    end
+    subgraph data_group [Data stores]
+      direction TB
+      postgres["PostgreSQL"]
+    end
+    subgraph third_party_group [Third-party]
+      direction TB
+      ezpay["EzPay"]
+      umami["Umami"]
+    end
+  end
+
+  chat --> api
+  chat --> landing
+  feature_flagging_app --> api
+  form_builder_api --> api
+  form_builder_app --> api
+  form_builder_app --> form_builder_api
+  form_builder_app --> forms
+  forms --> api
+  forms --> landing
+  landing --> api
+  landing --> chat
+  landing --> forms
+
+  api -.-> aws_s3
+  api -.-> aws_ses
+  api -.-> aws_sqs
+  api -.-> ezpay
+  api -.-> postgres
+  chat -.-> aws_bedrock
+  chat -.-> aws_secrets_mgr
+  chat -.-> postgres
+  feature_flagging_app -.-> aws_secrets_mgr
+  form_builder_api -.-> aws_bedrock
+  form_builder_api -.-> aws_s3
+  form_builder_api -.-> aws_textract
+  form_builder_api -.-> postgres
+  form_builder_app -.-> aws_secrets_mgr
+  forms -.-> umami
+  landing -.-> umami
+
+  classDef frontend fill:#eaf0ff,stroke:#0b5cff,color:#0b3fb5;
+  classDef backend fill:#efe7ff,stroke:#6a3fd6,color:#3a1f8a;
+  classDef aws fill:#fff4e5,stroke:#c07a00,color:#5c3800;
+  classDef data fill:#e6f4ea,stroke:#137333,color:#0d5223;
+  classDef tp fill:#fce8f4,stroke:#b8156b,color:#6b0e42;
+  class analytics_app,chat,feature_flagging_app,form_builder_app,forms,landing frontend;
+  class api,form_builder_api backend;
+  class aws_bedrock,aws_s3,aws_secrets_mgr,aws_ses,aws_sqs,aws_textract aws;
+  class postgres data;
+  class ezpay,umami tp;
+  style frontends_group fill:#f0f5ff,stroke:#0b5cff,color:#0b3fb5;
+  style backends_group fill:#f4eeff,stroke:#6a3fd6,color:#3a1f8a;
+  style externals_group fill:#f7f7f2,stroke:#5b6470,color:#1a1a1a;
+  style aws_group fill:#fff9ef,stroke:#c07a00,color:#5c3800;
+  style data_group fill:#eef6f0,stroke:#137333,color:#0d5223;
+  style third_party_group fill:#fdeff5,stroke:#b8156b,color:#6b0e42;
+```
+
+<!-- ARCHITECTURE_DIAGRAM_END -->
 
 ## Scripts
 
-Root scripts cover the most-used apps; other apps run via `nx dev <app>` or
-`pnpm --filter <pkg> dev`.
-
 | Command | Description |
 |---|---|
-| `pnpm dev:forms` | Start the forms SPA in dev mode |
-| `pnpm dev:api` | Start the API in dev mode |
-| `pnpm dev:landing` | Start the landing site in dev mode |
-| `pnpm exec nx dev chat` | Start the chat assistant in dev mode |
-| `pnpm exec nx dev form_builder` | Start the form builder in dev mode |
-| `pnpm exec nx dev analytics-app` | Start the analytics dashboard in dev mode |
 | `pnpm build` | Build all apps and packages (`nx run-many -t build`) |
 | `pnpm test:all` | Run the full test suite (`nx run-many -t test`) |
-| `pnpm lint` | Lint all apps and packages |
-| `pnpm format` / `pnpm format:check` | Format / check formatting (Prettier) |
-| `pnpm migration:generate -- <path>` | Generate a TypeORM migration from entity changes |
-| `pnpm migration:run` | Run all pending migrations |
-| `pnpm migration:revert` | Revert the last migration |
-| `pnpm migration:show` | Show applied / pending migration status |
+| `pnpm lint` | Lint all projects |
+| `pnpm lint:deps` | Check workspace dependency consistency (sherif) |
+| `pnpm dev:forms` | Start the forms app in dev mode |
+| `pnpm dev:api` | Start the API in dev mode |
+| `pnpm dev:landing` | Start the landing app in dev mode |
+| `pnpm format` / `pnpm format:check` | Format (or check) with Prettier |
+| `pnpm validate-recipes` | Validate all recipe files |
+| `pnpm dump-recipes` | Dump recipes from the DB to files |
+| `pnpm migration:generate -- <path>` | Generate a migration from entity changes |
+| `pnpm migration:run` / `:revert` / `:show` | Apply / revert / show migrations |
 
-> Tests run on **Vitest 4** (Jest has been removed). The full suite is ~30s.
-> Build everything except `landing` offline — `landing`'s prebuild fetches a
-> live form manifest (`pnpm exec nx run-many -t build --exclude=landing`).
+Other apps run directly via nx, e.g. `pnpm exec nx dev chat`,
+`pnpm exec nx dev form-builder-app`, `pnpm exec nx serve form-builder-api`.
+
+> **Local build caveat:** `landing`'s prebuild fetches from a live external
+> forms API, so a fully offline build fails on it; `cms` is deprecated. When
+> verifying locally, run
+> `pnpm exec nx run-many -t build --exclude=landing,cms` and let CI build
+> everything. Scope tests to what you touched
+> (`pnpm exec nx run-many -t test -p <projects>`) to avoid local OOM.
 
 ## Environment variables
 
-Each app ships a `.env.example` documenting its variables. Copy the ones you
-need:
+Each app ships a `.env.example` — copy it and adjust:
 
 ```bash
-cp apps/api/.env.example apps/api/.env
 cp apps/forms/.env.example apps/forms/.env
-cp apps/form_builder/.env.example apps/form_builder/.env
-cp apps/form_builder_api/.env.example apps/form_builder_api/.env
+cp apps/api/.env.example apps/api/.env
 ```
 
-The core database connection (`DB_HOST`, `DB_PORT`, `DB_USERNAME`,
-`DB_PASSWORD`, `DB_NAME`, `DB_SYNCHRONIZE`, `DB_LOGGING`) is shared by `api`,
-`form_builder_api`, and the local Docker stack. `DB_SYNCHRONIZE=true` is for
-local dev only — never enable it in production; use migrations instead.
+Key variables:
 
-## Local development with Docker
+| Variable | App | Description |
+|---|---|---|
+| `VITE_API_URL` | forms | API base URL (Vite, build-time) |
+| `API_PORT` | api | API server port (default `3001`) |
+| `DB_HOST` / `DB_PORT` / `DB_USERNAME` / `DB_PASSWORD` / `DB_NAME` | api | PostgreSQL connection |
+| `DB_SYNCHRONIZE` | api | Auto-sync schema — **dev only, never `true` in production** |
+| `DB_SSL_CA` | api | Optional CA bundle for verifying the DB TLS cert in production |
 
-`docker-compose.yml` defines the full local stack (postgres + api + forms +
-landing + chat + form_builder); `docker-compose.dev.yml` overlays bind-mounts
-for hot reload. Postgres uses `pgvector/pgvector:pg16` to back the chat
-assistant's embedding search.
-
-## Deployment
-
-- **Frontends (forms, landing) & chat** — AWS Amplify, driven by `amplify.yml`.
-  `landing`, `chat`, and `form_builder` deploy as SSR (TanStack Start + Nitro)
-  on Amplify Compute; `forms` is a static SPA build served from
-  `apps/forms/dist`. Set environment variables in the Amplify console. Each PR
-  gets an Amplify preview at `<branch>.<appId>.amplifyapp.com` — branch names
-  must not contain a `.` (see [CLAUDE.md](CLAUDE.md)).
-- **API** — containerized via `apps/api/Dockerfile`, deployed to AWS Fargate
-  with images pushed to ECR. Set `API_PORT` and `DB_*` in the task definition.
-
-## Database & migrations
+## Database
 
 The API uses PostgreSQL via TypeORM. The CLI DataSource is at
 `apps/api/typeorm.config.ts`; migrations live in
-`apps/api/src/database/migrations/` and run via the root `pnpm migration:*`
-scripts.
+`apps/api/src/database/migrations/`.
+
+```bash
+pnpm migration:generate -- apps/api/src/database/migrations/<MigrationName>
+pnpm migration:run
+pnpm migration:revert
+pnpm migration:show
+```
+
+> `DB_SYNCHRONIZE=true` auto-syncs the schema on startup — useful in local dev,
+> never in production. Use migrations instead.
+
+> **Note:** at runtime, production forms are served from **recipe files**, not
+> the `form_definitions` table (a `NODE_ENV` guard) — so DB changes don't alter
+> the live forms list. See `docs/decisions/0007-runtime-recipes-load-from-files…`.
+
+## Deployment & branching
+
+- **Frontends** (`forms`, `landing`, `chat`, `form_builder`) deploy on **AWS
+  Amplify** — `forms` as a static site, the others as SSR compute apps.
+- **Backends** (`api`, `form_builder_api`) and the **chat RAG ingest** run as
+  containers on **ECS/Fargate**.
+- Environments: **`sandbox` → `staging` → `prod`**, each tied to its AWS
+  environment.
+
+The team is moving to a **trunk-based model** with `main` as the single
+CI-gated source of truth (merges to `main` fan out to the environments;
+production is a manual, windowed deploy). See
+[`docs/trunk-based-development.md`](docs/trunk-based-development.md).
 
 ## Path aliases
 
-Shared packages resolve through `@govtech-bb/*` TypeScript path aliases
-configured in `tsconfig.base.json` — e.g. `@govtech-bb/form-types`,
-`@govtech-bb/registry`, `@govtech-bb/form-builder`, `@govtech-bb/form-conditions`,
-`@govtech-bb/form-validation`, `@govtech-bb/expressions`, `@govtech-bb/database`,
-`@govtech-bb/content`. Inter-package dependencies use the `workspace:*` protocol.
+Shared packages are imported via `@govtech-bb/<name>` (configured in
+`tsconfig.base.json`), e.g. `@govtech-bb/form-types`, `@govtech-bb/registry`,
+`@govtech-bb/form-conditions`, `@govtech-bb/database`.
 
 ## Nx
 
@@ -139,4 +254,5 @@ configured in `tsconfig.base.json` — e.g. `@govtech-bb/form-types`,
 pnpm exec nx graph              # Visualize the dependency graph
 pnpm exec nx show projects      # List all projects
 pnpm exec nx run forms:build    # Build a single project
+pnpm exec nx affected -t build  # Build only what changed vs the base branch
 ```

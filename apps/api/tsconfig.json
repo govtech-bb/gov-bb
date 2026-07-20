@@ -25,10 +25,16 @@
       ],
       "@govtech-bb/registry": ["../../packages/registry/src/index.ts"],
       "@govtech-bb/database": ["../../packages/database/src/index.ts"],
-      "@govtech-bb/git-publish": ["../../packages/git-publish/src/index.ts"]
+      "@govtech-bb/git-publish": ["../../packages/git-publish/src/index.ts"],
+      "@govtech-bb/umami-analytics": [
+        "../../packages/umami-analytics/src/index.ts"
+      ]
     }
   },
   "references": [
+    {
+      "path": "../../packages/umami-analytics"
+    },
     {
       "path": "../../packages/database"
     },

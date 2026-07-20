@@ -20,7 +20,6 @@ import type { Mock } from "vitest";
  * - radio-conditional: radio field with conditional child is grouped correctly
  */
 
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useStore } from "@tanstack/react-form";

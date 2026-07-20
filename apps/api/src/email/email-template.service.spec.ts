@@ -186,7 +186,6 @@ describe("EmailTemplateService", () => {
 
     it("returns null and does not throw when template rendering fails", () => {
       const badService = new EmailTemplateService();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (badService as any).templates.set("submission-confirmation", () => {
         throw new Error("render crash");
       });

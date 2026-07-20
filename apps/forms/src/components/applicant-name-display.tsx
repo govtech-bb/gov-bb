@@ -1,8 +1,8 @@
-import { useStore } from "@tanstack/react-form";
+import { useStore, type AnyFormApi } from "@tanstack/react-form";
 import { FormValues } from "@forms/types";
 
 interface ApplicantNameDisplayProps {
-  form: any;
+  form: AnyFormApi;
 }
 
 /**
@@ -61,7 +61,7 @@ export default function ApplicantNameDisplay({
 }: ApplicantNameDisplayProps) {
   const formValues = useStore(
     form.store,
-    (state: any) => state.values as FormValues,
+    (state) => state.values as FormValues,
   );
 
   const firstName = findNamePart(formValues, NAME_PART_IDS.first);

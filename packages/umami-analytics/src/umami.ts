@@ -1,5 +1,13 @@
-// Thin Umami Cloud REST client. I/O only — aggregation lives in metrics.ts.
-import type { EventDataValue, ExpandedRow, MetricRow } from "./types";
+// Thin Umami Cloud REST client. I/O only — aggregation lives in metrics.ts
+// (event-count report); funnels/journeys come from Umami's own report endpoints.
+import type {
+  EventDataValue,
+  ExpandedRow,
+  MetricRow,
+  FunnelStepInput,
+  FunnelStepResult,
+  JourneyPath,
+} from "./types";
 
 export interface UmamiClientOptions {
   apiKey: string;
@@ -42,16 +50,34 @@ export class UmamiClient {
   private async get<T>(
     path: string,
     params: Record<string, string | number>,
+    attempt = 0,
   ): Promise<T> {
     await this.throttle();
     const url = new URL(`${this.baseUrl}${path}`);
     for (const [k, v] of Object.entries(params)) {
       url.searchParams.set(k, String(v));
     }
-    const res = await fetch(url, {
-      headers: { "x-umami-api-key": this.apiKey, accept: "application/json" },
-    });
+    const MAX_RETRIES = 3;
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: { "x-umami-api-key": this.apiKey, accept: "application/json" },
+      });
+    } catch (err) {
+      // Transient network error (ECONNRESET / fetch failed) — back off + retry
+      // so a single dropped connection doesn't abort a long session crawl.
+      if (attempt < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+        return this.get<T>(path, params, attempt + 1);
+      }
+      throw err;
+    }
     if (!res.ok) {
+      // Retry rate-limit / server errors; fail fast on other 4xx.
+      if ((res.status === 429 || res.status >= 500) && attempt < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        return this.get<T>(path, params, attempt + 1);
+      }
       const body = await res.text().catch(() => "");
       throw new Error(
         `Umami ${res.status} ${res.statusText} for ${path} — ${body.slice(0, 200)}`,
@@ -108,5 +134,78 @@ export class UmamiClient {
       `/websites/${websiteId}/event-data/values`,
       { event, propertyName, ...range },
     );
+  }
+
+  private async post<T>(path: string, body: unknown, attempt = 0): Promise<T> {
+    await this.throttle();
+    const url = new URL(`${this.baseUrl}${path}`);
+    const MAX_RETRIES = 3;
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "x-umami-api-key": this.apiKey,
+          accept: "application/json",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      if (attempt < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+        return this.post<T>(path, body, attempt + 1);
+      }
+      throw err;
+    }
+    if (!res.ok) {
+      if ((res.status === 429 || res.status >= 500) && attempt < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        return this.post<T>(path, body, attempt + 1);
+      }
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `Umami ${res.status} ${res.statusText} for ${path} — ${text.slice(0, 200)}`,
+      );
+    }
+    return (await res.json()) as T;
+  }
+
+  /** Distinct-visitor funnel for a list of ordered steps (event names or paths).
+   * `filters` is a required top-level object in the report API (send `{}`). */
+  reportFunnel(
+    websiteId: string,
+    opts: { steps: FunnelStepInput[]; window: number; range: Range },
+  ): Promise<FunnelStepResult[]> {
+    return this.post<FunnelStepResult[]>(`/reports/funnel`, {
+      websiteId,
+      type: "funnel",
+      filters: {},
+      parameters: {
+        startDate: new Date(opts.range.startAt).toISOString(),
+        endDate: new Date(opts.range.endAt).toISOString(),
+        steps: opts.steps,
+        window: opts.window,
+      },
+    });
+  }
+
+  /** Top navigation paths (journey report). `filters` is required (send `{}`). */
+  reportJourney(
+    websiteId: string,
+    opts: { steps: number; startStep?: string; endStep?: string; range: Range },
+  ): Promise<JourneyPath[]> {
+    return this.post<JourneyPath[]>(`/reports/journey`, {
+      websiteId,
+      type: "journey",
+      filters: {},
+      parameters: {
+        startDate: new Date(opts.range.startAt).toISOString(),
+        endDate: new Date(opts.range.endAt).toISOString(),
+        steps: opts.steps,
+        ...(opts.startStep ? { startStep: opts.startStep } : {}),
+        ...(opts.endStep ? { endStep: opts.endStep } : {}),
+      },
+    });
   }
 }

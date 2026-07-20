@@ -26,7 +26,7 @@ describe("isValidSecretToken", () => {
     });
   });
 
-  describe("correct token comparison via SHA-256 digests", () => {
+  describe("correct token comparison via HMAC digests", () => {
     it("returns true when tokens match", () => {
       expect(isValidSecretToken("s3cret", "s3cret")).toBe(true);
     });
@@ -41,7 +41,7 @@ describe("isValidSecretToken", () => {
 
     it("handles different-length tokens without throwing", () => {
       // Short vs long token — timingSafeEqual on raw buffers would throw if
-      // lengths differ; using SHA-256 digests (always 32 bytes) prevents that.
+      // lengths differ; HMAC digests (always 32 bytes) prevent that.
       expect(() =>
         isValidSecretToken("short", "a-much-longer-token-value"),
       ).not.toThrow();
