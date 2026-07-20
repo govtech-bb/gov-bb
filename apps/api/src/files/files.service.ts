@@ -11,10 +11,10 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { v4 as uuid } from "uuid";
 import type { Primitive, ServiceContract } from "@govtech-bb/form-types";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import { isValidSecretToken } from "../common/secret-token";
+import { buildSubmissionKey, parseSubmissionKey } from "./submission-key";
 import type {
   SubmissionValues,
   ValidationErrorBundle,
@@ -75,14 +75,15 @@ export class FilesService {
   async presignUpload(
     dto: PresignUploadDto,
     previewToken?: string,
+    draftToken?: string,
   ): Promise<PresignUploadResponseDto> {
     this.assertConfigured();
     const field = await this.resolveFileField(
       dto.formId,
-      dto.formVersion,
       dto.stepId,
       dto.fieldId,
-      this.isPreview(previewToken),
+      this.isValidRecipeToken(previewToken),
+      this.isValidRecipeToken(draftToken),
     );
 
     this.assertContentTypeAllowed(field, dto.contentType, dto.fileName);
@@ -91,7 +92,12 @@ export class FilesService {
       throw new BadRequestException(`File exceeds max size (${maxSize} bytes)`);
     }
 
-    const key = this.buildKey(dto.formId, dto.fileName);
+    const key = buildSubmissionKey(
+      dto.formId,
+      dto.stepId,
+      dto.fieldId,
+      dto.fileName,
+    );
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
@@ -108,19 +114,34 @@ export class FilesService {
   async confirmUpload(
     dto: ConfirmUploadDto,
     previewToken?: string,
+    draftToken?: string,
   ): Promise<FileAttachmentDto> {
     this.assertConfigured();
-    // TODO(security): the (formId, stepId, fieldId) the client supplies here
-    // is NOT cryptographically bound to the S3 key — a caller could presign
-    // for one field and confirm under another, escaping the stricter policy.
-    // Fix once these endpoints get auth: embed the tuple in the key prefix
-    // (or sign a token at presign and require it here).
+    // Bind confirm to presign (#284): the key embeds the (formId, stepId,
+    // fieldId) it was presigned under. Reject when the client confirms under a
+    // different field than the key was issued for — otherwise a caller could
+    // presign a lenient field and confirm under a stricter one to dodge its
+    // content-type/size policy. A caller can only HeadObject-confirm a key they
+    // actually presigned, so the embedded tuple is authoritative. Legacy
+    // tuple-less keys (in flight across deploy) skip the check and fall back to
+    // the prior client-supplied behaviour.
+    const keyTuple = parseSubmissionKey(dto.key);
+    if (
+      keyTuple &&
+      (keyTuple.formId !== dto.formId ||
+        keyTuple.stepId !== dto.stepId ||
+        keyTuple.fieldId !== dto.fieldId)
+    ) {
+      throw new BadRequestException(
+        "Upload key does not match the confirmed field",
+      );
+    }
     const field = await this.resolveFileField(
       dto.formId,
-      dto.formVersion,
       dto.stepId,
       dto.fieldId,
-      this.isPreview(previewToken),
+      this.isValidRecipeToken(previewToken),
+      this.isValidRecipeToken(draftToken),
     );
 
     let head;
@@ -354,33 +375,37 @@ export class FilesService {
   }
 
   /**
-   * Mirrors the form-GET path: only honour `preview: true` when the supplied
-   * token validates against the configured `RECIPE_PREVIEW_TOKEN`. A missing or
-   * invalid token leaves behaviour exactly as before (published recipes only).
+   * Mirrors the form-GET path (#1682): both the `X-Recipe-Preview` and
+   * `X-Recipe-Draft` tokens validate against the same `RECIPE_PREVIEW_TOKEN`. A
+   * missing or invalid token leaves behaviour exactly as before (published
+   * recipes only, visibility gate enforced).
    */
-  private isPreview(previewToken?: string): boolean {
+  private isValidRecipeToken(token?: string): boolean {
     return isValidSecretToken(
       this.config.get<string>("RECIPE_PREVIEW_TOKEN", ""),
-      previewToken,
+      token,
     );
   }
 
   private async resolveFileField(
     formId: string,
-    formVersion: string,
     stepId: string,
     fieldId: string,
-    preview = false,
+    // Mirror the form-GET sourcing so the file-field config matches the recipe
+    // the citizen/reviewer loaded: bypassVisibility serves a non-public
+    // published recipe; draft sources the in-progress DB scratch (#1682).
+    bypassVisibility = false,
+    draft = false,
   ): Promise<Primitive> {
     let contract;
     try {
       contract = await this.formDefs.findByFormId({
         formId,
-        version: formVersion,
-        preview,
+        bypassVisibility,
+        draft,
       });
     } catch {
-      throw new BadRequestException(`Form not found: ${formId}@${formVersion}`);
+      throw new BadRequestException(`Form not found: ${formId}`);
     }
     const step = contract.steps.find((s) => s.stepId === stepId);
     if (!step) {
@@ -432,22 +457,6 @@ export class FilesService {
     return typeof fromValidation === "number" && fromValidation > 0
       ? fromValidation
       : this.globalMaxSize;
-  }
-
-  private buildKey(formId: string, fileName: string): string {
-    const now = new Date();
-    const yyyy = now.getUTCFullYear();
-    const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
-    return `uploads/${formId}/${yyyy}/${mm}/${uuid()}-${this.sanitizeFileName(
-      fileName,
-    )}`;
-  }
-
-  private sanitizeFileName(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/\s+/g, "_")
-      .replace(/[^a-z0-9._-]/g, "");
   }
 
   private extractOriginalName(key: string): string {

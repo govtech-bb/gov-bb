@@ -76,7 +76,8 @@ function fakeDataSource(rows: FakeRows = {}) {
     if (/DISTINCT ON \(form_id\)/i.test(sql)) return titleRows;
     if (/SELECT 1 FROM form_definitions WHERE form_id/i.test(sql))
       return idExists ? [{ "?column?": 1 }] : [];
-    if (/SELECT id, version, published_at/i.test(sql)) return putLatest;
+    if (/SELECT id FROM form_definitions WHERE form_id/i.test(sql))
+      return putLatest;
     if (/UPDATE form_definitions/i.test(sql)) return [];
     return [];
   });
@@ -103,6 +104,7 @@ function recipe(over: Record<string, unknown> = {}) {
     formId: "marriage-license",
     version: "1.0.0",
     title: "Marriage License",
+    steps: [],
     ...over,
   };
 }
@@ -195,7 +197,7 @@ describe("createFormHandler — uniqueness", () => {
     );
   });
 
-  it("keeps the existing exact formId+version 409", async () => {
+  it("keeps the existing-formId 409 (#1196: one row per form)", async () => {
     const { ds } = fakeDataSource({ existingVersion: { id: 1 } });
     getDataSourceMock.mockResolvedValue(ds);
 
@@ -204,7 +206,7 @@ describe("createFormHandler — uniqueness", () => {
 
     expect(res.statusCode).toBe(409);
     expect((res.body as { error: string }).error).toMatch(
-      /v1\.0\.0 already exists/,
+      /marriage-license already exists/,
     );
   });
 
@@ -227,15 +229,16 @@ describe("createFormHandler — uniqueness", () => {
 
     expect(res.statusCode).toBe(409);
     expect((res.body as { error: string }).error).toMatch(
-      /v1\.0\.0 already exists/,
+      /marriage-license already exists/,
     );
   });
 
-  it("does NOT map a non-unique-violation save error to 409 (stays 500)", async () => {
+  it("does NOT map a non-unique-violation save error to 409 (it propagates)", async () => {
     // findOne sees no duplicate (null), but the transactional save fails for an
     // unrelated reason (a dropped connection — no Postgres 23505, no
     // driverError). Only 23505 maps to the deploy-race 409; anything else must
-    // surface as a generic 500, not a misleading "version already exists".
+    // propagate unchanged to the central error handler (a generic 500), not a
+    // misleading "version already exists".
     const { ds, save } = fakeDataSource();
     save.mockRejectedValueOnce(
       Object.assign(new Error("Connection terminated unexpectedly"), {
@@ -244,11 +247,13 @@ describe("createFormHandler — uniqueness", () => {
     );
     getDataSourceMock.mockResolvedValue(ds);
 
-    const res = mockRes();
-    await createFormHandler(mockReq({ recipe: recipe(), isNew: true }), res);
+    const err = await createFormHandler(
+      mockReq({ recipe: recipe(), isNew: true }),
+      mockRes(),
+    ).catch((e: unknown) => e);
 
-    expect(res.statusCode).toBe(500);
-    expect((res.body as { error: string }).error).not.toMatch(/already exists/);
+    expect((err as Error).message).toBe("Connection terminated unexpectedly");
+    expect((err as Error).message).not.toMatch(/already exists/);
   });
 
   it("creates a unique form", async () => {

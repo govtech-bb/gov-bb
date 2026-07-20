@@ -14,19 +14,27 @@ import {
 import { listForms } from "../../server/forms";
 import { getPublishBaseBranch } from "../../server/publish";
 import { publishStartPage, deleteContentPage } from "./-server";
-import { HeaderMenu } from "./-header-menu";
-import { isValidSlug, parseStartLink } from "./-lib";
+import { HeaderMenu, type HeaderMenuItem } from "./-header-menu";
+import {
+  linkableForms,
+  applyAiPagePatch,
+  buildDeployPayload,
+} from "./-lib";
 import { StartPagePreviewFrame, LANDING_ORIGIN } from "./-preview-frame";
 import { useContentList } from "./-use-content-list";
 import { usePersistedState } from "./-use-persisted";
 import { useTransitionPresence } from "./-use-transition";
 import { SlidingTabs, Tip } from "./-sliding-tabs";
 import { useTheme } from "./-use-theme";
-import { useEditorState, type EditSearch } from "./-editor-state";
+import {
+  useEditorState,
+  type EditSearch,
+  type EditorState,
+} from "./-editor-state";
 import { PageFields } from "./-fields";
 import { AiModal, DeleteModal, DeployModal, ErrorBanner } from "./-modals";
 import { SuccessCard } from "./-success-card";
-import type { FormDefinitionSummary } from "../../types/index";
+import type { BuilderFormSummary } from "../../types/index";
 import s from "./-styles.module.css";
 
 function todayIso(): string {
@@ -44,7 +52,9 @@ export const Route = createFileRoute("/content/edit")({
   }),
   loader: async () => {
     const [forms, baseBranch] = await Promise.all([
-      listForms().catch(() => []),
+      // Hide disabled draft-only / orphan-override rows the picker uses for
+      // re-enable (#1658) — they have no live recipe to link content to.
+      listForms().then(linkableForms).catch(() => []),
       getPublishBaseBranch().catch(() => "dev"),
     ]);
     return { forms, baseBranch };
@@ -60,6 +70,161 @@ const BREAKPOINTS = [
 
 type Breakpoint = (typeof BREAKPOINTS)[number]["key"];
 
+// The doc-header overflow menu's entries, gated by editor mode. Kept out of the
+// component so its conditional assembly doesn't inflate StartPagesEditor.
+function buildHeaderMenuItems(deps: {
+  success: boolean;
+  showPreview: boolean;
+  onTogglePreview: () => void;
+  editing: boolean;
+  url: string;
+  theme: string;
+  onToggleTheme: () => void;
+  dirty: boolean;
+  onDiscardDraft: () => void;
+  onDeletePage: () => void;
+}): HeaderMenuItem[] {
+  const {
+    success,
+    showPreview,
+    onTogglePreview,
+    editing,
+    url,
+    theme,
+    onToggleTheme,
+    dirty,
+    onDiscardDraft,
+    onDeletePage,
+  } = deps;
+  return [
+    ...(!success
+      ? [
+          {
+            label: showPreview ? "Hide preview" : "Show preview",
+            icon: showPreview ? (
+              <ViewOffIcon size={15} />
+            ) : (
+              <ViewIcon size={15} />
+            ),
+            onSelect: onTogglePreview,
+          },
+        ]
+      : []),
+    ...(editing && url && LANDING_ORIGIN
+      ? [
+          {
+            label: "View live",
+            icon: <ArrowUpRight01Icon size={15} />,
+            onSelect: () =>
+              window.open(`${LANDING_ORIGIN}${url}`, "_blank", "noopener,noreferrer"),
+          },
+        ]
+      : []),
+    {
+      label: theme === "light" ? "Dark mode" : "Light mode",
+      icon: theme === "light" ? <Moon02Icon size={15} /> : <Sun03Icon size={15} />,
+      onSelect: onToggleTheme,
+    },
+    ...(dirty && !success
+      ? [
+          {
+            label: "Discard unsaved changes",
+            danger: true,
+            onSelect: () => {
+              if (
+                window.confirm(
+                  "Discard your unsaved changes and revert to the saved version?",
+                )
+              )
+                onDiscardDraft();
+            },
+          },
+        ]
+      : []),
+    ...(editing && !success
+      ? [
+          {
+            label: "Delete page",
+            icon: <Delete02Icon size={15} />,
+            danger: true,
+            onSelect: onDeletePage,
+          },
+        ]
+      : []),
+  ];
+}
+
+// The live-preview split pane: device tabs + resizable iframe rendering the
+// body exactly as deploy would publish it. Rendered only when preview is shown.
+function EditorPreviewPane({
+  dragging,
+  onStartDrag,
+  breakpoint,
+  onBreakpointChange,
+  ed,
+}: {
+  dragging: boolean;
+  onStartDrag: (e: React.MouseEvent) => void;
+  breakpoint: Breakpoint;
+  onBreakpointChange: (b: Breakpoint) => void;
+  ed: EditorState;
+}) {
+  const { state } = ed;
+  const frameWidth =
+    BREAKPOINTS.find((b) => b.key === breakpoint)?.width ?? "100%";
+  return (
+    <>
+      <div
+        className={s.splitter}
+        role="separator"
+        aria-orientation="vertical"
+        title="Drag to resize"
+        onMouseDown={onStartDrag}
+      />
+      <div
+        className={s.previewPanel}
+        // The iframe would swallow mousemove during a drag — disable it.
+        style={dragging ? { pointerEvents: "none" } : undefined}
+      >
+        <div className={s.previewToolbar}>
+          <SlidingTabs
+            ariaLabel="Preview device"
+            options={BREAKPOINTS.map((b) => ({ key: b.key, label: b.label }))}
+            value={breakpoint}
+            onChange={onBreakpointChange}
+          />
+          <span className={s.previewUrl}>
+            {ed.url ? `…${ed.url}` : "alpha.gov.bb"}
+          </span>
+        </div>
+        <div className={s.previewStage}>
+          <div className={s.deviceFrame} style={{ width: frameWidth }}>
+            <StartPagePreviewFrame
+              data={{
+                frontmatter: {
+                  title: state.title.trim() || "Untitled service",
+                  description: state.description.trim() || undefined,
+                  category: state.category,
+                  stage: "alpha",
+                  visibility: state.visibility,
+                  form_id: ed.previewFormId,
+                  publish_date: todayIso(),
+                },
+                body: ed.previewBody,
+                path:
+                  "/" +
+                  [state.category || undefined, ed.slug || undefined]
+                    .filter(Boolean)
+                    .join("/"),
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function StartPagesEditor() {
   const { forms, baseBranch } = Route.useLoaderData();
   const search = Route.useSearch();
@@ -73,8 +238,8 @@ function StartPagesEditor() {
   // Combobox options = the builder's forms ∪ any form referenced by a content
   // page, so the picker is populated even when the forms API is unavailable
   // (e.g. local dev, where the content list reads the local checkout).
-  const formOptions = useMemo<FormDefinitionSummary[]>(() => {
-    const map = new Map<string, FormDefinitionSummary>();
+  const formOptions = useMemo<BuilderFormSummary[]>(() => {
+    const map = new Map<string, BuilderFormSummary>();
     for (const f of forms) map.set(f.formId, f);
     for (const p of contentList.pages ?? []) {
       if (p.formId && !map.has(p.formId)) {
@@ -137,36 +302,19 @@ function StartPagesEditor() {
     ed.setSuccess(null);
     try {
       const result = await publishStartPage({
-        data: {
-          formId: state.formId,
-          slug: ed.fixedPath ? undefined : ed.slug,
-          title: state.title.trim(),
-          description: state.description.trim() || undefined,
-          category: state.category,
-          subcategory: state.subcategory,
-          body: state.body,
-          buttonLabel: parseStartLink(state.body)?.label || "Start now",
-          linkType: state.linkType,
-          linkHref: state.linkHref.trim() || undefined,
-          visibility: state.visibility,
+        data: buildDeployPayload({
+          state,
+          slug: ed.slug,
           prDescription,
-          newCategory: ed.creatingCategory
-            ? {
-                slug: ed.newCatSlug,
-                title: ed.newCatTitle.trim(),
-                description: ed.newCatDesc.trim() || undefined,
-              }
-            : undefined,
-          ...(ed.editPath
-            ? {
-                path: ed.editPath,
-                sha: ed.editSha ?? undefined,
-                baseFrontmatter: ed.baseFrontmatter ?? undefined,
-              }
-            : ed.createPath
-              ? { path: ed.createPath }
-              : {}),
-        },
+          creatingCategory: ed.creatingCategory,
+          newCatSlug: ed.newCatSlug,
+          newCatTitle: ed.newCatTitle,
+          newCatDesc: ed.newCatDesc,
+          editPath: ed.editPath,
+          editSha: ed.editSha,
+          baseFrontmatter: ed.baseFrontmatter,
+          createPath: ed.createPath,
+        }),
       });
       deployModal.close();
       ed.markSaved();
@@ -195,50 +343,12 @@ function StartPagesEditor() {
     }
   };
 
-  // Only known keys with valid values reach the draft; the model's prose and
-  // any extra fields are ignored.
   const applyAiPage = (page: Record<string, unknown>) => {
-    ed.setState((cur) => {
-      const next = { ...cur };
-      for (const key of ["title", "description", "body", "linkHref"] as const) {
-        const v = page[key];
-        if (typeof v === "string") next[key] = v;
-      }
-      if (
-        typeof page.slug === "string" &&
-        !ed.fixedPath &&
-        isValidSlug(page.slug)
-      ) {
-        next.slug = page.slug;
-      }
-      if (typeof page.category === "string") {
-        next.category = page.category;
-        next.subcategory = "";
-      }
-      if (typeof page.subcategory === "string") {
-        next.subcategory = page.subcategory;
-      }
-      if (
-        page.linkType === "form" ||
-        page.linkType === "slug" ||
-        page.linkType === "external" ||
-        page.linkType === "none"
-      ) {
-        next.linkType = page.linkType;
-      }
-      if (
-        page.visibility === "draft" ||
-        page.visibility === "preview" ||
-        page.visibility === "public"
-      ) {
-        next.visibility = page.visibility;
-      }
-      return next;
-    });
+    ed.setState((cur) =>
+      applyAiPagePatch(cur, page, { fixedPath: !!ed.fixedPath }),
+    );
   };
 
-  const frameWidth =
-    BREAKPOINTS.find((b) => b.key === breakpoint)?.width ?? "100%";
   const success = ed.success;
 
   return (
@@ -282,72 +392,22 @@ function StartPagesEditor() {
             </button>
           )}
           <HeaderMenu
-            items={[
-              ...(!success
-                ? [
-                    {
-                      label: showPreview ? "Hide preview" : "Show preview",
-                      icon: showPreview ? (
-                        <ViewOffIcon size={15} />
-                      ) : (
-                        <ViewIcon size={15} />
-                      ),
-                      onSelect: () => setShowPreview((v) => !v),
-                    },
-                  ]
-                : []),
-              ...(ed.editing && ed.url && LANDING_ORIGIN
-                ? [
-                    {
-                      label: "View live",
-                      icon: <ArrowUpRight01Icon size={15} />,
-                      onSelect: () =>
-                        window.open(
-                          `${LANDING_ORIGIN}${ed.url}`,
-                          "_blank",
-                          "noopener,noreferrer",
-                        ),
-                    },
-                  ]
-                : []),
-              {
-                label: theme === "light" ? "Dark mode" : "Light mode",
-                icon:
-                  theme === "light" ? (
-                    <Moon02Icon size={15} />
-                  ) : (
-                    <Sun03Icon size={15} />
-                  ),
-                onSelect: toggleTheme,
-              },
-              ...(ed.dirty && !success
-                ? [
-                    {
-                      label: "Discard unsaved changes",
-                      danger: true,
-                      onSelect: () => {
-                        if (
-                          window.confirm(
-                            "Discard your unsaved changes and revert to the saved version?",
-                          )
-                        )
-                          ed.discardDraft();
-                      },
-                    },
-                  ]
-                : []),
-              ...(ed.editing && !success
-                ? [
-                    {
-                      label: "Delete page",
-                      icon: <Delete02Icon size={15} />,
-                      danger: true,
-                      onSelect: () => deleteModal.open(),
-                    },
-                  ]
-                : []),
-            ]}
+            items={buildHeaderMenuItems({
+              success: !!success,
+              showPreview,
+              onTogglePreview: () => setShowPreview((v) => !v),
+              editing: ed.editing,
+              url: ed.url,
+              theme,
+              onToggleTheme: toggleTheme,
+              dirty: ed.dirty,
+              onDiscardDraft: ed.discardDraft,
+              onDeletePage: () => deleteModal.open(),
+            })}
           />
+          {!success && !ed.loadingPage && ed.deployBlockReason && (
+            <span className={s.deployHint}>{ed.deployBlockReason}</span>
+          )}
           {!success && (
             <button
               type="button"
@@ -415,58 +475,13 @@ function StartPagesEditor() {
           </div>
 
           {showPreview && (
-            <div
-              className={s.splitter}
-              role="separator"
-              aria-orientation="vertical"
-              title="Drag to resize"
-              onMouseDown={startDrag}
+            <EditorPreviewPane
+              dragging={dragging}
+              onStartDrag={startDrag}
+              breakpoint={breakpoint}
+              onBreakpointChange={setBreakpoint}
+              ed={ed}
             />
-          )}
-          {showPreview && (
-            <div
-              className={s.previewPanel}
-              // The iframe would swallow mousemove during a drag — disable it.
-              style={dragging ? { pointerEvents: "none" } : undefined}
-            >
-              <div className={s.previewToolbar}>
-                <SlidingTabs
-                  ariaLabel="Preview device"
-                  options={BREAKPOINTS.map((b) => ({
-                    key: b.key,
-                    label: b.label,
-                  }))}
-                  value={breakpoint}
-                  onChange={setBreakpoint}
-                />
-                <span className={s.previewUrl}>
-                  {ed.url ? `…${ed.url}` : "alpha.gov.bb"}
-                </span>
-              </div>
-              <div className={s.previewStage}>
-                <div className={s.deviceFrame} style={{ width: frameWidth }}>
-                  <StartPagePreviewFrame
-                    data={{
-                      frontmatter: {
-                        title: state.title.trim() || "Untitled service",
-                        description: state.description.trim() || undefined,
-                        category: state.category,
-                        stage: "alpha",
-                        visibility: state.visibility,
-                        form_id: ed.previewFormId,
-                        publish_date: todayIso(),
-                      },
-                      body: ed.previewBody,
-                      path:
-                        "/" +
-                        [state.category || undefined, ed.slug || undefined]
-                          .filter(Boolean)
-                          .join("/"),
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
           )}
         </div>
       )}

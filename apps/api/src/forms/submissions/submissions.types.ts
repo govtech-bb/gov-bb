@@ -41,7 +41,9 @@ interface SubmissionAuditTrailV1 {
  */
 export interface SubmissionAuditTrailV2 {
   schemaVersion: 2;
-  pinnedFormVersion: string;
+  /** Null post-#1196 when a submission resolves the canonical recipe (no
+   *  pinned version); a semver string for pre-cutover / draft-sourced rows. */
+  pinnedFormVersion: string | null;
   draftId: string | null;
   activeStepIds: string[];
   hiddenStepIds: string[];
@@ -62,7 +64,9 @@ export interface SubmissionCreatedEvent {
    *  displayed or emailed. */
   referenceCode: string;
   formId: string;
-  formVersion: string;
+  /** Optional post-#1196 (version retired): absent → canonical recipe,
+   *  present → pinned legacy version for an in-flight item. */
+  formVersion?: string;
   idempotencyKey: string;
   processors: Processor[];
   values: SubmissionValues;
@@ -113,7 +117,8 @@ export interface PaymentRequiredEvent {
   /** The citizen's email, resolved from the payment processor config. */
   customerEmail: string;
   formId: string;
-  formVersion: string;
+  /** Optional post-#1196 (version retired): absent → canonical recipe. */
+  formVersion?: string;
   referenceCode: string;
   submissionId: string;
   /** Amount due, in dollars. */
@@ -127,7 +132,9 @@ export interface PaymentRequiredEvent {
 export interface SubmitDto {
   idempotencyKey: string;
   formId: string;
-  formVersion: string;
+  /** Optional post-#1196: pre-cutover clients still send it; new ones omit it
+   *  and the recipe resolves to the canonical file. */
+  formVersion?: string;
   draftId?: string;
   values: SubmissionValues;
   /**
@@ -139,6 +146,14 @@ export interface SubmitDto {
    * exercise the real submit path without firing real side-effects (#1252).
    */
   isSmokeSubmission?: boolean;
+  /**
+   * Set by the controller only when a request carries a valid
+   * `X-Recipe-Preview` token (see RECIPE_PREVIEW_TOKEN). When true the
+   * submission bypasses the #1646 visibility gate so a published-but-flagged
+   * (non-public) form resolves and submits normally for a reviewer — today's
+   * `?preview=` link (#1682). Fail-closed: absent/invalid token → undefined.
+   */
+  bypassVisibility?: boolean;
 }
 
 type SubmitOutcome = "created" | "duplicate" | "in_progress";

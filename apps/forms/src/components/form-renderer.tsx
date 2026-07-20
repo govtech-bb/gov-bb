@@ -6,6 +6,9 @@ import {
 } from "@forms/types";
 import FieldRenderer from "./field-renderer";
 import React from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { markdownComponents } from "./markdown-components";
 import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { isDateValidationError } from "@govtech-bb/form-validation";
@@ -24,6 +27,10 @@ import {
   buildFieldValidationProperties,
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
+import { formCategory } from "../lib/form-category";
+import { reviewDwellSeconds } from "./review-dwell";
+import { buildValidationErrorPayload } from "./validation-error-event";
+import { stepCompleteEventName } from "./step-events";
 import { StatusBanner } from "@govtech-bb/react";
 import { resolveStepTitle } from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
@@ -148,8 +155,9 @@ export default function FormRenderer({
   visibleSteps,
   repeatableStepSettingsRef,
   submissionState,
-  isPreview = false,
+  isDraft = false,
   previewToken,
+  draftToken,
 }: FormRendererProps) {
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
     formId: formMeta.formId,
@@ -167,10 +175,9 @@ export default function FormRenderer({
   React.useEffect(() => {
     if (!currentStep) return;
     trackEvent("form-step-view", {
-      form_id: formMeta.formId,
-      step_id: currentStep.stepId,
-      step_index: stepIndex,
-      step_count: visibleSteps.length,
+      form: formMeta.formId,
+      category: formCategory(formMeta.formId),
+      step: currentStep.stepId,
     });
   }, [currentStep?.stepId, formMeta.formId, stepIndex, visibleSteps.length]);
 
@@ -185,8 +192,79 @@ export default function FormRenderer({
     }
   }, [currentStep?.stepId, submissionState, navigateToStep]);
 
+  const reviewEnteredAt = React.useRef<number | null>(null);
+  React.useEffect(() => {
+    if (currentStep?.stepId === "check-your-answers") {
+      reviewEnteredAt.current = Date.now();
+      return () => {
+        // Fires when the user leaves the review step (advance or back).
+        trackEvent("form-review", {
+          form: formMeta.formId,
+          category: formCategory(formMeta.formId),
+          duration_seconds: reviewDwellSeconds(reviewEnteredAt.current),
+        });
+        reviewEnteredAt.current = null;
+      };
+    }
+  }, [currentStep?.stepId, formMeta.formId]);
+
   if (!currentStep) return null;
 
+  // The step body (and all its hooks) lives in a child that only mounts once we
+  // have a step, so those hooks are never called conditionally — mirrors the
+  // RouteComponent → FormView split in routes/forms/$formId (#1981).
+  return (
+    <ActiveStep
+      form={form}
+      formMeta={formMeta}
+      stepId={stepId}
+      currentStep={currentStep}
+      stepIndex={stepIndex}
+      hidePrevious={hidePrevious}
+      visibleSteps={visibleSteps}
+      repeatableStepSettingsRef={repeatableStepSettingsRef}
+      submissionState={submissionState}
+      isDraft={isDraft}
+      previewToken={previewToken}
+      draftToken={draftToken}
+      navigateToStep={navigateToStep}
+      completeAndContinue={completeAndContinue}
+    />
+  );
+}
+
+type StepGuard = ReturnType<typeof useStepGuard>;
+
+interface ActiveStepProps extends FormRendererProps {
+  currentStep: FormRendererProps["visibleSteps"][number];
+  stepIndex: number;
+  hidePrevious: boolean;
+  navigateToStep: StepGuard["navigateToStep"];
+  completeAndContinue: StepGuard["completeAndContinue"];
+}
+
+/**
+ * Renders the active step. Split out of FormRenderer so every hook here runs
+ * unconditionally — FormRenderer's `if (!currentStep) return null` guard sits
+ * above this component, so `currentStep` is always present by the time we're
+ * here (#1981).
+ */
+function ActiveStep({
+  form,
+  formMeta,
+  stepId,
+  currentStep,
+  stepIndex,
+  hidePrevious,
+  visibleSteps,
+  repeatableStepSettingsRef,
+  submissionState,
+  isDraft = false,
+  previewToken,
+  draftToken,
+  navigateToStep,
+  completeAndContinue,
+}: ActiveStepProps) {
   const currentFields = [...currentStep.fields];
 
   // #801: distinguish repeat instances beyond the first. undefined for base
@@ -206,9 +284,9 @@ export default function FormRenderer({
     const prevStep = visibleSteps[stepIndex - 1];
     if (prevStep) {
       trackEvent("form-step-back", {
-        form_id: formMeta.formId,
-        from_step: currentStep.stepId,
-        to_step: prevStep.stepId,
+        form: formMeta.formId,
+        category: formCategory(formMeta.formId),
+        step: currentStep.stepId,
       });
       navigateToStep(prevStep.stepId);
     }
@@ -267,15 +345,18 @@ export default function FormRenderer({
 
     const hasError = results.some((r) => r.length > 0);
     if (hasError) {
-      results.forEach((fieldErrors, i) => {
-        if (fieldErrors.length === 0) return;
-        trackEvent("form-field-error", {
-          form_id: formMeta.formId,
-          step_id: currentStep.stepId,
-          field_id: currentFields[i].fieldId,
-          reason: "validation",
-        });
-      });
+      trackEvent(
+        "form-validation-error",
+        buildValidationErrorPayload(
+          formMeta.formId,
+          formCategory(formMeta.formId),
+          currentStep.stepId,
+          currentFields.map((field, i) => ({
+            fieldId: field.fieldId,
+            errors: results[i],
+          })),
+        ),
+      );
       scrollToTop();
       return;
     }
@@ -292,8 +373,9 @@ export default function FormRenderer({
       const anotherFieldId = getFullFieldId(currentStep.stepId, "addAnother");
 
       const anotherFieldValue = form.getFieldValue(anotherFieldId);
-      // form-step-advance is not fired for repeatable add/remove transitions —
-      // out of v1 analytics scope. The next form-step-view still fires.
+      // Per-step completion events (<formId>:form-step-<word>) are not fired for
+      // repeatable add/remove transitions — out of v1 analytics scope. The next
+      // form-step-view still fires.
       if (anotherFieldValue === "yes") {
         const updatedSteps = addRepeatableStep({
           currentStep,
@@ -332,17 +414,17 @@ export default function FormRenderer({
     }
     const nextStep = visibleSteps[stepIndex + 1];
     if (nextStep) {
-      trackEvent("form-step-advance", {
-        form_id: formMeta.formId,
-        from_step: currentStep.stepId,
-        to_step: nextStep.stepId,
+      // Pre-qualified name (contains ":") so trackEvent forwards it as-is.
+      trackEvent(stepCompleteEventName(formMeta.formId, stepIndex), {
+        form: formMeta.formId,
+        category: formCategory(formMeta.formId),
+        step: currentStep.stepId,
       });
     }
     completeAndContinue(currentStep.stepId);
   };
 
   const handleSubmit = async () => {
-    trackEvent("form-submit", { form_id: formMeta.formId });
     await form.handleSubmit();
     // handleSubmit resolves even when validation fails, so only advance when the
     // form is valid — otherwise the user would be moved past their own errors.
@@ -407,6 +489,12 @@ export default function FormRenderer({
     ),
   );
 
+  // A content-only step carries `markdownContent` and no fields (e.g. an intro
+  // page). Its markdown supplies its own headings, so we suppress the default
+  // step `<h1>` to avoid a duplicate heading.
+  const isContentStep =
+    !!currentStep.markdownContent && currentStep.fields.length === 0;
+
   // The submission confirmation owns its own full-width layout (a full-bleed
   // banner plus inner containers), so it renders outside the page container.
   if (isSubmissionConfirmation) {
@@ -440,29 +528,31 @@ export default function FormRenderer({
   return (
     <div className="container pb-8 lg:pb-16">
       <div className="form-page form-width">
-        {isPreview && (
-          <StatusBanner variant="service-issue" data-testid="preview-banner">
-            Preview mode — this is an unpublished draft and cannot be submitted.
+        {isDraft && (
+          <StatusBanner variant="service-issue" data-testid="draft-banner">
+            Draft mode — this is an unpublished draft and cannot be submitted.
           </StatusBanner>
         )}
         <div className="form-page__header">
           <p className="form-page__service-title"> {formMeta.formTitle} </p>
-          <h1 className="govbb-text-h1">
-            {/* GOV.UK caption-in-heading pattern: the caption sits inside the
+          {!isContentStep && (
+            <h1 className="govbb-text-h1">
+              {/* GOV.UK caption-in-heading pattern: the caption sits inside the
                 h1 so the accessible name distinguishes repeat instances for
                 screen-reader heading navigation. */}
-            {instanceMarker?.hasLabel && (
-              <span
-                data-testid="repeat-instance-marker"
-                className="block text-caption text-mid-grey-00"
-              >
-                {instanceMarker.text}
-              </span>
-            )}
-            {instanceMarker && !instanceMarker.hasLabel
-              ? `${resolvedStepTitle} — ${instanceMarker.text}`
-              : resolvedStepTitle}
-          </h1>
+              {instanceMarker?.hasLabel && (
+                <span
+                  data-testid="repeat-instance-marker"
+                  className="block text-caption text-mid-grey-00"
+                >
+                  {instanceMarker.text}
+                </span>
+              )}
+              {instanceMarker && !instanceMarker.hasLabel
+                ? `${resolvedStepTitle} — ${instanceMarker.text}`
+                : resolvedStepTitle}
+            </h1>
+          )}
           {currentStep.description && (
             <p className="form-page__step-description">
               {currentStep.description}
@@ -472,6 +562,20 @@ export default function FormRenderer({
         <ErrorSummary errors={errors} />
 
         <div className="form-page__step">
+          {currentStep.markdownContent && (
+            <div className="form-page__markdown-content">
+              {/* Recipe-authored step copy (e.g. an intro page). react-markdown
+                  escapes raw HTML by default and we omit rehype-raw, so recipe
+                  content cannot inject markup. */}
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={markdownComponents}
+              >
+                {currentStep.markdownContent}
+              </ReactMarkdown>
+            </div>
+          )}
+
           {currentStep.stepId === "check-your-answers" && (
             <Review
               key={"review-step"}
@@ -498,8 +602,8 @@ export default function FormRenderer({
                     field={group.toggle}
                     validationProperties={resolveValidators(group.toggle)}
                     formId={formMeta.formId}
-                    formVersion={formMeta.version}
                     previewToken={previewToken}
+                    draftToken={draftToken}
                   />
                   {isOpen && (
                     <div className="govbb-show-hide__content">
@@ -513,8 +617,8 @@ export default function FormRenderer({
                           field={field}
                           validationProperties={resolveValidators(field)}
                           formId={formMeta.formId}
-                          formVersion={formMeta.version}
                           previewToken={previewToken}
+                          draftToken={draftToken}
                         />
                       ))}
                     </div>
@@ -547,7 +651,6 @@ export default function FormRenderer({
                   validationProperties={resolveValidators(group.field)}
                   insetFieldsByOption={insetFieldsByOption}
                   formId={formMeta.formId}
-                  formVersion={formMeta.version}
                   previewToken={previewToken}
                 />
               );
@@ -560,7 +663,6 @@ export default function FormRenderer({
                 field={group.field}
                 validationProperties={resolveValidators(group.field)}
                 formId={formMeta.formId}
-                formVersion={formMeta.version}
                 previewToken={previewToken}
               />
             );
@@ -582,14 +684,14 @@ export default function FormRenderer({
                 type="button"
                 disabled={
                   (isLastFormStep && isSubmitting) ||
-                  (isLastFormStep && isPreview)
+                  (isLastFormStep && isDraft)
                 }
                 onClick={isLastFormStep ? handleSubmit : handleContinue}
               >
                 {isLastFormStep && isSubmitting
                   ? "Submitting…"
-                  : isLastFormStep && isPreview
-                    ? "Submit (preview)"
+                  : isLastFormStep && isDraft
+                    ? "Submit (draft)"
                     : isLastFormStep
                       ? "Submit"
                       : "Continue"}
@@ -598,10 +700,11 @@ export default function FormRenderer({
           )}
           {currentStep.stepId !== "submission-confirmation" &&
             isLastFormStep &&
-            isPreview && (
-              <p className="govbb-hint" data-testid="preview-submit-hint">
-                Submitting is disabled in preview. Publish the form to enable
-                submission.
+            isDraft && (
+              <p className="govbb-hint" data-testid="draft-submit-hint">
+                Submitting is disabled for an unpublished draft. Set the
+                form&apos;s visibility to Preview or Public and publish it to
+                enable submission.
               </p>
             )}
         </div>

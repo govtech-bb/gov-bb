@@ -1,8 +1,10 @@
+import { useEffect } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Heading, Link, Search as SearchInput, Text } from '@govtech-bb/react'
 import { z } from 'zod'
 import { search } from '../lib/search'
 import { trackEvent } from '../lib/analytics'
+import { deriveVisibilityOverlay } from '../lib/service-status'
 
 const SearchParams = z.object({
   q: z.string().optional().default(''),
@@ -11,16 +13,28 @@ const SearchParams = z.object({
 export const Route = createFileRoute('/search-results')({
   validateSearch: SearchParams,
   head: () => ({
-    meta: [{ title: 'Search Results | Government of Barbados' }],
+    meta: [
+      { title: 'Search Results | Government of Barbados' },
+      // Query-param result pages are thin/duplicate content — keep them out of
+      // the index (noindex still lets crawlers follow the result links).
+      { name: 'robots', content: 'noindex' },
+    ],
   }),
   component: SearchResultsPage,
 })
 
 function SearchResultsPage() {
   const { q } = Route.useSearch()
-  const { level } = Route.useRouteContext()
+  const { level, serviceStatuses } = Route.useRouteContext()
   const query = q.trim()
-  const hits = query ? search(query, level) : []
+  const hits = query
+    ? search(query, level, deriveVisibilityOverlay(serviceStatuses))
+    : []
+
+  useEffect(() => {
+    if (query) trackEvent('search', { query, results: hits.length })
+  }, [query, hits.length])
+
   const hasResults = query && hits.length > 0
   const hasNoResults = query && hits.length === 0
 

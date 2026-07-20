@@ -1,8 +1,8 @@
 import { FrontmatterSchema, titleFromSlug } from '../lib/frontmatter'
 import type { Frontmatter, ViewLevel } from '../lib/frontmatter'
 import type { Root } from 'hast'
+import type { ComponentType } from 'react'
 import { bakeStartLinkFormId } from '../utils/markdown/plugins'
-import type { MarkdownHeading } from '../utils/markdown/plugins'
 import { CATEGORIES, CATEGORY_BY_SLUG, getSubcategory } from './categories'
 import type { Category } from './categories'
 import { FeatureMetaSchema } from './feature-meta'
@@ -17,8 +17,13 @@ export interface ContentPage {
   body: string
   /** Build-time compiled body (see `vite-plugin-markdown.ts`). Empty root for feature pages. */
   hast: Root
-  /** Section headings for the "On this page" nav. Empty for feature pages. */
-  headings: Array<MarkdownHeading>
+  /** For a co-located `.tsx` page: its component, rendered instead of `hast`. */
+  Component?: ComponentType
+  /**
+   * A co-located page `.tsx` renders its own title/layout, so the catch-all
+   * renders it bare inside the shell rather than through the markdown chrome.
+   */
+  selfRendered?: boolean
 }
 
 /** Shape each `*.md` file is compiled to by `vite-plugin-markdown.ts`. */
@@ -26,7 +31,6 @@ interface MarkdownModule {
   frontmatter: Record<string, unknown>
   body: string
   hast: Root
-  headings: Array<MarkdownHeading>
 }
 
 const EMPTY_HAST: Root = { type: 'root', children: [] }
@@ -34,8 +38,8 @@ const EMPTY_HAST: Root = { type: 'root', children: [] }
 function slugFromPath(path: string): string {
   return path
     .replace(/^\.\//, '')
-    .replace(/\/index\.md$/, '')
-    .replace(/\.md$/, '')
+    .replace(/\/index\.(mdx?|tsx)$/, '')
+    .replace(/\.(mdx?|tsx)$/, '')
 }
 
 /** The slug one level up (`a/b/c` → `a/b`), or undefined at the top level. */
@@ -67,68 +71,120 @@ function leafFromSlug(
 
 const modules = import.meta.glob<MarkdownModule>('./**/*.md', { eager: true })
 
+/**
+ * Validate a page's raw frontmatter and derive its slug, canonical URL and
+ * typed Frontmatter. Shared by `.md` (hast body) and `.mdx` (React component)
+ * pages so both reach listings, search, breadcrumbs and the visibility gate
+ * through identical rules.
+ */
+function buildBasePage(
+  path: string,
+  rawFrontmatter: unknown,
+): { slug: string; url: string; frontmatter: Frontmatter; formId?: string } {
+  const slug = slugFromPath(path)
+  const parsed = FrontmatterSchema.safeParse(rawFrontmatter)
+  if (!parsed.success) {
+    throw new Error(
+      `Invalid frontmatter in src/content/${path.replace(/^\.\//, '')}: ${parsed.error.message}`,
+    )
+  }
+  const raw = parsed.data
+  const categories = Array.from(
+    new Set([
+      ...(raw.category ? [raw.category] : []),
+      ...(raw.categories ?? []),
+    ]),
+  )
+  for (const catSlug of categories) {
+    if (!CATEGORY_BY_SLUG[catSlug]) {
+      throw new Error(
+        `Page "${slug}" references unknown category "${catSlug}". Add it to src/content/categories.ts.`,
+      )
+    }
+  }
+  if (raw.subcategory) {
+    const owningCategory = categories.find((catSlug) =>
+      Boolean(getSubcategory(catSlug, raw.subcategory!)),
+    )
+    if (!owningCategory) {
+      throw new Error(
+        `Page "${slug}" sets subcategory "${raw.subcategory}" but none of its categories declare it. Add the sub-category to src/content/categories.ts or remove the field.`,
+      )
+    }
+  }
+  const frontmatter: Frontmatter = {
+    title: raw.title ?? titleFromSlug(slug),
+    description: raw.description,
+    lede: raw.lede,
+    categories,
+    subcategory: raw.subcategory,
+    publish_date: raw.publish_date,
+    source_url: raw.source_url,
+    stage: raw.stage,
+    visibility: raw.visibility,
+    featured: raw.featured,
+    section: raw.section,
+    service_type: raw.service_type,
+    form_id: raw.form_id,
+  }
+  /** Canonical URL: category + optional subcategory + leaf; uncategorised pages live at the root. */
+  const primaryCategory = categories[0]
+  const leaf = leafFromSlug(slug, primaryCategory, raw.subcategory)
+  const urlParts = [primaryCategory, raw.subcategory, leaf].filter(
+    (part): part is string => Boolean(part),
+  )
+  const url = urlParts.join('/')
+  return { slug, url, frontmatter, formId: raw.form_id }
+}
+
 const markdownPages: Array<ContentPage> = Object.entries(modules).map(
   ([path, mod]) => {
-    const slug = slugFromPath(path)
-    const parsed = FrontmatterSchema.safeParse(mod.frontmatter)
-    if (!parsed.success) {
+    const { slug, url, frontmatter, formId } = buildBasePage(
+      path,
+      mod.frontmatter,
+    )
+    bakeStartLinkFormId(mod.hast, formId)
+    return { slug, url, frontmatter, body: mod.body, hast: mod.hast }
+  },
+)
+
+/**
+ * A service folder can also hold a co-located page `.tsx` — an interactive page
+ * (e.g. a checklist) sitting beside its `index.md` and its `-ui`/`-data`. It
+ * exports `default` (the page component) and `meta` (validated like
+ * frontmatter). The page renders its own layout, so `selfRendered` tells the
+ * catch-all to render it bare inside the shell. `.tsx` inside dash-prefixed
+ * dirs (`-ui`/`-data`/…) are the service's private modules, NOT pages.
+ */
+// Exclude dash-prefixed dirs in the PATTERN (not a post-filter): the glob emits
+// a static `import { default }`/`import { meta }` for every match, so a `-ui`
+// component lacking those exports would be a build-time MISSING_EXPORT.
+const tsxPageDefaults = import.meta.glob(['./**/*.tsx', '!./**/-*/**'], {
+  eager: true,
+  import: 'default',
+})
+const tsxPageMetas = import.meta.glob(['./**/*.tsx', '!./**/-*/**'], {
+  eager: true,
+  import: 'meta',
+})
+
+const tsxPages: Array<ContentPage> = Object.keys(tsxPageDefaults).map(
+  (path) => {
+    const meta = tsxPageMetas[path]
+    if (!meta) {
       throw new Error(
-        `Invalid frontmatter in src/content/${path.replace(/^\.\//, '')}: ${parsed.error.message}`,
+        `Content page ${path.replace(/^\.\//, 'src/content/')} must "export const meta = { … }".`,
       )
     }
-    const raw = parsed.data
-    const categories = Array.from(
-      new Set([
-        ...(raw.category ? [raw.category] : []),
-        ...(raw.categories ?? []),
-      ]),
-    )
-    for (const catSlug of categories) {
-      if (!CATEGORY_BY_SLUG[catSlug]) {
-        throw new Error(
-          `Page "${slug}" references unknown category "${catSlug}". Add it to src/content/categories.ts.`,
-        )
-      }
-    }
-    if (raw.subcategory) {
-      const owningCategory = categories.find((catSlug) =>
-        Boolean(getSubcategory(catSlug, raw.subcategory!)),
-      )
-      if (!owningCategory) {
-        throw new Error(
-          `Page "${slug}" sets subcategory "${raw.subcategory}" but none of its categories declare it. Add the sub-category to src/content/categories.ts or remove the field.`,
-        )
-      }
-    }
-    const frontmatter: Frontmatter = {
-      title: raw.title ?? titleFromSlug(slug),
-      description: raw.description,
-      categories,
-      subcategory: raw.subcategory,
-      publish_date: raw.publish_date,
-      source_url: raw.source_url,
-      stage: raw.stage,
-      visibility: raw.visibility,
-      featured: raw.featured,
-      section: raw.section,
-      service_type: raw.service_type,
-      form_id: raw.form_id,
-    }
-    /** Canonical URL: category + optional subcategory + leaf; uncategorised pages live at the root. */
-    const primaryCategory = categories[0]
-    const leaf = leafFromSlug(slug, primaryCategory, raw.subcategory)
-    const urlParts = [primaryCategory, raw.subcategory, leaf].filter(
-      (part): part is string => Boolean(part),
-    )
-    const url = urlParts.join('/')
-    bakeStartLinkFormId(mod.hast, raw.form_id)
+    const { slug, url, frontmatter } = buildBasePage(path, meta)
     return {
       slug,
       url,
       frontmatter,
-      body: mod.body,
-      hast: mod.hast,
-      headings: mod.headings,
+      body: '',
+      hast: EMPTY_HAST,
+      Component: tsxPageDefaults[path] as ContentPage['Component'],
+      selfRendered: true,
     }
   },
 )
@@ -188,12 +244,27 @@ const featurePages: Array<ContentPage> = Object.entries(featureMetaModules).map(
       frontmatter,
       body: '',
       hast: EMPTY_HAST,
-      headings: [],
     }
   },
 )
 
-const ownUrlPages: Array<ContentPage> = [...markdownPages, ...featurePages]
+// A `.md` and a co-located `.tsx` resolving to the same slug would silently
+// shadow one another, so fail fast — like every other content-config mistake.
+const contentSlugs = new Set<string>()
+for (const page of [...markdownPages, ...tsxPages]) {
+  if (contentSlugs.has(page.slug)) {
+    throw new Error(
+      `Duplicate content slug "${page.slug}" — two content files resolve to the same page.`,
+    )
+  }
+  contentSlugs.add(page.slug)
+}
+
+const ownUrlPages: Array<ContentPage> = [
+  ...markdownPages,
+  ...tsxPages,
+  ...featurePages,
+]
 const pageBySlug = new Map(ownUrlPages.map((p) => [p.slug, p]))
 
 /**
@@ -247,18 +318,54 @@ function viewerMeets(viewer: ViewLevel, required: ViewLevel): boolean {
 }
 
 /**
+ * A service is "digital" — completed online — when it has a form to submit or
+ * is an interactive tool (calculators, the bank-holiday lookup, etc.); anything
+ * else is informational. Tools carry `service_type: digital`; forms imply it.
+ */
+export function isDigitalService(page: ContentPage): boolean {
+  return (
+    Boolean(page.frontmatter.form_id) ||
+    page.frontmatter.service_type === 'digital'
+  )
+}
+
+/**
+ * A slug's own visibility, with an optional runtime `overlay` (from
+ * `service_status`) taking precedence over the baked frontmatter default.
+ *
+ * The overlay is keyed by the platform's **canonical service key** — `form_id`
+ * when the service has a form, else the content slug (see feature-flagging
+ * `catalogue.ts` / the seed tool, #1898). So a form-backed service is looked up
+ * by its `form_id`, not its content slug; a slug present under that key uses the
+ * overlaid level, otherwise it falls back to frontmatter (`undefined` for an
+ * intermediate directory with no page).
+ */
+function overlaidVisibilityOf(
+  overlay?: ReadonlyMap<string, ViewLevel>,
+): (slug: string) => ViewLevel | undefined {
+  return (slug) => {
+    const page = BY_SLUG.get(slug)
+    const canonicalKey = page?.frontmatter.form_id ?? slug
+    return overlay?.get(canonicalKey) ?? page?.frontmatter.visibility
+  }
+}
+
+/**
  * A page's *effective* level: the most restricted of its own `visibility` and
  * every ancestor page's. Walking ancestors by slug means flagging a service's
  * `index.md` as `preview`/`draft` automatically gates its `/start` (and other)
  * sub-pages, which sit at `<service>/<leaf>`. Slug-keyed (not URL) so it is
  * independent of the category prefix — a sub-page's URL hangs off its parent's,
  * but its slug is always `<parentSlug>/<leaf>`.
+ *
+ * An optional `overlay` (the runtime `service_status` visibility map) overrides
+ * the frontmatter default per slug — see `overlaidVisibilityOf`.
  */
-export function pageLevel(page: ContentPage): ViewLevel {
-  return resolvePageLevel(
-    page.slug,
-    (slug) => BY_SLUG.get(slug)?.frontmatter.visibility,
-  )
+export function pageLevel(
+  page: ContentPage,
+  overlay?: ReadonlyMap<string, ViewLevel>,
+): ViewLevel {
+  return resolvePageLevel(page.slug, overlaidVisibilityOf(overlay))
 }
 
 /**
@@ -282,8 +389,12 @@ export function resolvePageLevel(
 }
 
 /** A page is visible when the viewer's level meets the page's required level. */
-export function isVisible(page: ContentPage, viewer: ViewLevel): boolean {
-  return viewerMeets(viewer, pageLevel(page))
+export function isVisible(
+  page: ContentPage,
+  viewer: ViewLevel,
+  overlay?: ReadonlyMap<string, ViewLevel>,
+): boolean {
+  return viewerMeets(viewer, pageLevel(page, overlay))
 }
 
 /**
@@ -293,14 +404,21 @@ export function isVisible(page: ContentPage, viewer: ViewLevel): boolean {
  * treated as `public` (fail-open: a missing page already 404s through its own
  * route).
  */
-export function urlLevel(url: string): ViewLevel {
+export function urlLevel(
+  url: string,
+  overlay?: ReadonlyMap<string, ViewLevel>,
+): ViewLevel {
   const page = findPage(url)
-  return page ? pageLevel(page) : 'public'
+  return page ? pageLevel(page, overlay) : 'public'
 }
 
 /** Whether a viewer at `viewer` may see the page at `url`. */
-export function isUrlVisible(url: string, viewer: ViewLevel): boolean {
-  return viewerMeets(viewer, urlLevel(url))
+export function isUrlVisible(
+  url: string,
+  viewer: ViewLevel,
+  overlay?: ReadonlyMap<string, ViewLevel>,
+): boolean {
+  return viewerMeets(viewer, urlLevel(url, overlay))
 }
 
 /**
@@ -310,9 +428,12 @@ export function isUrlVisible(url: string, viewer: ViewLevel): boolean {
  * `/start` step: a page with no `/start` sub-page resolves to `public` and
  * keeps its existing manifest-gated behaviour.
  */
-export function startSubPageLevel(page: ContentPage): ViewLevel {
+export function startSubPageLevel(
+  page: ContentPage,
+  overlay?: ReadonlyMap<string, ViewLevel>,
+): ViewLevel {
   const start = BY_SLUG.get(`${page.slug}/start`)
-  return start ? pageLevel(start) : 'public'
+  return start ? pageLevel(start, overlay) : 'public'
 }
 
 /**
@@ -324,8 +445,9 @@ export function startSubPageLevel(page: ContentPage): ViewLevel {
 export function isStartSubPageVisible(
   page: ContentPage,
   viewer: ViewLevel,
+  overlay?: ReadonlyMap<string, ViewLevel>,
 ): boolean {
-  return viewerMeets(viewer, startSubPageLevel(page))
+  return viewerMeets(viewer, startSubPageLevel(page, overlay))
 }
 
 /**
@@ -379,12 +501,13 @@ export function resolveServiceHref(href: string): string {
 export function categoryServices(
   categorySlug: string,
   viewer: ViewLevel,
+  overlay?: ReadonlyMap<string, ViewLevel>,
 ): Array<ContentPage> {
   return PAGES.filter(
     (p) =>
       p.frontmatter.categories.includes(categorySlug) &&
       !isSubPage(p) &&
-      isVisible(p, viewer),
+      isVisible(p, viewer, overlay),
   )
 }
 
@@ -397,8 +520,9 @@ export function categoryServices(
 export function isCategoryVisible(
   category: Category,
   viewer: ViewLevel,
+  overlay?: ReadonlyMap<string, ViewLevel>,
 ): boolean {
-  return categoryServices(category.slug, viewer).length > 0
+  return categoryServices(category.slug, viewer, overlay).length > 0
 }
 
 export { CATEGORIES, CATEGORY_BY_SLUG }

@@ -17,6 +17,9 @@ export type {
   CustomComponentEntry,
 } from "./catalog";
 
+// Single-slot TTL cache shared by the builder catalog memoizers
+export { ttlCache } from "./ttl-cache";
+
 // Behaviors
 export { BEHAVIOUR_TYPE_DESCRIPTORS } from "./behaviors/behaviour-builder";
 export type {

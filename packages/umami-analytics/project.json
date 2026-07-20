@@ -1,0 +1,22 @@
+{
+  "name": "umami-analytics",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/umami-analytics/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/umami-analytics",
+        "tsConfig": "packages/umami-analytics/tsconfig.json",
+        "main": "packages/umami-analytics/src/index.ts"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": { "command": "vitest run", "cwd": "packages/umami-analytics" }
+    }
+  },
+  "tags": []
+}

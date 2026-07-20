@@ -7,9 +7,11 @@ import type {
 } from "./submission-processor.interface";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import { sign } from "./webhook-signature";
+import { assertSafeUrl } from "./url-safety";
 import { sanitizeForLog } from "./log-sanitize";
 import { buildMappedCasePayload } from "./webhook-mapping";
 import { idempotencyKey, timedPost } from "./http-post";
+import { WebhookConfigError, WebhookDeliveryError } from "./webhook-errors";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_SIGNATURE_HEADER = "X-Webhook-Signature";
@@ -50,8 +52,19 @@ export class WebhookProcessor implements ISubmissionProcessor {
       unknown
     >;
 
-    const url = this.resolveUrl(cfg, payload.submissionId);
-    if (!url) return { kind: "completed" };
+    // Misconfiguration (missing endpoint/secret env, no url) throws
+    // WebhookConfigError → the entry is routed to SQS retry/DLQ so the problem
+    // is visible, rather than a form silently never syncing.
+    const { url, fromRecipe } = this.resolveUrl(cfg, payload.submissionId);
+
+    // SSRF guard (#287): only a recipe-supplied literal url is attacker-
+    // controllable, so before dispatch we require https and refuse a host that
+    // resolves to an internal address (private/loopback/link-local — notably the
+    // cloud-metadata endpoint 169.254.169.254). Throws on violation: the entry
+    // fails loudly rather than letting a malicious recipe drive an internal
+    // request. An env-sourced endpoint is operator deploy config (may
+    // legitimately be internal), so it is exempt.
+    if (fromRecipe) await assertSafeUrl(url);
 
     const method = (cfg["method"] as string | undefined) ?? "POST";
     const timeoutMs =
@@ -65,6 +78,7 @@ export class WebhookProcessor implements ISubmissionProcessor {
             mapping,
             values: payload.values,
             referenceCode: payload.referenceCode,
+            submissionId: payload.submissionId,
             submittedAt: payload.meta.submittedAt,
           }),
         )
@@ -91,9 +105,7 @@ export class WebhookProcessor implements ISubmissionProcessor {
       "Content-Type": "application/json",
       "X-Idempotency-Key": idempotencyKey(payload.submissionId, index),
     };
-    if (!this.applyAuth(cfg, headers, body, payload.submissionId)) {
-      return { kind: "completed" }; // auth configured to use env that isn't set
-    }
+    this.applyAuth(cfg, headers, body, payload.submissionId);
 
     if (mapping) {
       // Mapped payloads carry applicant PII (name/email/phone in the body), so
@@ -107,7 +119,17 @@ export class WebhookProcessor implements ISubmissionProcessor {
       );
     }
 
-    await timedPost(this.http, url, body, { headers, timeoutMs, method });
+    try {
+      await timedPost(this.http, url, body, { headers, timeoutMs, method });
+    } catch (err) {
+      // A non-2xx / timeout / network error is transient — type it so the DLQ
+      // alarm can tell "destination down" from "misconfigured". Message is
+      // preserved (e.g. "HTTP 502").
+      throw new WebhookDeliveryError(
+        err instanceof Error ? err.message : String(err),
+        { cause: err },
+      );
+    }
 
     this.logger.log(
       `[webhook] Delivered submission ${payload.submissionId} to ${url}`,
@@ -115,44 +137,46 @@ export class WebhookProcessor implements ISubmissionProcessor {
     return { kind: "completed" };
   }
 
-  /** Literal `url`, or `endpoint.env` (base) + optional `path`. Returns null
-   * (and skips) when an env-sourced endpoint isn't configured. */
+  /** Literal `url` (recipe-supplied), or `endpoint.env` (base) + optional
+   * `path` (operator deploy config). `fromRecipe` tells the caller whether the
+   * url is attacker-controllable and so must pass the SSRF guard. Throws
+   * WebhookConfigError when a named endpoint env var is unset/empty, or when the
+   * recipe declares neither `endpoint` nor `url` (misconfigured). */
   private resolveUrl(
     cfg: Record<string, unknown>,
     submissionId: string,
-  ): string | null {
+  ): { url: string; fromRecipe: boolean } {
     const endpoint = cfg["endpoint"] as WebhookEndpoint | undefined;
     if (endpoint) {
       const base = process.env[endpoint.env];
       if (!base) {
-        this.logger.warn(
-          `[webhook] ${endpoint.env} not set — skipping submission ${submissionId}`,
+        throw new WebhookConfigError(
+          `[webhook] ${endpoint.env} not set — cannot dispatch submission ${sanitizeForLog(submissionId)}`,
         );
-        return null;
       }
       const path = (endpoint.path ?? "").replace(/^\/+/, "");
-      return path
+      const url = path
         ? new URL(path, base.endsWith("/") ? base : `${base}/`).toString()
         : base;
+      return { url, fromRecipe: false };
     }
     const url = cfg["url"] as string | undefined;
     if (!url) {
-      this.logger.warn(
-        `[webhook] No url/endpoint configured — skipping submission ${submissionId}`,
+      throw new WebhookConfigError(
+        `[webhook] no url or endpoint configured — cannot dispatch submission ${sanitizeForLog(submissionId)}`,
       );
-      return null;
     }
-    return url;
+    return { url, fromRecipe: true };
   }
 
-  /** Applies the configured auth to `headers`. Returns false when an env-sourced
-   * key isn't set (caller skips). */
+  /** Applies the configured auth to `headers`. Throws WebhookConfigError when an
+   * env-sourced key isn't set/empty. */
   private applyAuth(
     cfg: Record<string, unknown>,
     headers: Record<string, string>,
     body: string,
     submissionId: string,
-  ): boolean {
+  ): void {
     const auth = cfg["auth"] as WebhookAuth | undefined;
     if (auth) {
       if (auth.scheme === "hmac") {
@@ -163,14 +187,13 @@ export class WebhookProcessor implements ISubmissionProcessor {
       } else if (auth.scheme === "apiKey") {
         const key = process.env[auth.secretEnv];
         if (!key) {
-          this.logger.warn(
-            `[webhook] ${auth.secretEnv} not set — skipping submission ${submissionId}`,
+          throw new WebhookConfigError(
+            `[webhook] ${auth.secretEnv} not set — cannot dispatch submission ${sanitizeForLog(submissionId)}`,
           );
-          return false;
         }
         headers[auth.header] = key;
       }
-      return true;
+      return;
     }
     // Legacy inline HMAC secret.
     const secret = cfg["secret"] as string | undefined;
@@ -180,6 +203,5 @@ export class WebhookProcessor implements ISubmissionProcessor {
         DEFAULT_SIGNATURE_HEADER;
       headers[signatureHeader] = sign(body, secret);
     }
-    return true;
   }
 }

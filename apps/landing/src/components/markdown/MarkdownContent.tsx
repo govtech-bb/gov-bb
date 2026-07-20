@@ -1,17 +1,12 @@
 import { Heading, Text } from '@govtech-bb/react'
-import { format } from 'date-fns'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 import type { Root } from 'hast'
 import type { Frontmatter } from '../../lib/frontmatter'
-import {
-  hideStartLinks,
-  sectionise,
-  type MarkdownHeading,
-} from '../../utils/markdown/plugins'
+import { hideStartLinks, sectionise } from '../../utils/markdown/plugins'
 import { markdownComponents } from './MdComponents'
+import { formatPublishDate } from '../../lib/format-date'
 import { AvailableFormsContext } from './StartLink'
-// import { TableOfContents } from './TableOfContents'
 import { MigrationBanner } from '../MigrationBanner'
 
 export function MarkdownBody({
@@ -46,8 +41,8 @@ export function MarkdownBody({
 
 type MarkdownContentProps = {
   frontmatter: Frontmatter
-  hast: Root
-  headings?: Array<MarkdownHeading>
+  /** Compiled `.md` body. */
+  hast?: Root
   availableForms?: ReadonlySet<string>
   hideStartLink?: boolean
 }
@@ -55,7 +50,6 @@ type MarkdownContentProps = {
 export function MarkdownContent({
   frontmatter,
   hast,
-  // headings = [],
   availableForms,
   hideStartLink = false,
 }: MarkdownContentProps) {
@@ -71,21 +65,32 @@ export function MarkdownContent({
             <MigrationBanner pageURL={frontmatter.source_url} />
           ) : null}
 
-          {frontmatter.publish_date ? (
-            <div className="border-blue-10 border-b-4 pb-4 text-mid-grey-00">
-              <Text as="p" size="caption">
-                Last updated on {format(frontmatter.publish_date, 'PPP')}
-              </Text>
+          {frontmatter.publish_date || frontmatter.lede ? (
+            <div className="flex flex-col gap-xs">
+              {frontmatter.publish_date ? (
+                <div className="border-blue-10 border-b-4 pb-4 text-mid-grey-00">
+                  <Text as="p" size="caption">
+                    Last updated on {formatPublishDate(frontmatter.publish_date)}
+                  </Text>
+                </div>
+              ) : null}
+
+              {frontmatter.lede ? (
+                <Text as="p" className="text-mid-grey-00">
+                  {frontmatter.lede}
+                </Text>
+              ) : null}
             </div>
           ) : null}
         </div>
-        <MarkdownBody
-          hast={hast}
-          availableForms={availableForms}
-          hideStartLink={hideStartLink}
-        />
+        {hast ? (
+          <MarkdownBody
+            hast={hast}
+            availableForms={availableForms}
+            hideStartLink={hideStartLink}
+          />
+        ) : null}
       </div>
-      {/* <TableOfContents headings={headings} /> */}
     </div>
   )
 }

@@ -40,4 +40,21 @@ describe("CreateSubmissionDto — values shape", () => {
     const errs = validateSync(buildDto({ s: "string" }));
     expect(errs).not.toEqual([]);
   });
+
+  it("accepts a payload omitting formVersion (#1196 — version retired)", () => {
+    const dto = plainToInstance(CreateSubmissionDto, {
+      formId: "f",
+      values: { s: { a: "b" } },
+    });
+    expect(validateSync(dto)).toEqual([]);
+  });
+
+  it("rejects a present-but-malformed formVersion", () => {
+    const dto = plainToInstance(CreateSubmissionDto, {
+      formId: "f",
+      formVersion: "not-a-version",
+      values: { s: { a: "b" } },
+    });
+    expect(validateSync(dto)).not.toEqual([]);
+  });
 });

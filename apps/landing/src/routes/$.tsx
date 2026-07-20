@@ -1,7 +1,10 @@
+import { useEffect } from 'react'
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { Heading, Text, linkVariants } from '@govtech-bb/react'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
+import { MaintenanceNotice } from '../components/MaintenanceNotice'
+import { ApplicationClosedNotice } from '../components/ApplicationClosedNotice'
 import { MarkdownContent } from '../components/markdown'
 import {
   categoryServices,
@@ -15,7 +18,24 @@ import type { ContentPage } from '../content/registry'
 import type { ViewLevel } from '../lib/frontmatter'
 import { CATEGORY_BY_SLUG, getSubcategory } from '../content/categories'
 import type { Category, SubCategory } from '../content/categories'
-import { getAvailableForms } from '../lib/available-forms'
+import {
+  getAvailableForms,
+  getMaintenanceForms,
+  getClosedForms,
+} from '../lib/available-forms'
+import {
+  deriveFormDisabledSlugs,
+  deriveVisibilityOverlay,
+} from '../lib/service-status'
+import { shouldHideStartLink } from '../lib/hide-start-link'
+import { checkFormAccessible } from '../lib/preview-form-access'
+import { seoTags } from '../lib/page-head'
+import {
+  buildGovernmentServiceLd,
+  buildBreadcrumbLd,
+} from '../lib/structured-data'
+import { trackEvent } from '../lib/analytics'
+import { pageViewEvent } from './-page-view-event'
 
 interface CategoryListItem {
   title: string
@@ -30,7 +50,25 @@ const toListItem = (p: ContentPage): CategoryListItem => ({
 })
 
 type LoaderData =
-  | { kind: 'page'; page: ContentPage; availableForms: string[] }
+  | {
+      // Only the URL crosses the loader→client serialization boundary; the
+      // full page (incl. its component function, which seroval can't serialize)
+      // is re-resolved from the registry — a module constant on both sides — at
+      // render time.
+      kind: 'page'
+      url: string
+      availableForms: string[]
+      underMaintenance: boolean
+      /** Whether the form's application window has closed (#1936) — for the
+       * closed notice and hiding the online application method. */
+      applicationClosed: boolean
+      /** The page's effective level (with the status overlay) — for the review
+       * banner and `noindex`. */
+      level: ViewLevel
+      /** Whether the viewer may see the `/start` step — for hiding the online
+       * application method. Precomputed here so the component needs no overlay. */
+      startSubPageVisible: boolean
+    }
   | { kind: 'category'; category: Category; items: CategoryListItem[] }
   | {
       kind: 'subcategory-index'
@@ -46,14 +84,17 @@ type LoaderData =
 
 export const Route = createFileRoute('/$')({
   loader: async ({ params, context }): Promise<LoaderData> => {
-    const { level } = context
+    const { level, serviceStatuses } = context
+    // The runtime service_status overlay overrides frontmatter visibility per
+    // slug (`disabled` → hidden from the public, `enabled` → published).
+    const overlay = deriveVisibilityOverlay(serviceStatuses)
     const splat = (params._splat ?? '').replace(/^\/+|\/+$/g, '')
     const segments = splat.split('/').filter(Boolean)
 
     if (segments.length === 1) {
       const cat = CATEGORY_BY_SLUG[segments[0]]
       if (cat) {
-        if (!isCategoryVisible(cat, level)) throw notFound()
+        if (!isCategoryVisible(cat, level, overlay)) throw notFound()
         if (cat.subcategories && cat.subcategories.length > 0) {
           return {
             kind: 'subcategory-index',
@@ -61,26 +102,84 @@ export const Route = createFileRoute('/$')({
             subcategories: cat.subcategories,
           }
         }
-        const items = categoryServices(cat.slug, level).map(toListItem)
+        const items = categoryServices(cat.slug, level, overlay).map(toListItem)
         return { kind: 'category', category: cat, items }
       }
     }
 
     const page = findPage(splat)
     if (page) {
-      if (!isVisible(page, level)) throw notFound()
+      if (!isVisible(page, level, overlay)) throw notFound()
       // Only content pages render Start now buttons, so the forms list is
       // resolved here (server-side, cached) and nowhere else.
-      const availableForms = await getAvailableForms()
-      return { kind: 'page', page, availableForms }
+      let availableForms = await getAvailableForms()
+      // A reviewer (preview/draft) on a not-yet-public page: its form is hidden
+      // from the public list, so confirm the form is reachable under the preview
+      // token and, if so, allow its Start button. Append to a FRESH array, never
+      // pushing into the shared public-forms cache (#1646 Phase 3).
+      const formId = page.frontmatter.form_id
+      if (level !== 'public' && formId && !availableForms.includes(formId)) {
+        if (await checkFormAccessible({ data: formId })) {
+          availableForms = [...availableForms, formId]
+        }
+      }
+      // A `form_disabled` service_status forces the service's form into the
+      // maintenance path: for the public its Start button is hidden and its
+      // `/start` step 404s (removed from the available list); a reviewer keeps
+      // the token-accessible form added above. Status rows are keyed by the
+      // canonical service key — the `form_id` for a form-backed service — so the
+      // form-disabled set is a set of form ids, matched directly against this
+      // page's `form_id` (which the `/start` sub-page shares).
+      const disabledFormIds = deriveFormDisabledSlugs(serviceStatuses)
+      const formDisabledByStatus =
+        formId !== undefined && disabledFormIds.has(formId)
+      if (formDisabledByStatus && level === 'public') {
+        availableForms = availableForms.filter((f) => f !== formId)
+      }
+      // A closed form (#1936) stays public, so — unlike maintenance — it IS in
+      // availableForms; strip its formId here so its Start CTA is hidden and its
+      // `/start` sub-page 404s by direct URL (the check below), and flag it so
+      // PageView renders the closed notice. Computed before the `/start` gate.
+      const applicationClosed =
+        formId !== undefined && (await getClosedForms()).includes(formId)
+      if (applicationClosed) {
+        availableForms = availableForms.filter((f) => f !== formId)
+      }
+      // The `/start` sub-page IS the online-application step. When its form is
+      // non-public (preview/maintenance/status-disabled) it is hidden the same
+      // way its Start button is — a reviewer keeps access (the form was added to
+      // availableForms above); otherwise the step stays reachable by direct URL.
+      if (
+        page.slug.endsWith('/start') &&
+        formId !== undefined &&
+        !availableForms.includes(formId)
+      ) {
+        throw notFound()
+      }
+      // A maintenance recipe is non-public, so it never appears in the available
+      // list above; landing learns it is *specifically* under maintenance (vs
+      // merely unpublished) from the dedicated endpoint, to render the notice. A
+      // `form_disabled` status renders the same notice.
+      const underMaintenance =
+        formDisabledByStatus ||
+        (formId ? (await getMaintenanceForms()).includes(formId) : false)
+      return {
+        kind: 'page',
+        url: page.url,
+        availableForms,
+        underMaintenance,
+        applicationClosed,
+        level: pageLevel(page, overlay),
+        startSubPageVisible: isStartSubPageVisible(page, level, overlay),
+      }
     }
 
     if (segments.length === 2) {
       const cat = CATEGORY_BY_SLUG[segments[0]]
       const sub = cat ? getSubcategory(cat.slug, segments[1]) : undefined
       if (cat && sub) {
-        if (!isCategoryVisible(cat, level)) throw notFound()
-        const items = categoryServices(cat.slug, level)
+        if (!isCategoryVisible(cat, level, overlay)) throw notFound()
+        const items = categoryServices(cat.slug, level, overlay)
           .filter((p) => p.frontmatter.subcategory === sub.slug)
           .map(toListItem)
         return { kind: 'subcategory', category: cat, subcategory: sub, items }
@@ -92,50 +191,81 @@ export const Route = createFileRoute('/$')({
   head: ({ loaderData }) => {
     if (!loaderData) return {}
     if (loaderData.kind === 'page') {
+      const page = findPage(loaderData.url)
+      if (!page) return {}
+      const title = page.frontmatter.title
+      const isPublic = loaderData.level === 'public'
+      // Canonical/OG only for indexable pages — a gated page is noindex.
+      const seo = isPublic
+        ? seoTags(title, page.frontmatter.description ?? '', `/${page.url}`)
+        : undefined
       return {
         meta: [
-          { title: loaderData.page.frontmatter.title },
-          ...(loaderData.page.frontmatter.description
-            ? [
-                {
-                  name: 'description',
-                  content: loaderData.page.frontmatter.description,
-                },
-              ]
+          { title },
+          ...(page.frontmatter.description
+            ? [{ name: 'description', content: page.frontmatter.description }]
             : []),
           // A gated page only reaches here for a token holder, but keep
           // crawlers out in case the URL is ever shared.
-          ...(pageLevel(loaderData.page) !== 'public'
-            ? [{ name: 'robots', content: 'noindex' }]
-            : []),
+          ...(isPublic ? [] : [{ name: 'robots', content: 'noindex' }]),
+          ...(seo?.meta ?? []),
         ],
+        ...(seo ? { links: seo.links } : {}),
+        // Structured data only for indexable pages — a gated page is noindex,
+        // so it gets no JSON-LD (mirrors the canonical/OG gating above).
+        ...(isPublic
+          ? {
+              scripts: [
+                {
+                  type: 'application/ld+json',
+                  children: JSON.stringify(buildGovernmentServiceLd(page)),
+                },
+                {
+                  type: 'application/ld+json',
+                  children: JSON.stringify(buildBreadcrumbLd(page)),
+                },
+              ],
+            }
+          : {}),
       }
     }
     if (loaderData.kind === 'subcategory') {
-      return {
-        meta: [
-          {
-            title: `${loaderData.subcategory.title} | ${loaderData.category.title}`,
-          },
-        ],
-      }
+      const { category, subcategory } = loaderData
+      const title = `${subcategory.title} | ${category.title}`
+      const seo = seoTags(
+        title,
+        subcategory.description ?? '',
+        `/${category.slug}/${subcategory.slug}`,
+      )
+      return { meta: [{ title }, ...seo.meta], links: seo.links }
     }
-    return { meta: [{ title: loaderData.category.title }] }
+    const { category } = loaderData
+    const seo = seoTags(
+      category.title,
+      category.description ?? '',
+      `/${category.slug}`,
+    )
+    return { meta: [{ title: category.title }, ...seo.meta], links: seo.links }
   },
   component: ContentRoute,
 })
 
 function ContentRoute() {
   const data = Route.useLoaderData()
-  const { level } = Route.useRouteContext()
-  if (data.kind === 'page')
+  if (data.kind === 'page') {
+    const page = findPage(data.url)
+    if (!page) throw notFound()
     return (
       <PageView
-        page={data.page}
+        page={page}
         availableForms={data.availableForms}
-        viewerLevel={level}
+        level={data.level}
+        startSubPageVisible={data.startSubPageVisible}
+        underMaintenance={data.underMaintenance}
+        applicationClosed={data.applicationClosed}
       />
     )
+  }
   if (data.kind === 'subcategory-index')
     return (
       <SubcategoryIndexView
@@ -158,27 +288,54 @@ function ContentRoute() {
 function PageView({
   page,
   availableForms,
-  viewerLevel,
+  level,
+  startSubPageVisible,
+  underMaintenance,
+  applicationClosed,
 }: {
   page: ContentPage
   availableForms: string[]
-  viewerLevel: ViewLevel
+  /** The page's effective level (with the status overlay), for the banner. */
+  level: ViewLevel
+  /** Whether the viewer may see the `/start` step (computed in the loader). */
+  startSubPageVisible: boolean
+  underMaintenance: boolean
+  applicationClosed: boolean
 }) {
   // A visitor whose level can't see this page's `/start` sub-page (because it's
   // gated above them) sees the online-application method stripped and the
-  // "N ways" count rewritten down.
-  const hideStartLink = !isStartSubPageVisible(page, viewerLevel)
-  const level = pageLevel(page)
+  // "N ways" count rewritten down. Any non-public recipe — `preview`, `draft`,
+  // or `maintenance` — is absent from `availableForms`, so it hides the same way
+  // for the public; a reviewer keeps the Start button (the loader adds a
+  // token-accessible form back to the list) so they can still test it.
+  // `maintenance` differs only in also rendering the notice (below).
+  useEffect(() => {
+    const event = pageViewEvent(page)
+    if (event) trackEvent(event.name, event.data)
+  }, [page])
+  const hideStartLink = shouldHideStartLink({
+    startSubPageVisible,
+    formId: page.frontmatter.form_id,
+    availableForms,
+  })
+  // A co-located `.tsx` page renders its own title/layout; everything else is
+  // a `.md` page rendered through the markdown article chrome.
+  const Body = page.selfRendered ? page.Component : undefined
   return (
     <Shell>
       {level !== 'public' ? <ReviewBanner level={level} /> : null}
-      <MarkdownContent
-        hast={page.hast}
-        headings={page.headings}
-        frontmatter={page.frontmatter}
-        availableForms={new Set(availableForms)}
-        hideStartLink={hideStartLink}
-      />
+      {underMaintenance ? <MaintenanceNotice /> : null}
+      {applicationClosed ? <ApplicationClosedNotice /> : null}
+      {Body ? (
+        <Body />
+      ) : (
+        <MarkdownContent
+          hast={page.hast}
+          frontmatter={page.frontmatter}
+          availableForms={new Set(availableForms)}
+          hideStartLink={hideStartLink}
+        />
+      )}
     </Shell>
   )
 }
@@ -308,11 +465,11 @@ function ReviewBanner({ level }: { level: Exclude<ViewLevel, 'public'> }) {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <div className="container py-4 lg:py-6">
+      <div className="container py-4 lg:py-6 print:hidden">
         <Breadcrumbs />
       </div>
       <div className="container pt-4 pb-8 lg:py-8">{children}</div>
-      <div className="container">
+      <div className="container print:hidden">
         <HelpfulBox className="mb-4 lg:mb-16" />
       </div>
     </>

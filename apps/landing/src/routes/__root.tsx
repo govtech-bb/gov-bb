@@ -10,6 +10,9 @@ import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
 import { trackEvent } from '../lib/analytics'
 import { resolveViewLevel } from '../lib/preview'
+import { getServiceStatuses } from '../lib/service-status'
+import { SITE_URL } from '../lib/site-url'
+import { buildOrganizationLd, buildWebSiteLd } from '../lib/structured-data'
 
 import appCss from '../styles.css?url'
 
@@ -48,32 +51,60 @@ const UMAMI_SRC =
   'https://cloud.umami.is/script.js'
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
-  // Resolve the viewer's content level once, server-side, and expose it on the
-  // router context so every child loader/component can gate on it. Runs on the
-  // initial SSR load; the resolved level rides the dehydrated context across
-  // subsequent client navigations, so there's no per-navigation server round-trip.
+  // Resolve the viewer's content level and the runtime service statuses once,
+  // server-side, and expose them on the router context so every child
+  // loader/component can gate on them. Runs on the initial SSR load; the
+  // resolved values ride the dehydrated context across subsequent client
+  // navigations, so there's no per-navigation server round-trip. `serviceStatuses`
+  // is a plain `[slug, status]` array (seroval-serialisable); consumers derive
+  // the visibility overlay / form-disabled set from it (see `service-status.ts`).
   beforeLoad: async () => {
     const { level, redirectTo } = await resolveViewLevel()
     if (redirectTo) throw redirect({ href: redirectTo })
-    return { level }
+    const serviceStatuses = await getServiceStatuses()
+    return { level, serviceStatuses }
   },
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: 'Government Services | Government of Barbados' },
+      { name: 'theme-color', content: '#000000' },
+      // Open Graph / Twitter defaults. Per-page routes override the title,
+      // description and url (via `pageHead`); these site-wide values aren't
+      // worth repeating per page.
+      { property: 'og:site_name', content: 'Government of Barbados' },
+      { property: 'og:locale', content: 'en_BB' },
+      { property: 'og:type', content: 'website' },
+      { property: 'og:image', content: `${SITE_URL}/og-image.png` },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:image', content: `${SITE_URL}/og-image.png` },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
-    scripts: UMAMI_WEBSITE_ID
-      ? [
-          {
-            src: UMAMI_SRC,
-            defer: true,
-            'data-website-id': UMAMI_WEBSITE_ID,
-            'data-auto-track': 'false',
-          },
-        ]
-      : undefined,
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      { rel: 'manifest', href: '/manifest.json' },
+    ],
+    scripts: [
+      // Site-wide structured data — present on every page (#1643).
+      {
+        type: 'application/ld+json',
+        children: JSON.stringify(buildOrganizationLd()),
+      },
+      {
+        type: 'application/ld+json',
+        children: JSON.stringify(buildWebSiteLd()),
+      },
+      ...(UMAMI_WEBSITE_ID
+        ? [
+            {
+              src: UMAMI_SRC,
+              defer: true,
+              'data-website-id': UMAMI_WEBSITE_ID,
+              'data-auto-track': 'false',
+            },
+          ]
+        : []),
+    ],
   }),
   notFoundComponent: NotFoundPage,
   errorComponent: ServerErrorPage,
@@ -136,18 +167,22 @@ function ServerErrorPage() {
 function RootLayout() {
   return (
     <div
-      className={`${textVariants({ size: 'body' })} grid min-h-screen grid-rows-[auto_1fr_auto] font-sans antialiased text-black-00 bg-white-00`}
+      className={`${textVariants({ size: 'body' })} grid min-h-screen grid-rows-[auto_1fr_auto] font-sans antialiased text-black-00 bg-white-00 print:block print:min-h-0 print:h-auto`}
     >
-      <Header />
+      <div className="print:hidden">
+        <Header />
+      </div>
       <main id="main">
         <Outlet />
       </main>
-      <Footer
-        links={FOOTER_LINKS}
-        logoSrc="/images/coat-of-arms.png"
-        logoAlt="Barbados Coat of Arms"
-        copyrightText={`© ${new Date().getFullYear()} Government of Barbados`}
-      />
+      <div className="print:hidden">
+        <Footer
+          links={FOOTER_LINKS}
+          logoSrc="/images/coat-of-arms.png"
+          logoAlt="Barbados Coat of Arms"
+          copyrightText={`© ${new Date().getFullYear()} Government of Barbados`}
+        />
+      </div>
     </div>
   )
 }

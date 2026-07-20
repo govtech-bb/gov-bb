@@ -22,7 +22,6 @@ import {
   TEST_PNG_3,
   OVERSIZED_PNG,
   INVALID_TYPE_FILE,
-  MINIMAL_PNG_BUFFER,
 } from "./helpers/test-data";
 
 // Helper: navigate to step 4 so every test can start there

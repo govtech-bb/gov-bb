@@ -21,8 +21,8 @@ vi.mock("@tanstack/react-router-devtools", () => ({
   TanStackRouterDevtools: () => null,
 }));
 
-vi.mock("@forms/components", () => ({
-  NotFound: () => <div data-testid="not-found" />,
+vi.mock("../components/not-found", () => ({
+  default: () => <div data-testid="not-found" />,
 }));
 
 // Render banner/header to testids (not null) so a regression that drops
@@ -32,6 +32,13 @@ vi.mock("@forms/components", () => ({
 // SiteHeader" failure) while still letting us assert it was rendered.
 vi.mock("../components/site-header", () => ({
   SiteHeader: () => <div data-testid="site-header" />,
+}));
+
+// StageBanner pulls StatusBanner/Link/Text from @govtech-bb/react (not in the
+// mock below), so mock it to a testid — same rationale as SiteHeader — while
+// still asserting the alpha phase banner is present in the layout.
+vi.mock("../components/stage-banner", () => ({
+  StageBanner: () => <div data-testid="stage-banner" />,
 }));
 
 // The Footer and OfficialBanner mocks capture their props so the RootLayout's
@@ -65,10 +72,11 @@ describe("__root Route", () => {
       expect(typeof Route.component).toBe("function");
     });
 
-    it("renders the official banner, site header, outlet, and footer", () => {
+    it("renders the official banner, stage banner, site header, outlet, and footer", () => {
       render(<Route.component />);
       expect(screen.getByTestId("head-content")).toBeInTheDocument();
       expect(screen.getByTestId("official-banner")).toBeInTheDocument();
+      expect(screen.getByTestId("stage-banner")).toBeInTheDocument();
       expect(screen.getByTestId("site-header")).toBeInTheDocument();
       expect(screen.getByTestId("outlet")).toBeInTheDocument();
       expect(screen.getByTestId("footer")).toBeInTheDocument();

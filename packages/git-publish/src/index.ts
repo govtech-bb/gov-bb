@@ -40,6 +40,28 @@ export async function ghError(label: string, res: Response): Promise<Error> {
   return new Error(`${label} (status ${res.status}): ${body.slice(0, 500)}`);
 }
 
+/**
+ * Pull a committed recipe's `createdAt` out of a GitHub Contents API response
+ * body so a re-publish can preserve it instead of restamping (#1720). The
+ * Contents response carries the file as base64 `content`; decode it, parse the
+ * recipe JSON, and return its `createdAt`. Returns `undefined` whenever there's
+ * nothing to preserve — no inline content (GitHub omits it for files over 1MB),
+ * unparseable content, or no string `createdAt` — so callers fall back to the
+ * freshly-stamped value, which is exactly first-publish behaviour.
+ */
+export function createdAtFromContents(body: {
+  content?: string;
+}): string | undefined {
+  if (!body.content) return undefined;
+  try {
+    const decoded = Buffer.from(body.content, "base64").toString("utf8");
+    const parsed = JSON.parse(decoded) as { createdAt?: unknown };
+    return typeof parsed.createdAt === "string" ? parsed.createdAt : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export interface OpenPRHead {
   number: number;
   htmlUrl: string;

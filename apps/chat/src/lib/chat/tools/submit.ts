@@ -170,7 +170,6 @@ export async function applySubmit(
       },
       body: JSON.stringify({
         formId,
-        formVersion: contract.version,
         values: byStep,
       }),
       signal: deps.signal,

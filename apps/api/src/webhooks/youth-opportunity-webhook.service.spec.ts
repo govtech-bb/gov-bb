@@ -20,8 +20,10 @@ function makePayload(): FormSubmittedWebhookPayload {
   };
 }
 
-function makeService(config: Partial<WebhooksConfig>, post: Mock) {
-  const http = { post } as unknown as ConstructorParameters<
+// The service now sends via the shared `timedPost`, which calls
+// `HttpService.request` (not `.post`), so the mock provides `request`.
+function makeService(config: Partial<WebhooksConfig>, request: Mock) {
+  const http = { request } as unknown as ConstructorParameters<
     typeof YouthOpportunityWebhookService
   >[0];
   const cfg = {
@@ -34,15 +36,15 @@ function makeService(config: Partial<WebhooksConfig>, post: Mock) {
 }
 
 describe("YouthOpportunityWebhookService", () => {
-  it("posts the frontend-alpha payload shape to /api/webhooks/form-submitted", async () => {
-    const post = vi.fn().mockReturnValue(of({ status: 200 }));
-    await makeService({}, post).dispatch(makePayload());
+  it("posts the frontend-alpha payload to /api/webhooks/form-submitted with redirects disabled", async () => {
+    const request = vi.fn().mockReturnValue(of({ status: 200 }));
+    await makeService({}, request).dispatch(makePayload());
 
-    const [url, body, options] = post.mock.calls[0];
-    expect(url).toBe(
+    const [opts] = request.mock.calls[0];
+    expect(opts.url).toBe(
       "https://cases.example.gov.bb/api/webhooks/form-submitted",
     );
-    expect(body).toEqual({
+    expect(JSON.parse(opts.data)).toEqual({
       code: "BYAC-0306-A1Z9QF",
       programme_code: "BYAC",
       applicant: {
@@ -53,16 +55,20 @@ describe("YouthOpportunityWebhookService", () => {
       form_data: { "applicant-parish": "St. Michael" },
       submitted_at: "2026-06-03T10:00:00.000Z",
     });
-    expect(options.headers["X-API-Key"]).toBe("shared-secret");
-    expect(options.timeout).toBe(10_000);
+    expect(opts.headers["X-API-Key"]).toBe("shared-secret");
+    expect(opts.headers["Content-Type"]).toBe("application/json");
+    expect(opts.timeout).toBe(10_000);
+    // SSRF guard (#2000): a 3xx to an internal host must not be followed.
+    expect(opts.maxRedirects).toBe(0);
   });
 
   it("resolves the endpoint when the base URL has a trailing slash", async () => {
-    const post = vi.fn().mockReturnValue(of({ status: 200 }));
-    await makeService({ url: "https://cases.example.gov.bb/" }, post).dispatch(
-      makePayload(),
-    );
-    expect(post.mock.calls[0][0]).toBe(
+    const request = vi.fn().mockReturnValue(of({ status: 200 }));
+    await makeService(
+      { url: "https://cases.example.gov.bb/" },
+      request,
+    ).dispatch(makePayload());
+    expect(request.mock.calls[0][0].url).toBe(
       "https://cases.example.gov.bb/api/webhooks/form-submitted",
     );
   });
@@ -71,11 +77,11 @@ describe("YouthOpportunityWebhookService", () => {
     const warn = vi
       .spyOn(Logger.prototype, "warn")
       .mockImplementation(() => {});
-    const post = vi.fn();
-    await makeService({ url: "" }, post).dispatch(makePayload());
-    await makeService({ secret: "" }, post).dispatch(makePayload());
+    const request = vi.fn();
+    await makeService({ url: "" }, request).dispatch(makePayload());
+    await makeService({ secret: "" }, request).dispatch(makePayload());
 
-    expect(post).not.toHaveBeenCalled();
+    expect(request).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalledTimes(2);
     warn.mockRestore();
   });
@@ -84,12 +90,30 @@ describe("YouthOpportunityWebhookService", () => {
     const error = vi
       .spyOn(Logger.prototype, "error")
       .mockImplementation(() => {});
-    const post = vi
+    const request = vi
       .fn()
       .mockReturnValue(throwError(() => new Error("connection refused")));
 
     await expect(
-      makeService({}, post).dispatch(makePayload()),
+      makeService({}, request).dispatch(makePayload()),
+    ).resolves.toBeUndefined();
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to deliver"),
+      expect.anything(),
+    );
+    error.mockRestore();
+  });
+
+  it("treats a redirect (3xx) as a delivery failure rather than following it", async () => {
+    const error = vi
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(() => {});
+    // With maxRedirects:0 + validateStatus:()=>true, timedPost resolves a 302 as
+    // a non-2xx and raises HttpPostError — the redirect is never followed.
+    const request = vi.fn().mockReturnValue(of({ status: 302 }));
+
+    await expect(
+      makeService({}, request).dispatch(makePayload()),
     ).resolves.toBeUndefined();
     expect(error).toHaveBeenCalledWith(
       expect.stringContaining("Failed to deliver"),

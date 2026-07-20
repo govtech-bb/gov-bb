@@ -1,5 +1,7 @@
 import type { WebhookMapping } from "@govtech-bb/form-types";
 import type { SubmissionValues } from "../submissions.types";
+import { generateApplicationCode, isServiceCode } from "./application-code";
+import { WebhookConfigError } from "./webhook-errors";
 
 /**
  * Builds the external "case" payload from a submission using the recipe's
@@ -45,16 +47,20 @@ function readName(values: SubmissionValues, name: string | string[]): string {
 }
 
 /**
- * Flattens step-scoped values into a flat `form_data` object:
+ * Builds the `form_data` object from step-scoped values:
  *  - steps in `excludeSteps` are dropped (process steps),
  *  - the fields already surfaced under `applicant` are dropped (no duplication),
- *  - repeatable steps (arrays) pass through under their stepId,
- *  - other content fields are hoisted to the top level.
+ *  - repeatable steps (arrays) pass through under their stepId.
+ *
+ * Non-repeatable content fields are either hoisted to the top level (default)
+ * or, when `groupByStep` is set, kept nested under their step id (empty groups
+ * omitted).
  */
 function buildFormData(
   values: SubmissionValues,
   excludeSteps: string[],
   applicantPaths: string[],
+  groupByStep: boolean,
 ): Record<string, unknown> {
   const excluded = new Set(excludeSteps);
   const dropped = new Set(applicantPaths); // "stepId.fieldId"
@@ -68,9 +74,17 @@ function buildFormData(
       continue;
     }
 
+    const group: Record<string, unknown> = {};
     for (const [fieldId, fieldValue] of Object.entries(stepValue)) {
       if (dropped.has(`${stepId}.${fieldId}`)) continue;
-      result[fieldId] = fieldValue;
+      if (groupByStep) {
+        group[fieldId] = fieldValue;
+      } else {
+        result[fieldId] = fieldValue;
+      }
+    }
+    if (groupByStep && Object.keys(group).length > 0) {
+      result[stepId] = group;
     }
   }
 
@@ -89,30 +103,54 @@ export interface MappedCasePayload {
   submitted_at: string;
 }
 
+/**
+ * The case `code`: a deterministic service-prefixed application code when the
+ * recipe sets `mapping.codeService`, otherwise the submission reference code.
+ * An unknown `codeService` is a misconfiguration — throw (fail loud → DLQ)
+ * rather than silently falling back.
+ */
+function resolveCode(
+  mapping: WebhookMapping,
+  referenceCode: string,
+  submissionId: string,
+  submittedAt: string,
+): string {
+  const codeService = mapping.codeService;
+  if (!codeService) return referenceCode;
+  if (!isServiceCode(codeService)) {
+    throw new WebhookConfigError(
+      `[webhook] mapping.codeService "${codeService}" is not a known service code`,
+    );
+  }
+  return generateApplicationCode(codeService, submissionId, submittedAt);
+}
+
 export function buildMappedCasePayload(args: {
   mapping: WebhookMapping;
   values: SubmissionValues;
   referenceCode: string;
+  submissionId: string;
   submittedAt: string;
 }): MappedCasePayload {
-  const { mapping, values, referenceCode, submittedAt } = args;
+  const { mapping, values, referenceCode, submissionId, submittedAt } = args;
   const namePaths = Array.isArray(mapping.applicant.name)
     ? mapping.applicant.name
     : [mapping.applicant.name];
 
   return {
-    code: referenceCode,
+    code: resolveCode(mapping, referenceCode, submissionId, submittedAt),
     programme_code: mapping.programmeCode,
     applicant: {
       name: readName(values, mapping.applicant.name),
       email: readPath(values, mapping.applicant.email),
       phone: readPath(values, mapping.applicant.phone),
     },
-    form_data: buildFormData(values, mapping.excludeSteps ?? [], [
-      ...namePaths,
-      mapping.applicant.email,
-      mapping.applicant.phone,
-    ]),
+    form_data: buildFormData(
+      values,
+      mapping.excludeSteps ?? [],
+      [...namePaths, mapping.applicant.email, mapping.applicant.phone],
+      mapping.groupByStep ?? false,
+    ),
     submitted_at: submittedAt,
   };
 }

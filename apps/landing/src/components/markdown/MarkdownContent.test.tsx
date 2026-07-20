@@ -1,15 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
+import type * as ReactRouter from '@tanstack/react-router'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { processMarkdown } from '../../utils/markdown/processor'
 import { bakeStartLinkFormId } from '../../utils/markdown/plugins'
-import { PAGES } from '../../content/registry'
 import { MarkdownBody } from './MarkdownContent'
-import { TableOfContents } from './TableOfContents'
 
 // StartLink reads useLocation for analytics; stub it so form CTAs render
 // without a router context.
 vi.mock('@tanstack/react-router', async (orig) => ({
-  ...(await orig<typeof import('@tanstack/react-router')>()),
+  ...(await orig<typeof ReactRouter>()),
   useLocation: () => ({ pathname: '/test' }),
 }))
 
@@ -66,39 +65,5 @@ describe('MarkdownBody', () => {
     const html = await renderBody(md, { hideStartLink: true })
     expect(html).toContain('is 1 way')
     expect(html).not.toContain('online form')
-  })
-})
-
-describe('TableOfContents', () => {
-  it('lists the h2 sections', () => {
-    const html = renderToStaticMarkup(
-      <TableOfContents
-        headings={[
-          { id: 'who-can-apply', text: 'Who can apply', level: 2 },
-          { id: 'what-you-need', text: 'What you need', level: 2 },
-        ]}
-      />,
-    )
-    expect(html).toContain('Contents')
-    expect(html).toContain('href="#who-can-apply"')
-    expect(html).toContain('href="#what-you-need"')
-  })
-
-  it('renders nothing for fewer than two sections', () => {
-    const html = renderToStaticMarkup(
-      <TableOfContents headings={[{ id: 'only', text: 'Only', level: 2 }]} />,
-    )
-    expect(html).toBe('')
-  })
-})
-
-describe('content corpus', () => {
-  it('collected headings for markdown pages at build', () => {
-    const markdownPages = PAGES.filter((p) => p.body !== '')
-    expect(markdownPages.length).toBeGreaterThan(0)
-    for (const page of markdownPages) {
-      expect(Array.isArray(page.headings)).toBe(true)
-    }
-    expect(markdownPages.some((p) => p.headings.length > 0)).toBe(true)
   })
 })

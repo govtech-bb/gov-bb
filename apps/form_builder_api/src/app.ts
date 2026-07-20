@@ -10,6 +10,15 @@ import { aiRouter } from "./routes/ai";
 import { publishRouter } from "./routes/publish";
 import { presenceRouter } from "./routes/presence";
 import { authMiddleware } from "./middleware/auth";
+import { errorHandler } from "./middleware/error-handler";
+import { getEnv } from "./config/env";
+
+// Fail fast: validate env at boot (after dotenv/config above) so missing or
+// malformed config crashes startup with a readable ZodError instead of failing
+// lazily at request time. The read sites below still use process.env directly;
+// this call only validates. A bad config crashing boot triggers an ECS
+// rollback, which is the intended safe failure — never a half-configured task.
+getEnv();
 
 export const app = express();
 
@@ -58,3 +67,8 @@ app.use("/builder/mda-contacts", mdaContactsRouter);
 app.use("/builder/registry", registryRouter);
 app.use("/builder/ai", aiRouter);
 app.use("/builder/publish", publishRouter);
+
+// Terminal error handler — must be registered last so every router's thrown or
+// rejected error funnels here (#1404). Express 5 auto-forwards rejected async
+// handlers, so no per-handler wrapper is needed.
+app.use(errorHandler);

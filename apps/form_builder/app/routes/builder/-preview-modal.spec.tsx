@@ -25,12 +25,12 @@ function renderModal(
 
 describe("PreviewModal live preview link", () => {
   it("renders a live preview link pointing at previewUrl when the recipe is saved", () => {
-    renderModal({ previewUrl: "http://localhost:3000/forms/passport?preview=demo" });
+    renderModal({ previewUrl: "http://localhost:3000/forms/passport?draft=demo" });
 
     const link = screen.getByRole("link", { name: /preview saved form/i });
     expect(link).toHaveAttribute(
       "href",
-      "http://localhost:3000/forms/passport?preview=demo",
+      "http://localhost:3000/forms/passport?draft=demo",
     );
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");

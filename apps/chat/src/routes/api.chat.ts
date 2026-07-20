@@ -5,7 +5,8 @@ import {
   maxIterations,
   toServerSentEventsResponse,
 } from "@tanstack/ai";
-import { bedrockText } from "@govtech-bb/ai-bedrock";
+import { bedrockText, type BedrockConverseModels } from "@tanstack/ai-bedrock";
+import { resolveBedrockModelId } from "@govtech-bb/ai-bedrock";
 import { mockTextAdapter } from "#/lib/chat/mock-adapter";
 import { getServerEnv } from "#/config/env";
 import {
@@ -35,6 +36,11 @@ import { buildChatTools } from "#/lib/chat/tools";
 import { withStreamTimeout } from "#/lib/chat/stream-timeout";
 import { staticAnswerStream } from "#/lib/chat/static-stream";
 import { looksLikeJailbreak } from "#/lib/chat/guards";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitHeaders,
+} from "#/lib/chat/rate-limit";
 import { rewriteRetrievalQuery } from "#/lib/chat/rewrite";
 import { search } from "#/lib/rag/retrieve";
 import { selectHandoff } from "#/lib/forms/handoff";
@@ -138,9 +144,26 @@ const jsonError = (message: string, status: number) =>
 // stream with `chat({ adapter, messages, systemPrompts, abortController })` →
 // return via `toServerSentEventsResponse`. We supply our own adapter
 // (`bedrockText`).
-async function handlePost(request: Request): Promise<Response> {
+export async function handlePost(request: Request): Promise<Response> {
   // Client already gone before we started — don't spin up a model call.
   if (request.signal.aborted) return new Response(null, { status: 499 });
+
+  // Rate-limit before any parsing / retrieval / model call, so a flood is cheap
+  // to reject. Per-IP, in-memory, defense-in-depth alongside the WAF.
+  const env = getServerEnv();
+  const rl = checkRateLimit(getClientIp(request), env.CHAT_RATE_LIMIT);
+  if (rl.limited) {
+    // Deliberately no IP in the log line (PII) — the limit alone is enough.
+    logger.warn("chat.rate_limited", { limit: rl.limit });
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: {
+        "content-type": "application/json",
+        "retry-after": String(rl.retryAfterSec),
+        ...rateLimitHeaders(rl),
+      },
+    });
+  }
 
   // Early reject on the declared size, but don't trust it — a chunked or lying
   // client can omit/understate Content-Length, so the real cap is enforced on
@@ -162,7 +185,6 @@ async function handlePost(request: Request): Promise<Response> {
     return jsonError(reason, 400);
   }
 
-  const env = getServerEnv();
   // The in-chat form features (forms / feedback / offers) are resolved here and
   // gate the tool merge below — all default OFF, so by default the assistant
   // only answers questions from retrieved content. RAG_ONLY forces them off
@@ -237,12 +259,15 @@ async function handlePost(request: Request): Promise<Response> {
     if (features.offers && !handoffLinkOnly) prompts.push(OFFER_INSTRUCTION);
     const adapter = env.LLM_MOCK
       ? mockTextAdapter(env.LLM_MODEL, env.LLM_MOCK_FORM)
-      : bedrockText(env.LLM_MODEL, { region: env.BEDROCK_REGION });
+      : bedrockText(
+          resolveBedrockModelId(env.LLM_MODEL) as BedrockConverseModels,
+          { region: env.BEDROCK_REGION },
+        );
     const stream = chat({
       adapter,
       messages: params.messages,
       systemPrompts: prompts,
-      modelOptions: { maxTokens: 600, temperature: 0 },
+      modelOptions: { max_completion_tokens: 600, temperature: 0 },
       ...(tools.length ? { tools, agentLoopStrategy: maxIterations(8) } : {}),
       threadId: params.threadId,
       runId: params.runId,

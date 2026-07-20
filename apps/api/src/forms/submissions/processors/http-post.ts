@@ -22,10 +22,11 @@ export class HttpPostError extends Error {
 }
 
 /**
- * Timed request over `@nestjs/axios` `HttpService` — the single outbound-HTTP
- * primitive for the submission processors and the precondition for a future
- * unified retry/circuit-breaker. Defaults to POST; callers may override the
- * method (the generic webhook processor exposes a configurable verb).
+ * Timed request over `@nestjs/axios` `HttpService` — the shared outbound-HTTP
+ * primitive for the submission processors and the youth-opportunity webhook, and
+ * the precondition for a future unified retry/circuit-breaker. Defaults to POST;
+ * callers may override the method (the generic webhook processor exposes a
+ * configurable verb).
  *
  * `body` is sent verbatim (callers pre-serialize so an HMAC signature is
  * computed over the exact bytes sent). `validateStatus` is overridden so axios
@@ -45,6 +46,11 @@ export async function timedPost(
       data: body,
       headers: opts.headers,
       timeout: opts.timeoutMs,
+      // Don't follow redirects (#287): assertSafeUrl validates the request URL
+      // once, but a 3xx to an internal host (e.g. the metadata endpoint) would
+      // otherwise be followed unchecked. A webhook target shouldn't redirect, so
+      // a 3xx surfaces as a non-2xx HttpPostError below.
+      maxRedirects: 0,
       validateStatus: () => true,
     }),
   );

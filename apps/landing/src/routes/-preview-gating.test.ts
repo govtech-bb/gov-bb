@@ -22,8 +22,18 @@ vi.mock('../content/registry', () => mocks)
 // it so the gating tests don't reach the network.
 const formMocks = vi.hoisted(() => ({
   getAvailableForms: vi.fn(async () => ['get-birth-certificate']),
+  getMaintenanceForms: vi.fn(async () => [] as string[]),
+  getClosedForms: vi.fn(async () => [] as string[]),
 }))
 vi.mock('../lib/available-forms', () => formMocks)
+
+// The reviewer-augmentation step calls checkFormAccessible for a non-public
+// form viewed by a reviewer; stub it so the gating tests don't reach the
+// network. Defaults to "accessible" so a reviewer keeps the form.
+const accessMocks = vi.hoisted(() => ({
+  checkFormAccessible: vi.fn(async () => true),
+}))
+vi.mock('../lib/preview-form-access', () => accessMocks)
 
 const fakePage: ContentPage = {
   slug: 'secret-service',
@@ -31,7 +41,6 @@ const fakePage: ContentPage = {
   frontmatter: { title: 'Secret', categories: [], visibility: 'draft' },
   body: '',
   hast: { type: 'root', children: [] },
-  headings: [],
 }
 
 function caught(fn: () => unknown): unknown {
@@ -63,11 +72,80 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const err = await loader({
       params: { _splat: 'secret-service' },
-      context: { level: 'public' },
+      context: { level: 'public', serviceStatuses: [] },
     }).catch((e: unknown) => e)
     expect(err).toBeDefined()
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
-    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'public')
+    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'public', new Map())
+  })
+
+  it('throws notFound for a /start step whose form is non-public to the public', async () => {
+    const { Route } = await import('./$')
+    const startPage: ContentPage = {
+      ...fakePage,
+      slug: 'apply-for-conductor-licence/start',
+      frontmatter: {
+        ...fakePage.frontmatter,
+        visibility: 'public',
+        form_id: 'apply-for-conductor-licence',
+      },
+    }
+    mocks.findPage.mockReturnValue(startPage)
+    mocks.isVisible.mockReturnValue(true)
+    // getAvailableForms returns only 'get-birth-certificate' — the conductor
+    // form (preview/maintenance) is absent, i.e. non-public.
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const err = await loader({
+      params: { _splat: 'work-employment/apply-for-conductor-licence/start' },
+      context: { level: 'public', serviceStatuses: [] },
+    }).catch((e: unknown) => e)
+    expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
+  })
+
+  it('serves a /start step whose form is in the public available list', async () => {
+    const { Route } = await import('./$')
+    const startPage: ContentPage = {
+      ...fakePage,
+      slug: 'get-birth-certificate/start',
+      frontmatter: {
+        ...fakePage.frontmatter,
+        visibility: 'public',
+        form_id: 'get-birth-certificate',
+      },
+    }
+    mocks.findPage.mockReturnValue(startPage)
+    mocks.isVisible.mockReturnValue(true)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: 'life-events/get-birth-certificate/start' },
+      context: { level: 'public', serviceStatuses: [] },
+    })) as { kind: string }
+    expect(data.kind).toBe('page')
+  })
+
+  it('serves a non-public /start step to a reviewer who can access the form', async () => {
+    const { Route } = await import('./$')
+    const startPage: ContentPage = {
+      ...fakePage,
+      slug: 'apply-for-conductor-licence/start',
+      frontmatter: {
+        ...fakePage.frontmatter,
+        visibility: 'public',
+        form_id: 'apply-for-conductor-licence',
+      },
+    }
+    mocks.findPage.mockReturnValue(startPage)
+    mocks.isVisible.mockReturnValue(true)
+    accessMocks.checkFormAccessible.mockResolvedValueOnce(true)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: 'work-employment/apply-for-conductor-licence/start' },
+      context: { level: 'preview', serviceStatuses: [] },
+    })) as { kind: string }
+    expect(data.kind).toBe('page')
   })
 
   it('returns the page (with the available-forms list) when the viewer can see it', async () => {
@@ -78,14 +156,140 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = await loader({
       params: { _splat: 'secret-service' },
-      context: { level: 'draft' },
+      context: { level: 'draft', serviceStatuses: [] },
     })
     expect(data).toEqual({
       kind: 'page',
-      page: fakePage,
+      url: fakePage.url,
       availableForms: ['get-birth-certificate'],
+      underMaintenance: false,
+      applicationClosed: false,
+      level: 'public',
+      startSubPageVisible: true,
     })
-    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'draft')
+    expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'draft', new Map())
+  })
+
+  it('flags a page whose form is under maintenance', async () => {
+    const { Route } = await import('./$')
+    const formPage: ContentPage = {
+      ...fakePage,
+      frontmatter: {
+        ...fakePage.frontmatter,
+        visibility: 'public',
+        form_id: 'post-office-redirection-individual',
+      },
+    }
+    mocks.findPage.mockReturnValue(formPage)
+    mocks.isVisible.mockReturnValue(true)
+    formMocks.getMaintenanceForms.mockResolvedValueOnce([
+      'post-office-redirection-individual',
+    ])
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: 'secret-service' },
+      context: { level: 'public', serviceStatuses: [] },
+    })) as { underMaintenance: boolean }
+    expect(data.underMaintenance).toBe(true)
+  })
+
+  it('does not flag a page whose form is not under maintenance', async () => {
+    const { Route } = await import('./$')
+    const formPage: ContentPage = {
+      ...fakePage,
+      frontmatter: {
+        ...fakePage.frontmatter,
+        visibility: 'public',
+        form_id: 'get-birth-certificate',
+      },
+    }
+    mocks.findPage.mockReturnValue(formPage)
+    mocks.isVisible.mockReturnValue(true)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: 'secret-service' },
+      context: { level: 'public', serviceStatuses: [] },
+    })) as { underMaintenance: boolean }
+    expect(data.underMaintenance).toBe(false)
+  })
+
+  it('flags a page whose form has closed and hides its Start link (#1936)', async () => {
+    const { Route } = await import('./$')
+    const formPage: ContentPage = {
+      ...fakePage,
+      frontmatter: {
+        ...fakePage.frontmatter,
+        visibility: 'public',
+        form_id: 'get-birth-certificate',
+      },
+    }
+    mocks.findPage.mockReturnValue(formPage)
+    mocks.isVisible.mockReturnValue(true)
+    formMocks.getClosedForms.mockResolvedValueOnce(['get-birth-certificate'])
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: 'secret-service' },
+      context: { level: 'public', serviceStatuses: [] },
+    })) as { applicationClosed: boolean; availableForms: string[] }
+    expect(data.applicationClosed).toBe(true)
+    // Closed forms are stripped from availableForms so the Start CTA is hidden.
+    expect(data.availableForms).not.toContain('get-birth-certificate')
+  })
+
+  it('does not flag a page whose form has not closed (#1936)', async () => {
+    const { Route } = await import('./$')
+    const formPage: ContentPage = {
+      ...fakePage,
+      frontmatter: {
+        ...fakePage.frontmatter,
+        visibility: 'public',
+        form_id: 'get-birth-certificate',
+      },
+    }
+    mocks.findPage.mockReturnValue(formPage)
+    mocks.isVisible.mockReturnValue(true)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: 'secret-service' },
+      context: { level: 'public', serviceStatuses: [] },
+    })) as { applicationClosed: boolean; availableForms: string[] }
+    expect(data.applicationClosed).toBe(false)
+    expect(data.availableForms).toContain('get-birth-certificate')
+  })
+
+  it('hides the form and flags maintenance when service_status disables it for the public', async () => {
+    const { Route } = await import('./$')
+    const formPage: ContentPage = {
+      ...fakePage,
+      slug: 'svc',
+      url: 'svc',
+      frontmatter: {
+        ...fakePage.frontmatter,
+        visibility: 'public',
+        form_id: 'svc-form',
+      },
+    }
+    mocks.findPage.mockReturnValue(formPage)
+    mocks.isVisible.mockReturnValue(true)
+    formMocks.getAvailableForms.mockResolvedValueOnce(['svc-form'])
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: 'svc' },
+      context: {
+        // Status rows are keyed by the canonical key — the form_id here.
+        level: 'public',
+        serviceStatuses: [['svc-form', 'form_disabled']],
+      },
+    })) as { availableForms: string[]; underMaintenance: boolean }
+    // The form is dropped from the public available list (Start hidden) and the
+    // maintenance notice is flagged.
+    expect(data.availableForms).toEqual([])
+    expect(data.underMaintenance).toBe(true)
   })
 })
 
@@ -97,12 +301,13 @@ describe('$ route category gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const err = await loader({
       params: { _splat: 'pensions-and-gratuities' },
-      context: { level: 'public' },
+      context: { level: 'public', serviceStatuses: [] },
     }).catch((e: unknown) => e)
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
     expect(mocks.isCategoryVisible).toHaveBeenCalledWith(
       expect.objectContaining({ slug: 'pensions-and-gratuities' }),
       'public',
+      new Map(),
     )
   })
 
@@ -113,7 +318,7 @@ describe('$ route category gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'pensions-and-gratuities' },
-      context: { level: 'preview' },
+      context: { level: 'preview', serviceStatuses: [] },
     })) as { kind: string; category: { slug: string } }
     expect(data.kind).toBe('category')
     expect(data.category.slug).toBe('pensions-and-gratuities')
@@ -129,12 +334,13 @@ describe('$ route subcategory gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const err = await loader({
       params: { _splat: 'youth-and-community/youth-development-leadership' },
-      context: { level: 'public' },
+      context: { level: 'public', serviceStatuses: [] },
     }).catch((e: unknown) => e)
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
     expect(mocks.isCategoryVisible).toHaveBeenCalledWith(
       expect.objectContaining({ slug: 'youth-and-community' }),
       'public',
+      new Map(),
     )
   })
 
@@ -146,7 +352,7 @@ describe('$ route subcategory gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'youth-and-community/youth-development-leadership' },
-      context: { level: 'preview' },
+      context: { level: 'preview', serviceStatuses: [] },
     })) as { kind: string; subcategory: { slug: string } }
     expect(data.kind).toBe('subcategory')
     expect(data.subcategory.slug).toBe('youth-development-leadership')
@@ -160,7 +366,7 @@ describe('form route beforeLoad gating', () => {
       await import('./money-financial-support/calculate-severance-pay/form')
     const err = caught(() =>
       (Route.options.beforeLoad as (a: unknown) => unknown)({
-        context: { level: 'public' },
+        context: { level: 'public', serviceStatuses: [] },
       }),
     )
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
@@ -172,7 +378,7 @@ describe('form route beforeLoad gating', () => {
       await import('./money-financial-support/calculate-severance-pay/form')
     const err = caught(() =>
       (Route.options.beforeLoad as (a: unknown) => unknown)({
-        context: { level: 'preview' },
+        context: { level: 'preview', serviceStatuses: [] },
       }),
     )
     expect(err).toBeUndefined()
@@ -184,7 +390,7 @@ describe('form route beforeLoad gating', () => {
       await import('./money-financial-support/calculate-severance-pay/form')
     const err = caught(() =>
       (Route.options.beforeLoad as (a: unknown) => unknown)({
-        context: { level: 'public' },
+        context: { level: 'public', serviceStatuses: [] },
       }),
     )
     expect(err).toBeUndefined()

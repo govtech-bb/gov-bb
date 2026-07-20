@@ -22,6 +22,7 @@ import {
   fetchFormDefinitions,
   fetchFormDraft,
   patchFormDraft,
+  createFormDraft,
   deleteFormDraft,
   postFormSubmission,
   formatDataForSubmission,
@@ -208,6 +209,24 @@ describe("fetchFormDefinition", () => {
     const headers = fetchOptions?.headers as Record<string, string> | undefined;
     expect(headers?.["X-Recipe-Preview"]).toBeUndefined();
   });
+
+  it("sends X-Recipe-Draft header when a draft token is provided", async () => {
+    mockFetch.mockResolvedValue(makeOkResponse(minimalServiceContract));
+    await fetchFormDefinition("passport-renewal", undefined, "d-s3cret");
+    const fetchOptions = mockFetch.mock.calls[0][1] as RequestInit;
+    const headers = fetchOptions.headers as Record<string, string>;
+    expect(headers["X-Recipe-Draft"]).toBe("d-s3cret");
+    expect(headers["X-Recipe-Preview"]).toBeUndefined();
+  });
+
+  it("sends both headers when both tokens are provided", async () => {
+    mockFetch.mockResolvedValue(makeOkResponse(minimalServiceContract));
+    await fetchFormDefinition("passport-renewal", "p-s3cret", "d-s3cret");
+    const fetchOptions = mockFetch.mock.calls[0][1] as RequestInit;
+    const headers = fetchOptions.headers as Record<string, string>;
+    expect(headers["X-Recipe-Preview"]).toBe("p-s3cret");
+    expect(headers["X-Recipe-Draft"]).toBe("d-s3cret");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -215,10 +234,10 @@ describe("fetchFormDefinition", () => {
 // ---------------------------------------------------------------------------
 
 describe("fetchFormDefinitions", () => {
-  it("returns an array of FormDefinitionSummary objects on success", async () => {
+  it("returns an array of PublicFormSummary objects on success", async () => {
     const data = [
-      { formId: "form-1", title: "Form One" },
-      { formId: "form-2", title: "Form Two" },
+      { formId: "form-1", title: "Form One", version: "1.0.0" },
+      { formId: "form-2", title: "Form Two", version: "2.1.0" },
     ];
     mockFetch.mockResolvedValue(makeOkResponse(data));
     const result = await fetchFormDefinitions();
@@ -332,9 +351,31 @@ describe("deleteFormDraft", () => {
     const calledUrl = mockFetch.mock.calls[0][0] as string;
     const fetchArgs = mockFetch.mock.calls[0][1] as RequestInit;
     expect(fetchArgs.method).toBe("DELETE");
-    // Currently RED: forms.ts:200 has typo `/form-drafs/${draftId}` (missing 't').
-    // Source fix tracked separately.
     expect(calledUrl).toContain("/form-drafts/draft-123");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createFormDraft
+// ---------------------------------------------------------------------------
+
+describe("createFormDraft", () => {
+  const meta = { formId: "test-form" } as FormMeta;
+
+  it("POSTs the draft to /form-drafts", async () => {
+    mockFetch.mockResolvedValue(makeOkResponse(null, 201));
+    await createFormDraft(meta, "draft-1", {}, "step-1");
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    const fetchArgs = mockFetch.mock.calls[0][1] as RequestInit;
+    expect(fetchArgs.method).toBe("POST");
+    expect(calledUrl).toContain("/form-drafts");
+  });
+
+  it("rejects (surfaces the failure) when the save fails, instead of swallowing it", async () => {
+    mockFetch.mockResolvedValue(makeErrorResponse(500));
+    await expect(
+      createFormDraft(meta, "draft-1", {}, "step-1"),
+    ).rejects.toThrow(FormFetchError);
   });
 });
 
@@ -435,7 +476,7 @@ describe("postFormSubmission", () => {
     expect(result?.meta?.deferred).toEqual(deferred);
   });
 
-  it("sends a POST request with the idempotency-key header, correct URL, and {formId, formVersion, values} body", async () => {
+  it("sends a POST request with the idempotency-key header, correct URL, and {formId, values} body", async () => {
     mockFetch.mockResolvedValue(makeOkResponse(minimalSubmissionBody));
     const valuesBySteps = {
       step1: { firstName: "Alice" },
@@ -451,9 +492,26 @@ describe("postFormSubmission", () => {
     ).toBe("unique-key-abc");
     expect(JSON.parse(fetchArgs.body as string)).toEqual({
       formId: "test-form",
-      formVersion: "1.0.0",
       values: valuesBySteps,
     });
+  });
+
+  it("forwards the preview token as X-Recipe-Preview so a reviewer can submit a flagged form", async () => {
+    mockFetch.mockResolvedValue(makeOkResponse(minimalSubmissionBody));
+    await postFormSubmission(minimalFormMeta as FormMeta, {}, "p-s3cret");
+    const fetchArgs = mockFetch.mock.calls[0][1] as RequestInit;
+    expect(
+      (fetchArgs.headers as Record<string, string>)["X-Recipe-Preview"],
+    ).toBe("p-s3cret");
+  });
+
+  it("omits X-Recipe-Preview on a normal submission (no preview token)", async () => {
+    mockFetch.mockResolvedValue(makeOkResponse(minimalSubmissionBody));
+    await postFormSubmission(minimalFormMeta as FormMeta, {});
+    const fetchArgs = mockFetch.mock.calls[0][1] as RequestInit;
+    expect(
+      (fetchArgs.headers as Record<string, string>)["X-Recipe-Preview"],
+    ).toBeUndefined();
   });
 
   it("throws FormFetchError with status 400 when submission response schema fails", async () => {

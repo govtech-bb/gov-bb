@@ -61,7 +61,10 @@ async function pollUntilDone<T extends { status: string }>(
 ): Promise<Extract<T, { status: "done" }>> {
   const start = Date.now();
   let delay = opts.firstPollMs;
-  // eslint-disable-next-line no-constant-condition
+  // A transient 5xx mid-poll must not kill a billed 1–3 min job (#1531):
+  // tolerate up to 2 consecutive failed polls, surfacing only the 3rd. The
+  // loop's own sleep is the backoff and the overall deadline never resets.
+  let consecutiveFailures = 0;
   while (true) {
     if (abort.signal.aborted) throw new DOMException("Aborted", "AbortError");
     await new Promise((r) => setTimeout(r, delay));
@@ -73,7 +76,15 @@ async function pollUntilDone<T extends { status: string }>(
       );
     }
 
-    const status = await getStatus();
+    let status: T;
+    try {
+      status = await getStatus();
+    } catch (err) {
+      consecutiveFailures += 1;
+      if (consecutiveFailures >= 3) throw err;
+      continue;
+    }
+    consecutiveFailures = 0;
     if (status.status === "processing" || status.status === "generating") {
       continue;
     }
@@ -92,9 +103,8 @@ async function pollUntilDone<T extends { status: string }>(
 }
 
 interface AiSidebarProps {
-  // The live draft + working version, so Edit Form can send the current recipe.
+  // The live draft, so Edit Form can send the current recipe.
   draft: RecipeDraft;
-  version: string;
   onApplyRecipe: (
     recipe: ServiceContractRecipe,
     unresolvableRefs: UnknownRef[],
@@ -106,7 +116,7 @@ interface AiSidebarProps {
 // be the same ceiling the API enforces on its presign side — 20 MB.
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
 
-export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
+export function AiSidebar({ draft, onApplyRecipe }: AiSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -114,6 +124,19 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
   const [pdfName, setPdfName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A generated recipe whose apply *rejected* (the editor pipeline crashed, as
+  // opposed to a resolved { error } validation verdict). Stashed so Retry
+  // apply can re-run onApplyRecipe from memory instead of forcing the user
+  // back through the billed upload/Textract/Bedrock pipeline (#1873).
+  const [pendingApply, setPendingApply] = useState<{
+    recipe: ServiceContractRecipe;
+    unresolvableRefs: UnknownRef[];
+  } | null>(null);
+  // True while an apply is in flight. The pipeline validates over the network
+  // before it loads, so this window is real: lock out a second Retry click and
+  // any new job start, or a stale apply's continuation would clobber the newer
+  // job's state.
+  const [applying, setApplying] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   // Needed to reset the hidden file input when the staged file is removed —
   // without it, re-picking the same file fires no change event.
@@ -172,26 +195,58 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
       ...m,
       { role: "assistant", content: stripRecipeJson(reply) },
     ]);
-    const result = await onApplyRecipe(
+    await applyRecipe(
       recipe as unknown as ServiceContractRecipe,
       unresolvableRefs,
     );
+  };
+
+  // Apply-and-report, shared by handleResponse and the Retry apply action. A
+  // rejection means the editor pipeline crashed — the generation itself
+  // succeeded, so stash the recipe for retry rather than routing the error
+  // through the callers' upload/edit catches with a misleading message
+  // (#1532, #1871). The resolved paths clear the stash, except "cancelled":
+  // the user declined the dirty-form overwrite prompt, and retry must stay
+  // available (e.g. after they save) or they're forced back through a billed
+  // regeneration.
+  const applyRecipe = async (
+    recipe: ServiceContractRecipe,
+    unresolvableRefs: UnknownRef[],
+  ) => {
+    setApplying(true);
+    let result: ApplyRecipeResult;
+    try {
+      result = await onApplyRecipe(recipe, unresolvableRefs);
+    } catch {
+      setPendingApply({ recipe, unresolvableRefs });
+      setError("Couldn't apply the recipe to the editor.");
+      return;
+    } finally {
+      setApplying(false);
+    }
     if (result.error) {
+      // Deterministic validation verdict — a retry would fail identically.
+      setPendingApply(null);
       setError(result.error);
     } else if (result.applied) {
+      setPendingApply(null);
+      setError(null);
       pushStatus(
         "✓ Applied to the editor — not saved yet. Use Save draft to keep it, or Discard to undo.",
       );
     } else if (result.reason === "unchanged") {
+      setPendingApply(null);
       pushStatus("The AI returned the form unchanged — nothing to apply.");
     }
     // reason === "cancelled" is the user's own choice — stay silent.
   };
 
   const handleUpload = async () => {
-    if (!pdfFile || loading) return;
+    if (!pdfFile || loading || applying) return;
     setLoading(true);
     setError(null);
+    // A fresh job supersedes any recipe held for retry.
+    setPendingApply(null);
     // Steering context typed in the prompt box rides along with the upload
     // (e.g. "make every field optional"). Empty box → blind convert as before.
     const context = input.trim();
@@ -256,10 +311,12 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
 
   const handleEditForm = async () => {
     const message = input.trim();
-    if (!message || loading) return;
+    if (!message || loading || applying) return;
     setInput("");
     setLoading(true);
     setError(null);
+    // A fresh job supersedes any recipe held for retry.
+    setPendingApply(null);
     setMessages((m) => [...m, { role: "user", content: message }]);
 
     // Cancel any prior in-flight poll before starting a fresh one, then publish
@@ -270,7 +327,7 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
     pollAbortRef.current = abort;
 
     try {
-      const recipeJson = JSON.stringify(serializeRecipeDraft(draft, { version }));
+      const recipeJson = JSON.stringify(serializeRecipeDraft(draft));
       const { jobId } = await startEditRecipe({ data: { message, recipeJson } });
 
       // Fast-first cadence: a 2–3s edit returns on the first or second poll and
@@ -398,6 +455,18 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
             {error}
           </div>
         )}
+        {pendingApply && (
+          <button
+            type="button"
+            className={s.aiRetryBtn}
+            disabled={applying}
+            onClick={() =>
+              applyRecipe(pendingApply.recipe, pendingApply.unresolvableRefs)
+            }
+          >
+            Retry apply
+          </button>
+        )}
         <div ref={chatEndRef} />
       </div>
 
@@ -462,7 +531,7 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
             <button
               type="button"
               onClick={handleUpload}
-              disabled={!pdfFile || loading}
+              disabled={!pdfFile || loading || applying}
             >
               Upload
             </button>
@@ -470,7 +539,7 @@ export function AiSidebar({ draft, version, onApplyRecipe }: AiSidebarProps) {
             <button
               type="submit"
               className={s.btnPrimary}
-              disabled={!input.trim() || loading}
+              disabled={!input.trim() || loading || applying}
             >
               Edit Form
             </button>

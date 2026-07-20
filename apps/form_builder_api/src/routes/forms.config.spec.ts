@@ -57,6 +57,7 @@ function recipe(over: Record<string, unknown> = {}) {
     formId: "marriage-license",
     version: "1.0.0",
     title: "Marriage License",
+    steps: [],
     ...over,
   };
 }
@@ -137,9 +138,9 @@ function fakeDataSource(
   const query = vi.fn(async (sql: string) => {
     if (/DISTINCT ON \(form_id\)/i.test(sql)) return [];
     if (/SELECT 1 FROM form_definitions WHERE form_id/i.test(sql)) return [];
-    // PUT latest-version lookup
-    if (/SELECT id, version, published_at/i.test(sql))
-      return [{ id: 7, version: "1.0.0", published_at: null }];
+    // PUT row lookup (#1196: one row per form, keyed by formId)
+    if (/SELECT id FROM form_definitions WHERE form_id/i.test(sql))
+      return [{ id: 7 }];
     return [];
   });
 
@@ -341,11 +342,11 @@ describe("getFormConfigHandler", () => {
     expect(res.body).toEqual({ mdaContactId: "c-1", processors: null });
   });
 
-  it("returns 500 on a DB error", async () => {
+  it("propagates a DB error (the central handler maps it to 500)", async () => {
     getDataSourceMock.mockRejectedValue(new Error("db down"));
-    const res = mockRes();
-    await getFormConfigHandler(mockReq({}, { formId: "x" }), res);
-    expect(res.statusCode).toBe(500);
+    await expect(
+      getFormConfigHandler(mockReq({}, { formId: "x" }), mockRes()),
+    ).rejects.toThrow("db down");
   });
 });
 

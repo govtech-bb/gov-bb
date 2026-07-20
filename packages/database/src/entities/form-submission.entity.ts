@@ -32,8 +32,10 @@ export class FormSubmissionEntity extends TimestampedEntity {
   @Column({ name: "form_id", type: "varchar", length: 100 })
   formId!: string;
 
-  @Column({ name: "form_version", type: "varchar", length: 20 })
-  formVersion!: string;
+  // Nullable post-#1196: a submission resolving the canonical recipe has no
+  // pinned version. Retained as an audit breadcrumb (see migration M1).
+  @Column({ name: "form_version", type: "varchar", length: 20, nullable: true })
+  formVersion!: string | null;
 
   @Column({
     type: "enum",
@@ -50,4 +52,10 @@ export class FormSubmissionEntity extends TimestampedEntity {
 
   @Column({ name: "submitted_at", type: "timestamp", nullable: true })
   submittedAt!: Date | null;
+
+  // Processor entries (snapshot indices) that failed to dispatch async. Null =
+  // all entries dispatched (or none ran); a non-empty array marks the indices a
+  // reconciliation/retry job should re-dispatch (#1747).
+  @Column({ name: "processors_failed", type: "jsonb", nullable: true })
+  processorsFailed!: number[] | null;
 }

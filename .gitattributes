@@ -1,0 +1,4 @@
+# Certificate bundles are opaque assets — never apply line-ending conversion
+# (keeps certs/rds-global-bundle.pem byte-identical to the AWS download on every
+# platform; see issue #304).
+certs/*.pem binary

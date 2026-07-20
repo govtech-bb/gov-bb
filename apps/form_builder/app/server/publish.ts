@@ -1,19 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { type SessionPayload } from "./session";
-import { getSession } from "./session-cipher.server";
-import { getSessionSecret } from "./secrets";
+import { requireSession } from "./auth/require-session";
 import {
   deployBranchName,
-  deployBranchPrefix,
   eraseBranchName,
+  kebabIdSchema,
+  KEBAB_ID_PATTERN,
+  KEBAB_ID_ERROR,
   type ServiceContractRecipe,
   type ValidationResult,
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
 import { listVersions, RECIPES_BASE } from "./github-recipes";
-import { bumpMinor, compareSemver } from "../lib/version";
 import {
   repoUrl,
   authHeaders,
@@ -21,9 +19,9 @@ import {
   createBranchFrom,
   deleteBranch,
   getContents,
+  createdAtFromContents,
   putFile,
   openPullRequest,
-  listOpenPRHeads,
 } from "./github";
 
 const DEFAULT_BASE_BRANCH = "dev";
@@ -51,22 +49,6 @@ export function resolveBaseBranch(): string {
   return process.env.PUBLISH_BASE_BRANCH_DEFAULT?.trim() || DEFAULT_BASE_BRANCH;
 }
 
-/**
- * Mirrors forms.ts's `requireToken()` but returns the full session payload so
- * callers can access `session.login` in addition to `session.accessToken`.
- */
-async function requireSession(): Promise<SessionPayload> {
-  const headers = getRequestHeaders();
-  const cookie =
-    (headers as { get?: (k: string) => string | null }).get?.("cookie") ??
-    (headers as { cookie?: string }).cookie ??
-    null;
-  const secret = await getSessionSecret();
-  const session = getSession(cookie, secret);
-  if (!session) throw new Error("Not authenticated");
-  return session;
-}
-
 function renderPrBody({
   recipe,
   authorLogin,
@@ -83,7 +65,6 @@ function renderPrBody({
     "",
     `- Form: **${recipe.title}**`,
     `- Form ID: \`${recipe.formId}\``,
-    `- Version: \`${recipe.version}\``,
     `- Steps: ${stepCount}`,
     `- Author: @${authorLogin}`,
     "",
@@ -99,122 +80,109 @@ function renderPrBody({
 }
 
 export const publishRecipe = createServerFn({ method: "POST" })
+  .middleware([requireSession])
   .inputValidator(
     z.object({
       recipe: z.unknown(),
       description: z.string().default(""),
     }),
   )
-  .handler(async ({ data }): Promise<{ prUrl: string; prNumber: number }> => {
-    const recipe = data.recipe as ServiceContractRecipe;
-    const description = data.description ?? "";
-    const session = await requireSession();
-    const token = session.accessToken;
-    const baseBranch = resolveBaseBranch();
+  .handler(
+    async ({ data, context }): Promise<{ prUrl: string; prNumber: number }> => {
+      const recipe = data.recipe as ServiceContractRecipe;
+      const description = data.description ?? "";
 
-    // Server-side gate (defense-in-depth): the Deploy button already runs this
-    // client-side, but the client is bypassable — the server must be the
-    // authority. Reuse the API's /validate endpoint, which resolves every ref
-    // against the full catalog (builtins + registry + live custom components
-    // from the DB) that this frontend can't reach directly. Refuse to open any
-    // branch/PR if the recipe is unresolvable, so a bad ref never reaches the
-    // repo (the hole behind #504).
-    const validation = await api.post<ValidationResult>(
-      "/builder/registry/validate",
-      { recipe },
-    );
-    if (!validation.ok) {
-      const detail = validation.issues
-        .map((i) => (i.path ? `${i.path}: ${i.message}` : i.message))
-        .join("; ");
-      throw new Error(`Recipe validation failed: ${detail}`);
-    }
-
-    // Gate (#873): the deploy version must be strictly ahead of every version
-    // already on the base branch. The client computes its bump from the DB
-    // draft, which is blind to manual repo bumps — fail fast with the real
-    // latest rather than opening a doomed PR.
-    const published = await listVersions(token, recipe.formId, baseBranch);
-    const notAhead = published.filter(
-      (v) => compareSemver(v, recipe.version) >= 0,
-    );
-    if (notAhead.length > 0) {
-      const latest = published.reduce((b, v) =>
-        compareSemver(v, b) > 0 ? v : b,
-      );
-      throw new Error(
-        `Version ${recipe.version} is not ahead of ${baseBranch} (latest published: ${latest}). ` +
-          `Reopen the form to pick up the latest version, then deploy again.`,
-      );
-    }
-
-    // Reservation (#873): atomically claim (formId, version) in the builder DB
-    // before touching GitHub. POST /builder/forms 409s on the existing
-    // UNIQUE(form_id, version), so two concurrent deploys serialize here. The
-    // row doubles as the pending-deploy draft (other users' pickers see it) and
-    // is deleted post-merge by the archive-merged-drafts workflow.
-    try {
-      // userLogin (#874): the reservation save now passes the read-only-lock
-      // gate, so a non-holder is rejected here before any GitHub work.
-      await api.post("/builder/forms", {
-        recipe,
-        isNew: false,
-        userLogin: session.login,
-      });
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        throw new Error(
-          `Version ${recipe.version} was just claimed by another deploy or save — ` +
-            `reopen the form and try again.`,
-        );
+      // Security gate (#293): `recipe` enters as `z.unknown()`, so before its
+      // formId is interpolated into the GitHub recipe path or branch name, assert
+      // it's a plain kebab-case id. A value like `../../../.github/workflows/evil`
+      // would otherwise escape the recipes folder. This is a local, independent
+      // check — the remote /validate call below resolves refs, not id format — and
+      // the encodeURIComponent at the path sink is the second layer.
+      if (!KEBAB_ID_PATTERN.test(recipe?.formId)) {
+        throw new Error(`Invalid form ID. ${KEBAB_ID_ERROR}`);
       }
-      throw err;
-    }
 
-    // Any failure past this point must release the claim (best-effort — the
-    // delete-version endpoint only removes unpublished draft rows).
-    const releaseReservation = async (): Promise<void> => {
+      const session = context.session;
+      const token = session.accessToken;
+      const baseBranch = resolveBaseBranch();
+
+      // Server-side gate (defense-in-depth): the Deploy button already runs this
+      // client-side, but the client is bypassable — the server must be the
+      // authority. Reuse the API's /validate endpoint, which resolves every ref
+      // against the full catalog (builtins + registry + live custom components
+      // from the DB) that this frontend can't reach directly. Refuse to open any
+      // branch/PR if the recipe is unresolvable, so a bad ref never reaches the
+      // repo (the hole behind #504).
+      const validation = await api.post<ValidationResult>(
+        "/builder/registry/validate",
+        { recipe },
+      );
+      if (!validation.ok) {
+        const detail = validation.issues
+          .map((i) => (i.path ? `${i.path}: ${i.message}` : i.message))
+          .join("; ");
+        throw new Error(`Recipe validation failed: ${detail}`);
+      }
+
+      // Persist the current draft and enforce the read-only lock (#874) before
+      // touching GitHub: PUT /builder/forms/:formId runs through enforcePresence,
+      // so a non-holder is rejected (409) here. (#1196: recipe versioning is
+      // retired — there is no version reservation; publish overwrites the single
+      // canonical flat file.)
       try {
-        await api.del(
-          `/builder/forms/${recipe.formId}/versions/${recipe.version}`,
-        );
-      } catch (releaseErr) {
-        console.warn(
-          `release of reservation ${recipe.formId}@${recipe.version} failed:`,
-          releaseErr,
-        );
+        await api.put(`/builder/forms/${recipe.formId}`, {
+          recipe,
+          userLogin: session.login,
+        });
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 409) {
+          throw new Error(
+            "Another editor holds this form. Your session is read-only until their claim expires.",
+            { cause: err },
+          );
+        }
+        throw err;
       }
-    };
 
-    // Single release point (#873): ANY post-reservation failure — including
-    // fetch rejections and malformed responses that never reach an !ok check —
-    // must free the claimed (formId, version). The inner catch only handles
-    // branch cleanup; its rethrow lands here.
-    try {
       // Namespaced, dot-free branch (see deployBranchName, #805).
-      const branch = deployBranchName(recipe.formId, recipe.version);
+      const branch = deployBranchName(recipe.formId);
       await createBranchFrom(token, baseBranch, branch);
 
       // From here on, any failure must attempt to delete `branch`.
       try {
-        // The file must not already exist. (Checking the new branch is
-        // equivalent to checking base — the branch was just created from it.)
-        const recipePath = `apps/api/src/forms/form-definitions/recipes/${recipe.formId}/${recipe.version}.json`;
-        const checkRes = await getContents(token, recipePath, branch);
-        if (checkRes.status === 200) {
-          throw new Error(
-            `Version ${recipe.version} already exists on ${baseBranch}. Reopen the form to pick up the latest version, then deploy again.`,
-          );
+        // Overwrite the canonical flat recipe file in place. It already exists on
+        // the base branch (and so on this branch), so fetch its blob SHA — the
+        // Contents API requires `sha` to update an existing file. The same
+        // response carries the committed file's content, so preserve its original
+        // `createdAt` rather than restamping it (#1720); `updatedAt` stays at the
+        // freshly-serialized value. On first publish (no existing file) the recipe
+        // is written verbatim with both stamps minted. encodeURIComponent on the
+        // formId segment is defense-in-depth at the sink (#293) — a no-op for the
+        // kebab id the guard above already enforced.
+        const recipePath = `apps/api/src/forms/form-definitions/recipes/${encodeURIComponent(
+          recipe.formId,
+        )}.json`;
+        const existing = await getContents(token, recipePath, branch);
+        let existingSha: string | undefined;
+        let preservedCreatedAt: string | undefined;
+        if (existing.status === 200) {
+          const body = (await existing.json()) as {
+            sha?: string;
+            content?: string;
+          };
+          existingSha = body.sha;
+          preservedCreatedAt = createdAtFromContents(body);
         }
-        if (checkRes.status !== 404) {
-          throw await ghError("Failed to check existing recipe", checkRes);
-        }
+        const recipeToPublish = preservedCreatedAt
+          ? { ...recipe, createdAt: preservedCreatedAt }
+          : recipe;
 
         const putRes = await putFile(token, {
           path: recipePath,
-          message: `Publish ${recipe.formId} v${recipe.version}`,
-          content: JSON.stringify(recipe, null, 2) + "\n",
+          message: `Publish ${recipe.formId}`,
+          content: JSON.stringify(recipeToPublish, null, 2) + "\n",
           branch,
+          ...(existingSha ? { sha: existingSha } : {}),
         });
         if (!putRes.ok) {
           throw await ghError("Failed to write recipe file", putRes);
@@ -223,7 +191,7 @@ export const publishRecipe = createServerFn({ method: "POST" })
         return await openPullRequest(token, {
           base: baseBranch,
           head: branch,
-          title: `Publish form: ${recipe.title} v${recipe.version}`,
+          title: `Publish form: ${recipe.title}`,
           body: renderPrBody({
             recipe,
             authorLogin: session.login,
@@ -234,11 +202,8 @@ export const publishRecipe = createServerFn({ method: "POST" })
         await deleteBranch(branch, token);
         throw err;
       }
-    } catch (err) {
-      await releaseReservation();
-      throw err;
-    }
-  });
+    },
+  );
 
 /**
  * Exposes the runtime-resolved Deploy base branch to the client. The builder
@@ -250,57 +215,6 @@ export const publishRecipe = createServerFn({ method: "POST" })
 export const getPublishBaseBranch = createServerFn({ method: "GET" }).handler(
   async (): Promise<string> => resolveBaseBranch(),
 );
-
-/**
- * Versions claimed by OPEN deploy PRs for this form on the base branch (#873).
- * Recognised by the deploy branch naming scheme
- * (`form-builder/<formId>-<v1-v2-v3>-<ts>`); a branch that fails to parse is
- * skipped (fail-open — the CI recipe-version-guard is the merge-time backstop).
- */
-async function listOpenDeployClaims(
-  token: string,
-  formId: string,
-  baseBranch: string,
-): Promise<string[]> {
-  const prefix = deployBranchPrefix(formId);
-  const claims: string[] = [];
-  for (const pr of await listOpenPRHeads(token, baseBranch)) {
-    if (!pr.headRef.startsWith(prefix)) continue;
-    const m = /^(\d+)-(\d+)-(\d+)-\d+$/.exec(pr.headRef.slice(prefix.length));
-    if (m) claims.push(`${m[1]}.${m[2]}.${m[3]}`);
-  }
-  return claims;
-}
-
-/**
- * The next safe Deploy version for a form (#873): one minor bump past the
- * highest of (a) the builder's loaded version, (b) every version on the base
- * branch, and (c) every version claimed by an open deploy PR. Replaces the
- * client-only `bumpMinor(currentVersion)`, which is blind to manual repo bumps
- * and to other users' in-flight deploys.
- */
-export const getNextDeployVersion = createServerFn({ method: "GET" })
-  .inputValidator(
-    z.object({
-      formId: z.string().min(1),
-      currentVersion: z.string().nullable(),
-    }),
-  )
-  .handler(async ({ data }): Promise<{ version: string }> => {
-    const session = await requireSession();
-    const token = session.accessToken;
-    const baseBranch = resolveBaseBranch();
-
-    const published = await listVersions(token, data.formId, baseBranch);
-    const claimed = await listOpenDeployClaims(token, data.formId, baseBranch);
-    const all = [...published, ...claimed];
-    if (data.currentVersion) all.push(data.currentVersion);
-    if (all.length === 0) return { version: "1.0.0" };
-    const highest = all.reduce((best, v) =>
-      compareSemver(v, best) > 0 ? v : best,
-    );
-    return { version: bumpMinor(highest) };
-  });
 
 function renderErasePrBody({
   formId,
@@ -354,6 +268,7 @@ function renderErasePrBody({
  * branch is created.
  */
 export const eraseRecipe = createServerFn({ method: "POST" })
+  .middleware([requireSession])
   .inputValidator(
     // Erase is strictly more destructive than the reversible Disable, so its
     // server-side validation is at least as strict: a non-empty formId and a
@@ -361,127 +276,153 @@ export const eraseRecipe = createServerFn({ method: "POST" })
     // client modal already enforces this, but the client is bypassable and the
     // reason is the audit trail for a permanent deletion.
     z.object({
-      formId: z.string().min(1),
+      // formId is interpolated into a GitHub path + branch name; pin it
+      // to a kebab-case id so a traversal value can't escape the recipes folder.
+      formId: kebabIdSchema,
       title: z.string().default(""),
       reason: z.string().min(1).max(2000),
     }),
   )
-  .handler(async ({ data }): Promise<{ prUrl: string; prNumber: number }> => {
-    const { formId } = data;
-    const title = data.title ?? "";
+  .handler(
+    async ({ data, context }): Promise<{ prUrl: string; prNumber: number }> => {
+      const { formId } = data;
+      const title = data.title ?? "";
 
-    // The inputValidator above enforces this on the RPC path, but a direct
-    // (in-process) call bypasses it, so re-check in the handler: the reason is
-    // the audit trail for a permanent deletion and must be present and bounded.
-    const reason = (data.reason ?? "").trim();
-    if (!reason) {
-      throw new Error("A reason is required to erase a form.");
-    }
-    if (reason.length > 2000) {
-      throw new Error("Erase reason must be 2000 characters or fewer.");
-    }
-
-    const session = await requireSession();
-    const token = session.accessToken;
-    const baseBranch = resolveBaseBranch();
-
-    // Gate 1: never erase a disabled form. A disabled form must be Enabled
-    // first; restricting Erase to live forms means there is no tombstone to
-    // clear (see #599 / #576).
-    const disabled = await api.get<string[]>("/builder/forms/disabled");
-    if (disabled.includes(formId)) {
-      throw new Error(
-        `Form "${formId}" is disabled — Enable it before erasing.`,
-      );
-    }
-
-    // Gate 2: there must be something on disk to erase. List the folder's
-    // version files on the base branch (reuses the publish read path).
-    const versions = await listVersions(token, formId, baseBranch);
-    if (versions.length === 0) {
-      throw new Error(
-        `No published recipe found for "${formId}" on ${baseBranch} — nothing to erase.`,
-      );
-    }
-
-    const branch = eraseBranchName(formId);
-    const baseSha = await createBranchFrom(token, baseBranch, branch);
-
-    // From here on, any failure must attempt to delete `branch`.
-    try {
-      // Read the base commit to get its tree SHA.
-      const commitRes = await fetch(repoUrl(`/git/commits/${baseSha}`), {
-        headers: authHeaders(token),
-      });
-      if (!commitRes.ok) {
-        throw await ghError("Failed to read base commit", commitRes);
+      // The inputValidator above enforces this on the RPC path, but a direct
+      // (in-process) call bypasses it, so re-check in the handler: the reason is
+      // the audit trail for a permanent deletion and must be present and bounded.
+      const reason = (data.reason ?? "").trim();
+      if (!reason) {
+        throw new Error("A reason is required to erase a form.");
       }
-      const baseTreeSha = (
-        (await commitRes.json()) as {
-          tree: { sha: string };
+      if (reason.length > 2000) {
+        throw new Error("Erase reason must be 2000 characters or fewer.");
+      }
+      // formId is interpolated into a GitHub path + branch name; re-check format
+      // here too since a direct (in-process) call bypasses the inputValidator.
+      if (!KEBAB_ID_PATTERN.test(formId)) {
+        throw new Error(`Invalid form ID. ${KEBAB_ID_ERROR}`);
+      }
+
+      const session = context.session;
+      const token = session.accessToken;
+      const baseBranch = resolveBaseBranch();
+
+      // Gate 1: never erase a disabled form. A disabled form must be Enabled
+      // first; restricting Erase to live forms means there is no tombstone to
+      // clear (see #599 / #576).
+      const disabled = await api.get<string[]>("/builder/forms/disabled");
+      if (disabled.includes(formId)) {
+        throw new Error(
+          `Form "${formId}" is disabled — Enable it before erasing.`,
+        );
+      }
+
+      // Gate 2: there must be something on disk to erase. List the folder's
+      // version files on the base branch (reuses the publish read path).
+      // NOTE (#1196): erase still targets the legacy versioned dir; removing the
+      // flat `recipes/{formId}.json` is deferred to the Phase-2 decommission when
+      // the legacy dirs go away. Erase is rare and the dirs are retained through
+      // Phase 1, so this stays correct in the interim.
+      const versions = await listVersions(token, formId, baseBranch);
+      if (versions.length === 0) {
+        throw new Error(
+          `No published recipe found for "${formId}" on ${baseBranch} — nothing to erase.`,
+        );
+      }
+
+      const branch = eraseBranchName(formId);
+      const baseSha = await createBranchFrom(token, baseBranch, branch);
+
+      // From here on, any failure must attempt to delete `branch`.
+      try {
+        // Read the base commit to get its tree SHA.
+        const commitRes = await fetch(repoUrl(`/git/commits/${baseSha}`), {
+          headers: authHeaders(token),
+        });
+        if (!commitRes.ok) {
+          throw await ghError("Failed to read base commit", commitRes);
         }
-      ).tree.sha;
+        const baseTreeSha = (
+          (await commitRes.json()) as {
+            tree: { sha: string };
+          }
+        ).tree.sha;
 
-      // Create a tree off the base tree with every version file deleted
-      // (a null `sha` removes the path).
-      const treeRes = await fetch(repoUrl("/git/trees"), {
-        method: "POST",
-        headers: { ...authHeaders(token), "Content-Type": "application/json" },
-        body: JSON.stringify({
-          base_tree: baseTreeSha,
-          tree: versions.map((v) => ({
-            path: `${RECIPES_BASE}/${formId}/${v}.json`,
-            mode: "100644",
-            type: "blob",
-            sha: null,
-          })),
-        }),
-      });
-      if (!treeRes.ok) {
-        throw await ghError("Failed to create tree", treeRes);
+        // Create a tree off the base tree with every version file deleted
+        // (a null `sha` removes the path).
+        const treeRes = await fetch(repoUrl("/git/trees"), {
+          method: "POST",
+          headers: {
+            ...authHeaders(token),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            base_tree: baseTreeSha,
+            tree: versions.map((v) => ({
+              // Encode each user-provided segment; a no-op for the
+              // kebab/semver values already enforced above.
+              path: `${RECIPES_BASE}/${encodeURIComponent(
+                formId,
+              )}/${encodeURIComponent(v)}.json`,
+              mode: "100644",
+              type: "blob",
+              sha: null,
+            })),
+          }),
+        });
+        if (!treeRes.ok) {
+          throw await ghError("Failed to create tree", treeRes);
+        }
+        const newTreeSha = ((await treeRes.json()) as { sha: string }).sha;
+
+        // Create the commit parented on the base tip.
+        const commitCreateRes = await fetch(repoUrl("/git/commits"), {
+          method: "POST",
+          headers: {
+            ...authHeaders(token),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: `Erase form: ${formId}`,
+            tree: newTreeSha,
+            parents: [baseSha],
+          }),
+        });
+        if (!commitCreateRes.ok) {
+          throw await ghError("Failed to create commit", commitCreateRes);
+        }
+        const newCommitSha = ((await commitCreateRes.json()) as { sha: string })
+          .sha;
+
+        // Fast-forward the branch ref to the new commit.
+        const patchRes = await fetch(repoUrl(`/git/refs/heads/${branch}`), {
+          method: "PATCH",
+          headers: {
+            ...authHeaders(token),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ sha: newCommitSha }),
+        });
+        if (!patchRes.ok) {
+          throw await ghError("Failed to update branch ref", patchRes);
+        }
+
+        return await openPullRequest(token, {
+          base: baseBranch,
+          head: branch,
+          title: `Erase form: ${title || formId} (${formId})`,
+          body: renderErasePrBody({
+            formId,
+            title,
+            versions,
+            authorLogin: session.login,
+            reason,
+          }),
+        });
+      } catch (err) {
+        await deleteBranch(branch, token);
+        throw err;
       }
-      const newTreeSha = ((await treeRes.json()) as { sha: string }).sha;
-
-      // Create the commit parented on the base tip.
-      const commitCreateRes = await fetch(repoUrl("/git/commits"), {
-        method: "POST",
-        headers: { ...authHeaders(token), "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: `Erase form: ${formId}`,
-          tree: newTreeSha,
-          parents: [baseSha],
-        }),
-      });
-      if (!commitCreateRes.ok) {
-        throw await ghError("Failed to create commit", commitCreateRes);
-      }
-      const newCommitSha = ((await commitCreateRes.json()) as { sha: string })
-        .sha;
-
-      // Fast-forward the branch ref to the new commit.
-      const patchRes = await fetch(repoUrl(`/git/refs/heads/${branch}`), {
-        method: "PATCH",
-        headers: { ...authHeaders(token), "Content-Type": "application/json" },
-        body: JSON.stringify({ sha: newCommitSha }),
-      });
-      if (!patchRes.ok) {
-        throw await ghError("Failed to update branch ref", patchRes);
-      }
-
-      return await openPullRequest(token, {
-        base: baseBranch,
-        head: branch,
-        title: `Erase form: ${title || formId} (${formId})`,
-        body: renderErasePrBody({
-          formId,
-          title,
-          versions,
-          authorLogin: session.login,
-          reason,
-        }),
-      });
-    } catch (err) {
-      await deleteBranch(branch, token);
-      throw err;
-    }
-  });
+    },
+  );

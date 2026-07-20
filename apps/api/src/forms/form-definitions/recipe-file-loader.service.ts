@@ -10,7 +10,8 @@ import { watch, type FSWatcher } from "node:fs";
 import * as path from "node:path";
 import {
   serviceContractRecipeSchema,
-  compareSemver,
+  getRecipeVisibility,
+  type PublicFormSummary,
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
 
@@ -38,12 +39,41 @@ export function isLeafName(name: string): boolean {
 // multiple change events) into one reload.
 const WATCH_DEBOUNCE_MS = 250;
 
+/**
+ * The per-form webhook destination env-var names a recipe references — every
+ * `endpoint.env` and apiKey `auth.secretEnv` across its webhook processors
+ * (#1920). Pure; exported for testing and reused by the boot-time env audit.
+ */
+export function collectWebhookEnvNames(recipe: unknown): string[] {
+  const processors = (recipe as { processors?: unknown }).processors;
+  if (!Array.isArray(processors)) return [];
+  const names: string[] = [];
+  for (const raw of processors) {
+    const p = raw as {
+      type?: string;
+      config?: {
+        endpoint?: { env?: string };
+        auth?: { scheme?: string; secretEnv?: string };
+      };
+    };
+    if (p?.type !== "webhook") continue;
+    const cfg = p.config ?? {};
+    if (cfg.endpoint?.env) names.push(cfg.endpoint.env);
+    if (cfg.auth?.scheme === "apiKey" && cfg.auth.secretEnv) {
+      names.push(cfg.auth.secretEnv);
+    }
+  }
+  return names;
+}
+
 @Injectable()
 export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RecipeFileLoaderService.name);
   private readonly recipesRoot: string;
-  // formId → version → recipe
-  private store = new Map<string, Map<string, ServiceContractRecipe>>();
+  // formId → recipe, built from the flat `recipes/{formId}.json` files. Recipe
+  // versioning was removed (#1196): there is one canonical file per form and no
+  // legacy versioned fallback (the Phase 2 decommission deleted it).
+  private recipes = new Map<string, ServiceContractRecipe>();
 
   // Dev-only hot-reload watcher (see startWatching). Undefined outside
   // development or if the watch fails to attach.
@@ -125,147 +155,147 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
   }
 
   async loadAll(): Promise<void> {
-    const next = new Map<string, Map<string, ServiceContractRecipe>>();
+    const next = new Map<string, ServiceContractRecipe>();
 
-    let formDirs: string[];
+    let entries: import("node:fs").Dirent[];
     try {
-      const entries = await fs.readdir(this.recipesRoot, {
-        withFileTypes: true,
-      });
-      formDirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+      entries = await fs.readdir(this.recipesRoot, { withFileTypes: true });
     } catch (err) {
       // Missing root: treat as no recipes. Other errors propagate.
       if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-        this.store = next;
+        this.recipes = next;
         return;
       }
       throw err;
     }
 
-    for (const formId of formDirs) {
-      if (!isLeafName(formId)) {
+    const flatFiles = entries
+      .filter((e) => e.isFile() && e.name.endsWith(".json"))
+      .map((e) => e.name);
+
+    // Each form is a flat `recipes/{formId}.json` file, keyed by the recipe's
+    // own formId. The filename (minus .json) must equal formId.
+    for (const file of flatFiles) {
+      if (!isLeafName(file)) {
         this.logger.error(
-          `Refusing recipes directory entry "${formId}" under ${this.recipesRoot} — not a leaf name`,
+          `Refusing recipe file entry "${file}" under ${this.recipesRoot} — not a leaf name`,
         );
         continue;
       }
-      const dir = path.join(this.recipesRoot, formId);
-      const files = (await fs.readdir(dir)).filter((f) => f.endsWith(".json"));
-      const byVersion = new Map<string, ServiceContractRecipe>();
-
-      for (const file of files) {
-        if (!isLeafName(file)) {
-          this.logger.error(
-            `Refusing recipe file entry "${file}" under ${dir} — not a leaf name`,
-          );
-          continue;
-        }
-        const filePath = path.join(dir, file);
-        try {
-          const raw = await fs.readFile(filePath, "utf8");
-          let parsed: unknown;
-          try {
-            parsed = JSON.parse(raw);
-          } catch (err) {
-            throw new Error(
-              `Failed to parse recipe ${filePath}: ${(err as Error).message}`,
-            );
-          }
-          const result = serviceContractRecipeSchema.safeParse(parsed);
-          if (!result.success) {
-            throw new Error(
-              `Recipe ${filePath} (formId=${formId}) failed validation: ${result.error.message}`,
-            );
-          }
-          const recipe = result.data;
-
-          const filenameVersion = file.replace(/\.json$/, "");
-          if (filenameVersion !== recipe.version) {
-            throw new Error(
-              `Recipe ${filePath}: filename version "${filenameVersion}" does not match recipe.version "${recipe.version}"`,
-            );
-          }
-          if (recipe.formId !== formId) {
-            throw new Error(
-              `Recipe ${filePath}: directory name "${formId}" does not match recipe.formId "${recipe.formId}"`,
-            );
-          }
-
-          byVersion.set(recipe.version, recipe);
-        } catch (err) {
-          const e = err as Error;
-          this.logger.error(
-            `Failed to load recipe ${filePath} (formId=${formId}): ${e.name}: ${e.message}`,
+      const filePath = path.join(this.recipesRoot, file);
+      try {
+        const recipe = await this.parseRecipeFile(filePath);
+        const filenameFormId = file.replace(/\.json$/, "");
+        if (recipe.formId !== filenameFormId) {
+          throw new Error(
+            `Recipe ${filePath}: filename "${filenameFormId}" does not match recipe.formId "${recipe.formId}"`,
           );
         }
-      }
-
-      if (byVersion.size > 0) {
-        next.set(formId, byVersion);
+        next.set(recipe.formId, recipe);
+      } catch (err) {
+        const e = err as Error;
+        this.logger.error(
+          `Failed to load recipe ${filePath}: ${e.name}: ${e.message}`,
+        );
       }
     }
 
-    this.store = next;
-    this.logger.log(
-      `Loaded ${next.size} forms (${Array.from(next.values()).reduce(
-        (sum, m) => sum + m.size,
-        0,
-      )} recipe files) from ${this.recipesRoot}`,
+    this.recipes = next;
+    this.logger.log(`Loaded ${next.size} forms from ${this.recipesRoot}`);
+    this.auditWebhookEnv();
+  }
+
+  /**
+   * Recipe-referenced webhook destination env vars that aren't set (unset or
+   * empty). Surfaces a provisioning gap at deploy rather than at the first
+   * submission (which, under fail-loud, would DLQ). Public so a health/
+   * diagnostics endpoint can report it.
+   */
+  missingWebhookEnv(): { formId: string; envName: string }[] {
+    const missing: { formId: string; envName: string }[] = [];
+    for (const [formId, recipe] of this.recipes) {
+      for (const envName of collectWebhookEnvNames(recipe)) {
+        if (!process.env[envName]) missing.push({ formId, envName });
+      }
+    }
+    return missing;
+  }
+
+  /** Warn (non-fatal) about unprovisioned webhook env vars after each load. A
+   * missing var must not down the whole API — provisioning is handed off and
+   * fail-loud + the DLQ alarm are the runtime backstop. */
+  private auditWebhookEnv(): void {
+    const missing = this.missingWebhookEnv();
+    if (missing.length === 0) return;
+    this.logger.warn(
+      `[webhook] ${missing.length} unprovisioned env var(s) referenced by recipes — ` +
+        `these forms fail-loud (DLQ) on submit until provisioned: ` +
+        missing.map((m) => `${m.envName} (${m.formId})`).join(", "),
     );
   }
 
-  findAll(): {
-    formId: string;
-    title: string;
-    version: string;
-    category?: string;
-  }[] {
-    const out: {
-      formId: string;
-      title: string;
-      version: string;
-      category?: string;
-    }[] = [];
-    for (const [formId, versions] of this.store) {
-      const latest = this.latestVersion(versions);
-      if (latest)
-        out.push({
-          formId,
-          title: latest.title,
-          version: latest.version,
-          // Category is the contact-details title (e.g. the owning
-          // ministry/department). Omitted when the recipe has no
-          // contactDetails so the landing page can fall back to "Unknown".
-          ...(latest.contactDetails?.title && {
-            category: latest.contactDetails.title,
-          }),
-        });
+  /**
+   * Read, JSON-parse and zod-validate a recipe file. Throws with a descriptive
+   * message on any failure. Shared by the canonical (flat) and versioned
+   * (dir) load paths.
+   */
+  private async parseRecipeFile(
+    filePath: string,
+  ): Promise<ServiceContractRecipe> {
+    const raw = await fs.readFile(filePath, "utf8");
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (err) {
+      throw new Error(
+        `Failed to parse recipe ${filePath}: ${(err as Error).message}`,
+        { cause: err },
+      );
+    }
+    const result = serviceContractRecipeSchema.safeParse(parsed);
+    if (!result.success) {
+      throw new Error(
+        `Recipe ${filePath} failed validation: ${result.error.message}`,
+      );
+    }
+    return result.data;
+  }
+
+  /**
+   * List every loaded form, each always carrying its recipe `visibility`
+   * (#1896). The public/authoring split and the maintenance list are no
+   * longer this loader's job — FormDefinitionsService applies one shared gate
+   * (recipe visibility overridden by any `service_status` row) over these raw
+   * (formId, visibility) pairs, for both the public list (#1646/#1835) and
+   * the maintenance list (#1694).
+   */
+  findAll(): PublicFormSummary[] {
+    const out: PublicFormSummary[] = [];
+    for (const [formId, recipe] of this.recipes) {
+      out.push({
+        formId,
+        title: recipe.title,
+        // #1196: version is retired; the list keeps the field as a frozen ""
+        // breadcrumb so the public list contract is unchanged.
+        version: recipe.version ?? "",
+        // Category is the contact-details title (e.g. the owning
+        // ministry/department). Omitted when the recipe has no
+        // contactDetails so the landing page can fall back to "Unknown".
+        ...(recipe.contactDetails?.title && {
+          category: recipe.contactDetails.title,
+        }),
+        visibility: getRecipeVisibility(recipe),
+        // Carry the application deadline (#1936) so findClosedFormIds can tell
+        // which public forms have passed it. Omitted when the recipe has none.
+        ...(recipe.meta?.closingDateTime && {
+          closingDateTime: recipe.meta.closingDateTime,
+        }),
+      });
     }
     return out;
   }
 
-  findByFormId({
-    formId,
-    version,
-  }: {
-    formId: string;
-    version?: string;
-  }): ServiceContractRecipe | null {
-    const versions = this.store.get(formId);
-    if (!versions) return null;
-    if (version) return versions.get(version) ?? null;
-    return this.latestVersion(versions);
-  }
-
-  private latestVersion(
-    versions: Map<string, ServiceContractRecipe>,
-  ): ServiceContractRecipe | null {
-    let best: ServiceContractRecipe | null = null;
-    for (const recipe of versions.values()) {
-      if (!best || compareSemver(recipe.version, best.version) > 0) {
-        best = recipe;
-      }
-    }
-    return best;
+  findByFormId({ formId }: { formId: string }): ServiceContractRecipe | null {
+    return this.recipes.get(formId) ?? null;
   }
 }

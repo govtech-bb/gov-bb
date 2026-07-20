@@ -16,6 +16,7 @@ vi.mock("./presence.js", () => ({
 }));
 
 import { getFullCatalog } from "../catalog.js";
+import { HttpError } from "../lib/http-error";
 import { publishHandler } from "./publish";
 
 const getFullCatalogMock = getFullCatalog as Mock;
@@ -165,8 +166,119 @@ describe("POST /builder/publish — validation backstop", () => {
       ([, init]) => (init as RequestInit | undefined)?.method === "PUT",
     );
     expect(putCall?.[0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/contents/recipes/form-001/1.0.0.json",
+      "https://api.github.com/repos/govtech-bb/gov-bb/contents/recipes/form-001.json",
     );
+  });
+
+  it("preserves the committed createdAt on re-publish; only updatedAt advances", async () => {
+    // The flat file already on the base branch was created earlier; the incoming
+    // recipe carries a freshly-stamped createdAt. The published file must keep
+    // the original creation date (#1720).
+    const committedCreatedAt = "2025-03-03T00:00:00Z";
+    const committed = Buffer.from(
+      JSON.stringify({ ...validRecipe(), createdAt: committedCreatedAt }),
+      "utf8",
+    ).toString("base64");
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.includes("/git/ref/heads/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ object: { sha: "base-sha" } }),
+        });
+      }
+      if (init?.method === "PUT") {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      }
+      if (url.includes("/contents/")) {
+        // getContents — committed file carries its blob sha + base64 content.
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ sha: "blob-sha", content: committed }),
+        });
+      }
+      if (url.endsWith("/pulls")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({ number: 42, html_url: "https://pr/42" }),
+        });
+      }
+      // /git/refs create
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+    (global as { fetch?: unknown }).fetch = fetchMock;
+
+    const res = mockRes();
+    await publishHandler(
+      mockReq({
+        recipe: validRecipe(),
+        githubToken: "ghtok",
+        userLogin: "tester",
+      }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(200);
+    const putCall = fetchMock.mock.calls.find(
+      ([, init]) => (init as RequestInit | undefined)?.method === "PUT",
+    );
+    const putBody = JSON.parse((putCall?.[1] as RequestInit).body as string);
+    const written = JSON.parse(
+      Buffer.from(putBody.content, "base64").toString("utf8"),
+    );
+    expect(written.createdAt).toBe(committedCreatedAt);
+    expect(written.updatedAt).toBe(validRecipe().updatedAt);
+    // The committed blob sha is carried so the Contents API updates in place.
+    expect(putBody.sha).toBe("blob-sha");
+  });
+
+  it("stamps a fresh createdAt on first publish (no existing file)", async () => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.includes("/git/ref/heads/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ object: { sha: "base-sha" } }),
+        });
+      }
+      if (init?.method === "PUT") {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      }
+      if (url.includes("/contents/")) {
+        // getContents — the flat file is absent on the base branch.
+        return Promise.resolve({ ok: false, status: 404 });
+      }
+      if (url.endsWith("/pulls")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({ number: 42, html_url: "https://pr/42" }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+    (global as { fetch?: unknown }).fetch = fetchMock;
+
+    const res = mockRes();
+    await publishHandler(
+      mockReq({
+        recipe: validRecipe(),
+        githubToken: "ghtok",
+        userLogin: "tester",
+      }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(200);
+    const putCall = fetchMock.mock.calls.find(
+      ([, init]) => (init as RequestInit | undefined)?.method === "PUT",
+    );
+    const putBody = JSON.parse((putCall?.[1] as RequestInit).body as string);
+    const written = JSON.parse(
+      Buffer.from(putBody.content, "base64").toString("utf8"),
+    );
+    // No existing file → createdAt minted (the incoming value), no sha carried.
+    expect(written.createdAt).toBe(validRecipe().createdAt);
+    expect(putBody.sha).toBeUndefined();
   });
 
   it("cleans up via the encoded branch DELETE URL when the file PUT fails", async () => {
@@ -185,17 +297,19 @@ describe("POST /builder/publish — validation backstop", () => {
     });
     (global as { fetch?: unknown }).fetch = fetchMock;
 
-    const res = mockRes();
-    await publishHandler(
-      mockReq({
-        recipe: validRecipe(),
-        githubToken: "ghtok",
-        userLogin: "tester",
-      }),
-      res,
-    );
+    // The PUT failure propagates after cleanup; the central error handler maps
+    // it to 500. The cleanup DELETE must still have fired before the re-throw.
+    await expect(
+      publishHandler(
+        mockReq({
+          recipe: validRecipe(),
+          githubToken: "ghtok",
+          userLogin: "tester",
+        }),
+        mockRes(),
+      ),
+    ).rejects.toThrow("Failed to write recipe: 422");
 
-    expect(res.statusCode).toBe(500);
     const deleteCall = fetchMock.mock.calls.find(
       ([, init]) => (init as RequestInit | undefined)?.method === "DELETE",
     );
@@ -205,7 +319,7 @@ describe("POST /builder/publish — validation backstop", () => {
     // path is the plain `heads/form-builder/<branch-name>` GitHub can match.
     const deleteUrl = deleteCall?.[0] as string;
     expect(deleteUrl).toContain(
-      "https://api.github.com/repos/govtech-bb/gov-bb/git/refs/heads/form-builder/form-001-1-0-0-",
+      "https://api.github.com/repos/govtech-bb/gov-bb/git/refs/heads/form-builder/form-001-",
     );
     expect(deleteUrl).not.toContain("%2F");
   });
@@ -232,11 +346,14 @@ describe("POST /builder/publish — validation backstop", () => {
   it("still rejects a missing recipe/token before validating", async () => {
     const fetchMock = vi.fn();
     (global as { fetch?: unknown }).fetch = fetchMock;
-    const res = mockRes();
 
-    await publishHandler(mockReq({ githubToken: "ghtok" }), res);
+    const err = await publishHandler(
+      mockReq({ githubToken: "ghtok" }),
+      mockRes(),
+    ).catch((e: unknown) => e);
 
-    expect(res.statusCode).toBe(400);
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(400);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

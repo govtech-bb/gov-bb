@@ -31,7 +31,7 @@ function f<T extends Omit<RecipeFieldDraft, "id">>(draft: T): RecipeFieldDraft {
 describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
   it("preserves formId and title", () => {
     const draft = makeBaseDraft();
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     const result = deserializeRecipe(recipe);
 
     expect(result.formId).toBe(draft.formId);
@@ -40,7 +40,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
 
   it("omits description when not present on draft", () => {
     const draft = makeBaseDraft();
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
 
     expect(recipe.description).toBeUndefined();
     const result = deserializeRecipe(recipe);
@@ -49,16 +49,46 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
 
   it("preserves description on the draft when present", () => {
     const draft = makeBaseDraft({ description: "A useful form" });
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
 
     expect(recipe.description).toBe("A useful form");
     const result = deserializeRecipe(recipe);
     expect(result.description).toBe("A useful form");
   });
 
+  it("omits meta when not present on draft (legacy draft → public)", () => {
+    const draft = makeBaseDraft();
+    const recipe = serializeRecipeDraft(draft);
+
+    expect(recipe.meta).toBeUndefined();
+    expect(Object.keys(recipe)).not.toContain("meta");
+    const result = deserializeRecipe(recipe);
+    expect(result.meta).toBeUndefined();
+    expect(Object.keys(result)).not.toContain("meta");
+  });
+
+  it("preserves meta.visibility on the draft when present", () => {
+    const draft = makeBaseDraft({ meta: { visibility: "draft" } });
+    const recipe = serializeRecipeDraft(draft);
+
+    expect(recipe.meta).toEqual({ visibility: "draft" });
+    const result = deserializeRecipe(recipe);
+    expect(result.meta).toEqual({ visibility: "draft" });
+  });
+
+  it("round-trips each visibility level and validates against the recipe schema", () => {
+    for (const visibility of ["public", "preview", "draft"] as const) {
+      const draft = makeBaseDraft({ meta: { visibility } });
+      const recipe = serializeRecipeDraft(draft);
+      // The serialized recipe must be a valid ServiceContractRecipe.
+      expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
+      expect(deserializeRecipe(recipe).meta).toEqual({ visibility });
+    }
+  });
+
   it("does not assert exact createdAt/updatedAt — only that they are strings", () => {
     const draft = makeBaseDraft();
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
 
     expect(typeof recipe.createdAt).toBe("string");
     expect(typeof recipe.updatedAt).toBe("string");
@@ -66,21 +96,21 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
 
   it("a recipe with no processors round-trips with the key absent (no spurious [] or undefined)", () => {
     // deserialize a recipe that has no processors → draft must not carry the key
-    const recipe = serializeRecipeDraft(makeBaseDraft(), { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(makeBaseDraft());
     expect(Object.keys(recipe)).not.toContain("processors");
 
     const draft = deserializeRecipe(recipe);
     expect(Object.keys(draft)).not.toContain("processors");
 
     // serialize that draft again → still no processors key on the wire
-    const reserialized = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const reserialized = serializeRecipeDraft(draft);
     expect(reserialized.processors).toBeUndefined();
     expect(Object.keys(reserialized)).not.toContain("processors");
   });
 
   it("empty steps array survives round-trip", () => {
     const draft = makeBaseDraft({ steps: [] });
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     const result = deserializeRecipe(recipe);
 
     expect(result.steps).toEqual([]);
@@ -104,7 +134,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
       ],
     });
 
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     expect(recipe.steps[0].elements[0].ref).toBe("components/generic-text");
     expect(recipe.steps[0].elements[0].overrides).toBeUndefined();
 
@@ -137,7 +167,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
       ],
     });
 
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     const element = recipe.steps[0].elements[0];
     expect(element.ref).toBe("components/generic-email");
     expect(element.overrides).toEqual({
@@ -177,7 +207,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
       ],
     });
 
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     const element = recipe.steps[0].elements[0];
     expect(element.ref).toBe("blocks/personal-information");
     expect(element.overrides).toBeUndefined();
@@ -212,7 +242,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
       ],
     });
 
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     const element = recipe.steps[0].elements[0];
     expect(element.overrides).toEqual({
       "first-name": { label: "Given Name" },
@@ -263,7 +293,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
       ],
     });
 
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     expect(recipe.steps[0].elements[0].ref).toBe("components/custom-my-widget");
 
     // Without catalog: kind falls back to "component"
@@ -291,7 +321,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
       ],
     });
 
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     expect(recipe.steps[0].description).toBe("Fill in your personal details");
 
     const result = deserializeRecipe(recipe);
@@ -310,7 +340,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
       ],
     });
 
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     expect(recipe.steps[0].description).toBeUndefined();
 
     const result = deserializeRecipe(recipe);
@@ -331,7 +361,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
       ],
     });
 
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     expect(recipe.steps[0].markdownContent).toBe(md);
 
     const result = deserializeRecipe(recipe);
@@ -350,7 +380,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
       ],
     });
 
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     expect(recipe.steps[0].markdownContent).toBeUndefined();
     expect(Object.keys(recipe.steps[0])).not.toContain("markdownContent");
 
@@ -378,7 +408,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
       ],
     });
 
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     expect(recipe.steps[0].nextSteps).toEqual(nextSteps);
 
     const result = deserializeRecipe(recipe);
@@ -405,7 +435,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
       ],
     });
 
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     expect(recipe.steps[0].behaviours).toEqual([
       {
         type: "stepConditionalOn",
@@ -440,7 +470,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
       ],
     });
 
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     const result = deserializeRecipe(recipe);
     expect(result.steps[0].behaviours).toEqual([]);
   });
@@ -481,7 +511,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
       ],
     });
 
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     const result = deserializeRecipe(recipe);
 
     expect(result.steps).toHaveLength(2);
@@ -514,7 +544,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
       ],
     });
 
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     const result = deserializeRecipe(recipe);
 
     const [a, b] = result.steps[0].fields;
@@ -541,7 +571,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
       ],
     });
 
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     const element = recipe.steps[0].elements[0] as Record<string, unknown>;
     expect(element.id).toBeUndefined();
     expect(Object.keys(element)).not.toContain("id");
@@ -565,7 +595,7 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
       ],
     });
 
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     const result = deserializeRecipe(recipe);
 
     expect(result.steps[0].fields[0].overrides).toEqual({
@@ -638,13 +668,13 @@ describe("processors round-trip through deserialize/serialize", () => {
     // recipe must not — so the round-trip is exact only once `id` is stripped.
     expect(draft.processors?.every((p) => typeof p.id === "string")).toBe(true);
 
-    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const result = serializeRecipeDraft(draft);
     expect(result.processors).toEqual(nonPaymentProcessors);
   });
 
   it("strips every payment processor from the serialized recipe (it's a DB sibling now, #716)", () => {
     const draft = deserializeRecipe(makeRecipeWithProcessors());
-    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const result = serializeRecipeDraft(draft);
     expect((result.processors ?? []).some((p) => p.type === "payment")).toBe(
       false,
     );
@@ -657,7 +687,7 @@ describe("processors round-trip through deserialize/serialize", () => {
         processorsFixture.find((p) => p.type === "payment") as Processor,
       ],
     });
-    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const result = serializeRecipeDraft(draft);
     // Present-but-empty (not absent): the draft had a processors field, so the
     // `!== undefined` guard still emits `[]`.
     expect(result.processors).toEqual([]);
@@ -665,7 +695,7 @@ describe("processors round-trip through deserialize/serialize", () => {
 
   it("serializeRecipeDraft does not emit the editor-only processor id on the wire", () => {
     const draft = deserializeRecipe(makeRecipeWithProcessors());
-    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const result = serializeRecipeDraft(draft);
     for (const p of result.processors ?? []) {
       expect(Object.keys(p)).not.toContain("id");
     }
@@ -683,13 +713,13 @@ describe("processors round-trip through deserialize/serialize", () => {
     const draft = deserializeRecipe(recipe);
     expect(draft.processors).toEqual([]);
 
-    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const result = serializeRecipeDraft(draft);
     expect(result.processors).toEqual([]);
   });
 
   it("the serialized recipe (with processors) parses through serviceContractRecipeSchema", () => {
     const draft = deserializeRecipe(makeRecipeWithProcessors());
-    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const result = serializeRecipeDraft(draft);
 
     const parsed = serviceContractRecipeSchema.safeParse(result);
     expect(parsed.success).toBe(true);
@@ -744,7 +774,7 @@ describe("contactDetails round-trip through deserialize/serialize", () => {
     const draft = deserializeRecipe(makeRecipeWithContactDetails());
     expect(draft.contactDetails).toEqual(contactDetailsFixture);
 
-    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const result = serializeRecipeDraft(draft);
     expect(result.contactDetails).toEqual(contactDetailsFixture);
   });
 
@@ -755,26 +785,26 @@ describe("contactDetails round-trip through deserialize/serialize", () => {
       email: "health@gov.bb",
     };
     const draft = deserializeRecipe(makeRecipeWithContactDetails(noAddress));
-    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const result = serializeRecipeDraft(draft);
     expect(result.contactDetails).toEqual(noAddress);
     expect(result.contactDetails?.address).toBeUndefined();
   });
 
   it("a recipe with no contactDetails round-trips with the key absent", () => {
-    const recipe = serializeRecipeDraft(makeBaseDraft(), { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(makeBaseDraft());
     expect(Object.keys(recipe)).not.toContain("contactDetails");
 
     const draft = deserializeRecipe(recipe);
     expect(Object.keys(draft)).not.toContain("contactDetails");
 
-    const reserialized = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const reserialized = serializeRecipeDraft(draft);
     expect(reserialized.contactDetails).toBeUndefined();
     expect(Object.keys(reserialized)).not.toContain("contactDetails");
   });
 
   it("the serialized recipe (with contactDetails) parses through serviceContractRecipeSchema", () => {
     const draft = deserializeRecipe(makeRecipeWithContactDetails());
-    const result = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const result = serializeRecipeDraft(draft);
 
     const parsed = serviceContractRecipeSchema.safeParse(result);
     expect(parsed.success).toBe(true);
@@ -789,7 +819,7 @@ describe("contactDetails round-trip through deserialize/serialize", () => {
 describe("mdaContactId serialization", () => {
   it("does NOT emit mdaContactId into the serialized recipe (it's a DB-only sibling field)", () => {
     const draft = makeBaseDraft({ mdaContactId: "contact-123" });
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     expect(Object.keys(recipe)).not.toContain("mdaContactId");
     expect(
       (recipe as unknown as Record<string, unknown>).mdaContactId,
@@ -798,7 +828,7 @@ describe("mdaContactId serialization", () => {
 
   it("omits mdaContactId even when set to null", () => {
     const draft = makeBaseDraft({ mdaContactId: null });
-    const recipe = serializeRecipeDraft(draft, { version: "1.0.0" });
+    const recipe = serializeRecipeDraft(draft);
     expect(Object.keys(recipe)).not.toContain("mdaContactId");
   });
 });

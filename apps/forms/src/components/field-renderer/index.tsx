@@ -1,0 +1,135 @@
+import { AnyFieldApi } from "@tanstack/react-form";
+import {
+  ClientPrimitive,
+  FieldValidationProperties,
+  UploadedFile,
+} from "@forms/types";
+import { RequiredState, checkConditionalOn } from "@forms/lib";
+import { FieldArrayBehaviour } from "@govtech-bb/form-types";
+import FileUpload from "../file-upload";
+import { buildFieldRenderContext, InsetFieldEntry } from "./render-context";
+import { renderDateField } from "./date-field";
+import { renderTextField } from "./text-field";
+import { renderTextareaField } from "./textarea-field";
+import { renderSelectField } from "./select-field";
+import { renderCheckboxField } from "./checkbox-field";
+import { renderRadioField } from "./radio-field";
+import { renderShowHideField } from "./show-hide-field";
+
+export type { InsetFieldEntry };
+
+export default function FieldRenderer({
+  form,
+  field,
+  validationProperties,
+  insetFieldsByOption,
+  formId,
+  previewToken,
+  draftToken,
+}: {
+  // Needs the React `.Field` component from useForm()'s ReactFormExtendedApi,
+  // which AnyFormApi (form-core) doesn't expose and which has no ergonomic
+  // non-generic type — so `any` here, unlike the .store-only call sites.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  form: any;
+  field: ClientPrimitive;
+  validationProperties: FieldValidationProperties;
+  /** Option-value → inset fields that reveal when that option is selected. */
+  insetFieldsByOption?: Map<string, InsetFieldEntry[]>;
+  /** Form ID, forwarded to FileUpload for analytics + presigned uploads. */
+  formId?: string;
+  /** `?preview=` token, forwarded to FileUpload so non-public published file
+   *  fields resolve. */
+  previewToken?: string;
+  /** `?draft=` token, forwarded to FileUpload so DB-scratch file fields resolve
+   *  during draft review (#1682). */
+  draftToken?: string;
+}) {
+  if (field.hidden) return null;
+
+  let conditionalRequiredState: RequiredState = "unknownState";
+  let fieldArray: FieldArrayBehaviour;
+
+  const fieldConditionalOns = field.behaviours?.filter(
+    (b) => b.type === "fieldConditionalOn",
+  );
+
+  const fieldArrays = field.behaviours?.filter((b) => b.type === "fieldArray");
+  if (fieldArrays && fieldArrays.length >= 1) {
+    fieldArray = fieldArrays[0];
+  }
+
+  if (fieldConditionalOns && fieldConditionalOns.length > 0) {
+    conditionalRequiredState = checkConditionalOn(
+      form.getFieldValue(field.id),
+      fieldConditionalOns,
+      form,
+      field.stepId,
+    );
+  }
+
+  if (conditionalRequiredState === "notRequired") {
+    field.conditionallyHidden = true;
+    return null;
+  }
+
+  // If the field was conditionally hidden before, but reaches here, then it's fine
+  if (field.conditionallyHidden) field.conditionallyHidden = false;
+
+  return (
+    <form.Field name={field.id} validators={validationProperties}>
+      {(f: AnyFieldApi) => {
+        const ctx = buildFieldRenderContext({
+          field,
+          form,
+          f,
+          fieldArray,
+          insetFieldsByOption,
+          formId,
+          previewToken,
+          draftToken,
+        });
+
+        switch (field.htmlType) {
+          case "date":
+            return renderDateField(ctx);
+          case "textarea":
+            return renderTextareaField(ctx);
+          case "text":
+          case "number":
+          case "tel":
+          case "email":
+            return renderTextField(ctx);
+          case "select":
+            return renderSelectField(ctx);
+          case "checkbox":
+            return renderCheckboxField(ctx);
+          case "radio":
+            return renderRadioField(ctx);
+          case "file":
+            return (
+              <FileUpload
+                field={field}
+                sharedProps={ctx.sharedProps}
+                value={f.state.value as UploadedFile[] | null | undefined}
+                onFileChange={(files) => ctx.commitChange(files)}
+                errorMessage={ctx.errorMessage}
+                errorId={ctx.errorId}
+                formId={formId}
+                previewToken={previewToken}
+                draftToken={draftToken}
+              />
+            );
+          case "show-hide":
+            return renderShowHideField(ctx);
+          default:
+            return (
+              <div style={{ color: "red" }}>
+                No field for {field.htmlType} designed
+              </div>
+            );
+        }
+      }}
+    </form.Field>
+  );
+}

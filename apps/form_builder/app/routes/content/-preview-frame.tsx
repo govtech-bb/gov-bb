@@ -46,7 +46,11 @@ export interface StartPagePreviewData {
   path: string;
 }
 
-export function StartPagePreviewFrame({ data }: { data: StartPagePreviewData }) {
+export function StartPagePreviewFrame({
+  data,
+}: {
+  data: StartPagePreviewData;
+}) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   // Latest data, read by send() without re-subscribing the handshake listener.
   const dataRef = useRef(data);
@@ -69,7 +73,6 @@ export function StartPagePreviewFrame({ data }: { data: StartPagePreviewData }) 
   useEffect(() => {
     const t = setTimeout(send, 150);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   // The iframe may finish loading and attach its listener after our onLoad
@@ -83,7 +86,6 @@ export function StartPagePreviewFrame({ data }: { data: StartPagePreviewData }) 
     }
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

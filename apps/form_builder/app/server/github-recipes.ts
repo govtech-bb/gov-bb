@@ -1,5 +1,4 @@
 import { REPO_NAME, repoOwner } from "./github-repo";
-import { compareSemver } from "../lib/version";
 
 const API_BASE = "https://api.github.com";
 
@@ -34,7 +33,7 @@ async function ghGet(
 ): Promise<{ status: number; body: unknown }> {
   const res = await fetch(url, { headers: ghHeaders(token) });
   const text = await res.text();
-  let body: unknown = null;
+  let body: unknown;
   try {
     body = text ? JSON.parse(text) : null;
   } catch {
@@ -43,22 +42,12 @@ async function ghGet(
   return { status: res.status, body };
 }
 
-/** Fetch a single recipe by formId + optional version. Latest when version omitted. */
+/** Fetch a form's canonical published recipe (#1196: the flat `{formId}.json`). */
 export async function getPublishedRecipe(
   token: string,
-  args: { formId: string; version?: string },
+  args: { formId: string },
 ): Promise<Record<string, unknown>> {
-  let version = args.version;
-  if (!version) {
-    const versions = await listVersions(token, args.formId);
-    if (versions.length === 0) {
-      throw new Error(`No recipe found for formId "${args.formId}"`);
-    }
-    version = versions.reduce((best, v) =>
-      compareSemver(v, best) > 0 ? v : best,
-    );
-  }
-  return fetchRecipeFile(token, args.formId, version);
+  return fetchRecipeFile(token, args.formId);
 }
 
 /**
@@ -95,31 +84,28 @@ export async function listVersions(
 async function fetchRecipeFile(
   token: string,
   formId: string,
-  version: string,
 ): Promise<Record<string, unknown>> {
   const res = await ghGet(
-    `${API_BASE}/repos/${repoOwner()}/${REPO_NAME}/contents/${RECIPES_BASE}/${encodeURIComponent(formId)}/${encodeURIComponent(version)}.json`,
+    `${API_BASE}/repos/${repoOwner()}/${REPO_NAME}/contents/${RECIPES_BASE}/${encodeURIComponent(formId)}.json`,
     token,
   );
   if (res.status === 404) {
-    throw new Error(
-      `Recipe not found: ${RECIPES_BASE}/${formId}/${version}.json`,
-    );
+    throw new Error(`Recipe not found: ${RECIPES_BASE}/${formId}.json`);
   }
   if (res.status < 200 || res.status >= 300) {
     throw new Error(
-      `GitHub Contents API returned ${res.status} for ${formId}/${version}.json: ${JSON.stringify(res.body)}`,
+      `GitHub Contents API returned ${res.status} for ${formId}.json: ${JSON.stringify(res.body)}`,
     );
   }
   const file = res.body as ContentsFile;
   if (file.encoding !== "base64") {
     throw new Error(
-      `Unexpected encoding "${file.encoding}" for ${formId}/${version}.json — expected "base64"`,
+      `Unexpected encoding "${file.encoding}" for ${formId}.json — expected "base64"`,
     );
   }
   if (!file.content) {
     throw new Error(
-      `Recipe ${formId}/${version}.json has no inline content — file may exceed 1MB`,
+      `Recipe ${formId}.json has no inline content — file may exceed 1MB`,
     );
   }
   const decoded = Buffer.from(file.content, "base64").toString("utf8");

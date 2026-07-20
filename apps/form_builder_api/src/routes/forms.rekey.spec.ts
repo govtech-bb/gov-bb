@@ -114,6 +114,7 @@ function recipe(over: Record<string, unknown> = {}) {
     formId: "birth-registration",
     version: "1.0.0",
     title: "Birth Registration",
+    steps: [],
     ...over,
   };
 }
@@ -253,37 +254,6 @@ describe("rekeyFormHandler — POST /builder/forms/:formId/rekey", () => {
     );
 
     expect(res.statusCode).toBe(200);
-  });
-
-  it("inserts a new row when the re-key also bumps the version", async () => {
-    const { ds, query, save, create } = fakeDataSource({
-      oldRows: [{ id: "row1", version: "1.0.0", published_at: null }],
-      titleRows: [{ form_id: "birth-reg-old", title: "Birth Registration" }],
-      // No (newId, 1.1.0) row exists after the move => INSERT path.
-      existingNewVersion: [],
-    });
-    getDataSourceMock.mockResolvedValue(ds);
-    const res = mockRes();
-
-    await rekeyFormHandler(
-      mockReq(
-        { formId: "birth-reg-old" },
-        { recipe: recipe({ version: "1.1.0" }) },
-      ),
-      res,
-    );
-
-    expect(res.statusCode).toBe(200);
-    expect(
-      sqlsOf(query).some((s) => /UPDATE form_definitions SET form_id/i.test(s)),
-    ).toBe(true);
-    expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        formId: "birth-registration",
-        version: "1.1.0",
-      }),
-    );
-    expect(save).toHaveBeenCalled();
   });
 
   it("returns 404 when no form exists under the old ID", async () => {

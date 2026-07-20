@@ -22,14 +22,14 @@
 import { expect, type Page, type Response } from "@playwright/test";
 
 export const STEP_TIMEOUT = 15_000;
-export const UPLOAD_TIMEOUT = 30_000;
+const UPLOAD_TIMEOUT = 30_000;
 
 /**
  * The primary action button advances every step ("Continue", "Submit" on the
  * declaration). Matched by role + accessible name so it stays robust to
  * design-system styling changes, and so "Previous" is never matched.
  */
-export const primaryButton = (page: Page) =>
+const primaryButton = (page: Page) =>
   page.getByRole("button", { name: /^(Continue|Submit)$/ });
 
 /** Read the current `?step=` param. */
@@ -217,7 +217,7 @@ export async function submitAndConfirm(
   if (opts.referenceLabel) {
     await expect(page.getByText(opts.referenceLabel)).toBeVisible();
     // The API returns a human-readable referenceCode (e.g.
-    // "JPP-20260604-130732-9JZRZC"). Fall back to `id` (UUID) for older API
+    // "BYAC-2606-Y5RPJEP"). Fall back to `id` (UUID) for older API
     // deploys that don't yet include referenceCode (see issue #791).
     const body = await response.json();
     const referenceCode: string | undefined =
@@ -229,11 +229,13 @@ export async function submitAndConfirm(
       "submission response should include a reference code or id",
     ).toBeTruthy();
     if (referenceCode) {
-      // When the API returns a referenceCode, it should match the expected shape.
+      // When the API returns a referenceCode, it should match the canonical
+      // shape (#1468): <PREFIX>-<YYMM>-<7 Crockford-Base32 chars>. Crockford
+      // omits I, L, O, U so the code survives being read aloud and retyped.
       expect(
         referenceCode,
         "referenceCode should match the expected pattern",
-      ).toMatch(/^[A-Z]+-\d{8}-\d{6}-[A-Z2-9]{6}$/);
+      ).toMatch(/^[A-Z]+-\d{4}-[0-9A-HJKMNP-TV-Z]{7}$/);
     }
     await expect(page.getByText(String(renderedReference))).toBeVisible();
   }

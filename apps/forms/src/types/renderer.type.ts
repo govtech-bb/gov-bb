@@ -10,10 +10,11 @@ type fieldId = string;
 export interface FormMeta {
   // Meta information for the client to render.
   formId: string;
-  version: string;
   formTitle: string;
   formDescription?: string;
   contactDetails?: ContactDetails;
+  /** Application deadline (#1936); when past, the closed page is shown. */
+  closingDateTime?: string;
   steps: ClientFormStep[];
   defaultValues: Record<string, unknown>;
   validationProperties: Record<string, FieldValidationProperties>;

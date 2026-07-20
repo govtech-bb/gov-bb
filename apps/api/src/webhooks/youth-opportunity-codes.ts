@@ -1,39 +1,26 @@
-import type { ServiceCode } from "./application-code";
+import type { ServiceCode } from "../forms/submissions/processors/application-code";
 
 /**
- * Backend form definitions name youth-opportunity recipes
- * `youth-opportunity-<opportunityId>` (e.g. `youth-opportunity-byac`). This
- * maps each opportunityId to the programme/service code the case-management
- * webhook expects — the same mapping the frontend used
- * (frontend-alpha/src/data/youth-opportunity-service-codes.ts). Keep the two in
- * sync: an opportunity that submits but is absent here is not dispatched.
+ * Maps a submission's `formId` to the programme/service code the case-management
+ * webhook expects — the legacy dispatch path.
+ *
+ * DRAINED (#841/#1458): every programme that used to live here has been migrated
+ * to the declarative `webhook` processor in its own recipe, which sends the
+ * submission's own `referenceCode` as the case `code` — the single reference the
+ * citizen also sees. The old `YouthOpportunityWebhookListener` minted a *separate*
+ * application code and sent that instead, so a form carried two unrelated
+ * references (the confirmation/email showed one, the CMS case another).
+ *
+ * A formId is removed from this map the moment its recipe gains the mapped
+ * webhook processor, so exactly one dispatch fires per submission (no double
+ * dispatch). The map is now empty; the listener is retained but dormant and can
+ * be deleted once we're confident nothing else depends on it.
  */
-export const YOUTH_OPPORTUNITY_SERVICE_CODES: Record<string, ServiceCode> = {
-  byac: "BYAC",
-  ydp: "YDP",
-  pathways: "PATH",
-  "bright-sparks-2": "SPARKS",
-  cip: "CIP",
-  btu: "BTU",
-  "cyber-security-training": "CYBER",
-  "web-design-entrepreneurs": "WEBDEV",
-  cap: "CAP",
-  yes: "YES",
-  yar: "YAR",
-  "community-canvas": "CANVAS",
-  "national-summer-camp": "CAMP",
-  ceep: "CEEP",
-  "mission-barbados": "MISSION",
-  "barbados-blooming-libraries": "BLOOM",
-  cmc: "CMC",
-  "centre-access": "BOOKING",
-};
+export const FORM_ID_SERVICE_CODES: Record<string, ServiceCode> = {};
 
-const FORM_ID_PREFIX = "youth-opportunity-";
-
-/** True when a submission's formId belongs to the youth-opportunity family. */
+/** True when a submission's formId maps to a youth-opportunity programme. */
 export function isYouthOpportunityFormId(formId: string): boolean {
-  return formId.startsWith(FORM_ID_PREFIX);
+  return formId in FORM_ID_SERVICE_CODES;
 }
 
 /**
@@ -43,7 +30,5 @@ export function isYouthOpportunityFormId(formId: string): boolean {
 export function resolveServiceCodeFromFormId(
   formId: string,
 ): ServiceCode | null {
-  if (!isYouthOpportunityFormId(formId)) return null;
-  const opportunityId = formId.slice(FORM_ID_PREFIX.length);
-  return YOUTH_OPPORTUNITY_SERVICE_CODES[opportunityId] ?? null;
+  return FORM_ID_SERVICE_CODES[formId] ?? null;
 }

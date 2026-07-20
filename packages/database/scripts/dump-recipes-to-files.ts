@@ -51,7 +51,10 @@ function describeTarget(connectionString: string): string {
 }
 
 /**
- * Writes the rows to `recipesRoot/{formId}/{version}.json`. Idempotent:
+ * Writes the rows to the flat canonical `recipesRoot/{formId}.json` (#1196 —
+ * versioning removed; one file per form, matching what the runtime loads).
+ * Post-M2 the `form_definitions` table is one row per formId, so there is
+ * exactly one row (and one file) per form. Idempotent:
  *   - File missing → write, count as "written".
  *   - File exists and identical → count as "unchanged".
  *   - File exists and differs → log a warning, leave on-disk content alone,
@@ -74,12 +77,11 @@ export async function writePublishedRecipes({
     conflicts: 0,
   };
   const formsSeen = new Set<string>();
+  await fs.mkdir(recipesRoot, { recursive: true });
 
   for (const row of rows) {
     formsSeen.add(row.form_id);
-    const formDir = path.join(recipesRoot, row.form_id);
-    await fs.mkdir(formDir, { recursive: true });
-    const filePath = path.join(formDir, `${row.version}.json`);
+    const filePath = path.join(recipesRoot, `${row.form_id}.json`);
     const relative = path.relative(process.cwd(), filePath);
     const desired = serialize(row.schema);
 

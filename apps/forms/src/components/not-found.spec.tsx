@@ -3,15 +3,15 @@
  *
  * Covers:
  * - Renders the "We couldn't find that page" heading
- * - Renders "Go to Homepage" link with href "/"
+ * - Renders "Go to Homepage" link pointing to the landing site
  * - Renders suggestions list with "Check the web address for typos"
  * - Renders "Return to the homepage" suggestion
  * - Passes jest-axe accessibility audit
  */
 
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import { axe } from "jest-axe";
+import { LANDING_URL } from "../config/landing";
 import NotFound from "./not-found";
 
 describe("NotFound", () => {
@@ -25,11 +25,11 @@ describe("NotFound", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders 'Go to Homepage' link with href '/'", () => {
+  it("renders 'Return to homepage' link pointing to the landing site", () => {
     render(<NotFound />);
-    const link = screen.getByRole("link", { name: /go to homepage/i });
+    const link = screen.getByRole("link", { name: /^return to homepage$/i });
     expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute("href", "/");
+    expect(link).toHaveAttribute("href", LANDING_URL);
   });
 
   it("renders 'Check the web address for typos' suggestion", () => {

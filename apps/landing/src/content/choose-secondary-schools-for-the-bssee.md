@@ -6,6 +6,7 @@ publish_date: 2026-06-02
 category: education
 visibility: preview
 form_id: barbados-secondary-entrance-exam-choice
+service_type: digital
 ---
 
 ## Who can use this service

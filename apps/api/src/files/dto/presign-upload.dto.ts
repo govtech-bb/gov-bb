@@ -2,6 +2,7 @@ import {
   IsInt,
   IsMimeType,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
@@ -11,6 +12,9 @@ import { ApiProperty } from "@nestjs/swagger";
 
 const FORM_ID_PATTERN = /^[a-z0-9-]+$/i;
 const SLUG_PATTERN = /^[a-z0-9-]+$/i;
+// fieldId is embedded in the S3 key path (#284), so it must be path-safe — no
+// "/" or ".." that could escape the prefix. Allows camelCase recipe field ids.
+const FIELD_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 export class PresignUploadDto {
   @ApiProperty({ example: "passport-renewal" })
@@ -20,11 +24,14 @@ export class PresignUploadDto {
   @Matches(FORM_ID_PATTERN)
   formId!: string;
 
-  @ApiProperty({ example: "1.0.0" })
+  // Optional post-#1196 (version retired): present → legacy file lookup,
+  // absent → canonical recipe. Pre-cutover clients still send it.
+  @ApiProperty({ example: "1.0.0", required: false })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(20)
-  formVersion!: string;
+  formVersion?: string;
 
   @ApiProperty({ example: "documents" })
   @IsString()
@@ -37,6 +44,7 @@ export class PresignUploadDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
+  @Matches(FIELD_ID_PATTERN)
   fieldId!: string;
 
   @ApiProperty({ example: "police-cert.pdf" })

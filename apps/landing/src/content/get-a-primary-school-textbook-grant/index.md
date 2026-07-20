@@ -5,7 +5,7 @@ stage: "alpha"
 publish_date: 2026-02-06
 category: money-financial-support
 form_id: get-a-primary-school-textbook-grant
-visibility: preview
+service_type: digital
 ---
 
 Every academic year, children attending public and private primary schools are eligible for a $100 Barbados dollars textbook grant. The grant helps parents and guardians provide the textbooks and learning materials their children need for school.
@@ -27,28 +27,30 @@ You can register at any time. If you register in June or July, the funds are mor
 
 ## How to register
 
-To register, you can complete the online form.
+There are 2 ways to register for the Primary School Textbook Grant. You can:
 
-<a data-start-link>Register online</a>
+1. #### Register online
 
-The form asks for:
+   The form asks for:
 
-- bank account information so the funds can be paid.
-- the student’s name, ID number and class.
-- the name of the child’s school and principal.
-- the parent or guardian’s contact details.
+   - bank account information so the funds can be paid.
+   - the student’s name, ID number and class.
+   - the name of the child’s school and principal.
+   - the parent or guardian’s contact details.
+
+   <a data-start-link>Register online</a>
+
+2. #### Get in touch with the Ministry
+
+   If you cannot complete the form online, you can get support by:
+
+   - making an appointment at your child’s school.
+   - visiting the Ministry of Educational Transformation at:
+
+        Elsie Payne Complex  
+        Constitution Road  
+        St.Michael
 
 ## After you’ve registered
 
 The school will check that your child is eligible for the grant and that a grant has not already been claimed during the academic year. If the principal approves the application, the $100 Barbados dollar grant will be paid to the account you provided. 
-
-## If you cannot complete the form online
-
-You can get support by:
-
-- making an appointment at your child’s school.
-- visiting the Ministry of Educational Transformation at:
-
-   Elsie Payne Complex  
-   Constitution Road  
-   St.Michael

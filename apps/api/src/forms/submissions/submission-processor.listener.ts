@@ -4,6 +4,7 @@ import { ConfigType } from "@nestjs/config";
 import { ExpressionsService } from "@/expressions/expressions.service";
 import { ProcessorFactory } from "./processors/processor-factory.service";
 import { SqsProducerService } from "./sqs/sqs-producer.service";
+import { FormSubmissionRepository } from "./form-submission.repository";
 import sqsConfig from "@/config/sqs.config";
 import type { SubmissionCreatedEvent } from "./submissions.types";
 
@@ -17,6 +18,7 @@ export class SubmissionProcessorListener {
     @Inject(sqsConfig.KEY)
     private readonly sqsConf: ConfigType<typeof sqsConfig>,
     private readonly expressions: ExpressionsService,
+    private readonly submissions: FormSubmissionRepository,
   ) {}
 
   @OnEvent("submission.created", { async: true })
@@ -52,6 +54,11 @@ export class SubmissionProcessorListener {
      * without compacting — keeping `${submissionId}:${index}` keys stable.
      * Gating processors (payment) run synchronously in submissions.service.ts
      * and are never enqueued here. */
+    /* Failed snapshot indices — persisted after the loop so a dispatch failure
+     * leaves a durable, queryable signal on the submission, not just a log line
+     * (#1747). */
+    const failures: number[] = [];
+
     for (let index = 0; index < resolvedPayload.processors.length; index++) {
       const entry = resolvedPayload.processors[index];
       const handler = this.processorFactory.resolveByType(entry.type);
@@ -74,6 +81,7 @@ export class SubmissionProcessorListener {
             `Failed to enqueue processor="${entry.type}" index=${index} for submissionId="${payload.submissionId}"`,
             err,
           );
+          failures.push(index);
         }
       } else {
         /* Direct path (fallback) — in-process execution of the indexed entry. */
@@ -84,8 +92,16 @@ export class SubmissionProcessorListener {
             `Processor "${entry.type}" index=${index} failed for submission ${payload.submissionId}`,
             err,
           );
+          failures.push(index);
         }
       }
+    }
+
+    if (failures.length > 0) {
+      await this.submissions.markProcessorsFailed(
+        payload.submissionId,
+        failures,
+      );
     }
   }
 }

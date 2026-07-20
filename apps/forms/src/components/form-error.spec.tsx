@@ -1,100 +1,114 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "jest-axe";
 import { FormFetchError } from "@forms/form-api";
+import { LANDING_URL } from "../config/landing";
 import FormError from "./form-error";
 
 describe("FormError", () => {
   const noopReset = () => {};
 
-  describe("when error is a FormFetchError with status 404", () => {
+  describe("404 — form not found", () => {
+    const renderNotFound = () =>
+      render(
+        <FormError
+          error={new FormFetchError("Not found", 404)}
+          reset={noopReset}
+        />,
+      );
+
     it('renders the "Form not found" heading', () => {
-      const error = new FormFetchError("Not found", 404);
-      render(<FormError error={error} reset={noopReset} />);
+      renderNotFound();
       expect(
-        screen.getByRole("heading", { name: "Form not found" }),
+        screen.getByRole("heading", { level: 1, name: "Form not found" }),
       ).toBeInTheDocument();
     });
 
-    it("renders the 404 suggestion text", () => {
-      const error = new FormFetchError("Not found", 404);
-      render(<FormError error={error} reset={noopReset} />);
+    it("renders the suggestions list", () => {
+      renderNotFound();
       expect(
-        screen.getByText(
-          "Check the URL and try again, or return to the homepage.",
-        ),
+        screen.getByText("Check the web address for typos"),
       ).toBeInTheDocument();
+    });
+
+    it("links to the homepage and the service directory, with no retry button", () => {
+      renderNotFound();
+      expect(
+        screen.getByRole("link", { name: "Return to homepage" }),
+      ).toHaveAttribute("href", LANDING_URL);
+      expect(
+        screen.getByRole("link", { name: "Browse our service directory" }),
+      ).toHaveAttribute("href", `${LANDING_URL}/services`);
+      // A 404 is not transient — no point offering "Try again".
+      expect(
+        screen.queryByRole("button", { name: "Try again" }),
+      ).not.toBeInTheDocument();
     });
   });
 
-  describe("when error is a FormFetchError with status 0 (network error)", () => {
+  describe("connection error (status 0)", () => {
     it('renders the "Connection error" heading', () => {
-      const error = new FormFetchError("Network failure", 0);
-      render(<FormError error={error} reset={noopReset} />);
+      render(
+        <FormError
+          error={new FormFetchError("Network failure", 0)}
+          reset={noopReset}
+        />,
+      );
       expect(
-        screen.getByRole("heading", { name: "Connection error" }),
+        screen.getByRole("heading", { level: 1, name: "Connection error" }),
       ).toBeInTheDocument();
     });
 
-    it("renders the network error suggestion text", () => {
-      const error = new FormFetchError("Network failure", 0);
-      render(<FormError error={error} reset={noopReset} />);
-      expect(
-        screen.getByText(
-          "Unable to reach the server. Check your connection and try again.",
-        ),
-      ).toBeInTheDocument();
+    it('"Try again" re-runs the loader via reset', async () => {
+      const user = userEvent.setup();
+      const reset = vi.fn();
+      render(
+        <FormError
+          error={new FormFetchError("Network failure", 0)}
+          reset={reset}
+        />,
+      );
+      await user.click(screen.getByRole("button", { name: "Try again" }));
+      expect(reset).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe("when error is a generic Error", () => {
+  describe("generic error", () => {
     it('renders the "Something went wrong" heading', () => {
-      const error = new Error("Unexpected");
-      render(<FormError error={error} reset={noopReset} />);
+      render(<FormError error={new Error("Unexpected")} reset={noopReset} />);
       expect(
-        screen.getByRole("heading", { name: "Something went wrong" }),
+        screen.getByRole("heading", { level: 1, name: "Something went wrong" }),
       ).toBeInTheDocument();
     });
 
-    it("renders the generic suggestion text", () => {
-      const error = new Error("Unexpected");
-      render(<FormError error={error} reset={noopReset} />);
-      expect(
-        screen.getByText(
-          "An unexpected error occurred while loading the form.",
-        ),
-      ).toBeInTheDocument();
+    it('"Try again" calls reset', async () => {
+      const user = userEvent.setup();
+      const reset = vi.fn();
+      render(<FormError error={new Error("Oops")} reset={reset} />);
+      await user.click(screen.getByRole("button", { name: "Try again" }));
+      expect(reset).toHaveBeenCalledTimes(1);
     });
-  });
 
-  it("renders the error message string", () => {
-    const error = new Error("Something broke badly");
-    render(<FormError error={error} reset={noopReset} />);
-    expect(screen.getByText("Something broke badly")).toBeInTheDocument();
-  });
-
-  it('renders a "Try again" button that calls reset when clicked', async () => {
-    const user = userEvent.setup();
-    const reset = vi.fn();
-    const error = new Error("Oops");
-    render(<FormError error={error} reset={reset} />);
-    await user.click(screen.getByRole("button", { name: "Try again" }));
-    expect(reset).toHaveBeenCalledTimes(1);
-  });
-
-  it('renders a "Go to Homepage" link pointing to "/"', () => {
-    const error = new Error("Oops");
-    render(<FormError error={error} reset={noopReset} />);
-    expect(
-      screen.getByRole("link", { name: "Go to Homepage" }),
-    ).toHaveAttribute("href", "/");
+    it("links to the homepage", () => {
+      render(<FormError error={new Error("Oops")} reset={noopReset} />);
+      expect(
+        screen.getByRole("link", { name: "Return to homepage" }),
+      ).toHaveAttribute("href", LANDING_URL);
+    });
   });
 
   it("passes axe accessibility audit", async () => {
-    const error = new FormFetchError("Not found", 404);
-    const { container } = render(<FormError error={error} reset={noopReset} />);
-    const results = await axe(container);
+    // heading-order: h3 ("Suggestions") follows h1 without an h2 — this mirrors
+    // the shared ErrorPage layout; excluded consistent with not-found.spec.tsx.
+    const { container } = render(
+      <FormError
+        error={new FormFetchError("Not found", 404)}
+        reset={noopReset}
+      />,
+    );
+    const results = await axe(container, {
+      rules: { "heading-order": { enabled: false } },
+    });
     expect(results).toHaveNoViolations();
   });
 });

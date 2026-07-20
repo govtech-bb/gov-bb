@@ -56,9 +56,46 @@ export const serviceContractSchema = z.object({
   requiresPayment: z.boolean().optional(),
   createdAt: dateTimeFormatSchema,
   updatedAt: dateTimeFormatSchema,
-  version: semverSchema,
+  // Version is retired (#1196): canonical recipes carry no version. Kept
+  // optional so legacy versioned files still parse during the two-phase retire.
+  version: semverSchema.optional(),
+  // Optional application deadline (#1936). When set and past, citizens see an
+  // "Applications have closed" page instead of the form. ISO-8601 with offset;
+  // comparison uses the absolute instant, display formats in AST. Rides as a
+  // top-level field on the served contract (which has no `meta`).
+  closingDateTime: dateTimeFormatSchema.optional(),
 });
 export type ServiceContract = z.infer<typeof serviceContractSchema>;
+
+// Service launch gate (#1646). `visibility` decides whether the public can
+// reach a form: `public` is served normally; `preview`/`draft`/`maintenance`
+// are hidden (404) from the public and only resolve when a valid recipe-preview
+// token is supplied. Mirrors apps/landing's page-level visibility levels.
+//
+// `maintenance` (#1694) behaves like `preview` for gating — non-public, so the
+// form is unlisted and its "Start now" button is hidden — but it is also
+// surfaced publicly (see the /form-definitions/maintenance endpoint) so the
+// landing page can render an "under maintenance" notice for the form.
+export const recipeVisibilitySchema = z.enum([
+  "public",
+  "preview",
+  "draft",
+  "maintenance",
+]);
+export type RecipeVisibility = z.infer<typeof recipeVisibilitySchema>;
+
+// `meta` is an extensible container for recipe-level metadata. Optional during
+// the #1646 rollout so existing recipes (which carry no `meta`) still validate;
+// an absent `meta` or `visibility` is treated as `preview` (see
+// getRecipeVisibility) — recipes are private by default and must opt in to
+// `public` to launch to citizens.
+export const recipeMetaSchema = z.object({
+  visibility: recipeVisibilitySchema.default("preview"),
+  // Optional application deadline (#1936). Authored here; hydrateForm lifts it
+  // onto the served contract. Absent → the form has no deadline.
+  closingDateTime: dateTimeFormatSchema.optional(),
+});
+export type RecipeMeta = z.infer<typeof recipeMetaSchema>;
 
 export const serviceContractRecipeSchema = z.object({
   formId: formIdSchema,
@@ -69,6 +106,32 @@ export const serviceContractRecipeSchema = z.object({
   processors: z.array(processorSchema).optional(),
   createdAt: dateTimeFormatSchema,
   updatedAt: dateTimeFormatSchema,
-  version: semverSchema,
+  // See serviceContractSchema.version — optional during the #1196 two-phase retire.
+  version: semverSchema.optional(),
+  meta: recipeMetaSchema.optional(),
 });
 export type ServiceContractRecipe = z.infer<typeof serviceContractRecipeSchema>;
+
+// Lenient draft-save gate (#1499). The /builder/forms write surfaces persist a
+// raw recipe blob to form_definitions.schema; this schema lets those handlers
+// reject a structurally-invalid blob without being stricter than the publish
+// backstop. It relaxes only `createdAt`/`updatedAt` to optional — a mid-edit
+// draft may not yet carry stamped timestamps, and the normal save path stamps
+// them via serializeRecipeDraft anyway. Everything else (formId, title, steps,
+// version, meta) stays exactly as strict as the recipe schema.
+export const draftRecipeSchema = serviceContractRecipeSchema.extend({
+  createdAt: dateTimeFormatSchema.optional(),
+  updatedAt: dateTimeFormatSchema.optional(),
+});
+export type DraftRecipe = z.infer<typeof draftRecipeSchema>;
+
+/**
+ * Resolve a recipe's effective visibility. An absent `meta` or absent
+ * `visibility` defaults to `preview` — recipes are private by default and must
+ * explicitly set `visibility: "public"` to be served to citizens.
+ */
+export function getRecipeVisibility(
+  recipe: Pick<ServiceContractRecipe, "meta">,
+): RecipeVisibility {
+  return recipe.meta?.visibility ?? "preview";
+}

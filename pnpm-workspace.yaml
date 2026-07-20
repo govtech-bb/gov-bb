@@ -23,7 +23,11 @@ overrides:
   multer@<2.2.0: ^2.2.0
   uuid@<11.1.1: ^11.1.1
   js-yaml@>=4.0.0 <4.1.2: ^4.1.2
+  js-yaml@>=3.0.0 <3.15.0: ^3.15.0
+  tmp@<0.2.7: ^0.2.7
+  form-data@<4.0.6: ^4.0.6
   "@opentelemetry/core@<2.8.0": ^2.8.0
+  esbuild@<0.28.1: ^0.28.1
 
 # pnpm blocks dependency build scripts by default; allowBuilds is the
 # reviewed decision list. true = must run (fetch/verify native binaries).
@@ -42,8 +46,9 @@ allowBuilds:
   unrs-resolver: false
 
 catalog:
-  "@tanstack/ai": "^0.28.0"
-  "@tanstack/ai-react": "^0.15.4"
+  "@tanstack/ai": "^0.39.0"
+  "@tanstack/ai-bedrock": "^0.1.0"
+  "@tanstack/ai-react": "^0.16.1"
   "@tanstack/devtools-vite": "^0.7.0"
   "@tanstack/react-devtools": "^0.10.5"
   "@tanstack/react-form": "^1.29.0"
@@ -67,7 +72,16 @@ minimumReleaseAgeExclude:
   - tmp@0.2.7
   - form-data@4.0.6
   - js-yaml@4.1.2
+  - js-yaml@3.15.0
   - '@opentelemetry/core@2.8.0'
   - multer@2.2.0
   - undici@7.28.0
   - nodemailer@9.0.1
+  - '@govtech-bb/design@1.0.0-alpha.17'
+  - '@govtech-bb/react@1.0.0-alpha.17'
+  - '@govtech-bb/styles@1.0.0-alpha.17'
+  - '@tanstack/ai-client@0.19.1'
+  - '@tanstack/ai-react@0.16.1'
+  - '@tanstack/ai@0.39.0'
+  - '@tanstack/ai-bedrock@0.1.0'
+  - '@tanstack/openai-base@0.9.6'
