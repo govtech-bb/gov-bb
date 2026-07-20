@@ -2,7 +2,13 @@ import type { Mock } from "vitest";
 import type { Request, Response } from "express";
 
 vi.mock("@govtech-bb/database", () => ({ CustomComponent: class {} }));
-vi.mock("../db.js", () => ({ getDataSource: vi.fn() }));
+// runBedrock builds the system prompt via buildSystemPrompt, which reads the
+// live CustomComponent rows. No custom components in these tests → empty list.
+vi.mock("../db.js", () => ({
+  getDataSource: vi.fn().mockResolvedValue({
+    getRepository: () => ({ find: () => Promise.resolve([]) }),
+  }),
+}));
 vi.mock("../ai/system-prompt.js", () => ({
   getSystemPrompt: () => "BASE_PROMPT",
 }));
@@ -211,6 +217,9 @@ describe("statusHandler", () => {
     const res1 = mockRes();
     await statusHandler(mockReq({}, { jobId: "j-1" }), res1);
     expect(res1.body).toMatchObject({ status: "generating" });
+    // Flush the microtask so runBedrock gets past the buildSystemPrompt DB read
+    // and reaches chat().
+    await new Promise((r) => setImmediate(r));
     expect(chatMock).toHaveBeenCalledTimes(1);
 
     // Resolve Bedrock

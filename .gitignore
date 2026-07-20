@@ -145,8 +145,6 @@ vite.config.ts.timestamp-*
 .nx/
 tmp/
 
-# Next.js generated
-apps/web/next-env.d.ts
 *.tsbuildinfo
 
 # Amplify

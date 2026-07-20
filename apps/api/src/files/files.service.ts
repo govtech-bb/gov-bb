@@ -12,11 +12,11 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { v4 as uuid } from "uuid";
 import type { Primitive, ServiceContract } from "@govtech-bb/form-types";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import { isValidSecretToken } from "../common/secret-token";
 import { AppError } from "../common/errors";
+import { buildSubmissionKey, parseSubmissionKey } from "./submission-key";
 import type {
   SubmissionValues,
   ValidationErrorBundle,
@@ -113,7 +113,7 @@ export class FilesService {
       throw new BadRequestException(`File exceeds max size (${maxSize} bytes)`);
     }
 
-    const key = this.buildKey(
+    const key = buildSubmissionKey(
       dto.formId,
       dto.stepId,
       dto.fieldId,
@@ -146,7 +146,7 @@ export class FilesService {
     // actually presigned, so the embedded tuple is authoritative. Legacy
     // tuple-less keys (in flight across deploy) skip the check and fall back to
     // the prior client-supplied behaviour.
-    const keyTuple = this.parseKeyTuple(dto.key);
+    const keyTuple = parseSubmissionKey(dto.key);
     if (
       keyTuple &&
       (keyTuple.formId !== dto.formId ||
@@ -491,44 +491,6 @@ export class FilesService {
     return typeof fromValidation === "number" && fromValidation > 0
       ? fromValidation
       : this.globalMaxSize;
-  }
-
-  // The (formId, stepId, fieldId) tuple is embedded in the key prefix so confirm
-  // can verify the upload was presigned under the same field — closing the
-  // presign↔confirm binding gap (#284). stepId/fieldId are DTO-validated as
-  // path-safe slugs, so they can't inject extra path segments.
-  private buildKey(
-    formId: string,
-    stepId: string,
-    fieldId: string,
-    fileName: string,
-  ): string {
-    const now = new Date();
-    const yyyy = now.getUTCFullYear();
-    const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
-    return `uploads/${formId}/${stepId}/${fieldId}/${yyyy}/${mm}/${uuid()}-${this.sanitizeFileName(
-      fileName,
-    )}`;
-  }
-
-  // Parse the (formId, stepId, fieldId) tuple embedded by buildKey. Returns the
-  // tuple for a new-format key, or null for a legacy (tuple-less) key still in
-  // flight across deploy. Only the exact buildKey shape matches — a forged key
-  // can't claim a tuple it wasn't presigned with.
-  private parseKeyTuple(
-    key: string,
-  ): { formId: string; stepId: string; fieldId: string } | null {
-    const m = key.match(
-      /^uploads\/([a-z0-9-]+)\/([a-z0-9-]+)\/([A-Za-z0-9_-]+)\/\d{4}\/\d{2}\//i,
-    );
-    return m ? { formId: m[1], stepId: m[2], fieldId: m[3] } : null;
-  }
-
-  private sanitizeFileName(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/\s+/g, "_")
-      .replace(/[^a-z0-9._-]/g, "");
   }
 
   private extractOriginalName(key: string): string {
