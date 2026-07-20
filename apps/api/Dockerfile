@@ -28,6 +28,11 @@ COPY --chown=app:app packages/form-conditions/package.json packages/form-conditi
 COPY --chown=app:app packages/form-types/package.json packages/form-types/
 COPY --chown=app:app packages/form-validation/package.json packages/form-validation/
 COPY --chown=app:app packages/registry/package.json packages/registry/
+# content is never imported by the api, but the ROOT package.json devDeps pin
+# it (workspace:*) — without its manifest any non-frozen `pnpm install` in the
+# image fails with ERR_PNPM_WORKSPACE_PKG_NOT_FOUND (broke the migrate task
+# after 47f73422 made it a root dep).
+COPY --chown=app:app packages/content/package.json packages/content/
 
 # BuildKit cache mount keeps the pnpm content-addressable store across builds,
 # so a cache-invalidating change to the lockfile or any package.json re-installs
@@ -109,6 +114,12 @@ COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
 #   - database: imported by data-source.ts since #721
 COPY --from=builder --chown=app:app /app/packages/form-types/src/ ./packages/form-types/src/
 COPY --from=builder --chown=app:app /app/packages/database/src/ ./packages/database/src/
+# content is source-only (no build target) so it isn't in dist/packages/, but
+# the ROOT package.json devDeps pin it (workspace:*) — keep the runtime
+# workspace self-consistent so a non-frozen `pnpm install` can't die on
+# ERR_PNPM_WORKSPACE_PKG_NOT_FOUND. The manifest alone is enough: nothing in
+# the api imports it.
+COPY --from=builder --chown=app:app /app/packages/content/package.json ./packages/content/
 COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
 
 # Drop esbuild from the runtime image (#1567). esbuild ships a Go-compiled
@@ -150,6 +161,14 @@ RUN ln -sfn ../dist/src node_modules/@
 COPY --from=builder --chown=app:app /app/package.json ./
 COPY --from=builder --chown=app:app /app/pnpm-lock.yaml ./
 COPY --from=builder --chown=app:app /app/pnpm-workspace.yaml ./
+# pnpm 11's verify-deps-before-run intercepts any in-container `pnpm run` (the
+# migrate task runs `pnpm migration:run`): the runner's trimmed workspace never
+# matches the builder's install state, so the check re-resolves everything —
+# needing registry egress at deploy time and failing hard on any workspace
+# drift. This image is immutable: always run against the baked node_modules.
+# Appended to pnpm-workspace.yaml because pnpm 11 ignores the .npmrc and
+# npm_config_* env forms of this setting — image-only, local dev keeps it on.
+RUN printf '\n# image-only (see Dockerfile): never re-install at runtime\nverifyDepsBeforeRun: false\n' >> pnpm-workspace.yaml
 COPY --from=builder --chown=app:app /app/tsconfig.base.json ./
 COPY --from=builder --chown=app:app /app/apps/api/package.json ./apps/api/
 COPY --from=builder --chown=app:app /app/apps/api/tsconfig.json ./apps/api/
@@ -167,3 +186,7 @@ ENV NODE_EXTRA_CA_CERTS=/app/rds-ca-bundle.pem
 EXPOSE 3001
 
 CMD ["node", "dist/src/main.js"]
+
+# Staging bootstrap touch 2026-05-30: force api affected so the image gets pushed to ssb-api ECR
+# (forms-db-staging has never had migrations run; this commit + the migrations/README.md trip
+# both gates so the first deploy populates the DB).

@@ -37,7 +37,9 @@ export const Route = createFileRoute("/content/")({
     const [forms, baseBranch] = await Promise.all([
       // Hide disabled draft-only / orphan-override rows the picker uses for
       // re-enable (#1658) — they have no live recipe to link content to.
-      listForms().then(linkableForms).catch(() => []),
+      listForms()
+        .then(linkableForms)
+        .catch(() => []),
       getPublishBaseBranch().catch(() => "dev"),
     ]);
     return { forms, baseBranch };
@@ -46,8 +48,13 @@ export const Route = createFileRoute("/content/")({
 });
 
 const UNCATEGORISED = "__uncat__";
-const CATEGORY_TITLE = new Map(LANDING_CATEGORIES.map((c) => [c.slug, c.title]));
-const CATEGORY_ORDER = [...LANDING_CATEGORIES.map((c) => c.slug), UNCATEGORISED];
+const CATEGORY_TITLE = new Map(
+  LANDING_CATEGORIES.map((c) => [c.slug, c.title]),
+);
+const CATEGORY_ORDER = [
+  ...LANDING_CATEGORIES.map((c) => c.slug),
+  UNCATEGORISED,
+];
 
 function titleCase(slug: string): string {
   const words = slug.replace(/-+/g, " ").trim();
@@ -60,11 +67,12 @@ function titleCase(slug: string): string {
 function orderedCategories(present: Iterable<string>): string[] {
   const set = new Set(present);
   const known = CATEGORY_ORDER.filter((c) => set.has(c));
-  const unknown = [...set]
-    .filter((c) => !CATEGORY_ORDER.includes(c))
-    .sort();
-  return [...known.filter((c) => c !== UNCATEGORISED), ...unknown,
-    ...(set.has(UNCATEGORISED) ? [UNCATEGORISED] : [])];
+  const unknown = [...set].filter((c) => !CATEGORY_ORDER.includes(c)).sort();
+  return [
+    ...known.filter((c) => c !== UNCATEGORISED),
+    ...unknown,
+    ...(set.has(UNCATEGORISED) ? [UNCATEGORISED] : []),
+  ];
 }
 
 function categoryTitle(slug: string): string {
@@ -128,7 +136,7 @@ function PrBadge({ pr }: { pr: OpenContentPR }) {
 }
 
 function ContentHome() {
-  const { forms, baseBranch } = Route.useLoaderData();
+  const { forms } = Route.useLoaderData();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const list = useContentList(true);
@@ -272,9 +280,8 @@ function ContentHome() {
   const missingCount = formRowsAll.filter((r) =>
     r.slots.some((sl) => !sl.page),
   ).length;
-  const openPRCount = new Set(
-    [...list.openPRs.values()].map((p) => p.prNumber),
-  ).size;
+  const openPRCount = new Set([...list.openPRs.values()].map((p) => p.prNumber))
+    .size;
 
   const toggle = (slug: string) =>
     setCollapsedList((cur) =>
@@ -457,11 +464,7 @@ function ContentHome() {
         />
 
         {loading ? (
-          <div
-            className="t-skel"
-            aria-busy="true"
-            aria-label="Loading pages"
-          >
+          <div className="t-skel" aria-busy="true" aria-label="Loading pages">
             <div
               className="t-skel-skeleton is-pulsing"
               style={{ "--pulse-count": "infinite" } as React.CSSProperties}

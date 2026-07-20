@@ -61,10 +61,7 @@ export function FormCombobox({ forms, value, onChange }: FormComboboxProps) {
     if (!panel.mounted) return;
     function onDoc(e: MouseEvent) {
       const t = e.target as Node;
-      if (
-        !rootRef.current?.contains(t) &&
-        !panelRef.current?.contains(t)
-      ) {
+      if (!rootRef.current?.contains(t) && !panelRef.current?.contains(t)) {
         panel.close();
       }
     }
@@ -81,7 +78,6 @@ export function FormCombobox({ forms, value, onChange }: FormComboboxProps) {
       document.removeEventListener("mousedown", onDoc);
       window.removeEventListener("scroll", onScroll, true);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panel.mounted]);
 
   const openPanel = () => {
@@ -173,7 +169,9 @@ export function FormCombobox({ forms, value, onChange }: FormComboboxProps) {
                     onClick={() => choose(o.formId)}
                   >
                     <span className={s.comboOptionLabel}>{o.label}</span>
-                    {o.meta && <span className={s.comboOptionId}>{o.meta}</span>}
+                    {o.meta && (
+                      <span className={s.comboOptionId}>{o.meta}</span>
+                    )}
                   </button>
                 </li>
               ))}

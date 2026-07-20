@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GovTech BB — Branch &amp; Deploy Model</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root{
+    --ground:#0A1A3F;
+    --ground-2:#0E2456;
+    --panel:#102a63;
+    --text:#EAF0FF;
+    --muted:#94A8D4;
+    --line:#26407C;
+    --accent:#FFC72C;   /* Barbados gold — the trunk */
+    --auto:#5BE3D3;     /* teal — automatic flow */
+    --gated:#FF8A5B;    /* coral — manual / gated */
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  html { -webkit-text-size-adjust: 100%; }
+  body{
+    margin:0;
+    background:
+      linear-gradient(180deg, var(--ground) 0%, var(--ground-2) 100%) fixed,
+      var(--ground);
+    color:var(--text);
+    font-family:var(--sans);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:46px 46px;
+    opacity:.10;
+    -webkit-mask-image:radial-gradient(circle at 50% 38%, #000 0%, transparent 78%);
+    mask-image:radial-gradient(circle at 50% 38%, #000 0%, transparent 78%);
+  }
+
+  .page{
+    position:relative; z-index:1;
+    max-width:1040px;
+    margin:0 auto;
+    padding:clamp(2rem,5vw,4.5rem) clamp(1.1rem,4vw,3rem) 4rem;
+  }
+
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:.78rem; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--accent); margin:0 0 .9rem;
+  }
+  h1{
+    font-size:clamp(2.4rem,6.5vw,4rem);
+    font-weight:800; letter-spacing:-.03em; line-height:1.02; margin:0;
+  }
+  h1 code{
+    font-family:var(--mono); font-weight:800;
+    color:var(--accent); letter-spacing:-.02em;
+  }
+  .lead{
+    max-width:48ch; color:var(--muted);
+    font-size:clamp(1rem,1.6vw,1.18rem); margin:1.1rem 0 0;
+  }
+
+  .flow{ margin-top:clamp(2.5rem,6vw,4rem); }
+
+  .features{ display:flex; flex-wrap:wrap; gap:.6rem; justify-content:center; }
+  .chip{
+    font-family:var(--mono); font-size:.86rem;
+    padding:.42rem .8rem; border:1px solid var(--line);
+    border-radius:999px; background:rgba(255,255,255,.03); color:var(--text);
+  }
+  .chip .sub{ color:var(--muted); }
+  .feature-note{ text-align:center; color:var(--muted); font-size:.86rem; margin:.85rem 0 0; }
+  .feature-note code{ font-family:var(--mono); color:var(--accent); }
+
+  .gate-stem{
+    width:3px; height:34px; margin:1.1rem auto 0;
+    background:var(--accent); border-radius:3px;
+  }
+  .gate{
+    display:flex; align-items:center; justify-content:center; gap:.6rem;
+    width:-webkit-fit-content; width:fit-content; margin:0 auto;
+    font-family:var(--mono); font-size:.82rem; letter-spacing:.02em;
+    padding:.55rem 1rem; border:1px solid var(--accent);
+    border-radius:10px; background:rgba(255,199,44,.08); color:var(--accent);
+  }
+  .gate .lock{ font-size:.95rem; }
+  .gate-stem.lower{ margin-top:0; }
+
+  .trunk{
+    position:relative; margin:0 auto;
+    border:1px solid rgba(255,199,44,.45);
+    border-left:5px solid var(--accent);
+    background:linear-gradient(90deg, rgba(255,199,44,.16), rgba(255,199,44,.04));
+    border-radius:12px; padding:1.15rem 1.4rem;
+    box-shadow:0 0 0 1px rgba(255,199,44,.06), 0 18px 50px -28px rgba(255,199,44,.6);
+  }
+  .trunk .rail-label{ display:flex; align-items:baseline; gap:.8rem; flex-wrap:wrap; }
+  .trunk .ref{
+    font-family:var(--mono); font-weight:800;
+    font-size:clamp(1.5rem,3.4vw,2.1rem); color:var(--accent); letter-spacing:-.02em;
+  }
+  .trunk .role{ font-size:.8rem; letter-spacing:.16em; text-transform:uppercase; color:var(--text); }
+  .trunk .deploys{ margin:.35rem 0 0; color:var(--muted); font-size:.9rem; }
+
+  /* sequential deploy pipeline */
+  .pipe{ display:flex; flex-direction:column; align-items:center; max-width:520px; margin:0 auto; }
+  .pipe .card{ width:100%; }
+  .seg{ display:flex; flex-direction:column; align-items:center; padding:.4rem 0; }
+  .seg .line{ width:3px; height:30px; border-radius:3px; position:relative; }
+  .seg .line::after{ content:""; position:absolute; left:50%; bottom:-1px; transform:translateX(-50%); border-left:6px solid transparent; border-right:6px solid transparent; }
+  .seg .pl{ font-family:var(--mono); font-size:.72rem; margin-top:.34rem; text-align:center; }
+  .seg--auto .line{ background-image:linear-gradient(var(--auto) 50%, transparent 50%); background-size:100% 14px; animation:flow .9s linear infinite; }
+  .seg--auto .line::after{ border-top:8px solid var(--auto); }
+  .seg--auto .pl{ color:var(--auto); }
+  .seg--gated .line{ background:repeating-linear-gradient(var(--gated) 0 6px, transparent 6px 12px); }
+  .seg--gated .line::after{ border-top:8px solid var(--gated); }
+  .seg--gated .pl{ color:var(--gated); }
+  @keyframes flow{ to{ background-position:0 14px; } }
+  @media (prefers-reduced-motion: reduce){ .seg--auto .line{ animation:none; } }
+
+  .card{
+    width:100%; border:1px solid var(--line); border-radius:12px;
+    background:var(--panel); padding:1.05rem 1.1rem 1.2rem;
+  }
+  .card.is-gated{ border-color:rgba(255,138,91,.4); }
+  .card .ref{ font-family:var(--mono); font-weight:700; font-size:1.18rem; display:block; margin-bottom:.6rem; }
+  .badge{
+    display:inline-block; font-family:var(--mono); font-size:.7rem;
+    letter-spacing:.12em; text-transform:uppercase; padding:.28rem .6rem;
+    border-radius:6px; font-weight:700;
+  }
+  .badge--auto{ background:rgba(91,227,211,.14); color:var(--auto); border:1px solid rgba(91,227,211,.4); }
+  .badge--gated{ background:rgba(255,138,91,.14); color:var(--gated); border:1px solid rgba(255,138,91,.45); }
+  .card .desc{ margin:.75rem 0 0; font-size:.9rem; color:var(--muted); }
+  .card .aws{
+    margin-top:.7rem; padding-top:.7rem; border-top:1px dashed var(--line);
+    font-family:var(--mono); font-size:.8rem; color:var(--text);
+  }
+  .card .aws span{ color:var(--muted); }
+
+  .rules{ margin-top:clamp(2.6rem,6vw,4rem); }
+  .rules h2{
+    font-size:.8rem; letter-spacing:.22em; text-transform:uppercase;
+    font-family:var(--mono); color:var(--accent); margin:0 0 1.2rem;
+  }
+  ol.rules-list{
+    list-style:none; margin:0; padding:0;
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr));
+    gap:1px; background:var(--line); border:1px solid var(--line);
+    border-radius:12px; overflow:hidden;
+  }
+  ol.rules-list li{ background:var(--ground-2); padding:1.05rem 1.15rem; display:flex; gap:.8rem; }
+  ol.rules-list .n{ font-family:var(--mono); font-weight:800; color:var(--accent); font-size:.95rem; flex:none; }
+  ol.rules-list .t{ font-size:.92rem; color:var(--muted); }
+  ol.rules-list .t b{ color:var(--text); }
+  ol.rules-list li.warn{ background:rgba(255,138,91,.08); }
+  ol.rules-list li.warn .n{ color:var(--gated); }
+
+  .footnote{
+    margin-top:2.2rem; text-align:center; color:var(--muted);
+    font-size:.8rem; font-family:var(--mono); letter-spacing:.03em;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <p class="eyebrow">GovTech Barbados · Delivery model</p>
+    <h1><code>main</code> is the trunk.</h1>
+    <p class="lead">One CI-gated source of truth. Every feature merges here, then deploys roll out one environment at a time — each only after the previous is proven green.</p>
+  </header>
+
+  <section class="flow" aria-label="Branch and deploy flow">
+
+    <div class="features">
+      <span class="chip">feature/chat</span>
+      <span class="chip">fix/forms-upload</span>
+      <span class="chip"><span class="sub">…short-lived branches</span></span>
+    </div>
+    <p class="feature-note">Cut from <code>main</code> · merged back by PR · deleted after</p>
+
+    <div class="gate-stem"></div>
+    <div class="gate"><span class="lock">🔒</span> Merge gate — CI must pass</div>
+    <div class="gate-stem lower" style="height:30px;"></div>
+
+    <div class="trunk">
+      <div class="rail-label">
+        <span class="ref">main</span>
+        <span class="role">Trunk · single source of truth</span>
+      </div>
+      <p class="deploys">Deploys nowhere on its own. Merging here kicks off the deploy sequence below.</p>
+    </div>
+
+    <div class="pipe">
+      <div class="seg seg--auto"><div class="line"></div><div class="pl">auto on merge</div></div>
+
+      <div class="card">
+        <code class="ref">sandbox</code>
+        <span class="badge badge--auto">Step 1 · Auto</span>
+        <p class="desc">Builds and deploys automatically every time code lands on <code style="font-family:var(--mono)">main</code>.</p>
+        <p class="aws">→ <span>AWS</span> sandbox environment</p>
+      </div>
+
+      <div class="seg seg--auto"><div class="line"></div><div class="pl">once the sandbox deploy is all green</div></div>
+
+      <div class="card">
+        <code class="ref">staging</code>
+        <span class="badge badge--auto">Step 2 · Auto, after sandbox</span>
+        <p class="desc">Triggers automatically only once the sandbox deploy has gone fully green — sequential, not in parallel.</p>
+        <p class="aws">→ <span>AWS</span> staging environment</p>
+      </div>
+
+      <div class="seg seg--gated"><div class="line"></div><div class="pl">🔒 manual · release window</div></div>
+
+      <div class="card is-gated">
+        <code class="ref">prod</code>
+        <span class="badge badge--gated">Step 3 · Manual · windowed</span>
+        <p class="desc">Deployed by hand in the next release window, once staging is proven stable.</p>
+        <p class="aws">→ <span>AWS</span> production environment</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="rules" aria-label="Operating rules">
+    <h2>How it holds together</h2>
+    <ol class="rules-list">
+      <li><span class="n">01</span><span class="t"><b>main is the trunk</b> — the single source of truth where every feature merges.</span></li>
+      <li><span class="n">02</span><span class="t"><b>Every merge is gated by CI</b> — no direct pushes to main. Stability is proven by QA on the environments; PR review comes as the team matures.</span></li>
+      <li><span class="n">03</span><span class="t"><b>Deploys run in sequence</b> — sandbox deploys on merge; staging triggers only once the sandbox deploy is fully green. No parallel environment deploys.</span></li>
+      <li class="warn"><span class="n">04</span><span class="t"><b>Production is manual &amp; windowed</b> — deployed by hand, only after staging is proven.</span></li>
+      <li><span class="n">05</span><span class="t"><b>Environments are deploy targets.</b> Never developed or hot-fixed on directly.</span></li>
+    </ol>
+    <p class="footnote">feature → main (CI-gated) → sandbox → (when green) staging → prod (windowed)</p>
+  </section>
+</div>
+</body>
+</html>

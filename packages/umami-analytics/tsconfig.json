@@ -1,11 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "module": "esnext",
-    "moduleResolution": "bundler",
+    "composite": true,
+    "outDir": "./dist",
+    "declaration": true,
+    "module": "commonjs",
     "lib": ["ES2022", "DOM"],
-    "types": ["node"],
-    "noEmit": true
+    "types": ["node", "vitest/globals"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

@@ -1,9 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { randomUUID } from "node:crypto";
-import { CustomComponent } from "@govtech-bb/database";
-import { getDataSource } from "../db.js";
-import { getSystemPrompt } from "../ai/system-prompt.js";
-import { formatCustomComponentList } from "../ai/custom-component-prompt.js";
+import { buildSystemPrompt } from "../ai/build-system-prompt.js";
 import { getContentSystemPrompt } from "../ai/content-prompt.js";
 import { chat, isAvailable } from "../ai/client.js";
 import {
@@ -21,22 +18,6 @@ export const aiRouter = Router();
 // There is no server-side conversation — the editor owns the live draft and
 // sends the current recipe JSON along with each edit, so there is no in-memory
 // session to lose on restart (closes #332).
-
-// Build the system prompt with the live custom components appended. This is the
-// one DB read each convert call makes — one extra read per AI action, by design
-// (the old per-session prompt cache is gone with the session model).
-async function buildSystemPrompt(): Promise<string> {
-  const ds = await getDataSource();
-  const customs = await ds.getRepository(CustomComponent).find();
-  // Sanitize-on-read: custom_components rows are untrusted input to the prompt
-  // that every AI action reuses (#292).
-  const componentList = formatCustomComponentList(customs);
-
-  const basePrompt = getSystemPrompt();
-  return componentList
-    ? `${basePrompt}\n\n## Live Custom Components (from database)\n${componentList}`
-    : basePrompt;
-}
 
 // Compose the single user turn from the parts the editor sends. An Edit Form
 // tweak arrives as `recipeJson` (the serialized current draft) + `message`
