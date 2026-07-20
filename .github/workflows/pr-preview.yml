@@ -731,73 +731,57 @@ jobs:
     needs: setup
     if: needs.setup.outputs.ff-app == 'true' || needs.setup.outputs.amplify-config == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC for the AWS role
+      contents: write # force-push the PR commit to the shared ff-preview branch
     outputs:
       status: ${{ steps.build.outputs.status }}
       url: ${{ steps.build.outputs.url }}
     steps:
+      # feature-flagging is auth-walled, so it can't use a throwaway
+      # amplifyapp.com host — GitHub OAuth only accepts a redirect_uri on a
+      # subdomain of the app's registered callback host. A per-PR custom
+      # subdomain would require this PR-triggered CI role to hold broad
+      # route53/acm/cloudfront/iam (Amplify's UpdateDomainAssociation demands
+      # them of the caller). So instead there's ONE shared slot: the static host
+      # preview.feature-flagging.sandbox.alpha.gov.bb -> the "ff-preview" Amplify
+      # branch, with its OAuth env baked in (alpha-infra amplify-feature-flagging.tf).
+      # We force-push THIS PR's commit onto that branch and build it — no domain
+      # or branch-env perms needed. ONE FF preview at a time (most recent wins);
+      # reads/writes SANDBOX flag data.
+      - name: Checkout PR head
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          # persist-credentials (default) keeps the token configured so the
+          # force-push below can authenticate.
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-      - name: Create branch and trigger preview build
+      - name: Push to shared slot and trigger preview build
         id: build
         env:
-          # feature-flagging admin UI (apps/feature_flagging SSR). Served on a
-          # CUSTOM DOMAIN — <branch>.feature-flagging.sandbox.alpha.gov.bb — not
-          # amplifyapp.com, because that host is a SUBDOMAIN of the OAuth callback
-          # host, which GitHub accepts, so GitHub LOGIN WORKS on previews.
-          # (alpha-infra: auto-subdomain association + network wildcard DNS/cert.)
-          # OAUTH_REDIRECT_BASE + the GitHub/API config aren't app-level (they
-          # live on the sandbox branch), so we set them branch-scoped below.
-          # NOTE: previews read/write SANDBOX flag data via the sandbox forms API.
           AMPLIFY_APP_ID: d170ysh10vddy3
           APP_LABEL: feature-flagging
-          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+          PREVIEW_BRANCH: ff-preview
+          URL: https://preview.feature-flagging.sandbox.alpha.gov.bb
         run: |
-          if ! aws amplify get-branch \
-                --app-id "$AMPLIFY_APP_ID" \
-                --branch-name "$BRANCH_NAME" \
-                --region "$AWS_REGION" >/dev/null 2>&1; then
-            echo "Creating Amplify branch $BRANCH_NAME on $AMPLIFY_APP_ID"
-            aws amplify create-branch \
-              --app-id "$AMPLIFY_APP_ID" \
-              --branch-name "$BRANCH_NAME" \
-              --region "$AWS_REGION" >/dev/null
-          else
-            echo "Amplify branch $BRANCH_NAME already exists on $AMPLIFY_APP_ID"
-          fi
-
-          # Custom-domain host (NOT amplifyapp.com). Amplify auto-subdomain maps
-          # this branch to <SUBDOMAIN>.feature-flagging.sandbox.alpha.gov.bb.
-          SUBDOMAIN="${BRANCH_NAME//\//-}"
-          URL="https://${SUBDOMAIN}.feature-flagging.sandbox.alpha.gov.bb"
-
-          # Branch-scoped SSR config (baked into the bundle via Vite define at
-          # build time). Mirrors the sandbox branch's env, but OAUTH_REDIRECT_BASE
-          # points at THIS preview host so the OAuth dance stays same-origin and
-          # GitHub accepts the redirect_uri (a subdomain of the callback host).
-          aws amplify update-branch \
-            --app-id "$AMPLIFY_APP_ID" \
-            --branch-name "$BRANCH_NAME" \
-            --region "$AWS_REGION" \
-            --environment-variables "OAUTH_REDIRECT_BASE=$URL,GITHUB_ORG=govtech-bb,GITHUB_TEAM_SLUG=content-and-feature-management,FEATURE_FLAGGING_API_URL=https://forms-sandbox.alpha.gov.bb" \
-            >/dev/null
-          echo "Set feature-flagging config on branch $BRANCH_NAME (OAUTH_REDIRECT_BASE=$URL)"
+          # Force-push this PR's commit onto the git branch the ff-preview Amplify
+          # branch tracks. Amplify auto-build is off, so the push alone doesn't
+          # build — start-job below does. Concurrent FF PRs share the slot.
+          git push --force origin "HEAD:refs/heads/${PREVIEW_BRANCH}"
+          echo "Force-pushed $(git rev-parse --short HEAD) to ${PREVIEW_BRANCH}"
 
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "Preview URL: $URL"
 
-          # Cancel any in-flight Amplify jobs on this branch before
-          # queueing a new one. start-job fails with
-          # LimitExceededException if a non-terminal job already exists
-          # for the branch — our latest-commit-wins concurrency model
-          # means we want the older build dropped. Scoped per branch:
-          # list-jobs and stop-job both require --branch-name, so this
-          # cannot touch sandbox/staging/prod or other PR branches.
+          # Cancel any in-flight job on the shared branch (latest wins), then build.
           IN_FLIGHT=$(aws amplify list-jobs \
             --app-id "$AMPLIFY_APP_ID" \
-            --branch-name "$BRANCH_NAME" \
+            --branch-name "$PREVIEW_BRANCH" \
             --region "$AWS_REGION" \
             --query "jobSummaries[?status=='CREATED' || status=='PENDING' || status=='PROVISIONING' || status=='RUNNING'].jobId" \
             --output text)
@@ -805,17 +789,16 @@ jobs:
             echo "Cancelling in-flight Amplify $APP_LABEL job $J"
             aws amplify stop-job \
               --app-id "$AMPLIFY_APP_ID" \
-              --branch-name "$BRANCH_NAME" \
+              --branch-name "$PREVIEW_BRANCH" \
               --job-id "$J" \
               --region "$AWS_REGION" >/dev/null \
               || echo "stop-job failed for $J (continuing)"
           done
-          # Brief wait so the cancellation registers before start-job.
           [ -n "$IN_FLIGHT" ] && sleep 5
 
           JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
-            --branch-name "$BRANCH_NAME" \
+            --branch-name "$PREVIEW_BRANCH" \
             --job-type RELEASE \
             --region "$AWS_REGION" \
             --query jobSummary.jobId \
@@ -829,7 +812,7 @@ jobs:
           for i in $(seq 1 30); do
             STATUS=$(aws amplify get-job \
               --app-id "$AMPLIFY_APP_ID" \
-              --branch-name "$BRANCH_NAME" \
+              --branch-name "$PREVIEW_BRANCH" \
               --job-id "$JOB_ID" \
               --region "$AWS_REGION" \
               --query job.summary.status \
@@ -931,7 +914,7 @@ jobs:
             echo ""
             echo "_Commit: \`${COMMIT_SHA:0:7}\`_  ·  _Branches auto-delete when this PR closes._"
             echo ""
-            echo "> ℹ️ **feature-flagging** preview supports GitHub login (custom-domain preview). First build of a new branch may take a few minutes for the subdomain cert to provision. It reads/writes **sandbox** flag data."
+            echo "> ℹ️ **feature-flagging** uses a single shared preview slot at a fixed URL (\`preview.feature-flagging.sandbox.alpha.gov.bb\`) — GitHub login works, but only **one** FF preview exists at a time (the most recent FF PR build wins). It reads/writes **sandbox** flag data."
           } > comment.md
 
           # Hand the file path to the next step.
@@ -943,7 +926,8 @@ jobs:
           header: amplify-pr-preview
           path: comment.md
 
-  # On PR close, delete the per-PR Amplify branch from all 6 apps.
+  # On PR close, delete the per-PR Amplify branch from the 5 per-PR apps
+  # (feature-flagging is excluded — it uses a shared, permanent slot).
   # The branch only exists on apps that were affected at some point in
   # this PR's life, so "not found" errors are swallowed.
   teardown:
@@ -956,7 +940,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-      - name: Delete branches on all 6 sandbox Amplify apps
+      - name: Delete branches on the 5 per-PR sandbox Amplify apps
         env:
           BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
         run: |
@@ -970,13 +954,14 @@ jobs:
               exit 1 ;;
           esac
 
+          # feature-flagging is NOT here: it uses a shared, permanent ff-preview
+          # branch (not a per-PR branch), so there's nothing per-PR to delete.
           for entry in \
               "forms:d1j7z1k0h7u5nb" \
               "landing:d3kbl8o0ovutw4" \
               "chat:d3snq1f0c10466" \
               "form-builder:d16oo4n0w76zwn" \
-              "analytics:d363pae4e63dc6" \
-              "feature-flagging:d170ysh10vddy3"; do
+              "analytics:d363pae4e63dc6"; do
             label="${entry%%:*}"
             app_id="${entry##*:}"
             if aws amplify get-branch \
