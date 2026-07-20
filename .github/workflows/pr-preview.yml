@@ -621,13 +621,18 @@ jobs:
         id: build
         env:
           # analytics dashboard (apps/analytics SSR) at analytics.sandbox.alpha.gov.bb.
-          # Public (robots:noindex), so the preview is fully usable. The build's
-          # UMAMI_*/VITE_FORMS_API_URL env vars are inherited from the app-level
-          # config the deploy pipeline persists via update-app — the preview does
-          # NOT re-inject them (that would mutate shared app config from a PR).
+          # Public (robots:noindex), so the preview is fully usable. Its UMAMI_*/
+          # VITE_FORMS_API_URL build config is NOT app-level (the deploy pipeline
+          # injects it per-deploy via update-app), so a fresh preview branch has
+          # none and the dashboard renders "not configured". We set it below,
+          # branch-scoped, from the same repo secrets deploy-sandbox.yml uses.
           AMPLIFY_APP_ID: d363pae4e63dc6
           APP_LABEL: analytics
           BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+          UMAMI_API_KEY: ${{ secrets.UMAMI_API_KEY }}
+          UMAMI_LANDING_WEBSITE_ID: ${{ secrets.UMAMI_LANDING_WEBSITE_ID }}
+          UMAMI_FORMS_WEBSITE_ID: ${{ secrets.UMAMI_FORMS_WEBSITE_ID }}
+          VITE_FORMS_API_URL: https://forms.api.sandbox.alpha.gov.bb
         run: |
           if ! aws amplify get-branch \
                 --app-id "$AMPLIFY_APP_ID" \
@@ -641,6 +646,18 @@ jobs:
           else
             echo "Amplify branch $BRANCH_NAME already exists on $AMPLIFY_APP_ID"
           fi
+
+          # Branch-scoped build env, so THIS preview builds configured without
+          # touching the shared sandbox branch/app env. Merges with app-level
+          # (AMPLIFY_MONOREPO_APP_ROOT etc.) at build time. Mirrors the var set
+          # deploy-sandbox.yml's amplify-analytics job puts on the app.
+          aws amplify update-branch \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --region "$AWS_REGION" \
+            --environment-variables "UMAMI_API_KEY=$UMAMI_API_KEY,UMAMI_LANDING_WEBSITE_ID=$UMAMI_LANDING_WEBSITE_ID,UMAMI_FORMS_WEBSITE_ID=$UMAMI_FORMS_WEBSITE_ID,VITE_FORMS_API_URL=$VITE_FORMS_API_URL" \
+            >/dev/null
+          echo "Set analytics build env on branch $BRANCH_NAME (values hidden)"
 
           SUBDOMAIN="${BRANCH_NAME//\//-}"
           URL="https://${SUBDOMAIN}.${AMPLIFY_APP_ID}.amplifyapp.com"
