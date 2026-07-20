@@ -768,8 +768,9 @@ jobs:
             echo "Amplify branch $BRANCH_NAME already exists on $AMPLIFY_APP_ID"
           fi
 
-          # Custom-domain host (NOT amplifyapp.com). Amplify auto-subdomain maps
-          # this branch to <SUBDOMAIN>.feature-flagging.sandbox.alpha.gov.bb.
+          # Custom-domain host (NOT amplifyapp.com) — a subdomain of the OAuth
+          # callback host. The subdomain->branch mapping is registered explicitly
+          # below (auto-subdomain does NOT fire for create-branch API calls).
           SUBDOMAIN="${BRANCH_NAME//\//-}"
           URL="https://${SUBDOMAIN}.feature-flagging.sandbox.alpha.gov.bb"
 
@@ -784,6 +785,25 @@ jobs:
             --environment-variables "OAUTH_REDIRECT_BASE=$URL,GITHUB_ORG=govtech-bb,GITHUB_TEAM_SLUG=content-and-feature-management,FEATURE_FLAGGING_API_URL=https://forms-sandbox.alpha.gov.bb" \
             >/dev/null
           echo "Set feature-flagging config on branch $BRANCH_NAME (OAUTH_REDIRECT_BASE=$URL)"
+
+          # Register <SUBDOMAIN>.feature-flagging.sandbox.alpha.gov.bb -> this
+          # branch on the preview domain association so CloudFront routes it
+          # (auto-subdomain doesn't fire for API-created branches). Read-modify-
+          # write preserves other previews' subdomains and the reserved "previews"
+          # anchor (which keeps the list non-empty); dropping any stale entry for
+          # this prefix makes re-runs idempotent. Wildcard DNS + cert already
+          # cover the host. NOTE: not concurrency-safe across simultaneous FF
+          # preview PRs (last writer wins) — acceptable at sandbox volume.
+          PREVIEW_DOMAIN="feature-flagging.sandbox.alpha.gov.bb"
+          mapfile -t KEEP < <(aws amplify get-domain-association \
+            --app-id "$AMPLIFY_APP_ID" --domain-name "$PREVIEW_DOMAIN" --region "$AWS_REGION" \
+            --query "domainAssociation.subDomains[?subDomainSetting.prefix!='$SUBDOMAIN'].subDomainSetting" \
+            --output json | jq -r '.[] | "prefix=\(.prefix),branchName=\(.branchName)"')
+          aws amplify update-domain-association \
+            --app-id "$AMPLIFY_APP_ID" --domain-name "$PREVIEW_DOMAIN" --region "$AWS_REGION" \
+            --sub-domain-settings "${KEEP[@]}" "prefix=$SUBDOMAIN,branchName=$BRANCH_NAME" \
+            >/dev/null
+          echo "Registered preview subdomain $SUBDOMAIN -> $BRANCH_NAME"
 
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "Preview URL: $URL"
@@ -992,3 +1012,27 @@ jobs:
               echo "↷  No $label branch $BRANCH_NAME on $app_id (skipping)"
             fi
           done
+
+      - name: Deregister feature-flagging preview subdomain
+        env:
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+        run: |
+          # Remove this preview's <prefix> from the feature-flagging preview
+          # domain association. The reserved "previews" anchor keeps the list
+          # non-empty (update-domain-association requires ≥1). No-op if absent.
+          SUBDOMAIN="${BRANCH_NAME//\//-}"
+          APP_ID=d170ysh10vddy3
+          PREVIEW_DOMAIN="feature-flagging.sandbox.alpha.gov.bb"
+          mapfile -t KEEP < <(aws amplify get-domain-association \
+            --app-id "$APP_ID" --domain-name "$PREVIEW_DOMAIN" --region "$AWS_REGION" \
+            --query "domainAssociation.subDomains[?subDomainSetting.prefix!='$SUBDOMAIN'].subDomainSetting" \
+            --output json 2>/dev/null | jq -r '.[] | "prefix=\(.prefix),branchName=\(.branchName)"')
+          if [ "${#KEEP[@]}" -gt 0 ]; then
+            aws amplify update-domain-association \
+              --app-id "$APP_ID" --domain-name "$PREVIEW_DOMAIN" --region "$AWS_REGION" \
+              --sub-domain-settings "${KEEP[@]}" >/dev/null \
+              && echo "🗑  Deregistered preview subdomain $SUBDOMAIN" \
+              || echo "subdomain deregister failed (continuing)"
+          else
+            echo "↷  Nothing to keep — skipping subdomain deregister"
+          fi
