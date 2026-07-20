@@ -117,6 +117,18 @@ export class FormDefinitionsController {
     });
   }
 
+  // Declared before `:formId` (like "maintenance") so it routes here. Public:
+  // the closed formIds let landing hide "Start now" and show a closed notice
+  // (#1936). Closed forms stay public/served — the closed page needs the
+  // contract's contactDetails — so this list is purely advisory to landing.
+  @Get("closed")
+  async getClosed(): Promise<ApiResponseShape<string[]>> {
+    const formIds = await this.formDefinitionsService.findClosedFormIds();
+    return AppApiResponse.success(formIds, {
+      message: "Closed forms retrieved",
+    });
+  }
+
   @Get(":formId")
   @GetFormDefinitionDocs()
   async get(

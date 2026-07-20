@@ -19,19 +19,10 @@ import {
   Select,
   Text,
 } from '@govtech-bb/react'
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
-import {
-  EMERGENCY_SHELTERS,
-  type LatLon,
-  PARISHES,
-  type Shelter,
-} from '../-data/emergency-shelters'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
+import { EMERGENCY_SHELTERS, PARISHES } from '../-data/emergency-shelters'
+import type { LatLon, Shelter } from '../-data/emergency-shelters'
 import { shelterDistance, userIsOnIsland } from '../-lib/shelter-distance'
 import { Chevron, CloseIcon, LocationIcon } from './icons'
 import { ShelterCard } from './shelter-card'
@@ -427,7 +418,9 @@ export function ShelterFinder() {
                     checked={accessible}
                     id="filter-access"
                     label="Has an accessible bathroom"
-                    onCheckedChange={(checked) => setAccessible(checked === true)}
+                    onCheckedChange={(checked) =>
+                      setAccessible(checked === true)
+                    }
                   />
                 </FilterGroup>
               </div>
@@ -488,7 +481,9 @@ export function ShelterFinder() {
               {visibleShelters.length < results.length && (
                 <div className="mt-m flex justify-center print:hidden">
                   <Button
-                    onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+                    onClick={() =>
+                      setVisibleCount((count) => count + PAGE_SIZE)
+                    }
                     type="button"
                     variant="secondary"
                   >

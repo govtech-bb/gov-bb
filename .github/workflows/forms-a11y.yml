@@ -1,0 +1,63 @@
+name: Forms Live A11y Scan
+
+# Reusable workflow: runs the live accessibility (axe) scan against a deployed
+# forms URL.
+#
+# Sibling to forms-smoke.yml. Called (via `uses:`) from a workflow that has a
+# deployed URL to point at — pr-preview's a11y job `needs: preview-forms` and
+# passes the per-PR preview URL as base_url.
+#
+# Unlike the smoke workflow, this NEVER submits a form: it loads pages and scans
+# the rendered DOM with axe-core. No submission rows are created, so it needs no
+# X-Smoke-Submission token and no AWS credentials — it just drives a headless
+# browser against the public deployed URL. The scan fails only on
+# serious/critical WCAG A/AA violations (see apps/forms/e2e/helpers/a11y.ts).
+
+on:
+  workflow_call:
+    inputs:
+      base_url:
+        description: "Deployed forms URL the a11y scan runs against (A11Y_BASE_URL)."
+        required: true
+        type: string
+      artifact_name:
+        description: "Name for the Playwright trace/report artifact uploaded on failure."
+        required: true
+        type: string
+
+jobs:
+  a11y:
+    name: A11y scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Install Playwright chromium
+        run: pnpm --filter @govtech-bb/forms exec playwright install --with-deps chromium
+      - name: Run live a11y scan
+        env:
+          # Via env (not inline ${{ }}) so nothing is interpolated into the
+          # shell — base_url traces back to the PR branch name on the preview
+          # caller, so it must never reach the script directly.
+          A11Y_BASE_URL: ${{ inputs.base_url }}
+        # Override the config's retries: 0 with 2 retries to absorb transient
+        # preview/edge network flake without masking a genuine violation.
+        run: >
+          pnpm --filter @govtech-bb/forms exec playwright test
+          --config playwright.a11y.config.ts
+          --retries=2
+      - name: Upload Playwright trace on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: apps/forms/test-results/
+          retention-days: 7

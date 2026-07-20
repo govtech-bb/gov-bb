@@ -112,7 +112,6 @@ describe("createMdaContact", () => {
 
 describe("getFormConfig", () => {
   it("reads the per-environment config for a form", async () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { getFormConfig } = await import("./forms");
     apiGet.mockResolvedValue({ mdaContactId: "contact-1" });
 

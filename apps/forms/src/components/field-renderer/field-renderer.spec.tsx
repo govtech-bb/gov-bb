@@ -1,4 +1,4 @@
-import type { Mock, MockedFunction } from "vitest";
+import type { MockedFunction } from "vitest";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";

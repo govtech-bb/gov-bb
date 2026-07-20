@@ -10,6 +10,16 @@
       "Bash(git pull *)",
       "Bash(git show *)",
       "Bash(git diff *)"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.*.local)",
+      "Read(**/.env.development)",
+      "Read(**/.env.production)",
+      "Read(**/.env.staging)",
+      "Read(**/.env.sandbox)",
+      "Read(**/.env.test)"
     ]
   },
   "worktree": {
@@ -41,6 +51,11 @@
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-commit-plans.sh\"",
             "statusMessage": "Guarding docs/plans"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-env-read.sh\"",
+            "statusMessage": "Guarding .env reads"
           }
         ]
       }

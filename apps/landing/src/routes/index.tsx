@@ -6,6 +6,7 @@ import { CATEGORIES } from '../content/categories'
 import { isCategoryVisible } from '../content/registry'
 import { trackEvent } from '../lib/analytics'
 import { pageHead } from '../lib/page-head'
+import { deriveVisibilityOverlay } from '../lib/service-status'
 
 export const Route = createFileRoute('/')({
   head: () =>
@@ -18,8 +19,11 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
-  const { level } = Route.useRouteContext()
-  const categories = CATEGORIES.filter((cat) => isCategoryVisible(cat, level))
+  const { level, serviceStatuses } = Route.useRouteContext()
+  const overlay = deriveVisibilityOverlay(serviceStatuses)
+  const categories = CATEGORIES.filter((cat) =>
+    isCategoryVisible(cat, level, overlay),
+  )
 
   const handleSearch = (q: string) => {
     trackEvent('search-submit', { query: q, source: 'home' })

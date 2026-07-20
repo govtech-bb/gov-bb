@@ -28,7 +28,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import type { ClientServiceContract, FormMeta } from "@forms/types";
 import { fetchContract } from "./form-fetcher";
-import { buildForm } from "./build-form";
 
 // ---------------------------------------------------------------------------
 // Cache key constants
@@ -169,7 +168,8 @@ export const formMetaQueryOptions = (
 ) =>
   queryOptions<FormMeta>({
     queryKey: formSchemaCacheKey(formId, preview, draft),
-    queryFn: () => buildForm(clientContract),
+    queryFn: () =>
+      import("./build-form").then((m) => m.buildForm(clientContract)),
     staleTime: 60_000,
     gcTime: 30 * 60_000,
   });

@@ -33,6 +33,6 @@ export async function processMarkdown(
     })
 
   const tree = processor.parse(markdown)
-  const hast = (await processor.run(tree)) as unknown as Root
+  const hast = await processor.run(tree)
   return { hast }
 }
