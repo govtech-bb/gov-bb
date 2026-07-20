@@ -1,3 +1,5 @@
+import type { Mock } from "vitest";
+import { Logger } from "@nestjs/common";
 import { YouthOpportunityWebhookListener } from "./youth-opportunity-webhook.listener";
 import type { YouthOpportunityWebhookService } from "./youth-opportunity-webhook.service";
 import type { SubmissionCreatedEvent } from "../forms/submissions/submissions.types";
@@ -18,7 +20,9 @@ function makeEvent(
         "applicant-last-name": "Doe",
         "applicant-email": "jane@example.com",
         "applicant-phone": "246-555-1234",
+        "applicant-parish": "St. Michael",
       },
+      "your-interest": { "interest-motivation": "Keen" },
     },
     meta: {
       schemaVersion: 2,
@@ -35,8 +39,8 @@ function makeEvent(
   };
 }
 
-describe("YouthOpportunityWebhookListener (dormant — #841/#1458)", () => {
-  let dispatch: ReturnType<typeof vi.fn>;
+describe("YouthOpportunityWebhookListener", () => {
+  let dispatch: Mock;
   let listener: YouthOpportunityWebhookListener;
 
   beforeEach(() => {
@@ -46,27 +50,58 @@ describe("YouthOpportunityWebhookListener (dormant — #841/#1458)", () => {
     } as unknown as YouthOpportunityWebhookService);
   });
 
-  // The FORM_ID_SERVICE_CODES map is drained: every programme now dispatches
-  // via the `webhook` processor in its recipe (code = the submission's
-  // referenceCode). This legacy listener must no longer dispatch anything —
-  // otherwise migrated forms would be sent twice, with two different codes.
-
-  it("does not dispatch a formerly-mapped youth-opportunity submission", async () => {
+  it("dispatches a mapped youth-opportunity submission with a generated code", async () => {
     await listener.handleSubmissionCreated(makeEvent());
-    expect(dispatch).not.toHaveBeenCalled();
+
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    const payload = dispatch.mock.calls[0][0];
+    expect(payload.programmeCode).toBe("BYAC");
+    expect(payload.code).toMatch(/^BYAC-\d{4}-[0-9A-Z]{7}$/);
+    expect(payload.applicantName).toBe("Jane Doe");
+    expect(payload.applicantEmail).toBe("jane@example.com");
+    expect(payload.applicantPhone).toBe("246-555-1234");
+    expect(payload.submittedAt).toBe("2026-06-03T10:00:00.000Z");
+    expect(payload.formData).toEqual({
+      "applicant-parish": "St. Michael",
+      "interest-motivation": "Keen",
+    });
   });
 
-  it("does not dispatch a non-youth-opportunity submission", async () => {
+  it("ignores non-youth-opportunity submissions silently", async () => {
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
     await listener.handleSubmissionCreated(
       makeEvent({ formId: "passport-renewal" }),
     );
     expect(dispatch).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
-  it("does not dispatch a smoke submission", async () => {
+  it("warns but does not dispatch an unmapped youth-opportunity form", async () => {
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
     await listener.handleSubmissionCreated(
-      makeEvent({ isSmokeSubmission: true }),
+      makeEvent({ formId: "youth-opportunity-mystery" }),
     );
     expect(dispatch).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("Unmapped"));
+    warn.mockRestore();
+  });
+
+  it("does NOT dispatch a smoke submission, even for a mapped youth-opportunity form", async () => {
+    // This listener fires off formId, not processors[], so the service's
+    // processor-drop can't suppress it — it must honour isSmokeSubmission (#1252).
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
+    await listener.handleSubmissionCreated(
+      makeEvent({ formId: "youth-opportunity-byac", isSmokeSubmission: true }),
+    );
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 });
