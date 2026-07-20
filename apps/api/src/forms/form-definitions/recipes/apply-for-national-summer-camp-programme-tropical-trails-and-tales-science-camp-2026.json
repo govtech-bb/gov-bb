@@ -26,12 +26,12 @@
       "type": "webhook",
       "config": {
         "endpoint": {
-          "env": "WEBHOOK_URL"
+          "env": "WEBHOOK_URL_SCIENCE_CAMP"
         },
         "auth": {
           "scheme": "apiKey",
           "header": "X-API-Key",
-          "secretEnv": "WEBHOOK_SECRET"
+          "secretEnv": "WEBHOOK_SECRET_SCIENCE_CAMP"
         },
         "mapping": {
           "programmeCode": "SCIENCE2026",

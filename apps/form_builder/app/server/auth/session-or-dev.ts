@@ -17,7 +17,7 @@ import { getSessionSecret } from "../secrets";
  */
 export const sessionTokenOrDev = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
-    let token: string | null = null;
+    let token: string | null;
     try {
       const headers = getRequestHeaders();
       const cookie =

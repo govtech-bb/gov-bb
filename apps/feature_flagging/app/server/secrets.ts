@@ -6,7 +6,7 @@
 // grant, cached per warm Lambda container.
 //
 // JSON shape:
-//   FEATURE_FLAGGING_TOKENS_SECRET_ARN        → { session_secret }
+//   FEATURE_FLAGGING_TOKENS_SECRET_ARN        → { session_secret, slack_webhook_url }
 //   FEATURE_FLAGGING_GITHUB_OAUTH_SECRET_ARN  → { client_id, client_secret }
 //
 // The service_status API is authenticated by the user's forwarded GitHub token
@@ -68,4 +68,23 @@ export async function getGitHubOAuthCreds(): Promise<{
       "feature-flagging-github-oauth",
     ),
   };
+}
+
+/**
+ * The Slack incoming-webhook URL for service-status change notifications.
+ *
+ * Unlike the getters above, this is non-critical: it returns `undefined` when
+ * unconfigured so a missing webhook silently disables notifications rather than
+ * breaking a status change. Local dev / `.env` set SLACK_WEBHOOK_URL directly;
+ * deployed builds read the `slack_webhook_url` field from the feature-flagging
+ * tokens secret.
+ */
+export async function getSlackWebhookUrl(): Promise<string | undefined> {
+  const direct = process.env.SLACK_WEBHOOK_URL;
+  if (direct) return direct;
+  const arn = process.env.FEATURE_FLAGGING_TOKENS_SECRET_ARN;
+  if (!arn) return undefined;
+  const json = await getCachedSecretJson(arn);
+  const value = json["slack_webhook_url"];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }

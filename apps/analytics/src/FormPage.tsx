@@ -2,6 +2,7 @@ import { Heading, Text } from '@govtech-bb/react'
 import { useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { AnalyticsChrome } from './components/AnalyticsChrome'
+import { StatCards } from './components/StatCards'
 import type { FormDetailData } from './lib/umami-server'
 
 const fmtInt = (n: number) => n.toLocaleString()
@@ -39,19 +40,6 @@ function SubHeading({ children }: { children: ReactNode }) {
   )
 }
 
-function Stat({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div>
-      <Text as="span" size="small-caption" className="block text-mid-grey-00">
-        {label}
-      </Text>
-      <Text as="span" size="body" weight="bold">
-        {value}
-      </Text>
-    </div>
-  )
-}
-
 export default function FormPage({ detail }: { detail: FormDetailData }) {
   const navigate = useNavigate()
   return (
@@ -80,58 +68,138 @@ export default function FormPage({ detail }: { detail: FormDetailData }) {
         <Stats detail={detail} />
         <Funnel detail={detail} />
         <ValidationReasons detail={detail} />
-        <SubmitReliability detail={detail} />
       </div>
     </>
   )
 }
 
-// Headline stats: starts, completion rate and avg time to complete (distinct
-// visitors), plus field-error and step counters.
-function Stats({ detail }: { detail: FormDetailData }) {
+// A big value with a small grey sub-line of context (e.g. "159 of 177 visits").
+function withSub(value: ReactNode, sub: string): ReactNode {
   return (
     <>
-      <div className="mt-s rounded-lg bg-teal-10 p-m">
-        <div className="flex flex-wrap gap-l">
-          <Stat label="Starts" value={fmtInt(detail.starts)} />
-          <Stat
-            label="Completed"
-            value={
-              <>
-                {fmtInt(detail.completed)}{' '}
-                <span className="text-mid-grey-00">
-                  ({fmtPct(detail.completionPct)})
-                </span>
-              </>
-            }
-          />
-          <Stat
-            label="Avg time to complete"
-            value={fmtDur(detail.avgDurationSeconds)}
-          />
-        </div>
-        <div className="mt-m flex flex-wrap gap-l">
-          <Stat label="Field errors / start" value={detail.avgFieldErrors} />
-          <Stat
-            label="Total field errors"
-            value={fmtInt(detail.totalFieldErrors)}
-          />
-        </div>
-      </div>
-      <div className="mt-s flex flex-wrap gap-l">
-        <Stat label="Step back" value={fmtInt(detail.stepBack)} />
-        <Stat label="Step edit" value={fmtInt(detail.stepEdit)} />
-        <Stat label="Reviewed" value={fmtInt(detail.reviewed)} />
-      </div>
+      {value}
+      <span className="block text-caption font-normal text-mid-grey-00">
+        {sub}
+      </span>
+    </>
+  )
+}
+
+// A tooltip body: a bold title, an explanation, and optional extra nodes.
+function Hint({
+  title,
+  children,
+}: {
+  title: string
+  children: ReactNode
+}) {
+  return (
+    <>
+      <span className="block font-bold">{title}</span>
+      <span className="mt-xs block text-mid-grey-00">{children}</span>
+    </>
+  )
+}
+
+// Headline: the form's conversion/quality metrics, each with a hover/focus
+// explanation. Form failures carries the submit-error reason breakdown.
+function Stats({ detail }: { detail: FormDetailData }) {
+  const se = detail.submitError
+  return (
+    <>
+      <StatCards
+        cards={[
+          {
+            label: 'Visits that started',
+            value: withSub(
+              fmtPct(detail.visitsToStartsPct),
+              `${fmtInt(detail.starts)} of ${fmtInt(detail.visits)} visits`,
+            ),
+            hint: (
+              <Hint title="Visits that started">
+                Of the distinct visitors who opened the form page, the share who
+                then began filling it in (fired <code>form-start</code>).
+              </Hint>
+            ),
+          },
+          {
+            label: 'Completion rate',
+            value: withSub(
+              fmtPct(detail.completionPct),
+              `${fmtInt(detail.completed)} of ${fmtInt(detail.starts)} starts`,
+            ),
+            hint: (
+              <Hint title="Completion rate">
+                Of the distinct visitors who started, the share who reached a
+                successful submit. Failed submit attempts don’t count as
+                completions.
+              </Hint>
+            ),
+          },
+          {
+            label: 'Avg time to complete',
+            value: fmtDur(detail.avgDurationSeconds),
+            hint: (
+              <Hint title="Avg time to complete">
+                Average time from starting the form to a successful submit,
+                across the visitors who completed it.
+              </Hint>
+            ),
+          },
+          {
+            label: 'Field validation errors',
+            value: fmtInt(detail.totalFieldErrors),
+            hint: (
+              <Hint title="Field validation errors">
+                Every time a field failed client-side validation when a visitor
+                tried to advance a step (an event count, not distinct visitors).
+              </Hint>
+            ),
+          },
+          {
+            label: 'Form failures',
+            value: fmtInt(se.total),
+            hint: (
+              <Hint title="Form failures">
+                Submissions that failed at the API (network, payment or server)
+                — <code>form-submit-error</code> events. These are attempts, not
+                completions; a visitor who fails can retry, so a failure isn’t
+                counted as abandonment.
+                {se.attempts > 0 && se.rate != null ? (
+                  <span className="mt-xs block">
+                    {fmtPct(se.rate * 100)} of {fmtInt(se.attempts)} submit
+                    attempts (successful submits + failures).
+                  </span>
+                ) : null}
+                {se.byReason.length > 0 ? (
+                  <span className="mt-xs flex flex-wrap gap-xs">
+                    {se.byReason.map((r) => (
+                      <span
+                        key={r.reason}
+                        className="rounded-full border border-grey-00 px-xs py-[1px] text-small-caption"
+                      >
+                        {r.reason} · {fmtInt(r.count)}
+                      </span>
+                    ))}
+                  </span>
+                ) : null}
+              </Hint>
+            ),
+          },
+        ]}
+      />
       <Text as="p" size="small-caption" className="mt-xs text-mid-grey-00">
-        Starts, Completed and completion rate are <b>distinct visitors</b>. The
-        remaining counters are events.
+        Visits, starts and completion are <b>distinct visitors</b> (Umami funnel
+        report); field errors and form failures are event counts. Hover a card
+        for detail.
       </Text>
     </>
   )
 }
 
-// Step funnel: Start → Step N → Submit, with the step-over-step change.
+// Step funnel: Start → each defined step (with its title) → Submit. Rows are
+// keyed by step identity (the form-step-view stepId), so a conditional step a
+// visitor's answers skip shows fewer or zero views.
 function Funnel({ detail }: { detail: FormDetailData }) {
   const max = Math.max(1, ...detail.funnel.map((s) => s.count))
   return (
@@ -142,11 +210,11 @@ function Funnel({ detail }: { detail: FormDetailData }) {
           No step data for this form in this range.
         </Text>
       ) : (
-        <div className="flex max-w-[620px] flex-col gap-xs">
+        <div className="flex flex-col gap-xs">
           {detail.funnel.map((s) => (
             <div
               key={s.label}
-              className="grid grid-cols-[90px_1fr_130px] items-center gap-s text-caption"
+              className="grid grid-cols-[minmax(0,1fr)_140px_70px] items-center gap-s text-caption"
             >
               <span>{s.label}</span>
               <span className="rounded bg-teal-10">
@@ -155,26 +223,14 @@ function Funnel({ detail }: { detail: FormDetailData }) {
                   style={{ width: `${(100 * s.count) / max}%` }}
                 />
               </span>
-              <span className={NUM}>
-                {fmtInt(s.count)}
-                {/* dropoffPct > 0 = fewer than the previous step (drop, red);
-                    < 0 = more than the previous step (increase, green). */}
-                {s.dropoffPct > 0 ? (
-                  <span className="text-red-00"> -{fmtPct(s.dropoffPct)}</span>
-                ) : s.dropoffPct < 0 ? (
-                  <span className="text-green-00">
-                    {' '}
-                    +{fmtPct(Math.abs(s.dropoffPct))}
-                  </span>
-                ) : null}
-              </span>
+              <span className={NUM}>{fmtInt(s.count)}</span>
             </div>
           ))}
         </div>
       )}
       <Text as="p" size="small-caption" className="mt-xs text-mid-grey-00">
-        Visitors reaching each step, with the change from the previous step.
-        Step counts are events (a reload or back re-fires).
+        Times each step was viewed (events; a reload or back re-fires). Steps a
+        visitor's answers skip show fewer or zero views.
       </Text>
     </section>
   )
@@ -221,42 +277,6 @@ function ValidationReasons({ detail }: { detail: FormDetailData }) {
           </table>
         </div>
       )}
-    </section>
-  )
-}
-
-// #1916 — submit-error as a first-class reliability metric.
-function SubmitReliability({ detail }: { detail: FormDetailData }) {
-  const { submitError: se } = detail
-  if (se.attempts === 0) return null
-  return (
-    <section>
-      <SubHeading>Submit reliability</SubHeading>
-      <div className="flex flex-wrap gap-l rounded-lg bg-teal-10 p-m">
-        <Stat
-          label="Submit-error rate"
-          value={se.rate == null ? '—' : fmtPct(se.rate * 100)}
-        />
-        <Stat label="Errors" value={fmtInt(se.total)} />
-        <Stat label="Submit attempts" value={fmtInt(se.attempts)} />
-      </div>
-      {se.byReason.length > 0 ? (
-        <div className="mt-s flex flex-wrap gap-xs">
-          {se.byReason.map((r) => (
-            <span
-              key={r.reason}
-              className="rounded-full border border-grey-00 bg-white-00 px-s py-xs text-small-caption"
-            >
-              {r.reason} · {fmtInt(r.count)}
-            </span>
-          ))}
-        </div>
-      ) : null}
-      <Text as="p" size="small-caption" className="mt-xs text-mid-grey-00">
-        Errors ÷ submit attempts (successful submits + submit errors). A submit
-        that fails (network / payment / server) is counted here, not as
-        abandonment.
-      </Text>
     </section>
   )
 }

@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
+import tailwindcss from "@tailwindcss/vite";
 
 const preset = process.env.NITRO_PRESET || "aws_amplify";
 
@@ -36,6 +37,11 @@ export default defineConfig(({ mode }) => {
       "process.env.FEATURE_FLAGGING_API_URL": JSON.stringify(
         pick("FEATURE_FLAGGING_API_URL"),
       ),
+      // Public origins the services table links out to (not secrets). Unset in
+      // local dev → app/lib/service-url.ts falls back to the docker-stack
+      // origins; deployed builds MUST set both per environment.
+      "process.env.LANDING_URL": JSON.stringify(pick("LANDING_URL")),
+      "process.env.FORMS_URL": JSON.stringify(pick("FORMS_URL")),
       // OAuth callback base (not a secret).
       "process.env.OAUTH_REDIRECT_BASE": JSON.stringify(
         pick("OAUTH_REDIRECT_BASE"),
@@ -46,6 +52,7 @@ export default defineConfig(({ mode }) => {
       "process.env.GITHUB_TEAM_SLUG": JSON.stringify(pick("GITHUB_TEAM_SLUG")),
     },
     plugins: [
+      tailwindcss(),
       nitro({
         config: {
           preset,

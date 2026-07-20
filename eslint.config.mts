@@ -20,7 +20,9 @@ export default defineConfig([
   { files: ["**/*.{js,mjs,cjs,ts,mts,cts}"], plugins: { js }, extends: ["js/recommended"], languageOptions: { globals: {...globals.browser, ...globals.node} } },
   tseslint.configs.recommended,
   {
-    files: ["**/*.{ts,mts,cts}"],
+    // Include tsx/jsx so the `_`-prefix convention for intentionally-unused
+    // bindings is honoured in React files too, not just plain .ts.
+    files: ["**/*.{ts,tsx,mts,cts,jsx}"],
     languageOptions: {
       parserOptions: {
         tsconfigRootDir: import.meta.dirname,
@@ -52,6 +54,12 @@ export default defineConfig([
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
     },
+  },
+  {
+    // Test files legitimately use `any` for mocks, fixtures and spies;
+    // no-explicit-any stays strict on production code.
+    files: ["**/*.spec.{ts,tsx}", "**/*.test.{ts,tsx}"],
+    rules: { "@typescript-eslint/no-explicit-any": "off" },
   },
   { files: ["**/*.json"], plugins: { json }, language: "json/json", extends: ["json/recommended"] },
   {

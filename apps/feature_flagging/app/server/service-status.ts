@@ -13,6 +13,7 @@ import {
   SERVICE_STATUS_VALUES,
   type ServiceStatus,
 } from "../lib/service-status";
+import { mrkdwnEscape, sendSlackNotification } from "./slack-notif";
 
 export interface AuditEntry {
   slug: string;
@@ -20,6 +21,13 @@ export interface AuditEntry {
   newState: ServiceStatus;
   author: string;
   changedAt: string;
+}
+
+/** The PUT /service_status response — StatusRow plus the pre-update status. */
+interface StatusUpdateResult extends StatusRow {
+  previousStatus: ServiceStatus | null;
+  /** Audit author (guard-verified GitHub login). Absent from older API deploys. */
+  author?: string;
 }
 
 /** One entry from the api's `GET /services` content index. */
@@ -83,14 +91,40 @@ export const setServiceStatus = createServerFn({ method: "POST" })
       status: z.enum(
         SERVICE_STATUS_VALUES as [ServiceStatus, ...ServiceStatus[]],
       ),
+      title: z.string().min(1).max(300),
+      url: z.url().max(500).optional(),
     }),
   )
-  .handler(async ({ data, context }): Promise<StatusRow> => {
-    return api.put<StatusRow>(
+  .handler(async ({ data, context }): Promise<StatusUpdateResult> => {
+    const result = await api.put<StatusUpdateResult>(
       "/service_status",
       { slug: data.slug, status: data.status },
       context.session.accessToken,
     );
+
+    // Notify Slack only when the status actually changed. The API reports the
+    // pre-update status as `previousStatus` (an idempotent no-op returns
+    // previousStatus === status; a first-ever set returns null). The author is
+    // the audit-log value the API recorded; the session login (same GitHub
+    // identity) covers a deployed API that predates the `author` field. The
+    // title/url describe the service's public page; incoming webhooks render
+    // `<url|text>` as a mrkdwn link.
+    if (result.previousStatus !== result.status) {
+      const author = result.author ?? context.session.login;
+      const title = mrkdwnEscape(data.title);
+      // Link only http(s) URLs free of mrkdwn control characters — a `>` or
+      // `|` inside the URL would break out of the `<url|text>` link syntax
+      // (the same breakout class mrkdwnEscape closes for the title).
+      const url =
+        data.url && /^https?:\/\//.test(data.url) && !/[<>|]/.test(data.url)
+          ? data.url
+          : undefined;
+      const subject = url ? `<${url}|${title}>` : title;
+      const message = `"${subject}" has been changed from \`${result.previousStatus ?? "unset"}\` to \`${result.status}\` by \`${author}\``;
+      await sendSlackNotification(message);
+    }
+
+    return result;
   });
 
 /** A service's status-change history, newest first. */

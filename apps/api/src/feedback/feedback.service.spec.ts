@@ -2,7 +2,6 @@ import type { Mock, Mocked } from "vitest";
 import { InternalServerErrorException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
-  SESv2Client,
   SendEmailCommand,
   type SendEmailCommandInput,
 } from "@aws-sdk/client-sesv2";

@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildFunnelSteps,
+  buildStepFunnel,
+  buildVisitFunnelSteps,
+  funnelHeadline,
   humanizeStep,
   shapeFlow,
   shapeFormList,
   shapeFunnel,
   shapeJourneyList,
-  shapeSteps,
   shapeSubmitError,
 } from './umami-server'
 
@@ -16,6 +18,15 @@ describe('buildFunnelSteps', () => {
       { type: 'event', value: 'birth-cert:form-start' },
       { type: 'event', value: 'birth-cert:form-review' },
       { type: 'event', value: 'birth-cert:form-submit' },
+    ])
+  })
+})
+
+describe('buildVisitFunnelSteps', () => {
+  it('builds a page-visit → form-start funnel with a trailing wildcard path', () => {
+    expect(buildVisitFunnelSteps('birth-cert')).toEqual([
+      { type: 'path', value: '/forms/birth-cert*' },
+      { type: 'event', value: 'birth-cert:form-start' },
     ])
   })
 })
@@ -34,57 +45,64 @@ describe('shapeFunnel', () => {
   })
 })
 
-describe('shapeSteps (#1915 reached vs completed)', () => {
+describe('buildStepFunnel (titled by-stepId funnel)', () => {
   const steps = [
     { stepId: 'a', title: 'Your details' },
     { stepId: 'b', title: 'Eligibility' },
     { stepId: 'c', title: 'Upload docs' },
   ]
 
-  it('derives completed = next step reached, abandoned = reached − completed', () => {
-    const out = shapeSteps(steps, { a: 420, b: 310, c: 260 })
-    expect(out[0]).toMatchObject({
-      title: 'Your details',
-      reached: 420,
-      completed: 310,
-      abandoned: 110,
-    })
-    expect(out[1]).toMatchObject({
-      reached: 310,
-      completed: 260,
-      abandoned: 50,
-    })
-    // last step has no successor → fully completed, zero abandoned
-    expect(out[2]).toMatchObject({ reached: 260, completed: 260, abandoned: 0 })
+  it('brackets titled steps with Start/Submit and reads views by stepId', () => {
+    const out = buildStepFunnel(420, 200, steps, { a: 400, b: 120, c: 260 })
+    expect(out.map((s) => s.label)).toEqual([
+      'Start',
+      'Step 1: Your details',
+      'Step 2: Eligibility',
+      'Step 3: Upload docs',
+      'Submit',
+    ])
+    expect(out.map((s) => s.count)).toEqual([420, 400, 120, 260, 200])
+    // no misleading step-over-step drop-off across branch points
+    expect(out.every((s) => s.dropoffPct === 0)).toBe(true)
   })
 
-  it('treats a missing step count as zero and never returns negative abandoned', () => {
-    const out = shapeSteps(steps, { a: 5, c: 9 })
-    expect(out[0]).toMatchObject({ reached: 5, completed: 0, abandoned: 5 })
-    expect(out[1]).toMatchObject({ reached: 0, completed: 9, abandoned: 0 })
+  it('treats a step with no recorded views as zero', () => {
+    const out = buildStepFunnel(5, 1, steps, { a: 5 })
+    expect(out.map((s) => s.count)).toEqual([5, 5, 0, 0, 1])
+  })
+})
+
+describe('funnelHeadline', () => {
+  it('takes distinct-visitor starts (first row) and completed (last row)', () => {
+    expect(
+      funnelHeadline([
+        { type: 'event', value: 'f:form-start', visitors: 158, dropoff: null },
+        { type: 'event', value: 'f:form-review', visitors: 90, dropoff: 0.43 },
+        { type: 'event', value: 'f:form-submit', visitors: 59, dropoff: 0.34 },
+      ]),
+    ).toEqual({ starts: 158, completed: 59 })
+  })
+
+  it('is zeros for an empty funnel', () => {
+    expect(funnelHeadline([])).toEqual({ starts: 0, completed: 0 })
   })
 })
 
 describe('shapeFormList (per-form starts + completion)', () => {
-  it('derives starts, completions and completion% per form from event counts', () => {
+  it('derives starts, completions and completion% per form from funnel headlines', () => {
     const forms = [
       { formId: 'a', title: 'Form A' },
       { formId: 'b', title: 'Form B' },
     ]
-    const events = [
-      { x: 'a:form-start', y: 200 },
-      { x: 'a:form-submit', y: 50 },
-      { x: 'a:form-step-view', y: 999 },
-      { x: 'b:form-start', y: 0 },
-    ]
-    const out = shapeFormList(forms, events)
+    const headlines = new Map([['a', { starts: 200, completed: 50 }]])
+    const out = shapeFormList(forms, headlines)
     expect(out[0]).toMatchObject({
       formId: 'a',
       starts: 200,
       completions: 50,
       completionPct: 25,
     })
-    // no starts → 0% (not NaN/Infinity)
+    // no headline for the form → zeros, 0% (not NaN/Infinity)
     expect(out[1]).toMatchObject({
       starts: 0,
       completions: 0,

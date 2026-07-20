@@ -19,7 +19,6 @@ import {
   type FunnelStepInput,
   type FunnelStepResult,
   type JourneyPath,
-  type MetricRow,
   type PageRow,
   type Range,
   type SourceRow,
@@ -110,9 +109,9 @@ export function rangeForKey(key: string, now: Date = new Date()): Range {
 export interface FormListItem {
   formId: string
   title: string
-  /** `form-start` events in the window. */
+  /** distinct visitors who started the form (funnel report), in the window. */
   starts: number
-  /** successful `form-submit` events in the window. */
+  /** distinct visitors who reached submit (funnel report), in the window. */
   completions: number
   /** completions ÷ starts × 100, 1dp; 0 when no starts. */
   completionPct: number
@@ -144,15 +143,6 @@ export interface OverviewData {
   range: string
 }
 
-/** One step's reached/completed counts (#1915). Event-view counts, not distinct. */
-export interface StepStat {
-  stepId: string
-  title: string
-  reached: number
-  completed: number
-  abandoned: number
-}
-
 /** Submit reliability (#1916). */
 export interface SubmitError {
   total: number
@@ -170,17 +160,17 @@ export interface FormDetailData {
   formId: string
   title: string
   // Headline — distinct visitors (Umami funnel report).
+  /** distinct visitors who viewed the form page. */
+  visits: number
   starts: number
   completed: number
   completionPct: number
+  /** starts ÷ visits × 100, 1dp; the share of visitors who started. */
+  visitsToStartsPct: number
   avgDurationSeconds: number | null
-  // Secondary stats (event counts).
+  /** total field validation errors (event count). */
   totalFieldErrors: number
-  avgFieldErrors: number
-  stepBack: number
-  stepEdit: number
-  reviewed: number
-  /** Start → Step N → Submit, with step-over-step % (dropoffPct). Event counts. */
+  /** Start → Step N (titled) → Submit, with view counts. Event counts. */
   funnel: FunnelStage[]
   /** why fields fail (validation reason codes/messages), descending. */
   validationReasons: FieldCount[]
@@ -201,6 +191,22 @@ export function buildFunnelSteps(formId: string): FunnelStepInput[] {
   ]
 }
 
+/**
+ * Funnel whose first step is the form page, used only for its step-0 visitor
+ * count (the "visits" denominator). The trailing `*` captures the page with or
+ * without a trailing slash (Umami records both as distinct paths) as one distinct
+ * count — it assumes no form id is a prefix of another (true for current slugs).
+ * Umami rejects a single-step funnel, so `form-start` is the required second
+ * step; its own count isn't read here (starts come from the 3-step funnel that
+ * also feeds the summary list, so the two pages stay consistent).
+ */
+export function buildVisitFunnelSteps(formId: string): FunnelStepInput[] {
+  return [
+    { type: 'path', value: `/forms/${formId}*` },
+    { type: 'event', value: `${formId}:form-start` },
+  ]
+}
+
 const STAGE_LABELS = ['Start', 'Review', 'Submit']
 
 export function shapeFunnel(funnelRows: FunnelStepResult[]): FunnelStage[] {
@@ -212,26 +218,28 @@ export function shapeFunnel(funnelRows: FunnelStepResult[]): FunnelStage[] {
 }
 
 /**
- * Per-step reached-vs-completed (#1915). `reached` is the `form-step-view` count
- * per step (declared order); `completed` is the reached count of the next step —
- * advancing is completing. The final step has no successor → fully completed.
+ * Step funnel labelled by step identity: Start → each defined step ("Step N:
+ * <title>", declared order) → Submit. Counts are event views (`form-start`,
+ * per-step `form-step-view`, `form-submit`). Keyed by stepId (not the funnel's
+ * positional "Step N", which branching makes visitor-relative), so a conditional
+ * step a visitor's answers skip shows fewer or zero views. `dropoffPct` is 0 —
+ * step-over-step drop-off isn't meaningful across branch points.
  */
-export function shapeSteps(
+export function buildStepFunnel(
+  startCount: number,
+  submitCount: number,
   orderedSteps: { stepId: string; title: string }[],
   reachedByStep: Record<string, number>,
-): StepStat[] {
-  return orderedSteps.map((s, i) => {
-    const reached = reachedByStep[s.stepId] ?? 0
-    const next = orderedSteps[i + 1]
-    const completed = next ? (reachedByStep[next.stepId] ?? 0) : reached
-    return {
-      stepId: s.stepId,
-      title: s.title,
-      reached,
-      completed,
-      abandoned: Math.max(0, reached - completed),
-    }
-  })
+): FunnelStage[] {
+  return [
+    { label: 'Start', count: startCount, dropoffPct: 0 },
+    ...orderedSteps.map((s, i) => ({
+      label: `Step ${i + 1}: ${s.title}`,
+      count: reachedByStep[s.stepId] ?? 0,
+      dropoffPct: 0,
+    })),
+    { label: 'Submit', count: submitCount, dropoffPct: 0 },
+  ]
 }
 
 // The current app emits `errors: network | payment-init | server`; older data
@@ -266,34 +274,36 @@ export function shapeSubmitError(
   }
 }
 
+/** Distinct-visitor starts + completions from a form's funnel report rows. */
+export function funnelHeadline(rows: FunnelStepResult[]): {
+  starts: number
+  completed: number
+} {
+  return {
+    starts: rows[0]?.visitors ?? 0,
+    completed: rows[rows.length - 1]?.visitors ?? 0,
+  }
+}
+
 /**
- * Attach per-form starts (`form-start`) and completions (`form-submit`) from a
- * single forms-website event-metrics pull. Event counts (a quick per-form
- * summary); the per-form page's funnel is the deduped, distinct-visitor view.
+ * Build the forms-list rows from per-form distinct-visitor funnel headlines
+ * (the same start→…→submit funnel the per-form page uses), so the list and the
+ * detail page report identical starts/completions.
  */
 export function shapeFormList(
   forms: { formId: string; title: string }[],
-  events: MetricRow[],
+  headlineById: Map<string, { starts: number; completed: number }>,
 ): FormListItem[] {
-  const starts = new Map<string, number>()
-  const submits = new Map<string, number>()
-  for (const e of events) {
-    const i = e.x.indexOf(':')
-    if (i < 0) continue
-    const id = e.x.slice(0, i)
-    const event = e.x.slice(i + 1)
-    if (event === 'form-start') starts.set(id, (starts.get(id) ?? 0) + e.y)
-    else if (event === 'form-submit')
-      submits.set(id, (submits.get(id) ?? 0) + e.y)
-  }
   return forms.map((f) => {
-    const s = starts.get(f.formId) ?? 0
-    const c = submits.get(f.formId) ?? 0
+    const { starts, completed } = headlineById.get(f.formId) ?? {
+      starts: 0,
+      completed: 0,
+    }
     return {
       ...f,
-      starts: s,
-      completions: c,
-      completionPct: s ? Math.round((c / s) * 1000) / 10 : 0,
+      starts,
+      completions: completed,
+      completionPct: starts ? Math.round((completed / starts) * 1000) / 10 : 0,
     }
   })
 }
@@ -605,6 +615,34 @@ async function fetchFormDefinition(
   }
 }
 
+/**
+ * Per-form distinct-visitor starts/completions via the funnel report — one call
+ * per form, in parallel — keyed by form id. A form whose funnel call fails
+ * degrades to zeros rather than failing the whole list.
+ */
+async function fetchFormFunnels(
+  client: UmamiClient,
+  cfg: UmamiConfig,
+  forms: { formId: string; title: string }[],
+  r: Range,
+): Promise<Map<string, { starts: number; completed: number }>> {
+  const entries = await Promise.all(
+    forms.map(async (f) => {
+      try {
+        const rows = await client.reportFunnel(cfg.formsWebsiteId, {
+          steps: buildFunnelSteps(f.formId),
+          window: FUNNEL_WINDOW_MIN,
+          range: r,
+        })
+        return [f.formId, funnelHeadline(rows)] as const
+      } catch {
+        return [f.formId, { starts: 0, completed: 0 }] as const
+      }
+    }),
+  )
+  return new Map(entries)
+}
+
 export async function fetchOverviewData(
   cfg: UmamiConfig,
   rangeKey: string,
@@ -613,15 +651,18 @@ export async function fetchOverviewData(
   return memoize(`overview:${range}`, TTL_MS, async () => {
     const client = new UmamiClient({ apiKey: cfg.apiKey })
     const r = rangeForKey(range)
-    const [statsRaw, urls, forms, formEvents, landingEvents, journeyRows] =
+    const [statsRaw, urls, forms, landingEvents, journeyRows] =
       await Promise.all([
         client.stats(cfg.landingWebsiteId, r) as Promise<UmamiStats>,
         client.metricsUrls(cfg.landingWebsiteId, r),
         fetchFormList(cfg),
-        client.metricsEvents(cfg.formsWebsiteId, r),
         client.metricsEvents(cfg.landingWebsiteId, r),
         client.reportJourney(cfg.landingWebsiteId, { steps: 4, range: r }),
       ])
+    // Distinct-visitor starts/completions per form (funnel report per form),
+    // matching the per-form detail page rather than raw event counts. Kick it
+    // off now so it runs alongside the per-page referrer fetches below.
+    const formHeadlinesP = fetchFormFunnels(client, cfg, forms, r)
     const topPages = urls
       .map((row) => ({
         path: row.x ?? row.name ?? '',
@@ -682,7 +723,7 @@ export async function fetchOverviewData(
         searches,
       },
       pages,
-      forms: shapeFormList(forms, formEvents).sort((a, b) =>
+      forms: shapeFormList(forms, await formHeadlinesP).sort((a, b) =>
         a.title.localeCompare(b.title),
       ),
       flow: shapeFlow(journeyRows),
@@ -713,12 +754,10 @@ export async function fetchFormsData(
   return memoize(`forms:${range}`, TTL_MS, async () => {
     const client = new UmamiClient({ apiKey: cfg.apiKey })
     const r = rangeForKey(range)
-    const [forms, formEvents] = await Promise.all([
-      fetchFormList(cfg),
-      client.metricsEvents(cfg.formsWebsiteId, r),
-    ])
+    const forms = await fetchFormList(cfg)
+    const headlines = await fetchFormFunnels(client, cfg, forms, r)
     return {
-      forms: shapeFormList(forms, formEvents).sort((a, b) =>
+      forms: shapeFormList(forms, headlines).sort((a, b) =>
         a.title.localeCompare(b.title),
       ),
       range,
@@ -738,7 +777,9 @@ export async function fetchFormDetailData(
     const r = rangeForKey(range)
     const [
       funnelRows,
+      visitRows,
       events,
+      stepViews,
       duration,
       errorCount,
       errorTypes,
@@ -750,7 +791,13 @@ export async function fetchFormDetailData(
         window: FUNNEL_WINDOW_MIN,
         range: r,
       }),
+      client.reportFunnel(cfg.formsWebsiteId, {
+        steps: buildVisitFunnelSteps(formId),
+        window: FUNNEL_WINDOW_MIN,
+        range: r,
+      }),
       client.metricsEvents(cfg.formsWebsiteId, r),
+      eventValues(client, cfg, `${formId}:form-step-view`, 'step', r),
       eventValues(client, cfg, `${formId}:form-submit`, 'duration_seconds', r),
       eventValues(
         client,
@@ -771,16 +818,31 @@ export async function fetchFormDetailData(
     ])
 
     // Headline: distinct visitors from the funnel report (start → … → submit).
-    const starts = funnelRows[0]?.visitors ?? 0
-    const completed = funnelRows[funnelRows.length - 1]?.visitors ?? 0
+    const { starts, completed } = funnelHeadline(funnelRows)
     const completionPct = starts
       ? Math.round((completed / starts) * 1000) / 10
+      : 0
+    // Visits = distinct visitors who viewed the form page (visit funnel step 0).
+    // starts comes from the separate 3-step funnel above (kept identical to the
+    // summary list), so the ratio spans two funnels; cap at 100% for the rare
+    // case where a start has no recorded page view in-window (e.g. a deep link).
+    const visits = visitRows[0]?.visitors ?? 0
+    const visitsToStartsPct = visits
+      ? Math.min(100, Math.round((starts / visits) * 1000) / 10)
       : 0
     const avgDuration = weightedAverage(duration)
     const totalFieldErrors = weightedSum(errorCount)
 
-    // Event-count aggregation for the step funnel, counters and field/reason
-    // tables (per-step distinct isn't available — these are event counts).
+    // Per-step view counts keyed by stepId (the `form-step-view` `step`
+    // property), for the titled step funnel below.
+    const reachedByStep: Record<string, number> = {}
+    for (const v of stepViews) {
+      const id = String(v.value)
+      reachedByStep[id] = (reachedByStep[id] ?? 0) + v.total
+    }
+
+    // Event-count aggregation for the counters and field/reason tables (per-step
+    // distinct isn't available — these are event counts).
     const entry = aggregateFormEvents(events).get(formId) ?? {
       counts: {},
       steps: [],
@@ -795,18 +857,19 @@ export async function fetchFormDetailData(
     return {
       formId,
       title: def.title,
+      visits,
       starts,
       completed,
       completionPct,
+      visitsToStartsPct,
       avgDurationSeconds: avgDuration === null ? null : Math.round(avgDuration),
       totalFieldErrors,
-      avgFieldErrors: starts
-        ? Math.round((totalFieldErrors / starts) * 100) / 100
-        : 0,
-      stepBack: detail.stepBack,
-      stepEdit: detail.stepEdit,
-      reviewed: detail.review,
-      funnel: detail.funnel,
+      funnel: buildStepFunnel(
+        entry.counts['form-start'] ?? 0,
+        entry.counts['form-submit'] ?? 0,
+        def.steps,
+        reachedByStep,
+      ),
       validationReasons: detail.errorTypes,
       submitError: shapeSubmitError(
         entry.counts['form-submit'] ?? 0,

@@ -44,39 +44,52 @@ export function AuditDrawer({
 
   return (
     <div
-      className="drawer-backdrop"
+      className="fixed inset-0 flex justify-end bg-black-00/35"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="drawer"
+        className="h-full w-[min(440px,100%)] overflow-y-auto bg-white-00 p-xm shadow-[-8px_0_24px_rgba(0,0,0,0.12)]"
         role="dialog"
         aria-label={`History for ${title}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="drawer-head">
-          <h2>History</h2>
-          <button type="button" className="linklike" onClick={onClose}>
+        <div className="mb-xxs flex items-center justify-between">
+          <h2 className="m-0 text-h4 font-bold">History</h2>
+          <button
+            type="button"
+            className="cursor-pointer border-0 bg-transparent p-0 text-blue-100 underline hover:no-underline"
+            onClick={onClose}
+          >
             Close
           </button>
         </div>
-        <p className="svc-slug">{slug}</p>
+        <p className="font-mono text-caption-sm text-mid-grey-00">{slug}</p>
 
-        {error && <p className="row-error">{error}</p>}
-        {!error && entries === null && <p className="empty">Loading…</p>}
+        {error && <p className="text-caption-sm text-red-00">{error}</p>}
+        {!error && entries === null && (
+          <p className="py-m text-center text-mid-grey-00">Loading…</p>
+        )}
         {!error && entries?.length === 0 && (
-          <p className="empty">No changes recorded yet.</p>
+          <p className="py-m text-center text-mid-grey-00">
+            No changes recorded yet.
+          </p>
         )}
         {entries && entries.length > 0 && (
-          <ul className="audit-list">
+          <ul className="m-0 mt-s list-none p-0">
             {entries.map((e, i) => (
-              <li className="audit-item" key={`${e.changedAt}-${i}`}>
-                <div className="when">{formatWhen(e.changedAt)}</div>
-                <div className="change">
+              <li
+                className="relative border-l-2 border-grey-00 pb-s pl-s"
+                key={`${e.changedAt}-${i}`}
+              >
+                <div className="text-caption-sm text-mid-grey-00">
+                  {formatWhen(e.changedAt)}
+                </div>
+                <div className="my-[2px] font-bold">
                   {e.oldState ? STATUS_LABELS[e.oldState] : "—"} →{" "}
                   {STATUS_LABELS[e.newState]}
                 </div>
-                <div className="who-line">by {e.author}</div>
+                <div className="text-caption text-mid-grey-00">by {e.author}</div>
               </li>
             ))}
           </ul>

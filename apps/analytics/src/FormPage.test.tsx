@@ -18,20 +18,22 @@ vi.mock('@tanstack/react-router', () => ({
 const detail: FormDetailData = {
   formId: 'get-birth-certificate',
   title: 'Get a birth certificate',
+  visits: 320,
   starts: 267,
   completed: 56,
   completionPct: 21,
+  visitsToStartsPct: 83.4,
   avgDurationSeconds: 958,
   totalFieldErrors: 198,
-  avgFieldErrors: 0.74,
-  stepBack: 46,
-  stepEdit: 18,
-  reviewed: 106,
   funnel: [
     { label: 'Start', count: 267, dropoffPct: 0 },
-    { label: 'Step 1', count: 94, dropoffPct: 64.8 },
-    { label: 'Step 2', count: 90, dropoffPct: -60.7 },
-    { label: 'Submit', count: 56, dropoffPct: 12 },
+    { label: 'Step 1: Tell us about yourself', count: 260, dropoffPct: 0 },
+    {
+      label: 'Step 2: Are you applying for yourself?',
+      count: 200,
+      dropoffPct: 0,
+    },
+    { label: 'Submit', count: 56, dropoffPct: 0 },
   ],
   validationReasons: [
     { field: 'required', count: 40 },
@@ -52,27 +54,35 @@ const detail: FormDetailData = {
 }
 
 describe('FormPage', () => {
-  it('renders headline stats (distinct), the step funnel and the tables', () => {
+  it('renders the five headline metrics, the titled funnel and the tables', () => {
     render(<FormPage detail={detail} />)
     expect(screen.getByText('Get a birth certificate')).toBeTruthy()
-    // headline stats
-    expect(screen.getByText('Starts')).toBeTruthy()
-    // 267 shows in the stat card and again as the funnel's Start count
-    expect(screen.getAllByText('267').length).toBeGreaterThan(0)
-    expect(screen.getByText('Avg time to complete')).toBeTruthy()
+    // headline metrics — each label appears twice (card label + hover title)
+    expect(screen.getAllByText('Visits that started').length).toBeGreaterThan(0)
+    expect(screen.getByText('83.4%')).toBeTruthy()
+    expect(screen.getByText('267 of 320 visits')).toBeTruthy()
+    expect(screen.getAllByText('Completion rate').length).toBeGreaterThan(0)
+    expect(screen.getByText('56 of 267 starts')).toBeTruthy()
+    expect(screen.getAllByText('Avg time to complete').length).toBeGreaterThan(0)
     expect(screen.getByText('15m 58s')).toBeTruthy() // 958s
-    expect(screen.getByText('Total field errors')).toBeTruthy()
+    expect(
+      screen.getAllByText('Field validation errors').length,
+    ).toBeGreaterThan(0)
     expect(screen.getByText('198')).toBeTruthy()
-    // funnel
+    // form failures card + its hover breakdown (submit-error events)
+    expect(screen.getAllByText('Form failures').length).toBeGreaterThan(0)
+    expect(screen.getByText('15')).toBeTruthy() // submitError.total
+    expect(screen.getByText('form-submit-error')).toBeTruthy() // hint content
+    // titled funnel: each step shows its title next to the step order
     expect(screen.getByText('Funnel')).toBeTruthy()
-    expect(screen.getByText('Step 1')).toBeTruthy()
+    expect(screen.getByText('Step 1: Tell us about yourself')).toBeTruthy()
+    expect(
+      screen.getByText('Step 2: Are you applying for yourself?'),
+    ).toBeTruthy()
     // validation-reason table
     expect(screen.getByText('Required field left blank')).toBeTruthy()
     // unmapped reason shows as both label and code, hence getAllByText
     expect(screen.getAllByText('Parish is required').length).toBeGreaterThan(0)
-    // submit reliability (#1916)
-    expect(screen.getByText('Submit reliability')).toBeTruthy()
-    expect(screen.getByText('15%')).toBeTruthy()
   })
 
   it('does not display the category', () => {
