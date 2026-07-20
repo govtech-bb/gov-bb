@@ -59,6 +59,11 @@ export const serviceContractSchema = z.object({
   // Version is retired (#1196): canonical recipes carry no version. Kept
   // optional so legacy versioned files still parse during the two-phase retire.
   version: semverSchema.optional(),
+  // Optional application deadline (#1936). When set and past, citizens see an
+  // "Applications have closed" page instead of the form. ISO-8601 with offset;
+  // comparison uses the absolute instant, display formats in AST. Rides as a
+  // top-level field on the served contract (which has no `meta`).
+  closingDateTime: dateTimeFormatSchema.optional(),
 });
 export type ServiceContract = z.infer<typeof serviceContractSchema>;
 
@@ -86,6 +91,9 @@ export type RecipeVisibility = z.infer<typeof recipeVisibilitySchema>;
 // `public` to launch to citizens.
 export const recipeMetaSchema = z.object({
   visibility: recipeVisibilitySchema.default("preview"),
+  // Optional application deadline (#1936). Authored here; hydrateForm lifts it
+  // onto the served contract. Absent → the form has no deadline.
+  closingDateTime: dateTimeFormatSchema.optional(),
 });
 export type RecipeMeta = z.infer<typeof recipeMetaSchema>;
 

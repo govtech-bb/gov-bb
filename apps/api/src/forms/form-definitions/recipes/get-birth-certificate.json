@@ -2,9 +2,6 @@
   "formId": "get-birth-certificate",
   "title": "Get a copy of a birth certificate",
   "description": "Apply for a certified copy of a birth certificate.",
-  "contactDetails": {
-    "email": "testing@govtech.bb"
-  },
   "processors": [
     {
       "type": "email",

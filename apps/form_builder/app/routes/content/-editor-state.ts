@@ -266,7 +266,6 @@ export function useEditorState(
     else if (search.formId && search.kind)
       prefillCreate(search.formId, search.kind);
     else resetNew();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initKey]);
 
   const editing = editPath !== null;

@@ -39,7 +39,6 @@ export function HeaderMenu({
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panel.mounted]);
 
   if (items.length === 0) return null;
