@@ -65,3 +65,5 @@ landing and chat apps. `amplify.yml` serves `apps/analytics/.amplify-hosting`.
 The standalone `gov-bb-analytics` Amplify app must run as SSR/compute (not static
 hosting) and have the env vars above set. There is no snapshot to regenerate and
 no scheduled job — data is fetched live on each request (with the short TTL).
+
+<!-- preview smoke test: analytics -->
