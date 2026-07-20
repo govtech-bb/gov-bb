@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { resolveCachedValue } from './cached-resolver'
+import { formsApiBase } from './forms-api-url'
 
 /**
  * Runtime resolution of the available forms list.
@@ -29,7 +30,6 @@ import { resolveCachedValue } from './cached-resolver'
  * (supersedes 0005).
  */
 
-const DEFAULT_API_URL = 'https://forms.api.sandbox.alpha.gov.bb'
 const FETCH_TIMEOUT_MS = 15_000
 
 /** How long a fetched list is served before the next request refetches it. */
@@ -119,11 +119,6 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
   } finally {
     clearTimeout(timer)
   }
-}
-
-/** Base URL of the forms API, trailing slashes trimmed. */
-function formsApiBase(): string {
-  return (process.env.VITE_FORMS_API_URL ?? DEFAULT_API_URL).replace(/\/+$/, '')
 }
 
 /** Fetch and validate the canonical list of available form IDs. */

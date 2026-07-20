@@ -11,6 +11,7 @@ import {
   type EmailFileLink,
 } from "@/email/email-body.builder";
 import { FilesService } from "@/files/files.service";
+import { submissionKeyPrefix } from "@/files/submission-key";
 import {
   classifyRecipientField,
   CONTACT_DETAILS_PREFIX,
@@ -258,6 +259,7 @@ export class EmailProcessor implements ISubmissionProcessor {
       });
       throw new Error(
         `Failed to send email for recipientField "${recipientField}" on submission ${payload.submissionId}: ${reason}`,
+        { cause: err },
       );
     }
   }
@@ -386,10 +388,10 @@ export class EmailProcessor implements ISubmissionProcessor {
     );
 
     // Uploaded keys are always issued under the submission's own form prefix
-    // (FilesService.buildKey). A submitted key outside it is forged — emailing
+    // (see buildSubmissionKey). A submitted key outside it is forged — emailing
     // its bytes (or a signed link) would let a submitter exfiltrate another
     // form's object, so it is skipped entirely, never linked.
-    const keyPrefix = `uploads/${payload.formId}/`;
+    const keyPrefix = submissionKeyPrefix(payload.formId);
 
     const attachments: Mail.Attachment[] = [];
     const fileLinks: EmailFileLink[] = [];

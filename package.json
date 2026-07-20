@@ -22,6 +22,7 @@
     "start:api": "ln -sfn ../dist/apps/api/src node_modules/@ && nx start api",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "generate:architecture-diagram": "tsx scripts/generate-architecture-diagram.ts",
     "generate:form-categories": "tsx scripts/generate-form-categories.ts",
     "generate:services-index": "tsx scripts/generate-services-index.ts",
     "generate:service-status-seed": "tsx scripts/generate-service-status-seed.ts",
@@ -76,7 +77,7 @@
   },
   "packageManager": "pnpm@11.6.0",
   "dependencies": {
-    "@aws-sdk/client-sesv2": "^3.1041.0",
+    "@aws-sdk/client-sesv2": "^3.1085.0",
     "@govtech-bb/design": "^1.0.0-alpha.17",
     "@nestjs/event-emitter": "^3.0.1",
     "@nestjs/swagger": "^11.3.2",

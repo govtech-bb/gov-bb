@@ -138,6 +138,7 @@ export const publishRecipe = createServerFn({ method: "POST" })
         if (err instanceof ApiError && err.status === 409) {
           throw new Error(
             "Another editor holds this form. Your session is read-only until their claim expires.",
+            { cause: err },
           );
         }
         throw err;

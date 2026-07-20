@@ -12,6 +12,7 @@ import { trackEvent } from '../lib/analytics'
 import { resolveViewLevel } from '../lib/preview'
 import { getServiceStatuses } from '../lib/service-status'
 import { SITE_URL } from '../lib/site-url'
+import { buildOrganizationLd, buildWebSiteLd } from '../lib/structured-data'
 
 import appCss from '../styles.css?url'
 
@@ -83,16 +84,27 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       { rel: 'stylesheet', href: appCss },
       { rel: 'manifest', href: '/manifest.json' },
     ],
-    scripts: UMAMI_WEBSITE_ID
-      ? [
-          {
-            src: UMAMI_SRC,
-            defer: true,
-            'data-website-id': UMAMI_WEBSITE_ID,
-            'data-auto-track': 'false',
-          },
-        ]
-      : undefined,
+    scripts: [
+      // Site-wide structured data — present on every page (#1643).
+      {
+        type: 'application/ld+json',
+        children: JSON.stringify(buildOrganizationLd()),
+      },
+      {
+        type: 'application/ld+json',
+        children: JSON.stringify(buildWebSiteLd()),
+      },
+      ...(UMAMI_WEBSITE_ID
+        ? [
+            {
+              src: UMAMI_SRC,
+              defer: true,
+              'data-website-id': UMAMI_WEBSITE_ID,
+              'data-auto-track': 'false',
+            },
+          ]
+        : []),
+    ],
   }),
   notFoundComponent: NotFoundPage,
   errorComponent: ServerErrorPage,

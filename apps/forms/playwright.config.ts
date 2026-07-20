@@ -11,10 +11,11 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./e2e",
-  /* The live smoke suite (e2e/smoke) runs only via playwright.smoke.config.ts.
-   * Ignore it here so it never executes in the local/CI suite — it submits for
-   * real against a deployed environment. */
-  testIgnore: "**/smoke/**",
+  /* The live smoke suite (e2e/smoke) and live a11y scan (e2e/a11y) run only via
+   * their own configs (playwright.smoke.config.ts / playwright.a11y.config.ts).
+   * Ignore them here so they never execute in the local/CI suite — they target
+   * a deployed environment, not the local dev server. */
+  testIgnore: ["**/smoke/**", "**/a11y/**"],
   fullyParallel: true,
   /* Fail-fast in CI so the whole suite doesn't run on a broken build */
   forbidOnly: !!process.env.CI,

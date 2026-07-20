@@ -21,6 +21,7 @@ import { Logger } from "@nestjs/common";
 import {
   RecipeFileLoaderService,
   isLeafName,
+  collectWebhookEnvNames,
 } from "./recipe-file-loader.service";
 
 const FIXTURES_ROOT = path.join(__dirname, "__fixtures__");
@@ -516,5 +517,103 @@ describe("RecipeFileLoaderService", () => {
     ])("isLeafName(%j) === %j", (name, expected) => {
       expect(isLeafName(name)).toBe(expected);
     });
+  });
+});
+
+describe("RecipeFileLoaderService — webhook env audit (#1920)", () => {
+  const URL_VAR = "WEBHOOK_URL_FIXTURE";
+  const SECRET_VAR = "WEBHOOK_SECRET_FIXTURE";
+  let root: string;
+
+  beforeEach(async () => {
+    delete process.env[URL_VAR];
+    delete process.env[SECRET_VAR];
+    root = await buildTempRecipesRoot({
+      "webhook-fixture": "webhook-recipe.json",
+    });
+  });
+
+  afterEach(async () => {
+    delete process.env[URL_VAR];
+    delete process.env[SECRET_VAR];
+    await fs.rm(root, { recursive: true, force: true });
+  });
+
+  it("reports unprovisioned webhook env vars and warns at load", async () => {
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
+    const svc = new RecipeFileLoaderService(root);
+    await svc.loadAll();
+
+    expect(svc.missingWebhookEnv()).toEqual([
+      { formId: "webhook-fixture", envName: URL_VAR },
+      { formId: "webhook-fixture", envName: SECRET_VAR },
+    ]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("unprovisioned env var"),
+    );
+    warn.mockRestore();
+  });
+
+  it("reports nothing (and does not warn) once the vars are provisioned", async () => {
+    process.env[URL_VAR] = "https://cms.example.gov.bb";
+    process.env[SECRET_VAR] = "secret-value";
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
+    const svc = new RecipeFileLoaderService(root);
+    await svc.loadAll();
+
+    expect(svc.missingWebhookEnv()).toEqual([]);
+    expect(warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("unprovisioned env var"),
+    );
+    warn.mockRestore();
+  });
+});
+
+describe("collectWebhookEnvNames", () => {
+  it("collects endpoint.env and apiKey secretEnv from webhook processors", () => {
+    const recipe = {
+      processors: [
+        { type: "email", config: {} },
+        {
+          type: "webhook",
+          config: {
+            endpoint: { env: "WEBHOOK_URL_SCIENCE_CAMP" },
+            auth: {
+              scheme: "apiKey",
+              header: "X-API-Key",
+              secretEnv: "WEBHOOK_SECRET_SCIENCE_CAMP",
+            },
+          },
+        },
+      ],
+    };
+    expect(collectWebhookEnvNames(recipe)).toEqual([
+      "WEBHOOK_URL_SCIENCE_CAMP",
+      "WEBHOOK_SECRET_SCIENCE_CAMP",
+    ]);
+  });
+
+  it("ignores non-apiKey auth secrets and non-webhook processors", () => {
+    const recipe = {
+      processors: [
+        {
+          type: "webhook",
+          config: {
+            url: "https://h.example.gov.bb/x",
+            auth: { scheme: "hmac", secret: "supersecretsupersecret" },
+          },
+        },
+      ],
+    };
+    expect(collectWebhookEnvNames(recipe)).toEqual([]);
+  });
+
+  it("returns [] when there are no processors", () => {
+    expect(collectWebhookEnvNames({})).toEqual([]);
+    expect(collectWebhookEnvNames({ processors: "nope" })).toEqual([]);
   });
 });
