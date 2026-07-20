@@ -97,3 +97,5 @@ requires one-time infra, done outside the codebase:
       authorize the forwarded GitHub tokens in prod (no shared admin token
       needed — see the `apps/api` GitHub-auth change).
 ```
+
+<!-- ff preview login test -->
