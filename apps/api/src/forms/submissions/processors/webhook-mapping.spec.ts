@@ -58,7 +58,6 @@ describe("webhook-mapping", () => {
         },
         values: VALUES,
         referenceCode: "X-1",
-        submissionId: "sub-x1",
         submittedAt: "2026-06-18T09:00:00.000Z",
       });
       expect(p.applicant.name).toBe("Ada");
@@ -72,7 +71,6 @@ describe("webhook-mapping", () => {
           "collection-persons": [{ "collection-person-first-name": "Bob" }],
         },
         referenceCode: "X-2",
-        submissionId: "sub-x2",
         submittedAt: "2026-06-18T09:00:00.000Z",
       });
       expect(p.form_data["collection-persons"]).toEqual([
@@ -86,7 +84,6 @@ describe("webhook-mapping", () => {
       mapping: MAPPING,
       values: VALUES,
       referenceCode: "SCIENCE2026-2606-Y5RPJEP",
-      submissionId: "sub-200",
       submittedAt: "2026-06-18T09:00:00.000Z",
     });
 
@@ -127,7 +124,6 @@ describe("webhook-mapping", () => {
         "collection-persons": [{ "collection-person-first-name": "Bob" }],
       },
       referenceCode: "SCIENCE2026-2606-Y5RPJEP",
-      submissionId: "sub-200",
       submittedAt: "2026-06-18T09:00:00.000Z",
     });
 
@@ -155,43 +151,6 @@ describe("webhook-mapping", () => {
       expect(payload.form_data["collection-persons"]).toEqual([
         { "collection-person-first-name": "Bob" },
       ]);
-    });
-  });
-
-  describe("buildMappedCasePayload — codeService", () => {
-    const base = {
-      values: VALUES,
-      referenceCode: "REF-123",
-      submissionId: "sub-abc",
-      submittedAt: "2026-06-18T09:00:00.000Z",
-    };
-
-    it("mints a deterministic service-prefixed code when codeService is a known service", () => {
-      const p = buildMappedCasePayload({
-        ...base,
-        mapping: { ...MAPPING, codeService: "BYAC" },
-      });
-      expect(p.code).toMatch(/^BYAC-\d{4}-[0-9A-Z]{7}$/);
-      // deterministic — same submission → same code
-      const again = buildMappedCasePayload({
-        ...base,
-        mapping: { ...MAPPING, codeService: "BYAC" },
-      });
-      expect(again.code).toBe(p.code);
-    });
-
-    it("falls back to the reference code when codeService is absent", () => {
-      const p = buildMappedCasePayload({ ...base, mapping: MAPPING });
-      expect(p.code).toBe("REF-123");
-    });
-
-    it("throws (fail loud) when codeService is not a known service", () => {
-      expect(() =>
-        buildMappedCasePayload({
-          ...base,
-          mapping: { ...MAPPING, codeService: "NOPE" },
-        }),
-      ).toThrow(/not a known service code/);
     });
   });
 });
