@@ -293,7 +293,24 @@ export function AiSidebar({ draft, onApplyRecipe }: AiSidebarProps) {
 
       setPdfFile(null);
       setPdfName(null);
-      await handleResponse(status.reply, status.recipe, status.unresolvableRefs);
+      // Apply the generated recipe in its own try/catch: upload + Textract +
+      // Bedrock have all succeeded by now, so a rejection here is an
+      // editor-side apply failure, not an upload error. Routing it through the
+      // outer catch would mislabel it "Upload failed" and prompt a wasteful
+      // re-upload (another Textract + Bedrock run) — #1532.
+      try {
+        await handleResponse(
+          status.reply,
+          status.recipe,
+          status.unresolvableRefs,
+        );
+      } catch {
+        // Don't advise a page refresh: the staged PDF and the generated recipe
+        // live only in memory, so refreshing loses both and forces a wasteful
+        // re-upload (another Textract + Bedrock run). See #<retry-apply follow-up>.
+        setError("Couldn't apply the recipe to the editor. Please try again.");
+      }
+      return;
     } catch (err) {
       // Swallow errors caused by our own abort — the user (or unmount)
       // requested cancellation, so we don't surface it.

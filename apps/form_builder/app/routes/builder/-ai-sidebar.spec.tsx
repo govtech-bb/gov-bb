@@ -734,6 +734,41 @@ describe("AiSidebar — Upload", () => {
     vi.useRealTimers();
   });
 
+  it("labels an onApplyRecipe rejection as an apply error, not an upload error (#1532)", async () => {
+    vi.useFakeTimers();
+    const user = setupUser();
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    startPdfConvert.mockResolvedValue({ jobId: "job-1" });
+    getPdfConvertStatus.mockResolvedValue({
+      status: "done",
+      recipe: { formId: "f", steps: [] },
+      reply: "Done.",
+      unresolvableRefs: [],
+    });
+    // Upload + Textract + Bedrock all succeed; the editor's apply step rejects.
+    // The user must see a distinct apply error, not the misleading upload one.
+    const onApplyRecipe = vi
+      .fn()
+      .mockRejectedValue(new Error("editor apply exploded"));
+    setup(onApplyRecipe);
+
+    await pickPdf(user);
+    await user.click(screen.getByRole("button", { name: /upload/i }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000); // → done
+    });
+
+    await waitFor(() => expect(onApplyRecipe).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /couldn't apply the recipe to the editor/i,
+      ),
+    );
+    expect(screen.getByRole("alert")).not.toHaveTextContent(/upload failed/i);
+    vi.useRealTimers();
+  });
+
   it("stops polling when the component unmounts", async () => {
     vi.useFakeTimers();
     const user = setupUser();
