@@ -60,6 +60,19 @@ A change merges into `main` only when **CI is green**. Branch protection
 (GitHub ruleset **"Main CI Required"**) enforces this: a PR is required, all
 required checks must pass, and there are **no direct pushes** to `main`.
 
+**Checks run in strict mode — the branch must be up to date with `main` before
+merge.** GitHub re-evaluates the required checks against the *latest* trunk, not
+against a stale base, so an out-of-date branch has to merge/rebase `main` in and
+let CI re-run before it can land. This closes the gap that caused incident
+#2017: two PRs that were each green in isolation broke `main` in **combination**
+(#1875 added recipes with placeholder webhook env refs; #1970 added the lint
+that rejects them — #1970's checks were never re-run against #1875's recipes
+already on `main`). Strict mode forces that re-run at merge time. A **post-merge
+`push` run on `main`** (`ci.yml`, added in #2030) is the backstop: it
+re-validates the trunk after every merge — `Validate Recipes` especially, since
+it checks **all** recipes, not just nx-affected ones — so a red trunk surfaces
+immediately instead of on the next PR.
+
 **No mandatory review yet.** We rely on **QA validating stability on the
 environments** rather than a required reviewer; **PR review will be introduced as
 the team matures**. (This is a deliberate, temporary choice — the canonical model
