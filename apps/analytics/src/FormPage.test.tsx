@@ -35,9 +35,25 @@ const detail: FormDetailData = {
     },
     { label: 'Submit', count: 56, dropoffPct: 0 },
   ],
-  validationReasons: [
-    { field: 'required', count: 40 },
-    { field: 'Parish is required', count: 8 },
+  fieldFailures: [
+    {
+      fieldId: 'parish',
+      label: 'Parish',
+      count: 40,
+      reasons: [{ code: 'required', message: 'Parish is required', count: 40 }],
+    },
+    {
+      fieldId: 'postcode',
+      label: 'Postcode',
+      count: 8,
+      reasons: [
+        {
+          code: 'pattern',
+          message: 'Enter a valid postcode, for example BB17004',
+          count: 8,
+        },
+      ],
+    },
   ],
   submitError: {
     total: 15,
@@ -79,10 +95,14 @@ describe('FormPage', () => {
     expect(
       screen.getByText('Step 2: Are you applying for yourself?'),
     ).toBeTruthy()
-    // validation-reason table
-    expect(screen.getByText('Required field left blank')).toBeTruthy()
-    // unmapped reason shows as both label and code, hence getAllByText
-    expect(screen.getAllByText('Parish is required').length).toBeGreaterThan(0)
+    // field-failure table: worst field callout + per-field rows
+    expect(screen.getByText('Most problematic field')).toBeTruthy()
+    expect(screen.getAllByText('Parish').length).toBeGreaterThan(0)
+    expect(screen.getByText('parish')).toBeTruthy() // the field id code chip
+    // reason chip shows the friendly label; the full message is the hover title
+    expect(
+      screen.getByTitle('Enter a valid postcode, for example BB17004'),
+    ).toBeTruthy()
   })
 
   it('does not display the category', () => {

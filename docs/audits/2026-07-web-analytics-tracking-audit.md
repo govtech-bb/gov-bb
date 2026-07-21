@@ -141,7 +141,7 @@ seconds.
 | `form-step-back` | `components/form-renderer.tsx` | `{ form, category, step }` |
 | `form-step-edit` | `components/review.tsx` | `{ form, category, step }` — "Change" link on check-your-answers |
 | `form-review` | `components/form-renderer.tsx` | `{ form, category, duration_seconds }` — fired on **leaving** the review step |
-| `form-validation-error` | `components/form-renderer.tsx` → `validation-error-event.ts` | `{ form, category, step, errorCount, fields, errorTypes }` (comma-joined field ids / error types) |
+| `form-validation-error` | `components/form-renderer.tsx` → `validation-error-event.ts` | `{ form, category, step, errorCount, fieldErrors }` — `fieldErrors` pairs each failing field id with its stable reason code(s), encoded `field:code[\|code];…` (collision-proof: ids are kebab, codes a closed enum). The dashboard resolves labels + full messages from the form contract. |
 | `form-file-select` | `components/file-upload.tsx` | `{ form, category, step, field, mime, size_kb }` |
 | `form-submit` | `routes/forms/$formId/index.tsx` | `{ form, category, duration_seconds }` — only on a saved (`form-submit-success`) outcome |
 | `form-submit-error` | `routes/forms/$formId/index.tsx` | `{ form, category, errors }` — `errors` is `"network"` or the failure reason/name |
@@ -219,7 +219,7 @@ stale coverage HTML, not in source):
 | `form-open`, flat `{ form_id }` | `form-start`, `{ form, category }` |
 | `form-step-advance` | per-step `<form>:form-step-<word>` completion events |
 | `form-submit-success` | *(internal outcome name)* — telemetry event is `form-submit` with `duration_seconds` |
-| `form-field-error` | `form-validation-error` with `{ errorCount, fields, errorTypes }` |
+| `form-field-error` | `form-validation-error` with `{ errorCount, fieldErrors }` (field id → reason code pairs; replaced the earlier unassociated `fields`/`errorTypes` lists) |
 | payloads keyed `form_id`, `step_id`, `step_index` | keyed `form`, `category`, `step`; `<form>:<event>` namespacing added |
 | *(absent)* | `form-step-edit`, `form-review` added |
 

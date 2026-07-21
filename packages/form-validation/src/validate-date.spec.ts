@@ -21,6 +21,7 @@ describe("validateDateField", () => {
       expect(err).toEqual({
         message: "Enter date of birth",
         parts: ["day", "month", "year"],
+        code: "required",
       });
     });
 
@@ -72,6 +73,7 @@ describe("validateDateField", () => {
       expect(err).toEqual({
         message: "Date of birth must include a month",
         parts: ["month"],
+        code: "incomplete_date",
       });
     });
 
@@ -80,6 +82,7 @@ describe("validateDateField", () => {
       expect(err).toEqual({
         message: "Date of birth must include a day and month",
         parts: ["day", "month"],
+        code: "incomplete_date",
       });
     });
 
@@ -98,6 +101,7 @@ describe("validateDateField", () => {
       expect(err).toEqual({
         message: "Year must include 4 numbers",
         parts: ["year"],
+        code: "incomplete_date",
       });
     });
 
@@ -110,6 +114,7 @@ describe("validateDateField", () => {
       expect(err).toEqual({
         message: "Year must include 4 numbers",
         parts: ["year"],
+        code: "incomplete_date",
       });
     });
 
@@ -122,6 +127,7 @@ describe("validateDateField", () => {
       expect(err).toEqual({
         message: "Year must include 4 numbers",
         parts: ["year"],
+        code: "incomplete_date",
       });
     });
   });
@@ -136,6 +142,7 @@ describe("validateDateField", () => {
       expect(err).toEqual({
         message: "Date of birth must be a real date",
         parts: ["month"],
+        code: "invalid_date",
       });
     });
 
@@ -148,6 +155,7 @@ describe("validateDateField", () => {
       expect(err).toEqual({
         message: "Date of birth must be a real date",
         parts: ["day"],
+        code: "invalid_date",
       });
     });
 
@@ -187,6 +195,7 @@ describe("validateDateField", () => {
       expect(err).toEqual({
         message: "Date of birth must be a real date",
         parts: ["day", "month", "year"],
+        code: "invalid_date",
       });
     });
 
@@ -212,6 +221,7 @@ describe("validateDateField", () => {
       expect(err).toEqual({
         message: "Date of birth must be in the past",
         parts: ["day", "month", "year"],
+        code: "past",
       });
     });
 
@@ -342,6 +352,7 @@ describe("validateDateField", () => {
       expect(err).toEqual({
         message: "Date of birth must be a real date",
         parts: ["day", "month", "year"],
+        code: "invalid_date",
       });
     });
   });

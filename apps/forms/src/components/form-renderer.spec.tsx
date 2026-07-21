@@ -95,6 +95,7 @@ vi.mock("@forms/lib", () => ({
     onDynamic: vi.fn(),
     onBlur: vi.fn(),
   })),
+  collectStepErrorCodes: vi.fn(() => []),
 }));
 
 import FormRenderer from "./form-renderer";
