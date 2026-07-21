@@ -50,13 +50,15 @@ describe("YouthOpportunityWebhookListener", () => {
     } as unknown as YouthOpportunityWebhookService);
   });
 
-  it("dispatches a mapped youth-opportunity submission with a generated code", async () => {
+  it("dispatches a mapped youth-opportunity submission using the submission's reference code", async () => {
     await listener.handleSubmissionCreated(makeEvent());
 
     expect(dispatch).toHaveBeenCalledTimes(1);
     const payload = dispatch.mock.calls[0][0];
     expect(payload.programmeCode).toBe("BYAC");
-    expect(payload.code).toMatch(/^BYAC-\d{4}-[0-9A-Z]{7}$/);
+    // The CMS case reference must be the SAME reference the citizen sees on the
+    // confirmation page / email — never a second, independently-minted code (#841).
+    expect(payload.code).toBe("YTH-20260604-130732-000001");
     expect(payload.applicantName).toBe("Jane Doe");
     expect(payload.applicantEmail).toBe("jane@example.com");
     expect(payload.applicantPhone).toBe("246-555-1234");
