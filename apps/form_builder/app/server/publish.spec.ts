@@ -22,7 +22,7 @@ vi.mock("./api-client", async () => ({
 
 import { getSession } from "./session-cipher.server";
 import { api, ApiError } from "./api-client";
-import { publishRecipe, eraseRecipe } from "./publish";
+import { publishRecipe, eraseRecipe, resolveBaseBranch } from "./publish";
 
 const SESSION = {
   login: "alice",
@@ -622,6 +622,35 @@ describe("eraseRecipe", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("resolveBaseBranch — production fail-fast (#1366)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    delete process.env.PUBLISH_BASE_BRANCH;
+    delete process.env.PUBLISH_BASE_BRANCH_DEFAULT;
+  });
+
+  it("returns the runtime PUBLISH_BASE_BRANCH when set", () => {
+    process.env.PUBLISH_BASE_BRANCH = "sandbox";
+    expect(resolveBaseBranch()).toBe("sandbox");
+  });
+
+  it("falls back to the baked default when only PUBLISH_BASE_BRANCH_DEFAULT is set", () => {
+    process.env.PUBLISH_BASE_BRANCH_DEFAULT = "main";
+    expect(resolveBaseBranch()).toBe("main");
+  });
+
+  it("uses the dev default 'dev' when nothing is set in a dev build", () => {
+    vi.stubEnv("DEV", true);
+    expect(resolveBaseBranch()).toBe("dev");
+  });
+
+  it("throws when nothing is set in a production build", () => {
+    vi.stubEnv("DEV", false);
+    expect(() => resolveBaseBranch()).toThrow(/PUBLISH_BASE_BRANCH/);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // formId path-injection guard (#293) — a crafted formId must be rejected before
 // any GitHub/backend call so it can never reach a request path or branch name.

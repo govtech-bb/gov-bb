@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import s from "./-styles.module.css";
+import { requireEnv } from "../../config/env";
 
 /**
  * Live preview rendered by the landing app itself (Payload-style): we embed the
@@ -13,9 +14,11 @@ import s from "./-styles.module.css";
  * (default :4000); point elsewhere with VITE_LANDING_PREVIEW_URL.
  */
 
-const PREVIEW_URL =
-  import.meta.env.VITE_LANDING_PREVIEW_URL ||
-  "http://localhost:4000/preview-start-page";
+const PREVIEW_URL = requireEnv(
+  import.meta.env.VITE_LANDING_PREVIEW_URL,
+  "VITE_LANDING_PREVIEW_URL",
+  "http://localhost:4000/preview-start-page",
+);
 
 const TARGET_ORIGIN = (() => {
   try {
