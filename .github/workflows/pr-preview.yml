@@ -54,7 +54,6 @@ jobs:
       chat: ${{ steps.affected.outputs.chat }}
       fb-app: ${{ steps.affected.outputs.fb-app }}
       analytics: ${{ steps.affected.outputs.analytics }}
-      ff-app: ${{ steps.affected.outputs.ff-app }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
       preview-smoke-contract-changed: ${{ steps.affected.outputs.preview-smoke-contract-changed }}
     steps:
@@ -118,10 +117,7 @@ jobs:
           echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
           echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
           echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
-          # ff-app = feature-flagging (nx project feature-flagging-app), not to
-          # be confused with fb-app = form-builder above. Mirrors deploy-sandbox.yml.
           echo "analytics=$(has analytics-app)" >> "$GITHUB_OUTPUT"
-          echo "ff-app=$(has feature-flagging-app)" >> "$GITHUB_OUTPUT"
 
           # amplify.yml is a workspace-root file nx can't attribute to
           # any app. Force all 6 frontend gates when it or this
@@ -752,122 +748,12 @@ jobs:
           echo "status=TIMED_OUT" >> "$GITHUB_OUTPUT"
           exit 1
 
-  preview-feature-flagging:
-    name: Preview (feature-flagging)
-    needs: setup
-    if: needs.setup.outputs.ff-app == 'true' || needs.setup.outputs.amplify-config == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write # OIDC for the AWS role
-      contents: write # force-push the PR commit to the shared ff-preview branch
-    outputs:
-      status: ${{ steps.build.outputs.status }}
-      url: ${{ steps.build.outputs.url }}
-    steps:
-      # feature-flagging is auth-walled, so it can't use a throwaway
-      # amplifyapp.com host — GitHub OAuth only accepts a redirect_uri on a
-      # subdomain of the app's registered callback host. A per-PR custom
-      # subdomain would require this PR-triggered CI role to hold broad
-      # route53/acm/cloudfront/iam (Amplify's UpdateDomainAssociation demands
-      # them of the caller). So instead there's ONE shared slot: the static host
-      # preview.feature-flagging.sandbox.alpha.gov.bb -> the "ff-preview" Amplify
-      # branch, with its OAuth env baked in (alpha-infra amplify-feature-flagging.tf).
-      # We force-push THIS PR's commit onto that branch and build it — no domain
-      # or branch-env perms needed. ONE FF preview at a time (most recent wins);
-      # reads/writes SANDBOX flag data.
-      - name: Checkout PR head
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 1
-          # Don't leave the token in git config (zizmor artipacked). The push
-          # below authenticates with an explicit one-shot token URL instead.
-          persist-credentials: false
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-      - name: Push to shared slot and trigger preview build
-        id: build
-        env:
-          AMPLIFY_APP_ID: d170ysh10vddy3
-          APP_LABEL: feature-flagging
-          PREVIEW_BRANCH: ff-preview
-          URL: https://preview.feature-flagging.sandbox.alpha.gov.bb
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # Force-push this PR's commit onto the git branch the ff-preview Amplify
-          # branch tracks, using a one-shot token URL (creds aren't persisted in
-          # git config). Amplify auto-build is off, so the push alone doesn't
-          # build — start-job below does. Concurrent FF PRs share the slot.
-          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${PREVIEW_BRANCH}"
-          echo "Force-pushed $(git rev-parse --short HEAD) to ${PREVIEW_BRANCH}"
-
-          echo "url=$URL" >> "$GITHUB_OUTPUT"
-          echo "Preview URL: $URL"
-
-          # Cancel any in-flight job on the shared branch (latest wins), then build.
-          IN_FLIGHT=$(aws amplify list-jobs \
-            --app-id "$AMPLIFY_APP_ID" \
-            --branch-name "$PREVIEW_BRANCH" \
-            --region "$AWS_REGION" \
-            --query "jobSummaries[?status=='CREATED' || status=='PENDING' || status=='PROVISIONING' || status=='RUNNING'].jobId" \
-            --output text)
-          for J in $IN_FLIGHT; do
-            echo "Cancelling in-flight Amplify $APP_LABEL job $J"
-            aws amplify stop-job \
-              --app-id "$AMPLIFY_APP_ID" \
-              --branch-name "$PREVIEW_BRANCH" \
-              --job-id "$J" \
-              --region "$AWS_REGION" >/dev/null \
-              || echo "stop-job failed for $J (continuing)"
-          done
-          [ -n "$IN_FLIGHT" ] && sleep 5
-
-          JOB_ID=$(aws amplify start-job \
-            --app-id "$AMPLIFY_APP_ID" \
-            --branch-name "$PREVIEW_BRANCH" \
-            --job-type RELEASE \
-            --region "$AWS_REGION" \
-            --query jobSummary.jobId \
-            --output text 2>&1) || {
-            echo "❌ Amplify $APP_LABEL start-job failed: $JOB_ID"
-            echo "status=START_FAILED" >> "$GITHUB_OUTPUT"
-            exit 1
-          }
-          echo "Amplify $APP_LABEL job started: $JOB_ID"
-
-          for i in $(seq 1 30); do
-            STATUS=$(aws amplify get-job \
-              --app-id "$AMPLIFY_APP_ID" \
-              --branch-name "$PREVIEW_BRANCH" \
-              --job-id "$JOB_ID" \
-              --region "$AWS_REGION" \
-              --query job.summary.status \
-              --output text)
-            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
-            if [ "$STATUS" = "SUCCEED" ]; then
-              echo "✅ Amplify $APP_LABEL build succeeded"
-              echo "status=SUCCEED" >> "$GITHUB_OUTPUT"
-              exit 0
-            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
-              echo "❌ Amplify $APP_LABEL build $STATUS"
-              echo "status=$STATUS" >> "$GITHUB_OUTPUT"
-              exit 1
-            fi
-            sleep 30
-          done
-          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
-          echo "status=TIMED_OUT" >> "$GITHUB_OUTPUT"
-          exit 1
-
   # Post or edit a single sticky comment on the PR listing the preview
-  # URLs and their statuses. Runs after the 6 preview jobs reach any
+  # URLs and their statuses. Runs after the 5 preview jobs reach any
   # terminal state (success, failure, or skip).
   comment:
     name: Post preview comment
-    needs: [setup, preview-forms, preview-landing, preview-chat, preview-form-builder, preview-analytics, preview-feature-flagging]
+    needs: [setup, preview-forms, preview-landing, preview-chat, preview-form-builder, preview-analytics]
     if: |
       always()
       && github.event.action != 'closed'
@@ -894,9 +780,6 @@ jobs:
           ANALYTICS_RESULT: ${{ needs.preview-analytics.result }}
           ANALYTICS_STATUS: ${{ needs.preview-analytics.outputs.status }}
           ANALYTICS_URL: ${{ needs.preview-analytics.outputs.url }}
-          FF_RESULT: ${{ needs.preview-feature-flagging.result }}
-          FF_STATUS: ${{ needs.preview-feature-flagging.outputs.status }}
-          FF_URL: ${{ needs.preview-feature-flagging.outputs.url }}
           COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           # Render one row per app. `result` is the GHA job result
@@ -941,7 +824,6 @@ jobs:
             row "chat"            "$CHAT_RESULT"      "$CHAT_STATUS"      "$CHAT_URL"
             row "form-builder"    "$FB_RESULT"        "$FB_STATUS"        "$FB_URL"
             row "analytics"       "$ANALYTICS_RESULT" "$ANALYTICS_STATUS" "$ANALYTICS_URL"
-            row "feature-flagging" "$FF_RESULT"       "$FF_STATUS"        "$FF_URL"
             echo ""
             echo "_Commit: \`${COMMIT_SHA:0:7}\`_  ·  _Branches auto-delete when this PR closes._"
             echo ""
@@ -988,8 +870,8 @@ jobs:
               exit 1 ;;
           esac
 
-          # feature-flagging is NOT here: it uses a shared, permanent ff-preview
-          # branch (not a per-PR branch), so there's nothing per-PR to delete.
+          # feature-flagging is NOT here: its PR previews were removed entirely
+          # on 2026-07-21 (gov-bb#2029) — sandbox is the testing environment.
           for entry in \
               "forms:d1j7z1k0h7u5nb" \
               "landing:d3kbl8o0ovutw4" \
