@@ -15,6 +15,7 @@
   "dependencies": {
     "@fontsource/figtree": "^5.2.10",
     "@govtech-bb/design": "^1.0.0-alpha.17",
+    "@govtech-bb/form-validation": "workspace:*",
     "@govtech-bb/react": "^1.0.0-alpha.17",
     "@govtech-bb/umami-analytics": "workspace:*",
     "@tanstack/react-router": "catalog:",

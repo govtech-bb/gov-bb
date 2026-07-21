@@ -27,8 +27,13 @@ export interface TrackingData {
     category: string;
     step: string;
     errorCount: number;
-    fields: string;
-    errorTypes: string;
+    /**
+     * Per-field failure reasons, encoded as
+     * `field:code[|code];field:code…` — see buildValidationErrorPayload. Pairs
+     * each field id with the stable reason code(s) it failed on, so the
+     * dashboard can link fields to reasons and count multiple reasons per field.
+     */
+    fieldErrors: string;
   };
   "page-service-view": { form: string; category: string };
   "page-start-view": { form: string; category: string };

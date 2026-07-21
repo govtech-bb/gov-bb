@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { defaultValidationMessage } from "../default-messages";
 import type { RuleRunner } from "../types";
 import { resolveReference, MISSING } from "./resolve-reference";
 import { str, forEachString } from "./string-values";
 
 export const minLengthRunner: RuleRunner = (value, config) => {
   const min = config.value as number;
-  const msg = config.error ?? `Must be at least ${min} characters`;
+  const msg = config.error ?? defaultValidationMessage("minLength", config);
   return forEachString(value, (element) =>
     z.string().min(min, msg).safeParse(str(element)).success ? null : msg,
   );
@@ -13,14 +14,14 @@ export const minLengthRunner: RuleRunner = (value, config) => {
 
 export const maxLengthRunner: RuleRunner = (value, config) => {
   const max = config.value as number;
-  const msg = config.error ?? `Must be at most ${max} characters`;
+  const msg = config.error ?? defaultValidationMessage("maxLength", config);
   return forEachString(value, (element) =>
     z.string().max(max, msg).safeParse(str(element)).success ? null : msg,
   );
 };
 
 export const patternRunner: RuleRunner = (value, config) => {
-  const msg = config.error ?? "Invalid format";
+  const msg = config.error ?? defaultValidationMessage("pattern");
   // A misconfigured pattern rule fails closed rather than crashing the
   // validation loop (invalid regex) or silently passing everything
   // (undefined value becomes /(?:)/).
@@ -37,7 +38,7 @@ export const patternRunner: RuleRunner = (value, config) => {
 };
 
 export const emailRunner: RuleRunner = (value, config) => {
-  const msg = config.error ?? "Must be a valid email address";
+  const msg = config.error ?? defaultValidationMessage("email");
   return forEachString(value, (element) =>
     z.email(msg).safeParse(str(element)).success ? null : msg,
   );
@@ -45,7 +46,7 @@ export const emailRunner: RuleRunner = (value, config) => {
 
 export const containsRunner: RuleRunner = (value, config) => {
   const needle = config.value as string;
-  const msg = config.error ?? `Must contain "${needle}"`;
+  const msg = config.error ?? defaultValidationMessage("contains", config);
   return forEachString(value, (element) =>
     z.string().includes(needle, { message: msg }).safeParse(str(element))
       .success

@@ -5,12 +5,13 @@
 // fetched on demand and deduped by a short in-memory TTL (cache.ts). This
 // module deliberately has no `nitro/runtime-config` import so its pure shapers
 // stay unit-testable.
+import { defaultValidationMessage } from '@govtech-bb/form-validation'
 import {
   UmamiClient,
   aggregateFormEvents,
-  buildFormDetail,
   buildSources,
   startOfDayInTz,
+  tallyFieldErrors,
   tzOffsetMs,
   weightedAverage,
   weightedSum,
@@ -156,6 +157,24 @@ export interface FieldCount {
   count: number
 }
 
+/** One reason a field failed, resolved for display. */
+export interface FieldFailureReason {
+  /** stable reason code (rule type or synthetic date code). */
+  code: string
+  /** the full error message a user would see, from the contract or defaults. */
+  message: string
+  count: number
+}
+
+/** A field's validation failures, with its human label and reason breakdown. */
+export interface FieldFailure {
+  fieldId: string
+  /** human label from the form contract; falls back to the field id. */
+  label: string
+  count: number
+  reasons: FieldFailureReason[]
+}
+
 export interface FormDetailData {
   formId: string
   title: string
@@ -172,8 +191,8 @@ export interface FormDetailData {
   totalFieldErrors: number
   /** Start → Step N (titled) → Submit, with view counts. Event counts. */
   funnel: FunnelStage[]
-  /** why fields fail (validation reason codes/messages), descending. */
-  validationReasons: FieldCount[]
+  /** which fields fail and why, most-problematic first (`[0]` is the worst). */
+  fieldFailures: FieldFailure[]
   /** submit reliability (#1916). */
   submitError: SubmitError
   generatedAt: string
@@ -596,22 +615,67 @@ async function fetchFormList(cfg: UmamiConfig): Promise<FormListItem[]> {
   return (body.data ?? []).map((f) => ({ formId: f.formId, title: f.title }))
 }
 
+interface FormDefinition {
+  title: string
+  steps: { stepId: string; title: string }[]
+  /** bare fieldId → human label, for the field-failure table. */
+  labelByField: Record<string, string>
+  /** `${fieldId}:${code}` → the full error message a user would see. */
+  messageByFieldCode: Record<string, string>
+}
+
 async function fetchFormDefinition(
   cfg: UmamiConfig,
   formId: string,
-): Promise<{ title: string; steps: { stepId: string; title: string }[] }> {
+): Promise<FormDefinition> {
+  const empty: FormDefinition = {
+    title: formId,
+    steps: [],
+    labelByField: {},
+    messageByFieldCode: {},
+  }
   const base = cfg.formsApiUrl.replace(/\/+$/, '')
   const res = await fetch(
     `${base}/form-definitions/${encodeURIComponent(formId)}`,
   )
-  if (!res.ok) return { title: formId, steps: [] }
+  if (!res.ok) return empty
   const body = (await res.json()) as {
-    data?: { title?: string; steps?: { stepId: string; title: string }[] }
+    data?: {
+      title?: string
+      steps?: {
+        stepId: string
+        title: string
+        elements?: {
+          fieldId: string
+          label?: string
+          validations?: Record<string, { error?: string; value?: unknown }>
+        }[]
+      }[]
+    }
   }
   const d = body.data
+  if (!d) return empty
+
+  const labelByField: Record<string, string> = {}
+  const messageByFieldCode: Record<string, string> = {}
+  for (const step of d.steps ?? []) {
+    for (const el of step.elements ?? []) {
+      if (el.label) labelByField[el.fieldId] = el.label
+      // The message a user sees is the authored `error` if the recipe set one,
+      // otherwise the runtime default — resolved from the same source the form
+      // validator uses (defaultValidationMessage), so hover text matches.
+      for (const [code, config] of Object.entries(el.validations ?? {})) {
+        messageByFieldCode[`${el.fieldId}:${code}`] =
+          config?.error ?? defaultValidationMessage(code, config)
+      }
+    }
+  }
+
   return {
-    title: d?.title ?? formId,
-    steps: (d?.steps ?? []).map((s) => ({ stepId: s.stepId, title: s.title })),
+    title: d.title ?? formId,
+    steps: (d.steps ?? []).map((s) => ({ stepId: s.stepId, title: s.title })),
+    labelByField,
+    messageByFieldCode,
   }
 }
 
@@ -782,7 +846,7 @@ export async function fetchFormDetailData(
       stepViews,
       duration,
       errorCount,
-      errorTypes,
+      fieldErrorsRaw,
       submitErrRows,
       def,
     ] = await Promise.all([
@@ -810,7 +874,7 @@ export async function fetchFormDetailData(
         client,
         cfg,
         `${formId}:form-validation-error`,
-        'errorTypes',
+        'fieldErrors',
         r,
       ),
       eventValues(client, cfg, `${formId}:form-submit-error`, 'errors', r),
@@ -847,12 +911,21 @@ export async function fetchFormDetailData(
       counts: {},
       steps: [],
     }
-    const detail = buildFormDetail(formId, entry, {
-      duration,
-      errorCount,
-      fields: [],
-      errorTypes,
-    })
+
+    // Which fields fail and why — parse the `fieldErrors` pairs, then resolve
+    // each field's label and each reason's full message from the contract.
+    const fieldFailures: FieldFailure[] = tallyFieldErrors(fieldErrorsRaw).map(
+      (f) => ({
+        fieldId: f.field,
+        label: def.labelByField[f.field] ?? f.field,
+        count: f.count,
+        reasons: f.reasons.map((rn) => ({
+          code: rn.code,
+          message: def.messageByFieldCode[`${f.field}:${rn.code}`] ?? '',
+          count: rn.count,
+        })),
+      }),
+    )
 
     return {
       formId,
@@ -870,7 +943,7 @@ export async function fetchFormDetailData(
         def.steps,
         reachedByStep,
       ),
-      validationReasons: detail.errorTypes,
+      fieldFailures,
       submitError: shapeSubmitError(
         entry.counts['form-submit'] ?? 0,
         entry.counts['form-submit-error'] ?? 0,

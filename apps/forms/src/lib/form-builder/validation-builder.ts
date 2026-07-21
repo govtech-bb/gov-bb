@@ -7,7 +7,11 @@ import {
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { valueIsEmpty } from "./validation-methods";
 import { buildStepScopedValues } from "./helpers/value-tree";
-import { validate, validateDateField } from "@govtech-bb/form-validation";
+import {
+  validate,
+  validateDateField,
+  validateFieldEntries,
+} from "@govtech-bb/form-validation";
 import type { StepScopedValues } from "@govtech-bb/form-validation";
 import {
   evaluateCondition,
@@ -255,4 +259,44 @@ export const buildFieldValidationProperties = (
     },
     onChangeListenTo: listenTo,
   };
+};
+
+// Collect the stable reason codes for every field that fails on the current
+// step, for the `form-validation-error` analytics event. Reuses the exact
+// value-tree / optionalIf / date orchestration the display validators use (via
+// the shared `validateFieldEntries`), so the codes match what the user saw —
+// but returns codes instead of the user-facing message strings. Fields with no
+// failures are omitted. `formValues` is the live form state, keyed by the
+// composite field id (`stepId_fieldId`), as `form.state.values`.
+export const collectStepErrorCodes = (
+  fields: ClientPrimitive[],
+  formValues: Record<string, unknown>,
+): { fieldId: string; codes: string[] }[] => {
+  const out: { fieldId: string; codes: string[] }[] = [];
+  for (const field of fields) {
+    if (field.htmlType === "show-hide" || !field.validations) continue;
+    const primitive = clientPrimitiveToPrimitive(field);
+    const { stepValues, allValues } = buildValueTrees(
+      field,
+      formValues,
+      formValues[field.id],
+    );
+    const primitiveToValidate = isOptionalNow(
+      field.behaviours,
+      field.stepId,
+      allValues,
+    )
+      ? stripRequired(primitive)
+      : primitive;
+    const entries = validateFieldEntries(
+      primitiveToValidate,
+      stepValues[field.fieldId],
+      allValues,
+      stepValues,
+    );
+    if (entries.length > 0) {
+      out.push({ fieldId: field.fieldId, codes: entries.map((e) => e.code) });
+    }
+  }
+  return out;
 };

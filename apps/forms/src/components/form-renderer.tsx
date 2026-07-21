@@ -25,6 +25,7 @@ import {
   getRepeatStepCount,
   getInstanceMarker,
   buildFieldValidationProperties,
+  collectStepErrorCodes,
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
@@ -351,10 +352,10 @@ function ActiveStep({
           formMeta.formId,
           formCategory(formMeta.formId),
           currentStep.stepId,
-          currentFields.map((field, i) => ({
-            fieldId: field.fieldId,
-            errors: results[i],
-          })),
+          collectStepErrorCodes(
+            currentFields,
+            form.state.values as Record<string, unknown>,
+          ),
         ),
       );
       scrollToTop();

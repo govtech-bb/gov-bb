@@ -5,6 +5,7 @@ import type {
   EventDataValue,
   ExpandedRow,
   FieldErrorRow,
+  FieldFailureTally,
   FormDetail,
   FormMeta,
   FormRow,
@@ -122,6 +123,55 @@ export function tallyFields(values: EventDataValue[]): FieldErrorRow[] {
   }
   return [...counts.entries()]
     .map(([field, count]) => ({ field, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+/**
+ * Parse the `form-validation-error` `fieldErrors` values — each a
+ * `field:code[|code];field:code…` string (see the forms app's
+ * buildValidationErrorPayload) — into per-field failure tallies. A field's
+ * `count` is how many error events it appeared in; each reason's `count` is how
+ * many events it failed on that reason. Both are weighted by the event `total`.
+ * Fields and reasons come back sorted by descending count, so `[0]` is the most
+ * problematic field. The delimiters can't collide: field ids are kebab-case and
+ * codes are a closed enum, so neither contains `;`, `:` or `|`.
+ */
+export function tallyFieldErrors(
+  values: EventDataValue[],
+): FieldFailureTally[] {
+  const fields = new Map<
+    string,
+    { count: number; reasons: Map<string, number> }
+  >();
+  for (const { value, total } of values) {
+    for (const pair of String(value).split(";")) {
+      const entry = pair.trim();
+      if (!entry) continue;
+      const sep = entry.indexOf(":");
+      if (sep <= 0) continue;
+      const field = entry.slice(0, sep);
+      const codes = entry
+        .slice(sep + 1)
+        .split("|")
+        .map((c) => c.trim())
+        .filter(Boolean);
+      if (codes.length === 0) continue;
+      const rec = fields.get(field) ?? { count: 0, reasons: new Map() };
+      rec.count += total;
+      for (const code of codes) {
+        rec.reasons.set(code, (rec.reasons.get(code) ?? 0) + total);
+      }
+      fields.set(field, rec);
+    }
+  }
+  return [...fields.entries()]
+    .map(([field, rec]) => ({
+      field,
+      count: rec.count,
+      reasons: [...rec.reasons.entries()]
+        .map(([code, count]) => ({ code, count }))
+        .sort((a, b) => b.count - a.count),
+    }))
     .sort((a, b) => b.count - a.count);
 }
 

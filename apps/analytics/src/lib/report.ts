@@ -71,7 +71,7 @@ function emptyDetail(formId: string, range: string): FormDetailData {
     avgDurationSeconds: null,
     totalFieldErrors: 0,
     funnel: [],
-    validationReasons: [],
+    fieldFailures: [],
     submitError: { total: 0, attempts: 0, rate: null, byReason: [] },
     generatedAt: '',
     window: rangeLabel(range),
