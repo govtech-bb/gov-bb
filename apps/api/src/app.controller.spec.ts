@@ -1,6 +1,6 @@
 import { ServiceUnavailableException } from "@nestjs/common";
 import type { DataSource } from "typeorm";
-import { AppController } from "./app.controller";
+import { AppController, READINESS_TIMEOUT_MS } from "./app.controller";
 
 // Build a controller with a DataSource stubbed to just its `query` method.
 function makeController(query: DataSource["query"]): AppController {
@@ -25,6 +25,21 @@ describe("AppController", () => {
       await expect(makeController(query).ready()).rejects.toBeInstanceOf(
         ServiceUnavailableException,
       );
+    });
+
+    it("throws 503 when the database query hangs past the timeout", async () => {
+      vi.useFakeTimers();
+      try {
+        // A query that never settles — a hung connection, not a refused one.
+        const query = vi.fn().mockReturnValue(new Promise<never>(() => {}));
+        const assertion = expect(
+          makeController(query).ready(),
+        ).rejects.toBeInstanceOf(ServiceUnavailableException);
+        await vi.advanceTimersByTimeAsync(READINESS_TIMEOUT_MS + 1);
+        await assertion;
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

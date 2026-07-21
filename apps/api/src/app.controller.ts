@@ -3,6 +3,11 @@ import { SkipThrottle } from "@nestjs/throttler";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { DataSource } from "typeorm";
 
+// Cap the readiness DB check so a *hung* connection (vs. a refused one) fails
+// fast with 503 instead of hanging until the routing probe's own timeout. Kept
+// under a typical ALB target-group timeout so the app returns a clean 503 first.
+export const READINESS_TIMEOUT_MS = 2000;
+
 @ApiTags("Health")
 @Controller()
 @SkipThrottle()
@@ -41,10 +46,19 @@ export class AppController {
     description: "A dependency (database) is unavailable",
   })
   async ready(): Promise<string> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error("readiness check timed out")),
+        READINESS_TIMEOUT_MS,
+      );
+    });
     try {
-      await this.dataSource.query("SELECT 1");
+      await Promise.race([this.dataSource.query("SELECT 1"), timeout]);
     } catch {
       throw new ServiceUnavailableException("Database unavailable");
+    } finally {
+      clearTimeout(timer);
     }
     return "OK";
   }
