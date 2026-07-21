@@ -38,6 +38,8 @@ export interface TrackingData {
   "page-service-view": { form: string; category: string };
   "page-start-view": { form: string; category: string };
   search: { query: string; results: number };
+  "search-result-click": { query: string; position: number; href: string };
+  "search-no-results": { query: string };
 }
 
 export type TrackingEventName = keyof TrackingData;

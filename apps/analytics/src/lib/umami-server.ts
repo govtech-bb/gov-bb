@@ -200,6 +200,96 @@ export interface FormDetailData {
   range: string
 }
 
+// --- search analytics ------------------------------------------------------
+
+/** One row of the top-queries table. */
+export interface SearchQueryRow {
+  query: string
+  /** `search` events (results rendered) for this query in the window. */
+  searches: number
+  /** `search-result-click` events for this query. */
+  clicks: number
+  /** clicks ÷ searches, 0–1; 0 when no searches. */
+  ctr: number
+  /** observed to return zero results (`search-no-results` event). */
+  zeroResult: boolean
+}
+
+export interface SearchData {
+  /** total `search` events (results rendered) in the window. */
+  searches: number
+  /** total `search-result-click` events in the window. */
+  clicks: number
+  /** clicks ÷ searches, 0–1; the overall click-through rate. */
+  ctr: number
+  /** share of searches returning zero results, 0–1. */
+  zeroResultRate: number
+  /** top queries by search count. */
+  queries: SearchQueryRow[]
+  generatedAt: string
+  window: string
+  range: string
+}
+
+/**
+ * Join the four search event-value distributions into the search view. Counts
+ * come from summing each distribution's `total` (the `value` is the query text
+ * or the result count, not a weight). The overall zero-result rate is taken from
+ * the historical `search` `results` distribution (value 0), while the per-query
+ * zero-result flag comes from the `search-no-results` event — the only
+ * query-keyed signal, since Umami can't cross-tabulate query × results.
+ */
+export function shapeSearch(
+  queryRows: EventDataValue[],
+  resultsRows: EventDataValue[],
+  clickRows: EventDataValue[],
+  noResultRows: EventDataValue[],
+  topN = 20,
+): Omit<SearchData, 'generatedAt' | 'window' | 'range'> {
+  const clicksByQuery = new Map<string, number>()
+  for (const r of clickRows) {
+    const q = String(r.value)
+    clicksByQuery.set(q, (clicksByQuery.get(q) ?? 0) + r.total)
+  }
+  const zeroResultQueries = new Set(noResultRows.map((r) => String(r.value)))
+
+  const clicks = clickRows.reduce((s, r) => s + r.total, 0)
+  const resultsEvents = resultsRows.reduce((s, r) => s + r.total, 0)
+  const queryEvents = queryRows.reduce((s, r) => s + r.total, 0)
+  const zeroResults = resultsRows
+    .filter((r) => Number(r.value) === 0)
+    .reduce((s, r) => s + r.total, 0)
+
+  // Total searches from whichever distribution is more complete. The `results`
+  // property has tiny cardinality (a few counts) so it can't be row-capped,
+  // while the high-cardinality `query` distribution can be — taking the max
+  // stops a truncated or failed call from deflating the total and inflating CTR.
+  const searches = Math.max(queryEvents, resultsEvents)
+
+  const queries: SearchQueryRow[] = queryRows
+    .map((r) => {
+      const query = String(r.value)
+      const clicksForQuery = clicksByQuery.get(query) ?? 0
+      return {
+        query,
+        searches: r.total,
+        clicks: clicksForQuery,
+        ctr: r.total ? clicksForQuery / r.total : 0,
+        zeroResult: zeroResultQueries.has(query),
+      }
+    })
+    .sort((a, b) => b.searches - a.searches)
+    .slice(0, topN)
+
+  return {
+    searches,
+    clicks,
+    ctr: searches ? clicks / searches : 0,
+    zeroResultRate: resultsEvents ? zeroResults / resultsEvents : 0,
+    queries,
+  }
+}
+
 // --- pure shapers (unit-tested) --------------------------------------------
 
 export function buildFunnelSteps(formId: string): FunnelStepInput[] {
@@ -830,6 +920,33 @@ export async function fetchFormsData(
   })
 }
 
+/** Search queries + click-through for the "Search" tab (landing site). */
+export async function fetchSearchData(
+  cfg: UmamiConfig,
+  rangeKey: string,
+): Promise<SearchData> {
+  const range = normaliseRange(rangeKey)
+  return memoize(`search:${range}`, TTL_MS, async () => {
+    const client = new UmamiClient({ apiKey: cfg.apiKey })
+    const r = rangeForKey(range)
+    const wid = cfg.landingWebsiteId
+    const [queryRows, resultsRows, clickRows, noResultRows] = await Promise.all(
+      [
+        eventValues(client, wid, 'search', 'query', r),
+        eventValues(client, wid, 'search', 'results', r),
+        eventValues(client, wid, 'search-result-click', 'query', r),
+        eventValues(client, wid, 'search-no-results', 'query', r),
+      ],
+    )
+    return {
+      ...shapeSearch(queryRows, resultsRows, clickRows, noResultRows),
+      generatedAt: new Date().toISOString(),
+      window: rangeLabel(range),
+      range,
+    }
+  })
+}
+
 export async function fetchFormDetailData(
   cfg: UmamiConfig,
   formId: string,
@@ -861,23 +978,41 @@ export async function fetchFormDetailData(
         range: r,
       }),
       client.metricsEvents(cfg.formsWebsiteId, r),
-      eventValues(client, cfg, `${formId}:form-step-view`, 'step', r),
-      eventValues(client, cfg, `${formId}:form-submit`, 'duration_seconds', r),
       eventValues(
         client,
-        cfg,
+        cfg.formsWebsiteId,
+        `${formId}:form-step-view`,
+        'step',
+        r,
+      ),
+      eventValues(
+        client,
+        cfg.formsWebsiteId,
+        `${formId}:form-submit`,
+        'duration_seconds',
+        r,
+      ),
+      eventValues(
+        client,
+        cfg.formsWebsiteId,
         `${formId}:form-validation-error`,
         'errorCount',
         r,
       ),
       eventValues(
         client,
-        cfg,
+        cfg.formsWebsiteId,
         `${formId}:form-validation-error`,
         'fieldErrors',
         r,
       ),
-      eventValues(client, cfg, `${formId}:form-submit-error`, 'errors', r),
+      eventValues(
+        client,
+        cfg.formsWebsiteId,
+        `${formId}:form-submit-error`,
+        'errors',
+        r,
+      ),
       fetchFormDefinition(cfg, formId),
     ])
 
@@ -956,21 +1091,16 @@ export async function fetchFormDetailData(
   })
 }
 
-/** eventDataValues that degrades to [] on error (a form may lack a given event). */
+/** eventDataValues that degrades to [] on error (an event may be absent). */
 async function eventValues(
   client: UmamiClient,
-  cfg: UmamiConfig,
+  websiteId: string,
   event: string,
   propertyName: string,
   r: Range,
 ): Promise<EventDataValue[]> {
   try {
-    return await client.eventDataValues(
-      cfg.formsWebsiteId,
-      event,
-      propertyName,
-      r,
-    )
+    return await client.eventDataValues(websiteId, event, propertyName, r)
   } catch {
     return []
   }

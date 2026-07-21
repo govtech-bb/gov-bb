@@ -8,12 +8,14 @@ import {
   fetchFormDetailData,
   fetchFormsData,
   fetchOverviewData,
+  fetchSearchData,
   isConfigured,
   normaliseRange,
   rangeLabel,
   type FormDetailData,
   type FormsData,
   type OverviewData,
+  type SearchData,
   type UmamiConfig,
 } from './umami-server'
 
@@ -118,6 +120,34 @@ export const fetchForms = createServerFn({ method: 'GET' })
     try {
       const data = await fetchFormsData(cfg, range)
       return { configured: true, ...data }
+    } catch {
+      return empty
+    }
+  })
+
+export type SearchPayload = { configured: boolean } & SearchData
+
+/** Search queries + click-through for the "Search" tab. */
+export const fetchSearch = createServerFn({ method: 'GET' })
+  .validator((raw: unknown) =>
+    normaliseRange(raw == null ? undefined : String(raw)),
+  )
+  .handler(async ({ data: range }): Promise<SearchPayload> => {
+    const cfg = getConfig()
+    const empty: SearchPayload = {
+      configured: false,
+      searches: 0,
+      clicks: 0,
+      ctr: 0,
+      zeroResultRate: 0,
+      queries: [],
+      generatedAt: '',
+      window: rangeLabel(range),
+      range,
+    }
+    if (!isConfigured(cfg)) return empty
+    try {
+      return { configured: true, ...(await fetchSearchData(cfg, range)) }
     } catch {
       return empty
     }
