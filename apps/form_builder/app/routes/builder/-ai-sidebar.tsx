@@ -337,7 +337,21 @@ export function AiSidebar({ draft, onApplyRecipe }: AiSidebarProps) {
         abort,
         { firstPollMs: 400, intervalMs: 2000, timeoutMs: 3 * 60_000 },
       );
-      await handleResponse(status.reply, status.recipe, status.unresolvableRefs);
+      // Apply the generated recipe in its own try/catch: the edit generation
+      // (startEditRecipe → Bedrock) has succeeded by now, so a rejection here is
+      // an editor-side apply failure, not a generation error. Routing it through
+      // the outer catch would mislabel it as a generation/network failure and
+      // prompt a wasteful re-send (another Bedrock edit run) — #1871.
+      try {
+        await handleResponse(
+          status.reply,
+          status.recipe,
+          status.unresolvableRefs,
+        );
+      } catch {
+        setError("Couldn't apply the recipe to the editor. Please try again.");
+      }
+      return;
     } catch (err) {
       // Swallow errors caused by our own abort (overlapping submit / unmount).
       // A failed generation surfaces its reason; an expired-session 404 (the

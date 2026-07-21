@@ -214,6 +214,29 @@ describe("AiSidebar — Edit Form", () => {
       await screen.findByText("Duplicate field id: email."),
     ).toBeInTheDocument();
   });
+
+  it("labels an onApplyRecipe rejection as an apply error, not a generation error (#1871)", async () => {
+    startEditRecipe.mockResolvedValue({ jobId: "edit-1" });
+    getEditStatus.mockResolvedValue(
+      doneStatus({ formId: "contact", steps: [] }, "Here you go."),
+    );
+    // The edit generation succeeds; the editor's apply step rejects. The user
+    // must see a distinct apply error, not a mislabelled generation error.
+    const onApplyRecipe = vi
+      .fn()
+      .mockRejectedValue(new Error("editor apply exploded"));
+    setup(onApplyRecipe);
+
+    await userEvent.type(
+      screen.getByPlaceholderText(/make the email field required/i),
+      "make the email field required",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /edit form/i }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/couldn't apply the recipe to the editor/i);
+    expect(alert).not.toHaveTextContent(/editor apply exploded/i);
+  });
 });
 
 describe("AiSidebar — prompt textarea", () => {
