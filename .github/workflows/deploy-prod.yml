@@ -688,3 +688,61 @@ jobs:
             echo "- chat: ${{ env.AMPLIFY_CHAT_URL }}"
             echo "- feature-flagging: https://feature-flagging.alpha.gov.bb"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Durable release record. Tags the deployed commit and cuts a GitHub Release
+  # whose body GitHub auto-generates from the PRs merged since the PREVIOUS
+  # release tag — so the Releases tab (github.com/<repo>/releases) is a
+  # permanent, browsable log of what each prod deploy shipped. The same PR list
+  # is echoed into the run summary.
+  #
+  # Runs on every deploy regardless of individual target outcome (the commit
+  # became prod the moment advance-prod fast-forwarded the pointer), but ONLY
+  # if advance-prod succeeded — if the guard blocked or the fast-forward failed,
+  # nothing became prod, so there is nothing to tag. Downstream of the deploy
+  # jobs, so it never gates the rollout; it fails loudly (not silently) if the
+  # release can't be cut.
+  # ---------------------------------------------------------------------------
+  release-notes:
+    name: Tag + release notes
+    needs:
+      - advance-prod
+      - deploy-api
+      - deploy-chat-ingest
+      - amplify-forms
+      - amplify-landing
+      - amplify-chat
+      - amplify-feature-flagging
+    if: always() && needs.advance-prod.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      # Job-scoped write to create the tag + release; the deploy jobs stay
+      # read-only (same pattern as advance-prod).
+      contents: write
+    steps:
+      - name: Create tag + GitHub Release with generated notes
+        env:
+          # Via env, not inline ${{ }}, so context values can't expand into the
+          # shell (zizmor template-injection), matching advance-prod's style.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          TAG="prod-$(date -u +%Y-%m-%d)-${SHA:0:7}"
+          echo "Cutting release $TAG at $SHA"
+
+          gh release create "$TAG" \
+            --repo "$REPO" \
+            --target "$SHA" \
+            --title "Production release $TAG" \
+            --generate-notes \
+            --latest
+
+          {
+            echo "## Production Release Notes"
+            echo ""
+            echo "**Tag:** \`$TAG\` — https://github.com/$REPO/releases/tag/$TAG"
+            echo ""
+            gh release view "$TAG" --repo "$REPO" --json body -q .body
+          } >> "$GITHUB_STEP_SUMMARY"
