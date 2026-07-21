@@ -23,7 +23,7 @@ import type {
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import { FormConfigService } from "@/forms/form-config/form-config.service";
 import { NonRetryableError } from "./non-retryable-error";
-import { redactPii } from "./log-sanitize";
+import { redactPii } from "@/common/log-sanitize";
 import { NotificationLogRepository } from "../notification-log.repository";
 import { NotificationOutcome } from "@/database/entities/notification-log.entity";
 

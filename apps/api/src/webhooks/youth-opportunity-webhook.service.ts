@@ -2,7 +2,7 @@ import { HttpService } from "@nestjs/axios";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
 import webhooksConfig from "../config/webhooks.config";
-import { sanitizeForLog } from "./log-sanitize";
+import { sanitizeForLog } from "@/common/log-sanitize";
 import { timedPost } from "@/forms/submissions/processors/http-post";
 
 /**
