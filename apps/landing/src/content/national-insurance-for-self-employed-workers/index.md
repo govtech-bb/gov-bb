@@ -72,7 +72,7 @@ National Insurance works alongside your savings. It replaces some income when yo
 
 ## Get help
 
-Contact NIS on **431-7000** or visit the **NIS office** in person.
+Contact NIS on **431-7400** or visit the **NIS office** in person.
 
 **NIS office**
 National Insurance and Social Security Service

@@ -45,7 +45,7 @@ If you used to pay NIS contributions but stopped, or if you've never paid before
 
 If you're close to retirement and don't have enough contributions to qualify for a full pension, you may qualify for a one-time payment (grant) instead.
 
-To find out what contributions you can make and what benefits you may qualify for, contact NIS on 431-7000.
+To find out what contributions you can make and what benefits you may qualify for, contact NIS on 431-7400.
 
 ## Worked overseas?
 
@@ -59,7 +59,7 @@ National Insurance Office
 Frank Walcott Building
 Culloden Road, St. Michael
 
-Phone: 431-7000
+Phone: 431-7400
 
 ---
 
