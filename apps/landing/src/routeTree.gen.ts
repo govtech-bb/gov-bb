@@ -24,6 +24,7 @@ import { Route as BankHolidayCalendarIndexRouteImport } from './routes/bank-holi
 import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/route'
 import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterIndexRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/index'
 import { Route as PensionsAndGratuitiesCalculateYourPensionFormRouteImport } from './routes/pensions-and-gratuities/calculate-your-pension/form'
+import { Route as MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRouteImport } from './routes/money-financial-support/national-insurance-for-self-employed-workers/form'
 import { Route as MoneyFinancialSupportCalculateSeverancePayFormRouteImport } from './routes/money-financial-support/calculate-severance-pay/form'
 import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/guidance'
 import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterFindRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/find'
@@ -109,6 +110,14 @@ const PensionsAndGratuitiesCalculateYourPensionFormRoute =
     path: '/pensions-and-gratuities/calculate-your-pension/form',
     getParentRoute: () => rootRouteImport,
   } as any)
+const MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute =
+  MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRouteImport.update(
+    {
+      id: '/money-financial-support/national-insurance-for-self-employed-workers/form',
+      path: '/money-financial-support/national-insurance-for-self-employed-workers/form',
+      getParentRoute: () => rootRouteImport,
+    } as any,
+  )
 const MoneyFinancialSupportCalculateSeverancePayFormRoute =
   MoneyFinancialSupportCalculateSeverancePayFormRouteImport.update({
     id: '/money-financial-support/calculate-severance-pay/form',
@@ -154,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
   '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
+  '/money-financial-support/national-insurance-for-self-employed-workers/form': typeof MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/': typeof HealthAndEmergencyServicesFindAnEmergencyShelterIndexRoute
 }
@@ -174,6 +184,7 @@ export interface FileRoutesByTo {
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
   '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
+  '/money-financial-support/national-insurance-for-self-employed-workers/form': typeof MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter': typeof HealthAndEmergencyServicesFindAnEmergencyShelterIndexRoute
 }
@@ -196,6 +207,7 @@ export interface FileRoutesById {
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
   '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
+  '/money-financial-support/national-insurance-for-self-employed-workers/form': typeof MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/': typeof HealthAndEmergencyServicesFindAnEmergencyShelterIndexRoute
 }
@@ -219,6 +231,7 @@ export interface FileRouteTypes {
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
     | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
     | '/money-financial-support/calculate-severance-pay/form'
+    | '/money-financial-support/national-insurance-for-self-employed-workers/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/'
   fileRoutesByTo: FileRoutesByTo
@@ -239,6 +252,7 @@ export interface FileRouteTypes {
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
     | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
     | '/money-financial-support/calculate-severance-pay/form'
+    | '/money-financial-support/national-insurance-for-self-employed-workers/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
     | '/health-and-emergency-services/find-an-emergency-shelter'
   id:
@@ -260,6 +274,7 @@ export interface FileRouteTypes {
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
     | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
     | '/money-financial-support/calculate-severance-pay/form'
+    | '/money-financial-support/national-insurance-for-self-employed-workers/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/'
   fileRoutesById: FileRoutesById
@@ -280,6 +295,7 @@ export interface RootRouteChildren {
   BankHolidayCalendarIndexRoute: typeof BankHolidayCalendarIndexRoute
   BusinessTradeCropOverPermitsFormRoute: typeof BusinessTradeCropOverPermitsFormRoute
   MoneyFinancialSupportCalculateSeverancePayFormRoute: typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
+  MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute: typeof MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute
   PensionsAndGratuitiesCalculateYourPensionFormRoute: typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
 }
 
@@ -390,6 +406,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PensionsAndGratuitiesCalculateYourPensionFormRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/money-financial-support/national-insurance-for-self-employed-workers/form': {
+      id: '/money-financial-support/national-insurance-for-self-employed-workers/form'
+      path: '/money-financial-support/national-insurance-for-self-employed-workers/form'
+      fullPath: '/money-financial-support/national-insurance-for-self-employed-workers/form'
+      preLoaderRoute: typeof MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/money-financial-support/calculate-severance-pay/form': {
       id: '/money-financial-support/calculate-severance-pay/form'
       path: '/money-financial-support/calculate-severance-pay/form'
@@ -460,6 +483,8 @@ const rootRouteChildren: RootRouteChildren = {
   BusinessTradeCropOverPermitsFormRoute: BusinessTradeCropOverPermitsFormRoute,
   MoneyFinancialSupportCalculateSeverancePayFormRoute:
     MoneyFinancialSupportCalculateSeverancePayFormRoute,
+  MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute:
+    MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute,
   PensionsAndGratuitiesCalculateYourPensionFormRoute:
     PensionsAndGratuitiesCalculateYourPensionFormRoute,
 }
