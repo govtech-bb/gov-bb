@@ -1,10 +1,16 @@
 export interface PensionInputs {
-  months: number
+  startYear: number
+  endYear: number
+  /** Months of no-pay leave to deduct from pensionable service. */
+  nopayMonths: number
   salary: number
 }
 
 export interface PensionEstimate {
   months: number
+  startYear: number
+  endYear: number
+  nopayMonths: number
   salary: number
   fullAnnual: number
   fullMonthly: number
@@ -17,11 +23,15 @@ export interface PensionEstimate {
 export const SERVICE_WARNING_MONTHS = 120
 
 export function calculatePension(input: PensionInputs): PensionEstimate {
-  const { months, salary } = input
+  const { startYear, endYear, nopayMonths, salary } = input
+  const months = (endYear - startYear) * 12 - nopayMonths
   const fullAnnual = (months / 600) * salary
   const reducedAnnual = fullAnnual * 0.75
   return {
     months,
+    startYear,
+    endYear,
+    nopayMonths,
     salary,
     fullAnnual,
     fullMonthly: fullAnnual / 12,
