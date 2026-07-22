@@ -95,24 +95,26 @@ export function PensionCalculator() {
     if (!startVal) {
       next.startYear = 'Enter the year you started pensionable service'
     } else if (!startIsYear || startNum < 1900 || startNum > 2100) {
-      next.startYear = 'Enter a start year between 1900 and 2100'
+      next.startYear =
+        'Enter the start year as a 4-digit year between 1900 and 2100, for example 1995'
     }
 
     if (!endVal) {
       next.endYear = 'Enter the year you stopped or will retire'
     } else if (!endIsYear || endNum < 1900 || endNum > 2100) {
-      next.endYear = 'Enter an end year between 1900 and 2100'
+      next.endYear =
+        'Enter the end year as a 4-digit year between 1900 and 2100, for example 2020'
     } else if (startIsYear && endNum <= startNum) {
-      next.endYear = 'The end year must be after the start year'
+      next.endYear = 'The end year must be later than the start year'
     } else if (startIsYear && endNum - startNum > 65) {
       next.endYear =
-        'The start and end years are more than 65 years apart. Check the years you entered.'
+        'Your start and end years are more than 65 years apart. Check that both years are correct.'
     }
 
     if (nopayVal) {
       if (!/^\d+$/.test(nopayVal)) {
         next.nopayMonths =
-          'Months of no-pay leave must be a whole number of 0 or more'
+          'Enter the months of no-pay leave as a whole number, for example 6, or leave it blank'
       } else if (
         startIsYear &&
         endIsYear &&
@@ -120,7 +122,7 @@ export function PensionCalculator() {
         Number.parseInt(nopayVal, 10) >= (endNum - startNum) * 12
       ) {
         next.nopayMonths =
-          'No-pay leave cannot be equal to or more than your total service'
+          'Your no-pay leave must be less than your total months of service'
       }
     }
 
@@ -134,7 +136,8 @@ export function PensionCalculator() {
         !Number.isFinite(salaryNum) ||
         salaryNum <= 0
       ) {
-        next.salary = 'Last annual salary must be an amount greater than 0'
+        next.salary =
+          'Enter your last annual salary as an amount greater than 0, for example 60000'
       }
     }
 
