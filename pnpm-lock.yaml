@@ -220,6 +220,9 @@ importers:
       '@fontsource/figtree':
         specifier: ^5.2.10
         version: 5.2.10
+      '@govtech-bb/aws-secrets':
+        specifier: workspace:*
+        version: link:../../packages/aws-secrets
       '@govtech-bb/design':
         specifier: ^1.0.0-alpha.17
         version: 1.0.0-alpha.17
