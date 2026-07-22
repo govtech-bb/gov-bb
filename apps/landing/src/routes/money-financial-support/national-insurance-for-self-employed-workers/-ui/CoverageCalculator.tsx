@@ -1259,9 +1259,9 @@ function NextSteps({
           tone="blue"
         />
         <ActionCard
-          href="tel:+12464317000"
+          href="tel:+12464317400"
           icon="phone"
-          sub="Have a question? Call NISSS on 431-7000 and an officer will help."
+          sub="Have a question? Call NISSS on 431-7400 and an officer will help."
           title="Contact NISSS"
           tone="yellow"
         />
@@ -1404,7 +1404,7 @@ function RegisterPath({
         <div className="mt-6 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
           <p>
             Ask NISSS to look up your number before you register — call{' '}
-            <Link href="tel:+12464317000">431-7000</Link>. If you already have
+            <Link href="tel:+12464317400">431-7400</Link>. If you already have
             one, you keep it for life, so there is no need to sign up again.
           </p>
         </div>
