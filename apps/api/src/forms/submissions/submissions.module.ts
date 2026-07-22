@@ -18,6 +18,7 @@ import {
 import { PaymentProcessor } from "./processors/payment/payment.processor";
 import { FormDefinitionsModule } from "../form-definitions/form-definitions.module";
 import { FormConfigModule } from "../form-config/form-config.module";
+import { WebhookDestinationsModule } from "../webhook-destinations/webhook-destinations.module";
 import { FormDraftsModule } from "../form-drafts/form-drafts.module";
 import { PaymentsModule } from "@/payments/payments.module";
 import { FilesModule } from "@/files/files.module";
@@ -37,6 +38,7 @@ import { PaymentRequiredListener } from "@/email/payment-required.listener";
     HttpModule,
     FormDefinitionsModule,
     FormConfigModule,
+    WebhookDestinationsModule,
     FormDraftsModule,
     PaymentsModule,
     FilesModule,
