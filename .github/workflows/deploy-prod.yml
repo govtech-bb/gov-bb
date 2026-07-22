@@ -125,6 +125,7 @@ jobs:
       landing: ${{ steps.affected.outputs.landing }}
       chat: ${{ steps.affected.outputs.chat }}
       ff-app: ${{ steps.affected.outputs.ff-app }}
+      analytics: ${{ steps.affected.outputs.analytics }}
       migrations: ${{ steps.affected.outputs.migrations }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
     steps:
@@ -173,6 +174,7 @@ jobs:
           echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
           echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
           echo "ff-app=$(has feature-flagging-app)" >> "$GITHUB_OUTPUT"
+          echo "analytics=$(has analytics-app)" >> "$GITHUB_OUTPUT"
 
           if [ "$DEPLOY_ALL" = "true" ] || git diff --name-only "$NX_BASE" "$NX_HEAD" | grep -q '^apps/api/src/database/migrations/'; then
             echo "migrations=true" >> "$GITHUB_OUTPUT"
@@ -647,9 +649,65 @@ jobs:
           EXPECT_JSON_VALUE: connected
         run: bash .github/scripts/smoke-test-url.sh
 
+  amplify-analytics:
+    name: Amplify build (analytics)
+    needs: setup
+    if: needs.setup.outputs.analytics == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Trigger and monitor Amplify build
+        env:
+          # Analytics dashboard (apps/analytics SSR) at analytics.alpha.gov.bb.
+          # Unlike sandbox, prod injects NO Umami env here: non-secret config is
+          # IaC-managed on the app, and the API key is read from Secrets Manager
+          # at runtime via the compute role (alpha-infra #465, gov-bb #2046).
+          AMPLIFY_APP_ID: d3qiieyhd6mk7u
+          AMPLIFY_BRANCH: prod
+          APP_LABEL: analytics
+        run: |
+          set -euo pipefail
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE --region "$AWS_REGION" \
+            --query jobSummary.jobId --output text)
+          echo "Amplify $APP_LABEL job: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" --region "$AWS_REGION" \
+              --query job.summary.status --output text)
+            echo "[$i/30] $APP_LABEL: $STATUS"
+            case "$STATUS" in
+              SUCCEED) echo "✅ Amplify $APP_LABEL build succeeded"; exit 0 ;;
+              FAILED|CANCELLED) echo "❌ Amplify $APP_LABEL build $STATUS"; exit 1 ;;
+            esac
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish in 15 min"
+          exit 1
+
+      - name: Smoke test analytics URL
+        env:
+          URL: https://analytics.alpha.gov.bb
+          LABEL: analytics
+          # Public SSR: unparametrised requests 307 to the default range view.
+          EXPECT_CODES: "200,302,307"
+        run: bash .github/scripts/smoke-test-url.sh
+
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-chat-ingest, ssr-smoke, amplify-forms, amplify-landing, amplify-chat, amplify-feature-flagging]
+    needs: [setup, deploy-api, deploy-chat-ingest, ssr-smoke, amplify-forms, amplify-landing, amplify-chat, amplify-feature-flagging, amplify-analytics]
     if: always()
     runs-on: ubuntu-latest
     steps:
