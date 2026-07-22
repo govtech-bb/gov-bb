@@ -790,11 +790,43 @@ jobs:
           TAG="prod-$(date -u +%Y-%m-%d)-${SHA:0:7}"
           echo "Cutting release $TAG at $SHA"
 
+          # GitHub caps a release body at 125,000 chars. `--generate-notes`
+          # covers every PR since the PREVIOUS release tag — but on the
+          # first-ever release there is no previous tag, so the notes span the
+          # ENTIRE history and blow past the cap (HTTP 422 "body is too long").
+          # That also deadlocks: the failed create leaves no baseline tag, so the
+          # range never shrinks. Fix: generate notes via the API bounded to the
+          # previous tag, cap the body under the limit, and create from a file.
+          # When there is no previous release yet, cut a short baseline release to
+          # establish the tag; subsequent deploys then get proper bounded notes.
+          MAX=120000
+
+          PREV=$(gh release list --repo "$REPO" --limit 1 --json tagName -q '.[0].tagName // ""' 2>/dev/null || true)
+
+          if [ -n "$PREV" ]; then
+            echo "Previous release: $PREV — generating notes since then"
+            gh api "repos/$REPO/releases/generate-notes" \
+              -f tag_name="$TAG" -f target_commitish="$SHA" -f previous_tag_name="$PREV" \
+              --jq .body > notes.md \
+              || echo "_Automatic release-notes generation failed; see the run log._" > notes.md
+          else
+            echo "No previous release found — cutting a baseline release (no full-history notes)"
+            printf '%s\n' "Baseline production release. Prior commit history is not enumerated in this release body; future releases list PRs merged since the previous release." > notes.md
+          fi
+
+          # Stay safely under GitHub's 125,000-char release-body limit.
+          if [ "$(wc -c < notes.md)" -gt "$MAX" ]; then
+            echo "notes body $(wc -c < notes.md) bytes > $MAX — truncating"
+            head -c "$MAX" notes.md > notes.trunc.md
+            printf '\n\n_...release notes truncated to fit the 125,000-character release-body limit._\n' >> notes.trunc.md
+            mv notes.trunc.md notes.md
+          fi
+
           gh release create "$TAG" \
             --repo "$REPO" \
             --target "$SHA" \
             --title "Production release $TAG" \
-            --generate-notes \
+            --notes-file notes.md \
             --latest
 
           {
@@ -802,5 +834,5 @@ jobs:
             echo ""
             echo "**Tag:** \`$TAG\` — https://github.com/$REPO/releases/tag/$TAG"
             echo ""
-            gh release view "$TAG" --repo "$REPO" --json body -q .body
+            cat notes.md
           } >> "$GITHUB_STEP_SUMMARY"
