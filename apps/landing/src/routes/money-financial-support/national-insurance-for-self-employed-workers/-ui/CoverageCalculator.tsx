@@ -1,6 +1,6 @@
-import { Button, ErrorSummary, Link } from '@govtech-bb/react'
+import { Button, ErrorSummary, Link, linkVariants } from '@govtech-bb/react'
 import { useEffect, useRef, useState } from 'react'
-import type { KeyboardEvent, ReactNode } from 'react'
+import type { KeyboardEvent, ReactNode, RefObject } from 'react'
 import {
   earningsAtRisk,
   estimateBenefits,
@@ -70,7 +70,6 @@ const ICONS: Record<string, string> = {
   phone:
     '<path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"/>',
   arrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
-  arrowLeft: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
   chevronDown: '<path d="m6 9 6 6 6-6"/>',
   lock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
 }
@@ -220,10 +219,22 @@ export function CoverageCalculator() {
   >('')
 
   const topRef = useRef<HTMLDivElement>(null)
+  const incomeErrorRef = useRef<HTMLDivElement>(null)
+  const planErrorRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (typeof window !== 'undefined') window.scrollTo({ top: 0 })
     topRef.current?.focus()
   }, [screen])
+
+  // Move focus to (and scroll to) an error summary when validation fails on a
+  // step that stays on the same screen — mirrors the sibling calculators.
+  const focusErrorSummary = (ref: RefObject<HTMLDivElement | null>) => {
+    if (typeof window === 'undefined') return
+    window.requestAnimationFrame(() => {
+      ref.current?.focus()
+      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
 
   const go = (next: Screen) => setScreen(next)
 
@@ -259,6 +270,8 @@ export function CoverageCalculator() {
     if (Object.keys(next).length === 0) {
       setTierError('')
       go('plan')
+    } else {
+      focusErrorSummary(incomeErrorRef)
     }
   }
 
@@ -295,6 +308,7 @@ export function CoverageCalculator() {
 
         {screen === 'income' && (
           <IncomeStep
+            errorRef={incomeErrorRef}
             errors={errors}
             goodMonth={goodMonth}
             goodMonths={goodMonths}
@@ -311,10 +325,12 @@ export function CoverageCalculator() {
           <PlanStep
             earnings={earnings}
             error={tierError}
+            errorRef={planErrorRef}
             onBack={() => go('income')}
             onContinue={() => {
               if (!tier) {
                 setTierError('Select a contribution level')
+                focusErrorSummary(planErrorRef)
                 return
               }
               setTierError('')
@@ -381,7 +397,7 @@ function Hero({
   return (
     <div>
       <div
-        className="-mx-4 rounded-b-3xl px-4 pt-2 pb-8"
+        className="-mx-4 -mt-4 rounded-b-3xl px-4 pt-6 pb-8 sm:mx-0 sm:mt-0 sm:rounded-3xl sm:px-6 sm:pt-4"
         style={{
           backgroundImage:
             'radial-gradient(circle at 20% 20%, rgba(48,192,200,0.18), transparent 40%), radial-gradient(circle at 80% 0%, rgba(255,199,38,0.22), transparent 40%)',
@@ -404,14 +420,17 @@ function Hero({
         <div className="flex flex-col items-stretch gap-3 [&_button]:w-full [&_button]:justify-center">
           <Button onClick={onStart} type="button">
             Estimate my contributions
-            <Icon className="h-5 w-5" name="arrowRight" strokeWidth={2} />
           </Button>
-          <Button onClick={onBenefits} type="button" variant="tertiary">
-            See what benefits you may qualify for
+          <Button onClick={onBenefits} type="button" variant="secondary">
+            See what you may qualify for
           </Button>
-          <Button onClick={onRegister} type="button" variant="link">
+          <button
+            className={`${linkVariants()} py-2 text-center`}
+            onClick={onRegister}
+            type="button"
+          >
             I&rsquo;m ready to register for NISSS
-          </Button>
+          </button>
         </div>
       </div>
 
@@ -558,7 +577,6 @@ function MoneyField({
   hint,
   id,
   label,
-  max,
   onChange,
   prefix,
   value,
@@ -567,13 +585,10 @@ function MoneyField({
   hint: string
   id: string
   label: string
-  max?: number
   onChange: (v: string) => void
   prefix?: string
   value: string
 }) {
-  const num = Number.parseFloat(value.replace(/,/g, '').trim())
-  const overCeiling = max !== undefined && Number.isFinite(num) && num > max
   return (
     <div className={`${CARD} p-5`}>
       <label
@@ -607,20 +622,12 @@ function MoneyField({
           {error}
         </p>
       )}
-      {overCeiling && max !== undefined && (
-        <div
-          className="mt-4 border-blue-40 border-l-4 bg-grey-00/50 p-3 text-[1rem] text-black-00"
-          role="status"
-        >
-          The most NIS can insure is {money(max)} a month. Amounts above this do
-          not change your estimate.
-        </div>
-      )}
     </div>
   )
 }
 
 function IncomeStep({
+  errorRef,
   errors,
   goodMonth,
   goodMonths,
@@ -631,6 +638,7 @@ function IncomeStep({
   setSlowMonth,
   slowMonth,
 }: {
+  errorRef: RefObject<HTMLDivElement | null>
   errors: { goodMonth?: string; slowMonth?: string; goodMonths?: string }
   goodMonth: string
   goodMonths: string
@@ -641,8 +649,22 @@ function IncomeStep({
   setSlowMonth: (v: string) => void
   slowMonth: string
 }) {
+  const errorItems = [
+    errors.goodMonth && { text: errors.goodMonth, target: 'good-month' },
+    errors.slowMonth && { text: errors.slowMonth, target: 'slow-month' },
+    errors.goodMonths && { text: errors.goodMonths, target: 'good-months' },
+  ].filter(Boolean) as Array<{ text: string; target: string }>
   return (
     <div>
+      {errorItems.length > 0 && (
+        <div className="mb-6">
+          <ErrorSummary
+            errors={errorItems}
+            ref={errorRef}
+            title="There is a problem"
+          />
+        </div>
+      )}
       <ServiceCaption />
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
         Let&rsquo;s talk about your earnings.
@@ -658,7 +680,6 @@ function IncomeStep({
           hint="When work is steady and money comes in. A rough number is fine."
           id="good-month"
           label="What does a good month look like?"
-          max={NIS.MAX_MONTHLY_INSURABLE}
           onChange={setGoodMonth}
           prefix="$"
           value={goodMonth}
@@ -668,7 +689,6 @@ function IncomeStep({
           hint="When work is quiet: slow season, hurricane month, sickness. A rough number is fine."
           id="slow-month"
           label="And a slow month?"
-          max={NIS.MAX_MONTHLY_INSURABLE}
           onChange={setSlowMonth}
           prefix="$"
           value={slowMonth}
@@ -683,7 +703,7 @@ function IncomeStep({
         />
       </div>
 
-      <div className="mt-6 flex gap-3">
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
           Previous
         </Button>
@@ -727,6 +747,7 @@ const TIERS: Array<{
 function PlanStep({
   earnings,
   error,
+  errorRef,
   onBack,
   onContinue,
   setTier,
@@ -734,6 +755,7 @@ function PlanStep({
 }: {
   earnings: EarningsInputs
   error: string
+  errorRef: RefObject<HTMLDivElement | null>
   onBack: () => void
   onContinue: () => void
   setTier: (t: Tier) => void
@@ -756,6 +778,7 @@ function PlanStep({
         <div className="mb-6">
           <ErrorSummary
             errors={[{ text: error, target: 'tier-minimum' }]}
+            ref={errorRef}
             title="There is a problem"
           />
         </div>
@@ -909,7 +932,7 @@ function PlanStep({
         </p>
       </div>
 
-      <div className="mt-6 flex gap-3">
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
           Previous
         </Button>
@@ -1008,7 +1031,7 @@ function ResultStep({
           Sickness Benefit pays about <PerWeek weekly={b.sicknessWeekly} />,
           roughly two-thirds of your usual earnings, for up to{' '}
           {NIS.SICKNESS_MAX_WEEKS} weeks. If you&rsquo;re still unwell after
-          that, NISSS may pay for up to 26 more weeks.
+          that, NISSS may pay for up to {NIS.SICKNESS_MAX_WEEKS} more weeks.
         </>
       ),
     },
@@ -1141,7 +1164,7 @@ function ResultStep({
         </p>
       </div>
 
-      <div className="mt-6 flex gap-3">
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
           Previous
         </Button>
@@ -1251,7 +1274,7 @@ function NextSteps({
         </p>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-3">
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
           Previous
         </Button>
