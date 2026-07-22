@@ -1,4 +1,4 @@
-import { Button, ErrorSummary, Link } from '@govtech-bb/react'
+import { Button, ErrorSummary, Link, linkVariants } from '@govtech-bb/react'
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode, RefObject } from 'react'
 import {
@@ -397,7 +397,7 @@ function Hero({
   return (
     <div>
       <div
-        className="-mx-4 rounded-b-3xl px-4 pt-2 pb-8"
+        className="-mx-4 -mt-4 rounded-b-3xl px-4 pt-6 pb-8 sm:mx-0 sm:mt-0 sm:rounded-3xl sm:px-6 sm:pt-4"
         style={{
           backgroundImage:
             'radial-gradient(circle at 20% 20%, rgba(48,192,200,0.18), transparent 40%), radial-gradient(circle at 80% 0%, rgba(255,199,38,0.22), transparent 40%)',
@@ -420,14 +420,17 @@ function Hero({
         <div className="flex flex-col items-stretch gap-3 [&_button]:w-full [&_button]:justify-center">
           <Button onClick={onStart} type="button">
             Estimate my contributions
-            <Icon className="h-5 w-5" name="arrowRight" strokeWidth={2} />
           </Button>
           <Button onClick={onBenefits} type="button" variant="secondary">
-            See what benefits you may qualify for
+            See what you may qualify for
           </Button>
-          <Button onClick={onRegister} type="button" variant="secondary">
+          <button
+            className={`${linkVariants()} py-2 text-center`}
+            onClick={onRegister}
+            type="button"
+          >
             I&rsquo;m ready to register for NISSS
-          </Button>
+          </button>
         </div>
       </div>
 
@@ -700,7 +703,7 @@ function IncomeStep({
         />
       </div>
 
-      <div className="mt-6 flex gap-3">
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
           Previous
         </Button>
@@ -929,7 +932,7 @@ function PlanStep({
         </p>
       </div>
 
-      <div className="mt-6 flex gap-3">
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
           Previous
         </Button>
@@ -1161,7 +1164,7 @@ function ResultStep({
         </p>
       </div>
 
-      <div className="mt-6 flex gap-3">
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
           Previous
         </Button>
@@ -1271,7 +1274,7 @@ function NextSteps({
         </p>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-3">
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
           Previous
         </Button>
