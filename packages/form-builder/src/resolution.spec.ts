@@ -700,4 +700,99 @@ describe("hydrateForm", () => {
 
     expect(contract.contactDetails).toBeUndefined();
   });
+
+  // ─── API-parity fields (hydration consolidation, #2024) ───────────────────
+  // These lock the behaviours previously unique to the API's hydrateForm so the
+  // single shared implementation stays prod-faithful.
+
+  it("preserves the recipe's createdAt/updatedAt rather than regenerating them", () => {
+    const recipe = makeRecipe({
+      createdAt: "2025-03-04T09:00:00Z",
+      updatedAt: "2025-06-11T14:30:00Z",
+    });
+    const contract = hydrateForm(recipe, catalog);
+
+    expect(contract.createdAt).toBe("2025-03-04T09:00:00Z");
+    expect(contract.updatedAt).toBe("2025-06-11T14:30:00Z");
+  });
+
+  it("carries a step's conditionalTitle through to the hydrated step (#871)", () => {
+    const conditionalTitle = [
+      {
+        targetStepId: "applying-for-yourself",
+        targetFieldId: "applying-for-yourself",
+        operator: "equal" as const,
+        value: "yes",
+        title: "Provide your birth details",
+      },
+    ];
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "birth-details",
+          title: "Provide the person's birth details",
+          conditionalTitle,
+          elements: [],
+        },
+      ],
+    });
+
+    const contract = hydrateForm(recipe, catalog);
+    expect(contract.steps[0].conditionalTitle).toEqual(conditionalTitle);
+  });
+
+  it("omits step conditionalTitle when absent", () => {
+    const recipe = makeRecipe({
+      steps: [{ stepId: "step-1", title: "Step 1", elements: [] }],
+    });
+
+    const contract = hydrateForm(recipe, catalog);
+    expect(contract.steps[0].conditionalTitle).toBeUndefined();
+  });
+
+  it("carries a step's markdownContent through to the hydrated step", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "submission-confirmation",
+          title: "Done",
+          markdownContent: "## What you need to know\n\nContact us.",
+          elements: [],
+        },
+      ],
+    });
+
+    const contract = hydrateForm(recipe, catalog);
+    expect(contract.steps[0].markdownContent).toBe(
+      "## What you need to know\n\nContact us.",
+    );
+  });
+
+  it("omits step markdownContent when absent", () => {
+    const recipe = makeRecipe({
+      steps: [{ stepId: "step-1", title: "Step 1", elements: [] }],
+    });
+
+    const contract = hydrateForm(recipe, catalog);
+    expect(contract.steps[0].markdownContent).toBeUndefined();
+  });
+
+  it("lifts meta.closingDateTime onto the served contract (#1936)", () => {
+    const recipe = makeRecipe({
+      meta: {
+        visibility: "public",
+        closingDateTime: "2026-07-09T23:59:00-04:00",
+      },
+    });
+
+    const contract = hydrateForm(recipe, catalog);
+    expect(contract.closingDateTime).toBe("2026-07-09T23:59:00-04:00");
+  });
+
+  it("omits closingDateTime when the recipe sets none", () => {
+    const recipe = makeRecipe();
+    const contract = hydrateForm(recipe, catalog);
+
+    expect(contract.closingDateTime).toBeUndefined();
+  });
 });

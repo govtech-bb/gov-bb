@@ -39,6 +39,9 @@
       "path": "../../packages/database"
     },
     {
+      "path": "../../packages/form-builder"
+    },
+    {
       "path": "../../packages/form-types"
     },
     {

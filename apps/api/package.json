@@ -20,6 +20,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1052.0",
     "@govtech-bb/database": "workspace:*",
     "@govtech-bb/expressions": "workspace:*",
+    "@govtech-bb/form-builder": "workspace:*",
     "@govtech-bb/form-conditions": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
     "@govtech-bb/form-validation": "workspace:*",
