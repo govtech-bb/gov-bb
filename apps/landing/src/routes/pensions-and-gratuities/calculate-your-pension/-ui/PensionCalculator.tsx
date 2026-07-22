@@ -104,6 +104,9 @@ export function PensionCalculator() {
       next.endYear = 'Enter an end year between 1900 and 2100'
     } else if (startIsYear && endNum <= startNum) {
       next.endYear = 'The end year must be after the start year'
+    } else if (startIsYear && endNum - startNum > 65) {
+      next.endYear =
+        'The start and end years are more than 65 years apart. Check the years you entered.'
     }
 
     if (nopayVal) {
