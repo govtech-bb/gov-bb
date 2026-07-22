@@ -22,11 +22,22 @@ export interface PensionEstimate {
 
 export const SERVICE_WARNING_MONTHS = 120
 
+/**
+ * Pensionable service is capped at 600 months (50 years): at 600 months the
+ * full annual pension already equals the last salary, so uncapped service would
+ * produce an impossible pension above 100% of salary.
+ */
+export const MAX_PENSIONABLE_MONTHS = 600
+
 export function calculatePension(input: PensionInputs): PensionEstimate {
   const { startYear, endYear, nopayMonths, salary } = input
-  // Service is taken as entered (matching the prototype). Lower-bound at 0 so
-  // no-pay leave exceeding gross service can never produce a negative pension.
-  const months = Math.max(0, (endYear - startYear) * 12 - nopayMonths)
+  // Clamp to [0, 600]: the upper cap stops a wide year range yielding a pension
+  // above 100% of salary; the lower bound of 0 keeps the function safe if a
+  // caller passes no-pay leave that exceeds gross service.
+  const months = Math.max(
+    0,
+    Math.min((endYear - startYear) * 12 - nopayMonths, MAX_PENSIONABLE_MONTHS),
+  )
   const fullAnnual = (months / 600) * salary
   const reducedAnnual = fullAnnual * 0.75
   return {

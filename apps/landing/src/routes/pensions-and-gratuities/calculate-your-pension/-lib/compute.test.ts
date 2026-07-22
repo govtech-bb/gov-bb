@@ -67,6 +67,18 @@ describe('calculatePension', () => {
     expect(SERVICE_WARNING_MONTHS).toBe(120)
   })
 
+  it('caps pensionable service at 600 months so the pension never exceeds salary', () => {
+    // 2000 → 2100 is 1200 months; it must be capped to 600.
+    const r = calculatePension({
+      startYear: 2000,
+      endYear: 2100,
+      nopayMonths: 0,
+      salary: 100_000,
+    })
+    expect(r.months).toBe(600)
+    expect(r.fullAnnual).toBe(100_000)
+  })
+
   it('never returns a negative pension when no-pay leave exceeds gross service', () => {
     // 5 years = 60 months of service, but 100 months of no-pay leave.
     const r = calculatePension({
