@@ -79,6 +79,19 @@ describe('calculatePension', () => {
     expect(r.fullAnnual).toBe(100_000)
   })
 
+  it('never returns a negative pension when no-pay leave exceeds gross service', () => {
+    // 5 years = 60 months of service, but 100 months of no-pay leave.
+    const r = calculatePension({
+      startYear: 2000,
+      endYear: 2005,
+      nopayMonths: 100,
+      salary: 60_000,
+    })
+    expect(r.months).toBe(0)
+    expect(r.fullAnnual).toBe(0)
+    expect(r.gratuity).toBe(0)
+  })
+
   it('known case: 240 months @ $60k → $24k annual full, $75k gratuity', () => {
     const r = calculatePension({
       startYear: 2000,

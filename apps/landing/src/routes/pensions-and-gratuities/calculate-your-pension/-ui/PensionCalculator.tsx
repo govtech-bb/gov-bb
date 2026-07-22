@@ -194,11 +194,17 @@ export function PensionCalculator() {
       salary: sal,
     } = estimate
     const monthWord = (n: number) => `${n} month${n === 1 ? '' : 's'}`
-    const context =
-      `Based on ${monthWord(months)} of pensionable service ` +
-      `(${sy} to ${ey}` +
-      (np > 0 ? `, less ${monthWord(np)} of no-pay leave` : '') +
-      `) and a last annual salary of ${money(sal)}.`
+    // months is capped at 600 in compute(); when the entered span is larger,
+    // say so instead of showing a month count that contradicts the year range.
+    const isCapped = (ey - sy) * 12 - np > months
+    const context = isCapped
+      ? `Based on the maximum ${monthWord(months)} of pensionable service ` +
+        `(capped from your ${sy} to ${ey} service) and a last annual salary ` +
+        `of ${money(sal)}.`
+      : `Based on ${monthWord(months)} of pensionable service ` +
+        `(${sy} to ${ey}` +
+        (np > 0 ? `, less ${monthWord(np)} of no-pay leave` : '') +
+        `) and a last annual salary of ${money(sal)}.`
 
     return (
       <div className="container pt-4 pb-8 lg:pt-6 lg:pb-12">

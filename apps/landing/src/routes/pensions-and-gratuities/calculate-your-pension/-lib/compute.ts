@@ -31,9 +31,12 @@ export const MAX_PENSIONABLE_MONTHS = 600
 
 export function calculatePension(input: PensionInputs): PensionEstimate {
   const { startYear, endYear, nopayMonths, salary } = input
-  const months = Math.min(
-    (endYear - startYear) * 12 - nopayMonths,
-    MAX_PENSIONABLE_MONTHS,
+  // Clamp to [0, 600]: the upper cap stops a wide year range yielding a pension
+  // above 100% of salary; the lower bound of 0 keeps the function safe if a
+  // caller passes no-pay leave that exceeds gross service (never negative pay).
+  const months = Math.max(
+    0,
+    Math.min((endYear - startYear) * 12 - nopayMonths, MAX_PENSIONABLE_MONTHS),
   )
   const fullAnnual = (months / 600) * salary
   const reducedAnnual = fullAnnual * 0.75
