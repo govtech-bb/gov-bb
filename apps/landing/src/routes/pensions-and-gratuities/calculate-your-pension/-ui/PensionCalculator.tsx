@@ -7,7 +7,7 @@ import {
   Text,
 } from '@govtech-bb/react'
 import { useNavigate } from '@tanstack/react-router'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { calculatePension } from '../-lib/compute'
 import type { PensionEstimate } from '../-lib/compute'
 
@@ -71,6 +71,14 @@ export function PensionCalculator() {
   const [errors, setErrors] = useState<FieldErrors>({})
   const [estimate, setEstimate] = useState<PensionEstimate | null>(null)
   const errorSummaryRef = useRef<HTMLDivElement>(null)
+  const resultsRef = useRef<HTMLDivElement>(null)
+
+  // Move focus to the results region when an estimate appears, so screen-reader
+  // and keyboard users are taken to (and hear) the new results after the form
+  // is swapped out.
+  useEffect(() => {
+    if (estimate) resultsRef.current?.focus()
+  }, [estimate])
 
   function validate(): FieldErrors {
     const startVal = startYear.trim()
@@ -79,36 +87,34 @@ export function PensionCalculator() {
     const salaryVal = salary.trim()
     const next: FieldErrors = {}
 
+    const startIsYear = /^\d+$/.test(startVal)
+    const endIsYear = /^\d+$/.test(endVal)
     const startNum = Number.parseInt(startVal, 10)
     const endNum = Number.parseInt(endVal, 10)
 
     if (!startVal) {
       next.startYear = 'Enter the year you started pensionable service'
-    } else if (
-      !Number.isInteger(startNum) ||
-      startNum < 1900 ||
-      startNum > 2100
-    ) {
+    } else if (!startIsYear || startNum < 1900 || startNum > 2100) {
       next.startYear = 'Enter a start year between 1900 and 2100'
     }
 
     if (!endVal) {
       next.endYear = 'Enter the year you stopped or will retire'
-    } else if (!Number.isInteger(endNum) || endNum < 1900 || endNum > 2100) {
+    } else if (!endIsYear || endNum < 1900 || endNum > 2100) {
       next.endYear = 'Enter an end year between 1900 and 2100'
-    } else if (Number.isInteger(startNum) && endNum <= startNum) {
+    } else if (startIsYear && endNum <= startNum) {
       next.endYear = 'The end year must be after the start year'
     }
 
     if (nopayVal) {
-      const nopayNum = Number.parseFloat(nopayVal)
-      if (!Number.isFinite(nopayNum) || nopayNum < 0) {
-        next.nopayMonths = 'Months of no-pay leave cannot be a negative number'
+      if (!/^\d+$/.test(nopayVal)) {
+        next.nopayMonths =
+          'Months of no-pay leave must be a whole number of 0 or more'
       } else if (
-        Number.isInteger(startNum) &&
-        Number.isInteger(endNum) &&
+        startIsYear &&
+        endIsYear &&
         endNum > startNum &&
-        nopayNum >= (endNum - startNum) * 12
+        Number.parseInt(nopayVal, 10) >= (endNum - startNum) * 12
       ) {
         next.nopayMonths =
           'No-pay leave cannot be equal to or more than your total service'
@@ -118,8 +124,13 @@ export function PensionCalculator() {
     if (!salaryVal) {
       next.salary = 'Enter your last annual salary'
     } else {
-      const salaryNum = Number.parseFloat(salaryVal)
-      if (!Number.isFinite(salaryNum) || salaryNum <= 0) {
+      const cleanedSalary = salaryVal.replace(/,/g, '')
+      const salaryNum = Number.parseFloat(cleanedSalary)
+      if (
+        !/^\d+(\.\d+)?$/.test(cleanedSalary) ||
+        !Number.isFinite(salaryNum) ||
+        salaryNum <= 0
+      ) {
         next.salary = 'Last annual salary must be an amount greater than 0'
       }
     }
@@ -150,8 +161,8 @@ export function PensionCalculator() {
       calculatePension({
         startYear: Number.parseInt(startYear, 10),
         endYear: Number.parseInt(endYear, 10),
-        nopayMonths: nopayVal ? Number.parseFloat(nopayVal) : 0,
-        salary: Number.parseFloat(salary.trim()),
+        nopayMonths: nopayVal ? Number.parseInt(nopayVal, 10) : 0,
+        salary: Number.parseFloat(salary.trim().replace(/,/g, '')),
       }),
     )
 
@@ -191,7 +202,12 @@ export function PensionCalculator() {
 
     return (
       <div className="container pt-4 pb-8 lg:pt-6 lg:pb-12">
-        <div className="flex flex-col gap-6 md:w-2/3">
+        <section
+          aria-live="polite"
+          className="flex flex-col gap-6 focus:outline-none md:w-2/3"
+          ref={resultsRef}
+          tabIndex={-1}
+        >
           <ServiceTitle />
           <Heading as="h1">Your estimated pension</Heading>
           <Text as="p" className="text-mid-grey-00" size="caption">
@@ -307,7 +323,7 @@ export function PensionCalculator() {
               </ul>
             </div>
           </div>
-        </div>
+        </section>
       </div>
     )
   }
