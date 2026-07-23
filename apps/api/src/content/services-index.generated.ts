@@ -422,11 +422,6 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
-    slug: "welfare-department",
-    title: "Welfare Department",
-    visibility: "public",
-  },
-  {
     slug: "what-we-mean-by-alpha",
     title: "What we mean by alpha",
     visibility: "public",
