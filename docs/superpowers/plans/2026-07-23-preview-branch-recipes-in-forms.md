@@ -26,15 +26,18 @@
 
 Produces `apps/forms/contracts/preview/<formId>.json` for every recipe, using the real hydration engine, with `processors` stripped. Models the existing `scripts/validate-recipes.ts`.
 
+> **Executed variant:** `scripts/` is not a tested nx project, so the pure core + its spec live in **`apps/api/src/registry/`** (covered by apps/api's nx vitest); `scripts/generate-preview-contracts.ts` is the thin fs wrapper that imports it. Confirmed during execution: `tsx` resolves `@govtech-bb/registry` and the apps/api import with **no prior package build**, so the `amplify.yml` step needs no `registry:build` prefix.
+
 **Files:**
-- Create: `scripts/generate-preview-contracts.ts`
-- Test: `scripts/generate-preview-contracts.spec.ts`
+- Create: `apps/api/src/registry/preview-contract.ts` (pure `hydrateRecipeForPreview`)
+- Test: `apps/api/src/registry/preview-contract.spec.ts`
+- Create: `scripts/generate-preview-contracts.ts` (thin fs wrapper)
 - Modify: `package.json` (add `generate:preview-contracts` script, next to `validate-recipes` at line 30)
 - Create: `apps/forms/contracts/preview/.gitkeep`
 - Modify: `.gitignore` (ignore generated preview contracts)
 
 **Interfaces:**
-- Produces: `hydrateRecipeForPreview(recipe: ServiceContractRecipe): Promise<ServiceContract>` (exported from `scripts/generate-preview-contracts.ts`) — hydrates + strips `processors` + validates. Throws `UnresolvableComponentError` on an unknown ref.
+- Produces: `hydrateRecipeForPreview(recipe: ServiceContractRecipe): Promise<ServiceContract>` (exported from `apps/api/src/registry/preview-contract.ts`) — hydrates + strips `processors` + validates. Throws `UnresolvableComponentError` on an unknown ref.
 - Produces: the CLI `pnpm generate:preview-contracts`, writing `apps/forms/contracts/preview/<formId>.json`.
 
 - [ ] **Step 1: Add the output dir placeholder and gitignore rule**
@@ -574,7 +577,7 @@ In `amplify.yml`, in the `apps/forms` `build.commands` (L91-93), insert the cond
           commands:
             - pnpm exec nx run form-types:build
             - pnpm exec nx run form-conditions:build
-            - if [ "$VITE_PREVIEW_CONTRACTS" = "1" ]; then pnpm exec nx run registry:build && pnpm generate:preview-contracts; fi
+            - if [ "$VITE_PREVIEW_CONTRACTS" = "1" ]; then pnpm generate:preview-contracts; fi
             - pnpm exec nx run forms:build
 ```
 
