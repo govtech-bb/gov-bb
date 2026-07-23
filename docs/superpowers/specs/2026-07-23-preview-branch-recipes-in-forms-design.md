@@ -51,38 +51,42 @@ A standalone `tsx` script, `scripts/generate-preview-contracts.ts`, modelled on 
 - Imports `hydrateForm` (+ `UnresolvableComponentError`) from `apps/api/src/registry/resolution.ts`, `BUILTIN_REGISTRY` from `@govtech-bb/registry`, and `serviceContractRecipeSchema` + `serviceContractSchema` from `@govtech-bb/form-types`.
 - Reads **all** recipes from `apps/api/src/forms/form-definitions/recipes/*.json` (scope decision: generate all — recipes are tiny and this avoids wiring nx-affected recipe detection).
 - Validates each raw recipe with `serviceContractRecipeSchema` (the same schema the runtime loader applies), hydrates it with a `BUILTIN_REGISTRY`-backed resolver, and validates the output against `serviceContractSchema`.
+- **Strips `processors`** from the hydrated contract before writing — the runtime API strips them on the public/client path (`findByFormId`), so we must too, or webhook/processor config (endpoints, `secretEnv` names, mappings) would be baked into the public preview bundle.
 - Writes one file per form to `apps/forms/contracts/preview/<formId>.json`.
 - **Fails loudly** (non-zero exit) if a recipe references a non-builtin component (`UnresolvableComponentError`) — so the preview never silently diverges from what the API would serve.
 
 The generated dir (`apps/forms/contracts/preview/`) is git-ignored (build artifact, not checked in). The generator does not import NestJS, touch a DB, or need secrets — matching `resolution.ts`'s purity.
 
-### 2. Forms loader fallback
+### 2. Forms loader — prefer bundled contract in preview mode
 
-Extend the contract fetch path (`fetchFormDefinition` in `apps/forms/src/lib/api/forms.ts`, surfaced through `contractQueryOptions`) so that:
+Extend `fetchContract` in [apps/forms/src/lib/form-builder/form-fetcher.ts](../../../apps/forms/src/lib/form-builder/form-fetcher.ts) (the existing static-contract seam) so that:
 
-- When `import.meta.env.VITE_PREVIEW_CONTRACTS` is set **and** the API responds 404 for a `formId`, load the bundled `apps/forms/contracts/preview/<formId>.json`, validate against `serviceContractSchema`, and return it.
-- When the flag is unset (production, sandbox, normal local dev), behaviour is unchanged — no fallback, no bundled preview contracts referenced.
+- When `import.meta.env.VITE_PREVIEW_CONTRACTS` is set, **prefer** the bundled `apps/forms/contracts/preview/<formId>.json` if one exists for the requested `formId` — return it (mapped to locale) without hitting the network. If none exists, fall through to the normal API fetch.
+- **Prefer, not fall-back-on-404**: because the generator emits **all** recipes, a form that was *changed* in the branch (not just newly added) also has a bundled contract; preferring it means the preview reflects the branch, not a stale sandbox copy. A 404-only fallback would show the old version of changed forms.
+- Bundled contracts are discovered via Vite `import.meta.glob("../../../contracts/preview/*.json")`; in normal builds the dir is empty so the glob yields nothing and behaviour is unchanged.
+- When the flag is unset (production, sandbox, normal local dev, and normal frontend-only PR previews), the whole branch is dead code — no bundled contracts referenced.
 
 ### 3. Submission short-circuit
 
-In preview mode (`VITE_PREVIEW_CONTRACTS` set), a real `POST /submissions` to sandbox would 404 because the form doesn't exist there. Short-circuit submission client-side to a synthetic success so the reviewer reaches the confirmation screen. This path is only reachable when the flag is set.
+In preview mode (`VITE_PREVIEW_CONTRACTS` set), a real `POST /submissions` to sandbox would fail because the branch form doesn't exist there. Short-circuit `postFormSubmission` in [apps/forms/src/lib/api/forms.ts](../../../apps/forms/src/lib/api/forms.ts) to return a synthetic success envelope (a clearly-fake `referenceCode` such as `PREVIEW-NOT-SAVED`), so the existing `resolveSubmissionOutcome` → `setSubmissionState` machinery advances to the confirmation step. This path is only reachable when the flag is set; nothing is persisted.
 
-### 4. CI hook
+### 4. CI wiring
 
-In the `preview-forms` job of [.github/workflows/pr-preview.yml](../../../.github/workflows/pr-preview.yml):
+The forms build does **not** run in [.github/workflows/pr-preview.yml](../../../.github/workflows/pr-preview.yml); that job only triggers an Amplify `RELEASE` job, and the actual build runs on Amplify's servers via the repo-root [amplify.yml](../../../amplify.yml). So the wiring spans three files:
 
-- Run the contract generator before the forms build.
-- Set `VITE_PREVIEW_CONTRACTS=1` for that build only.
-- Append the direct `/forms/<formId>` preview link(s) for the recipes changed in the PR to the existing PR preview comment, so reviewers click straight through. (Direct-link only — the forms index is not modified.)
+- **[amplify.yml](../../../amplify.yml) forms `build` phase:** add a command *before* `forms:build` that runs the generator **only when the flag is set** — `- if [ "$VITE_PREVIEW_CONTRACTS" = "1" ]; then pnpm generate:preview-contracts; fi`. Sandbox/prod never set the flag, so they never generate and are untouched.
+- **[pr-preview.yml](../../../.github/workflows/pr-preview.yml) `setup` job:** a recipe JSON is not a forms nx-dependency, so a recipe-only PR leaves `forms` unaffected and no forms preview would build. Detect changed `recipes/*.json` files, force `forms=true` when any changed, and emit their formIds as a `preview-recipe-ids` output.
+- **[pr-preview.yml](../../../.github/workflows/pr-preview.yml) `preview-forms` job:** when `preview-recipe-ids` is non-empty, set `VITE_PREVIEW_CONTRACTS=1` as a **branch-scoped** Amplify env var via `aws amplify update-branch --environment-variables` (mirroring the existing `preview-analytics` pattern) before `start-job`. Gating on recipe changes means normal frontend-only previews keep talking to the sandbox API with real submissions — behaviour preserved.
+- **[pr-preview.yml](../../../.github/workflows/pr-preview.yml) `comment` job:** append direct `<FORMS_URL>/forms/<formId>` link(s) for the changed recipes to the sticky preview comment, so reviewers click straight through. (Direct-link only — the forms index is not modified.)
 
 ## Data flow
 
 ```
 branch recipe JSON
-  → hydrateForm(recipe, BUILTIN_REGISTRY resolver)   [build time, in CI]
-  → serviceContractSchema validate
-  → apps/forms/contracts/preview/<formId>.json         [bundled into forms preview build]
-  → forms loader: API 404 + VITE_PREVIEW_CONTRACTS → load bundled contract
+  → hydrateForm(recipe, BUILTIN_REGISTRY resolver)     [Amplify build phase, when VITE_PREVIEW_CONTRACTS=1]
+  → strip processors → serviceContractSchema validate
+  → apps/forms/contracts/preview/<formId>.json          [bundled into the forms preview build by nx/Vite]
+  → forms loader (preview mode): prefer bundled contract for the formId
   → same ServiceContract, same renderer as production
 ```
 
