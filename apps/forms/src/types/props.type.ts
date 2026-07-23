@@ -128,6 +128,8 @@ export interface SubmissionConfirmationProps {
   markdownContent?: string;
   contactDetails?: ContactDetails;
   onTryAgain?: () => void;
+  /** Fired when the citizen clicks "Continue to payment" (#1955 analytics). */
+  onPaymentInitiated?: () => void;
   submissionState?: SubmissionState;
   /**
    * Target for the "Give feedback on this service" link. When set, the feedback

@@ -327,28 +327,69 @@ export function shapeFunnel(funnelRows: FunnelStepResult[]): FunnelStage[] {
 }
 
 /**
- * Step funnel labelled by step identity: Start → each defined step ("Step N:
- * <title>", declared order) → Submit. Counts are event views (`form-start`,
- * per-step `form-step-view`, `form-submit`). Keyed by stepId (not the funnel's
- * positional "Step N", which branching makes visitor-relative), so a conditional
- * step a visitor's answers skip shows fewer or zero views. `dropoffPct` is 0 —
- * step-over-step drop-off isn't meaningful across branch points.
+ * Post-submit / payment tail counts for the step funnel (#1955). All optional:
+ * `reviewCount`/`confirmationCount` are appended when provided; the payment
+ * stages render only when `paymentInitiatedCount > 0` (payment forms are
+ * detected by event presence — the public forms API doesn't expose processors).
+ */
+export interface StepFunnelTail {
+  reviewCount?: number
+  confirmationCount?: number
+  paymentInitiatedCount?: number
+  paymentSuccessCount?: number
+}
+
+/**
+ * Step funnel labelled by step identity, covering the full journey (#1955):
+ * Start → each defined step ("Step N: <title>", declared order) → Review →
+ * Submit → Confirmation → (payment forms) Payment initiated → Payment success.
+ * Counts are event views (`form-start`, per-step `form-step-view`,
+ * `form-review`, `form-submit`, `form-confirmation-view`, `payment-*`). Steps
+ * are keyed by stepId (not the funnel's positional "Step N", which branching
+ * makes visitor-relative), so a conditional step a visitor's answers skip shows
+ * fewer or zero views. `dropoffPct` is 0 throughout — step-over-step drop-off
+ * isn't meaningful across the branch points in the step portion, so the raw
+ * counts (not a computed rate) carry the drop-off signal.
  */
 export function buildStepFunnel(
   startCount: number,
   submitCount: number,
   orderedSteps: { stepId: string; title: string }[],
   reachedByStep: Record<string, number>,
+  tail: StepFunnelTail = {},
 ): FunnelStage[] {
-  return [
+  const stages: FunnelStage[] = [
     { label: 'Start', count: startCount, dropoffPct: 0 },
     ...orderedSteps.map((s, i) => ({
       label: `Step ${i + 1}: ${s.title}`,
       count: reachedByStep[s.stepId] ?? 0,
       dropoffPct: 0,
     })),
-    { label: 'Submit', count: submitCount, dropoffPct: 0 },
   ]
+  if (tail.reviewCount !== undefined) {
+    stages.push({ label: 'Review', count: tail.reviewCount, dropoffPct: 0 })
+  }
+  stages.push({ label: 'Submit', count: submitCount, dropoffPct: 0 })
+  if (tail.confirmationCount !== undefined) {
+    stages.push({
+      label: 'Confirmation',
+      count: tail.confirmationCount,
+      dropoffPct: 0,
+    })
+  }
+  if ((tail.paymentInitiatedCount ?? 0) > 0) {
+    stages.push({
+      label: 'Payment initiated',
+      count: tail.paymentInitiatedCount ?? 0,
+      dropoffPct: 0,
+    })
+    stages.push({
+      label: 'Payment success',
+      count: tail.paymentSuccessCount ?? 0,
+      dropoffPct: 0,
+    })
+  }
+  return stages
 }
 
 // The current app emits `errors: network | payment-init | server`; older data
@@ -965,6 +1006,7 @@ export async function fetchFormDetailData(
       errorCount,
       fieldErrorsRaw,
       submitErrRows,
+      paymentReturnedRows,
       def,
     ] = await Promise.all([
       client.reportFunnel(cfg.formsWebsiteId, {
@@ -1011,6 +1053,13 @@ export async function fetchFormDetailData(
         cfg.formsWebsiteId,
         `${formId}:form-submit-error`,
         'errors',
+        r,
+      ),
+      eventValues(
+        client,
+        cfg.formsWebsiteId,
+        `${formId}:payment-returned`,
+        'outcome',
         r,
       ),
       fetchFormDefinition(cfg, formId),
@@ -1077,6 +1126,16 @@ export async function fetchFormDetailData(
         entry.counts['form-submit'] ?? 0,
         def.steps,
         reachedByStep,
+        {
+          reviewCount: entry.counts['form-review'] ?? 0,
+          confirmationCount: entry.counts['form-confirmation-view'] ?? 0,
+          paymentInitiatedCount: entry.counts['payment-initiated'] ?? 0,
+          // `payment-returned` splits by outcome; the funnel's terminal payment
+          // stage is the successful returns only.
+          paymentSuccessCount: paymentReturnedRows
+            .filter((v) => String(v.value) === 'success')
+            .reduce((s, v) => s + v.total, 0),
+        },
       ),
       fieldFailures,
       submitError: shapeSubmitError(

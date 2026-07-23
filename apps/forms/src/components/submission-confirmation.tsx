@@ -33,6 +33,7 @@ export default function SubmissionConfirmation({
   markdownContent,
   contactDetails,
   onTryAgain,
+  onPaymentInitiated,
   submissionState,
   feedbackUrl,
 }: SubmissionConfirmationProps) {
@@ -312,7 +313,11 @@ export default function SubmissionConfirmation({
               {paymentItem("Quantity:", quantity)}
               {paymentItem("Amount:", formattedAmount)}
             </div>
-            <a className="govbb-btn" href={paymentUrl}>
+            <a
+              className="govbb-btn"
+              href={paymentUrl}
+              onClick={() => onPaymentInitiated?.()}
+            >
               Continue to payment
             </a>
             <p className="govbb-payment__note">

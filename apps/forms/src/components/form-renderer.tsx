@@ -29,6 +29,10 @@ import {
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
+import {
+  confirmationOutcome,
+  paymentReturnOutcome,
+} from "../lib/confirmation-analytics";
 import { reviewDwellSeconds } from "./review-dwell";
 import { buildValidationErrorPayload } from "./validation-error-event";
 import { stepCompleteEventName } from "./step-events";
@@ -192,6 +196,36 @@ export default function FormRenderer({
       navigateToStep("check-your-answers");
     }
   }, [currentStep?.stepId, submissionState, navigateToStep]);
+
+  // Confirmation-page analytics (#1955): the true end of the journey. Fired
+  // once per confirmation view — `form-confirmation-view` always, plus
+  // `payment-returned` when the citizen has come back from EzPay. Guarded by a
+  // ref so a submissionState identity change (persist effect) doesn't re-fire.
+  const confirmationTracked = React.useRef(false);
+  React.useEffect(() => {
+    if (currentStep?.stepId !== "submission-confirmation" || !submissionState) {
+      confirmationTracked.current = false;
+      return;
+    }
+    if (confirmationTracked.current) return;
+    confirmationTracked.current = true;
+
+    const category = formCategory(formMeta.formId);
+    trackEvent("form-confirmation-view", {
+      form: formMeta.formId,
+      category,
+      outcome: confirmationOutcome(submissionState),
+      hasPayment: submissionState.hasPayment,
+    });
+    const returned = paymentReturnOutcome(submissionState);
+    if (returned) {
+      trackEvent("payment-returned", {
+        form: formMeta.formId,
+        category,
+        outcome: returned,
+      });
+    }
+  }, [currentStep?.stepId, submissionState, formMeta.formId]);
 
   const reviewEnteredAt = React.useRef<number | null>(null);
   React.useEffect(() => {
@@ -519,6 +553,13 @@ function ActiveStep({
           markdownContent={currentStep.markdownContent}
           contactDetails={formMeta.contactDetails}
           onTryAgain={() => navigateToStep("check-your-answers")}
+          onPaymentInitiated={() =>
+            trackEvent("payment-initiated", {
+              form: formMeta.formId,
+              category: formCategory(formMeta.formId),
+              amount: submissionState?.amount ?? "",
+            })
+          }
           submissionState={submissionState}
           feedbackUrl={feedbackUrl}
         />
