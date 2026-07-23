@@ -28,23 +28,33 @@ Build-time contract generation + a preview-only static fallback in the forms loa
 In the per-PR forms preview build, run the real hydration engine over the branch's recipe files to emit resolved `ServiceContract` JSON, bundle it into the forms build, and have the forms loader fall back to the bundled contract when the sandbox API returns 404 — gated behind a build flag so **production/sandbox forms builds are unchanged**.
 
 Alternatives considered and rejected:
-- **In-browser hydration** (bundle raw recipes + `hydrateForm` into the client): pulls API resolution + registry into the client bundle, larger, diverges more from prod. Rejected.
+- **In-browser hydration** (bundle raw recipes + `hydrateForm` into the client): pulls API resolution + registry into the client bundle, larger, diverges more from prod, and would bake `processors` config (webhook endpoints, `secretEnv` names) into the public bundle — a secret-adjacent leak the API deliberately avoids by stripping `processors`. Rejected.
 - **Static "preview API"** (serve generated JSON over the network from the preview Amplify app): more moving parts than the existing build-time static-import seam. Rejected.
+- **Move recipes to a shared package + bake all contracts at build (SSG) for every environment:** would make previews native and drop the API round-trip, but is **not** behaviour-preserving — visibility, maintenance mode and recipe changes would need a forms rebuild instead of a live `service_status` DB toggle. Rejected on the behaviour-preserving requirement.
 - **Per-branch API (Option 4):** full fidelity but heavy ECS/DB infra + cost. Out of scope; noted as the upgrade path if fidelity needs grow.
+
+## Decisions & deferred scope
+
+Recorded from the design discussion so the reasoning survives:
+
+- **Fidelity = render + flow only.** The reviewer walks the form and sees fields/validation/conditional logic; real submission, server-side visibility, and webhook/email processors are explicitly out of scope. This is what unlocked the cheap build-time approach over a per-branch API.
+- **API stays the runtime source of truth.** All dynamic, DB-backed behaviour (visibility/maintenance via `service_status`, processor merge via `form_config`, `?preview=`/`?draft=` tokens) remains server-side and unchanged. The preview path is additive and only active under `VITE_PREVIEW_CONTRACTS`.
+- **Recipe-file relocation to a shared package is DEFERRED.** Moving `recipes/*.json` into `packages/form-recipes` is organizational only — it does **not** make the preview cheaper (the generator reads recipes just as easily in place) and it touches the production deploy path (the `__dirname`-relative `DEFAULT_RECIPES_ROOT` in `recipe-file-loader.service.ts`, the nx `assets` glob in `apps/api/project.json`, and the `COPY` in `apps/api/Dockerfile`), plus `scripts/validate-recipes.ts`, `scripts/collapse-recipe-versions.ts`, `packages/database/scripts/dump-recipes-to-files.ts`, and two specs. Given the blast radius (a wrong asset path = every form 404s in prod) against a purely cosmetic benefit, it is tracked as a separate follow-up, not part of this work.
+- **Extracting `resolution.ts` into a package is also deferred** for the same reason — the generator imports it in place. It is already pure, so packaging it later is low-risk if a second consumer appears.
 
 ## Components
 
 ### 1. Contract generator
 
-A standalone script (run via `tsx`, wired as an nx target), depending only on pure code:
+A standalone `tsx` script, `scripts/generate-preview-contracts.ts`, modelled on the existing [scripts/validate-recipes.ts](../../../scripts/validate-recipes.ts) (same cross-package import style, same `fs.readdir` over the recipes dir) and exposed as a root `package.json` script. It reads recipes **in place** — no relocation of the recipe files (see [Decisions](#decisions--deferred-scope)):
 
-- Imports `hydrateForm` from `apps/api/src/registry/resolution.ts` and `BUILTIN_REGISTRY` from `@govtech-bb/registry`.
-- Reads **all** recipes in `apps/api/src/forms/form-definitions/recipes/*.json` (scope decision: generate all — recipes are tiny and this avoids wiring nx-affected recipe detection).
-- Validates each raw recipe the same way the loader does, hydrates it with a `BUILTIN_REGISTRY`-backed resolver, and validates the output against `serviceContractSchema`.
+- Imports `hydrateForm` (+ `UnresolvableComponentError`) from `apps/api/src/registry/resolution.ts`, `BUILTIN_REGISTRY` from `@govtech-bb/registry`, and `serviceContractRecipeSchema` + `serviceContractSchema` from `@govtech-bb/form-types`.
+- Reads **all** recipes from `apps/api/src/forms/form-definitions/recipes/*.json` (scope decision: generate all — recipes are tiny and this avoids wiring nx-affected recipe detection).
+- Validates each raw recipe with `serviceContractRecipeSchema` (the same schema the runtime loader applies), hydrates it with a `BUILTIN_REGISTRY`-backed resolver, and validates the output against `serviceContractSchema`.
 - Writes one file per form to `apps/forms/contracts/preview/<formId>.json`.
-- **Fails loudly** (non-zero exit) if a recipe references a non-builtin component, mirroring `UnresolvableComponentError` — so the preview never silently diverges from what the API would serve.
+- **Fails loudly** (non-zero exit) if a recipe references a non-builtin component (`UnresolvableComponentError`) — so the preview never silently diverges from what the API would serve.
 
-The generated dir is git-ignored (build artifact, not checked in).
+The generated dir (`apps/forms/contracts/preview/`) is git-ignored (build artifact, not checked in). The generator does not import NestJS, touch a DB, or need secrets — matching `resolution.ts`'s purity.
 
 ### 2. Forms loader fallback
 
@@ -90,5 +100,5 @@ Only the *source* of the contract differs from production; the shape, schema, an
 
 - **Divergence from prod hydration.** Mitigated by importing the *same* `hydrateForm` and `BUILTIN_REGISTRY` the API uses, and validating output against the shared `serviceContractSchema`. If a recipe uses a custom (DB-backed) component, the generator fails loudly rather than emitting a wrong contract.
 - **Preview code leaking into production.** Mitigated by the `VITE_PREVIEW_CONTRACTS` flag being set only in the `preview-forms` CI job; all fallback/short-circuit code is dead unless the flag is set. No preview token or secret is involved, so nothing sensitive is bundled.
-- **Cross-app import (`apps/forms` build depending on `apps/api` resolution code).** The generator, not the forms app, imports `resolution.ts`; the forms app only imports generated JSON. Keep the generator as a build step whose dependency on `apps/api` is confined to the pure `resolution.ts` + the two packages.
+- **Cross-app import (a root script reaching into `apps/api` internals).** The generator imports `apps/api/src/registry/resolution.ts` directly; the forms app itself only imports generated JSON, never `apps/api`. This root-script → app-internal reach is the one slightly unusual coupling (the existing `validate-recipes.ts` only reaches into packages, not app source). It's confined to the *pure* `resolution.ts` + the two packages and is tolerable for a build tool; if it ever grates, the clean resolution is the deferred `resolution.ts` package extraction — no redesign needed.
 ```
