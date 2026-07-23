@@ -1,7 +1,7 @@
 ---
 title: "Apply for a licence to operate a temporary restaurant"
 stage: "alpha"
-visibility: preview
+visibility: public
 publish_date: 2026-07-23
 form_id: apply-for-temporary-restaurant-licence
 ---

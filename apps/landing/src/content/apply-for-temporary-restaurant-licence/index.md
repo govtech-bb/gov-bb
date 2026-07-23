@@ -2,7 +2,7 @@
 title: "Apply for a licence to operate a temporary restaurant"
 description: "Apply online for a licence to serve food or drink at a temporary event in Barbados, such as a stall, booth or bar operating for up to 30 days. Issued by the Environmental Health Department."
 stage: "alpha"
-visibility: preview
+visibility: public
 featured: false
 publish_date: 2026-07-23
 category: business-trade

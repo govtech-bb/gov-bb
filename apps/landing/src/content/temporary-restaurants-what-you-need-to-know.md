@@ -2,7 +2,7 @@
 title: "Temporary restaurants: what you need to know"
 description: "What counts as a temporary restaurant in Barbados, who must apply for a licence, and what your event needs — including food safety, paying for environmental health officers, and setting up your stall."
 stage: "alpha"
-visibility: preview
+visibility: public
 service_type: information
 publish_date: 2026-07-23
 category: business-trade
