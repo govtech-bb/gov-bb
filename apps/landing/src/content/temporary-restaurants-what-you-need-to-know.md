@@ -10,7 +10,7 @@ category: business-trade
 
 If you will serve food or drink to the public at an event, this page explains what the rules are and what you need to do. When you are ready, you can [apply for a licence to operate a temporary restaurant](/business-trade/apply-for-temporary-restaurant-licence).
 
-<h2 id="what-counts">What counts as a temporary restaurant</h2>
+## What counts as a temporary restaurant
 
 A **temporary restaurant** is a food stall, booth, tent, table, bar or any similar set-up where food or drink is prepared or served to the public for up to 30 days.
 
@@ -32,13 +32,13 @@ If someone else is organising your event, ask them for a letter confirming you c
 
 Apply at least **14 days** before your event. Applications made later than this may not be accepted.
 
-<h2 id="before-your-event">Before your event</h2>
+## Before your event
 
 - Everyone handling food must have a valid medical certificate, and carry it during the event.
 - Collect your licence from the polyclinic before your event, and display it at your stall. Show it if an officer asks.
 - Officers may give extra instructions on the day, depending on what you are serving — please follow them.
 
-<h2 id="paying">Paying for environmental health officers</h2>
+## Paying for environmental health officers
 
 There is no application fee. If you are organising the event, you must pay any overtime costs for the officers attending. If there are overtime costs:
 

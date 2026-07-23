@@ -2,7 +2,7 @@
 title: "Apply for a licence to operate a temporary restaurant"
 description: "Apply online for a licence to serve food or drink at a temporary event in Barbados, such as a stall, booth or bar operating for up to 30 days. Issued by the Environmental Health Department."
 stage: "alpha"
-visibility: public
+visibility: preview
 featured: false
 publish_date: 2026-07-23
 category: business-trade
@@ -14,13 +14,13 @@ Use this service to apply for a licence to operate a temporary restaurant — fo
 
 ## Who needs a licence
 
-You need a licence if you will serve any food or drink at an event, whether you sell it or give it away, including free samples. Both the event organiser and each food vendor must apply. Read [what counts as a temporary restaurant, who must apply, and what your event needs](/business-trade/temporary-restaurants-what-you-need-to-know#what-counts).
+You need a licence if you will serve any food or drink at an event, whether you sell it or give it away, including free samples. Both the event organiser and each food vendor must apply. Read [what counts as a temporary restaurant, who must apply, and what your event needs](/business-trade/temporary-restaurants-what-you-need-to-know#what-counts-as-a-temporary-restaurant).
 
 ## When to apply and what it costs
 
 Apply at least **14 days** before your event. Applications made later than this may not be accepted.
 
-There is no application fee. If you are organising the event, you must pay any overtime costs for the environmental health officers attending. See [how to pay](/business-trade/temporary-restaurants-what-you-need-to-know#paying).
+There is no application fee. If you are organising the event, you must pay any overtime costs for the environmental health officers attending. See [how to pay](/business-trade/temporary-restaurants-what-you-need-to-know#paying-for-environmental-health-officers).
 
 <!-- ## Apply online
 
@@ -37,10 +37,12 @@ You should complete your application in one go. At the moment, it is not possibl
 - The organiser's details, if someone else is organising the event
 - A medical certificate for you and everyone handling food
 - If someone else is organising the event, a letter from the organiser or venue confirming you can operate there
-- **If you are organising the event,** a site or stall plan (opens in a new tab)
+- **If you are organising the event,** a [site or stall plan](/business-trade/temporary-restaurants-what-you-need-to-know#setting-up-your-stall)
 - If you have one, a copy of your food business licence
 
-<a data-start-link>Start</a>
+<a data-start-link>Start now</a>
+
+You can also apply in person at your nearest polyclinic while we introduce this online service. Staff can email you the forms.
 
 ## What happens next
 
