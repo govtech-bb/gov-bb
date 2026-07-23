@@ -5,6 +5,10 @@ import { REGISTRY_COMPONENTS } from "./components";
 export { REGISTRY_COMPONENTS, REGISTRY_PRIMITIVES } from "./components";
 export { SCHOOL_EMAILS, SCHOOL_EMAIL_FALLBACK } from "./components";
 export { REGISTRY_BLOCKS } from "./blocks";
+export {
+  PERSON_NAME_PATTERN,
+  PERSON_NAME_ALLOWED,
+} from "./person-name-pattern";
 
 /** A resolvable builtin registry entry: a single primitive or a composite block. */
 export type RegistryEntry = Primitive | Block;

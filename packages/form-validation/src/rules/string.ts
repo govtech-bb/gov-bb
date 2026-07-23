@@ -28,7 +28,14 @@ export const patternRunner: RuleRunner = (value, config) => {
   if (typeof config.value !== "string" || config.value === "") return msg;
   let re: RegExp;
   try {
-    re = new RegExp(config.value);
+    // `u` (Unicode) mode so patterns can use `\p{L}`/`\p{M}` property escapes
+    // (e.g. the person-name pattern accepting any-script letters, #1843).
+    // Every builtin + committed-recipe pattern was checked to compile under `u`;
+    // DB-stored custom-component patterns and future recipe-authored patterns are
+    // NOT audited here, so a `u`-incompatible one (e.g. an identity escape like
+    // `\-` outside a class, or a literal `{`) will throw and fail closed via the
+    // catch below — rejecting that field's input rather than crashing.
+    re = new RegExp(config.value, "u");
   } catch {
     return msg;
   }
