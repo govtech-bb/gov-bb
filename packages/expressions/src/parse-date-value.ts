@@ -17,9 +17,11 @@ export interface DateParts {
  *  - ISO (`YYYY-MM-DD` or full ISO) — submitted / stored values.
  *
  * Returns validated calendar parts, or `null` when the input is absent,
- * malformed, or an **impossible** date (e.g. `31/02`). Round-trip validation is
- * applied on EVERY branch — the object branch previously skipped it and silently
- * rolled `31 Feb` into `2 Mar` (#2072 Bug 1).
+ * malformed, or an **impossible** date (e.g. `31/02`). Every branch validates
+ * impossible dates: the object and `DD/MM/YYYY` branches via a `Date.UTC`
+ * round-trip (`validParts`), the ISO branch via Luxon's own `isValid`. The
+ * object branch previously skipped this and silently rolled `31 Feb` into
+ * `2 Mar` (#2072 Bug 1).
  *
  * Timezone-free by design: it only decides which calendar day an input denotes.
  * Each caller builds its own date object in its own zone (form-validation:
