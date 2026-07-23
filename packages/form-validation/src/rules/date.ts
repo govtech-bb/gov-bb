@@ -1,62 +1,16 @@
 import { DateTime } from "luxon";
-import { DEFAULT_ZONE } from "@govtech-bb/expressions";
+import { DEFAULT_ZONE, parseDateValue } from "@govtech-bb/expressions";
 import type { RuleRunner } from "../types";
 import { resolveReference, MISSING } from "./resolve-reference";
 
+// Parse a date value (object / DD/MM/YYYY / ISO) into a UTC-midnight `Date` for
+// the day-granular comparison rules below. The parsing + validation is shared
+// via `parseDateValue` (#2072); we anchor the result at UTC midnight here to
+// match `today()` — see its note on why UTC (not Barbados) midnight.
 export const parseDate = (v: unknown): Date | null => {
-  if (!v) return null;
-  // Handle DateValue object format: { day, month, year }. Parts are the
-  // digit-strings the date input stores (#815), so coerce each to a number
-  // explicitly. The falsy guard then rejects empty/absent parts (Number("") is
-  // 0), non-numeric parts (NaN is falsy), and a literal zero part — a string
-  // "0" would otherwise be truthy and let Date.UTC normalise day/month 0 into a
-  // plausible-but-wrong neighbouring date.
-  if (typeof v === "object" && "day" in v && "month" in v && "year" in v) {
-    const obj = v as { day: unknown; month: unknown; year: unknown };
-    const day = Number(obj.day);
-    const month = Number(obj.month);
-    const year = Number(obj.year);
-    if (!day || !month || !year) return null;
-    const d = new Date(Date.UTC(year, month - 1, day));
-    return isNaN(d.getTime()) ? null : d;
-  }
-  if (typeof v !== "string") return null;
-  // A `/`-separated literal is the Barbados DD/MM/YYYY format author-typed in
-  // the form-builder threshold editor. Parse it day-first to match the old
-  // client (and the locale). ISO strings use `-`, so the two never collide;
-  // anything without `/` falls through to native parsing, preserving the ISO
-  // path that apps/api relies on for submitted/stored date values.
-  if (v.includes("/")) {
-    const parts = v.split("/");
-    if (parts.length !== 3) return null;
-    const [dayStr, monthStr, yearStr] = parts;
-    // Require plain digit runs (DD/MM/YYYY, year exactly 4 digits). This rejects
-    // the non-canonical numerics `Number` would otherwise swallow — hex
-    // (`0x10`), floats (`12.5`), whitespace-padded (` 5 `) — and short/typo
-    // years that would silently map into the 1900s.
-    if (
-      !/^\d{1,2}$/.test(dayStr!) ||
-      !/^\d{1,2}$/.test(monthStr!) ||
-      !/^\d{4}$/.test(yearStr!)
-    )
-      return null;
-    const day = Number(dayStr);
-    const month = Number(monthStr);
-    const year = Number(yearStr);
-    const d = new Date(Date.UTC(year, month - 1, day));
-    // `Date.UTC` normalises out-of-range components (`31/02` → 2 Mar), so a bad
-    // threshold would otherwise become a plausible-but-wrong boundary. Reject
-    // anything that doesn't round-trip.
-    if (
-      d.getUTCFullYear() !== year ||
-      d.getUTCMonth() !== month - 1 ||
-      d.getUTCDate() !== day
-    )
-      return null;
-    return d;
-  }
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? null : d;
+  const parts = parseDateValue(v);
+  if (!parts) return null;
+  return new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
 };
 
 // "Today" as the Barbados calendar date (DEFAULT_ZONE), anchored at UTC midnight
