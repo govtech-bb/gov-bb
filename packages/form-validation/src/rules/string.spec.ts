@@ -84,6 +84,13 @@ describe("patternRunner", () => {
     );
   });
 
+  it("compiles patterns in Unicode mode so \\p{L} works (#1843)", () => {
+    // Without the `u` flag `\p{L}` is a literal "p{L}" and this would not match
+    // a Cyrillic letter. With it, any-script letters match.
+    expect(patternRunner("Владимир", cfg("^\\p{L}+$"), {})).toBeNull();
+    expect(patternRunner("123", cfg("^\\p{L}+$"), {})).toBe("Invalid format");
+  });
+
   it("fails closed on an invalid regex instead of throwing (#335)", () => {
     expect(patternRunner("anything", cfg("["), {})).toBe("Invalid format");
   });
