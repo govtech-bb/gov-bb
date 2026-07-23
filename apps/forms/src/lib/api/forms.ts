@@ -237,6 +237,7 @@ const buildPreviewSubmissionStub = (
   const now = new Date().toISOString();
   return {
     status: "success",
+    message: "Preview submission (not saved).",
     data: {
       id: `preview-${idempotencyKey}`,
       createdAt: now,
