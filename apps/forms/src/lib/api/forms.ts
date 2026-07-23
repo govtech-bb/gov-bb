@@ -226,6 +226,32 @@ export const deleteFormDraft = async (draftId: string): Promise<number> => {
   return response.status;
 };
 
+// In preview mode the branch form doesn't exist on the sandbox API, so a real
+// POST would fail. Return a synthetic success (clearly-fake reference) so the
+// existing resolveSubmissionOutcome → setSubmissionState flow advances to the
+// confirmation step. Nothing is persisted.
+const buildPreviewSubmissionStub = (
+  formId: string,
+  idempotencyKey: string,
+): FormSubmissionResponse => {
+  const now = new Date().toISOString();
+  return {
+    status: "success",
+    data: {
+      id: `preview-${idempotencyKey}`,
+      createdAt: now,
+      updatedAt: now,
+      idempotencyKey,
+      formId,
+      status: "submitted",
+      values: {},
+      meta: {},
+      submittedAt: now,
+      referenceCode: "PREVIEW-NOT-SAVED",
+    },
+  };
+};
+
 export const postFormSubmission = async (
   { formId, idempotencyKey }: FormMeta,
   valuesBySteps: FormValuesByStep,
@@ -234,6 +260,13 @@ export const postFormSubmission = async (
   // server-side (#1682). Absent on the normal citizen flow.
   previewToken?: string,
 ) => {
+  // Preview builds render a branch-only form that isn't on the sandbox API;
+  // don't POST it — return a synthetic success so the reviewer reaches the
+  // confirmation screen. Inert in every normal build.
+  if (import.meta.env.VITE_PREVIEW_CONTRACTS) {
+    return buildPreviewSubmissionStub(formId, idempotencyKey);
+  }
+
   const endpoint = `/submissions`;
   const errorMessage = {};
   const fetchArgs = {

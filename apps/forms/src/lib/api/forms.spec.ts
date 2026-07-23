@@ -33,6 +33,8 @@ import type {
   ClientPrimitive,
   FormMeta,
 } from "@forms/types";
+import { formSubmissionResponseBodySchema } from "../../types/api/form-submission.type";
+import { resolveSubmissionOutcome } from "../submission-outcome";
 
 // ---------------------------------------------------------------------------
 // Global fetch mock
@@ -532,6 +534,41 @@ describe("postFormSubmission", () => {
       name: "FormFetchError",
       status: 0,
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// postFormSubmission — preview mode (VITE_PREVIEW_CONTRACTS)
+// ---------------------------------------------------------------------------
+
+describe("postFormSubmission preview mode", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("returns a synthetic success without hitting the network", async () => {
+    vi.stubEnv("VITE_PREVIEW_CONTRACTS", "1");
+
+    const res = await postFormSubmission(minimalFormMeta as FormMeta, {});
+
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(res).toBeDefined();
+    if (!res) return;
+    expect(res.status).toBe("success");
+    const data = formSubmissionResponseBodySchema.parse(res.data);
+    expect(data.referenceCode).toBe("PREVIEW-NOT-SAVED");
+    // The existing outcome machinery must read it as a green-path success.
+    const { subState } = resolveSubmissionOutcome(res);
+    expect(subState?.submissionSuccess).toBe(true);
+    expect(subState?.hasPayment).toBe(false);
+  });
+
+  it("hits the network when the flag is unset", async () => {
+    mockFetch.mockResolvedValue(makeOkResponse(minimalSubmissionBody));
+
+    await postFormSubmission(minimalFormMeta as FormMeta, {});
+
+    expect(mockFetch).toHaveBeenCalled();
   });
 });
 
