@@ -37,6 +37,24 @@ export interface TrackingData {
   };
   "page-service-view": { form: string; category: string };
   "page-start-view": { form: string; category: string };
+  /** Citizen clicked "Continue to payment" on the confirmation page (#1955). */
+  "payment-initiated": { form: string; category: string; amount: string };
+  /**
+   * Citizen returned from EzPay to the confirmation page (#1955). `outcome` is
+   * "success" | "failed" (from the `?payment=` return param folded into state).
+   */
+  "payment-returned": { form: string; category: string; outcome: string };
+  /**
+   * Confirmation page viewed (#1955) — the true end of the journey. `outcome`
+   * distinguishes success / failed / processing / payment states; `hasPayment`
+   * segments payment vs non-payment forms.
+   */
+  "form-confirmation-view": {
+    form: string;
+    category: string;
+    outcome: string;
+    hasPayment: boolean;
+  };
   search: { query: string; results: number };
   "search-result-click": { query: string; position: number; href: string };
   "search-no-results": { query: string };

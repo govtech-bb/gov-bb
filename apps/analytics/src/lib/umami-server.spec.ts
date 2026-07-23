@@ -71,6 +71,85 @@ describe('buildStepFunnel (titled by-stepId funnel)', () => {
     const out = buildStepFunnel(5, 1, steps, { a: 5 })
     expect(out.map((s) => s.count)).toEqual([5, 5, 0, 0, 1])
   })
+
+  it('appends Review and Confirmation around Submit when the tail is given (#1955)', () => {
+    const out = buildStepFunnel(
+      420,
+      200,
+      steps,
+      { a: 400, b: 120, c: 260 },
+      {
+        reviewCount: 210,
+        confirmationCount: 195,
+      },
+    )
+    expect(out.map((s) => s.label)).toEqual([
+      'Start',
+      'Step 1: Your details',
+      'Step 2: Eligibility',
+      'Step 3: Upload docs',
+      'Review',
+      'Submit',
+      'Confirmation',
+    ])
+    expect(out.map((s) => s.count)).toEqual([420, 400, 120, 260, 210, 200, 195])
+  })
+
+  it('appends payment stages only when payment-initiated is present (#1955)', () => {
+    const out = buildStepFunnel(
+      100,
+      60,
+      [{ stepId: 'a', title: 'Details' }],
+      {
+        a: 90,
+      },
+      {
+        reviewCount: 70,
+        confirmationCount: 58,
+        paymentInitiatedCount: 55,
+        paymentSuccessCount: 40,
+      },
+    )
+    expect(out.map((s) => s.label)).toEqual([
+      'Start',
+      'Step 1: Details',
+      'Review',
+      'Submit',
+      'Confirmation',
+      'Payment initiated',
+      'Payment success',
+    ])
+    expect(out.map((s) => s.count)).toEqual([100, 90, 70, 60, 58, 55, 40])
+  })
+
+  it('omits payment stages for a non-payment form (no payment-initiated)', () => {
+    const out = buildStepFunnel(
+      100,
+      60,
+      [{ stepId: 'a', title: 'Details' }],
+      {
+        a: 90,
+      },
+      {
+        reviewCount: 70,
+        confirmationCount: 58,
+        paymentInitiatedCount: 0,
+      },
+    )
+    expect(out.map((s) => s.label)).not.toContain('Payment initiated')
+    expect(out.map((s) => s.label)).toEqual([
+      'Start',
+      'Step 1: Details',
+      'Review',
+      'Submit',
+      'Confirmation',
+    ])
+  })
+
+  it('stays backward-compatible (Start → steps → Submit) with no tail', () => {
+    const out = buildStepFunnel(10, 4, [{ stepId: 'a', title: 'X' }], { a: 8 })
+    expect(out.map((s) => s.label)).toEqual(['Start', 'Step 1: X', 'Submit'])
+  })
 })
 
 describe('funnelHeadline', () => {
