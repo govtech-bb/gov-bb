@@ -9,6 +9,9 @@ import {
   formMetaQueryOptions,
 } from "@forms/lib";
 import { FormRenderer, FormError, ApplicationClosed } from "@forms/components";
+import { FormTransportProvider } from "@govtech-bb/form-renderer";
+import { formTransport } from "../../../lib/transport";
+import { getAllowedPaymentOrigins } from "../../../lib/security/safe-payment-url";
 import { isFormClosed } from "@govtech-bb/form-types";
 import {
   formSearchParamSchema,
@@ -341,16 +344,19 @@ function FormView() {
   );
 
   return (
-    <FormRenderer
-      form={form}
-      formMeta={formMeta}
-      stepId={step ?? ""}
-      visibleSteps={visibleSteps}
-      repeatableStepSettingsRef={repeatableStepSettingsRef}
-      submissionState={submissionState}
-      isDraft={isDraft}
-      previewToken={preview}
-      draftToken={draft}
-    />
+    <FormTransportProvider transport={formTransport}>
+      <FormRenderer
+        form={form}
+        formMeta={formMeta}
+        stepId={step ?? ""}
+        visibleSteps={visibleSteps}
+        repeatableStepSettingsRef={repeatableStepSettingsRef}
+        submissionState={submissionState}
+        isDraft={isDraft}
+        previewToken={preview}
+        draftToken={draft}
+        allowedPaymentOrigins={getAllowedPaymentOrigins()}
+      />
+    </FormTransportProvider>
   );
 }
