@@ -2,7 +2,7 @@ import {
   resolveSubmissionOutcome,
   applyPaymentReturn,
 } from "./submission-outcome";
-import { FormSubmissionResponse, SubmissionState } from "@forms/types";
+import { FormSubmissionResponse, SubmissionState } from "../types";
 
 // `status` is the SUBMISSION status and belongs on `data.status`. The API
 // envelope `status` is always "success" for a 2xx (ApiResponse.success) —

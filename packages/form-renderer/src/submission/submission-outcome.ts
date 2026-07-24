@@ -1,4 +1,4 @@
-import { FormSubmissionResponse, SubmissionState } from "@forms/types";
+import { FormSubmissionResponse, SubmissionState } from "../types";
 
 type SubmissionEvent =
   | { name: "form-submit-success" }

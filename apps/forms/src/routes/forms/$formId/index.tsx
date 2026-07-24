@@ -41,7 +41,7 @@ import { formCategory } from "../../../lib/form-category";
 import {
   resolveSubmissionOutcome,
   applyPaymentReturn,
-} from "../../../lib/submission-outcome";
+} from "@govtech-bb/form-renderer";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
