@@ -299,19 +299,6 @@
           }
         },
         {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Nearest landmark (optional)",
-            "fieldId": "event-landmark",
-            "hint": "A well-known place near the event, to help officers find it.",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
-          }
-        },
-        {
           "ref": "components/generic-date",
           "overrides": {
             "label": "Start date",
