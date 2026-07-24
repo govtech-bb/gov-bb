@@ -64,7 +64,7 @@
     {
       "stepId": "child-details",
       "title": "Tell us about the camper",
-      "description": "This camp is for campers aged 12 to 15.",
+      "description": "This camp is for campers ages 12 to 15.",
       "elements": [
         {
           "ref": "components/date-of-birth",
@@ -1286,7 +1286,7 @@
     }
   ],
   "createdAt": "2026-06-17T17:53:52.346Z",
-  "updatedAt": "2026-07-23T00:00:00.000Z",
+  "updatedAt": "2026-07-02T00:00:00.000Z",
   "meta": {
     "visibility": "public",
     "closingDateTime": "2026-07-09T23:59:00-04:00"
