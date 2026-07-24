@@ -51,7 +51,7 @@ Have your National Insurance number ready. You can pay:
 Find out how to check past payments and what to do if you missed any.
 You can also check whether work outside Barbados may count and which benefits you may get. 
 
-<link-button href="/money-financial-support/national-insurance-for-self-employed-workers/check-your-record" variant="secondary">Check your records</link-button>
+[Check your records](/money-financial-support/national-insurance-for-self-employed-workers/check-your-record)
 
 If you worked in a country that has a social security agreement with Barbados, those contributions may count towards your benefits here. Contact NIS and tell them where and when you worked.
 
