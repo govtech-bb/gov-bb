@@ -4,24 +4,17 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "jest-axe";
 import FileUpload from "./file-upload";
-import type { FileUploadProps, UploadedFile } from "@forms/types";
+import type { FileUploadProps, UploadedFile } from "../types";
+import { FormTransportProvider } from "../transport/context";
+import type { FormTransport } from "../transport/types";
 
-// Mock the presigned-upload client so tests don't hit the network.
-vi.mock("../lib/api/files", () => {
-  class FileUploadError extends Error {
-    constructor(
-      message: string,
-      public readonly stage: string,
-    ) {
-      super(message);
-      this.name = "FileUploadError";
-    }
-  }
-  return { uploadFile: vi.fn(), FileUploadError };
-});
-import { uploadFile, FileUploadError } from "../lib/api/files";
-
-const mockUploadFile = uploadFile as Mock;
+// Route uploads through a stub transport (Task 6) rather than the network —
+// the component no longer talks to the API directly.
+const mockUploadFile: Mock = vi.fn();
+const transport: FormTransport = {
+  submit: vi.fn() as unknown as FormTransport["submit"],
+  uploadFile: mockUploadFile as unknown as FormTransport["uploadFile"],
+};
 
 function makeFile(name: string, type: string, sizeBytes: number): File {
   return new File(["x".repeat(sizeBytes)], name, { type });
@@ -70,7 +63,11 @@ function renderComponent(overrides: Partial<FileUploadProps> = {}) {
     errorMessage: "",
     ...overrides,
   };
-  const result = render(<FileUpload {...props} />);
+  const result = render(
+    <FormTransportProvider transport={transport}>
+      <FileUpload {...props} />
+    </FormTransportProvider>,
+  );
   return {
     ...result,
     onFileChange,
@@ -215,7 +212,11 @@ describe("FileUpload", () => {
         />
       );
     }
-    const { container } = render(<Harness />);
+    const { container } = render(
+      <FormTransportProvider transport={transport}>
+        <Harness />
+      </FormTransportProvider>,
+    );
     const fileInput = container.querySelector(
       ".govbb-file-upload__input",
     ) as HTMLInputElement;
@@ -233,7 +234,7 @@ describe("FileUpload", () => {
   it("shows an error and does not store the file when the upload fails", async () => {
     const user = userEvent.setup();
     mockUploadFile.mockRejectedValue(
-      new FileUploadError("File upload failed (put). Please try again.", "put"),
+      new Error("File upload failed (put). Please try again."),
     );
     const { onFileChange, fileInput } = renderComponent();
 

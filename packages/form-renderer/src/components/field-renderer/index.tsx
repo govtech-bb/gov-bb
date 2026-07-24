@@ -3,8 +3,8 @@ import {
   ClientPrimitive,
   FieldValidationProperties,
   UploadedFile,
-} from "@forms/types";
-import { RequiredState, checkConditionalOn } from "@forms/lib";
+} from "../../types";
+import { RequiredState, checkConditionalOn } from "../../model";
 import { FieldArrayBehaviour } from "@govtech-bb/form-types";
 import FileUpload from "../file-upload";
 import { buildFieldRenderContext, InsetFieldEntry } from "./render-context";

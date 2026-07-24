@@ -1,9 +1,9 @@
 import React from "react";
-import { FileUploadProps, UploadedFile } from "@forms/types";
+import { FileUploadProps, UploadedFile } from "../types";
 import ErrorMessage from "./error-message";
-import { trackEvent } from "../lib/analytics";
-import { formCategory } from "../lib/form-category";
-import { uploadFile, FileUploadError } from "../lib/api/files";
+import { trackEvent } from "@govtech-bb/analytics";
+import { categoryForForm as formCategory } from "@govtech-bb/content/form-categories";
+import { useFormTransport } from "../transport/context";
 
 /** A file being uploaded, or one whose upload failed. */
 interface PendingUpload {
@@ -27,6 +27,7 @@ export default function FileUpload({
   previewToken,
   draftToken,
 }: FileUploadProps) {
+  const transport = useFormTransport();
   const files = value ?? [];
 
   // Mirror the confirmed-file list in a ref so concurrent uploads (e.g. two
@@ -103,7 +104,7 @@ export default function FileUpload({
         ]);
 
         try {
-          const confirmed = await uploadFile({
+          const confirmed = await transport.uploadFile({
             file,
             formId: formId ?? "",
             stepId: presignStepId,
@@ -115,7 +116,7 @@ export default function FileUpload({
           setPending((prev) => prev.filter((p) => p.id !== id));
         } catch (err) {
           const message =
-            err instanceof FileUploadError
+            err instanceof Error
               ? err.message
               : "Upload failed. Please try again.";
           setPending((prev) =>

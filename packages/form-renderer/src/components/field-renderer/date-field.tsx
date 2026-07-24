@@ -1,6 +1,6 @@
 import { JSX } from "react";
 import ErrorMessage from "../error-message";
-import { parseDatePart } from "@forms/lib";
+import { parseDatePart } from "../../model";
 import { DateValue } from "@govtech-bb/form-types";
 import { FieldRenderContext } from "./render-context";
 

@@ -4,12 +4,21 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "jest-axe";
 import FieldRenderer from ".";
-import type { ClientPrimitive } from "@forms/types";
+import type { ClientPrimitive } from "../../types";
+import { FormTransportProvider } from "../../transport/context";
+import type { FormTransport } from "../../transport/types";
+
+// The "file" htmlType renders <FileUpload>, which reads useFormTransport() —
+// stub it out so every render has a provider in scope.
+const stubTransport: FormTransport = {
+  submit: async () => ({}) as never,
+  uploadFile: async () => ({}) as never,
+};
 
 // ---------------------------------------------------------------------------
-// Mock @forms/lib so we can control checkConditionalOn's return value
+// Mock ../../model so we can control checkConditionalOn's return value
 // ---------------------------------------------------------------------------
-vi.mock("@forms/lib", () => ({
+vi.mock("../../model", () => ({
   checkConditionalOn: vi.fn(),
   // Mirror the real helper: digits only, empty -> undefined, never NaN.
   parseDatePart: (raw: string) => {
@@ -18,7 +27,7 @@ vi.mock("@forms/lib", () => ({
   },
 }));
 
-import { checkConditionalOn } from "@forms/lib";
+import { checkConditionalOn } from "../../model";
 
 const mockCheckConditionalOn = checkConditionalOn as MockedFunction<
   typeof checkConditionalOn
@@ -80,12 +89,14 @@ function renderField(
   extra: Partial<React.ComponentProps<typeof FieldRenderer>> = {},
 ) {
   return render(
-    <FieldRenderer
-      form={mockForm}
-      field={field}
-      validationProperties={noValidation}
-      {...extra}
-    />,
+    <FormTransportProvider transport={stubTransport}>
+      <FieldRenderer
+        form={mockForm}
+        field={field}
+        validationProperties={noValidation}
+        {...extra}
+      />
+    </FormTransportProvider>,
   );
 }
 
