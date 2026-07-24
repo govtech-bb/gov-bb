@@ -11,14 +11,7 @@ import {
 } from '../-lib/compute'
 import type { EarningsInputs } from '../-lib/compute'
 
-type Screen =
-  | 'hero'
-  | 'benefits'
-  | 'income'
-  | 'plan'
-  | 'result'
-  | 'next-steps'
-  | 'register-path'
+type Screen = 'hero' | 'benefits' | 'income' | 'plan' | 'result' | 'next-steps'
 
 const SERVICE_CAPTION = 'NISSS for self-employed and gig workers'
 // The same NIS registration page the service page's "Register as self-employed"
@@ -216,7 +209,6 @@ function IconCircle({
 
 export function CoverageCalculator() {
   const [screen, setScreen] = useState<Screen>('hero')
-  const [registerFrom, setRegisterFrom] = useState<Screen>('hero')
 
   const [goodMonth, setGoodMonth] = useState('')
   const [slowMonth, setSlowMonth] = useState('')
@@ -228,9 +220,6 @@ export function CoverageCalculator() {
   }>({})
   const [tier, setTier] = useState<Tier | ''>('')
   const [tierError, setTierError] = useState('')
-  const [alreadyHasNis, setAlreadyHasNis] = useState<
-    'yes' | 'no' | 'unsure' | ''
-  >('')
 
   const topRef = useRef<HTMLDivElement>(null)
   const incomeErrorRef = useRef<HTMLDivElement>(null)
@@ -296,7 +285,6 @@ export function CoverageCalculator() {
     setErrors({})
     setTier('')
     setTierError('')
-    setAlreadyHasNis('')
     go('hero')
   }
 
@@ -310,10 +298,6 @@ export function CoverageCalculator() {
         {screen === 'hero' && (
           <Hero
             onBenefits={() => go('benefits')}
-            onRegister={() => {
-              setRegisterFrom('hero')
-              go('register-path')
-            }}
             onStart={() => go('income')}
           />
         )}
@@ -368,22 +352,7 @@ export function CoverageCalculator() {
         )}
 
         {screen === 'next-steps' && (
-          <NextSteps
-            onBack={() => go('result')}
-            onRegister={() => {
-              setRegisterFrom('next-steps')
-              go('register-path')
-            }}
-            onRestart={restart}
-          />
-        )}
-
-        {screen === 'register-path' && (
-          <RegisterPath
-            onBack={() => go(registerFrom)}
-            selected={alreadyHasNis}
-            setSelected={setAlreadyHasNis}
-          />
+          <NextSteps onBack={() => go('result')} onRestart={restart} />
         )}
       </article>
     </div>
@@ -401,11 +370,9 @@ const HELPS: Array<[string, string]> = [
 
 function Hero({
   onBenefits,
-  onRegister,
   onStart,
 }: {
   onBenefits: () => void
-  onRegister: () => void
   onStart: () => void
 }) {
   return (
@@ -1269,11 +1236,9 @@ function OptionList({
 
 function NextSteps({
   onBack,
-  onRegister,
   onRestart,
 }: {
   onBack: () => void
-  onRegister: () => void
   onRestart: () => void
 }) {
   return (
@@ -1393,139 +1358,6 @@ function NextSteps({
         </Button>
         <Button onClick={onRestart} type="button">
           Return to start
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-/* ── Screen: register routing ───────────────────────────────────────── */
-const REG_OPTIONS: Array<{
-  id: 'yes' | 'no' | 'unsure'
-  label: string
-  sub: string
-}> = [
-  {
-    id: 'yes',
-    label: 'Yes, I have one',
-    sub: 'I worked for someone before, or registered already.',
-  },
-  {
-    id: 'no',
-    label: 'No, I never registered',
-    sub: "I've always worked for myself.",
-  },
-  { id: 'unsure', label: "I'm not sure", sub: "Let's find out together." },
-]
-
-function RegisterPath({
-  onBack,
-  selected,
-  setSelected,
-}: {
-  onBack: () => void
-  selected: 'yes' | 'no' | 'unsure' | ''
-  setSelected: (v: 'yes' | 'no' | 'unsure') => void
-}) {
-  const regRadio = rovingRadioProps(
-    REG_OPTIONS,
-    (o) => `reg-${o.id}`,
-    REG_OPTIONS.findIndex((o) => o.id === selected),
-    (i) => setSelected(REG_OPTIONS[i].id),
-  )
-  return (
-    <div>
-      <ServiceCaption />
-      <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
-        Do you already have an NISSS number?
-      </h1>
-      <p className="mb-6 text-[1.125rem] text-mid-grey-00">
-        If you worked for an employer before, you probably do. It&rsquo;s the
-        same number for life.
-      </p>
-
-      <div
-        aria-label="Do you already have an NISSS number?"
-        className="flex flex-col gap-3"
-        role="radiogroup"
-      >
-        {REG_OPTIONS.map((o, i) => {
-          const isSel = selected === o.id
-          return (
-            <button
-              aria-checked={isSel}
-              className={`flex items-start gap-3 rounded-xl border-2 bg-white-00 p-4 text-left transition-colors focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100 ${
-                isSel
-                  ? 'border-teal-00 bg-teal-10'
-                  : 'border-grey-00 hover:border-teal-00 hover:bg-teal-10/40'
-              }`}
-              id={`reg-${o.id}`}
-              key={o.id}
-              onClick={() => setSelected(o.id)}
-              onKeyDown={regRadio[i].onKeyDown}
-              role="radio"
-              tabIndex={regRadio[i].tabIndex}
-              type="button"
-            >
-              <span
-                className={`mt-1 inline-flex h-6 w-6 shrink-0 rounded-full ${
-                  isSel
-                    ? 'bg-teal-00 shadow-[0_0_0_3px_#fff]'
-                    : 'border-2 border-mid-grey-00'
-                }`}
-              />
-              <span className="flex-1">
-                <span className="block font-semibold text-[1.25rem] text-black-00">
-                  {o.label}
-                </span>
-                <span className="mt-1 block text-[1rem] text-mid-grey-00">
-                  {o.sub}
-                </span>
-              </span>
-            </button>
-          )
-        })}
-      </div>
-
-      {selected === 'yes' && (
-        <p className="mt-6 text-[1.125rem]">
-          You already have a number, so use the{' '}
-          <Link
-            href="https://www.nis.gov.bb/self-employment-registration-form-page/"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            self-employment registration form
-          </Link>{' '}
-          to register as self-employed. It opens on the NISSS website.
-        </p>
-      )}
-      {selected === 'no' && (
-        <p className="mt-6 text-[1.125rem]">
-          Use the{' '}
-          <Link
-            href="https://www.nis.gov.bb/self-employment-registration-form-new-nis-applicant/"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            new applicant registration form
-          </Link>{' '}
-          to get your number and register. It opens on the NISSS website.
-        </p>
-      )}
-      {selected === 'unsure' && (
-        <div className="mt-6 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
-          <p>
-            Ask NISSS to look up your number before you register — call{' '}
-            <Link href="tel:+12464317400">431-7400</Link>. If you already have
-            one, you keep it for life, so there is no need to sign up again.
-          </p>
-        </div>
-      )}
-
-      <div className="mt-6">
-        <Button onClick={onBack} type="button" variant="secondary">
-          Previous
         </Button>
       </div>
     </div>
