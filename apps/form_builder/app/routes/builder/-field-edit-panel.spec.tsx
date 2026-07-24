@@ -359,7 +359,7 @@ it("still dispatches UPDATE_FIELD_OVERRIDES when the ref is unchanged", async ()
 // visible and overridable — not silently enforced only at runtime.
 
 const NATIONAL_ID_PATTERN_ERROR =
-  "Enter a valid ID number (for example, 850101-0001)";
+  "Enter a valid National ID number (for example, 850101-0001)";
 
 it("surfaces a base component validation rule as an inherited, read-only row", () => {
   // National ID number declares a `pattern` rule in the registry. Freshly added
