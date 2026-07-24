@@ -4,11 +4,9 @@ import {
   FormRendererProps,
   FormValues,
 } from "@forms/types";
-import FieldRenderer from "./field-renderer";
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { markdownComponents } from "./markdown-components";
 import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { isDateValidationError } from "@govtech-bb/form-validation";
@@ -34,7 +32,11 @@ import { buildValidationErrorPayload } from "./validation-error-event";
 import { stepCompleteEventName } from "./step-events";
 import { StatusBanner } from "@govtech-bb/react";
 import { resolveStepTitle } from "@govtech-bb/form-conditions";
-import { buildStepScopedValues } from "@govtech-bb/form-renderer";
+import {
+  buildStepScopedValues,
+  FieldRenderer,
+  markdownComponents,
+} from "@govtech-bb/form-renderer";
 
 // The feedback form citizens are sent to from a confirmation page, and its
 // first step. A root-relative path (not the absolute sandbox URL) so the link

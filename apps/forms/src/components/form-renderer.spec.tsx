@@ -36,30 +36,36 @@ vi.mock("../hooks/use-step-guard", () => ({
 // The mock surfaces enough of the props passed to FieldRenderer that wiring
 // tests can verify the toggle/insetFieldsByOption arguments — without this
 // extra metadata the spec could only assert which field IDs were rendered,
-// not whether the right props were threaded through.
-vi.mock("./field-renderer", () => ({
-  __esModule: true,
-  default: (props: {
-    field: { id: string };
-    formVersion?: string;
-    insetFieldsByOption?: Map<string, Array<{ field: { id: string } }>>;
-  }) => (
-    <div
-      data-testid="field-renderer"
-      data-field-id={props.field.id}
-      data-form-version={props.formVersion}
-      data-inset-options={
-        props.insetFieldsByOption
-          ? JSON.stringify(
-              Array.from(props.insetFieldsByOption.entries()).map(
-                ([value, entries]) => [value, entries.map((e) => e.field.id)],
-              ),
-            )
-          : ""
-      }
-    />
-  ),
-}));
+// not whether the right props were threaded through. FieldRenderer now lives
+// in @govtech-bb/form-renderer, so the rest of the module's real exports
+// (buildStepScopedValues, etc.) are preserved via importOriginal.
+vi.mock("@govtech-bb/form-renderer", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@govtech-bb/form-renderer")>();
+  return {
+    ...actual,
+    FieldRenderer: (props: {
+      field: { id: string };
+      formVersion?: string;
+      insetFieldsByOption?: Map<string, Array<{ field: { id: string } }>>;
+    }) => (
+      <div
+        data-testid="field-renderer"
+        data-field-id={props.field.id}
+        data-form-version={props.formVersion}
+        data-inset-options={
+          props.insetFieldsByOption
+            ? JSON.stringify(
+                Array.from(props.insetFieldsByOption.entries()).map(
+                  ([value, entries]) => [value, entries.map((e) => e.field.id)],
+                ),
+              )
+            : ""
+        }
+      />
+    ),
+  };
+});
 
 vi.mock("./error-summary", () => ({
   __esModule: true,
