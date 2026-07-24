@@ -186,7 +186,7 @@
                 "value": true
               }
             },
-            "label": "National ID number",
+            "label": "National Identification (ID) Number",
             "ui": {
               "width": "medium"
             }
@@ -245,19 +245,6 @@
               "required": {
                 "error": "Telephone number is required",
                 "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/mobile-telephone",
-          "overrides": {
-            "fieldId": "applicant-mobile-telephone",
-            "label": "Mobile number",
-            "hint": "Optional.",
-            "validations": {
-              "required": {
-                "value": false
               }
             }
           }
@@ -752,7 +739,7 @@
     }
   ],
   "createdAt": "2026-06-10T15:48:50.342Z",
-  "updatedAt": "2026-07-23T00:00:00.000Z",
+  "updatedAt": "2026-06-12T00:00:00.000Z",
   "meta": {
     "visibility": "public"
   }
