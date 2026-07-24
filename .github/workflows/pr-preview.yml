@@ -50,6 +50,7 @@ jobs:
       contents: read
     outputs:
       forms: ${{ steps.affected.outputs.forms }}
+      preview-recipe-ids: ${{ steps.affected.outputs.preview-recipe-ids }}
       landing: ${{ steps.affected.outputs.landing }}
       chat: ${{ steps.affected.outputs.chat }}
       fb-app: ${{ steps.affected.outputs.fb-app }}
@@ -113,7 +114,22 @@ jobs:
           echo "Affected apps: $AFFECTED"
           has() { echo "$AFFECTED" | jq -e --arg p "$1" 'index($p)' >/dev/null && echo true || echo false; }
 
-          echo "forms=$(has forms)" >> "$GITHUB_OUTPUT"
+          # A recipe JSON lives in apps/api and is NOT a forms nx-dependency, so
+          # a PR that only adds/edits a recipe leaves forms "unaffected" and no
+          # forms preview would build. Force the forms preview when recipe files
+          # change, and emit the changed formIds so preview-forms can enable
+          # VITE_PREVIEW_CONTRACTS and the comment can link them. (formIds come
+          # from repo filenames — validate-recipes enforces filename == formId.)
+          CHANGED_RECIPES=$(git diff --name-only "$NX_BASE" "$NX_HEAD" \
+            | grep -E '^apps/api/src/forms/form-definitions/recipes/[^/]+\.json$' || true)
+          FORMS=$(has forms)
+          RECIPE_IDS=""
+          if [ -n "$CHANGED_RECIPES" ]; then
+            FORMS=true
+            RECIPE_IDS=$(echo "$CHANGED_RECIPES" | sed -E 's#.*/##; s#\.json$##' | paste -sd, -)
+          fi
+          echo "forms=$FORMS" >> "$GITHUB_OUTPUT"
+          echo "preview-recipe-ids=$RECIPE_IDS" >> "$GITHUB_OUTPUT"
           echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
           echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
           echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
@@ -171,6 +187,7 @@ jobs:
           AMPLIFY_APP_ID: d1j7z1k0h7u5nb
           APP_LABEL: forms
           BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+          PREVIEW_RECIPE_IDS: ${{ needs.setup.outputs.preview-recipe-ids }}
         run: |
           # Idempotent branch creation: only call create-branch if
           # get-branch shows the branch doesn't already exist on this
@@ -193,6 +210,21 @@ jobs:
           URL="https://${SUBDOMAIN}.${AMPLIFY_APP_ID}.amplifyapp.com"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "Preview URL: $URL"
+
+          # Enable branch-only recipe previews for this build. Only when recipes
+          # changed, so ordinary frontend-only previews keep talking to the
+          # sandbox API with real submissions (behaviour preserved). The
+          # branch-scoped var merges with the app-level VITE_API_URL. The
+          # amplify.yml forms build runs the generator when this is "1".
+          if [ -n "$PREVIEW_RECIPE_IDS" ]; then
+            aws amplify update-branch \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$BRANCH_NAME" \
+              --region "$AWS_REGION" \
+              --environment-variables "VITE_PREVIEW_CONTRACTS=1" \
+              >/dev/null
+            echo "Enabled VITE_PREVIEW_CONTRACTS=1 on $BRANCH_NAME for recipes: $PREVIEW_RECIPE_IDS"
+          fi
 
           # Cancel any in-flight Amplify jobs on this branch before
           # queueing a new one. start-job fails with
@@ -280,10 +312,16 @@ jobs:
     # the sandbox API the preview always points at, so the smoke would spuriously
     # fail. Both cases are covered post-deploy by smoke-test-forms in
     # deploy-{sandbox,prod}.yml.
+    #
+    # Also skip when the preview runs in recipe-preview mode
+    # (VITE_PREVIEW_CONTRACTS=1, i.e. preview-recipe-ids non-empty): the forms
+    # serve bundled branch contracts and submissions are STUBBED, so this
+    # real-submit smoke can't run meaningfully. Post-deploy smoke covers it.
     if: >
       needs.preview-forms.result == 'success'
       && needs.preview-forms.outputs.status == 'SUCCEED'
       && needs.setup.outputs.preview-smoke-contract-changed == 'false'
+      && needs.setup.outputs.preview-recipe-ids == ''
       && github.event.pull_request.base.ref != 'prod'
     uses: ./.github/workflows/forms-smoke.yml
     with:
@@ -753,7 +791,15 @@ jobs:
   # terminal state (success, failure, or skip).
   comment:
     name: Post preview comment
-    needs: [setup, preview-forms, preview-landing, preview-chat, preview-form-builder, preview-analytics]
+    needs:
+      [
+        setup,
+        preview-forms,
+        preview-landing,
+        preview-chat,
+        preview-form-builder,
+        preview-analytics,
+      ]
     if: |
       always()
       && github.event.action != 'closed'
@@ -768,6 +814,7 @@ jobs:
           FORMS_RESULT: ${{ needs.preview-forms.result }}
           FORMS_STATUS: ${{ needs.preview-forms.outputs.status }}
           FORMS_URL: ${{ needs.preview-forms.outputs.url }}
+          PREVIEW_RECIPE_IDS: ${{ needs.setup.outputs.preview-recipe-ids }}
           LANDING_RESULT: ${{ needs.preview-landing.result }}
           LANDING_STATUS: ${{ needs.preview-landing.outputs.status }}
           LANDING_URL: ${{ needs.preview-landing.outputs.url }}
@@ -824,6 +871,14 @@ jobs:
             row "chat"            "$CHAT_RESULT"      "$CHAT_STATUS"      "$CHAT_URL"
             row "form-builder"    "$FB_RESULT"        "$FB_STATUS"        "$FB_URL"
             row "analytics"       "$ANALYTICS_RESULT" "$ANALYTICS_STATUS" "$ANALYTICS_URL"
+            if [ -n "$PREVIEW_RECIPE_IDS" ] && [ -n "$FORMS_URL" ]; then
+              echo ""
+              echo "**Branch form previews** (render + flow only — submissions are not saved):"
+              IFS=',' read -ra PREVIEW_IDS <<< "$PREVIEW_RECIPE_IDS"
+              for pid in "${PREVIEW_IDS[@]}"; do
+                echo "- [\`$pid\`]($FORMS_URL/forms/$pid)"
+              done
+            fi
             echo ""
             echo "_Commit: \`${COMMIT_SHA:0:7}\`_  ·  _Branches auto-delete when this PR closes._"
             echo ""

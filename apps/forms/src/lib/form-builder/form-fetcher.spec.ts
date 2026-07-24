@@ -16,11 +16,19 @@ vi.mock("@forms/form-api", () => ({
   fetchFormDefinition: vi.fn(),
 }));
 
+// Mock the bundled-preview-contract index so tests don't depend on generated
+// files being present in the build.
+vi.mock("./preview-contracts", () => ({
+  getPreviewContract: vi.fn(),
+}));
+
 import { fetchContract } from "./form-fetcher";
 import { fetchFormDefinition } from "@forms/form-api";
+import { getPreviewContract } from "./preview-contracts";
 import type { ClientServiceContract } from "@forms/types";
 
 const mockFetchFormDefinition = fetchFormDefinition as Mock;
+const mockGetPreviewContract = getPreviewContract as Mock;
 
 // ---------------------------------------------------------------------------
 // Minimal ServiceContract fixture that satisfies serviceContractSchema
@@ -147,5 +155,55 @@ describe("fetchContract(<real-id>)", () => {
       name: "FormFetchError",
       status: 404,
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Preview mode (VITE_PREVIEW_CONTRACTS) — prefer the branch's bundled contract
+// ---------------------------------------------------------------------------
+
+describe("fetchContract preview mode (VITE_PREVIEW_CONTRACTS)", () => {
+  beforeEach(() => {
+    mockFetchFormDefinition.mockClear();
+    mockGetPreviewContract.mockReset();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("prefers the bundled preview contract and does not hit the API", async () => {
+    vi.stubEnv("VITE_PREVIEW_CONTRACTS", "1");
+    mockGetPreviewContract.mockReturnValue(minimalContract);
+
+    const result = await fetchContract("some-real-id");
+
+    expect(result).toBeDefined();
+    expect(result.formId).toBe("test-form");
+    expect(mockGetPreviewContract).toHaveBeenCalledWith("some-real-id");
+    expect(mockFetchFormDefinition).not.toHaveBeenCalled();
+  });
+
+  it("falls through to the API when no bundled contract exists", async () => {
+    vi.stubEnv("VITE_PREVIEW_CONTRACTS", "1");
+    mockGetPreviewContract.mockReturnValue(undefined);
+    mockFetchFormDefinition.mockResolvedValue(minimalContract);
+
+    await fetchContract("some-real-id");
+
+    expect(mockFetchFormDefinition).toHaveBeenCalledWith(
+      "some-real-id",
+      undefined,
+      undefined,
+    );
+  });
+
+  it("ignores preview contracts when the flag is unset", async () => {
+    mockFetchFormDefinition.mockResolvedValue(minimalContract);
+
+    await fetchContract("some-real-id");
+
+    expect(mockGetPreviewContract).not.toHaveBeenCalled();
+    expect(mockFetchFormDefinition).toHaveBeenCalled();
   });
 });

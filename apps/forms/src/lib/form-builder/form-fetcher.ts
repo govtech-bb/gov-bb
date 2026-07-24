@@ -6,6 +6,7 @@ import { mapContractToLocale } from "./field-mapper";
 import exampleServiceContract from "../../../contracts/example-service-contract.json";
 import masterContract from "../../../contracts/master-contract.json";
 import { fetchFormDefinition } from "@forms/form-api";
+import { getPreviewContract } from "./preview-contracts";
 
 /**
  * Fetches a service contract by ID from the API, validates its shape, and
@@ -26,6 +27,16 @@ export const fetchContract = async (
 ): Promise<ClientServiceContract> => {
   if (id === "example" || id === "master") {
     return fetchExampleContract(id);
+  }
+
+  // Preview builds (VITE_PREVIEW_CONTRACTS=1) prefer the branch's bundled
+  // contract for this form — so both NEW and CHANGED branch forms render from
+  // the branch, not a stale sandbox copy. Inert in every normal build.
+  if (import.meta.env.VITE_PREVIEW_CONTRACTS) {
+    const previewContract = getPreviewContract(id);
+    if (previewContract) {
+      return mapContractToLocale(previewContract);
+    }
   }
 
   const contract = await fetchFormDefinition(id, preview, draft);
