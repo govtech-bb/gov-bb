@@ -2,9 +2,9 @@
   "formId": "apply-for-temporary-restaurant-licence",
   "title": "Apply for a licence to operate a temporary restaurant",
   "description": "Apply for a licence to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "createdAt": "2026-07-23T00:00:00Z",
-  "updatedAt": "2026-07-23T00:00:00Z",
+  "updatedAt": "2026-07-24T00:00:00Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -15,7 +15,7 @@
       "type": "email",
       "config": {
         "subject": "Your temporary restaurant licence application has been received",
-        "recipientField": "applicant-contact.email"
+        "recipientField": "applicant-details.email"
       }
     },
     {
@@ -43,8 +43,8 @@
               "applicant-details.applicant-first-name",
               "applicant-details.applicant-last-name"
             ],
-            "email": "applicant-contact.email",
-            "phone": "applicant-contact.mobile-number"
+            "email": "applicant-details.email",
+            "phone": "applicant-details.mobile-number"
           },
           "excludeSteps": [
             "check-your-answers",
@@ -114,26 +114,20 @@
             "label": "Parish",
             "fieldId": "applicant-parish"
           }
-        }
-      ]
-    },
-    {
-      "stepId": "applicant-contact",
-      "title": "Your contact details",
-      "description": "We will use your mobile number to contact you about your application.",
-      "elements": [
+        },
         {
           "ref": "components/mobile-telephone",
           "overrides": {
             "label": "Mobile number",
             "fieldId": "mobile-number",
-            "hint": "For example, (246) 249 1234."
+            "hint": "We will use your mobile number to contact you. For example, (246) 249 1234."
           }
         },
         {
           "ref": "components/home-telephone",
           "overrides": {
             "label": "Home telephone (optional)",
+            "hint": "For example, (246) 433 1234.",
             "validations": {
               "required": {
                 "value": false
@@ -155,35 +149,36 @@
         {
           "ref": "components/email",
           "overrides": {
+            "label": "Email address",
             "hint": "We will use this to contact you about your application. For example, you@example.com."
           }
         }
       ]
     },
     {
-      "stepId": "applicant-role",
-      "title": "About you and the event",
+      "stepId": "event-organiser",
+      "title": "The event organiser",
       "elements": [
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Are you organising the event, or a food vendor at someone else's event?",
-            "fieldId": "applicant-role",
-            "hint": "The organiser is responsible for the overall event. A vendor runs a single stall or bar at it.",
+            "label": "Are you organising this event?",
+            "fieldId": "is-organiser",
+            "hint": "The organiser is responsible for the overall event — including the site plan and requesting an environmental health officer to attend.",
             "options": [
               {
-                "label": "I am organising the event",
-                "value": "organiser"
+                "label": "Yes",
+                "value": "yes"
               },
               {
-                "label": "I am a vendor at someone else's event",
-                "value": "vendor"
+                "label": "No",
+                "value": "no"
               }
             ],
             "validations": {
               "required": {
                 "value": true,
-                "error": "Select whether you are the organiser or a vendor"
+                "error": "Select whether you are organising this event"
               }
             }
           }
@@ -193,12 +188,13 @@
           "overrides": {
             "label": "Organiser's name",
             "fieldId": "organiser-name",
+            "hint": "Give a phone number or an email for the organiser.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "applicant-role",
+                "targetFieldId": "is-organiser",
                 "operator": "equal",
-                "value": "vendor"
+                "value": "no"
               }
             ],
             "validations": {
@@ -218,9 +214,9 @@
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "applicant-role",
+                "targetFieldId": "is-organiser",
                 "operator": "equal",
-                "value": "vendor"
+                "value": "no"
               }
             ],
             "validations": {
@@ -240,12 +236,13 @@
           "overrides": {
             "label": "Organiser's email address (optional)",
             "fieldId": "organiser-email",
+            "hint": "For example, organiser@example.com.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "applicant-role",
+                "targetFieldId": "is-organiser",
                 "operator": "equal",
-                "value": "vendor"
+                "value": "no"
               }
             ],
             "validations": {
@@ -259,13 +256,13 @@
       ]
     },
     {
-      "stepId": "event-location",
+      "stepId": "event-details",
       "title": "About the event",
       "elements": [
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Name of the event",
+            "label": "Name of event",
             "fieldId": "event-name",
             "validations": {
               "required": {
@@ -297,7 +294,7 @@
         {
           "ref": "components/parish",
           "overrides": {
-            "label": "Parish of the event",
+            "label": "Parish of event",
             "fieldId": "event-parish"
           }
         },
@@ -313,19 +310,13 @@
               }
             }
           }
-        }
-      ]
-    },
-    {
-      "stepId": "event-schedule",
-      "title": "When is the event?",
-      "elements": [
+        },
         {
           "ref": "components/generic-date",
           "overrides": {
-            "label": "Event start date",
+            "label": "Start date",
             "fieldId": "event-from",
-            "hint": "The first day the temporary restaurant will operate. For example, 27 8 2026.",
+            "hint": "The first day the temporary restaurant will operate. You must apply at least 14 days before this date. For example, 27 8 2026.",
             "validations": {
               "required": {
                 "value": true,
@@ -341,7 +332,7 @@
         {
           "ref": "components/generic-date",
           "overrides": {
-            "label": "Event end date",
+            "label": "End date",
             "fieldId": "event-to",
             "hint": "The last day the temporary restaurant will operate.",
             "validations": {
@@ -351,7 +342,7 @@
               },
               "onOrAfter": {
                 "referenceFieldId": "event-from",
-                "referenceStepId": "event-schedule",
+                "referenceStepId": "event-details",
                 "error": "The end date must be the same as or after the start date"
               }
             }
@@ -360,9 +351,12 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Daily start time",
+            "label": "Start time",
             "fieldId": "event-start-time",
             "hint": "For example, 4:00pm.",
+            "ui": {
+              "width": "short"
+            },
             "validations": {
               "required": {
                 "value": true,
@@ -374,9 +368,12 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Daily end time",
+            "label": "End time",
             "fieldId": "event-end-time",
             "hint": "For example, 10:00pm.",
+            "ui": {
+              "width": "short"
+            },
             "validations": {
               "required": {
                 "value": true,
@@ -384,12 +381,66 @@
               }
             }
           }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Expected number of patrons",
+            "fieldId": "num-patrons",
+            "hint": "For example, 300.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "event-organiser",
+                "targetFieldId": "is-organiser",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the expected number of patrons"
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Number of food stalls including bars",
+            "fieldId": "num-stalls",
+            "hint": "Count each bar as a stall. For example, 4.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "event-organiser",
+                "targetFieldId": "is-organiser",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of food stalls"
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more"
+              }
+            }
+          }
         }
       ]
     },
     {
-      "stepId": "food-served",
-      "title": "What food will you serve?",
+      "stepId": "food-details",
+      "title": "What food and drink will you serve?",
       "description": "Tick the items you will serve in each category that applies. Categories marked higher-risk need extra care and may affect how your set-up is inspected.",
       "elements": [
         {
@@ -510,13 +561,7 @@
               { "label": "Jams and jellies", "value": "jams-and-jellies" }
             ]
           }
-        }
-      ]
-    },
-    {
-      "stepId": "food-source-and-drinks",
-      "title": "Drinks and where your food comes from",
-      "elements": [
+        },
         {
           "ref": "components/generic-checkbox",
           "overrides": {
@@ -684,22 +729,55 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "label": "Letter confirming you can operate",
-            "fieldId": "venue-letter",
-            "hint": "A letter from the event organiser or venue confirming you can operate there. PDF, JPG or PNG.",
+            "label": "List of vendors",
+            "fieldId": "vendor-list",
+            "hint": "A list of the food vendors taking part in your event. PDF, JPG, PNG, DOC or DOCX.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetStepId": "applicant-role",
-                "targetFieldId": "applicant-role",
+                "targetStepId": "event-organiser",
+                "targetFieldId": "is-organiser",
                 "operator": "equal",
-                "value": "vendor"
+                "value": "yes"
               }
             ],
             "validations": {
               "required": {
                 "value": true,
-                "error": "Upload the letter confirming you can operate"
+                "error": "Upload a list of the food vendors taking part in your event"
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  "application/msword",
+                  "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                ],
+                "error": "Upload a PDF, JPG, PNG, DOC or DOCX"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "label": "Site or stall plan",
+            "fieldId": "site-plan",
+            "hint": "A plan of the event site, showing stall positions, waste disposal, water supply and facilities. PDF, JPG or PNG.",
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetStepId": "event-organiser",
+                "targetFieldId": "is-organiser",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload a site or stall plan"
               },
               "fileTypes": {
                 "value": ["application/pdf", "image/jpeg", "image/png"],
@@ -735,7 +813,7 @@
             "fieldId": "declaration-confirmed",
             "options": [
               {
-                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that giving false information may lead to my application being rejected, and that the Government of Barbados will keep my information confidential. I will operate the temporary restaurant in line with the Health Services (Restaurants) Regulations, 1969.",
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential. I will operate the temporary restaurant in accordance with the Health Services (Restaurants) Regulations, 1969.",
                 "value": "confirmed"
               }
             ],
