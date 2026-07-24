@@ -20,10 +20,10 @@ type Screen =
   | 'next-steps'
   | 'register-path'
 
-const SERVICE_PATH_SPLAT =
-  'money-financial-support/national-insurance-for-self-employed-workers'
-const HOWTO_HREF = `/${SERVICE_PATH_SPLAT}/how-to-get-your-benefits`
 const SERVICE_CAPTION = 'NISSS for self-employed and gig workers'
+// The same NIS registration page the service page's "Register as self-employed"
+// links to, so both routes into registration land in one place.
+const REGISTER_HREF = 'https://www.nis.gov.bb/self-employment-registration/'
 
 // The prototype's soft card shadow (no design token for it).
 const CARD =
@@ -424,13 +424,13 @@ function Hero({
           <Button onClick={onBenefits} type="button" variant="secondary">
             See what you may qualify for
           </Button>
-          <button
-            className={`${linkVariants()} py-2 text-center`}
-            onClick={onRegister}
-            type="button"
+          <Link
+            className="justify-center py-2 text-center"
+            external
+            href={REGISTER_HREF}
           >
             I&rsquo;m ready to register for NISSS
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -787,17 +787,25 @@ function PlanStep({
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
         What should you put in?
       </h1>
-      <p className="mb-1 text-[1.125rem] text-mid-grey-00">
-        Pick a level you can afford. The more you put in, the bigger your
-        benefits. You&rsquo;ll see what each one protects next.
-      </p>
       <p className="mb-5 text-[1.125rem] text-mid-grey-00">
-        We&rsquo;ve suggested these levels from your average earnings of about{' '}
-        <strong className="text-black-00 tabular-nums">
-          {money(monthlyAvg)}
-        </strong>{' '}
-        a month.
+        Pick a level you can afford. The more you put in, the bigger your
+        benefits. You&rsquo;ll see what each one protects next. These estimates
+        are based on the earnings you entered.
       </p>
+
+      <div className={`${CARD} mb-5 p-5`}>
+        <p className="text-[1rem] text-mid-grey-00">Average monthly earnings</p>
+        <p className="mt-1 font-bold text-[2rem] text-black-00 tabular-nums leading-none">
+          {money(monthlyAvg)}
+        </p>
+        <button
+          className={`${linkVariants()} mt-3 inline-block`}
+          onClick={onBack}
+          type="button"
+        >
+          Change your earnings
+        </button>
+      </div>
 
       <div className={error ? 'border-red-00 border-l-4 pl-4' : ''}>
         {error && (
@@ -1185,42 +1193,60 @@ function ResultStep({
 }
 
 /* ── Screen: next steps ─────────────────────────────────────────────── */
-function ActionCard({
-  href,
+// A disclosure styled like the benefit cards on the result screen: neutral
+// card, colour only on the icon, a rule under the title separating it from the
+// body. Each card carries its own detail rather than linking away, so the
+// payment and contact routes are here rather than at the end of a link.
+function NextStepCard({
+  children,
   icon,
-  onClick,
   sub,
   title,
   tone,
 }: {
-  href?: string
+  children: ReactNode
   icon: string
-  onClick?: () => void
   sub: string
   title: string
   tone: Tone
 }) {
-  const inner = (
-    <div className="flex items-start gap-3">
-      <IconCircle name={icon} tint tone={tone} />
-      <div className="min-w-0 flex-1">
-        <p className="font-semibold text-[1.25rem] text-black-00">{title}</p>
-        <p className="mt-1 text-[1rem] text-black-00/80">{sub}</p>
+  return (
+    <details className="group overflow-hidden rounded-xl border border-grey-00 bg-white-00">
+      <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
+        <IconCircle name={icon} tint tone={tone} />
+        <span className="min-w-0 flex-1 font-semibold text-[1.25rem] text-black-00">
+          {title}
+        </span>
+        <Icon
+          className="h-6 w-6 shrink-0 text-black-00 transition-transform group-open:rotate-180"
+          name="chevronDown"
+          strokeWidth={2.25}
+        />
+      </summary>
+      <div className="border-grey-00 border-t px-4 pt-4 pb-5">
+        <p className="text-[1rem] text-black-00/80">{sub}</p>
+        {children}
       </div>
-      <span className="mt-2 text-teal-00">
-        <Icon className="h-5 w-5" name="arrowRight" strokeWidth={2} />
-      </span>
-    </div>
+    </details>
   )
-  const cls = `block w-full rounded-2xl border-2 ${TONE[tone].border} ${TONE[tone].bg} p-5 text-left transition-colors hover:border-teal-00 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100`
-  return href ? (
-    <a className={cls} href={href}>
-      {inner}
-    </a>
-  ) : (
-    <button className={cls} onClick={onClick} type="button">
-      {inner}
-    </button>
+}
+
+// `label — detail` rows. Unmarked (no bullets) to match the prototype, but a
+// list so the routes are announced as a set.
+function OptionList({
+  items,
+}: {
+  items: Array<{ detail: ReactNode; label: string }>
+}) {
+  return (
+    <ul className="mt-3 flex flex-col gap-2 text-[1rem] text-black-00">
+      {items.map((it) => (
+        <li key={it.label}>
+          <strong className="font-semibold">{it.label}</strong> &mdash;{' '}
+          {it.detail}
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -1244,27 +1270,97 @@ function NextSteps({
       </p>
 
       <div className="flex flex-col gap-3">
-        <ActionCard
+        <NextStepCard
           icon="shield"
-          onClick={onRegister}
           sub="Get set up to start contributing. Takes about 10 minutes."
           title="Register with NISSS"
           tone="teal"
-        />
-        <ActionCard
-          href={`${HOWTO_HREF}#4-pay-your-contributions`}
+        >
+          <Link
+            className="mt-3 inline-flex items-center gap-2"
+            external
+            href={REGISTER_HREF}
+          >
+            Start registration
+            <Icon className="h-4 w-4" name="arrowRight" strokeWidth={2} />
+          </Link>
+        </NextStepCard>
+
+        <NextStepCard
           icon="card"
-          sub="SurePay, EZpay+, bank, online, in person. Pick what works for you."
+          sub="Pay weekly, monthly, or in a lump sum — whatever fits your cash flow."
           title="See how to pay"
           tone="blue"
-        />
-        <ActionCard
-          href="tel:+12464317400"
+        >
+          <OptionList
+            items={[
+              {
+                label: 'NISSS online portal',
+                detail: 'pay from your phone, anytime',
+              },
+              {
+                label: 'SurePay',
+                detail: 'pay cash or card at any SurePay location',
+              },
+              {
+                label: 'EZpay+',
+                detail: (
+                  <>
+                    pay 24/7 at{' '}
+                    <Link
+                      href="https://ezpay.gov.bb"
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      ezpay.gov.bb
+                    </Link>
+                  </>
+                ),
+              },
+              {
+                label: 'Bank transfer',
+                detail: 'standing order or one-off transfer',
+              },
+              {
+                label: 'In person at NISSS',
+                detail: 'pay at the office and get help',
+              },
+            ]}
+          />
+        </NextStepCard>
+
+        <NextStepCard
           icon="phone"
-          sub="Have a question? Call NISSS on 431-7400 and an officer will help."
+          sub="Have a question? Here’s how to reach them."
           title="Contact NISSS"
           tone="yellow"
-        />
+        >
+          <OptionList
+            items={[
+              {
+                label: 'Call',
+                detail: <Link href="tel:+12464317400">246-431-7400</Link>,
+              },
+              {
+                label: 'Visit',
+                detail:
+                  'Frank Walcott Building, Bridgetown, or any branch office',
+              },
+              {
+                label: 'Online',
+                detail: (
+                  <Link
+                    href="https://www.nis.gov.bb"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    nis.gov.bb
+                  </Link>
+                ),
+              },
+            ]}
+          />
+        </NextStepCard>
       </div>
 
       <div className="mt-6 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
