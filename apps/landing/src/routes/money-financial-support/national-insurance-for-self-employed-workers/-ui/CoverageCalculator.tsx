@@ -793,13 +793,15 @@ function PlanStep({
         are based on the earnings you entered.
       </p>
 
-      <div className={`${CARD} mb-5 p-5`}>
-        <p className="text-[1rem] text-mid-grey-00">Average monthly earnings</p>
-        <p className="mt-1 font-bold text-[2rem] text-black-00 tabular-nums leading-none">
+      {/* A caption, not a card: the contribution levels below are the things to
+          choose, so this recap of what was entered stays plain text. */}
+      <div className="mb-5 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-grey-00 border-b pb-3 text-[1.125rem]">
+        <span className="text-mid-grey-00">Average monthly earnings</span>
+        <span className="font-semibold text-black-00 tabular-nums">
           {money(monthlyAvg)}
-        </p>
+        </span>
         <button
-          className={`${linkVariants()} mt-3 inline-block`}
+          className={`${linkVariants()} ml-auto`}
           onClick={onBack}
           type="button"
         >
