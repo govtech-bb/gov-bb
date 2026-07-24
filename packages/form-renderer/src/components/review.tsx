@@ -55,7 +55,7 @@ export default function Review({
   const getUploadedFileName = (fileValue: unknown): string | null => {
     if (!fileValue || typeof fileValue !== "object") return null;
 
-    if (fileValue instanceof File) {
+    if (typeof File !== "undefined" && fileValue instanceof File) {
       return fileValue.name;
     }
 

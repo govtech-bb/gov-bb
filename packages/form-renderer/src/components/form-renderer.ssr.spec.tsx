@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * form-renderer.ssr.spec.tsx
  *
@@ -13,6 +14,11 @@
  * at render time and it needs a RouterProvider the SSR host supplies — the
  * router wiring is out of scope for this smoke test (mirrors use-step-guard's
  * own spec).
+ *
+ * A second case renders with the active step set to the build-form-injected
+ * `check-your-answers` step, so the Review component (which reads a `file`
+ * field's value and does an `instanceof File` check) is exercised under node
+ * too, not just the text-field step.
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -48,6 +54,17 @@ const contract: ClientServiceContract = {
           name: "firstName",
           label: "First name",
           htmlType: "text",
+          disabled: false,
+          hidden: false,
+          conditionallyHidden: false,
+        },
+        {
+          id: "personal_attachment",
+          fieldId: "attachment",
+          stepId: "personal",
+          name: "attachment",
+          label: "Attachment",
+          htmlType: "file",
           disabled: false,
           hidden: false,
           conditionallyHidden: false,
@@ -92,11 +109,45 @@ function Harness() {
   );
 }
 
+// buildForm injects a `check-your-answers` step (before submission-confirmation)
+// when the contract doesn't already carry one — so formMeta.steps includes it
+// even though the inline `contract` above never lists it explicitly.
+function ReviewHarness() {
+  const formMeta = buildForm(contract);
+  // A previously-uploaded file is stored as a plain { name } object, not a
+  // browser File instance — this also exercises Review's "not a File" branch.
+  const defaultValues = {
+    ...formMeta.defaultValues,
+    personal_attachment: [{ name: "passport.pdf" }],
+  } as FormValues;
+  const form = useForm({ defaultValues });
+  const repeatableStepSettingsRef = useRef(formMeta.repeatSettings);
+  return (
+    <FormTransportProvider transport={transport}>
+      <FormRenderer
+        form={form}
+        formMeta={formMeta}
+        stepId="check-your-answers"
+        visibleSteps={formMeta.steps}
+        repeatableStepSettingsRef={repeatableStepSettingsRef}
+      />
+    </FormTransportProvider>
+  );
+}
+
 describe("FormRenderer SSR", () => {
   it("renders on the server without touching window/sessionStorage", () => {
     const html = renderToString(<Harness />);
     expect(() => renderToString(<Harness />)).not.toThrow();
     // Proves it produced a real render tree, not a no-op.
     expect(html).toContain("SSR Test Form");
+  });
+
+  it("renders the check-your-answers review step on the server", () => {
+    const html = renderToString(<ReviewHarness />);
+    expect(() => renderToString(<ReviewHarness />)).not.toThrow();
+    // Proves Review rendered the "personal" step's answers, including the
+    // file field's guarded `instanceof File` display-name logic.
+    expect(html).toContain("passport.pdf");
   });
 });
