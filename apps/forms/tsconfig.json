@@ -28,6 +28,9 @@
     },
     {
       "path": "../../packages/form-conditions"
+    },
+    {
+      "path": "../../packages/form-renderer"
     }
   ],
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts"],

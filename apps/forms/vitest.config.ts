@@ -40,6 +40,10 @@ export default defineConfig({
         find: "@govtech-bb/registry",
         replacement: r("../../packages/registry/src/index.ts"),
       },
+      {
+        find: "@govtech-bb/form-renderer",
+        replacement: r("../../packages/form-renderer/src/index.ts"),
+      },
       { find: "@forms/types", replacement: r("./src/types/index.ts") },
       { find: "@forms/lib", replacement: r("./src/lib/form-builder/index.ts") },
       { find: "@forms/form-api", replacement: r("./src/lib/api/forms.ts") },

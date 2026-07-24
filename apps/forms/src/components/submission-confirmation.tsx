@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { markdownComponents } from "./markdown-components";
 import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
-import { SubmissionConfirmationProps } from "../types/props.type";
+import { SubmissionConfirmationProps } from "@forms/types";
 
 // Backend sends amounts as plain numbers; tests/recipes may already include the
 // "$". Prefix only when missing so both inputs render "$20".
