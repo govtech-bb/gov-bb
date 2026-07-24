@@ -7,13 +7,10 @@ import {
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { isDateValidationError } from "@govtech-bb/form-validation";
 import { useStepGuard } from "../hooks/use-step-guard";
-import Review from "./review";
-import SubmissionConfirmation from "./submission-confirmation";
-import ApplicantNameDisplay from "./applicant-name-display";
+import { getAllowedPaymentOrigins } from "../lib/security/safe-payment-url";
 import {
   getFullFieldId,
   addRepeatableStep,
@@ -25,17 +22,22 @@ import {
   buildFieldValidationProperties,
   collectStepErrorCodes,
 } from "@forms/lib";
-import { trackEvent } from "../lib/analytics";
-import { formCategory } from "../lib/form-category";
-import { reviewDwellSeconds } from "./review-dwell";
-import { buildValidationErrorPayload } from "./validation-error-event";
-import { stepCompleteEventName } from "./step-events";
 import { StatusBanner } from "@govtech-bb/react";
 import { resolveStepTitle } from "@govtech-bb/form-conditions";
 import {
   buildStepScopedValues,
   FieldRenderer,
   markdownComponents,
+  Review,
+  SubmissionConfirmation,
+  ErrorSummary,
+  ApplicantNameDisplay,
+  trackEvent,
+  formCategory,
+  reviewDwellSeconds,
+  buildValidationErrorPayload,
+  stepCompleteEventName,
+  FormNavigationProvider,
 } from "@govtech-bb/form-renderer";
 
 // The feedback form citizens are sent to from a confirmation page, and its
@@ -523,6 +525,7 @@ function ActiveStep({
           onTryAgain={() => navigateToStep("check-your-answers")}
           submissionState={submissionState}
           feedbackUrl={feedbackUrl}
+          allowedPaymentOrigins={getAllowedPaymentOrigins()}
         />
       </div>
     );
@@ -580,12 +583,14 @@ function ActiveStep({
           )}
 
           {currentStep.stepId === "check-your-answers" && (
-            <Review
-              key={"review-step"}
-              formMeta={formMeta}
-              form={form}
-              visibleSteps={visibleSteps}
-            />
+            <FormNavigationProvider navigation={{ goToStep: navigateToStep }}>
+              <Review
+                key={"review-step"}
+                formMeta={formMeta}
+                form={form}
+                visibleSteps={visibleSteps}
+              />
+            </FormNavigationProvider>
           )}
 
           {currentStep.stepId === "declaration" && (

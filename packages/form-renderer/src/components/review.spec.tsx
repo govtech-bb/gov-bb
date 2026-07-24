@@ -2,13 +2,13 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "jest-axe";
 import Review from "./review";
-import type { ClientFormStep, FormMeta } from "@forms/types";
+import type { ClientFormStep, FormMeta } from "../types";
 
-// Mock TanStack Router — Review calls useNavigate({ from: "/forms/$formId/" })
-// which requires a router context unavailable in jsdom unit tests.
-const mockNavigate = vi.fn();
-vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => mockNavigate,
+// Mock the navigation context — Review calls useFormNavigation().goToStep(),
+// which requires a FormNavigationProvider unavailable in jsdom unit tests.
+const mockGoToStep = vi.fn();
+vi.mock("../navigation/context", () => ({
+  useFormNavigation: () => ({ goToStep: mockGoToStep }),
 }));
 
 // ---------------------------------------------------------------------------
@@ -971,7 +971,7 @@ describe("Review", () => {
     ).toBeInTheDocument();
   });
 
-  it("clicking a Change link triggers navigate", async () => {
+  it("clicking a Change link triggers goToStep", async () => {
     const steps: ClientFormStep[] = [
       makeStep({
         stepId: "step-personal",
@@ -992,14 +992,14 @@ describe("Review", () => {
     const changeLink = screen.getByRole("link", { name: /Change/ });
     await user.click(changeLink);
 
-    expect(mockNavigate).toHaveBeenCalled();
+    expect(mockGoToStep).toHaveBeenCalled();
   });
 
   // -------------------------------------------------------------------------
-  // handleChangeClick — navigate call with search param (line 41)
+  // handleChangeClick — goToStep call targets the clicked step (line 41)
   // -------------------------------------------------------------------------
 
-  it("clicking a Change link calls navigate with a search callback that sets the step param", async () => {
+  it("clicking a Change link calls goToStep with the step's id", async () => {
     const steps: ClientFormStep[] = [
       makeStep({
         stepId: "step-personal",
@@ -1020,18 +1020,7 @@ describe("Review", () => {
     const changeLink = screen.getByRole("link", { name: /Change/ });
     await user.click(changeLink);
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        search: expect.any(Function),
-      }),
-    );
-
-    // Invoke the search callback and verify it sets the correct step
-    const callArgs = mockNavigate.mock.calls[0][0] as {
-      search: (prev: Record<string, unknown>) => Record<string, unknown>;
-    };
-    const result = callArgs.search({ existing: "value" });
-    expect(result).toEqual({ existing: "value", step: "step-personal" });
+    expect(mockGoToStep).toHaveBeenCalledWith("step-personal");
   });
 
   // -------------------------------------------------------------------------

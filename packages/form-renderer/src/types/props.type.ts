@@ -136,4 +136,11 @@ export interface SubmissionConfirmationProps {
    * section so the feedback form never links back to itself.
    */
   feedbackUrl?: string;
+  /**
+   * Hostnames (or parent domains) the payment continue-link is allowed to
+   * point at. The package can't read Vite env (`VITE_PAYMENT_ALLOWED_ORIGINS`),
+   * so the host threads its env-driven allowlist through this prop; defaults
+   * to the production origin (`ezpay.gov.bb`) when omitted.
+   */
+  allowedPaymentOrigins?: string[];
 }

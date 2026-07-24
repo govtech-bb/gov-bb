@@ -36,9 +36,11 @@ vi.mock("../hooks/use-step-guard", () => ({
 // The mock surfaces enough of the props passed to FieldRenderer that wiring
 // tests can verify the toggle/insetFieldsByOption arguments — without this
 // extra metadata the spec could only assert which field IDs were rendered,
-// not whether the right props were threaded through. FieldRenderer now lives
-// in @govtech-bb/form-renderer, so the rest of the module's real exports
-// (buildStepScopedValues, etc.) are preserved via importOriginal.
+// not whether the right props were threaded through. Review, SubmissionConfirmation,
+// ErrorSummary and ApplicantNameDisplay now also live in @govtech-bb/form-renderer,
+// so they're stubbed here too (mirroring their former per-module mocks). The
+// rest of the module's real exports (buildStepScopedValues, trackEvent, etc.)
+// are preserved via importOriginal.
 vi.mock("@govtech-bb/form-renderer", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@govtech-bb/form-renderer")>();
@@ -64,28 +66,12 @@ vi.mock("@govtech-bb/form-renderer", async (importOriginal) => {
         }
       />
     ),
+    ErrorSummary: () => null,
+    Review: () => <div data-testid="review" />,
+    SubmissionConfirmation: () => <div data-testid="submission-confirmation" />,
+    ApplicantNameDisplay: () => <div data-testid="applicant-name-display" />,
   };
 });
-
-vi.mock("./error-summary", () => ({
-  __esModule: true,
-  default: () => null,
-}));
-
-vi.mock("./review", () => ({
-  __esModule: true,
-  default: () => <div data-testid="review" />,
-}));
-
-vi.mock("./submission-confirmation", () => ({
-  __esModule: true,
-  default: () => <div data-testid="submission-confirmation" />,
-}));
-
-vi.mock("./applicant-name-display", () => ({
-  __esModule: true,
-  default: () => <div data-testid="applicant-name-display" />,
-}));
 
 import * as formsLibMock from "@forms/lib";
 

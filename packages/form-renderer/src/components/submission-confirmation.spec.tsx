@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { axe } from "jest-axe";
 import SubmissionConfirmation from "./submission-confirmation";
-import type { SubmissionState } from "@forms/types";
+import type { SubmissionState } from "../types";
 
 const baseState: SubmissionState = {
   hasPayment: false,
@@ -214,6 +214,88 @@ describe("SubmissionConfirmation", () => {
         screen.queryByRole("link", { name: /continue to payment/i }),
       ).not.toBeInTheDocument();
       expect(screen.getByText(/payment was unsuccessful/i)).toBeInTheDocument();
+    });
+
+    it("accepts a subdomain of the default allowed origin", () => {
+      render(
+        <SubmissionConfirmation
+          serviceTitle="Passport"
+          stepTitle="Submitted"
+          submissionState={{
+            ...pendingState,
+            paymentUrl: "https://test.ezpay.gov.bb/pay",
+          }}
+        />,
+      );
+      expect(
+        screen.getByRole("link", { name: /continue to payment/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("rejects a host that merely contains the allowed string as a substring", () => {
+      render(
+        <SubmissionConfirmation
+          serviceTitle="Passport"
+          stepTitle="Submitted"
+          submissionState={{
+            ...pendingState,
+            paymentUrl: "https://evilezpay.gov.bb/",
+          }}
+        />,
+      );
+      expect(
+        screen.queryByRole("link", { name: /continue to payment/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  // `allowedPaymentOrigins` is how the host threads its env-driven allowlist
+  // (VITE_PAYMENT_ALLOWED_ORIGINS) through, since the package can't read Vite
+  // env directly (#1504's constraint, moved up a layer).
+  describe("allowedPaymentOrigins prop", () => {
+    const pendingState: SubmissionState = {
+      hasPayment: true,
+      serviceName: "Passport Renewal",
+      submissionSuccess: true,
+      paymentSuccess: false,
+      referenceNumber: "REF-PAY-1",
+      date: "19/05/2026",
+      amount: "$100.00",
+      quantity: 1,
+    };
+
+    it("accepts a paymentUrl on a host supplied via allowedPaymentOrigins", () => {
+      render(
+        <SubmissionConfirmation
+          serviceTitle="Passport"
+          stepTitle="Submitted"
+          submissionState={{
+            ...pendingState,
+            paymentUrl: "https://pay.example.com/checkout",
+          }}
+          allowedPaymentOrigins={["pay.example.com"]}
+        />,
+      );
+      expect(
+        screen.getByRole("link", { name: /continue to payment/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("rejects the default origin when allowedPaymentOrigins overrides it", () => {
+      render(
+        <SubmissionConfirmation
+          serviceTitle="Passport"
+          stepTitle="Submitted"
+          submissionState={{
+            ...pendingState,
+            paymentUrl: "https://ezpay.gov.bb/pay",
+          }}
+          allowedPaymentOrigins={["pay.example.com"]}
+        />,
+      );
+      expect(
+        screen.queryByRole("link", { name: /continue to payment/i }),
+      ).not.toBeInTheDocument();
     });
   });
 

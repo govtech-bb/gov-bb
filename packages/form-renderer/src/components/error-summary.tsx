@@ -1,4 +1,4 @@
-import { FieldValidationErrors } from "@forms/types";
+import { FieldValidationErrors } from "../types";
 import { JSX } from "react";
 
 export default function ErrorSummary({

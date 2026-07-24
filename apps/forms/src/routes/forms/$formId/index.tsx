@@ -25,8 +25,7 @@ import {
 import React from "react";
 import { elapsedSeconds } from "../../../lib/submit-duration";
 import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
-import { trackEvent } from "../../../lib/analytics";
-import { formCategory } from "../../../lib/form-category";
+import { trackEvent, formCategory } from "@govtech-bb/form-renderer";
 import {
   resolveSubmissionOutcome,
   applyPaymentReturn,

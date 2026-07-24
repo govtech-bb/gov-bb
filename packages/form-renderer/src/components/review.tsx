@@ -1,13 +1,16 @@
 import React from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { AnyFormApi } from "@tanstack/react-form";
-import { ClientFormStep, ClientPrimitive, FormMeta } from "@forms/types";
-import { getInstanceMarker, getVisibleFields } from "@forms/lib";
+import { ClientFormStep, ClientPrimitive, FormMeta } from "../types";
+import {
+  getInstanceMarker,
+  getVisibleFields,
+  buildStepScopedValues,
+} from "../model";
 import { DateValue } from "@govtech-bb/form-types";
 import { resolveStepTitle } from "@govtech-bb/form-conditions";
-import { buildStepScopedValues } from "@govtech-bb/form-renderer";
-import { trackEvent } from "../lib/analytics";
-import { formCategory } from "../lib/form-category";
+import { useFormNavigation } from "../navigation/context";
+import { trackEvent } from "../analytics";
+import { formCategory } from "../form-category";
 
 export default function Review({
   formMeta,
@@ -18,7 +21,7 @@ export default function Review({
   form: AnyFormApi;
   visibleSteps: ClientFormStep[];
 }) {
-  const navigate = useNavigate({ from: "/forms/$formId/" });
+  const { goToStep } = useFormNavigation();
 
   const excludeStepIds = [
     "intro",
@@ -46,12 +49,7 @@ export default function Review({
         category: formCategory(formMeta.formId),
         step: stepId,
       });
-      void navigate({
-        search: (prev: Record<string, unknown>) => ({
-          ...prev,
-          step: stepId,
-        }),
-      });
+      goToStep(stepId);
     };
 
   const getUploadedFileName = (fileValue: unknown): string | null => {

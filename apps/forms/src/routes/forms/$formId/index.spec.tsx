@@ -73,6 +73,8 @@ vi.mock("@govtech-bb/form-renderer", async (importOriginal) => {
     persistFormStartTime: vi.fn(),
     getFormStartTime: vi.fn(() => null),
     clearFormStartTime: vi.fn(),
+    formCategory: vi.fn(() => "test-category"),
+    trackEvent: vi.fn(),
   };
 });
 
@@ -80,17 +82,9 @@ vi.mock("../../../lib/submit-duration", () => ({
   elapsedSeconds: vi.fn(() => 0),
 }));
 
-vi.mock("../../../lib/form-category", () => ({
-  formCategory: vi.fn(() => "test-category"),
-}));
-
 vi.mock("@forms/form-api", () => ({
   formatDataForSubmission: vi.fn(() => ({})),
   postFormSubmission: vi.fn(),
-}));
-
-vi.mock("../../../lib/analytics", () => ({
-  trackEvent: vi.fn(),
 }));
 
 import { Route } from "./index";
@@ -104,8 +98,8 @@ import {
   getFormData,
   getSubmissionState,
   clearSubmissionState,
+  trackEvent,
 } from "@govtech-bb/form-renderer";
-import { trackEvent } from "../../../lib/analytics";
 
 const mockUseForm = useForm as Mock;
 const mockUseStore = useStore as Mock;

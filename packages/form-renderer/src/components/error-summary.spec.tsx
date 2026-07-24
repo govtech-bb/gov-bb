@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { axe } from "jest-axe";
 import ErrorSummary from "./error-summary";
-import type { FieldValidationErrors } from "@forms/types";
+import type { FieldValidationErrors } from "../types";
 
 describe("ErrorSummary", () => {
   it("renders nothing when errors object is empty", () => {

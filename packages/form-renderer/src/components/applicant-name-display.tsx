@@ -1,5 +1,5 @@
 import { useStore, type AnyFormApi } from "@tanstack/react-form";
-import { FormValues } from "@forms/types";
+import { FormValues } from "../types";
 
 interface ApplicantNameDisplayProps {
   form: AnyFormApi;
