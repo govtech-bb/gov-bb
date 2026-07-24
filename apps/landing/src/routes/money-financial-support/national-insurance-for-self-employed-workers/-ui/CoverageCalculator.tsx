@@ -100,44 +100,58 @@ function Icon({
 }
 
 type Tone = 'teal' | 'pink' | 'blue' | 'purple' | 'yellow' | 'green'
+// `borderStrong` is the full-strength edge, used for a selected card; `border`
+// is the resting tint.
 const TONE: Record<
   Tone,
-  { bg: string; text: string; border: string; fill: string }
+  {
+    bg: string
+    text: string
+    border: string
+    borderStrong: string
+    fill: string
+  }
 > = {
   teal: {
     bg: 'bg-teal-10',
     text: 'text-teal-00',
     border: 'border-teal-40',
+    borderStrong: 'border-teal-00',
     fill: 'bg-teal-00',
   },
   pink: {
     bg: 'bg-pink-10',
     text: 'text-pink-00',
     border: 'border-pink-40',
+    borderStrong: 'border-pink-00',
     fill: 'bg-pink-00',
   },
   blue: {
     bg: 'bg-blue-10',
     text: 'text-blue-100',
     border: 'border-blue-40',
+    borderStrong: 'border-blue-100',
     fill: 'bg-blue-100',
   },
   purple: {
     bg: 'bg-purple-10',
     text: 'text-purple-00',
     border: 'border-purple-40',
+    borderStrong: 'border-purple-00',
     fill: 'bg-purple-00',
   },
   yellow: {
     bg: 'bg-yellow-10',
     text: 'text-yellow-00',
     border: 'border-yellow-40',
+    borderStrong: 'border-yellow-00',
     fill: 'bg-yellow-00',
   },
   green: {
     bg: 'bg-green-10',
     text: 'text-green-00',
     border: 'border-green-40',
+    borderStrong: 'border-green-00',
     fill: 'bg-green-00',
   },
 }
@@ -832,7 +846,7 @@ function PlanStep({
                 aria-checked={selected}
                 className={`rounded-xl border-2 ${tone.bg} ${
                   selected
-                    ? `${tone.border} shadow-[inset_0_0_0_2px] `
+                    ? `${tone.borderStrong} shadow-[inset_0_0_0_2px] `
                     : tone.border
                 } p-4 text-left transition-shadow focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100 ${
                   selected ? tone.text : ''
