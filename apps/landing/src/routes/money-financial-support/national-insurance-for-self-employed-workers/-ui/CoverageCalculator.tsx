@@ -1164,11 +1164,20 @@ function ResultStep({
         ))}
       </div>
 
-      <div className="mt-6 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
+      <div className="mt-6 space-y-2 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
         <p>
-          <strong>You don&rsquo;t have to plan for every scenario.</strong>{' '}
-          NISSS gives you benefits across several of them at once. That&rsquo;s
-          the point of a safety net.
+          Each benefit has its own qualifying rules. How much you receive may
+          depend on your earnings and contribution record.
+        </p>
+        <p>
+          National Insurance for self-employed workers does not include
+          unemployment benefit.
+        </p>
+        <p>
+          Estimates only. Benefit amounts are calculated from your insurable
+          earnings (your contribution ÷ {Math.round(NIS.SE_RATE * 10000) / 100}
+          %) and your most recent year of contributions, and are subject to
+          change. Final amounts are confirmed by NISSS Benefits.
         </p>
       </div>
 
@@ -1180,14 +1189,6 @@ function ResultStep({
           Show me next steps
         </Button>
       </div>
-
-      <p className="mt-3 text-center text-[0.95rem] text-mid-grey-00">
-        Estimates only. Benefit amounts are calculated from your insurable
-        earnings (your contribution ÷ {Math.round(NIS.SE_RATE * 10000) / 100}%)
-        and your most recent year of contributions, and are subject to change.
-        These figures are unverified placeholders pending confirmation by the
-        NISSS Self-Employed Unit.
-      </p>
     </div>
   )
 }
