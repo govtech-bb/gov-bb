@@ -1,5 +1,5 @@
 ---
-title: "Pay National Insurance when you work for yourself"
+title: "Learn how to pay National Insurance when you work for yourself"
 description: "When you work for yourself, National Insurance pays you money when you can't work: when you're sick, when you have a baby, and when you stop working in old age. Joining is voluntary, and you contribute based on what you earn."
 lede: "Working for yourself? You can be covered. Find out how much to pay and how to make a payment, and estimate the benefits you may get."
 stage: "alpha"
@@ -51,7 +51,7 @@ Have your National Insurance number ready. You can pay:
 Find out how to check past payments and what to do if you missed any.
 You can also check whether work outside Barbados may count and which benefits you may get. 
 
-[Check your records](/money-financial-support/national-insurance-for-self-employed-workers/check-your-record)
+<link-button href="/money-financial-support/national-insurance-for-self-employed-workers/check-your-record" variant="secondary">Check your records</link-button>
 
 If you worked in a country that has a social security agreement with Barbados, those contributions may count towards your benefits here. Contact NIS and tell them where and when you worked.
 
