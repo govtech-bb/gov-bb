@@ -24,18 +24,18 @@ You can pay National Insurance this way if you work for yourself. This can be yo
 
 You don't need to fit one of these exactly. You don't need a registered business or a work permit. You can also contribute for work you do on the side, even if an employer pays National Insurance for your main job.
 
+## How much to pay
+The amount you pay is based on your earnings after business expenses. NIS sets minimum and maximum amounts, and your payment can change if your earnings change.
+
 <a data-start-link href="/money-financial-support/national-insurance-for-self-employed-workers/form">Calculate how much you may get</a>
 
 ## Before you pay
 
 Having a National Insurance number does not mean you are registered as self-employed. You need both: a number, and to be registered with NIS as self-employed. If you've worked in Barbados before, NIS can check whether you already have a number.
 
-<a data-start-link href="https://www.nis.gov.bb/self-employment-registration/">Register as self-employed</a>
+<link-button href="https://www.nis.gov.bb/self-employment-registration/" variant="secondary">Register as self-employed</link-button>
 
 NIS does not share your information with the Barbados Revenue Authority unless the law requires it.
-
-## How much to pay
-The amount you pay is based on your earnings after business expenses. NIS sets minimum and maximum amounts, and your payment can change if your earnings change.
 
 ## Make a payment
 You can pay weekly, monthly or as one payment for the year. The full amount for the year must be paid by 15 January of the following year.
