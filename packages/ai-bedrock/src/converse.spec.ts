@@ -108,4 +108,22 @@ describe("bedrockConverse", () => {
     });
     expect(result).toBe("");
   });
+
+  // #2080: a stuck Bedrock socket must not hang the caller forever. We hand a
+  // request-timeout AbortSignal to client.send (the AWS SDK enforces it); this
+  // verifies the wiring — that a signal is passed at all.
+  it("passes a request-timeout AbortSignal to client.send (#2080)", async () => {
+    const send = vi.fn().mockResolvedValue({
+      output: { message: { content: [{ text: "ok" }] } },
+    });
+    const client = { send } as unknown as BedrockRuntimeClient;
+    await bedrockConverse({
+      client,
+      model: "m",
+      system: "s",
+      messages: [{ role: "user", content: "hi" }],
+    });
+    const opts = send.mock.calls[0][1] as { abortSignal?: unknown };
+    expect(opts?.abortSignal).toBeInstanceOf(AbortSignal);
+  });
 });

@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   buildFunnelSteps,
   buildStepFunnel,
   buildVisitFunnelSteps,
+  fetchFormDefinition,
+  fetchFormList,
   funnelHeadline,
   humanizeStep,
   shapeFlow,
@@ -11,6 +13,7 @@ import {
   shapeJourneyList,
   shapeSearch,
   shapeSubmitError,
+  type UmamiConfig,
 } from './umami-server'
 
 describe('buildFunnelSteps', () => {
@@ -413,5 +416,64 @@ describe('shapeSearch', () => {
       zeroResultRate: 0,
       queries: [],
     })
+  })
+})
+
+// A hung forms API must not stall the dashboard: each fetch is capped with
+// AbortSignal.timeout and falls back to its empty shape on a timeout (#2080).
+describe('forms-API fetch timeouts (#2080)', () => {
+  const cfg: UmamiConfig = {
+    apiKey: 'k',
+    landingWebsiteId: 'l',
+    formsWebsiteId: 'f',
+    formsApiUrl: 'http://forms.test',
+  }
+  const timeoutError = () => new DOMException('timed out', 'TimeoutError')
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('fetchFormList returns [] on a fetch timeout', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(timeoutError()))
+    expect(await fetchFormList(cfg)).toEqual([])
+  })
+
+  it('fetchFormDefinition returns the empty shape on a fetch timeout', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(timeoutError()))
+    const result = await fetchFormDefinition(cfg, 'passport-renewal')
+    expect(result).toEqual({
+      title: 'passport-renewal',
+      steps: [],
+      labelByField: {},
+      messageByFieldCode: {},
+    })
+  })
+
+  it('fetchFormList returns [] when the timeout fires during the body read', async () => {
+    // Headers arrive (fetch resolves ok) but the body stalls, so the abort
+    // lands on res.json(). This must still fall back, not throw past it (#2080).
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.reject(timeoutError()),
+      }),
+    )
+    expect(await fetchFormList(cfg)).toEqual([])
+  })
+
+  it('passes an AbortSignal to fetch', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ data: [] }) })
+    vi.stubGlobal('fetch', fetchMock)
+    await fetchFormList(cfg)
+    expect(fetchMock.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it('re-throws a non-timeout fetch error rather than swallowing it', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
+    await expect(fetchFormList(cfg)).rejects.toThrow('network down')
   })
 })
