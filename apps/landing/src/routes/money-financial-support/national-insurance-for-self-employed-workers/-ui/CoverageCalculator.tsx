@@ -11,19 +11,12 @@ import {
 } from '../-lib/compute'
 import type { EarningsInputs } from '../-lib/compute'
 
-type Screen =
-  | 'hero'
-  | 'benefits'
-  | 'income'
-  | 'plan'
-  | 'result'
-  | 'next-steps'
-  | 'register-path'
+type Screen = 'hero' | 'benefits' | 'income' | 'plan' | 'result' | 'next-steps'
 
-const SERVICE_PATH_SPLAT =
-  'money-financial-support/national-insurance-for-self-employed-workers'
-const HOWTO_HREF = `/${SERVICE_PATH_SPLAT}/how-to-get-your-benefits`
 const SERVICE_CAPTION = 'NISSS for self-employed and gig workers'
+// The same NIS registration page the service page's "Register as self-employed"
+// links to, so both routes into registration land in one place.
+const REGISTER_HREF = 'https://www.nis.gov.bb/self-employment-registration/'
 
 // The prototype's soft card shadow (no design token for it).
 const CARD =
@@ -100,44 +93,58 @@ function Icon({
 }
 
 type Tone = 'teal' | 'pink' | 'blue' | 'purple' | 'yellow' | 'green'
+// `borderStrong` is the full-strength edge, used for a selected card; `border`
+// is the resting tint.
 const TONE: Record<
   Tone,
-  { bg: string; text: string; border: string; fill: string }
+  {
+    bg: string
+    text: string
+    border: string
+    borderStrong: string
+    fill: string
+  }
 > = {
   teal: {
     bg: 'bg-teal-10',
     text: 'text-teal-00',
     border: 'border-teal-40',
+    borderStrong: 'border-teal-00',
     fill: 'bg-teal-00',
   },
   pink: {
     bg: 'bg-pink-10',
     text: 'text-pink-00',
     border: 'border-pink-40',
+    borderStrong: 'border-pink-00',
     fill: 'bg-pink-00',
   },
   blue: {
     bg: 'bg-blue-10',
     text: 'text-blue-100',
     border: 'border-blue-40',
+    borderStrong: 'border-blue-100',
     fill: 'bg-blue-100',
   },
   purple: {
     bg: 'bg-purple-10',
     text: 'text-purple-00',
     border: 'border-purple-40',
+    borderStrong: 'border-purple-00',
     fill: 'bg-purple-00',
   },
   yellow: {
     bg: 'bg-yellow-10',
     text: 'text-yellow-00',
     border: 'border-yellow-40',
+    borderStrong: 'border-yellow-00',
     fill: 'bg-yellow-00',
   },
   green: {
     bg: 'bg-green-10',
     text: 'text-green-00',
     border: 'border-green-40',
+    borderStrong: 'border-green-00',
     fill: 'bg-green-00',
   },
 }
@@ -202,7 +209,6 @@ function IconCircle({
 
 export function CoverageCalculator() {
   const [screen, setScreen] = useState<Screen>('hero')
-  const [registerFrom, setRegisterFrom] = useState<Screen>('hero')
 
   const [goodMonth, setGoodMonth] = useState('')
   const [slowMonth, setSlowMonth] = useState('')
@@ -214,9 +220,6 @@ export function CoverageCalculator() {
   }>({})
   const [tier, setTier] = useState<Tier | ''>('')
   const [tierError, setTierError] = useState('')
-  const [alreadyHasNis, setAlreadyHasNis] = useState<
-    'yes' | 'no' | 'unsure' | ''
-  >('')
 
   const topRef = useRef<HTMLDivElement>(null)
   const incomeErrorRef = useRef<HTMLDivElement>(null)
@@ -282,7 +285,6 @@ export function CoverageCalculator() {
     setErrors({})
     setTier('')
     setTierError('')
-    setAlreadyHasNis('')
     go('hero')
   }
 
@@ -296,10 +298,6 @@ export function CoverageCalculator() {
         {screen === 'hero' && (
           <Hero
             onBenefits={() => go('benefits')}
-            onRegister={() => {
-              setRegisterFrom('hero')
-              go('register-path')
-            }}
             onStart={() => go('income')}
           />
         )}
@@ -354,22 +352,7 @@ export function CoverageCalculator() {
         )}
 
         {screen === 'next-steps' && (
-          <NextSteps
-            onBack={() => go('result')}
-            onRegister={() => {
-              setRegisterFrom('next-steps')
-              go('register-path')
-            }}
-            onRestart={restart}
-          />
-        )}
-
-        {screen === 'register-path' && (
-          <RegisterPath
-            onBack={() => go(registerFrom)}
-            selected={alreadyHasNis}
-            setSelected={setAlreadyHasNis}
-          />
+          <NextSteps onBack={() => go('result')} onRestart={restart} />
         )}
       </article>
     </div>
@@ -387,11 +370,9 @@ const HELPS: Array<[string, string]> = [
 
 function Hero({
   onBenefits,
-  onRegister,
   onStart,
 }: {
   onBenefits: () => void
-  onRegister: () => void
   onStart: () => void
 }) {
   return (
@@ -424,13 +405,13 @@ function Hero({
           <Button onClick={onBenefits} type="button" variant="secondary">
             See what you may qualify for
           </Button>
-          <button
-            className={`${linkVariants()} py-2 text-center`}
-            onClick={onRegister}
-            type="button"
+          <Link
+            className="justify-center py-2 text-center"
+            external
+            href={REGISTER_HREF}
           >
             I&rsquo;m ready to register for NISSS
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -787,17 +768,27 @@ function PlanStep({
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
         What should you put in?
       </h1>
-      <p className="mb-1 text-[1.125rem] text-mid-grey-00">
-        Pick a level you can afford. The more you put in, the bigger your
-        benefits. You&rsquo;ll see what each one protects next.
-      </p>
       <p className="mb-5 text-[1.125rem] text-mid-grey-00">
-        We&rsquo;ve suggested these levels from your average earnings of about{' '}
-        <strong className="text-black-00 tabular-nums">
-          {money(monthlyAvg)}
-        </strong>{' '}
-        a month.
+        Pick a level you can afford. The more you put in, the bigger your
+        benefits. You&rsquo;ll see what each one protects next. These estimates
+        are based on the earnings you entered.
       </p>
+
+      {/* A caption, not a card: the contribution levels below are the things to
+          choose, so this recap of what was entered stays plain text. */}
+      <div className="mb-5 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-grey-00 border-b pb-3 text-[1.125rem]">
+        <span className="text-mid-grey-00">Average monthly earnings</span>
+        <span className="font-semibold text-black-00 tabular-nums">
+          {money(monthlyAvg)}
+        </span>
+        <button
+          className={`${linkVariants()} ml-auto`}
+          onClick={onBack}
+          type="button"
+        >
+          Change your earnings
+        </button>
+      </div>
 
       <div className={error ? 'border-red-00 border-l-4 pl-4' : ''}>
         {error && (
@@ -822,7 +813,7 @@ function PlanStep({
                 aria-checked={selected}
                 className={`rounded-xl border-2 ${tone.bg} ${
                   selected
-                    ? `${tone.border} shadow-[inset_0_0_0_2px] `
+                    ? `${tone.borderStrong} shadow-[inset_0_0_0_2px] `
                     : tone.border
                 } p-4 text-left transition-shadow focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100 ${
                   selected ? tone.text : ''
@@ -1156,11 +1147,20 @@ function ResultStep({
         ))}
       </div>
 
-      <div className="mt-6 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
+      <div className="mt-6 space-y-2 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
         <p>
-          <strong>You don&rsquo;t have to plan for every scenario.</strong>{' '}
-          NISSS gives you benefits across several of them at once. That&rsquo;s
-          the point of a safety net.
+          Each benefit has its own qualifying rules. How much you receive may
+          depend on your earnings and contribution record.
+        </p>
+        <p>
+          National Insurance for self-employed workers does not include
+          unemployment benefit.
+        </p>
+        <p>
+          Estimates only. Benefit amounts are calculated from your insurable
+          earnings (your contribution ÷ {Math.round(NIS.SE_RATE * 10000) / 100}
+          %) and your most recent year of contributions, and are subject to
+          change. Final amounts are confirmed by NISSS Benefits.
         </p>
       </div>
 
@@ -1172,65 +1172,73 @@ function ResultStep({
           Show me next steps
         </Button>
       </div>
-
-      <p className="mt-3 text-center text-[0.95rem] text-mid-grey-00">
-        Estimates only. Benefit amounts are calculated from your insurable
-        earnings (your contribution ÷ {Math.round(NIS.SE_RATE * 10000) / 100}%)
-        and your most recent year of contributions, and are subject to change.
-        These figures are unverified placeholders pending confirmation by the
-        NISSS Self-Employed Unit.
-      </p>
     </div>
   )
 }
 
 /* ── Screen: next steps ─────────────────────────────────────────────── */
-function ActionCard({
-  href,
+// A disclosure styled like the benefit cards on the result screen: neutral
+// card, colour only on the icon, a rule under the title separating it from the
+// body. Each card carries its own detail rather than linking away, so the
+// payment and contact routes are here rather than at the end of a link.
+function NextStepCard({
+  children,
   icon,
-  onClick,
   sub,
   title,
   tone,
 }: {
-  href?: string
+  children: ReactNode
   icon: string
-  onClick?: () => void
   sub: string
   title: string
   tone: Tone
 }) {
-  const inner = (
-    <div className="flex items-start gap-3">
-      <IconCircle name={icon} tint tone={tone} />
-      <div className="min-w-0 flex-1">
-        <p className="font-semibold text-[1.25rem] text-black-00">{title}</p>
-        <p className="mt-1 text-[1rem] text-black-00/80">{sub}</p>
+  return (
+    <details className="group overflow-hidden rounded-xl border border-grey-00 bg-white-00">
+      <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
+        <IconCircle name={icon} tint tone={tone} />
+        <span className="min-w-0 flex-1 font-semibold text-[1.25rem] text-black-00">
+          {title}
+        </span>
+        <Icon
+          className="h-6 w-6 shrink-0 text-black-00 transition-transform group-open:rotate-180"
+          name="chevronDown"
+          strokeWidth={2.25}
+        />
+      </summary>
+      <div className="border-grey-00 border-t px-4 pt-4 pb-5">
+        <p className="text-[1rem] text-black-00/80">{sub}</p>
+        {children}
       </div>
-      <span className="mt-2 text-teal-00">
-        <Icon className="h-5 w-5" name="arrowRight" strokeWidth={2} />
-      </span>
-    </div>
+    </details>
   )
-  const cls = `block w-full rounded-2xl border-2 ${TONE[tone].border} ${TONE[tone].bg} p-5 text-left transition-colors hover:border-teal-00 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100`
-  return href ? (
-    <a className={cls} href={href}>
-      {inner}
-    </a>
-  ) : (
-    <button className={cls} onClick={onClick} type="button">
-      {inner}
-    </button>
+}
+
+// `label — detail` rows. Unmarked (no bullets) to match the prototype, but a
+// list so the routes are announced as a set.
+function OptionList({
+  items,
+}: {
+  items: Array<{ detail: ReactNode; label: string }>
+}) {
+  return (
+    <ul className="mt-3 flex flex-col gap-2 text-[1rem] text-black-00">
+      {items.map((it) => (
+        <li key={it.label}>
+          <strong className="font-semibold">{it.label}</strong> &mdash;{' '}
+          {it.detail}
+        </li>
+      ))}
+    </ul>
   )
 }
 
 function NextSteps({
   onBack,
-  onRegister,
   onRestart,
 }: {
   onBack: () => void
-  onRegister: () => void
   onRestart: () => void
 }) {
   return (
@@ -1244,27 +1252,97 @@ function NextSteps({
       </p>
 
       <div className="flex flex-col gap-3">
-        <ActionCard
+        <NextStepCard
           icon="shield"
-          onClick={onRegister}
           sub="Get set up to start contributing. Takes about 10 minutes."
           title="Register with NISSS"
           tone="teal"
-        />
-        <ActionCard
-          href={`${HOWTO_HREF}#4-pay-your-contributions`}
+        >
+          <Link
+            className="mt-3 inline-flex items-center gap-2"
+            external
+            href={REGISTER_HREF}
+          >
+            Start registration
+            <Icon className="h-4 w-4" name="arrowRight" strokeWidth={2} />
+          </Link>
+        </NextStepCard>
+
+        <NextStepCard
           icon="card"
-          sub="SurePay, EZpay+, bank, online, in person. Pick what works for you."
+          sub="Pay weekly, monthly, or in a lump sum — whatever fits your cash flow."
           title="See how to pay"
           tone="blue"
-        />
-        <ActionCard
-          href="tel:+12464317400"
+        >
+          <OptionList
+            items={[
+              {
+                label: 'NISSS online portal',
+                detail: 'pay from your phone, anytime',
+              },
+              {
+                label: 'SurePay',
+                detail: 'pay cash or card at any SurePay location',
+              },
+              {
+                label: 'EZpay+',
+                detail: (
+                  <>
+                    pay 24/7 at{' '}
+                    <Link
+                      href="https://ezpay.gov.bb"
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      ezpay.gov.bb
+                    </Link>
+                  </>
+                ),
+              },
+              {
+                label: 'Bank transfer',
+                detail: 'standing order or one-off transfer',
+              },
+              {
+                label: 'In person at NISSS',
+                detail: 'pay at the office and get help',
+              },
+            ]}
+          />
+        </NextStepCard>
+
+        <NextStepCard
           icon="phone"
-          sub="Have a question? Call NISSS on 431-7400 and an officer will help."
+          sub="Have a question? Here’s how to reach them."
           title="Contact NISSS"
           tone="yellow"
-        />
+        >
+          <OptionList
+            items={[
+              {
+                label: 'Call',
+                detail: <Link href="tel:+12464317400">246-431-7400</Link>,
+              },
+              {
+                label: 'Visit',
+                detail:
+                  'Frank Walcott Building, Bridgetown, or any branch office',
+              },
+              {
+                label: 'Online',
+                detail: (
+                  <Link
+                    href="https://www.nis.gov.bb"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    nis.gov.bb
+                  </Link>
+                ),
+              },
+            ]}
+          />
+        </NextStepCard>
       </div>
 
       <div className="mt-6 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
@@ -1280,139 +1358,6 @@ function NextSteps({
         </Button>
         <Button onClick={onRestart} type="button">
           Return to start
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-/* ── Screen: register routing ───────────────────────────────────────── */
-const REG_OPTIONS: Array<{
-  id: 'yes' | 'no' | 'unsure'
-  label: string
-  sub: string
-}> = [
-  {
-    id: 'yes',
-    label: 'Yes, I have one',
-    sub: 'I worked for someone before, or registered already.',
-  },
-  {
-    id: 'no',
-    label: 'No, I never registered',
-    sub: "I've always worked for myself.",
-  },
-  { id: 'unsure', label: "I'm not sure", sub: "Let's find out together." },
-]
-
-function RegisterPath({
-  onBack,
-  selected,
-  setSelected,
-}: {
-  onBack: () => void
-  selected: 'yes' | 'no' | 'unsure' | ''
-  setSelected: (v: 'yes' | 'no' | 'unsure') => void
-}) {
-  const regRadio = rovingRadioProps(
-    REG_OPTIONS,
-    (o) => `reg-${o.id}`,
-    REG_OPTIONS.findIndex((o) => o.id === selected),
-    (i) => setSelected(REG_OPTIONS[i].id),
-  )
-  return (
-    <div>
-      <ServiceCaption />
-      <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
-        Do you already have an NISSS number?
-      </h1>
-      <p className="mb-6 text-[1.125rem] text-mid-grey-00">
-        If you worked for an employer before, you probably do. It&rsquo;s the
-        same number for life.
-      </p>
-
-      <div
-        aria-label="Do you already have an NISSS number?"
-        className="flex flex-col gap-3"
-        role="radiogroup"
-      >
-        {REG_OPTIONS.map((o, i) => {
-          const isSel = selected === o.id
-          return (
-            <button
-              aria-checked={isSel}
-              className={`flex items-start gap-3 rounded-xl border-2 bg-white-00 p-4 text-left transition-colors focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100 ${
-                isSel
-                  ? 'border-teal-00 bg-teal-10'
-                  : 'border-grey-00 hover:border-teal-00 hover:bg-teal-10/40'
-              }`}
-              id={`reg-${o.id}`}
-              key={o.id}
-              onClick={() => setSelected(o.id)}
-              onKeyDown={regRadio[i].onKeyDown}
-              role="radio"
-              tabIndex={regRadio[i].tabIndex}
-              type="button"
-            >
-              <span
-                className={`mt-1 inline-flex h-6 w-6 shrink-0 rounded-full ${
-                  isSel
-                    ? 'bg-teal-00 shadow-[0_0_0_3px_#fff]'
-                    : 'border-2 border-mid-grey-00'
-                }`}
-              />
-              <span className="flex-1">
-                <span className="block font-semibold text-[1.25rem] text-black-00">
-                  {o.label}
-                </span>
-                <span className="mt-1 block text-[1rem] text-mid-grey-00">
-                  {o.sub}
-                </span>
-              </span>
-            </button>
-          )
-        })}
-      </div>
-
-      {selected === 'yes' && (
-        <p className="mt-6 text-[1.125rem]">
-          You already have a number, so use the{' '}
-          <Link
-            href="https://www.nis.gov.bb/self-employment-registration-form-page/"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            self-employment registration form
-          </Link>{' '}
-          to register as self-employed. It opens on the NISSS website.
-        </p>
-      )}
-      {selected === 'no' && (
-        <p className="mt-6 text-[1.125rem]">
-          Use the{' '}
-          <Link
-            href="https://www.nis.gov.bb/self-employment-registration-form-new-nis-applicant/"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            new applicant registration form
-          </Link>{' '}
-          to get your number and register. It opens on the NISSS website.
-        </p>
-      )}
-      {selected === 'unsure' && (
-        <div className="mt-6 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
-          <p>
-            Ask NISSS to look up your number before you register — call{' '}
-            <Link href="tel:+12464317400">431-7400</Link>. If you already have
-            one, you keep it for life, so there is no need to sign up again.
-          </p>
-        </div>
-      )}
-
-      <div className="mt-6">
-        <Button onClick={onBack} type="button" variant="secondary">
-          Previous
         </Button>
       </div>
     </div>
