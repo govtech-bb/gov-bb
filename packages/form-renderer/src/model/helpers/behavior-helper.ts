@@ -4,7 +4,7 @@ import {
   StepConditionalOnBehaviour,
 } from "@govtech-bb/form-types";
 import { AnyFormApi } from "@tanstack/react-form";
-import { ClientFormStep, ClientPrimitive } from "@forms/types";
+import { ClientFormStep, ClientPrimitive } from "../../types";
 import {
   evaluateCondition,
   flattenStepValues,

@@ -16,7 +16,7 @@
 vi.mock("uuid", () => ({ v4: () => "test-uuid-123" }));
 
 import { buildForm } from "./build-form";
-import type { ClientServiceContract, ClientPrimitive } from "@forms/types";
+import type { ClientServiceContract, ClientPrimitive } from "../types";
 import type {
   RepeatableBehaviour,
   StepConditionalOnBehaviour,

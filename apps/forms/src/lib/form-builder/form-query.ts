@@ -169,7 +169,9 @@ export const formMetaQueryOptions = (
   queryOptions<FormMeta>({
     queryKey: formSchemaCacheKey(formId, preview, draft),
     queryFn: () =>
-      import("./build-form").then((m) => m.buildForm(clientContract)),
+      import("@govtech-bb/form-renderer").then((m) =>
+        m.buildForm(clientContract),
+      ),
     staleTime: 60_000,
     gcTime: 30 * 60_000,
   });

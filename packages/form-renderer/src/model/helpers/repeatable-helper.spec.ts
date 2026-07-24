@@ -33,7 +33,7 @@ import type {
   ClientPrimitive,
   FormMeta,
   RepeatableStepSettings,
-} from "@forms/types";
+} from "../../types";
 import type {
   RepeatableBehaviour,
   SharedFieldsBehaviour,

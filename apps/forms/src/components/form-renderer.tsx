@@ -34,7 +34,7 @@ import { buildValidationErrorPayload } from "./validation-error-event";
 import { stepCompleteEventName } from "./step-events";
 import { StatusBanner } from "@govtech-bb/react";
 import { resolveStepTitle } from "@govtech-bb/form-conditions";
-import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
+import { buildStepScopedValues } from "@govtech-bb/form-renderer";
 
 // The feedback form citizens are sent to from a confirmation page, and its
 // first step. A root-relative path (not the absolute sandbox URL) so the link

@@ -7,7 +7,7 @@ import {
   RemoveRepeatableStepParams,
   FormValues,
   FormMeta,
-} from "@forms/types";
+} from "../../types";
 import { getFullFieldId } from "../field-mapper";
 import {
   RepeatableBehaviour,

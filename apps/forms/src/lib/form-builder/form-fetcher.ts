@@ -2,7 +2,7 @@
 
 import { ClientServiceContract } from "@forms/types";
 import { ServiceContract, serviceContractSchema } from "@govtech-bb/form-types";
-import { mapContractToLocale } from "./field-mapper";
+import { mapContractToLocale } from "@govtech-bb/form-renderer";
 import exampleServiceContract from "../../../contracts/example-service-contract.json";
 import masterContract from "../../../contracts/master-contract.json";
 import { fetchFormDefinition } from "@forms/form-api";

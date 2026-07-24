@@ -5,7 +5,7 @@ import {
   ClientServiceContract,
   ClientFormStep,
   ClientPrimitive,
-} from "@forms/types";
+} from "../types";
 
 export const mapContractToLocale = (
   contract: ServiceContract,

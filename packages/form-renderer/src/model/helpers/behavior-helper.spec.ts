@@ -15,7 +15,7 @@ import {
   getVisibleFields,
   getStepConditonalTargets,
 } from "./behavior-helper";
-import type { ClientFormStep, ClientPrimitive } from "@forms/types";
+import type { ClientFormStep, ClientPrimitive } from "../../types";
 import type {
   FieldConditionalOnBehaviour,
   StepConditionalOnBehaviour,

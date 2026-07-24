@@ -3,7 +3,7 @@ import {
   ClientPrimitive,
   FieldValidationProperties,
   FormValidation,
-} from "@forms/types";
+} from "../types";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { valueIsEmpty } from "./validation-methods";
 import { buildStepScopedValues } from "./helpers/value-tree";

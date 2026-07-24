@@ -16,7 +16,7 @@ import {
   buildValidation,
   buildFieldValidationProperties,
 } from "./validation-builder";
-import type { ClientServiceContract, ClientPrimitive } from "@forms/types";
+import type { ClientServiceContract, ClientPrimitive } from "../types";
 import type { AnyFieldApi } from "@tanstack/react-form";
 
 // ---------------------------------------------------------------------------

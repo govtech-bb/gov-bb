@@ -5,7 +5,7 @@ import { ClientFormStep, ClientPrimitive, FormMeta } from "@forms/types";
 import { getInstanceMarker, getVisibleFields } from "@forms/lib";
 import { DateValue } from "@govtech-bb/form-types";
 import { resolveStepTitle } from "@govtech-bb/form-conditions";
-import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
+import { buildStepScopedValues } from "@govtech-bb/form-renderer";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
 

@@ -6,7 +6,7 @@ import {
   RepeatableStepSettings,
   FormValidation,
   ClientFormStep,
-} from "@forms/types";
+} from "../types";
 import { buildValidation } from "./validation-builder";
 import { getStepConditonalTargets } from "./helpers/behavior-helper";
 import { setupRepeatSteps } from "./helpers/repeatable-helper";
