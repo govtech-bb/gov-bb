@@ -30,6 +30,14 @@ export interface FormRendererProps {
    * (#1682).
    */
   draftToken?: string;
+  /**
+   * Hostnames (or parent domains) the payment continue-link may point at,
+   * threaded straight to <SubmissionConfirmation>. The package can't read Vite
+   * env (`VITE_PAYMENT_ALLOWED_ORIGINS`), so the host supplies its env-driven
+   * allowlist through this prop; defaults to the production origin
+   * (`ezpay.gov.bb`) when omitted.
+   */
+  allowedPaymentOrigins?: string[];
 }
 
 export type UseStepGuardProps = {

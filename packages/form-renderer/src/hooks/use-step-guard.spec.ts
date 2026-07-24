@@ -1,6 +1,6 @@
 import { renderHook, act } from "@testing-library/react";
 import { useStepGuard } from "./use-step-guard";
-import type { ClientFormStep } from "@forms/types";
+import type { ClientFormStep } from "../types";
 
 const mockNavigate = vi.fn();
 

@@ -3,14 +3,13 @@ import {
   FieldValidationErrors,
   FormRendererProps,
   FormValues,
-} from "@forms/types";
+} from "../types";
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useStore } from "@tanstack/react-form";
 import { isDateValidationError } from "@govtech-bb/form-validation";
 import { useStepGuard } from "../hooks/use-step-guard";
-import { getAllowedPaymentOrigins } from "../lib/security/safe-payment-url";
 import {
   getFullFieldId,
   addRepeatableStep,
@@ -21,24 +20,22 @@ import {
   getInstanceMarker,
   buildFieldValidationProperties,
   collectStepErrorCodes,
-} from "@forms/lib";
+  buildStepScopedValues,
+} from "../model";
 import { StatusBanner } from "@govtech-bb/react";
 import { resolveStepTitle } from "@govtech-bb/form-conditions";
-import {
-  buildStepScopedValues,
-  FieldRenderer,
-  markdownComponents,
-  Review,
-  SubmissionConfirmation,
-  ErrorSummary,
-  ApplicantNameDisplay,
-  trackEvent,
-  formCategory,
-  reviewDwellSeconds,
-  buildValidationErrorPayload,
-  stepCompleteEventName,
-  FormNavigationProvider,
-} from "@govtech-bb/form-renderer";
+import { FormNavigationProvider } from "../navigation/context";
+import { trackEvent } from "../analytics";
+import { formCategory } from "../form-category";
+import FieldRenderer from "./field-renderer";
+import { markdownComponents } from "./markdown-components";
+import Review from "./review";
+import SubmissionConfirmation from "./submission-confirmation";
+import ErrorSummary from "./error-summary";
+import ApplicantNameDisplay from "./applicant-name-display";
+import { reviewDwellSeconds } from "./review-dwell";
+import { buildValidationErrorPayload } from "./validation-error-event";
+import { stepCompleteEventName } from "./step-events";
 
 // The feedback form citizens are sent to from a confirmation page, and its
 // first step. A root-relative path (not the absolute sandbox URL) so the link
@@ -163,6 +160,7 @@ export default function FormRenderer({
   isDraft = false,
   previewToken,
   draftToken,
+  allowedPaymentOrigins,
 }: FormRendererProps) {
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
     formId: formMeta.formId,
@@ -232,6 +230,7 @@ export default function FormRenderer({
       isDraft={isDraft}
       previewToken={previewToken}
       draftToken={draftToken}
+      allowedPaymentOrigins={allowedPaymentOrigins}
       navigateToStep={navigateToStep}
       completeAndContinue={completeAndContinue}
     />
@@ -267,6 +266,7 @@ function ActiveStep({
   isDraft = false,
   previewToken,
   draftToken,
+  allowedPaymentOrigins,
   navigateToStep,
   completeAndContinue,
 }: ActiveStepProps) {
@@ -342,10 +342,14 @@ function ActiveStep({
     );
 
     const scrollToTop = () => {
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth", // Smooth animation
-      });
+      // SSR-guard: the package renders on the server (landing host), where
+      // `window` is undefined.
+      if (typeof window !== "undefined") {
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth", // Smooth animation
+        });
+      }
     };
 
     const hasError = results.some((r) => r.length > 0);
@@ -525,7 +529,7 @@ function ActiveStep({
           onTryAgain={() => navigateToStep("check-your-answers")}
           submissionState={submissionState}
           feedbackUrl={feedbackUrl}
-          allowedPaymentOrigins={getAllowedPaymentOrigins()}
+          allowedPaymentOrigins={allowedPaymentOrigins}
         />
       </div>
     );

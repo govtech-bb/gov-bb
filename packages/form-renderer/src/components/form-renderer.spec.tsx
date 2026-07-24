@@ -33,62 +33,67 @@ vi.mock("../hooks/use-step-guard", () => ({
   useStepGuard: vi.fn(),
 }));
 
-// The mock surfaces enough of the props passed to FieldRenderer that wiring
-// tests can verify the toggle/insetFieldsByOption arguments — without this
-// extra metadata the spec could only assert which field IDs were rendered,
-// not whether the right props were threaded through. Review, SubmissionConfirmation,
-// ErrorSummary and ApplicantNameDisplay now also live in @govtech-bb/form-renderer,
-// so they're stubbed here too (mirroring their former per-module mocks). The
-// rest of the module's real exports (buildStepScopedValues, trackEvent, etc.)
-// are preserved via importOriginal.
-vi.mock("@govtech-bb/form-renderer", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@govtech-bb/form-renderer")>();
+// FormRenderer now lives in the package and imports its children via relative
+// sibling paths, so the stubs have to intercept those modules directly (mocking
+// the @govtech-bb/form-renderer barrel would not affect FormRenderer's own
+// relative imports). The FieldRenderer stub surfaces enough of the props passed
+// to it that wiring tests can verify the toggle/insetFieldsByOption arguments —
+// without this extra metadata the spec could only assert which field IDs were
+// rendered, not whether the right props were threaded through. Each of these
+// modules is a default export, so the mock returns `{ default: ... }`.
+vi.mock("./field-renderer", () => ({
+  default: (props: {
+    field: { id: string };
+    formVersion?: string;
+    insetFieldsByOption?: Map<string, Array<{ field: { id: string } }>>;
+  }) => (
+    <div
+      data-testid="field-renderer"
+      data-field-id={props.field.id}
+      data-form-version={props.formVersion}
+      data-inset-options={
+        props.insetFieldsByOption
+          ? JSON.stringify(
+              Array.from(props.insetFieldsByOption.entries()).map(
+                ([value, entries]) => [value, entries.map((e) => e.field.id)],
+              ),
+            )
+          : ""
+      }
+    />
+  ),
+}));
+vi.mock("./error-summary", () => ({ default: () => null }));
+vi.mock("./review", () => ({
+  default: () => <div data-testid="review" />,
+}));
+vi.mock("./submission-confirmation", () => ({
+  default: () => <div data-testid="submission-confirmation" />,
+}));
+vi.mock("./applicant-name-display", () => ({
+  default: () => <div data-testid="applicant-name-display" />,
+}));
+
+import * as modelMock from "../model";
+
+// Partial mock: keep the real pure helpers (getFullFieldId, the concatenators,
+// buildStepScopedValues used by the conditionalTitle tests) and override only
+// the functions the tests spy on / drive.
+vi.mock("../model", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../model")>();
   return {
     ...actual,
-    FieldRenderer: (props: {
-      field: { id: string };
-      formVersion?: string;
-      insetFieldsByOption?: Map<string, Array<{ field: { id: string } }>>;
-    }) => (
-      <div
-        data-testid="field-renderer"
-        data-field-id={props.field.id}
-        data-form-version={props.formVersion}
-        data-inset-options={
-          props.insetFieldsByOption
-            ? JSON.stringify(
-                Array.from(props.insetFieldsByOption.entries()).map(
-                  ([value, entries]) => [value, entries.map((e) => e.field.id)],
-                ),
-              )
-            : ""
-        }
-      />
-    ),
-    ErrorSummary: () => null,
-    Review: () => <div data-testid="review" />,
-    SubmissionConfirmation: () => <div data-testid="submission-confirmation" />,
-    ApplicantNameDisplay: () => <div data-testid="applicant-name-display" />,
+    addRepeatableStep: vi.fn(() => []),
+    removeRepeatableStep: vi.fn(() => []),
+    getRepeatStepCount: vi.fn(() => undefined),
+    getInstanceMarker: vi.fn(() => undefined),
+    buildFieldValidationProperties: vi.fn(() => ({
+      onDynamic: vi.fn(),
+      onBlur: vi.fn(),
+    })),
+    collectStepErrorCodes: vi.fn(() => []),
   };
 });
-
-import * as formsLibMock from "@forms/lib";
-
-vi.mock("@forms/lib", () => ({
-  getFullFieldId: (step: string, field: string) => `${step}_${field}`,
-  addRepeatableStep: vi.fn(() => []),
-  removeRepeatableStep: vi.fn(() => []),
-  stepFieldIdConcactenator: "_",
-  repeatStepConcactenator: "~",
-  getRepeatStepCount: vi.fn(() => undefined),
-  getInstanceMarker: vi.fn(() => undefined),
-  buildFieldValidationProperties: vi.fn(() => ({
-    onDynamic: vi.fn(),
-    onBlur: vi.fn(),
-  })),
-  collectStepErrorCodes: vi.fn(() => []),
-}));
 
 import FormRenderer from "./form-renderer";
 
@@ -553,7 +558,7 @@ describe("FormRenderer", () => {
   });
 
   it("builds validators from the field when it is missing from validationProperties (repeat instances, #432)", () => {
-    const { buildFieldValidationProperties } = vi.mocked(formsLibMock);
+    const { buildFieldValidationProperties } = vi.mocked(modelMock);
     // A repeat-instance field (step~N_*) that buildValidation never saw, so it
     // has no entry in formMeta.validationProperties. Before the fix it would be
     // rendered with no validators and silently bypass validation.
@@ -1024,7 +1029,7 @@ describe("FormRenderer", () => {
 
   it("clicking Continue on a repeatable step with addAnother=yes calls addRepeatableStep", async () => {
     const user = userEvent.setup();
-    const { addRepeatableStep } = vi.mocked(formsLibMock);
+    const { addRepeatableStep } = vi.mocked(modelMock);
     (addRepeatableStep as Mock).mockReturnValue([]);
     const repeatableBehaviour = { type: "repeatable", min: 1, max: 3 };
     const step = makeStep("step-1", [], [repeatableBehaviour]);
@@ -1047,7 +1052,7 @@ describe("FormRenderer", () => {
 
   it("clicking Continue on a repeatable step with addAnother=no calls removeRepeatableStep", async () => {
     const user = userEvent.setup();
-    const { removeRepeatableStep } = vi.mocked(formsLibMock);
+    const { removeRepeatableStep } = vi.mocked(modelMock);
     (removeRepeatableStep as Mock).mockReturnValue([]);
     const repeatableBehaviour = { type: "repeatable", min: 1, max: 3 };
     const step = makeStep("step-1", [], [repeatableBehaviour]);
@@ -1070,7 +1075,7 @@ describe("FormRenderer", () => {
 
   it("purges removed instances' field values from the form store on 'No' (#432)", async () => {
     const user = userEvent.setup();
-    const { removeRepeatableStep } = vi.mocked(formsLibMock);
+    const { removeRepeatableStep } = vi.mocked(modelMock);
     const repeatableBehaviour = { type: "repeatable", min: 1, max: 3 };
     const baseStep = makeStep("step-1", [], [repeatableBehaviour]);
     const removedField = makePlainField("step-1~1_name", "name", "step-1~1");
@@ -1117,7 +1122,7 @@ describe("FormRenderer", () => {
   });
 
   it("useEffect: assigns repeatableStepValues to stepData when settings are present", async () => {
-    const { getRepeatStepCount } = vi.mocked(formsLibMock);
+    const { getRepeatStepCount } = vi.mocked(modelMock);
     (getRepeatStepCount as Mock).mockReturnValue(0);
 
     // Start stepData EMPTY so the assertion can only pass if the useEffect
@@ -1166,7 +1171,7 @@ describe("FormRenderer", () => {
 
   // #801: distinguish repeatable-step instances beyond the first.
   it("repeat instance marker: a non-repeat step renders the plain title with no caption", () => {
-    const { getInstanceMarker } = vi.mocked(formsLibMock);
+    const { getInstanceMarker } = vi.mocked(modelMock);
     (getInstanceMarker as Mock).mockReturnValue(undefined);
     const step = makeStep("step-1");
     render(
@@ -1188,7 +1193,7 @@ describe("FormRenderer", () => {
   });
 
   it("repeat instance marker: an auto-numbered instance suffixes the title with ' — N' and renders no caption", () => {
-    const { getInstanceMarker } = vi.mocked(formsLibMock);
+    const { getInstanceMarker } = vi.mocked(modelMock);
     (getInstanceMarker as Mock).mockReturnValue({
       text: "2",
       hasLabel: false,
@@ -1300,7 +1305,7 @@ describe("FormRenderer", () => {
   });
 
   it("repeat instance marker: a labelled instance renders the caption inside the h1 (GOV.UK pattern)", () => {
-    const { getInstanceMarker } = vi.mocked(formsLibMock);
+    const { getInstanceMarker } = vi.mocked(modelMock);
     (getInstanceMarker as Mock).mockReturnValue({
       text: "Dependent 2",
       hasLabel: true,

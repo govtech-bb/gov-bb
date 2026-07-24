@@ -1,4 +1,4 @@
-import FormRenderer from "./form-renderer";
+import { FormRenderer } from "@govtech-bb/form-renderer";
 import NotFound from "./not-found";
 import FormError from "./form-error";
 import ApplicationClosed from "./application-closed";

@@ -1,11 +1,11 @@
 import { useEffect, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ClientFormStep, UseStepGuardProps } from "@forms/types";
+import { ClientFormStep, UseStepGuardProps } from "../types";
 import {
   getFirstIncompleteActiveStep,
   isStepAccessible,
   markStepCompleted,
-} from "@govtech-bb/form-renderer";
+} from "../storage/session-storage";
 
 /**
  * Condition-aware step guard for multi-step form navigation.
@@ -28,14 +28,23 @@ export function useStepGuard({
   activeSteps,
   currentStepId,
 }: UseStepGuardProps) {
-  const navigate = useNavigate({ from: "/forms/$formId/" });
+  // Route-generic: no `from` binding so the guard works on whatever route the
+  // form is mounted at (the forms app AND, later, the landing SSR host). It
+  // only ever mutates the `?step=` search param, which stays on the current
+  // route — it never navigates to an absolute `/forms/$formId/...` path.
+  const navigate = useNavigate();
 
   // ─── Internal primitive: write the step ID into the URL ──────────────────
   const navigateToStepId = useCallback(
     (stepId: string) => {
+      // Because the guard is route-generic (no `from`), TanStack Router types
+      // the search reducer against `AnyRouter` and can't resolve the host
+      // route's search schema, so the options are cast to the navigate param
+      // type. At runtime this only merges `?step=` into the current route's
+      // search, staying on whatever route the form is mounted at.
       void navigate({
         search: (prev: Record<string, unknown>) => ({ ...prev, step: stepId }),
-      });
+      } as Parameters<typeof navigate>[0]);
     },
     [navigate],
   );

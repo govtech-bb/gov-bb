@@ -20,3 +20,5 @@ export { stepCompleteEventName } from "./components/step-events";
 export { buildValidationErrorPayload } from "./components/validation-error-event";
 export { trackEvent } from "./analytics";
 export { formCategory } from "./form-category";
+export { default as FormRenderer } from "./components/form-renderer";
+export * from "./hooks/use-step-guard";
