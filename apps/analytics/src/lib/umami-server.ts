@@ -736,12 +736,33 @@ function ymd(ms: number): string {
   }).format(new Date(ms))
 }
 
-async function fetchFormList(cfg: UmamiConfig): Promise<FormListItem[]> {
+// A slow or hung forms API must not stall the whole dashboard request. Cap each
+// fetch and fall back to the same empty shape a non-ok response already returns
+// (#2080). Non-timeout errors keep propagating as before.
+const FORMS_FETCH_TIMEOUT_MS = 15_000
+
+const isTimeout = (err: unknown): boolean =>
+  err instanceof DOMException &&
+  (err.name === 'TimeoutError' || err.name === 'AbortError')
+
+export async function fetchFormList(cfg: UmamiConfig): Promise<FormListItem[]> {
   const base = cfg.formsApiUrl.replace(/\/+$/, '')
-  const res = await fetch(`${base}/form-definitions`)
-  if (!res.ok) return []
-  const body = (await res.json()) as {
-    data?: { formId: string; title: string }[]
+  // The timeout must cover the body read too, not just the connection — a
+  // server that sends headers then stalls the body would otherwise abort
+  // outside this catch and throw past the fallback (#2080). Only a timeout
+  // falls back; other errors (network, malformed JSON) propagate as before.
+  let body: { data?: { formId: string; title: string }[] }
+  try {
+    const res = await fetch(`${base}/form-definitions`, {
+      signal: AbortSignal.timeout(FORMS_FETCH_TIMEOUT_MS),
+    })
+    if (!res.ok) return []
+    body = (await res.json()) as {
+      data?: { formId: string; title: string }[]
+    }
+  } catch (err) {
+    if (isTimeout(err)) return []
+    throw err
   }
   return (body.data ?? []).map((f) => ({ formId: f.formId, title: f.title }))
 }
@@ -755,7 +776,7 @@ interface FormDefinition {
   messageByFieldCode: Record<string, string>
 }
 
-async function fetchFormDefinition(
+export async function fetchFormDefinition(
   cfg: UmamiConfig,
   formId: string,
 ): Promise<FormDefinition> {
@@ -766,11 +787,21 @@ async function fetchFormDefinition(
     messageByFieldCode: {},
   }
   const base = cfg.formsApiUrl.replace(/\/+$/, '')
-  const res = await fetch(
-    `${base}/form-definitions/${encodeURIComponent(formId)}`,
-  )
-  if (!res.ok) return empty
-  const body = (await res.json()) as {
+  // Timeout must cover the body read too (see fetchFormList) — return the empty
+  // shape on a timeout at either phase; other errors propagate (#2080).
+  let raw: unknown
+  try {
+    const res = await fetch(
+      `${base}/form-definitions/${encodeURIComponent(formId)}`,
+      { signal: AbortSignal.timeout(FORMS_FETCH_TIMEOUT_MS) },
+    )
+    if (!res.ok) return empty
+    raw = await res.json()
+  } catch (err) {
+    if (isTimeout(err)) return empty
+    throw err
+  }
+  const body = raw as {
     data?: {
       title?: string
       steps?: {
