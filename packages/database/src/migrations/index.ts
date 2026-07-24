@@ -17,3 +17,4 @@ export { CreateServiceStatusTables1783356461699 } from "./1783356461699-CreateSe
 export { RenameServiceStatusFormIdToSlug1783440984875 } from "./1783440984875-RenameServiceStatusFormIdToSlug";
 export { CreateNotificationLog1783458705143 } from "./1783458705143-CreateNotificationLog";
 export { SeedServiceStatus1783520007424 } from "./1783520007424-SeedServiceStatus";
+export { AddMinistryKeyToMdaContact1784000000000 } from "./1784000000000-AddMinistryKeyToMdaContact";

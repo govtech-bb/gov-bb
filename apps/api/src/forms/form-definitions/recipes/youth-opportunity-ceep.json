@@ -245,6 +245,26 @@
         "subject": "Your application for Community Engagement and Educational Programme (CEEP) has been received",
         "recipientField": "applicant-details.applicant-email"
       }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "mapping": {
+          "programmeCode": "CEEP",
+          "applicant": {
+            "name": [
+              "applicant-details.applicant-first-name",
+              "applicant-details.applicant-last-name"
+            ],
+            "email": "applicant-details.applicant-email",
+            "phone": "applicant-details.applicant-phone"
+          },
+          "excludeSteps": [
+            "declaration",
+            "submission-confirmation"
+          ]
+        }
+      }
     }
   ],
   "description": "Register your interest in Community Engagement and Educational Programme (CEEP)."

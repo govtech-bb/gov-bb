@@ -10,11 +10,22 @@ vi.mock("node:dns/promises", () => ({ lookup: vi.fn() }));
 import { lookup } from "node:dns/promises";
 
 import { WebhookProcessor } from "./webhook.processor";
+import { WebhookConfigError } from "./webhook-errors";
+import type { WebhookDestinationsService } from "@/forms/webhook-destinations/webhook-destinations.service";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 
 const request = vi.fn();
 const http = { request } as unknown as HttpService;
 const mockLookup = lookup as unknown as Mock;
+
+/** A WebhookDestinationsService stub resolving to `dest` (or null = a miss). */
+function makeDestinations(
+  dest: { url: string; secret: string } | null,
+): WebhookDestinationsService {
+  return {
+    resolveWebhookDestination: vi.fn().mockResolvedValue(dest),
+  } as unknown as WebhookDestinationsService;
+}
 
 /** Single config object passed to HttpService.request for call `i`. */
 function reqConfig(i = 0): {
@@ -64,14 +75,14 @@ function makePayload(
   };
 }
 
-describe("WebhookProcessor", () => {
+describe("WebhookProcessor — generic (envelope) mode", () => {
   let processor: WebhookProcessor;
 
   beforeEach(() => {
     vi.clearAllMocks();
     request.mockReturnValue(of({ status: 200, data: {} }));
     mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
-    processor = new WebhookProcessor(http);
+    processor = new WebhookProcessor(http, makeDestinations(null));
   });
 
   it("POSTs to the configured url with the configured method", async () => {
@@ -227,13 +238,16 @@ describe("WebhookProcessor", () => {
   });
 });
 
-describe("WebhookProcessor — mapped mode", () => {
-  let processor: WebhookProcessor;
+describe("WebhookProcessor — mapped mode (per-MDA destination)", () => {
+  const DEST = {
+    url: "https://cms.example.gov.bb/api/cases",
+    secret: "dev-key-123",
+  };
 
   function makeMappedPayload(): SubmissionCreatedEvent {
     return {
       submissionId: "sub-200",
-      referenceCode: "SCIENCE2026-2606-Y5RPJEP",
+      referenceCode: "PRM-20260604-130732-000200",
       formId: "science-camp",
       formVersion: "1.4.0",
       idempotencyKey: "idem-mapped-1",
@@ -241,12 +255,7 @@ describe("WebhookProcessor — mapped mode", () => {
         {
           type: "webhook",
           config: {
-            endpoint: { env: "WEBHOOK_URL" },
-            auth: {
-              scheme: "apiKey",
-              header: "X-API-Key",
-              secretEnv: "WEBHOOK_SECRET",
-            },
+            // A mapped webhook carries NO destination — it resolves per-MDA.
             mapping: {
               programmeCode: "SCIENCE2026",
               applicant: {
@@ -265,14 +274,6 @@ describe("WebhookProcessor — mapped mode", () => {
         declaration: { agree: "confirmed" },
       },
       meta: {
-        schemaVersion: 2,
-        pinnedFormVersion: "1.4.0",
-        draftId: "d",
-        activeStepIds: [],
-        hiddenStepIds: [],
-        activeFieldIds: {},
-        hiddenFieldIds: {},
-        visitedPages: [0],
         submittedAt: "2026-06-18T09:00:00.000Z",
       } as unknown as SubmissionCreatedEvent["meta"],
     };
@@ -281,22 +282,22 @@ describe("WebhookProcessor — mapped mode", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     request.mockReturnValue(of({ status: 200, data: {} }));
-    processor = new WebhookProcessor(http);
-    process.env.WEBHOOK_URL = "http://cms.local/api/cases";
-    process.env.WEBHOOK_SECRET = "dev-key-123";
+    mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
   });
 
-  afterEach(() => {
-    delete process.env.WEBHOOK_URL;
-    delete process.env.WEBHOOK_SECRET;
-  });
+  it("resolves the destination by formId and POSTs the mapped payload with X-API-Key", async () => {
+    const destinations = makeDestinations(DEST);
+    const processor = new WebhookProcessor(http, destinations);
 
-  it("POSTs the mapped case payload to the env endpoint with the API key", async () => {
     await processor.process(makeMappedPayload());
-    expect(reqConfig().url).toBe("http://cms.local/api/cases");
+
+    expect(destinations.resolveWebhookDestination).toHaveBeenCalledWith(
+      "science-camp",
+    );
+    expect(reqConfig().url).toBe(DEST.url);
     expect(reqConfig().headers["X-API-Key"]).toBe("dev-key-123");
     expect(JSON.parse(reqConfig().data)).toEqual({
-      code: "SCIENCE2026-2606-Y5RPJEP",
+      code: "PRM-20260604-130732-000200",
       programme_code: "SCIENCE2026",
       applicant: {
         name: "Ada Lovelace",
@@ -308,21 +309,26 @@ describe("WebhookProcessor — mapped mode", () => {
     });
   });
 
-  it("skips (no request) when the endpoint env var is unset", async () => {
-    delete process.env.WEBHOOK_URL;
-    const result = await processor.process(makeMappedPayload());
+  it("fails loud (WebhookConfigError, no request) when no MDA destination resolves", async () => {
+    const processor = new WebhookProcessor(http, makeDestinations(null));
+    await expect(processor.process(makeMappedPayload())).rejects.toBeInstanceOf(
+      WebhookConfigError,
+    );
     expect(request).not.toHaveBeenCalled();
-    expect(result).toEqual({ kind: "completed" });
   });
 
-  it("skips when the apiKey secret env var is unset", async () => {
-    delete process.env.WEBHOOK_SECRET;
-    await processor.process(makeMappedPayload());
+  it("applies the SSRF guard to the resolved destination url (#287)", async () => {
+    const processor = new WebhookProcessor(
+      http,
+      makeDestinations({ url: "https://10.0.0.5/api", secret: "k" }),
+    );
+    mockLookup.mockResolvedValue([{ address: "10.0.0.5", family: 4 }]);
+    await expect(processor.process(makeMappedPayload())).rejects.toThrow();
     expect(request).not.toHaveBeenCalled();
   });
 });
 
-describe("WebhookProcessor — endpoint/auth branches", () => {
+describe("WebhookProcessor — generic endpoint/auth branches", () => {
   let processor: WebhookProcessor;
 
   function payloadWith(
@@ -343,30 +349,23 @@ describe("WebhookProcessor — endpoint/auth branches", () => {
       } as unknown as SubmissionCreatedEvent["meta"],
     };
   }
-  const MAPPING = {
-    programmeCode: "X",
-    applicant: { name: "s.a", email: "s.a", phone: "s.a" },
-    excludeSteps: [],
-  };
 
   beforeEach(() => {
     vi.clearAllMocks();
     request.mockReturnValue(of({ status: 200, data: {} }));
-    processor = new WebhookProcessor(http);
+    mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
+    processor = new WebhookProcessor(http, makeDestinations(null));
     process.env.WEBHOOK_URL = "http://cms.local";
-    process.env.WEBHOOK_SECRET = "k";
   });
   afterEach(() => {
     delete process.env.WEBHOOK_URL;
-    delete process.env.WEBHOOK_SECRET;
   });
 
-  it("resolves endpoint base + path", async () => {
+  it("resolves endpoint base + path (env-sourced, exempt from SSRF)", async () => {
     await processor.process(
       payloadWith({
         endpoint: { env: "WEBHOOK_URL", path: "api/cases" },
         auth: { scheme: "none" },
-        mapping: MAPPING,
       }),
     );
     expect(reqConfig().url).toBe("http://cms.local/api/cases");
@@ -381,7 +380,6 @@ describe("WebhookProcessor — endpoint/auth branches", () => {
           secret: "supersecretsupersecret",
           signatureHeader: "X-Sig",
         },
-        mapping: MAPPING,
       }),
     );
     expect(reqConfig().headers["X-Sig"]).toMatch(/^sha256=/);
@@ -392,11 +390,37 @@ describe("WebhookProcessor — endpoint/auth branches", () => {
       payloadWith({
         url: "https://h.example.gov.bb/x",
         auth: { scheme: "none" },
-        mapping: MAPPING,
       }),
     );
     const h = reqConfig().headers;
     expect(h["X-API-Key"]).toBeUndefined();
     expect(h["X-Webhook-Signature"]).toBeUndefined();
+  });
+
+  it("skips (no request) when the endpoint env var is unset", async () => {
+    delete process.env.WEBHOOK_URL;
+    const result = await processor.process(
+      payloadWith({
+        endpoint: { env: "WEBHOOK_URL" },
+        auth: { scheme: "none" },
+      }),
+    );
+    expect(request).not.toHaveBeenCalled();
+    expect(result).toEqual({ kind: "completed" });
+  });
+
+  it("skips (no request) when the apiKey secret env var is unset", async () => {
+    const result = await processor.process(
+      payloadWith({
+        url: "https://h.example.gov.bb/x",
+        auth: {
+          scheme: "apiKey",
+          header: "X-API-Key",
+          secretEnv: "MISSING_KEY",
+        },
+      }),
+    );
+    expect(request).not.toHaveBeenCalled();
+    expect(result).toEqual({ kind: "completed" });
   });
 });
