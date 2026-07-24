@@ -317,6 +317,9 @@ importers:
       '@govtech-bb/expressions':
         specifier: workspace:*
         version: link:../../packages/expressions
+      '@govtech-bb/form-builder':
+        specifier: workspace:*
+        version: link:../../packages/form-builder
       '@govtech-bb/form-conditions':
         specifier: workspace:*
         version: link:../../packages/form-conditions

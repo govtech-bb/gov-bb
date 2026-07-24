@@ -1,12 +1,8 @@
-import {
-  RegistryService,
-  UnresolvableComponentError,
-} from "./registry.service";
-import { mergeEntry, hydrateStep, hydrateForm } from "./resolution";
+import { RegistryService } from "./registry.service";
+import { UnknownRefError } from "@govtech-bb/form-builder";
 import { CustomComponent } from "./entities/custom-component.entity";
 import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
 import type { Block, ServiceContractRecipe } from "@govtech-bb/form-types";
-import type { Primitive } from "@govtech-bb/form-types";
 import { Repository } from "typeorm";
 
 function makeService(
@@ -18,424 +14,21 @@ function makeService(
   return new RegistryService(mockRepo);
 }
 
-// ─── mergeEntry ────────────────────────────────────────────────────────────
-
-describe("mergeEntry", () => {
-  const primitiveEntry = BUILTIN_REGISTRY["components/first-name"] as Primitive;
-  const blockEntry = BUILTIN_REGISTRY["blocks/personal-information"] as Block;
-
-  it("returns a deep clone when no overrides provided", () => {
-    const result = mergeEntry(primitiveEntry, { ref: "components/first-name" });
-    expect(result).not.toBe(primitiveEntry);
-    expect(result).toEqual(primitiveEntry);
-  });
-
-  it("does not mutate the original builtin", () => {
-    const original = (primitiveEntry as any).label;
-    mergeEntry(primitiveEntry, {
-      ref: "components/first-name",
-      overrides: { label: "Given Name" },
-    });
-    expect((primitiveEntry as any).label).toBe(original);
-  });
-
-  it("applies FieldOverrides onto a primitive", () => {
-    const result = mergeEntry(primitiveEntry, {
-      ref: "components/first-name",
-      overrides: { label: "Given Name", hint: "As on your passport" },
-    });
-    expect((result as any).label).toBe("Given Name");
-    expect((result as any).hint).toBe("As on your passport");
-    expect((result as any).fieldId).toBe("first-name");
-  });
-
-  it("applies field-keyed overrides onto a block", () => {
-    const result = mergeEntry(blockEntry, {
-      ref: "blocks/personal-information",
-      overrides: { "first-name": { label: "Given Name" } },
-    }) as Block;
-
-    const firstNameEl = result.elements.find(
-      (el) => el.fieldId === "first-name",
-    );
-    expect((firstNameEl as any).label).toBe("Given Name");
-  });
-
-  it("leaves unspecified block elements unchanged", () => {
-    const result = mergeEntry(blockEntry, {
-      ref: "blocks/personal-information",
-      overrides: { "first-name": { label: "Given Name" } },
-    }) as Block;
-
-    const lastNameEl = result.elements.find((el) => el.fieldId === "last-name");
-    const original = blockEntry.elements.find(
-      (el) => el.fieldId === "last-name",
-    );
-    expect((lastNameEl as any).label).toBe((original as any).label);
-  });
-
-  it("does not mutate the original block elements", () => {
-    const originalLabel = (blockEntry.elements[0] as any).label;
-    mergeEntry(blockEntry, {
-      ref: "blocks/personal-information",
-      overrides: { [blockEntry.elements[0].fieldId]: { label: "Changed" } },
-    });
-    expect((blockEntry.elements[0] as any).label).toBe(originalLabel);
-  });
-
-  // Regression: a recipe that overrides one validation rule must not wipe out
-  // the primitive's other shipped rules. EmailAddress ships `required` + `email`
-  // by default; overriding only `required` must preserve `email`. See #371.
-  it("preserves un-overridden validation rules on a primitive (#371)", () => {
-    const emailEntry = BUILTIN_REGISTRY["components/email"] as Primitive;
-    const result = mergeEntry(emailEntry, {
-      ref: "components/email",
-      overrides: {
-        fieldId: "contact-email",
-        validations: {
-          required: { value: true, error: "Email address is required" },
-        },
-      },
-    }) as Primitive;
-
-    expect(result.validations?.required).toEqual({
-      value: true,
-      error: "Email address is required",
-    });
-    // The format rule the primitive shipped must survive the override.
-    expect(result.validations?.email).toEqual({
-      value: true,
-      error: "Please enter a valid email address",
-    });
-  });
-
-  // Regression (#789, same class as #371 but for `ui`): a recipe that
-  // overrides one `ui` key must not wipe out the primitive's other shipped
-  // ui hints. NationalIdNumber ships `width: "short"`; overriding only
-  // `hideLabel` must preserve it, or the served form renders at the wrong
-  // width while the builder preview (which deep-merges) looks correct.
-  it("preserves un-overridden ui hints on a primitive (#789)", () => {
-    const nationalId = BUILTIN_REGISTRY[
-      "components/national-id-number"
-    ] as Primitive;
-    const result = mergeEntry(nationalId, {
-      ref: "components/national-id-number",
-      overrides: { ui: { hideLabel: true } },
-    }) as Primitive;
-
-    expect(result.ui).toEqual({ width: "short", hideLabel: true });
-  });
-
-  it("lets a ui.width override win over the primitive's shipped width (#789)", () => {
-    const nationalId = BUILTIN_REGISTRY[
-      "components/national-id-number"
-    ] as Primitive;
-    const result = mergeEntry(nationalId, {
-      ref: "components/national-id-number",
-      overrides: { ui: { width: "long" } },
-    }) as Primitive;
-
-    expect(result.ui).toEqual({ width: "long" });
-  });
-
-  it("preserves un-overridden validation rules on a block child (#371)", () => {
-    const contactBlock = BUILTIN_REGISTRY[
-      "blocks/contact-information"
-    ] as Block;
-    const result = mergeEntry(contactBlock, {
-      ref: "blocks/contact-information",
-      overrides: {
-        email: {
-          validations: {
-            required: { value: true, error: "Email address is required" },
-          },
-        },
-      },
-    }) as Block;
-
-    const emailEl = result.elements.find((el) => el.fieldId === "email");
-    expect((emailEl as Primitive).validations?.required).toEqual({
-      value: true,
-      error: "Email address is required",
-    });
-    expect((emailEl as Primitive).validations?.email).toEqual({
-      value: true,
-      error: "Please enter a valid email address",
-    });
-  });
-});
-
-// ─── hydrateStep ───────────────────────────────────────────────────────────
-
-describe("hydrateStep", () => {
-  const primitiveEntry = BUILTIN_REGISTRY["components/first-name"];
-  const blockEntry = BUILTIN_REGISTRY["blocks/personal-information"] as Block;
-
-  it("resolves all elements in a step", async () => {
-    const resolver = vi.fn().mockResolvedValue(primitiveEntry);
-    const result = await hydrateStep(
-      {
-        stepId: "step-1",
-        title: "Step 1",
-        elements: [{ ref: "components/first-name" }],
-      },
-      resolver,
-    );
-    expect(result.elements).toHaveLength(1);
-    expect(resolver).toHaveBeenCalledWith("components/first-name");
-  });
-
-  it("flattens a block ref into its constituent primitives", async () => {
-    const resolver = vi.fn().mockResolvedValue(blockEntry);
-    const result = await hydrateStep(
-      {
-        stepId: "step-1",
-        title: "Step 1",
-        elements: [{ ref: "blocks/personal-information" }],
-      },
-      resolver,
-    );
-    expect(result.elements).toHaveLength(blockEntry.elements.length);
-    expect(result.elements[0]).toHaveProperty("fieldId");
-    expect(result.elements[0]).not.toHaveProperty("blockId");
-  });
-
-  it("throws UnresolvableComponentError for an unknown ref", async () => {
-    const resolver = vi.fn().mockResolvedValue(null);
-    await expect(
-      hydrateStep(
-        {
-          stepId: "step-1",
-          title: "Step 1",
-          elements: [{ ref: "components/unknown" }],
-        },
-        resolver,
-      ),
-    ).rejects.toThrow(UnresolvableComponentError);
-  });
-
-  it("carries markdownContent through to the served step", async () => {
-    const resolver = vi.fn().mockResolvedValue(primitiveEntry);
-    const result = await hydrateStep(
-      {
-        stepId: "submission-confirmation",
-        title: "Done",
-        elements: [],
-        markdownContent: "## What you need to know\n\nContact us.",
-      },
-      resolver,
-    );
-    expect(result.markdownContent).toBe(
-      "## What you need to know\n\nContact us.",
-    );
-  });
-
-  it("leaves markdownContent undefined when the step has none", async () => {
-    const resolver = vi.fn().mockResolvedValue(primitiveEntry);
-    const result = await hydrateStep(
-      {
-        stepId: "step-1",
-        title: "Step 1",
-        elements: [{ ref: "components/first-name" }],
-      },
-      resolver,
-    );
-    expect(result.markdownContent).toBeUndefined();
-  });
-
-  it("carries conditionalTitle through to the served step (#871)", async () => {
-    const resolver = vi.fn().mockResolvedValue(primitiveEntry);
-    const conditionalTitle = [
-      {
-        targetStepId: "applying-for-yourself",
-        targetFieldId: "applying-for-yourself",
-        operator: "equal" as const,
-        value: "yes",
-        title: "Provide your birth details",
-      },
-    ];
-    const result = await hydrateStep(
-      {
-        stepId: "birth-details",
-        title: "Provide the person's birth details",
-        conditionalTitle,
-        elements: [{ ref: "components/first-name" }],
-      },
-      resolver,
-    );
-    expect(result.conditionalTitle).toEqual(conditionalTitle);
-  });
-
-  it("leaves conditionalTitle undefined when the step has none", async () => {
-    const resolver = vi.fn().mockResolvedValue(primitiveEntry);
-    const result = await hydrateStep(
-      {
-        stepId: "step-1",
-        title: "Step 1",
-        elements: [{ ref: "components/first-name" }],
-      },
-      resolver,
-    );
-    expect(result.conditionalTitle).toBeUndefined();
-  });
-});
-
-// ─── hydrateForm ───────────────────────────────────────────────────────────
-
-describe("hydrateForm", () => {
-  const resolver = vi
-    .fn()
-    .mockResolvedValue(BUILTIN_REGISTRY["components/first-name"]);
-
-  const baseRecipe: ServiceContractRecipe = {
-    formId: "test-form",
-    title: "Test Form",
-    description: "A test",
+// RegistryService delegates recipe expansion to the shared `hydrateForm`
+// (@govtech-bb/form-builder) after building a catalog from builtins + its
+// DB-backed custom components. These tests exercise that public path.
+describe("RegistryService", () => {
+  const base: Omit<ServiceContractRecipe, "steps"> = {
+    formId: "passport-renewal",
+    title: "Passport Renewal",
+    description: "Renew your passport",
     version: "1.0.0",
-    createdAt: "2026-01-01T00:00:00",
-    updatedAt: "2026-01-01T00:00:00",
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: "2026-01-01T00:00:00Z",
     processors: [],
-    steps: [
-      {
-        stepId: "step-1",
-        title: "Step 1",
-        elements: [{ ref: "components/first-name" }],
-      },
-    ],
   };
 
-  it("returns a fully hydrated ServiceContract", async () => {
-    const result = await hydrateForm(baseRecipe, resolver);
-    expect(result.formId).toBe("test-form");
-    expect(result.steps[0].elements).toHaveLength(1);
-  });
-
-  it("preserves metadata from the recipe", async () => {
-    const result = await hydrateForm(baseRecipe, resolver);
-    expect(result.version).toBe("1.0.0");
-    expect(result.createdAt).toBe("2026-01-01T00:00:00");
-  });
-
-  it("carries contactDetails through to the served contract (issue #452 dead-feature fix)", async () => {
-    const contactDetails = {
-      title: "Ministry of Health",
-      telephoneNumber: "+1 246 555 0100",
-      email: "health@gov.bb",
-      address: { line1: "Jemmotts Lane", city: "Bridgetown" },
-    };
-    const result = await hydrateForm(
-      { ...baseRecipe, contactDetails },
-      resolver,
-    );
-    expect(result.contactDetails).toEqual(contactDetails);
-  });
-
-  it("leaves contactDetails undefined when the recipe has none", async () => {
-    const result = await hydrateForm(baseRecipe, resolver);
-    expect(result.contactDetails).toBeUndefined();
-  });
-
-  it("lifts meta.closingDateTime onto the served contract (#1936)", async () => {
-    const result = await hydrateForm(
-      {
-        ...baseRecipe,
-        meta: {
-          visibility: "public",
-          closingDateTime: "2026-07-09T23:59:00-04:00",
-        },
-      },
-      resolver,
-    );
-    expect(result.closingDateTime).toBe("2026-07-09T23:59:00-04:00");
-  });
-
-  it("leaves closingDateTime undefined when the recipe sets none", async () => {
-    const result = await hydrateForm(baseRecipe, resolver);
-    expect(result.closingDateTime).toBeUndefined();
-  });
-});
-
-// ─── RegistryService ───────────────────────────────────────────────────────
-
-describe("RegistryService", () => {
-  describe("resolve", () => {
-    it("returns a built-in component by ref", async () => {
-      const result = await makeService().resolve("components/first-name");
-      expect((result as any).fieldId).toBe("first-name");
-    });
-
-    it("returns a built-in block by ref", async () => {
-      const result = await makeService().resolve("blocks/personal-information");
-      expect((result as any).blockId).toBe("personal-information");
-    });
-
-    it("returns the show-hide builtin by ref", async () => {
-      const result = await makeService().resolve("components/show-hide");
-      expect(result).not.toBeNull();
-      expect((result as any).fieldId).toBe("show-hide");
-      expect((result as any).htmlType).toBe("show-hide");
-    });
-
-    it("returns null for an unknown ref", async () => {
-      expect(
-        await makeService().resolve("components/does-not-exist"),
-      ).toBeNull();
-    });
-
-    it("loads a custom component from the database", async () => {
-      const definition = {
-        fieldId: "next-of-kin",
-        label: "Next of Kin",
-        htmlType: "text",
-      };
-      const service = makeService([
-        {
-          namespace: "barbados",
-          type: "next-of-kin",
-          definition: definition as Record<string, unknown>,
-        },
-      ]);
-      const result = await service.resolve("components/barbados/next-of-kin");
-      expect((result as any).fieldId).toBe("next-of-kin");
-    });
-
-    it("uses the in-memory cache and skips the database on the second call", async () => {
-      // Branch: `if (this.cache.has(CACHE_LOADED_KEY)) return` — cache already warm
-      const mockRepo = {
-        find: vi.fn().mockResolvedValue([
-          {
-            namespace: "barbados",
-            type: "passport-type",
-            definition: {
-              fieldId: "passport-type",
-              label: "Type",
-              htmlType: "text",
-            },
-          },
-        ]),
-      } as unknown as Repository<CustomComponent>;
-      const service = new RegistryService(mockRepo);
-
-      // First call — warms the cache (calls repo.find once)
-      await service.resolve("components/barbados/passport-type");
-      // Second call — cache is warm, should NOT call repo.find again
-      await service.resolve("components/barbados/passport-type");
-
-      expect(mockRepo.find).toHaveBeenCalledTimes(1);
-    });
-  });
-
   describe("hydrateForm", () => {
-    const base: Omit<ServiceContractRecipe, "steps"> = {
-      formId: "passport-renewal",
-      title: "Passport Renewal",
-      description: "Renew your passport",
-      version: "1.0.0",
-      createdAt: "2026-01-01T00:00:00",
-      updatedAt: "2026-01-01T00:00:00",
-      processors: [],
-    };
-
     it("hydrates a recipe with component refs", async () => {
       const result = await makeService().hydrateForm({
         ...base,
@@ -543,21 +136,6 @@ describe("RegistryService", () => {
       );
     });
 
-    it("throws UnresolvableComponentError for an unknown ref", async () => {
-      await expect(
-        makeService().hydrateForm({
-          ...base,
-          steps: [
-            {
-              stepId: "step-1",
-              title: "Step 1",
-              elements: [{ ref: "components/ghost" as const }],
-            },
-          ],
-        }),
-      ).rejects.toThrow(UnresolvableComponentError);
-    });
-
     it("hydrates a show-hide ref and applies field overrides", async () => {
       const result = await makeService().hydrateForm({
         ...base,
@@ -583,6 +161,111 @@ describe("RegistryService", () => {
       expect(el.hint).toBe("Reveals extra fields");
       expect(el.fieldId).toBe("show-advanced");
       expect(el.htmlType).toBe("show-hide");
+    });
+
+    it("throws UnknownRefError for an unknown ref", async () => {
+      await expect(
+        makeService().hydrateForm({
+          ...base,
+          steps: [
+            {
+              stepId: "step-1",
+              title: "Step 1",
+              elements: [{ ref: "components/ghost" as const }],
+            },
+          ],
+        }),
+      ).rejects.toThrow(UnknownRefError);
+    });
+
+    it("hydrates a recipe referencing a DB-backed custom component", async () => {
+      const service = makeService([
+        {
+          namespace: "barbados",
+          type: "next-of-kin",
+          definition: {
+            fieldId: "next-of-kin",
+            label: "Next of Kin",
+            htmlType: "text",
+          } as Record<string, unknown>,
+        },
+      ]);
+      const result = await service.hydrateForm({
+        ...base,
+        steps: [
+          {
+            stepId: "step-1",
+            title: "Step 1",
+            elements: [{ ref: "components/barbados/next-of-kin" as const }],
+          },
+        ],
+      });
+      expect((result.steps[0].elements[0] as any).fieldId).toBe("next-of-kin");
+      expect((result.steps[0].elements[0] as any).label).toBe("Next of Kin");
+    });
+
+    it("reuses the cached catalog and does not hit the database twice", async () => {
+      const mockRepo = {
+        find: vi.fn().mockResolvedValue([]),
+      } as unknown as Repository<CustomComponent>;
+      const service = new RegistryService(mockRepo);
+
+      const recipe: ServiceContractRecipe = {
+        ...base,
+        steps: [
+          {
+            stepId: "step-1",
+            title: "Step 1",
+            elements: [{ ref: "components/first-name" }],
+          },
+        ],
+      };
+
+      await service.hydrateForm(recipe); // warms the catalog cache
+      await service.hydrateForm(recipe); // second call must reuse the cache
+
+      expect(mockRepo.find).toHaveBeenCalledTimes(1);
+    });
+
+    // Parity guard (#2024): the shared hydrateForm must carry the fields the
+    // pre-consolidation API resolver carried — conditionalTitle, markdownContent,
+    // closingDateTime — and preserve the recipe's own timestamps.
+    it("carries all API-parity fields for a representative recipe", async () => {
+      const conditionalTitle = [
+        {
+          targetStepId: "applying-for-yourself",
+          targetFieldId: "applying-for-yourself",
+          operator: "equal" as const,
+          value: "yes",
+          title: "Provide your birth details",
+        },
+      ];
+      const result = await makeService().hydrateForm({
+        ...base,
+        createdAt: "2025-03-04T09:00:00Z",
+        updatedAt: "2025-06-11T14:30:00Z",
+        meta: {
+          visibility: "public",
+          closingDateTime: "2026-07-09T23:59:00-04:00",
+        },
+        steps: [
+          {
+            stepId: "birth-details",
+            title: "Provide the person's birth details",
+            conditionalTitle,
+            markdownContent: "## What you need to know\n\nContact us.",
+            elements: [{ ref: "components/first-name" as const }],
+          },
+        ],
+      });
+
+      expect(result.createdAt).toBe("2025-03-04T09:00:00Z");
+      expect(result.updatedAt).toBe("2025-06-11T14:30:00Z");
+      expect(result.closingDateTime).toBe("2026-07-09T23:59:00-04:00");
+      expect(result.steps[0].conditionalTitle).toEqual(conditionalTitle);
+      expect(result.steps[0].markdownContent).toBe(
+        "## What you need to know\n\nContact us.",
+      );
     });
   });
 });

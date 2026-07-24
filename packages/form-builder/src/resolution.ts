@@ -45,8 +45,6 @@ export function hydrateForm(
   recipe: ServiceContractRecipe,
   catalog: RegistryCatalog,
 ): ServiceContract {
-  const now = new Date().toISOString();
-
   // Reject up front if any ref is unresolvable — collect them all together,
   // then throw (the API resolver throws too — this keeps the preview path
   // consistent instead of silently dropping fields).
@@ -84,12 +82,25 @@ export function hydrateForm(
     return {
       stepId: recipeStep.stepId,
       title: recipeStep.title,
+      // Per-answer title overrides (#871). The live serving path reads
+      // `conditionalTitle` off the resolved step (resolveStepTitle in
+      // form-conditions), so it must survive hydration or the heading never
+      // adapts.
+      ...(recipeStep.conditionalTitle !== undefined
+        ? { conditionalTitle: recipeStep.conditionalTitle }
+        : {}),
       ...(recipeStep.description !== undefined
         ? { description: recipeStep.description }
         : {}),
       elements,
       ...(recipeStep.behaviours !== undefined
         ? { behaviours: recipeStep.behaviours }
+        : {}),
+      // Recipe-authored markdown (e.g. a confirmation "What you need to know"
+      // section) carried through to the citizen-facing form. Note: `nextSteps`
+      // is intentionally NOT carried — it is unused by the live serving path.
+      ...(recipeStep.markdownContent !== undefined
+        ? { markdownContent: recipeStep.markdownContent }
         : {}),
     };
   });
@@ -109,7 +120,13 @@ export function hydrateForm(
     ...(recipe.processors !== undefined
       ? { processors: recipe.processors }
       : {}),
-    createdAt: now,
-    updatedAt: now,
+    // Preserve the recipe's own timestamps rather than regenerating them, so a
+    // client-side hydrated preview matches exactly what the API serves.
+    createdAt: recipe.createdAt,
+    updatedAt: recipe.updatedAt,
+    // Lift the optional application deadline (#1936) onto the served contract.
+    ...(recipe.meta?.closingDateTime !== undefined
+      ? { closingDateTime: recipe.meta.closingDateTime }
+      : {}),
   };
 }
