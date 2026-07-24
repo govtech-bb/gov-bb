@@ -1,0 +1,762 @@
+{
+  "formId": "apply-for-temporary-restaurant-licence",
+  "title": "Apply for a licence to operate a temporary restaurant",
+  "description": "Apply for a licence to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
+  "version": "1.0.0",
+  "createdAt": "2026-07-23T00:00:00Z",
+  "updatedAt": "2026-07-23T00:00:00Z",
+  "contactDetails": {
+    "title": "Ministry of Health and Wellness",
+    "email": "info@health.gov.bb",
+    "telephoneNumber": "+1 (246) 536-3800"
+  },
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your temporary restaurant licence application has been received",
+        "recipientField": "applicant-contact.email"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "subject": "A new temporary restaurant licence application has been received",
+        "recipientField": "config.mdaEmail"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "endpoint": {
+          "env": "WEBHOOK_URL"
+        },
+        "auth": {
+          "scheme": "apiKey",
+          "header": "X-API-Key",
+          "secretEnv": "WEBHOOK_SECRET"
+        },
+        "mapping": {
+          "programmeCode": "TEMP-RESTAURANT-LICENCE",
+          "applicant": {
+            "name": [
+              "applicant-details.applicant-first-name",
+              "applicant-details.applicant-last-name"
+            ],
+            "email": "applicant-contact.email",
+            "phone": "applicant-contact.mobile-number"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        }
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "applicant-details",
+      "title": "Your details",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First name",
+            "fieldId": "applicant-first-name"
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "label": "Middle name (optional)",
+            "fieldId": "applicant-middle-name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last name",
+            "fieldId": "applicant-last-name"
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "label": "National Registration Number",
+            "hint": "You can find this on your national ID card. For example, 870315-1234."
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "applicant-address-line-1"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2 (optional)",
+            "fieldId": "applicant-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "applicant-parish"
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "applicant-contact",
+      "title": "Your contact details",
+      "description": "We will use your mobile number to contact you about your application.",
+      "elements": [
+        {
+          "ref": "components/mobile-telephone",
+          "overrides": {
+            "label": "Mobile number",
+            "fieldId": "mobile-number",
+            "hint": "For example, (246) 249 1234."
+          }
+        },
+        {
+          "ref": "components/home-telephone",
+          "overrides": {
+            "label": "Home telephone (optional)",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/work-telephone",
+          "overrides": {
+            "label": "Work telephone (optional)",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "hint": "We will use this to contact you about your application. For example, you@example.com."
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "applicant-role",
+      "title": "About you and the event",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Are you organising the event, or a food vendor at someone else's event?",
+            "fieldId": "applicant-role",
+            "hint": "The organiser is responsible for the overall event. A vendor runs a single stall or bar at it.",
+            "options": [
+              {
+                "label": "I am organising the event",
+                "value": "organiser"
+              },
+              {
+                "label": "I am a vendor at someone else's event",
+                "value": "vendor"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether you are the organiser or a vendor"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Organiser's name",
+            "fieldId": "organiser-name",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applicant-role",
+                "operator": "equal",
+                "value": "vendor"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the organiser's name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-tel",
+          "overrides": {
+            "label": "Organiser's phone number",
+            "fieldId": "organiser-phone",
+            "hint": "For example, (246) 249 1234.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applicant-role",
+                "operator": "equal",
+                "value": "vendor"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the organiser's phone number"
+              },
+              "phone": {
+                "value": true,
+                "error": "Please enter a valid phone number"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-email",
+          "overrides": {
+            "label": "Organiser's email address (optional)",
+            "fieldId": "organiser-email",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applicant-role",
+                "operator": "equal",
+                "value": "vendor"
+              }
+            ],
+            "validations": {
+              "email": {
+                "value": true,
+                "error": "Enter a valid email address"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "event-location",
+      "title": "About the event",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Name of the event",
+            "fieldId": "event-name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the name of the event"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Event address line 1",
+            "fieldId": "event-address-line-1"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Event address line 2 (optional)",
+            "fieldId": "event-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Parish of the event",
+            "fieldId": "event-parish"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Nearest landmark (optional)",
+            "fieldId": "event-landmark",
+            "hint": "A well-known place near the event, to help officers find it.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "event-schedule",
+      "title": "When is the event?",
+      "elements": [
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Event start date",
+            "fieldId": "event-from",
+            "hint": "The first day the temporary restaurant will operate. For example, 27 8 2026.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the event start date"
+              },
+              "futureOrToday": {
+                "value": true,
+                "error": "Enter a date that is today or in the future"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Event end date",
+            "fieldId": "event-to",
+            "hint": "The last day the temporary restaurant will operate.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the event end date"
+              },
+              "onOrAfter": {
+                "referenceFieldId": "event-from",
+                "referenceStepId": "event-schedule",
+                "error": "The end date must be the same as or after the start date"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Daily start time",
+            "fieldId": "event-start-time",
+            "hint": "For example, 4:00pm.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the time you will start each day"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Daily end time",
+            "fieldId": "event-end-time",
+            "hint": "For example, 10:00pm.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the time you will finish each day"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "food-served",
+      "title": "What food will you serve?",
+      "description": "Tick the items you will serve in each category that applies. Categories marked higher-risk need extra care and may affect how your set-up is inspected.",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Meat and poultry (higher-risk)",
+            "fieldId": "food-meat",
+            "options": [
+              { "label": "Chicken", "value": "chicken" },
+              { "label": "Lamb", "value": "lamb" },
+              { "label": "Beef", "value": "beef" },
+              { "label": "Pork", "value": "pork" },
+              { "label": "Duck", "value": "duck" },
+              { "label": "Rabbit", "value": "rabbit" },
+              { "label": "Goat", "value": "goat" },
+              { "label": "Turkey", "value": "turkey" },
+              { "label": "Hotdogs", "value": "hotdogs" },
+              { "label": "Burgers", "value": "burgers" },
+              { "label": "Souse", "value": "souse" },
+              { "label": "Canned meats", "value": "canned-meats" },
+              { "label": "Tacos", "value": "tacos" }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Seafood and fish products (higher-risk)",
+            "fieldId": "food-seafood",
+            "options": [
+              { "label": "Fish", "value": "fish" },
+              { "label": "Fish cakes", "value": "fish-cakes" },
+              { "label": "Canned fish", "value": "canned-fish" },
+              { "label": "Shrimp", "value": "shrimp" },
+              { "label": "Crab", "value": "crab" },
+              { "label": "Lobster", "value": "lobster" },
+              { "label": "Sushi", "value": "sushi" }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Dairy products (higher-risk)",
+            "fieldId": "food-dairy",
+            "options": [
+              { "label": "Ice-cream", "value": "ice-cream" },
+              { "label": "Cheese", "value": "cheese" },
+              { "label": "Milk products", "value": "milk-products" }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Eggs and egg products (higher-risk)",
+            "fieldId": "food-eggs",
+            "options": [
+              { "label": "Eggs", "value": "eggs" },
+              { "label": "Salads", "value": "salads" },
+              { "label": "Pastries", "value": "pastries" },
+              { "label": "Other baked goods", "value": "other-baked-goods" }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Cooked rice, pasta and starches",
+            "fieldId": "food-starch",
+            "options": [
+              { "label": "Rice", "value": "rice" },
+              { "label": "Macaroni pie", "value": "macaroni-pie" },
+              { "label": "Pasta", "value": "pasta" },
+              { "label": "Cou-cou", "value": "cou-cou" },
+              { "label": "Fries", "value": "fries" },
+              { "label": "English or Irish potato", "value": "english-or-irish-potato" },
+              { "label": "Sweet potato", "value": "sweet-potato" },
+              { "label": "Breadfruit", "value": "breadfruit" },
+              { "label": "Cassava", "value": "cassava" },
+              { "label": "Soup", "value": "soup" },
+              { "label": "Dry goods", "value": "dry-goods" }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Fresh fruits and vegetables",
+            "fieldId": "food-produce",
+            "options": [
+              { "label": "Fruits and vegetables (sliced or diced)", "value": "fruits-and-vegetables" }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Salads and condiments",
+            "fieldId": "food-salads",
+            "options": [
+              { "label": "Tossed salad", "value": "tossed-salad" },
+              { "label": "Cold salads", "value": "cold-salads" },
+              { "label": "Condiments", "value": "condiments" }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Snacks and sweets",
+            "fieldId": "food-snacks",
+            "options": [
+              { "label": "Popcorn", "value": "popcorn" },
+              { "label": "Cotton candy", "value": "cotton-candy" },
+              { "label": "Packaged goods", "value": "packaged-goods" },
+              { "label": "Confectioneries", "value": "confectioneries" },
+              { "label": "Jams and jellies", "value": "jams-and-jellies" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "food-source-and-drinks",
+      "title": "Drinks and where your food comes from",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Drinks and beverages",
+            "fieldId": "food-drinks",
+            "options": [
+              { "label": "Soft drinks", "value": "soft-drinks" },
+              { "label": "Homemade juices", "value": "homemade-juices" },
+              { "label": "Coconut water", "value": "coconut-water" },
+              { "label": "Slushies", "value": "slushies" },
+              { "label": "Sno-cones", "value": "sno-cones" },
+              { "label": "Wines and spirits", "value": "wines-and-spirits" }
+            ]
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "label": "Where will you get the food from?",
+            "fieldId": "food-source",
+            "hint": "List your suppliers or sources. For example, fish from Oistins market; flour and oil from a wholesaler.",
+            "ui": {
+              "width": "long"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter where you will get the food from"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "food-safety",
+      "title": "Food safety",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Do you already have a valid food business licence?",
+            "fieldId": "has-food-licence",
+            "hint": "A current licence for your own food business or premises.",
+            "options": [
+              { "label": "Yes", "value": "yes" },
+              { "label": "No", "value": "no" }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether you already have a valid food business licence"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Number of male food handlers",
+            "fieldId": "handlers-male",
+            "hint": "For example, 2.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of male food handlers"
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Number of female food handlers",
+            "fieldId": "handlers-female",
+            "hint": "For example, 3.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of female food handlers"
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Water source",
+            "fieldId": "water-source",
+            "hint": "Where will safe water come from? For example, mains supply, a water tank, or bottled water.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the water source for the event"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Handwashing arrangements",
+            "fieldId": "handwashing",
+            "hint": "For example, a portable handwashing station with soap and paper towels.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe the handwashing arrangements"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Waste disposal",
+            "fieldId": "waste-disposal",
+            "hint": "How will food waste and rubbish be stored and removed?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe how waste will be disposed of"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "documents",
+      "title": "Supporting documents",
+      "description": "You must upload a medical certificate for everyone handling food. All staff must also carry their certificate during the event.",
+      "elements": [
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "label": "Staff medical certificates",
+            "fieldId": "medical-certs",
+            "hint": "A valid medical certificate for you and everyone handling food. PDF, JPG or PNG.",
+            "multiple": true,
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload a medical certificate for everyone handling food"
+              },
+              "fileTypes": {
+                "value": ["application/pdf", "image/jpeg", "image/png"],
+                "error": "Upload a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "label": "Letter confirming you can operate",
+            "fieldId": "venue-letter",
+            "hint": "A letter from the event organiser or venue confirming you can operate there. PDF, JPG or PNG.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "applicant-role",
+                "targetFieldId": "applicant-role",
+                "operator": "equal",
+                "value": "vendor"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload the letter confirming you can operate"
+              },
+              "fileTypes": {
+                "value": ["application/pdf", "image/jpeg", "image/png"],
+                "error": "Upload a PDF, JPG or PNG"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "label": "Food business licence (optional)",
+            "fieldId": "food-licence",
+            "hint": "A copy of your valid food business licence, if you have one. PDF, JPG or PNG.",
+            "validations": {
+              "fileTypes": {
+                "value": ["application/pdf", "image/jpeg", "image/png"],
+                "error": "Upload a PDF, JPG or PNG"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that giving false information may lead to my application being rejected, and that the Government of Barbados will keep my information confidential. I will operate the temporary restaurant in line with the Health Services (Restaurants) Regulations, 1969.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "You must confirm the declaration to continue"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "markdownContent": "We have sent a confirmation email to the address you gave.\n\n## What happens next\n\n- The Environmental Health Department for your area will review your application.\n- If you do not already have a licensed food business, an officer will inspect your set-up before the licence is issued.\n- You must collect your licence from the polyclinic before your event.\n- The licence is valid for 30 days from the date it is issued.\n\nKeep your reference number for any follow-up."
+    }
+  ],
+  "meta": {
+    "visibility": "draft"
+  }
+}

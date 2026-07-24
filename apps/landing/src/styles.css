@@ -45,3 +45,75 @@ body {
     padding-inline: var(--spacing-xl); /* 128px */
   }
 }
+
+/* Collapsible disclosure (`<details class="govbb-show-hide">`) for progressive
+   disclosure in markdown content — a teal underlined summary with a rotating
+   triangle and a left-bordered content panel. Ported from the design-system
+   show-hide component so it matches the forms/prototype presentation. */
+.govbb-show-hide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-s);
+}
+
+.govbb-show-hide__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  cursor: pointer;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-teal-00);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  list-style: none;
+  outline: 0;
+  transition: color 0.2s;
+}
+
+.govbb-show-hide__summary::-webkit-details-marker {
+  display: none;
+}
+
+.govbb-show-hide__summary::marker {
+  content: "";
+}
+
+.govbb-show-hide__summary::before {
+  content: "";
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  border: 6px solid transparent;
+  border-left: 8px solid;
+  border-right-width: 0;
+  transition: transform 0.2s;
+}
+
+.govbb-show-hide__summary:hover,
+.govbb-show-hide__summary:focus-visible {
+  color: #083a3d;
+}
+
+.govbb-show-hide__summary:focus-visible,
+.govbb-show-hide__summary:active {
+  background: var(--color-yellow-100);
+}
+
+.govbb-show-hide[open] .govbb-show-hide__summary::before {
+  transform: rotate(90deg);
+}
+
+.govbb-show-hide__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+  padding-left: var(--spacing-xm);
+  border-left: 4px solid var(--color-grey-00);
+}
+
+.govbb-show-hide__content > * {
+  margin: 0;
+}
