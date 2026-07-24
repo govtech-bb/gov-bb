@@ -5,7 +5,7 @@ import {
   getFirstIncompleteActiveStep,
   isStepAccessible,
   markStepCompleted,
-} from "../lib/session-storage";
+} from "@govtech-bb/form-renderer";
 
 /**
  * Condition-aware step guard for multi-step form navigation.

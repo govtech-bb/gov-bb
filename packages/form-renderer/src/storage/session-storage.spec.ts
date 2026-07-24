@@ -1,7 +1,29 @@
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+
+describe("session-storage SSR safety", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("getFormData returns null when sessionStorage is unavailable (SSR)", async () => {
+    vi.stubGlobal("sessionStorage", undefined);
+    const { getFormData } = await import("./session-storage");
+    expect(getFormData("any-form")).toBeNull();
+  });
+
+  it("storeFormData does not throw when sessionStorage is unavailable (SSR)", async () => {
+    vi.stubGlobal("sessionStorage", undefined);
+    const { storeFormData } = await import("./session-storage");
+    expect(() => storeFormData("any-form", {} as never)).not.toThrow();
+  });
+
+  it("getCompletedSteps returns [] when sessionStorage is unavailable (SSR)", async () => {
+    vi.stubGlobal("sessionStorage", undefined);
+    const { getCompletedSteps } = await import("./session-storage");
+    expect(getCompletedSteps("any-form")).toEqual([]);
+  });
+});
+
 /**
- * session-storage.spec.ts
- *
- * Unit tests for the session-storage helper functions.
+ * Unit tests for the session-storage helper functions (browser behavior).
  *
  * Coverage:
  *  - storeFormData / getFormData: round-trip; returns null when not set
@@ -34,7 +56,7 @@ import {
   getFormStartTime,
   persistFormStartTime,
 } from "./session-storage";
-import type { SubmissionState } from "@forms/types";
+import type { SubmissionState } from "../types";
 
 const FORM_ID = "form_abc";
 

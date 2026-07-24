@@ -34,7 +34,7 @@ vi.mock("@tanstack/react-form", () => ({
 
 import * as formsLibMock from "@forms/lib";
 import * as formApiMock from "@forms/form-api";
-import * as sessionStorageMock from "../../../lib/session-storage";
+import * as sessionStorageMock from "@govtech-bb/form-renderer";
 
 vi.mock("@forms/lib", () => ({
   getVisibleSteps: vi.fn(),
@@ -59,17 +59,22 @@ vi.mock("@forms/components", () => ({
   FormError: () => <div data-testid="form-error" />,
 }));
 
-vi.mock("../../../lib/session-storage", () => ({
-  getFormData: vi.fn(() => null),
-  storeFormData: vi.fn(),
-  clearFormState: vi.fn(),
-  getSubmissionState: vi.fn(() => null),
-  storeSubmissionState: vi.fn(),
-  clearSubmissionState: vi.fn(),
-  persistFormStartTime: vi.fn(),
-  getFormStartTime: vi.fn(() => null),
-  clearFormStartTime: vi.fn(),
-}));
+vi.mock("@govtech-bb/form-renderer", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@govtech-bb/form-renderer")>();
+  return {
+    ...actual,
+    getFormData: vi.fn(() => null),
+    storeFormData: vi.fn(),
+    clearFormState: vi.fn(),
+    getSubmissionState: vi.fn(() => null),
+    storeSubmissionState: vi.fn(),
+    clearSubmissionState: vi.fn(),
+    persistFormStartTime: vi.fn(),
+    getFormStartTime: vi.fn(() => null),
+    clearFormStartTime: vi.fn(),
+  };
+});
 
 vi.mock("../../../lib/submit-duration", () => ({
   elapsedSeconds: vi.fn(() => 0),
@@ -99,7 +104,7 @@ import {
   getFormData,
   getSubmissionState,
   clearSubmissionState,
-} from "../../../lib/session-storage";
+} from "@govtech-bb/form-renderer";
 import { trackEvent } from "../../../lib/analytics";
 
 const mockUseForm = useForm as Mock;

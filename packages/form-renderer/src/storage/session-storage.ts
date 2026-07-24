@@ -1,4 +1,11 @@
-import { FormValues, SubmissionState } from "@forms/types";
+import { FormValues, SubmissionState } from "../types";
+
+function getStore(): Storage | null {
+  return typeof window !== "undefined" &&
+    typeof window.sessionStorage !== "undefined"
+    ? window.sessionStorage
+    : null;
+}
 
 function stripNonSerializableValues(value: unknown): unknown {
   if (typeof File !== "undefined" && value instanceof File) {
@@ -36,7 +43,9 @@ function stripNonSerializableValues(value: unknown): unknown {
 
 // Store form data in session storage
 export function storeFormData(formId: string, data: FormValues) {
-  sessionStorage.setItem(
+  const store = getStore();
+  if (!store) return;
+  store.setItem(
     `formData_${formId}`,
     JSON.stringify(stripNonSerializableValues(data)),
   );
@@ -44,7 +53,9 @@ export function storeFormData(formId: string, data: FormValues) {
 
 // Retrieve form data from session storage
 export function getFormData(formId: string) {
-  const data = sessionStorage.getItem(`formData_${formId}`);
+  const store = getStore();
+  if (!store) return null;
+  const data = store.getItem(`formData_${formId}`);
   return data ? JSON.parse(data) : null;
 }
 
@@ -53,41 +64,50 @@ export function getFormData(formId: string) {
 // called on submit success, and the committed outcome must survive so a refresh
 // on the confirmation step can still render it. See clearSubmissionState.
 export function clearFormState(formId: string) {
-  sessionStorage.removeItem(`formData_${formId}`);
-  sessionStorage.removeItem(`completedSteps_${formId}`);
+  const store = getStore();
+  if (!store) return;
+  store.removeItem(`formData_${formId}`);
+  store.removeItem(`completedSteps_${formId}`);
 }
 
 // The submission outcome lives in React state, which is lost on a browser
 // refresh. Persisting it lets the confirmation step re-render after a reload
 // instead of bouncing the citizen back to check-your-answers.
 export function storeSubmissionState(formId: string, state: SubmissionState) {
-  sessionStorage.setItem(`submissionState_${formId}`, JSON.stringify(state));
+  const store = getStore();
+  if (!store) return;
+  store.setItem(`submissionState_${formId}`, JSON.stringify(state));
 }
 
 export function getSubmissionState(formId: string): SubmissionState | null {
-  const raw = sessionStorage.getItem(`submissionState_${formId}`);
+  const store = getStore();
+  if (!store) return null;
+  const raw = store.getItem(`submissionState_${formId}`);
   return raw ? JSON.parse(raw) : null;
 }
 
 export function clearSubmissionState(formId: string) {
-  sessionStorage.removeItem(`submissionState_${formId}`);
+  const store = getStore();
+  if (!store) return;
+  store.removeItem(`submissionState_${formId}`);
 }
 
 // Get completed steps from session storage
 export function getCompletedSteps(formId: string): string[] {
-  const steps = sessionStorage.getItem(`completedSteps_${formId}`);
+  const store = getStore();
+  if (!store) return [];
+  const steps = store.getItem(`completedSteps_${formId}`);
   return steps ? JSON.parse(steps) : [];
 }
 
 // Mark a step as completed in session storage
 export function markStepCompleted(formId: string, stepId: string) {
+  const store = getStore();
+  if (!store) return;
   const completedSteps = getCompletedSteps(formId);
   if (!completedSteps.includes(stepId)) {
     completedSteps.push(stepId);
-    sessionStorage.setItem(
-      `completedSteps_${formId}`,
-      JSON.stringify(completedSteps),
-    );
+    store.setItem(`completedSteps_${formId}`, JSON.stringify(completedSteps));
   }
 }
 
@@ -129,16 +149,22 @@ export function getFirstIncompleteActiveStep(
 // Duration tracking: stamp the start at form-start so form-submit can report
 // elapsed seconds (legacy-parity duration_seconds).
 export function persistFormStartTime(formId: string) {
-  sessionStorage.setItem(`formStart_${formId}`, String(Date.now()));
+  const store = getStore();
+  if (!store) return;
+  store.setItem(`formStart_${formId}`, String(Date.now()));
 }
 
 export function getFormStartTime(formId: string): number | null {
-  const raw = sessionStorage.getItem(`formStart_${formId}`);
+  const store = getStore();
+  if (!store) return null;
+  const raw = store.getItem(`formStart_${formId}`);
   return raw ? Number(raw) : null;
 }
 
 export function clearFormStartTime(formId: string) {
-  sessionStorage.removeItem(`formStart_${formId}`);
+  const store = getStore();
+  if (!store) return;
+  store.removeItem(`formStart_${formId}`);
 }
 
 /**

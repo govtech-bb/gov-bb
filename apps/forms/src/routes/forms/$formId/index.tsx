@@ -23,7 +23,13 @@ import {
   FormValuesByStep,
 } from "@forms/types";
 import React from "react";
+import { elapsedSeconds } from "../../../lib/submit-duration";
+import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
+import { trackEvent } from "../../../lib/analytics";
+import { formCategory } from "../../../lib/form-category";
 import {
+  resolveSubmissionOutcome,
+  applyPaymentReturn,
   clearFormState,
   getFormData,
   storeFormData,
@@ -33,14 +39,6 @@ import {
   persistFormStartTime,
   getFormStartTime,
   clearFormStartTime,
-} from "../../../lib/session-storage";
-import { elapsedSeconds } from "../../../lib/submit-duration";
-import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
-import { trackEvent } from "../../../lib/analytics";
-import { formCategory } from "../../../lib/form-category";
-import {
-  resolveSubmissionOutcome,
-  applyPaymentReturn,
 } from "@govtech-bb/form-renderer";
 
 export const Route = createFileRoute("/forms/$formId/")({
