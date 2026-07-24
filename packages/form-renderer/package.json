@@ -1,0 +1,31 @@
+{
+  "name": "@govtech-bb/form-renderer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": { "test": "vitest run" },
+  "lint-staged": { "*.{ts,tsx}": "npx prettier --write" },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "lint-staged": "^16.4.0"
+  },
+  "dependencies": {
+    "@govtech-bb/analytics": "workspace:*",
+    "@govtech-bb/form-conditions": "workspace:*",
+    "@govtech-bb/form-types": "workspace:*",
+    "@govtech-bb/form-validation": "workspace:*",
+    "@govtech-bb/react": "^1.0.0-alpha.17",
+    "@maskito/core": "^5.2.2",
+    "@maskito/react": "^5.2.2",
+    "@tanstack/react-form": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-markdown": "^9.0.0",
+    "remark-gfm": "^4.0.1",
+    "uuid": "^11.1.1"
+  }
+}

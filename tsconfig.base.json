@@ -31,6 +31,7 @@
       "@govtech-bb/form-types": ["packages/form-types/src/index.ts"],
       "@govtech-bb/expressions": ["packages/expressions/src/index.ts"],
       "@govtech-bb/form-conditions": ["packages/form-conditions/src/index.ts"],
+      "@govtech-bb/form-renderer": ["packages/form-renderer/src/index.ts"],
       "@govtech-bb/form-validation": ["packages/form-validation/src/index.ts"],
       "@govtech-bb/registry": ["packages/registry/src/index.ts"],
       "@govtech-bb/database": ["packages/database/src/index.ts"],

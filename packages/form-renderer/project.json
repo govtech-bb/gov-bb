@@ -1,0 +1,26 @@
+{
+  "name": "form-renderer",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/form-renderer/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/form-renderer",
+        "tsConfig": "packages/form-renderer/tsconfig.json",
+        "main": "packages/form-renderer/src/index.ts"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": { "command": "vitest run", "cwd": "packages/form-renderer" }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": { "lintFilePatterns": ["packages/form-renderer/**/*.ts", "packages/form-renderer/**/*.tsx"] }
+    }
+  },
+  "tags": []
+}
