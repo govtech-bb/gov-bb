@@ -44,6 +44,17 @@ export function isConfigured(cfg: UmamiConfig): boolean {
   return Boolean(cfg.apiKey && cfg.landingWebsiteId && cfg.formsWebsiteId)
 }
 
+/**
+ * Landing-only configured gate. The Search tab's data comes solely from the
+ * landing site (`fetchSearchData` reads `landingWebsiteId` only), so it must not
+ * be gated on the forms website id like `isConfigured` — otherwise a deploy with
+ * landing analytics but no forms site wrongly renders "Analytics is not
+ * configured" despite the search data being available.
+ */
+export function isLandingConfigured(cfg: UmamiConfig): boolean {
+  return Boolean(cfg.apiKey && cfg.landingWebsiteId)
+}
+
 // --- date-range presets (#homepage filter) ---------------------------------
 
 export interface RangeOption {
