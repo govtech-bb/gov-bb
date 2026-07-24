@@ -58,8 +58,8 @@ If you worked in a country that has a social security agreement with Barbados, t
 ## Get help
 Contact NIS on **431-7400** or visit the **NIS office** in person.
 
-**NIS office**
-National Insurance and Social Security Service
-Frank Walcott Building
-Culloden Road
+**NIS office**  
+National Insurance and Social Security Service  
+Frank Walcott Building  
+Culloden Road  
 St Michael
