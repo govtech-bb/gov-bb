@@ -31,6 +31,11 @@ describe("maskSearchQuery", () => {
     expect(out).toMatch(/^contact j\*+b please$/);
   });
 
+  it("leaves a too-short token (1-2 chars) unchanged, e.g. a stray '@'", () => {
+    expect(maskSearchQuery("@")).toBe("@");
+    expect(maskSearchQuery("who @ gov")).toBe("who @ gov");
+  });
+
   it("leaves numbers shorter than 6 digits alone (form-name numbers stay readable)", () => {
     expect(maskSearchQuery("covid 19")).toBe("covid 19");
     expect(maskSearchQuery("bssee form a pupil under 11 request")).toBe(

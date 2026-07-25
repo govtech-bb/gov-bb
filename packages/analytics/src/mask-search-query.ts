@@ -10,11 +10,15 @@
 // plain `#` so whoever reads the analytics can still tell something was redacted.
 //
 // Digit threshold is 6+ (team decision): shorter numbers that appear in real
-// form names — years (`cape exam registration 2024`), "under 11", etc. — stay
+// form names — years (`cape exam registration 2024`), "under 11" — stay
 // readable, while every genuinely long identifier is still masked (NIS = 6,
 // phone = 7+, TAMIS = 10-15, and the leading group of a national ID). Trade-off:
 // a national ID's trailing 4-digit group (`850101-0001`) is not masked on its
 // own; the birthdate part still is.
+//
+// Detection is deliberately non-backtracking: emails are found with a plain
+// `includes("@")` per whitespace token and numbers with the linear `\d{6,}`, so
+// there is no ReDoS surface on untrusted query text.
 //
 // Known limit: a free-text name ("john smith") has no digits and isn't masked —
 // there's no reliable way to tell a name from a service term ("passport
@@ -23,25 +27,26 @@
 
 const MAX_QUERY_LENGTH = 60;
 
-// Keep first + last char, asterisk the middle.
-const maskToken = (token: string): string =>
-  token.length > 3
-    ? `${token[0]}${"*".repeat(token.length - 2)}${token[token.length - 1]}`
-    : token;
-
-const EMAIL_RE = /[^\s@]+@[^\s@]+\.[^\s@]+/g;
-const LONG_NUMBER_RE = /\d{6,}/g;
+// Keep first + last char, asterisk the middle. A 1-2 char token has no middle,
+// so it is returned unchanged.
+function maskToken(token: string): string {
+  if (token.length <= 2) return token;
+  return `${token[0]}${"*".repeat(token.length - 2)}${token[token.length - 1]}`;
+}
 
 /**
- * Redact PII from a search query before it is sent to analytics: emails and
- * runs of 6+ digits are partially masked; everything else is preserved. Also
- * trims, collapses internal whitespace, and caps length.
+ * Redact PII from a search query before it is sent to analytics: any token
+ * containing `@` (an email) is masked whole, and runs of 6+ digits are masked;
+ * everything else is preserved. Also trims, collapses whitespace, and caps
+ * length.
  */
 export function maskSearchQuery(raw: string): string {
   return raw
     .trim()
-    .replace(/\s+/g, " ")
-    .replace(EMAIL_RE, maskToken) // emails first — they contain digits/letters
-    .replace(LONG_NUMBER_RE, maskToken) // then bare long-number runs
+    .split(/\s+/)
+    .map((word) =>
+      word.includes("@") ? maskToken(word) : word.replace(/\d{6,}/g, maskToken),
+    )
+    .join(" ")
     .slice(0, MAX_QUERY_LENGTH);
 }
