@@ -198,40 +198,38 @@
 }
 
 /* ---- Checkbox accordion (#2065) ------------------------------------------
- * A collapsible multi-select: each category is a native <details>/<summary>
- * reusing the @govtech-bb/styles `.govbb-show-hide*` disclosure look, with its
- * item checkboxes revealed inside. Categories are stacked with the same gap as
- * the show-hide toggles; the revealed checkboxes get the inset look of the
- * conditional reveals so a category reads as a group. */
+ * A collapsible multi-select matching the prototype: each category is a
+ * checkbox that, when ticked, expands to reveal its item checkboxes in a
+ * blue-bordered inset. Categories are stacked with a small gap. */
 .form-page__accordion {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-s);
 }
 
 .govbb-accordion-group__content {
-  margin-top: var(--spacing-xs);
-  padding-left: 2.5rem;
-  padding-bottom: var(--spacing-s);
-  border-left: 8px solid var(--color-grey-00);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin: var(--spacing-xs) 0 var(--spacing-m);
+  padding-left: var(--spacing-l);
+  border-left: 4px solid var(--color-blue-40);
 }
 
-/* "Higher-risk" badge on a category summary: a small red pill that flags the
+/* "Higher-risk" badge on a category label: a small yellow pill flagging the
  * categories needing extra care (meat, seafood, dairy, eggs). */
 .govbb-tag {
   display: inline-block;
-  margin-left: var(--spacing-xs);
-  padding: 0 var(--spacing-xxs);
-  font-size: var(--font-size-h4);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  border-radius: var(--spacing-xxs);
+  margin-left: 6px;
+  padding: 1px 8px;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  border-radius: 4px;
 }
 
 .govbb-tag--higher-risk {
-  color: var(--color-red-00);
-  border: 2px solid var(--color-red-00);
+  background: var(--color-yellow-10);
+  border: 1px solid var(--color-yellow-00);
 }
 
 /* ---- Submission confirmation panels -------------------------------------- */

@@ -151,65 +151,53 @@ describe("FieldRenderer", () => {
     expect(container.querySelector('input[type="time"]')).toBeTruthy();
   });
 
-  it("checkbox-accordion → renders a collapsible category per group with a higher-risk badge", () => {
+  const accordionGroups = [
+    {
+      label: "Meat and poultry",
+      higherRisk: true,
+      options: [
+        { value: "chicken", label: "Chicken" },
+        { value: "beef", label: "Beef" },
+      ],
+    },
+    {
+      label: "Snacks and sweets",
+      options: [{ value: "popcorn", label: "Popcorn" }],
+    },
+  ];
+
+  it("checkbox-accordion → one category checkbox per group, collapsed by default, with a higher-risk badge", () => {
     const { container } = renderField(
-      primitive("checkbox-accordion", {
-        groups: [
-          {
-            label: "Meat and poultry",
-            higherRisk: true,
-            options: [
-              { value: "chicken", label: "Chicken" },
-              { value: "beef", label: "Beef" },
-            ],
-          },
-          {
-            label: "Snacks and sweets",
-            options: [{ value: "popcorn", label: "Popcorn" }],
-          },
-        ],
-      }),
+      primitive("checkbox-accordion", { groups: accordionGroups }),
     );
-    // One <details> per group, collapsed by default.
-    const groups = container.querySelectorAll("details");
-    expect(groups).toHaveLength(2);
-    groups.forEach((d) => {
-      expect(d).not.toHaveAttribute("open");
-    });
-    // Item checkboxes across all groups.
+    // One category checkbox per group; collapsed, so no item checkboxes yet.
     expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(
-      3,
+      2,
     );
+    expect(screen.queryByLabelText("Chicken")).toBeNull();
     // Higher-risk badge only on the flagged category.
     const badges = container.querySelectorAll(".govbb-tag");
     expect(badges).toHaveLength(1);
     expect(badges[0]).toHaveTextContent(/higher-risk/i);
   });
 
-  it("checkbox-accordion → toggling an item accumulates a flat value array across groups", async () => {
+  it("checkbox-accordion → ticking a category expands it to reveal its items", async () => {
     const user = userEvent.setup();
-    mockState = { value: ["popcorn"], meta: { isValid: true, errors: [] } };
-    renderField(
-      primitive("checkbox-accordion", {
-        groups: [
-          {
-            label: "Meat and poultry",
-            higherRisk: true,
-            options: [{ value: "chicken", label: "Chicken" }],
-          },
-          {
-            label: "Snacks and sweets",
-            options: [{ value: "popcorn", label: "Popcorn" }],
-          },
-        ],
-      }),
-    );
+    renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
+    expect(screen.queryByLabelText("Popcorn")).toBeNull();
+    await user.click(screen.getByLabelText("Snacks and sweets"));
+    expect(screen.getByLabelText("Popcorn")).toBeInTheDocument();
+    await user.click(screen.getByLabelText("Popcorn"));
+    expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["popcorn"]);
+  });
+
+  it("checkbox-accordion → a category with an existing selection opens expanded and accumulates", async () => {
+    const user = userEvent.setup();
+    mockState = { value: ["beef"], meta: { isValid: true, errors: [] } };
+    renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
+    // Meat holds "beef", so it renders expanded and its items are visible.
     await user.click(screen.getByLabelText("Chicken"));
-    // Adds to the existing selection rather than replacing it.
-    expect(mockFieldApi.handleChange).toHaveBeenCalledWith([
-      "popcorn",
-      "chicken",
-    ]);
+    expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["beef", "chicken"]);
   });
 
   it("date → renders three text inputs with numeric inputmode (day/month/year)", () => {
