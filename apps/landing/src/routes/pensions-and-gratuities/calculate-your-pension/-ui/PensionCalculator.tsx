@@ -394,7 +394,7 @@ export function PensionCalculator() {
 
           <Input
             className="max-w-[8rem]"
-            description="Total months of no-pay leave you took during your service. These do not count towards your pension and will be subtracted. Leave blank if none."
+            description="Total months of no-pay leave you took during your service. These do not count towards your pension and will be subtracted."
             error={errors.nopayMonths || undefined}
             id="nopay-months"
             inputMode="numeric"
@@ -405,7 +405,7 @@ export function PensionCalculator() {
 
           <Input
             className="max-w-[18rem]"
-            description="Enter your gross annual salary in Barbados dollars. Do not include commas."
+            description="Enter your gross annual salary in Barbados dollars."
             error={errors.salary || undefined}
             id="salary"
             inputMode="decimal"
