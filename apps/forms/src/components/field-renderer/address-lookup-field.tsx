@@ -7,7 +7,9 @@ import {
 } from "../../lib/api/geocode";
 import { FieldRenderContext } from "./render-context";
 
-const DEBOUNCE_MS = 300;
+// Wait for a typing pause before querying — keeps request volume within the
+// /geocode throttle and eases load on the upstream Nominatim rate limit.
+const DEBOUNCE_MS = 400;
 
 /**
  * A single-line address field backed by the Barbados-locked `/geocode` proxy.
