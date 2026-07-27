@@ -52,6 +52,19 @@ describe("deriveHigherRiskSelection", () => {
     );
   });
 
+  it("returns false when the accordion field is absent from the submitted values", () => {
+    expect(deriveHigherRiskSelection(contractWithAccordion, { food: {} })).toBe(
+      false,
+    );
+  });
+
+  it("scans across repeatable-step instances (array-valued step)", () => {
+    const values: SubmissionValues = {
+      food: [{ "food-served": ["popcorn"] }, { "food-served": ["beef"] }],
+    };
+    expect(deriveHigherRiskSelection(contractWithAccordion, values)).toBe(true);
+  });
+
   it("returns null when the form has no checkbox-accordion field", () => {
     const contract = {
       steps: [
