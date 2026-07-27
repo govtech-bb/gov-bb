@@ -555,7 +555,6 @@ function BenefitsQuick({ onBack }: { onBack: () => void }) {
 /* ── Screen: earnings ───────────────────────────────────────────────── */
 function MoneyField({
   error,
-  hint,
   id,
   label,
   onChange,
@@ -563,7 +562,6 @@ function MoneyField({
   value,
 }: {
   error?: string
-  hint: string
   id: string
   label: string
   onChange: (v: string) => void
@@ -573,14 +571,11 @@ function MoneyField({
   return (
     <div className={`${CARD} p-5`}>
       <label
-        className="block font-semibold text-[1.25rem] text-black-00"
+        className="mb-3 block font-semibold text-[1.25rem] text-black-00"
         htmlFor={id}
       >
         {label}
       </label>
-      <p className="mt-1 mb-3 text-[1rem] text-mid-grey-00" id={`${id}-hint`}>
-        {hint}
-      </p>
       <div
         className={`inline-flex max-w-[16rem] items-center rounded-sm border-2 bg-white-00 transition-all focus-within:ring-4 focus-within:ring-teal-100 ${
           error ? 'border-red-00' : 'border-black-00'
@@ -588,7 +583,7 @@ function MoneyField({
       >
         {prefix && <span className="pl-3 text-mid-grey-00">{prefix}</span>}
         <input
-          aria-describedby={`${id}-hint${error ? ` ${id}-error` : ''}`}
+          aria-describedby={error ? `${id}-error` : undefined}
           aria-invalid={error ? 'true' : undefined}
           className="w-full min-w-0 rounded-[inherit] bg-transparent p-3 text-[1.125rem] tabular-nums outline-none"
           id={id}
@@ -658,7 +653,6 @@ function IncomeStep({
       <div className="flex flex-col gap-4">
         <MoneyField
           error={errors.goodMonth}
-          hint="When work is steady and money comes in. A rough number is fine."
           id="good-month"
           label="What does a good month look like?"
           onChange={setGoodMonth}
@@ -667,7 +661,6 @@ function IncomeStep({
         />
         <MoneyField
           error={errors.slowMonth}
-          hint="When work is quiet: slow season, hurricane month, sickness. A rough number is fine."
           id="slow-month"
           label="And a slow month?"
           onChange={setSlowMonth}
@@ -676,7 +669,6 @@ function IncomeStep({
         />
         <MoneyField
           error={errors.goodMonths}
-          hint="Enter a number from 1 to 12."
           id="good-months"
           label="How many good months do you usually have in a year?"
           onChange={setGoodMonths}
