@@ -41,6 +41,7 @@ export type {
   CheckboxPrimitive,
   CheckboxAccordionPrimitive,
   ShowHidePrimitive,
+  AddressLookupPrimitive,
   Primitive,
   HtmlTypes,
   PrimitiveUI,

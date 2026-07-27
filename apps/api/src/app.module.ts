@@ -14,6 +14,7 @@ import { WebhooksModule } from "./webhooks/webhooks.module";
 import { FeedbackModule } from "./feedback/feedback.module";
 import { ServiceStatusModule } from "./services/service-status.module";
 import { ContentModule } from "./content/content.module";
+import { GeocodeModule } from "./geocode/geocode.module";
 import { MonitoringModule } from "./monitoring/monitoring.module";
 import { TelemetryModule } from "./telemetry/telemetry.module";
 import { configs } from "./config";
@@ -53,6 +54,7 @@ import { envValidationSchema } from "./config/env.validation";
     FeedbackModule,
     ServiceStatusModule,
     ContentModule,
+    GeocodeModule,
     MonitoringModule,
   ],
   controllers: [AppController],

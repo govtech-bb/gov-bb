@@ -273,7 +273,7 @@
           }
         },
         {
-          "ref": "components/address",
+          "ref": "components/address-lookup",
           "overrides": {
             "label": "Event address line 1",
             "fieldId": "event-address-line-1"

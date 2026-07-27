@@ -23,6 +23,7 @@ export const htmlTypesSchema = z.enum([
   "file",
   "select",
   "show-hide",
+  "address-lookup",
 ]);
 export type HtmlTypes = z.infer<typeof htmlTypesSchema>;
 
@@ -153,6 +154,17 @@ export const showHidePrimitiveSchema = basePrimitiveSchema.extend({
 });
 export type ShowHidePrimitive = z.infer<typeof showHidePrimitiveSchema>;
 
+// A single-line address field backed by a Barbados-locked geocoder lookup. The
+// submitted value is the same string a `text` field stores — the geocoder is
+// only a richer input widget — so validation, review and payload rendering are
+// unchanged.
+export const addressLookupPrimitiveSchema = basePrimitiveSchema.extend({
+  htmlType: z.literal("address-lookup"),
+});
+export type AddressLookupPrimitive = z.infer<
+  typeof addressLookupPrimitiveSchema
+>;
+
 export const primitiveSchema = z.discriminatedUnion("htmlType", [
   textPrimitiveSchema,
   textAreaPrimitiveSchema,
@@ -167,6 +179,7 @@ export const primitiveSchema = z.discriminatedUnion("htmlType", [
   radioPrimitiveSchema,
   filePrimitiveSchema,
   showHidePrimitiveSchema,
+  addressLookupPrimitiveSchema,
 ]);
 export type Primitive = z.infer<typeof primitiveSchema>;
 

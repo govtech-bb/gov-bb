@@ -16,6 +16,7 @@ import { renderCheckboxField } from "./checkbox-field";
 import { renderCheckboxAccordionField } from "./checkbox-accordion-field";
 import { renderRadioField } from "./radio-field";
 import { renderShowHideField } from "./show-hide-field";
+import { AddressLookupField } from "./address-lookup-field";
 
 export type { InsetFieldEntry };
 
@@ -126,6 +127,8 @@ export default function FieldRenderer({
             );
           case "show-hide":
             return renderShowHideField(ctx);
+          case "address-lookup":
+            return <AddressLookupField ctx={ctx} />;
           default:
             return (
               <div style={{ color: "red" }}>
