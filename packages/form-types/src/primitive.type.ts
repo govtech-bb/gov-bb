@@ -90,6 +90,11 @@ export const basePrimitiveSchema = z.object({
   groups: z.array(optionGroupSchema).optional(),
   multiple: z.boolean().optional(),
   mask: z.string().optional(),
+  // HTML `step` attribute for `time`/`number` inputs. For a time field it is in
+  // seconds (e.g. 1800 = 30-minute increments): the native picker steps by this
+  // amount, while a value typed off the step is still accepted (validation reads
+  // the string value, not native step-validity).
+  step: z.number().optional(),
   ui: primitiveUISchema.optional(),
   geocodeTargets: geocodeTargetsSchema.optional(),
 });
@@ -217,6 +222,7 @@ export const fieldOverridesSchema = basePrimitiveSchema
     options: true,
     groups: true,
     mask: true,
+    step: true,
     ui: true,
     geocodeTargets: true,
   })

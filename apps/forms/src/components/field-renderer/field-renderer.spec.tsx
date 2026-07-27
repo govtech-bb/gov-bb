@@ -108,6 +108,12 @@ describe("FieldRenderer", () => {
     expect(container.querySelector("input")).toBeTruthy();
   });
 
+  it("time with step → passes the native step to the input", () => {
+    const { container } = renderField(primitive("time", { step: 1800 }));
+    const input = container.querySelector('input[type="time"]');
+    expect(input?.getAttribute("step")).toBe("1800");
+  });
+
   it("ui.hidden → renders a hidden input (no visible control)", () => {
     mockState = {
       value: "13.1,-59.6",

@@ -31,6 +31,8 @@ export interface ClientPrimitive {
   groups?: OptionGroup[];
   multiple?: boolean;
   mask?: string;
+  /** HTML `step` for time/number inputs (time is in seconds). */
+  step?: number;
   validations?: ValidationRule;
   behaviours?: Behaviour[];
   ui?: PrimitiveUI;
