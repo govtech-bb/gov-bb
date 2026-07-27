@@ -146,6 +146,72 @@ describe("FieldRenderer", () => {
     expect(inputs.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("time → renders a native time input", () => {
+    const { container } = renderField(primitive("time"));
+    expect(container.querySelector('input[type="time"]')).toBeTruthy();
+  });
+
+  it("checkbox-accordion → renders a collapsible category per group with a higher-risk badge", () => {
+    const { container } = renderField(
+      primitive("checkbox-accordion", {
+        groups: [
+          {
+            label: "Meat and poultry",
+            higherRisk: true,
+            options: [
+              { value: "chicken", label: "Chicken" },
+              { value: "beef", label: "Beef" },
+            ],
+          },
+          {
+            label: "Snacks and sweets",
+            options: [{ value: "popcorn", label: "Popcorn" }],
+          },
+        ],
+      }),
+    );
+    // One <details> per group, collapsed by default.
+    const groups = container.querySelectorAll("details");
+    expect(groups).toHaveLength(2);
+    groups.forEach((d) => {
+      expect(d).not.toHaveAttribute("open");
+    });
+    // Item checkboxes across all groups.
+    expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(
+      3,
+    );
+    // Higher-risk badge only on the flagged category.
+    const badges = container.querySelectorAll(".govbb-tag");
+    expect(badges).toHaveLength(1);
+    expect(badges[0]).toHaveTextContent(/higher-risk/i);
+  });
+
+  it("checkbox-accordion → toggling an item accumulates a flat value array across groups", async () => {
+    const user = userEvent.setup();
+    mockState = { value: ["popcorn"], meta: { isValid: true, errors: [] } };
+    renderField(
+      primitive("checkbox-accordion", {
+        groups: [
+          {
+            label: "Meat and poultry",
+            higherRisk: true,
+            options: [{ value: "chicken", label: "Chicken" }],
+          },
+          {
+            label: "Snacks and sweets",
+            options: [{ value: "popcorn", label: "Popcorn" }],
+          },
+        ],
+      }),
+    );
+    await user.click(screen.getByLabelText("Chicken"));
+    // Adds to the existing selection rather than replacing it.
+    expect(mockFieldApi.handleChange).toHaveBeenCalledWith([
+      "popcorn",
+      "chicken",
+    ]);
+  });
+
   it("date → renders three text inputs with numeric inputmode (day/month/year)", () => {
     const { container } = renderField(primitive("date"));
     const inputs = container.querySelectorAll('input[type="text"]');
