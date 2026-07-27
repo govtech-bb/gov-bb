@@ -2,9 +2,9 @@
   "formId": "apply-for-temporary-restaurant-licence",
   "title": "Apply for a licence to operate a temporary restaurant",
   "description": "Apply for a licence to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "createdAt": "2026-07-23T00:00:00Z",
-  "updatedAt": "2026-07-24T00:00:00Z",
+  "updatedAt": "2026-07-27T00:00:00Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -309,9 +309,10 @@
                 "value": true,
                 "error": "Enter the event start date"
               },
-              "futureOrToday": {
-                "value": true,
-                "error": "Enter a date that is today or in the future"
+              "min": {
+                "value": 14,
+                "transform": "daysUntil",
+                "error": "You must apply at least 14 days before the event start date"
               }
             }
           }
@@ -336,14 +337,11 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-time",
           "overrides": {
             "label": "Start time",
             "fieldId": "event-start-time",
-            "hint": "For example, 4:00pm.",
-            "ui": {
-              "width": "short"
-            },
+            "hint": "The time you will start serving each day.",
             "validations": {
               "required": {
                 "value": true,
@@ -353,14 +351,11 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-time",
           "overrides": {
             "label": "End time",
             "fieldId": "event-end-time",
-            "hint": "For example, 10:00pm.",
-            "ui": {
-              "width": "short"
-            },
+            "hint": "The time you will finish serving each day.",
             "validations": {
               "required": {
                 "value": true,
@@ -431,137 +426,121 @@
       "description": "Tick the items you will serve in each category that applies. Categories marked higher-risk need extra care and may affect how your set-up is inspected.",
       "elements": [
         {
-          "ref": "components/generic-checkbox",
+          "ref": "components/generic-checkbox-accordion",
           "overrides": {
-            "label": "Meat and poultry (higher-risk)",
-            "fieldId": "food-meat",
-            "options": [
-              { "label": "Chicken", "value": "chicken" },
-              { "label": "Lamb", "value": "lamb" },
-              { "label": "Beef", "value": "beef" },
-              { "label": "Pork", "value": "pork" },
-              { "label": "Duck", "value": "duck" },
-              { "label": "Rabbit", "value": "rabbit" },
-              { "label": "Goat", "value": "goat" },
-              { "label": "Turkey", "value": "turkey" },
-              { "label": "Hotdogs", "value": "hotdogs" },
-              { "label": "Burgers", "value": "burgers" },
-              { "label": "Souse", "value": "souse" },
-              { "label": "Canned meats", "value": "canned-meats" },
-              { "label": "Tacos", "value": "tacos" }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-checkbox",
-          "overrides": {
-            "label": "Seafood and fish products (higher-risk)",
-            "fieldId": "food-seafood",
-            "options": [
-              { "label": "Fish", "value": "fish" },
-              { "label": "Fish cakes", "value": "fish-cakes" },
-              { "label": "Canned fish", "value": "canned-fish" },
-              { "label": "Shrimp", "value": "shrimp" },
-              { "label": "Crab", "value": "crab" },
-              { "label": "Lobster", "value": "lobster" },
-              { "label": "Sushi", "value": "sushi" }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-checkbox",
-          "overrides": {
-            "label": "Dairy products (higher-risk)",
-            "fieldId": "food-dairy",
-            "options": [
-              { "label": "Ice-cream", "value": "ice-cream" },
-              { "label": "Cheese", "value": "cheese" },
-              { "label": "Milk products", "value": "milk-products" }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-checkbox",
-          "overrides": {
-            "label": "Eggs and egg products (higher-risk)",
-            "fieldId": "food-eggs",
-            "options": [
-              { "label": "Eggs", "value": "eggs" },
-              { "label": "Salads", "value": "salads" },
-              { "label": "Pastries", "value": "pastries" },
-              { "label": "Other baked goods", "value": "other-baked-goods" }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-checkbox",
-          "overrides": {
-            "label": "Cooked rice, pasta and starches",
-            "fieldId": "food-starch",
-            "options": [
-              { "label": "Rice", "value": "rice" },
-              { "label": "Macaroni pie", "value": "macaroni-pie" },
-              { "label": "Pasta", "value": "pasta" },
-              { "label": "Cou-cou", "value": "cou-cou" },
-              { "label": "Fries", "value": "fries" },
-              { "label": "English or Irish potato", "value": "english-or-irish-potato" },
-              { "label": "Sweet potato", "value": "sweet-potato" },
-              { "label": "Breadfruit", "value": "breadfruit" },
-              { "label": "Cassava", "value": "cassava" },
-              { "label": "Soup", "value": "soup" },
-              { "label": "Dry goods", "value": "dry-goods" }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-checkbox",
-          "overrides": {
-            "label": "Fresh fruits and vegetables",
-            "fieldId": "food-produce",
-            "options": [
-              { "label": "Fruits and vegetables (sliced or diced)", "value": "fruits-and-vegetables" }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-checkbox",
-          "overrides": {
-            "label": "Salads and condiments",
-            "fieldId": "food-salads",
-            "options": [
-              { "label": "Tossed salad", "value": "tossed-salad" },
-              { "label": "Cold salads", "value": "cold-salads" },
-              { "label": "Condiments", "value": "condiments" }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-checkbox",
-          "overrides": {
-            "label": "Snacks and sweets",
-            "fieldId": "food-snacks",
-            "options": [
-              { "label": "Popcorn", "value": "popcorn" },
-              { "label": "Cotton candy", "value": "cotton-candy" },
-              { "label": "Packaged goods", "value": "packaged-goods" },
-              { "label": "Confectioneries", "value": "confectioneries" },
-              { "label": "Jams and jellies", "value": "jams-and-jellies" }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-checkbox",
-          "overrides": {
-            "label": "Drinks and beverages",
-            "fieldId": "food-drinks",
-            "options": [
-              { "label": "Soft drinks", "value": "soft-drinks" },
-              { "label": "Homemade juices", "value": "homemade-juices" },
-              { "label": "Coconut water", "value": "coconut-water" },
-              { "label": "Slushies", "value": "slushies" },
-              { "label": "Sno-cones", "value": "sno-cones" },
-              { "label": "Wines and spirits", "value": "wines-and-spirits" }
-            ]
+            "label": "Food and drink you will serve",
+            "fieldId": "food-served",
+            "hint": "Open each category that applies and tick the items you will serve.",
+            "groups": [
+              {
+                "label": "Meat and poultry",
+                "higherRisk": true,
+                "options": [
+                  { "label": "Chicken", "value": "chicken" },
+                  { "label": "Lamb", "value": "lamb" },
+                  { "label": "Beef", "value": "beef" },
+                  { "label": "Pork", "value": "pork" },
+                  { "label": "Duck", "value": "duck" },
+                  { "label": "Rabbit", "value": "rabbit" },
+                  { "label": "Goat", "value": "goat" },
+                  { "label": "Turkey", "value": "turkey" },
+                  { "label": "Hotdogs", "value": "hotdogs" },
+                  { "label": "Burgers", "value": "burgers" },
+                  { "label": "Souse", "value": "souse" },
+                  { "label": "Canned meats", "value": "canned-meats" },
+                  { "label": "Tacos", "value": "tacos" }
+                ]
+              },
+              {
+                "label": "Seafood and fish products",
+                "higherRisk": true,
+                "options": [
+                  { "label": "Fish", "value": "fish" },
+                  { "label": "Fish cakes", "value": "fish-cakes" },
+                  { "label": "Canned fish", "value": "canned-fish" },
+                  { "label": "Shrimp", "value": "shrimp" },
+                  { "label": "Crab", "value": "crab" },
+                  { "label": "Lobster", "value": "lobster" },
+                  { "label": "Sushi", "value": "sushi" }
+                ]
+              },
+              {
+                "label": "Dairy products",
+                "higherRisk": true,
+                "options": [
+                  { "label": "Ice-cream", "value": "ice-cream" },
+                  { "label": "Cheese", "value": "cheese" },
+                  { "label": "Milk products", "value": "milk-products" }
+                ]
+              },
+              {
+                "label": "Eggs and egg products",
+                "higherRisk": true,
+                "options": [
+                  { "label": "Eggs", "value": "eggs" },
+                  { "label": "Salads", "value": "salads" },
+                  { "label": "Pastries", "value": "pastries" },
+                  { "label": "Other baked goods", "value": "other-baked-goods" }
+                ]
+              },
+              {
+                "label": "Cooked rice, pasta and starches",
+                "options": [
+                  { "label": "Rice", "value": "rice" },
+                  { "label": "Macaroni pie", "value": "macaroni-pie" },
+                  { "label": "Pasta", "value": "pasta" },
+                  { "label": "Cou-cou", "value": "cou-cou" },
+                  { "label": "Fries", "value": "fries" },
+                  { "label": "English or Irish potato", "value": "english-or-irish-potato" },
+                  { "label": "Sweet potato", "value": "sweet-potato" },
+                  { "label": "Breadfruit", "value": "breadfruit" },
+                  { "label": "Cassava", "value": "cassava" },
+                  { "label": "Soup", "value": "soup" },
+                  { "label": "Dry goods", "value": "dry-goods" }
+                ]
+              },
+              {
+                "label": "Fresh fruits and vegetables",
+                "options": [
+                  { "label": "Fruits and vegetables (sliced or diced)", "value": "fruits-and-vegetables" }
+                ]
+              },
+              {
+                "label": "Salads and condiments",
+                "options": [
+                  { "label": "Tossed salad", "value": "tossed-salad" },
+                  { "label": "Cold salads", "value": "cold-salads" },
+                  { "label": "Condiments", "value": "condiments" }
+                ]
+              },
+              {
+                "label": "Snacks and sweets",
+                "options": [
+                  { "label": "Popcorn", "value": "popcorn" },
+                  { "label": "Cotton candy", "value": "cotton-candy" },
+                  { "label": "Packaged goods", "value": "packaged-goods" },
+                  { "label": "Confectioneries", "value": "confectioneries" },
+                  { "label": "Jams and jellies", "value": "jams-and-jellies" }
+                ]
+              },
+              {
+                "label": "Drinks and beverages",
+                "options": [
+                  { "label": "Soft drinks", "value": "soft-drinks" },
+                  { "label": "Homemade juices", "value": "homemade-juices" },
+                  { "label": "Coconut water", "value": "coconut-water" },
+                  { "label": "Slushies", "value": "slushies" },
+                  { "label": "Sno-cones", "value": "sno-cones" },
+                  { "label": "Wines and spirits", "value": "wines-and-spirits" }
+                ]
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select at least one food or drink item you will serve"
+              }
+            }
           }
         },
         {

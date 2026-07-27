@@ -11,10 +11,19 @@ import { lookup } from "node:dns/promises";
 
 import { WebhookProcessor } from "./webhook.processor";
 import type { SubmissionCreatedEvent } from "../submissions.types";
+import type { FormDefinitionsService } from "../../form-definitions/form-definitions.service";
 
 const request = vi.fn();
 const http = { request } as unknown as HttpService;
 const mockLookup = lookup as unknown as Mock;
+
+// The webhook processor resolves the contract only to derive the #2065
+// higher-risk flag. Default to a contract with no checkbox-accordion field, so
+// the flag is omitted and the existing payload assertions are unaffected.
+const findByFormId = vi.fn();
+const formDefinitions = {
+  findByFormId,
+} as unknown as FormDefinitionsService;
 
 /** Single config object passed to HttpService.request for call `i`. */
 function reqConfig(i = 0): {
@@ -71,7 +80,8 @@ describe("WebhookProcessor", () => {
     vi.clearAllMocks();
     request.mockReturnValue(of({ status: 200, data: {} }));
     mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
-    processor = new WebhookProcessor(http);
+    findByFormId.mockResolvedValue({ steps: [] });
+    processor = new WebhookProcessor(http, formDefinitions);
   });
 
   it("POSTs to the configured url with the configured method", async () => {
@@ -281,7 +291,8 @@ describe("WebhookProcessor — mapped mode", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     request.mockReturnValue(of({ status: 200, data: {} }));
-    processor = new WebhookProcessor(http);
+    findByFormId.mockResolvedValue({ steps: [] });
+    processor = new WebhookProcessor(http, formDefinitions);
     process.env.WEBHOOK_URL = "http://cms.local/api/cases";
     process.env.WEBHOOK_SECRET = "dev-key-123";
   });
@@ -306,6 +317,42 @@ describe("WebhookProcessor — mapped mode", () => {
       form_data: {},
       submitted_at: "2026-06-18T09:00:00.000Z",
     });
+  });
+
+  it("adds higher_risk to the mapped payload when a higher-risk category is selected (#2065)", async () => {
+    findByFormId.mockResolvedValue({
+      steps: [
+        {
+          stepId: "food",
+          elements: [
+            {
+              fieldId: "food-served",
+              htmlType: "checkbox-accordion",
+              groups: [
+                {
+                  label: "Meat",
+                  higherRisk: true,
+                  options: [{ value: "chicken", label: "Chicken" }],
+                },
+                {
+                  label: "Snacks",
+                  options: [{ value: "popcorn", label: "Popcorn" }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const payload = makeMappedPayload();
+    payload.values = {
+      ...payload.values,
+      food: { "food-served": ["chicken"] },
+    };
+
+    await processor.process(payload);
+
+    expect(JSON.parse(reqConfig().data).higher_risk).toBe(true);
   });
 
   it("skips (no request) when the endpoint env var is unset", async () => {
@@ -352,7 +399,8 @@ describe("WebhookProcessor — endpoint/auth branches", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     request.mockReturnValue(of({ status: 200, data: {} }));
-    processor = new WebhookProcessor(http);
+    findByFormId.mockResolvedValue({ steps: [] });
+    processor = new WebhookProcessor(http, formDefinitions);
     process.env.WEBHOOK_URL = "http://cms.local";
     process.env.WEBHOOK_SECRET = "k";
   });
