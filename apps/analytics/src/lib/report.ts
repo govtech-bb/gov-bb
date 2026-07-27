@@ -11,6 +11,7 @@ import {
   fetchOverviewData,
   fetchSearchData,
   isConfigured,
+  isLandingConfigured,
   normaliseRange,
   rangeLabel,
   type FormDetailData,
@@ -155,7 +156,7 @@ export const fetchSearch = createServerFn({ method: 'GET' })
     normaliseRange(raw == null ? undefined : String(raw)),
   )
   .handler(async ({ data: range }): Promise<SearchPayload> => {
-    const cfg = getConfig()
+    const cfg = await getConfig()
     const empty: SearchPayload = {
       configured: false,
       searches: 0,
@@ -167,7 +168,9 @@ export const fetchSearch = createServerFn({ method: 'GET' })
       window: rangeLabel(range),
       range,
     }
-    if (!isConfigured(cfg)) return empty
+    // Search reads only the landing site, so gate on landing config alone —
+    // not the full isConfigured (which also requires the forms website id).
+    if (!isLandingConfigured(cfg)) return empty
     try {
       return { configured: true, ...(await fetchSearchData(cfg, range)) }
     } catch {

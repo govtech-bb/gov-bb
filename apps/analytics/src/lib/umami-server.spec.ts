@@ -5,6 +5,8 @@ import {
   buildVisitFunnelSteps,
   funnelHeadline,
   humanizeStep,
+  isConfigured,
+  isLandingConfigured,
   shapeFlow,
   shapeFormList,
   shapeFunnel,
@@ -12,6 +14,28 @@ import {
   shapeSearch,
   shapeSubmitError,
 } from './umami-server'
+
+describe('configured gates', () => {
+  const full = {
+    apiKey: 'k',
+    landingWebsiteId: 'land',
+    formsWebsiteId: 'forms',
+    formsApiUrl: 'https://api',
+  }
+
+  it('isConfigured requires apiKey + landing + forms', () => {
+    expect(isConfigured(full)).toBe(true)
+    expect(isConfigured({ ...full, formsWebsiteId: '' })).toBe(false)
+    expect(isConfigured({ ...full, landingWebsiteId: '' })).toBe(false)
+    expect(isConfigured({ ...full, apiKey: '' })).toBe(false)
+  })
+
+  it('isLandingConfigured needs only apiKey + landing (not the forms site)', () => {
+    expect(isLandingConfigured({ ...full, formsWebsiteId: '' })).toBe(true)
+    expect(isLandingConfigured({ ...full, landingWebsiteId: '' })).toBe(false)
+    expect(isLandingConfigured({ ...full, apiKey: '' })).toBe(false)
+  })
+})
 
 describe('buildFunnelSteps', () => {
   it('builds start→review→submit event steps for a formId', () => {
