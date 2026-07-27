@@ -7,6 +7,9 @@ export const AddressLookup: AddressLookupPrimitive = {
   fieldId: "address-lookup",
   htmlType: "address-lookup",
   label: "Address",
+  ui: {
+    width: "long",
+  },
   validations: {
     required: {
       value: true,
