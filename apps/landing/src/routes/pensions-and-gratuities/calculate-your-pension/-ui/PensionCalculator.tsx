@@ -376,7 +376,6 @@ export function PensionCalculator() {
             inputMode="numeric"
             label="Year you started pensionable service"
             onInput={(e) => setStartYear(e.currentTarget.value)}
-            placeholder="YYYY"
             required
             value={startYear}
           />
@@ -389,7 +388,6 @@ export function PensionCalculator() {
             inputMode="numeric"
             label="Year you stopped or will retire"
             onInput={(e) => setEndYear(e.currentTarget.value)}
-            placeholder="YYYY"
             required
             value={endYear}
           />
@@ -402,7 +400,6 @@ export function PensionCalculator() {
             inputMode="numeric"
             label="Months of no-pay leave (optional)"
             onInput={(e) => setNopayMonths(e.currentTarget.value)}
-            placeholder="0"
             value={nopayMonths}
           />
 
@@ -414,7 +411,6 @@ export function PensionCalculator() {
             inputMode="decimal"
             label="Last annual salary (BDS$)"
             onInput={(e) => setSalary(e.currentTarget.value)}
-            placeholder="0.00"
             required
             value={salary}
           />
