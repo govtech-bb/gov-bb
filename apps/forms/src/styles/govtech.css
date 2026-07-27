@@ -618,6 +618,10 @@
  * the `.govbb-input` above it. */
 .govbb-address-lookup {
   position: relative;
+  /* `.govbb-form-group` is a flex column with `align-items: flex-start`, so
+   * this wrapper must claim full width or it (and the absolutely-positioned
+   * suggestions) collapse to the input's intrinsic width. */
+  width: 100%;
 }
 
 .govbb-address-suggestions {
