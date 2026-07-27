@@ -92,6 +92,21 @@ export default function FieldRenderer({
           draftToken,
         });
 
+        // A `ui.hidden` field carries a value (e.g. geocoded coordinates set by
+        // an address-lookup field) into the payload without any visible UI. It
+        // stays in the submission because it is not `isHidden`.
+        if (field.ui?.hidden) {
+          return (
+            <input
+              type="hidden"
+              id={field.id}
+              name={field.name}
+              value={typeof f.state.value === "string" ? f.state.value : ""}
+              readOnly
+            />
+          );
+        }
+
         switch (field.htmlType) {
           case "date":
             return renderDateField(ctx);

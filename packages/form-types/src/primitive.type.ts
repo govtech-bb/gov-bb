@@ -50,9 +50,27 @@ export const primitiveUISchema = z.object({
   /** When true, the field's visible label is hidden but kept in the DOM
    * (via `.govbb-visually-hidden`) so the accessible name is preserved. */
   hideLabel: z.boolean().optional(),
+  /** When true, the field renders as `<input type="hidden">` — no visible UI,
+   * omitted from check-your-answers — but stays in the submitted payload (unlike
+   * `isHidden`, which strips the field). For values computed by another field,
+   * e.g. geocoded coordinates written by an `address-lookup` field. */
+  hidden: z.boolean().optional(),
 });
 
 export type PrimitiveUI = z.infer<typeof primitiveUISchema>;
+
+// Sibling fields an `address-lookup` field populates when a suggestion is
+// picked. Field ids are the recipe `fieldId`s within the same step (the
+// renderer resolves them to full step-scoped ids).
+export const geocodeTargetsSchema = z.object({
+  /** Field id to receive the locality / secondary address line. */
+  line2FieldId: z.string().optional(),
+  /** Field id of the parish select to set from the geocoded parish. */
+  parishFieldId: z.string().optional(),
+  /** Field id of a hidden field to receive `"lat,lon"`. */
+  coordinatesFieldId: z.string().optional(),
+});
+export type GeocodeTargets = z.infer<typeof geocodeTargetsSchema>;
 
 export const basePrimitiveSchema = z.object({
   fieldId: kebabIdSchema,
@@ -73,6 +91,7 @@ export const basePrimitiveSchema = z.object({
   multiple: z.boolean().optional(),
   mask: z.string().optional(),
   ui: primitiveUISchema.optional(),
+  geocodeTargets: geocodeTargetsSchema.optional(),
 });
 export type BasePrimitive = z.infer<typeof basePrimitiveSchema>;
 
@@ -199,6 +218,7 @@ export const fieldOverridesSchema = basePrimitiveSchema
     groups: true,
     mask: true,
     ui: true,
+    geocodeTargets: true,
   })
   .partial();
 export type FieldOverrides = z.infer<typeof fieldOverridesSchema>;

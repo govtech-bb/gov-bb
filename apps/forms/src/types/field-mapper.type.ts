@@ -4,6 +4,7 @@ import {
   ContactDetails,
   DateTimeFormat,
   fieldValueSchema,
+  GeocodeTargets,
   HtmlTypes,
   Option,
   OptionGroup,
@@ -33,6 +34,9 @@ export interface ClientPrimitive {
   validations?: ValidationRule;
   behaviours?: Behaviour[];
   ui?: PrimitiveUI;
+  /** For `address-lookup`: sibling fields to populate when a suggestion is
+   * picked (see {@link GeocodeTargets}). */
+  geocodeTargets?: GeocodeTargets;
 }
 
 export interface ClientFormStep {

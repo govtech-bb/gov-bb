@@ -45,6 +45,7 @@ export type {
   Primitive,
   HtmlTypes,
   PrimitiveUI,
+  GeocodeTargets,
 } from "./primitive.type";
 
 export {

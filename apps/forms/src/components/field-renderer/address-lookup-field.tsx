@@ -24,6 +24,7 @@ export function AddressLookupField({
 }): JSX.Element {
   const {
     field,
+    form,
     f,
     sharedProps,
     requiredProps,
@@ -34,6 +35,10 @@ export function AddressLookupField({
     labelClass,
     commitChange,
   } = ctx;
+
+  // Sibling field ids share this field's step prefix (id = `<prefix><fieldId>`).
+  const stepPrefix = field.id.slice(0, field.id.length - field.fieldId.length);
+  const siblingId = (fieldId: string) => `${stepPrefix}${fieldId}`;
 
   const initial = typeof f.state.value === "string" ? f.state.value : "";
   const [query, setQuery] = useState(initial);
@@ -90,8 +95,26 @@ export function AddressLookupField({
 
   const select = (result: GeocodeResult) => {
     justSelected.current = true;
-    setQuery(result.label);
-    commitChange(result.label);
+    // Line 1 holds the street part; fall back to the full label if unparsed.
+    const line1 = result.line1 || result.label;
+    setQuery(line1);
+    commitChange(line1);
+
+    const targets = field.geocodeTargets;
+    if (targets?.line2FieldId) {
+      form.setFieldValue(siblingId(targets.line2FieldId), result.line2);
+    }
+    // Only set the parish when resolved, so we never clobber a manual choice.
+    if (targets?.parishFieldId && result.parish) {
+      form.setFieldValue(siblingId(targets.parishFieldId), result.parish);
+    }
+    if (targets?.coordinatesFieldId) {
+      form.setFieldValue(
+        siblingId(targets.coordinatesFieldId),
+        `${result.lat},${result.lon}`,
+      );
+    }
+
     setSuggestions([]);
     setOpen(false);
     setActiveIndex(-1);
@@ -134,54 +157,60 @@ export function AddressLookupField({
         </p>
       )}
       <ErrorMessage id={errorId} message={errorMessage} />
-      <div className="govbb-input-wrapper">
-        <input
-          id={sharedProps.id}
-          name={sharedProps.name}
-          disabled={sharedProps.disabled}
-          placeholder={sharedProps.placeholder}
-          aria-describedby={sharedProps["aria-describedby"]}
-          {...requiredProps}
-          type="text"
-          className="govbb-input"
-          role="combobox"
-          aria-expanded={open}
-          aria-controls={listboxId}
-          aria-autocomplete="list"
-          aria-activedescendant={activeId}
-          aria-invalid={invalid}
-          autoComplete="off"
-          value={query}
-          onChange={(e) => update(e.target.value)}
-          onBlur={() => {
-            // Delay so a mouse click on an option registers before we close.
-            setTimeout(() => setOpen(false), 150);
-            // TanStack Form's blur handler takes no arguments.
-            sharedProps.onBlur?.();
-          }}
-          onKeyDown={onKeyDown}
-        />
+      <div className="govbb-address-lookup">
+        <div className="govbb-input-wrapper">
+          <input
+            id={sharedProps.id}
+            name={sharedProps.name}
+            disabled={sharedProps.disabled}
+            placeholder={sharedProps.placeholder}
+            aria-describedby={sharedProps["aria-describedby"]}
+            {...requiredProps}
+            type="text"
+            className="govbb-input"
+            role="combobox"
+            aria-expanded={open}
+            aria-controls={listboxId}
+            aria-autocomplete="list"
+            aria-activedescendant={activeId}
+            aria-invalid={invalid}
+            autoComplete="off"
+            value={query}
+            onChange={(e) => update(e.target.value)}
+            onBlur={() => {
+              // Delay so a mouse click on an option registers before we close.
+              setTimeout(() => setOpen(false), 150);
+              // TanStack Form's blur handler takes no arguments.
+              sharedProps.onBlur?.();
+            }}
+            onKeyDown={onKeyDown}
+          />
+        </div>
+        {open && suggestions.length > 0 && (
+          <ul
+            className="govbb-address-suggestions"
+            role="listbox"
+            id={listboxId}
+          >
+            {suggestions.map((result, index) => (
+              <li
+                key={`${result.label}-${index}`}
+                id={`${listboxId}-option-${index}`}
+                role="option"
+                aria-selected={index === activeIndex}
+                className="govbb-address-suggestion"
+                // onMouseDown (not onClick) so it fires before the input's blur.
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  select(result);
+                }}
+              >
+                {result.label}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-      {open && suggestions.length > 0 && (
-        <ul className="govbb-address-suggestions" role="listbox" id={listboxId}>
-          {suggestions.map((result, index) => (
-            <li
-              key={`${result.label}-${index}`}
-              id={`${listboxId}-option-${index}`}
-              role="option"
-              aria-selected={index === activeIndex}
-              className="govbb-address-suggestion"
-              // onMouseDown (not onClick) so it fires before the input's blur.
-              onMouseDown={(e) => {
-                e.preventDefault();
-                select(result);
-              }}
-            >
-              {result.label}
-            </li>
-          ))}
-        </ul>
-      )}
       {lookupFailed && (
         <p className="govbb-hint" role="status">
           Address suggestions are unavailable right now — you can type the

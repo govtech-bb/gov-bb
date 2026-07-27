@@ -3,9 +3,16 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
 /** One Barbados address suggestion from the `/geocode` proxy. */
 export interface GeocodeResult {
+  /** Full formatted address — shown in the suggestions dropdown. */
   label: string;
   lat: string;
   lon: string;
+  /** Primary address line (name + street). */
+  line1: string;
+  /** Locality (town / district). */
+  line2: string;
+  /** Parish select value (e.g. `st-michael`), or "" when not resolved. */
+  parish: string;
 }
 
 /** Minimum characters before we query — avoids noisy one/two-letter lookups. */

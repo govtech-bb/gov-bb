@@ -39,6 +39,8 @@ const mockFieldApi = {
   validate: vi.fn(),
 };
 
+const setFieldValue = vi.fn();
+
 const mockForm = {
   Field: ({
     children,
@@ -48,6 +50,7 @@ const mockForm = {
     children: (f: typeof mockFieldApi) => React.ReactNode;
   }) => <>{children(mockFieldApi)}</>,
   getFieldValue: vi.fn().mockReturnValue(undefined),
+  setFieldValue,
 };
 
 function addressLookupField(): ClientPrimitive {
@@ -62,6 +65,11 @@ function addressLookupField(): ClientPrimitive {
     hidden: false,
     conditionallyHidden: false,
     behaviours: [],
+    geocodeTargets: {
+      line2FieldId: "event-address-line-2",
+      parishFieldId: "event-parish",
+      coordinatesFieldId: "event-address-coordinates",
+    },
   } as ClientPrimitive;
 }
 
@@ -92,6 +100,9 @@ describe("AddressLookupField", () => {
         label: "Bay Street, Bridgetown, St. Michael, Barbados",
         lat: "1",
         lon: "2",
+        line1: "Bay Street",
+        line2: "Bridgetown",
+        parish: "st-michael",
       },
     ]);
     renderField();
@@ -103,22 +114,66 @@ describe("AddressLookupField", () => {
     expect(mockSearch).toHaveBeenCalled();
   });
 
-  it("commits the selected suggestion's label and closes the listbox", async () => {
+  it("commits line 1 and populates line 2, parish and coordinates on select", async () => {
     mockSearch.mockResolvedValue([
-      { label: "Speightstown, St. Peter, Barbados", lat: "1", lon: "2" },
+      {
+        label:
+          "Chefette, Prescott Boulevard, Bridgetown, St. Michael, Barbados",
+        lat: "13.1",
+        lon: "-59.6",
+        line1: "Chefette, Prescott Boulevard",
+        line2: "Bridgetown",
+        parish: "st-michael",
+      },
     ]);
     renderField();
 
-    await userEvent.type(screen.getByRole("combobox"), "Spe");
+    await userEvent.type(screen.getByRole("combobox"), "Che");
     const option = await screen.findByRole("option");
     await userEvent.click(option);
 
+    // Line 1 (this field) gets the street part, not the full label.
     expect(handleChange).toHaveBeenLastCalledWith(
-      "Speightstown, St. Peter, Barbados",
+      "Chefette, Prescott Boulevard",
+    );
+    // Siblings populated via geocodeTargets (step-scoped ids).
+    expect(setFieldValue).toHaveBeenCalledWith(
+      "step-1.event-address-line-2",
+      "Bridgetown",
+    );
+    expect(setFieldValue).toHaveBeenCalledWith(
+      "step-1.event-parish",
+      "st-michael",
+    );
+    expect(setFieldValue).toHaveBeenCalledWith(
+      "step-1.event-address-coordinates",
+      "13.1,-59.6",
     );
     await waitFor(() => {
       expect(screen.queryByRole("listbox")).toBeNull();
     });
+  });
+
+  it("does not overwrite the parish when the geocoder can't resolve one", async () => {
+    mockSearch.mockResolvedValue([
+      {
+        label: "Somewhere, Barbados",
+        lat: "1",
+        lon: "2",
+        line1: "Somewhere",
+        line2: "",
+        parish: "",
+      },
+    ]);
+    renderField();
+
+    await userEvent.type(screen.getByRole("combobox"), "Som");
+    await userEvent.click(await screen.findByRole("option"));
+
+    expect(setFieldValue).not.toHaveBeenCalledWith(
+      "step-1.event-parish",
+      expect.anything(),
+    );
   });
 
   it("keeps free typing working (value tracks the input)", async () => {

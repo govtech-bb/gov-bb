@@ -22,7 +22,8 @@ describe("GeocodeService", () => {
       of({
         data: [
           {
-            display_name: "Bay Street, Bridgetown, St. Michael, Barbados",
+            display_name:
+              "Chefette, Prescott Boulevard, Bridgetown, Saint Michael, BB11007, Barbados",
             lat: "13.0975",
             lon: "-59.6145",
           },
@@ -30,25 +31,62 @@ describe("GeocodeService", () => {
       }),
     );
 
-    const results = await makeService(get).search("Bay Street");
+    const results = await makeService(get).search("Chefette");
 
     expect(results).toEqual([
       {
-        label: "Bay Street, Bridgetown, St. Michael, Barbados",
+        label:
+          "Chefette, Prescott Boulevard, Bridgetown, Saint Michael, BB11007, Barbados",
         lat: "13.0975",
         lon: "-59.6145",
+        line1: "Chefette, Prescott Boulevard",
+        line2: "Bridgetown",
+        parish: "st-michael",
       },
     ]);
 
     const [url, config] = get.mock.calls[0];
     expect(url).toContain("/search");
     expect(config.params).toMatchObject({
-      q: "Bay Street",
+      q: "Chefette",
       countrycodes: "bb",
       format: "json",
+      addressdetails: 1,
       limit: 5,
     });
     expect(config.headers["User-Agent"]).toBeTruthy();
+  });
+
+  it("resolves the parish from the address object when absent from display_name", async () => {
+    const get = vi.fn().mockReturnValue(
+      of({
+        data: [
+          {
+            display_name: "Some Road, Oistins, BB15000, Barbados",
+            lat: "13.0",
+            lon: "-59.5",
+            address: { county: "Christ Church" },
+          },
+        ],
+      }),
+    );
+
+    const [result] = await makeService(get).search("Oistins");
+    expect(result.parish).toBe("christ-church");
+    expect(result.line1).toBe("Some Road");
+    expect(result.line2).toBe("Oistins");
+  });
+
+  it("leaves parish empty when nothing matches a Barbados parish", async () => {
+    const get = vi
+      .fn()
+      .mockReturnValue(
+        of({
+          data: [{ display_name: "Nowhere, Barbados", lat: "1", lon: "2" }],
+        }),
+      );
+    const [result] = await makeService(get).search("nowhere");
+    expect(result.parish).toBe("");
   });
 
   it("drops results missing coordinates", async () => {

@@ -276,7 +276,12 @@
           "ref": "components/address-lookup",
           "overrides": {
             "label": "Event address line 1",
-            "fieldId": "event-address-line-1"
+            "fieldId": "event-address-line-1",
+            "geocodeTargets": {
+              "line2FieldId": "event-address-line-2",
+              "parishFieldId": "event-parish",
+              "coordinatesFieldId": "event-address-coordinates"
+            }
           }
         },
         {
@@ -296,6 +301,21 @@
           "overrides": {
             "label": "Parish of event",
             "fieldId": "event-parish"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Event location coordinates",
+            "fieldId": "event-address-coordinates",
+            "ui": {
+              "hidden": true
+            },
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
