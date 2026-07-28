@@ -6,6 +6,7 @@ import {
   redirect,
 } from '@tanstack/react-router'
 import { Footer, FooterLink, SkipLink } from '@govtech-bb/react'
+import { BreadcrumbRegion } from '../components/BreadcrumbRegion'
 import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
 import { trackEvent } from '../lib/analytics'
@@ -171,9 +172,11 @@ function RootLayout() {
       <div className="print:hidden">
         <Header />
       </div>
-      <main id="main-content" tabIndex={-1}>
-        <Outlet />
-      </main>
+      <BreadcrumbRegion>
+        <main id="main-content" tabIndex={-1}>
+          <Outlet />
+        </main>
+      </BreadcrumbRegion>
       <Footer
         className="print:hidden"
         coatSrc="/images/coat-of-arms.png"

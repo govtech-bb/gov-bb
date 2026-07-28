@@ -24,6 +24,7 @@ const SearchParams = z.object({
 })
 
 export const Route = createFileRoute('/bank-holiday-calendar/')({
+  staticData: { breadcrumbMode: 'location' },
   validateSearch: SearchParams,
   head: () => ({
     meta: [

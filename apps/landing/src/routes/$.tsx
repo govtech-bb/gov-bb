@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { Heading, StatusBanner, Text } from '@govtech-bb/react'
-import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { MarkdownContent } from '../components/markdown'
 import {
@@ -81,6 +80,7 @@ type LoaderData =
     }
 
 export const Route = createFileRoute('/$')({
+  staticData: { breadcrumbMode: 'location' },
   loader: async ({ params, context }): Promise<LoaderData> => {
     const { level, serviceStatuses } = context
     // The runtime service_status overlay overrides frontmatter visibility per
@@ -474,9 +474,6 @@ function ReviewBanner({ level }: { level: Exclude<ViewLevel, 'public'> }) {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <div className="govbb-width-container py-4 lg:py-6 print:hidden">
-        <Breadcrumbs />
-      </div>
       <div className="govbb-width-container govbb-main-wrapper">{children}</div>
       <div className="govbb-width-container print:hidden">
         <HelpfulBox className="mb-4 lg:mb-16" />

@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import type { Root } from 'hast'
-import { Breadcrumbs } from '../components/Breadcrumbs'
+import { usePreviewBreadcrumbPath } from '../components/BreadcrumbRegion'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { MarkdownContent } from '../components/markdown'
 import { processMarkdown } from '../utils/markdown/processor'
@@ -23,6 +23,7 @@ import type { Frontmatter, ViewLevel } from '../lib/frontmatter'
  * over postMessage.
  */
 export const Route = createFileRoute('/preview-start-page')({
+  staticData: { breadcrumbMode: 'preview' },
   head: () => ({ meta: [{ name: 'robots', content: 'noindex' }] }),
   component: PreviewStartPage,
 })
@@ -110,14 +111,12 @@ function PreviewStartPage() {
   }, [state])
 
   const formId = state?.frontmatter.form_id
+  usePreviewBreadcrumbPath(state?.path || undefined)
 
-  // PageShell's markup, but with the breadcrumb trail rendered for the
-  // *previewed* page's URL rather than this route's own /preview-start-page.
+  // PageShell's body and feedback regions. The root breadcrumb region uses the
+  // previewed page's URL rather than this route's own /preview-start-page.
   return (
     <>
-      <div className="govbb-width-container py-4 lg:py-6">
-        <Breadcrumbs pathname={state?.path || '/'} />
-      </div>
       <div className="govbb-width-container govbb-main-wrapper">
         {state && hast ? (
           <MarkdownContent
