@@ -86,3 +86,9 @@ describe("VALIDATION_RULE_DESCRIPTORS.date — age/duration rules (#1020)", () =
     }
   });
 });
+
+describe("VALIDATION_RULE_DESCRIPTORS.content", () => {
+  it("is an empty array (no validation rules for static guidance blocks)", () => {
+    expect(VALIDATION_RULE_DESCRIPTORS.content).toEqual([]);
+  });
+});
