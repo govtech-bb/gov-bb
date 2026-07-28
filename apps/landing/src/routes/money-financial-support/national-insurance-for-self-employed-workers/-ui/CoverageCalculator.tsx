@@ -572,7 +572,11 @@ function MoneyField({
           error ? 'border-red-00' : 'border-black-00'
         }`}
       >
-        {prefix && <span className="pl-3 text-mid-grey-00">{prefix}</span>}
+        {prefix && (
+          <span className="shrink-0 whitespace-nowrap pl-3 text-mid-grey-00">
+            {prefix}
+          </span>
+        )}
         <input
           aria-describedby={`${id}-hint${error ? ` ${id}-error` : ''}`}
           aria-invalid={error ? 'true' : undefined}
