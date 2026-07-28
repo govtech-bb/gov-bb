@@ -390,7 +390,7 @@ function Hero({
             Estimate my contributions
           </Button>
           <Button onClick={onBenefits} type="button" variant="secondary">
-            See what you may qualify for
+            See the benefits you may get
           </Button>
           <Link
             className="justify-center py-2 text-center"
