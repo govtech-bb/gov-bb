@@ -380,14 +380,10 @@ function Hero({
           From National Insurance (NIS)
         </span>
         <h1 className="mb-4 font-bold text-[2.75rem] text-black-00 leading-[1.1] tracking-tight sm:text-[3.5rem]">
-          Protect your income.
-          <br />
-          <span className="text-teal-00">Protect your future.</span>
+          Estimate how much National Insurance to pay
         </h1>
         <p className="mb-6 text-[1.125rem] text-mid-grey-00">
-          You work for yourself: driving, delivering, freelancing, building,
-          selling, creating. NIS is how you look after yourself when life
-          happens.
+          Answer a few questions about what you earn to compare payment amounts.
         </p>
         <div className="flex flex-col items-stretch gap-3 [&_button]:w-full [&_button]:justify-center">
           <Button onClick={onStart} type="button">
