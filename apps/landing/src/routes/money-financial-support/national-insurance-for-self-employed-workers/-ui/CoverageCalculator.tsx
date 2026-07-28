@@ -1260,63 +1260,6 @@ function ResultStep({
 }
 
 /* ── Screen: next steps ─────────────────────────────────────────────── */
-// A disclosure styled like the benefit cards on the result screen: neutral
-// card, colour only on the icon, a rule under the title separating it from the
-// body. Each card carries its own detail rather than linking away, so the
-// payment and contact routes are here rather than at the end of a link.
-function NextStepCard({
-  children,
-  icon,
-  sub,
-  title,
-  tone,
-}: {
-  children: ReactNode
-  icon: string
-  sub: string
-  title: string
-  tone: Tone
-}) {
-  return (
-    <details className="group overflow-hidden rounded-xl border border-grey-00 bg-white-00">
-      <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
-        <IconCircle name={icon} tint tone={tone} />
-        <span className="min-w-0 flex-1 font-semibold text-[1.25rem] text-black-00">
-          {title}
-        </span>
-        <Icon
-          className="h-6 w-6 shrink-0 text-black-00 transition-transform group-open:rotate-180"
-          name="chevronDown"
-          strokeWidth={2.25}
-        />
-      </summary>
-      <div className="border-grey-00 border-t px-4 pt-4 pb-5">
-        <p className="text-[1rem] text-black-00/80">{sub}</p>
-        {children}
-      </div>
-    </details>
-  )
-}
-
-// `label — detail` rows. Unmarked (no bullets) to match the prototype, but a
-// list so the routes are announced as a set.
-function OptionList({
-  items,
-}: {
-  items: Array<{ detail: ReactNode; label: string }>
-}) {
-  return (
-    <ul className="mt-3 flex flex-col gap-2 text-[1rem] text-black-00">
-      {items.map((it) => (
-        <li key={it.label}>
-          <strong className="font-semibold">{it.label}</strong> &mdash;{' '}
-          {it.detail}
-        </li>
-      ))}
-    </ul>
-  )
-}
-
 function NextSteps({
   onBack,
   onRestart,
@@ -1324,118 +1267,35 @@ function NextSteps({
   onBack: () => void
   onRestart: () => void
 }) {
+  const serviceHref =
+    '/money-financial-support/national-insurance-for-self-employed-workers'
   return (
     <div>
       <ServiceCaption />
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
-        Ready to take the next step?
+        What to do next
       </h1>
       <p className="mb-6 text-[1.125rem] text-mid-grey-00">
-        Choose what works best for you right now.
+        This estimate does not register you or set your payment amount.
       </p>
 
-      <div className="flex flex-col gap-3">
-        <NextStepCard
-          icon="shield"
-          sub="Get set up to start contributing. Takes about 10 minutes."
-          title="Register with NIS"
-          tone="teal"
-        >
-          <Link
-            className="mt-3 inline-flex items-center gap-2"
-            external
-            href={REGISTER_HREF}
-          >
-            Start registration
-            <Icon className="h-4 w-4" name="arrowRight" strokeWidth={2} />
+      <ul className="flex flex-col gap-3 text-[1.125rem]">
+        <li>
+          <Link href={`${serviceHref}/how-to-get-your-benefits`}>
+            Find out how to get your benefits
           </Link>
-        </NextStepCard>
+        </li>
+        <li>
+          <Link href={`${serviceHref}#make-a-payment`}>
+            See how and when to pay National Insurance
+          </Link>
+        </li>
+        <li>
+          <Link href={`${serviceHref}#get-help`}>Contact NIS for help</Link>
+        </li>
+      </ul>
 
-        <NextStepCard
-          icon="card"
-          sub="Pay weekly, monthly, or in a lump sum — whatever fits your cash flow."
-          title="See how to pay"
-          tone="blue"
-        >
-          <OptionList
-            items={[
-              {
-                label: 'NIS online portal',
-                detail: 'pay from your phone, anytime',
-              },
-              {
-                label: 'SurePay',
-                detail: 'pay cash or card at any SurePay location',
-              },
-              {
-                label: 'EZpay+',
-                detail: (
-                  <>
-                    pay 24/7 at{' '}
-                    <Link
-                      href="https://ezpay.gov.bb"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      ezpay.gov.bb
-                    </Link>
-                  </>
-                ),
-              },
-              {
-                label: 'Bank transfer',
-                detail: 'standing order or one-off transfer',
-              },
-              {
-                label: 'In person at NIS',
-                detail: 'pay at the office and get help',
-              },
-            ]}
-          />
-        </NextStepCard>
-
-        <NextStepCard
-          icon="phone"
-          sub="Have a question? Here’s how to reach them."
-          title="Contact NIS"
-          tone="yellow"
-        >
-          <OptionList
-            items={[
-              {
-                label: 'Call',
-                detail: <Link href="tel:+12464317400">246-431-7400</Link>,
-              },
-              {
-                label: 'Visit',
-                detail:
-                  'Frank Walcott Building, Bridgetown, or any branch office',
-              },
-              {
-                label: 'Online',
-                detail: (
-                  <Link
-                    href="https://www.nis.gov.bb"
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    nis.gov.bb
-                  </Link>
-                ),
-              },
-            ]}
-          />
-        </NextStepCard>
-      </div>
-
-      <div className="mt-6 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
-        <p>
-          You can step away at any time. Joining is voluntary, and you choose
-          how much to contribute.
-        </p>
-      </div>
-
-      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
+      <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
           Previous
         </Button>
