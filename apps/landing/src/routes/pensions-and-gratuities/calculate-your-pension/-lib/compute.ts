@@ -38,7 +38,7 @@ export function calculatePension(input: PensionInputs): PensionEstimate {
     0,
     Math.min((endYear - startYear) * 12 - nopayMonths, MAX_PENSIONABLE_MONTHS),
   )
-  const fullAnnual = (months / 600) * salary
+  const fullAnnual = (months / MAX_PENSIONABLE_MONTHS) * salary
   const reducedAnnual = fullAnnual * 0.75
   return {
     months,
