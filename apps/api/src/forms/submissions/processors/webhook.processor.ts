@@ -11,6 +11,8 @@ import { assertSafeUrl } from "./url-safety";
 import { sanitizeForLog } from "@/common/log-sanitize";
 import { buildMappedCasePayload } from "./webhook-mapping";
 import { idempotencyKey, timedPost } from "./http-post";
+import { FormDefinitionsService } from "../../form-definitions/form-definitions.service";
+import { deriveHigherRiskSelection } from "../derive-higher-risk";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_SIGNATURE_HEADER = "X-Webhook-Signature";
@@ -40,7 +42,10 @@ export class WebhookProcessor implements ISubmissionProcessor {
   readonly type = "webhook" as const;
   private readonly logger = new Logger(WebhookProcessor.name);
 
-  constructor(private readonly http: HttpService) {}
+  constructor(
+    private readonly http: HttpService,
+    private readonly formDefinitions: FormDefinitionsService,
+  ) {}
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
     // Per-entry dispatch (issue #95): act on exactly the entry addressed by
@@ -69,6 +74,17 @@ export class WebhookProcessor implements ISubmissionProcessor {
       (cfg["timeoutMs"] as number | undefined) ?? DEFAULT_TIMEOUT_MS;
     const mapping = cfg["mapping"] as WebhookMapping | undefined;
 
+    // Derived reviewer signal (#2065): only mapped payloads carry it, and only
+    // for forms with a checkbox-accordion field (deriveHigherRiskSelection
+    // returns null otherwise, so the flag is omitted). Resolving the contract
+    // here mirrors the email processor's contract access.
+    const higherRisk = mapping
+      ? deriveHigherRiskSelection(
+          await this.formDefinitions.findByFormId({ formId: payload.formId }),
+          payload.values,
+        )
+      : null;
+
     // Serialize once: the signature is computed over the exact string sent.
     const body = mapping
       ? JSON.stringify(
@@ -77,6 +93,7 @@ export class WebhookProcessor implements ISubmissionProcessor {
             values: payload.values,
             referenceCode: payload.referenceCode,
             submittedAt: payload.meta.submittedAt,
+            higherRisk,
           }),
         )
       : JSON.stringify({

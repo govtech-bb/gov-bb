@@ -7,7 +7,11 @@ import {
   GetObjectCommand,
   HeadObjectCommand,
 } from "@aws-sdk/client-s3";
-import { BadRequestException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  InternalServerErrorException,
+  NotFoundException,
+} from "@nestjs/common";
 import type { ServiceContract } from "@govtech-bb/form-types";
 import { FilesService } from "./files.service";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
@@ -349,6 +353,46 @@ describe("FilesService", () => {
         .rejects({ name: "NotFound" });
       const r = await service.verifyKeysExist(["ok", "missing"]);
       expect(r).toEqual(new Set(["missing"]));
+    });
+
+    it("still classifies NoSuchKey as missing", async () => {
+      s3Mock
+        .on(HeadObjectCommand, { Key: "gone" })
+        .rejects({ name: "NoSuchKey" });
+      const r = await service.verifyKeysExist(["gone"]);
+      expect(r).toEqual(new Set(["gone"]));
+    });
+
+    it("treats a transient S3 error as a server error, not a missing file (#1989)", async () => {
+      // AccessDenied is NOT a genuine miss — the object may exist. It must not
+      // land in the "missing" set (which would show "Uploaded file not found").
+      s3Mock
+        .on(HeadObjectCommand, { Key: "present-but-errored" })
+        .rejects({ name: "AccessDenied" });
+      await expect(
+        service.verifyKeysExist(["present-but-errored"]),
+      ).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it("treats a 5xx S3 error as a server error (#1989)", async () => {
+      s3Mock.on(HeadObjectCommand, { Key: "boom" }).rejects(
+        Object.assign(new Error("Internal Error"), {
+          name: "InternalError",
+          $metadata: { httpStatusCode: 500 },
+        }),
+      );
+      await expect(service.verifyKeysExist(["boom"])).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it("re-raises throttle errors unchanged", async () => {
+      s3Mock
+        .on(HeadObjectCommand, { Key: "slow" })
+        .rejects({ name: "ThrottlingException" });
+      await expect(service.verifyKeysExist(["slow"])).rejects.toMatchObject({
+        name: "ThrottlingException",
+      });
     });
   });
 

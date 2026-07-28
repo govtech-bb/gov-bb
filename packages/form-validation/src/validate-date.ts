@@ -23,6 +23,14 @@ export type DatePart = (typeof DATE_PARTS)[number];
 export interface DateValidationError {
   readonly message: string;
   readonly parts: readonly DatePart[];
+  /**
+   * Stable reason code for analytics: `required` when nothing was entered,
+   * `incomplete_date` for a partial date, `invalid_date` for an impossible
+   * date, or the failing rule type (`before`/`after`/…) for a configured rule.
+   * Optional so existing display consumers (which only read message/parts) are
+   * unaffected.
+   */
+  readonly code?: string;
 }
 
 /**
@@ -170,6 +178,7 @@ export function validateDateField(
   const requiredError = (): DateValidationError => ({
     message: requiredConfig?.error ?? `Enter ${asPhrase(label)}`,
     parts: DATE_PARTS,
+    code: "required",
   });
 
   // ── Priority 1: missing or incomplete ──────────────────────────────────
@@ -181,7 +190,11 @@ export function validateDateField(
   // information — skip the incompleteness checks and parse directly.
   if (!isPartsObject(value)) {
     if (parseDate(value) === null) {
-      return { message: `${label} must be a real date`, parts: DATE_PARTS };
+      return {
+        message: `${label} must be a real date`,
+        parts: DATE_PARTS,
+        code: "invalid_date",
+      };
     }
     return runConfiguredRules(field, value, allValues, stepValues);
   }
@@ -199,6 +212,7 @@ export function validateDateField(
     return {
       message: `${label} must include a ${joinParts(missing)}`,
       parts: missing,
+      code: "incomplete_date",
     };
   }
 
@@ -206,7 +220,11 @@ export function validateDateField(
   // implausible year ("90", "925", "1899"); proper lower-bound messaging is
   // what the configurable minYear rule is for.
   if (year < 1900 || year > 9999) {
-    return { message: "Year must include 4 numbers", parts: ["year"] };
+    return {
+      message: "Year must include 4 numbers",
+      parts: ["year"],
+      code: "incomplete_date",
+    };
   }
 
   // ── Priority 2: information that cannot be correct ─────────────────────
@@ -226,6 +244,7 @@ export function validateDateField(
       message: `${label} must be a real date`,
       // Whole input when more than one part is wrong (per the guidance).
       parts: badParts.length > 1 ? DATE_PARTS : badParts,
+      code: "invalid_date",
     };
   }
 
@@ -265,7 +284,7 @@ function runConfiguredRules(
           };
 
     const msg = runRule(runner, value, patched, allValues, stepValues);
-    if (msg !== null) return { message: msg, parts: DATE_PARTS };
+    if (msg !== null) return { message: msg, parts: DATE_PARTS, code: type };
   }
 
   return null;

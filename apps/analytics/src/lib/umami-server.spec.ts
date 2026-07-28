@@ -1,16 +1,44 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   buildFunnelSteps,
   buildStepFunnel,
   buildVisitFunnelSteps,
+  fetchFormDefinition,
+  fetchFormList,
   funnelHeadline,
   humanizeStep,
+  isConfigured,
+  isLandingConfigured,
   shapeFlow,
   shapeFormList,
   shapeFunnel,
   shapeJourneyList,
+  shapeSearch,
   shapeSubmitError,
+  type UmamiConfig,
 } from './umami-server'
+
+describe('configured gates', () => {
+  const full = {
+    apiKey: 'k',
+    landingWebsiteId: 'land',
+    formsWebsiteId: 'forms',
+    formsApiUrl: 'https://api',
+  }
+
+  it('isConfigured requires apiKey + landing + forms', () => {
+    expect(isConfigured(full)).toBe(true)
+    expect(isConfigured({ ...full, formsWebsiteId: '' })).toBe(false)
+    expect(isConfigured({ ...full, landingWebsiteId: '' })).toBe(false)
+    expect(isConfigured({ ...full, apiKey: '' })).toBe(false)
+  })
+
+  it('isLandingConfigured needs only apiKey + landing (not the forms site)', () => {
+    expect(isLandingConfigured({ ...full, formsWebsiteId: '' })).toBe(true)
+    expect(isLandingConfigured({ ...full, landingWebsiteId: '' })).toBe(false)
+    expect(isLandingConfigured({ ...full, apiKey: '' })).toBe(false)
+  })
+})
 
 describe('buildFunnelSteps', () => {
   it('builds start→review→submit event steps for a formId', () => {
@@ -69,6 +97,85 @@ describe('buildStepFunnel (titled by-stepId funnel)', () => {
   it('treats a step with no recorded views as zero', () => {
     const out = buildStepFunnel(5, 1, steps, { a: 5 })
     expect(out.map((s) => s.count)).toEqual([5, 5, 0, 0, 1])
+  })
+
+  it('appends Review and Confirmation around Submit when the tail is given (#1955)', () => {
+    const out = buildStepFunnel(
+      420,
+      200,
+      steps,
+      { a: 400, b: 120, c: 260 },
+      {
+        reviewCount: 210,
+        confirmationCount: 195,
+      },
+    )
+    expect(out.map((s) => s.label)).toEqual([
+      'Start',
+      'Step 1: Your details',
+      'Step 2: Eligibility',
+      'Step 3: Upload docs',
+      'Review',
+      'Submit',
+      'Confirmation',
+    ])
+    expect(out.map((s) => s.count)).toEqual([420, 400, 120, 260, 210, 200, 195])
+  })
+
+  it('appends payment stages only when payment-initiated is present (#1955)', () => {
+    const out = buildStepFunnel(
+      100,
+      60,
+      [{ stepId: 'a', title: 'Details' }],
+      {
+        a: 90,
+      },
+      {
+        reviewCount: 70,
+        confirmationCount: 58,
+        paymentInitiatedCount: 55,
+        paymentSuccessCount: 40,
+      },
+    )
+    expect(out.map((s) => s.label)).toEqual([
+      'Start',
+      'Step 1: Details',
+      'Review',
+      'Submit',
+      'Confirmation',
+      'Payment initiated',
+      'Payment success',
+    ])
+    expect(out.map((s) => s.count)).toEqual([100, 90, 70, 60, 58, 55, 40])
+  })
+
+  it('omits payment stages for a non-payment form (no payment-initiated)', () => {
+    const out = buildStepFunnel(
+      100,
+      60,
+      [{ stepId: 'a', title: 'Details' }],
+      {
+        a: 90,
+      },
+      {
+        reviewCount: 70,
+        confirmationCount: 58,
+        paymentInitiatedCount: 0,
+      },
+    )
+    expect(out.map((s) => s.label)).not.toContain('Payment initiated')
+    expect(out.map((s) => s.label)).toEqual([
+      'Start',
+      'Step 1: Details',
+      'Review',
+      'Submit',
+      'Confirmation',
+    ])
+  })
+
+  it('stays backward-compatible (Start → steps → Submit) with no tail', () => {
+    const out = buildStepFunnel(10, 4, [{ stepId: 'a', title: 'X' }], { a: 8 })
+    expect(out.map((s) => s.label)).toEqual(['Start', 'Step 1: X', 'Submit'])
   })
 })
 
@@ -251,5 +358,146 @@ describe('shapeSubmitError (#1916)', () => {
 
   it('returns a null rate when there were no attempts', () => {
     expect(shapeSubmitError(0, 0, []).rate).toBeNull()
+  })
+})
+
+describe('shapeSearch', () => {
+  it('joins query counts, per-query clicks and zero-result flags into a ranked table', () => {
+    const out = shapeSearch(
+      [
+        { value: 'passport', total: 100 },
+        { value: 'birth certificate', total: 40 },
+        { value: 'xyzzy', total: 10 },
+      ],
+      [
+        { value: 0, total: 15 },
+        { value: 3, total: 135 },
+      ],
+      [
+        { value: 'passport', total: 60 },
+        { value: 'birth certificate', total: 10 },
+      ],
+      [{ value: 'xyzzy', total: 10 }],
+    )
+
+    // overall: searches = 150, clicks = 70, ctr = 70/150 (stored 0–1).
+    expect(out.searches).toBe(150)
+    expect(out.clicks).toBe(70)
+    expect(out.ctr).toBeCloseTo(70 / 150)
+    // zero-result rate from the results distribution: 15 / 150.
+    expect(out.zeroResultRate).toBeCloseTo(0.1)
+
+    // ranked by searches, each with its own CTR (0–1) and zero-result flag.
+    expect(out.queries.map((q) => q.query)).toEqual([
+      'passport',
+      'birth certificate',
+      'xyzzy',
+    ])
+    expect(out.queries[0]).toEqual({
+      query: 'passport',
+      searches: 100,
+      clicks: 60,
+      ctr: 0.6,
+      zeroResult: false,
+    })
+    expect(out.queries[2]).toMatchObject({
+      query: 'xyzzy',
+      clicks: 0,
+      ctr: 0,
+      zeroResult: true,
+    })
+  })
+
+  it('takes total searches from the results distribution when the query distribution is row-capped', () => {
+    // The query rows are truncated (only the top term survived a row cap), but
+    // the low-cardinality results distribution carries the true total of 100.
+    const out = shapeSearch(
+      [{ value: 'passport', total: 20 }],
+      [
+        { value: 0, total: 10 },
+        { value: 4, total: 90 },
+      ],
+      [{ value: 'passport', total: 25 }],
+      [],
+    )
+    expect(out.searches).toBe(100) // max(20, 100), not the truncated 20
+    expect(out.ctr).toBeCloseTo(25 / 100) // CTR is not inflated by truncation
+    expect(out.zeroResultRate).toBeCloseTo(0.1)
+  })
+
+  it('caps the table at topN and degrades to zeros on empty input', () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({
+      value: `q${i}`,
+      total: 25 - i,
+    }))
+    expect(shapeSearch(many, [], [], [], 20).queries).toHaveLength(20)
+
+    const empty = shapeSearch([], [], [], [])
+    expect(empty).toMatchObject({
+      searches: 0,
+      clicks: 0,
+      ctr: 0,
+      zeroResultRate: 0,
+      queries: [],
+    })
+  })
+})
+
+// A hung forms API must not stall the dashboard: each fetch is capped with
+// AbortSignal.timeout and falls back to its empty shape on a timeout (#2080).
+describe('forms-API fetch timeouts (#2080)', () => {
+  const cfg: UmamiConfig = {
+    apiKey: 'k',
+    landingWebsiteId: 'l',
+    formsWebsiteId: 'f',
+    formsApiUrl: 'http://forms.test',
+  }
+  const timeoutError = () => new DOMException('timed out', 'TimeoutError')
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('fetchFormList returns [] on a fetch timeout', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(timeoutError()))
+    expect(await fetchFormList(cfg)).toEqual([])
+  })
+
+  it('fetchFormDefinition returns the empty shape on a fetch timeout', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(timeoutError()))
+    const result = await fetchFormDefinition(cfg, 'passport-renewal')
+    expect(result).toEqual({
+      title: 'passport-renewal',
+      steps: [],
+      labelByField: {},
+      messageByFieldCode: {},
+    })
+  })
+
+  it('fetchFormList returns [] when the timeout fires during the body read', async () => {
+    // Headers arrive (fetch resolves ok) but the body stalls, so the abort
+    // lands on res.json(). This must still fall back, not throw past it (#2080).
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.reject(timeoutError()),
+      }),
+    )
+    expect(await fetchFormList(cfg)).toEqual([])
+  })
+
+  it('passes an AbortSignal to fetch', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ data: [] }) })
+    vi.stubGlobal('fetch', fetchMock)
+    await fetchFormList(cfg)
+    expect(fetchMock.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it('re-throws a non-timeout fetch error rather than swallowing it', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
+    await expect(fetchFormList(cfg)).rejects.toThrow('network down')
   })
 })

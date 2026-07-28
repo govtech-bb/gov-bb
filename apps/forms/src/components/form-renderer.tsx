@@ -11,6 +11,7 @@ import remarkGfm from "remark-gfm";
 import { markdownComponents } from "./markdown-components";
 import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
+import { shallow } from "@tanstack/react-store";
 import { isDateValidationError } from "@govtech-bb/form-validation";
 import { useStepGuard } from "../hooks/use-step-guard";
 import Review from "./review";
@@ -25,9 +26,14 @@ import {
   getRepeatStepCount,
   getInstanceMarker,
   buildFieldValidationProperties,
+  collectStepErrorCodes,
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
+import {
+  confirmationOutcome,
+  paymentReturnOutcome,
+} from "../lib/confirmation-analytics";
 import { reviewDwellSeconds } from "./review-dwell";
 import { buildValidationErrorPayload } from "./validation-error-event";
 import { stepCompleteEventName } from "./step-events";
@@ -192,6 +198,36 @@ export default function FormRenderer({
     }
   }, [currentStep?.stepId, submissionState, navigateToStep]);
 
+  // Confirmation-page analytics (#1955): the true end of the journey. Fired
+  // once per confirmation view — `form-confirmation-view` always, plus
+  // `payment-returned` when the citizen has come back from EzPay. Guarded by a
+  // ref so a submissionState identity change (persist effect) doesn't re-fire.
+  const confirmationTracked = React.useRef(false);
+  React.useEffect(() => {
+    if (currentStep?.stepId !== "submission-confirmation" || !submissionState) {
+      confirmationTracked.current = false;
+      return;
+    }
+    if (confirmationTracked.current) return;
+    confirmationTracked.current = true;
+
+    const category = formCategory(formMeta.formId);
+    trackEvent("form-confirmation-view", {
+      form: formMeta.formId,
+      category,
+      outcome: confirmationOutcome(submissionState),
+      hasPayment: submissionState.hasPayment,
+    });
+    const returned = paymentReturnOutcome(submissionState);
+    if (returned) {
+      trackEvent("payment-returned", {
+        form: formMeta.formId,
+        category,
+        outcome: returned,
+      });
+    }
+  }, [currentStep?.stepId, submissionState, formMeta.formId]);
+
   const reviewEnteredAt = React.useRef<number | null>(null);
   React.useEffect(() => {
     if (currentStep?.stepId === "check-your-answers") {
@@ -265,7 +301,10 @@ function ActiveStep({
   navigateToStep,
   completeAndContinue,
 }: ActiveStepProps) {
-  const currentFields = [...currentStep.fields];
+  const currentFields = React.useMemo(
+    () => [...currentStep.fields],
+    [currentStep],
+  );
 
   // #801: distinguish repeat instances beyond the first. undefined for base
   // steps / first instances (renders exactly as before).
@@ -292,6 +331,8 @@ function ActiveStep({
     }
   };
 
+  // shallow so this only re-renders (and re-runs the effect below) when a
+  // repeatable-step value actually changes, not on every store update (#1991).
   const repeatableStepValues = useStore(
     form.store,
     (state) =>
@@ -300,6 +341,7 @@ function ActiveStep({
           key.startsWith(`${stepId}${stepFieldIdConcactenator}`),
         ),
       ) as FormValues,
+    shallow,
   );
 
   React.useEffect(() => {
@@ -351,10 +393,10 @@ function ActiveStep({
           formMeta.formId,
           formCategory(formMeta.formId),
           currentStep.stepId,
-          currentFields.map((field, i) => ({
-            fieldId: field.fieldId,
-            errors: results[i],
-          })),
+          collectStepErrorCodes(
+            currentFields,
+            form.state.values as Record<string, unknown>,
+          ),
         ),
       );
       scrollToTop();
@@ -433,19 +475,23 @@ function ActiveStep({
     }
   };
 
-  const errors = useStore(form.store, (state) => {
-    const fieldValidationErrors: FieldValidationErrors = {};
-    for (const field of currentStep.fields) {
-      const fieldErrors = state.fieldMeta[field.id]?.errors ?? [];
-      if (fieldErrors.length === 0) continue;
-      // Date fields emit structured { message, parts } errors; the summary
-      // only needs the message text.
-      fieldValidationErrors[field.id] = fieldErrors.map((e: unknown) =>
-        isDateValidationError(e) ? e.message : String(e),
-      );
-    }
-    return fieldValidationErrors;
-  });
+  const errors = useStore(
+    form.store,
+    (state) => {
+      const fieldValidationErrors: FieldValidationErrors = {};
+      for (const field of currentStep.fields) {
+        const fieldErrors = state.fieldMeta[field.id]?.errors ?? [];
+        if (fieldErrors.length === 0) continue;
+        // Date fields emit structured { message, parts } errors; the summary
+        // only needs the message text.
+        fieldValidationErrors[field.id] = fieldErrors.map((e: unknown) =>
+          isDateValidationError(e) ? e.message : String(e),
+        );
+      }
+      return fieldValidationErrors;
+    },
+    shallow,
+  );
 
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
 
@@ -463,20 +509,27 @@ function ActiveStep({
     visibleSteps[stepIndex + 1]?.stepId === "submission-confirmation";
   // Build show-hide groups so the left-border content wrapper spans the toggle
   // hint AND all conditionally-controlled sibling fields.
-  const fieldGroups = buildFieldGroups(currentFields);
+  const fieldGroups = React.useMemo(
+    () => buildFieldGroups(currentFields),
+    [currentFields],
+  );
 
   // Reactively read every show-hide toggle value so the content wrapper
   // appears/disappears when the user clicks the toggle.
-  const showHideValues = useStore(form.store, (state) => {
-    const values = state.values as Record<string, unknown>;
-    const result: Record<string, boolean> = {};
-    for (const group of fieldGroups) {
-      if (group.type === "show-hide") {
-        result[group.toggle.id] = !!values[group.toggle.id];
+  const showHideValues = useStore(
+    form.store,
+    (state) => {
+      const values = state.values as Record<string, unknown>;
+      const result: Record<string, boolean> = {};
+      for (const group of fieldGroups) {
+        if (group.type === "show-hide") {
+          result[group.toggle.id] = !!values[group.toggle.id];
+        }
       }
-    }
-    return result;
-  });
+      return result;
+    },
+    shallow,
+  );
 
   // Resolve the step's effective title reactively: a step may carry
   // `conditionalTitle` overrides (#871) that depend on an earlier answer, so the
@@ -518,6 +571,13 @@ function ActiveStep({
           markdownContent={currentStep.markdownContent}
           contactDetails={formMeta.contactDetails}
           onTryAgain={() => navigateToStep("check-your-answers")}
+          onPaymentInitiated={() =>
+            trackEvent("payment-initiated", {
+              form: formMeta.formId,
+              category: formCategory(formMeta.formId),
+              amount: submissionState?.amount ?? "",
+            })
+          }
           submissionState={submissionState}
           feedbackUrl={feedbackUrl}
         />

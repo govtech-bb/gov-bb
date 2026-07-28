@@ -3,13 +3,23 @@ name: CI
 on:
   pull_request:
     branches: [main, sandbox, staging, dev]
+  # Re-validate the trunk after every merge. CI otherwise runs only on
+  # pull_request, so a break that emerges from the COMBINATION of two
+  # independently-green PRs (e.g. #1875's recipes + #1970's new lint, incident
+  # #2017) isn't caught until the next PR happens to open. A post-merge run on
+  # `main` flags a red trunk immediately. `validate-recipes` matters most here:
+  # it validates ALL recipes, not just nx-affected ones.
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Latest push to a PR wins — cancel superseded in-progress runs. Safe because
-# CI has no side effects (pull_request / workflow_dispatch only, no deploys).
+# Latest push wins — cancel superseded in-progress runs. On `main` this means
+# rapid merges leave only the newest tip fully validated, which is exactly the
+# "is the trunk red right now" signal we want. Safe because CI has no side
+# effects (pull_request / push-to-main / workflow_dispatch only, no deploys).
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -467,7 +477,9 @@ jobs:
       - name: Derive affected base/head
         uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
         with:
-          main-branch-name: ${{ github.base_ref }}
+          # On pull_request this is the target branch; on push to `main`
+          # base_ref is empty, so fall back to ref_name (= main).
+          main-branch-name: ${{ github.base_ref || github.ref_name }}
 
       - name: Run affected tests
         id: test
@@ -525,7 +537,9 @@ jobs:
       - name: Derive affected base/head
         uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
         with:
-          main-branch-name: ${{ github.base_ref }}
+          # On pull_request this is the target branch; on push to `main`
+          # base_ref is empty, so fall back to ref_name (= main).
+          main-branch-name: ${{ github.base_ref || github.ref_name }}
 
       - name: Build affected packages
         id: build
@@ -601,7 +615,9 @@ jobs:
       - name: Derive affected base/head
         uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
         with:
-          main-branch-name: ${{ github.base_ref }}
+          # On pull_request this is the target branch; on push to `main`
+          # base_ref is empty, so fall back to ref_name (= main).
+          main-branch-name: ${{ github.base_ref || github.ref_name }}
 
       - name: Lint affected projects
         id: lint

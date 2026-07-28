@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { axe } from "jest-axe";
 import SubmissionConfirmation from "./submission-confirmation";
 import type { SubmissionState } from "@forms/types";
@@ -172,6 +172,25 @@ describe("SubmissionConfirmation", () => {
         "href",
         "https://ezpay.gov.bb/pay?token=abc",
       );
+    });
+
+    it("fires onPaymentInitiated when Continue to payment is clicked (#1955)", () => {
+      const onPaymentInitiated = vi.fn();
+      render(
+        <SubmissionConfirmation
+          serviceTitle="Passport"
+          stepTitle="Submitted"
+          onPaymentInitiated={onPaymentInitiated}
+          submissionState={{
+            ...pendingState,
+            paymentUrl: "https://ezpay.gov.bb/pay?token=abc",
+          }}
+        />,
+      );
+      fireEvent.click(
+        screen.getByRole("link", { name: /continue to payment/i }),
+      );
+      expect(onPaymentInitiated).toHaveBeenCalledTimes(1);
     });
 
     it.each([
