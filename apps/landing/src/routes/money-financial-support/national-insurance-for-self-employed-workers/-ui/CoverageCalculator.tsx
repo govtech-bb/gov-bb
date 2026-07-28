@@ -203,10 +203,14 @@ function IconCircle({
 export function CoverageCalculator() {
   const [screen, setScreen] = useState<Screen>('hero')
 
+  const [earningsVary, setEarningsVary] = useState<'yes' | 'no' | ''>('')
+  const [usualMonth, setUsualMonth] = useState('')
   const [goodMonth, setGoodMonth] = useState('')
   const [slowMonth, setSlowMonth] = useState('')
   const [goodMonths, setGoodMonths] = useState('')
   const [errors, setErrors] = useState<{
+    earningsVary?: string
+    usualMonth?: string
     goodMonth?: string
     slowMonth?: string
     goodMonths?: string
@@ -234,34 +238,53 @@ export function CoverageCalculator() {
 
   const go = (next: Screen) => setScreen(next)
 
+  const usualMonthNum = Number.parseFloat(usualMonth.replace(/,/g, '').trim())
   const goodMonthNum = Number.parseFloat(goodMonth.replace(/,/g, '').trim())
   const slowMonthNum = Number.parseFloat(slowMonth.replace(/,/g, '').trim())
   const goodMonthsNum = Number.parseInt(goodMonths.trim(), 10)
 
-  const earnings: EarningsInputs = {
-    goodMonth: Number.isFinite(goodMonthNum) ? goodMonthNum : 0,
-    slowMonth: Number.isFinite(slowMonthNum) ? slowMonthNum : 0,
-    goodMonthsPerYear: Number.isFinite(goodMonthsNum) ? goodMonthsNum : 0,
-  }
+  // When earnings don't change, the same monthly figure stands in for the busy
+  // and slow month across all 12 months.
+  const earnings: EarningsInputs =
+    earningsVary === 'no'
+      ? {
+          goodMonth: Number.isFinite(usualMonthNum) ? usualMonthNum : 0,
+          slowMonth: Number.isFinite(usualMonthNum) ? usualMonthNum : 0,
+          goodMonthsPerYear: 12,
+        }
+      : {
+          goodMonth: Number.isFinite(goodMonthNum) ? goodMonthNum : 0,
+          slowMonth: Number.isFinite(slowMonthNum) ? slowMonthNum : 0,
+          goodMonthsPerYear: Number.isFinite(goodMonthsNum) ? goodMonthsNum : 0,
+        }
 
   function submitIncome() {
     const next: typeof errors = {}
-    if (!goodMonth.trim())
-      next.goodMonth = 'Enter your earnings in a busy month'
-    else if (!Number.isFinite(goodMonthNum) || goodMonthNum <= 0)
-      next.goodMonth = 'Busy month earnings must be an amount greater than 0'
-    if (!slowMonth.trim())
-      next.slowMonth = 'Enter your earnings in a slow month'
-    else if (!Number.isFinite(slowMonthNum) || slowMonthNum < 0)
-      next.slowMonth = 'Slow month earnings must be 0 or more'
-    if (!goodMonths.trim())
-      next.goodMonths = 'Enter how many busy months you have in a year'
-    else if (
-      !/^\d+$/.test(goodMonths.trim()) ||
-      goodMonthsNum < 1 ||
-      goodMonthsNum > 12
-    )
-      next.goodMonths = 'Enter a whole number of busy months from 1 to 12'
+    if (earningsVary === '') {
+      next.earningsVary = 'Select whether your earnings change during the year'
+    } else if (earningsVary === 'no') {
+      if (!usualMonth.trim())
+        next.usualMonth = 'Enter how much you usually earn each month'
+      else if (!Number.isFinite(usualMonthNum) || usualMonthNum <= 0)
+        next.usualMonth = 'Monthly earnings must be an amount greater than 0'
+    } else {
+      if (!goodMonth.trim())
+        next.goodMonth = 'Enter your earnings in a busy month'
+      else if (!Number.isFinite(goodMonthNum) || goodMonthNum <= 0)
+        next.goodMonth = 'Busy month earnings must be an amount greater than 0'
+      if (!slowMonth.trim())
+        next.slowMonth = 'Enter your earnings in a slow month'
+      else if (!Number.isFinite(slowMonthNum) || slowMonthNum < 0)
+        next.slowMonth = 'Slow month earnings must be 0 or more'
+      if (!goodMonths.trim())
+        next.goodMonths = 'Enter how many busy months you have in a year'
+      else if (
+        !/^\d+$/.test(goodMonths.trim()) ||
+        goodMonthsNum < 1 ||
+        goodMonthsNum > 12
+      )
+        next.goodMonths = 'Enter a whole number of busy months from 1 to 12'
+    }
     setErrors(next)
     if (Object.keys(next).length === 0) {
       setTierError('')
@@ -271,7 +294,23 @@ export function CoverageCalculator() {
     }
   }
 
+  // Switching the branch clears the fields the other branch used, so no stale
+  // earnings carry into the estimate, and clears any income validation errors.
+  function chooseEarningsVary(value: 'yes' | 'no') {
+    setEarningsVary(value)
+    if (value === 'no') {
+      setGoodMonth('')
+      setSlowMonth('')
+      setGoodMonths('')
+    } else {
+      setUsualMonth('')
+    }
+    setErrors({})
+  }
+
   function restart() {
+    setEarningsVary('')
+    setUsualMonth('')
     setGoodMonth('')
     setSlowMonth('')
     setGoodMonths('')
@@ -299,16 +338,20 @@ export function CoverageCalculator() {
 
         {screen === 'income' && (
           <IncomeStep
+            earningsVary={earningsVary}
             errorRef={incomeErrorRef}
             errors={errors}
             goodMonth={goodMonth}
             goodMonths={goodMonths}
             onBack={() => go('hero')}
             onContinue={submitIncome}
+            onEarningsVaryChange={chooseEarningsVary}
             setGoodMonth={setGoodMonth}
             setGoodMonths={setGoodMonths}
             setSlowMonth={setSlowMonth}
+            setUsualMonth={setUsualMonth}
             slowMonth={slowMonth}
+            usualMonth={usualMonth}
           />
         )}
 
@@ -598,29 +641,58 @@ function MoneyField({
 }
 
 function IncomeStep({
+  earningsVary,
   errorRef,
   errors,
   goodMonth,
   goodMonths,
   onBack,
   onContinue,
+  onEarningsVaryChange,
   setGoodMonth,
   setGoodMonths,
   setSlowMonth,
+  setUsualMonth,
   slowMonth,
+  usualMonth,
 }: {
+  earningsVary: 'yes' | 'no' | ''
   errorRef: RefObject<HTMLDivElement | null>
-  errors: { goodMonth?: string; slowMonth?: string; goodMonths?: string }
+  errors: {
+    earningsVary?: string
+    usualMonth?: string
+    goodMonth?: string
+    slowMonth?: string
+    goodMonths?: string
+  }
   goodMonth: string
   goodMonths: string
   onBack: () => void
   onContinue: () => void
+  onEarningsVaryChange: (value: 'yes' | 'no') => void
   setGoodMonth: (v: string) => void
   setGoodMonths: (v: string) => void
   setSlowMonth: (v: string) => void
+  setUsualMonth: (v: string) => void
   slowMonth: string
+  usualMonth: string
 }) {
+  const varyOptions = [
+    { id: 'yes' as const, label: 'Yes' },
+    { id: 'no' as const, label: 'No' },
+  ]
+  const varyRadio = rovingRadioProps(
+    varyOptions,
+    (o) => `earnings-vary-${o.id}`,
+    varyOptions.findIndex((o) => o.id === earningsVary),
+    (i) => onEarningsVaryChange(varyOptions[i].id),
+  )
   const errorItems = [
+    errors.earningsVary && {
+      text: errors.earningsVary,
+      target: 'earnings-vary-yes',
+    },
+    errors.usualMonth && { text: errors.usualMonth, target: 'usual-month' },
     errors.goodMonth && { text: errors.goodMonth, target: 'good-month' },
     errors.slowMonth && { text: errors.slowMonth, target: 'slow-month' },
     errors.goodMonths && { text: errors.goodMonths, target: 'good-months' },
@@ -645,34 +717,102 @@ function IncomeStep({
         fits your life.
       </p>
 
-      <div className="flex flex-col gap-4">
-        <MoneyField
-          error={errors.goodMonth}
-          hint="When work is steady and money comes in. A rough number is fine."
-          id="good-month"
-          label="What does a busy month look like?"
-          onChange={setGoodMonth}
-          prefix="BDS $"
-          value={goodMonth}
-        />
-        <MoneyField
-          error={errors.slowMonth}
-          hint="When work is quiet: slow season, hurricane month, sickness. A rough number is fine."
-          id="slow-month"
-          label="And a slow month?"
-          onChange={setSlowMonth}
-          prefix="BDS $"
-          value={slowMonth}
-        />
-        <MoneyField
-          error={errors.goodMonths}
-          hint="Enter a number from 1 to 12."
-          id="good-months"
-          label="How many busy months do you usually have in a year?"
-          onChange={setGoodMonths}
-          value={goodMonths}
-        />
+      <div className={`${CARD} mb-4 p-5`}>
+        <p
+          className="font-semibold text-[1.25rem] text-black-00"
+          id="earnings-vary-label"
+        >
+          Do your earnings change during the year?
+        </p>
+        <p
+          className="mt-1 mb-3 text-[1rem] text-mid-grey-00"
+          id="earnings-vary-hint"
+        >
+          For example, busier in season and quieter out of season.
+        </p>
+        {errors.earningsVary && (
+          <p
+            className="mb-2 font-semibold text-[1rem] text-red-00"
+            id="earnings-vary-error"
+          >
+            {errors.earningsVary}
+          </p>
+        )}
+        <div
+          aria-describedby={`earnings-vary-hint${errors.earningsVary ? ' earnings-vary-error' : ''}`}
+          aria-labelledby="earnings-vary-label"
+          className="flex gap-3"
+          role="radiogroup"
+        >
+          {varyOptions.map((o, i) => {
+            const selected = earningsVary === o.id
+            return (
+              <button
+                aria-checked={selected}
+                className={`min-w-[6rem] rounded-xl border-2 px-5 py-3 text-center font-semibold text-[1.125rem] transition-all focus-visible:ring-4 focus-visible:ring-teal-100 ${
+                  selected
+                    ? 'border-teal-00 bg-teal-10 text-black-00'
+                    : 'border-grey-00 bg-white-00 text-black-00'
+                }`}
+                id={`earnings-vary-${o.id}`}
+                key={o.id}
+                onClick={() => onEarningsVaryChange(o.id)}
+                onKeyDown={varyRadio[i].onKeyDown}
+                role="radio"
+                tabIndex={varyRadio[i].tabIndex}
+                type="button"
+              >
+                {o.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
+
+      {earningsVary === 'no' && (
+        <div className="flex flex-col gap-4">
+          <MoneyField
+            error={errors.usualMonth}
+            hint="What you typically bring in each month. A rough number is fine."
+            id="usual-month"
+            label="How much do you usually earn each month?"
+            onChange={setUsualMonth}
+            prefix="BDS $"
+            value={usualMonth}
+          />
+        </div>
+      )}
+
+      {earningsVary === 'yes' && (
+        <div className="flex flex-col gap-4">
+          <MoneyField
+            error={errors.goodMonth}
+            hint="When work is steady and money comes in. A rough number is fine."
+            id="good-month"
+            label="What does a busy month look like?"
+            onChange={setGoodMonth}
+            prefix="BDS $"
+            value={goodMonth}
+          />
+          <MoneyField
+            error={errors.slowMonth}
+            hint="When work is quiet: slow season, hurricane month, sickness. A rough number is fine."
+            id="slow-month"
+            label="And a slow month?"
+            onChange={setSlowMonth}
+            prefix="BDS $"
+            value={slowMonth}
+          />
+          <MoneyField
+            error={errors.goodMonths}
+            hint="Enter a number from 1 to 12."
+            id="good-months"
+            label="How many busy months do you usually have in a year?"
+            onChange={setGoodMonths}
+            value={goodMonths}
+          />
+        </div>
+      )}
 
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
