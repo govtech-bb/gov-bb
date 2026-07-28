@@ -857,6 +857,37 @@
               }
             }
           }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Officer overtime costs",
+            "fieldId": "overtime-costs-acknowledged",
+            "ui": {
+              "hideLabel": true
+            },
+            "options": [
+              {
+                "label": "I understand that the event organiser is responsible for the overtime costs of the environmental health officers who provide public health surveillance and inspection during the event.",
+                "value": "acknowledged"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "event-organiser",
+                "targetFieldId": "is-organiser",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "You must confirm you understand the overtime costs to continue"
+              }
+            }
+          }
         }
       ]
     },
