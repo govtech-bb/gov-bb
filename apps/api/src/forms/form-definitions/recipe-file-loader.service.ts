@@ -179,8 +179,8 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Read, JSON-parse and zod-validate a recipe file. Throws with a descriptive
-   * message on any failure. Shared by the canonical (flat) and versioned
-   * (dir) load paths.
+   * message on any failure. Loads the canonical flat `recipes/{formId}.json`
+   * (#1196: the versioned directory path was removed).
    */
   private async parseRecipeFile(
     filePath: string,

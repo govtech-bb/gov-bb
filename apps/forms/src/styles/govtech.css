@@ -610,3 +610,50 @@
     max-width: 38ch;
   }
 }
+
+/* ---- Address lookup (geocoder) -------------------------------------------
+ * The suggestions list overlays the fields below instead of pushing them
+ * down: the wrapper is the positioning context and the listbox is absolutely
+ * positioned directly beneath the input. Styled to read as one control with
+ * the `.govbb-input` above it. */
+.govbb-address-lookup {
+  position: relative;
+  /* `.govbb-form-group` is a flex column with `align-items: flex-start`, so
+   * this wrapper must claim full width or it (and the absolutely-positioned
+   * suggestions) collapse to the input's intrinsic width. */
+  width: 100%;
+}
+
+.govbb-address-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  background: var(--color-white-00);
+  border: 1px solid var(--color-mid-grey-00);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  max-height: 15rem;
+  overflow-y: auto;
+}
+
+.govbb-address-suggestion {
+  padding: var(--spacing-xs) var(--spacing-s);
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-grey-00);
+}
+
+.govbb-address-suggestion:last-child {
+  border-bottom: 0;
+}
+
+.govbb-address-suggestion:hover,
+.govbb-address-suggestion[aria-selected="true"] {
+  background: var(--color-blue-10);
+}

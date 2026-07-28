@@ -46,8 +46,9 @@ The TypeORM CLI DataSource is at `typeorm.config.ts`; migrations live in
 ## Recipes
 
 Runtime form recipes load from files at
-`src/forms/form-definitions/recipes/{formId}/{version}.json`. Edit a file, then
-**restart the API** (no hot reload for recipes).
+`src/forms/form-definitions/recipes/{formId}.json` (one canonical, version-less
+file per form — #1196). Edit a file, then **restart the API** (no hot reload
+for recipes).
 
 ## Deployment
 

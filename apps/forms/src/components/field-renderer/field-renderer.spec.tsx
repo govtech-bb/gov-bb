@@ -108,6 +108,27 @@ describe("FieldRenderer", () => {
     expect(container.querySelector("input")).toBeTruthy();
   });
 
+  it("time with step → passes the native step to the input", () => {
+    const { container } = renderField(primitive("time", { step: 1800 }));
+    const input = container.querySelector('input[type="time"]');
+    expect(input?.getAttribute("step")).toBe("1800");
+  });
+
+  it("ui.hidden → renders a hidden input (no visible control)", () => {
+    mockState = {
+      value: "13.1,-59.6",
+      meta: { isValid: true, errors: [] },
+    };
+    const { container } = renderField(
+      primitive("text", { ui: { hidden: true } }),
+    );
+    const input = container.querySelector("input");
+    expect(input?.getAttribute("type")).toBe("hidden");
+    expect(input?.getAttribute("value")).toBe("13.1,-59.6");
+    // No visible label rendered for a hidden field.
+    expect(container.querySelector("label")).toBeNull();
+  });
+
   it("textarea → renders a textarea element", () => {
     const { container } = renderField(primitive("textarea"));
     expect(container.querySelector("textarea")).toBeTruthy();
