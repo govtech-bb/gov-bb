@@ -1097,7 +1097,7 @@ function ResultStep({
         on the amount you chose to put in.
       </p>
       <p className="mb-3 text-[1rem] text-mid-grey-00">
-        Tap any benefit for more detail.
+        Select a benefit to see who may get it and when.
       </p>
 
       <div className="flex flex-col gap-3">
