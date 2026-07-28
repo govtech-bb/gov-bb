@@ -523,7 +523,7 @@ There is NO gte/lte validation: "greater than or equal" is \`min\`, "less than o
 
 #### Age and other duration limits — \`min\`/\`max\`/\`gt\`/\`lt\` with a \`transform\`
 
-To bound the AGE (or elapsed months/days) derived from a DATE field rather than the raw date, add a \`transform\` key — \`"yearsSince"\`, \`"monthsSince"\` or \`"daysSince"\` — to a \`min\`/\`max\`/\`gt\`/\`lt\` rule. The field's date is converted to that whole-number duration (Barbados timezone, truncated) before the bound is checked, so \`min: 18\` + \`transform: "yearsSince"\` enforces "at least 18 years old". An empty or invalid date yields NaN and fails the rule.
+To bound the AGE (or elapsed months/days) derived from a DATE field rather than the raw date, add a \`transform\` key — \`"yearsSince"\`, \`"monthsSince"\`, \`"daysSince"\` or \`"daysUntil"\` — to a \`min\`/\`max\`/\`gt\`/\`lt\` rule. The field's date is converted to that whole-number duration (Barbados timezone, truncated) before the bound is checked, so \`min: 18\` + \`transform: "yearsSince"\` enforces "at least 18 years old". The \`*Since\` transforms count backwards from today; \`"daysUntil"\` counts forwards to a future date (measured in whole calendar days from the start of today), so \`min: 14\` + \`transform: "daysUntil"\` enforces "the date must be at least 14 days from now" — a lead-time gate. An empty or invalid date yields NaN and fails the rule.
 
 This is the canonical way to add a minimum-age requirement to \`components/date-of-birth\`: it is ADDITIVE — the component still ships its \`past\` validation, and you are adding an age floor it does not carry, so this does NOT violate CATEGORY 2's "add nothing to date-of-birth" rule (which only forbids restating \`past\`/\`pastOrToday\`):
 
@@ -556,7 +556,7 @@ The numeric operators compare the watched field's value as a number — e.g. sho
 \`\`\`json
 "behaviours": [{"type": "fieldConditionalOn", "targetFieldId": "number-of-dependents", "operator": "gte", "value": 1}]
 \`\`\`
-To gate on an AGE derived from a DATE field, add a \`transform\` key (\`"yearsSince"\`, \`"monthsSince"\` or \`"daysSince"\`) — the watched date is converted to that whole-number duration before the operator runs:
+To gate on an AGE derived from a DATE field, add a \`transform\` key (\`"yearsSince"\`, \`"monthsSince"\`, \`"daysSince"\` or \`"daysUntil"\`) — the watched date is converted to that whole-number duration before the operator runs:
 \`\`\`json
 "behaviours": [{"type": "fieldConditionalOn", "targetFieldId": "date-of-birth", "transform": "yearsSince", "operator": "gte", "value": 18}]
 \`\`\`

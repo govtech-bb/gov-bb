@@ -250,7 +250,11 @@ describe("buildFieldValidationProperties", () => {
       const result = onDynamic!({ value: undefined, fieldApi });
       // undefined is treated as empty → required field returns errors
       expect(result).toEqual([
-        { message: "Required.", parts: ["day", "month", "year"] },
+        {
+          message: "Required.",
+          parts: ["day", "month", "year"],
+          code: "required",
+        },
       ]);
     });
 
@@ -266,7 +270,11 @@ describe("buildFieldValidationProperties", () => {
       const fieldApi = makeFieldApi();
       const result = onDynamic!({ value: { day: "15", month: "6" }, fieldApi });
       expect(result).toEqual([
-        { message: "dob must include a year", parts: ["year"] },
+        {
+          message: "dob must include a year",
+          parts: ["year"],
+          code: "incomplete_date",
+        },
       ]);
     });
 
@@ -306,6 +314,7 @@ describe("buildFieldValidationProperties", () => {
         {
           message: "Date must be in the past.",
           parts: ["day", "month", "year"],
+          code: "past",
         },
       ]);
     });
@@ -563,6 +572,7 @@ describe("buildFieldValidationProperties", () => {
         {
           message: "End date must be after the start date.",
           parts: ["day", "month", "year"],
+          code: "after",
         },
       ]);
       expect(

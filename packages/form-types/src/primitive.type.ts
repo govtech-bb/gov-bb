@@ -14,9 +14,11 @@ export const htmlTypesSchema = z.enum([
   "textarea",
   "number",
   "date",
+  "time",
   "tel",
   "email",
   "checkbox",
+  "checkbox-accordion",
   "radio",
   "file",
   "select",
@@ -30,6 +32,17 @@ export const optionSchema = z.object({
   disabled: z.boolean().optional(),
 });
 export type Option = z.infer<typeof optionSchema>;
+
+// A collapsible category within a `checkbox-accordion` field: a labelled group
+// of item checkboxes that expands/collapses as a unit. `higherRisk` flags the
+// category for a visible badge in the renderer and drives the derived
+// higher-risk signal in the reviewer payload.
+export const optionGroupSchema = z.object({
+  label: z.string(),
+  higherRisk: z.boolean().optional(),
+  options: z.array(optionSchema),
+});
+export type OptionGroup = z.infer<typeof optionGroupSchema>;
 
 export const primitiveUISchema = z.object({
   width: z.enum(["short", "medium", "long"]).optional(),
@@ -55,6 +68,7 @@ export const basePrimitiveSchema = z.object({
   validations: validationRuleSchema.optional(),
   metadata: primitiveMetadataSchema.partial().optional(),
   options: z.array(optionSchema).optional(),
+  groups: z.array(optionGroupSchema).optional(),
   multiple: z.boolean().optional(),
   mask: z.string().optional(),
   ui: primitiveUISchema.optional(),
@@ -81,6 +95,11 @@ export const numberPrimitiveSchema = basePrimitiveSchema.extend({
 });
 export type NumberPrimitive = z.infer<typeof numberPrimitiveSchema>;
 
+export const timePrimitiveSchema = basePrimitiveSchema.extend({
+  htmlType: z.literal("time"),
+});
+export type TimePrimitive = z.infer<typeof timePrimitiveSchema>;
+
 export const telPrimitiveSchema = basePrimitiveSchema.extend({
   htmlType: z.literal("tel"),
 });
@@ -96,6 +115,19 @@ export const checkboxPrimitiveSchema = basePrimitiveSchema.extend({
   options: z.array(optionSchema),
 });
 export type CheckboxPrimitive = z.infer<typeof checkboxPrimitiveSchema>;
+
+// A multi-select checkbox field whose options are split into collapsible,
+// individually-labelled categories (`groups`). The submitted value is a flat
+// string[] of selected option values across all groups — identical to a plain
+// checkbox field — so array validation and payload rendering are unchanged; the
+// grouping is presentational plus the per-group `higherRisk` flag.
+export const checkboxAccordionPrimitiveSchema = basePrimitiveSchema.extend({
+  htmlType: z.literal("checkbox-accordion"),
+  groups: z.array(optionGroupSchema),
+});
+export type CheckboxAccordionPrimitive = z.infer<
+  typeof checkboxAccordionPrimitiveSchema
+>;
 
 export const selectPrimitiveSchema = basePrimitiveSchema.extend({
   options: z.array(optionSchema),
@@ -126,9 +158,11 @@ export const primitiveSchema = z.discriminatedUnion("htmlType", [
   textAreaPrimitiveSchema,
   datePrimitiveSchema,
   numberPrimitiveSchema,
+  timePrimitiveSchema,
   telPrimitiveSchema,
   emailPrimitiveSchema,
   checkboxPrimitiveSchema,
+  checkboxAccordionPrimitiveSchema,
   selectPrimitiveSchema,
   radioPrimitiveSchema,
   filePrimitiveSchema,
@@ -149,6 +183,7 @@ export const fieldOverridesSchema = basePrimitiveSchema
     behaviours: true,
     multiple: true,
     options: true,
+    groups: true,
     mask: true,
     ui: true,
   })

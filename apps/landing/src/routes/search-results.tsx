@@ -32,7 +32,9 @@ function SearchResultsPage() {
     : []
 
   useEffect(() => {
-    if (query) trackEvent('search', { query, results: hits.length })
+    if (!query) return
+    trackEvent('search', { query, results: hits.length })
+    if (hits.length === 0) trackEvent('search-no-results', { query })
   }, [query, hits.length])
 
   const hasResults = query && hits.length > 0
@@ -105,7 +107,7 @@ function SearchResultsPage() {
 
             {hasResults ? (
               <ul className="flex flex-col gap-s">
-                {hits.map((hit) => (
+                {hits.map((hit, index) => (
                   <li
                     key={hit.id}
                     className="flex flex-col items-start gap-xs border-grey-00 border-b-2 py-s first:pt-0"
@@ -113,6 +115,13 @@ function SearchResultsPage() {
                     <Link
                       className="text-[20px] leading-normal"
                       href={hit.href}
+                      onClick={() =>
+                        trackEvent('search-result-click', {
+                          query,
+                          position: index + 1,
+                          href: hit.href,
+                        })
+                      }
                     >
                       {hit.title}
                     </Link>
