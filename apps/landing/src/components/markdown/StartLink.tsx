@@ -2,9 +2,13 @@ import { LinkButton } from '@govtech-bb/react'
 import { useLocation } from '@tanstack/react-router'
 import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
+import { requireEnv } from '@/config/env'
 
-const FORMS_BASE_URL =
-  import.meta.env.VITE_FORMS_URL ?? 'https://forms.sandbox.alpha.gov.bb'
+const FORMS_BASE_URL = requireEnv(
+  import.meta.env.VITE_FORMS_URL,
+  'VITE_FORMS_URL',
+  'https://forms.sandbox.alpha.gov.bb',
+)
 
 // Live form ids, resolved server-side per request (see lib/available-forms.ts).
 export const AvailableFormsContext = createContext<ReadonlySet<string>>(new Set())

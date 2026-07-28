@@ -12,6 +12,16 @@ const baseState: SubmissionState = {
   date: "19/05/2026",
 };
 
+// The payment-redirect allowlist fails closed when unset (#1366), so set it to
+// the EzPay host the pre-payment cards below use — the value a real deployment
+// configures via VITE_PAYMENT_ALLOWED_ORIGINS.
+beforeEach(() => {
+  vi.stubEnv("VITE_PAYMENT_ALLOWED_ORIGINS", "ezpay.gov.bb");
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 describe("SubmissionConfirmation", () => {
   it("renders reference number when provided", () => {
     render(
