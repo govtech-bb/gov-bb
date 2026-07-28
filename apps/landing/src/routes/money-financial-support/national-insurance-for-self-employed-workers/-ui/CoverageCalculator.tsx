@@ -638,8 +638,8 @@ function IncomeStep({
         Let&rsquo;s talk about your earnings.
       </h1>
       <p className="mb-6 text-[1.125rem] text-mid-grey-00">
-        Be honest. There are no wrong answers, and this stays on your phone. We
-        use it to give you a real estimate that fits your life.
+        Enter your best estimate. We use it to give you a real estimate that
+        fits your life.
       </p>
 
       <div className="flex flex-col gap-4">
