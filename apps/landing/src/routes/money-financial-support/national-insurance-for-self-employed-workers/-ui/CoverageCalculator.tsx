@@ -1006,10 +1006,11 @@ function ResultStep({
       ),
       withNis: (
         <>
-          Sickness Benefit pays about <PerWeek weekly={b.sicknessWeekly} />,
-          roughly two-thirds of your usual earnings, for up to{' '}
-          {NIS.SICKNESS_MAX_WEEKS} weeks. If you&rsquo;re still unwell after
-          that, NIS may pay for up to {NIS.SICKNESS_MAX_WEEKS} more weeks.
+          If you qualify, you may get about{' '}
+          <PerWeek weekly={b.sicknessWeekly} /> in Sickness Benefit, roughly
+          two-thirds of your usual earnings, for up to {NIS.SICKNESS_MAX_WEEKS}{' '}
+          weeks. If you&rsquo;re still unwell after that, NIS may pay for up to{' '}
+          {NIS.SICKNESS_MAX_WEEKS} more weeks.
         </>
       ),
     },
@@ -1021,8 +1022,9 @@ function ResultStep({
         'Time off to have your baby means no money coming in. Many parents go back to work too soon.',
       withNis: (
         <>
-          Maternity Benefit pays about <PerWeek weekly={b.maternityWeekly} />,
-          based on your earnings, for your time off.
+          If you qualify, you may get about{' '}
+          <PerWeek weekly={b.maternityWeekly} /> in Maternity Benefit, based on
+          your earnings, for your time off.
         </>
       ),
     },
@@ -1034,8 +1036,9 @@ function ResultStep({
         'Taking time with a new baby usually means unpaid days away from work.',
       withNis: (
         <>
-          Paternity Benefit gives new fathers a {NIS.PATERNITY_WEEKS}-week paid
-          break of about <PerWeek weekly={b.paternityWeekly} />.
+          If you qualify, you may get a {NIS.PATERNITY_WEEKS}-week paid
+          Paternity Benefit break of about{' '}
+          <PerWeek weekly={b.paternityWeekly} />.
         </>
       ),
     },
@@ -1046,7 +1049,7 @@ function ResultStep({
       without: 'No safety net. Savings go fast, and family has to step in.',
       withNis: (
         <>
-          Invalidity Pension gives ongoing income of about{' '}
+          If you qualify, you may get ongoing Invalidity Pension income of about{' '}
           <PerWeek weekly={b.invalidityWeekly} /> (at least{' '}
           {money(NIS.INVALIDITY_MIN_WEEKLY)} a week).
         </>
@@ -1060,7 +1063,7 @@ function ResultStep({
         'Your partner, children or parents lose the income you brought in.',
       withNis: (
         <>
-          Survivors&rsquo; Benefit shares about{' '}
+          If they qualify, Survivors&rsquo; Benefit may share about{' '}
           <PerWeek weekly={b.survivorsWeekly} /> among your partner, children or
           parents, plus a {money(b.childGrant)} grant per child.
         </>
@@ -1079,8 +1082,9 @@ function ResultStep({
       ),
       withNis: (
         <>
-          An Old-Age Pension for life from age {NIS.PENSIONABLE_AGE}, starting
-          around <PerWeek weekly={b.pensionWeekly} /> and growing the longer you
+          If you qualify, you may get an Old-Age Pension for life from age{' '}
+          {NIS.PENSIONABLE_AGE}, starting around{' '}
+          <PerWeek weekly={b.pensionWeekly} /> and growing the longer you
           contribute.
         </>
       ),
@@ -1092,9 +1096,9 @@ function ResultStep({
       without: 'Funeral costs land on your family at the worst possible time.',
       withNis: (
         <>
-          A one-time Funeral Grant of{' '}
-          <strong className="tabular-nums">{money(b.funeralGrant)}</strong>{' '}
-          helps your family with the costs. Included at every level.
+          If you qualify, a one-time Funeral Grant of{' '}
+          <strong className="tabular-nums">{money(b.funeralGrant)}</strong> may
+          help your family with the costs. Included at every level.
         </>
       ),
     },
@@ -1135,6 +1139,10 @@ function ResultStep({
       </div>
 
       <div className="mt-6 space-y-2 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
+        <p>
+          This estimate uses only the answers you entered. It does not check
+          your NIS payment record.
+        </p>
         <p>
           Each benefit has its own qualifying rules. How much you receive may
           depend on your earnings and contribution record.
