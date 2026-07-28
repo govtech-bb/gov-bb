@@ -39,6 +39,12 @@ export interface ClientPrimitive {
   /** For `address-lookup`: sibling fields to populate when a suggestion is
    * picked (see {@link GeocodeTargets}). */
   geocodeTargets?: GeocodeTargets;
+  /** Content element (`htmlType: "content"`) markdown body. */
+  content?: string;
+  /** Content element presentation: "inset" | "text" | "details". */
+  variant?: "inset" | "text" | "details";
+  /** Content element `details`-variant disclosure summary. */
+  summary?: string;
 }
 
 export interface ClientFormStep {
