@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode, RefObject } from 'react'
 import { money as formatBbd } from '@/lib/money'
 import {
-  earningsAtRisk,
   estimateBenefits,
   monthlyAverage,
   NIS,
@@ -928,15 +927,15 @@ function BenefitCard({
   icon,
   title,
   tone,
-  without,
-  withNis,
+  explain,
+  estimate,
 }: {
   defaultOpen?: boolean
   icon: string
   title: string
   tone: Tone
-  without: ReactNode
-  withNis: ReactNode
+  explain: ReactNode
+  estimate: ReactNode
 }) {
   return (
     <details
@@ -954,19 +953,9 @@ function BenefitCard({
           strokeWidth={2.25}
         />
       </summary>
-      <div className="flex flex-col gap-3 border-grey-00 border-t px-4 pt-4 pb-5">
-        <div className="rounded-lg border border-red-40/60 bg-red-10 p-3">
-          <p className="mb-1 font-semibold text-[0.95rem] text-red-00 uppercase tracking-wide">
-            Without NIS
-          </p>
-          <p className="text-[1.125rem] text-black-00">{without}</p>
-        </div>
-        <div className="rounded-lg border border-green-40 bg-green-10 p-3">
-          <p className="mb-1 font-semibold text-[0.95rem] text-green-00 uppercase tracking-wide">
-            With NIS
-          </p>
-          <p className="text-[1.125rem] text-black-00">{withNis}</p>
-        </div>
+      <div className="flex flex-col gap-2 border-grey-00 border-t px-4 pt-4 pb-5">
+        <p className="text-[1.125rem] text-black-00">{explain}</p>
+        <p className="text-[1.125rem] text-black-00">{estimate}</p>
       </div>
     </details>
   )
@@ -984,27 +973,20 @@ function ResultStep({
   tier: Tier
 }) {
   const b = estimateBenefits(earnings, tier)
-  const risk = earningsAtRisk(earnings)
 
   const items: Array<{
     icon: string
     title: string
     tone: Tone
-    without: ReactNode
-    withNis: ReactNode
+    explain: ReactNode
+    estimate: ReactNode
   }> = [
     {
       icon: 'sickness',
       title: 'Sickness Benefit',
       tone: 'teal',
-      without: (
-        <>
-          Two weeks off sick is about{' '}
-          <strong>{money(risk.twoWeeksLost)}</strong> you couldn&rsquo;t earn —
-          rent, food and bills still due.
-        </>
-      ),
-      withNis: (
+      explain: 'May help if you cannot work because you are ill.',
+      estimate: (
         <>
           If you qualify, you may get about{' '}
           <PerWeek weekly={b.sicknessWeekly} /> in Sickness Benefit, roughly
@@ -1018,9 +1000,8 @@ function ResultStep({
       icon: 'maternity',
       title: 'Maternity Benefit',
       tone: 'pink',
-      without:
-        'Time off to have your baby means no money coming in. Many parents go back to work too soon.',
-      withNis: (
+      explain: 'May help mothers who take time off to have a baby.',
+      estimate: (
         <>
           If you qualify, you may get about{' '}
           <PerWeek weekly={b.maternityWeekly} /> in Maternity Benefit, based on
@@ -1032,9 +1013,8 @@ function ResultStep({
       icon: 'paternity',
       title: 'Paternity Benefit',
       tone: 'blue',
-      without:
-        'Taking time with a new baby usually means unpaid days away from work.',
-      withNis: (
+      explain: 'May help fathers who take time off after a baby is born.',
+      estimate: (
         <>
           If you qualify, you may get a {NIS.PATERNITY_WEEKS}-week paid
           Paternity Benefit break of about{' '}
@@ -1046,8 +1026,9 @@ function ResultStep({
       icon: 'invalidity',
       title: 'Invalidity Pension',
       tone: 'purple',
-      without: 'No safety net. Savings go fast, and family has to step in.',
-      withNis: (
+      explain:
+        'May help if a long-term illness or injury stops you from working.',
+      estimate: (
         <>
           If you qualify, you may get ongoing Invalidity Pension income of about{' '}
           <PerWeek weekly={b.invalidityWeekly} /> (at least{' '}
@@ -1059,9 +1040,8 @@ function ResultStep({
       icon: 'survivors',
       title: "Survivors' Benefit",
       tone: 'yellow',
-      without:
-        'Your partner, children or parents lose the income you brought in.',
-      withNis: (
+      explain: 'May help some family members after you die.',
+      estimate: (
         <>
           If they qualify, Survivors&rsquo; Benefit may share about{' '}
           <PerWeek weekly={b.survivorsWeekly} /> among your partner, children or
@@ -1073,14 +1053,8 @@ function ResultStep({
       icon: 'pension',
       title: 'Old-Age Contributory Pension',
       tone: 'green',
-      without: (
-        <>
-          Without a pension, that&rsquo;s about{' '}
-          <strong>{money(risk.yearLost)}/year</strong> you&rsquo;d need to find
-          from somewhere else.
-        </>
-      ),
-      withNis: (
+      explain: <>May provide regular support from age {NIS.PENSIONABLE_AGE}.</>,
+      estimate: (
         <>
           If you qualify, you may get an Old-Age Pension for life from age{' '}
           {NIS.PENSIONABLE_AGE}, starting around{' '}
@@ -1093,8 +1067,8 @@ function ResultStep({
       icon: 'shield',
       title: 'Funeral Grant',
       tone: 'teal',
-      without: 'Funeral costs land on your family at the worst possible time.',
-      withNis: (
+      explain: 'May help with funeral costs.',
+      estimate: (
         <>
           If you qualify, a one-time Funeral Grant of{' '}
           <strong className="tabular-nums">{money(b.funeralGrant)}</strong> may
@@ -1115,13 +1089,11 @@ function ResultStep({
         <strong className="text-black-00 tabular-nums">
           {money(b.monthlyContribution)}
         </strong>
-        /month, here&rsquo;s each moment{' '}
-        <strong className="text-red-00">without NIS</strong> and{' '}
-        <strong className="text-green-00">with it</strong>. Figures are
-        estimates based on the amount you chose to put in.
+        /month, here are the benefits you may get. Figures are estimates based
+        on the amount you chose to put in.
       </p>
       <p className="mb-3 text-[1rem] text-mid-grey-00">
-        Tap any benefit to see what happens.
+        Tap any benefit for more detail.
       </p>
 
       <div className="flex flex-col gap-3">
@@ -1130,10 +1102,10 @@ function ResultStep({
             defaultOpen={i === 0}
             icon={it.icon}
             key={it.title}
+            estimate={it.estimate}
+            explain={it.explain}
             title={it.title}
             tone={it.tone}
-            without={it.without}
-            withNis={it.withNis}
           />
         ))}
       </div>
