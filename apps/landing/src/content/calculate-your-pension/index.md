@@ -9,7 +9,7 @@ publish_date: 2026-05-13
 category: pensions-and-gratuities
 ---
 
-Use this tool to estimate your government or public sector pension if you are employed by a Ministry of the Government of Barbados. You can choose between a full pension or a gratuity and a reduced pension.
+Use this tool to estimate your government or public sector pension if you are employed by a Ministry of the Government of Barbados. You can choose between a full pension or a reduced pension.
 
 The tool will show you:
 
@@ -27,7 +27,7 @@ This is an estimate only. Your actual pension depends on records held by the Peo
 - The number of months of no-pay leave you took, if any
 - Your last annual salary in Barbados dollars (BDS$)
 
-Contact the PRC or your last employer to confirm these figures.
+Contact the People Resourcing and Compliance Directorate (PRCD) or your last employer to confirm these figures.
 
 ## Before you start
 
