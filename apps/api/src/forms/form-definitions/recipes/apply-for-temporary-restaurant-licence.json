@@ -3,7 +3,7 @@
   "title": "Apply for a licence to operate a temporary restaurant",
   "description": "Apply for a licence to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
   "createdAt": "2026-07-23T00:00:00Z",
-  "updatedAt": "2026-07-27T00:00:00Z",
+  "updatedAt": "2026-07-28T00:00:00Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -38,6 +38,7 @@
             "phone": "applicant-details.mobile-number"
           },
           "excludeSteps": [
+            "check-your-answers",
             "declaration",
             "submission-confirmation"
           ],
@@ -777,6 +778,13 @@
           }
         }
       ]
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
     },
     {
       "stepId": "declaration",
