@@ -13,7 +13,7 @@ categories:
 
 ## Who this is for
 
-You can pay National Insurance this way if you work for yourself. This can be your main job or extra work. This may include people who:
+You can pay National Insurance (NIS) this way if you work for yourself. This can be your main job or extra work. This may include people who:
 
 - drive or make deliveries
 - provide a trade or personal service
@@ -22,10 +22,10 @@ You can pay National Insurance this way if you work for yourself. This can be yo
 - rent a property to visitors
 - do domestic, casual or cash-in-hand work
 
-You don't need to fit one of these exactly. You don't need a registered business or a work permit. You can also contribute for work you do on the side, even if an employer pays National Insurance for your main job.
+You don't need to fit one of these exactly. You don't need a registered business or a work permit. You can also contribute for work you do on the side, even if an employer pays NIS for your main job.
 
 ## How much to pay
-The amount you pay is based on your earnings after business expenses. NIS sets minimum and maximum amounts, and your payment can change if your earnings change.
+The amount you pay is based on your earnings after business expenses. Enter the money left after taking away what you spent to do your work that month. For example, if you receive BDS $2,000 and spend BDS $500 on your work, enter BDS $1,500. NIS sets minimum and maximum amounts, and your payment can change if your earnings change.
 
 <a data-start-link href="/money-financial-support/national-insurance-for-self-employed-workers/form">Calculate how much you may get</a>
 
@@ -48,12 +48,9 @@ Have your National Insurance number ready. You can pay:
 - in person at the NIS office, Frank Walcott Building, Culloden Road, St Michael
 
 ## Check your record and benefits
-Find out how to check past payments and what to do if you missed any.
-You can also check whether work outside Barbados may count and which benefits you may get. 
+Find out how to check past payments, what to do if you missed payments, whether work outside Barbados may count and which benefits you may get.
 
-[Check your records](/money-financial-support/national-insurance-for-self-employed-workers/check-your-record)
-
-If you worked in a country that has a social security agreement with Barbados, those contributions may count towards your benefits here. Contact NIS and tell them where and when you worked.
+[Check your record and benefits](/money-financial-support/national-insurance-for-self-employed-workers/check-your-record)
 
 ## Get help
 Contact NIS on **431-7400** or visit the **NIS office** in person.

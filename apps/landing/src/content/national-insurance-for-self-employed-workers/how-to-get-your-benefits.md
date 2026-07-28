@@ -11,20 +11,20 @@ category: money-financial-support
 
 ## 1. Get your National Insurance number
 
-Your number stays with you for life, from your first job to the day you retire. If you've ever worked in Barbados, or registered before and moved away, you almost certainly already have one, and your contributions from years ago still count. If you don't know your number, NIS can find it. If you've never had one, you get a number when you register.
+Your number stays with you for life, from your first job to the day you retire. If you've ever worked in Barbados, or registered before and moved away, you almost certainly already have one, and your contributions from years ago still count. If you don't know your number, National Insurance (NIS) can find it. If you've never had one, you get a number when you register.
 
 ## 2. Register with NIS
 
 You register as a self-employed person: just yourself and your National Insurance number, no registered business needed. It's all online, with no paperwork, and you can save and come back to it. There are two ways to start, depending on whether you already have a number:
 
-- If you already have an NIS number, use the [self-employment registration form](https://www.nis.gov.bb/self-employment-registration-form-page/).
+- If you already have a National Insurance number, use the [self-employment registration form](https://www.nis.gov.bb/self-employment-registration-form-page/).
 - If you've never registered, use the [new applicant registration form](https://www.nis.gov.bb/self-employment-registration-form-new-nis-applicant/).
 
 Both links take you to NIS to register.
 
 ## 3. Already have a job that pays NIS?
 
-If your employer pays National Insurance contributions for your main job, this covers your employment income. If you also work for yourself, you may make separate contributions for that self-employed income. This adds to your coverage. It does not replace what your employer already pays.
+If your employer pays NIS contributions for your main job, this covers your employment income. If you also work for yourself, you may make separate contributions for that self-employed income. This adds to your coverage. It does not replace what your employer already pays.
 
 ## 4. Pay your contributions
 

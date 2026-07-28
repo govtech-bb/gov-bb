@@ -11,7 +11,7 @@ category: money-financial-support
 
 ## Check your payment record
 
-Your contribution record shows the National Insurance payments made during your working life.
+Your contribution record shows the National Insurance (NIS) payments made during your working life.
 
 You can check your record through the NIS online portal or ask NIS for a copy. Check your record to make sure your payments have been added correctly.
 
@@ -25,7 +25,7 @@ Contact NIS to check which years you can pay for before making a payment.
 
 ## If you worked outside Barbados
 
-Contributions you made in another country may count towards your National Insurance benefits in Barbados. This applies if Barbados has a social security agreement with that country.
+Contributions you made in another country may count towards your NIS benefits in Barbados. This applies if Barbados has a social security agreement with that country.
 
 Contact NIS and tell them where and when you worked. NIS can check whether your contributions can be counted.
 
@@ -43,7 +43,7 @@ Your contributions may help you qualify for:
 
 Each benefit has its own rules. How much you receive may depend on your earnings and contribution record.
 
-National Insurance for self-employed workers does not include unemployment benefit.
+NIS for self-employed workers does not include unemployment benefit.
 
 <buttons>
 <link-button href="/money-financial-support/national-insurance-for-self-employed-workers/form">Estimate how much to pay</link-button>
