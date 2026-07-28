@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
 import type { SubmissionCreatedEvent } from "../forms/submissions/submissions.types";
 import { buildWebhookFormData, extractApplicant } from "./applicant-extractor";
-import { sanitizeForLog } from "./log-sanitize";
+import { sanitizeForLog } from "@/common/log-sanitize";
 import { resolveServiceCodeFromFormId } from "./youth-opportunity-codes";
 import { YouthOpportunityWebhookService } from "./youth-opportunity-webhook.service";
 
