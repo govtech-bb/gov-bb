@@ -76,7 +76,43 @@ describe("FilesController", () => {
       size: 1,
     };
     await controller.presignUpload(dto, "tok", "drafttok");
-    expect(svc.presignUpload).toHaveBeenCalledWith(dto, "tok", "drafttok");
+    expect(svc.presignUpload).toHaveBeenCalledWith(
+      dto,
+      "tok",
+      "drafttok",
+      false,
+    );
+  });
+
+  it("forwards a preview-cookie bypass to presignUpload (#2116)", async () => {
+    svc.presignUpload.mockResolvedValue({
+      uploadUrl: "u",
+      key: "k",
+      expiresIn: 1,
+      maxSize: 2,
+    });
+    const dto = {
+      formId: "f",
+      formVersion: "1.0.0",
+      stepId: "s",
+      fieldId: "fi",
+      fileName: "x.pdf",
+      contentType: "application/pdf",
+      size: 1,
+    };
+    // No header token, but the same-site `preview` cookie carries the grant.
+    await controller.presignUpload(
+      dto,
+      undefined,
+      undefined,
+      "session=abc; preview=preview",
+    );
+    expect(svc.presignUpload).toHaveBeenCalledWith(
+      dto,
+      undefined,
+      undefined,
+      true,
+    );
   });
 
   it("forwards the x-recipe-preview header to confirmUpload", async () => {
@@ -95,6 +131,40 @@ describe("FilesController", () => {
       fieldId: "fi",
     };
     await controller.confirmUpload(dto, "tok", "drafttok");
-    expect(svc.confirmUpload).toHaveBeenCalledWith(dto, "tok", "drafttok");
+    expect(svc.confirmUpload).toHaveBeenCalledWith(
+      dto,
+      "tok",
+      "drafttok",
+      false,
+    );
+  });
+
+  it("forwards a preview-cookie bypass to confirmUpload (#2116)", async () => {
+    svc.confirmUpload.mockResolvedValue({
+      key: "k",
+      url: "u",
+      name: "n",
+      size: 1,
+      type: "t",
+    });
+    const dto = {
+      key: "k",
+      formId: "f",
+      formVersion: "1.0.0",
+      stepId: "s",
+      fieldId: "fi",
+    };
+    await controller.confirmUpload(
+      dto,
+      undefined,
+      undefined,
+      "preview=draft",
+    );
+    expect(svc.confirmUpload).toHaveBeenCalledWith(
+      dto,
+      undefined,
+      undefined,
+      true,
+    );
   });
 });

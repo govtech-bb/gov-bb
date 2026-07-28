@@ -97,13 +97,16 @@ export class FilesService {
     dto: PresignUploadDto,
     previewToken?: string,
     draftToken?: string,
+    // A valid shared `preview` cookie grants the visibility bypass on its own
+    // (#2116) — the browser drops the URL token but still sends the cookie.
+    previewCookieBypass = false,
   ): Promise<PresignUploadResponseDto> {
     this.assertConfigured();
     const field = await this.resolveFileField(
       dto.formId,
       dto.stepId,
       dto.fieldId,
-      this.isValidRecipeToken(previewToken),
+      this.isValidRecipeToken(previewToken) || previewCookieBypass,
       this.isValidRecipeToken(draftToken),
     );
 
@@ -136,6 +139,8 @@ export class FilesService {
     dto: ConfirmUploadDto,
     previewToken?: string,
     draftToken?: string,
+    // See presignUpload — the shared `preview` cookie grants the bypass (#2116).
+    previewCookieBypass = false,
   ): Promise<FileAttachmentDto> {
     this.assertConfigured();
     // Bind confirm to presign (#284): the key embeds the (formId, stepId,
@@ -161,7 +166,7 @@ export class FilesService {
       dto.formId,
       dto.stepId,
       dto.fieldId,
-      this.isValidRecipeToken(previewToken),
+      this.isValidRecipeToken(previewToken) || previewCookieBypass,
       this.isValidRecipeToken(draftToken),
     );
 
