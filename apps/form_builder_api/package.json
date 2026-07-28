@@ -22,7 +22,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.5.2",
     "reflect-metadata": "^0.2.0",
-    "typeorm": "^0.3.28",
+    "typeorm": "^0.3.31",
     "zod": "^4.4.3"
   },
   "devDependencies": {
