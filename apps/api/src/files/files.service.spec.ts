@@ -177,6 +177,15 @@ describe("FilesService", () => {
         );
       });
 
+      it("resolves with bypassVisibility:true from the preview-cookie grant alone (#2116)", async () => {
+        // No header token — the cookie bypass carries the grant. Visibility
+        // only: draft stays false (the cookie never sources DB scratch).
+        await service.presignUpload(dto, undefined, undefined, true);
+        expect(formDefs.findByFormId).toHaveBeenCalledWith(
+          expect.objectContaining({ bypassVisibility: true, draft: false }),
+        );
+      });
+
       it("presigns a DB-only draft only with a valid draft token", async () => {
         // Simulate an unpublished draft: resolvable only on the draft path.
         formDefs.findByFormId.mockImplementation(
