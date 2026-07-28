@@ -78,13 +78,11 @@ describe("GeocodeService", () => {
   });
 
   it("leaves parish empty when nothing matches a Barbados parish", async () => {
-    const get = vi
-      .fn()
-      .mockReturnValue(
-        of({
-          data: [{ display_name: "Nowhere, Barbados", lat: "1", lon: "2" }],
-        }),
-      );
+    const get = vi.fn().mockReturnValue(
+      of({
+        data: [{ display_name: "Nowhere, Barbados", lat: "1", lon: "2" }],
+      }),
+    );
     const [result] = await makeService(get).search("nowhere");
     expect(result.parish).toBe("");
   });
@@ -111,5 +109,89 @@ describe("GeocodeService", () => {
     await service.search("Speightstown");
     await service.search("speightstown");
     expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns [] for an undefined query without calling upstream", async () => {
+    const get = vi.fn();
+    const results = await makeService(get).search(
+      undefined as unknown as string,
+    );
+    expect(results).toEqual([]);
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it("returns [] when the upstream response carries no data", async () => {
+    const get = vi.fn().mockReturnValue(of({}));
+    expect(await makeService(get).search("bridgetown")).toEqual([]);
+  });
+
+  it("drops a result missing its longitude", async () => {
+    const get = vi
+      .fn()
+      .mockReturnValue(
+        of({ data: [{ display_name: "Bay Street, Barbados", lat: "13.1" }] }),
+      );
+    expect(await makeService(get).search("bay street")).toEqual([]);
+  });
+
+  it("keeps the address-object parish when display_name also names it", async () => {
+    const get = vi.fn().mockReturnValue(
+      of({
+        data: [
+          {
+            display_name: "Bay Street, Bridgetown, Saint Michael, Barbados",
+            lat: "13.1",
+            lon: "-59.6",
+            address: { state: "Saint Michael" },
+          },
+        ],
+      }),
+    );
+    const [result] = await makeService(get).search("bay street");
+    expect(result.parish).toBe("st-michael");
+    expect(result.line1).toBe("Bay Street");
+    expect(result.line2).toBe("Bridgetown");
+  });
+
+  it("resolves against a configurable base URL (NOMINATIM_BASE_URL)", async () => {
+    const previous = process.env.NOMINATIM_BASE_URL;
+    process.env.NOMINATIM_BASE_URL = "https://geo.example.gov.bb";
+    try {
+      const get = vi.fn().mockReturnValue(of({ data: [] }));
+      await makeService(get).search("bridgetown");
+      expect(get.mock.calls[0][0]).toBe("https://geo.example.gov.bb/search");
+    } finally {
+      if (previous === undefined) delete process.env.NOMINATIM_BASE_URL;
+      else process.env.NOMINATIM_BASE_URL = previous;
+    }
+  });
+
+  it("evicts the oldest entry once the cache is full", async () => {
+    const get = vi
+      .fn()
+      .mockReturnValue(
+        of({ data: [{ display_name: "X, Barbados", lat: "1", lon: "2" }] }),
+      );
+    const service = makeService(get);
+    await service.search("q-first");
+    for (let i = 0; i < 210; i++) await service.search(`q-fill-${i}`);
+    const callsBefore = get.mock.calls.length;
+    // q-first was evicted, so this misses the cache and hits upstream again.
+    await service.search("q-first");
+    expect(get.mock.calls.length).toBe(callsBefore + 1);
+  });
+
+  it("refetches once a cached entry has expired", async () => {
+    vi.useFakeTimers();
+    try {
+      const get = vi.fn().mockReturnValue(of({ data: [] }));
+      const service = makeService(get);
+      await service.search("bridgetown");
+      vi.advanceTimersByTime(60 * 60 * 1000 + 1); // past the 1h TTL
+      await service.search("bridgetown");
+      expect(get).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
