@@ -1013,11 +1013,11 @@ importers:
         specifier: ^1.0.0-alpha.17
         version: 1.0.0-alpha.17
       '@govtech-bb/frontend':
-        specifier: 1.0.0-alpha.20
-        version: 1.0.0-alpha.20
+        specifier: 1.0.0-alpha.21
+        version: 1.0.0-alpha.21
       '@govtech-bb/react':
-        specifier: 1.0.0-alpha.20
-        version: 1.0.0-alpha.20(react@19.2.7)
+        specifier: 1.0.0-alpha.21
+        version: 1.0.0-alpha.21(react@19.2.7)
       '@mdx-js/react':
         specifier: ^3.1.1
         version: 3.1.1(@types/react@19.2.17)(react@19.2.7)
@@ -2505,8 +2505,8 @@ packages:
   '@govtech-bb/design@1.0.0-alpha.17':
     resolution: {integrity: sha512-hJ0VtPN+XaUWYCxKCZaCFdRpRf9Hd2vJGyH8gJ/AMKzd2AKQ6P2WnYAxL0W1b7tv9bSbJSK73k8NtLEYgtVL9A==}
 
-  '@govtech-bb/frontend@1.0.0-alpha.20':
-    resolution: {integrity: sha512-6JQbuO59qqUwec9E3B/n6YcdVw7bm9SgBBqstRy2VncuqPZd694KVxqBpZnvNkXcnev+tFKwnO+KUSeGTYjqVg==}
+  '@govtech-bb/frontend@1.0.0-alpha.21':
+    resolution: {integrity: sha512-zNhzN3fLq7TxXv3HgT485wcFPdPFeZSU1TO3M7EDRLUge1HWUNQWr3EART0YsBEbT9GMlLptfKQsq3/IfOh/+g==}
 
   '@govtech-bb/react@1.0.0-alpha.17':
     resolution: {integrity: sha512-CWb/7ntU51gmGLalvgFFedfyT4OYUyvVWWx4+4+rARYLp/aHd1anOeM2vEzTWUZYZHsdrCF7R7LDdE/qyxeafQ==}
@@ -2515,8 +2515,8 @@ packages:
       react-dom: ^18.0.0 || ^19.0.0
       tailwindcss: ^4.0.0
 
-  '@govtech-bb/react@1.0.0-alpha.20':
-    resolution: {integrity: sha512-pK0mBjAff7E1WEF5Q+GrtQmdvQAURyft5EgJ1aaX6OBNei4TL9eq7CY8kUdb8tvaRIwyhkfj3DI8h4s5dd7Ufg==}
+  '@govtech-bb/react@1.0.0-alpha.21':
+    resolution: {integrity: sha512-wdlNMHFfOwrZcb8pN/fJOjGhrbo4sXuNPwfxnFUDw4ihkj93E6Ehz7rLB/HiWq0BKaKdWaK9tdXHjRuOutsIow==}
     peerDependencies:
       react: '>=18'
 
@@ -11185,7 +11185,7 @@ snapshots:
 
   '@govtech-bb/design@1.0.0-alpha.17': {}
 
-  '@govtech-bb/frontend@1.0.0-alpha.20': {}
+  '@govtech-bb/frontend@1.0.0-alpha.21': {}
 
   '@govtech-bb/react@1.0.0-alpha.17(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)':
     dependencies:
@@ -11203,9 +11203,9 @@ snapshots:
       - '@types/react'
       - '@types/react-dom'
 
-  '@govtech-bb/react@1.0.0-alpha.20(react@19.2.7)':
+  '@govtech-bb/react@1.0.0-alpha.21(react@19.2.7)':
     dependencies:
-      '@govtech-bb/frontend': 1.0.0-alpha.20
+      '@govtech-bb/frontend': 1.0.0-alpha.21
       class-variance-authority: 0.7.1
       react: 19.2.7
 
