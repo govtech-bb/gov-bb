@@ -13,7 +13,7 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 export class AddMinistryKeyToMdaContact1784000000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "mda_contact" ADD COLUMN "ministry_key" varchar(64)`,
+      `ALTER TABLE "mda_contact" ADD COLUMN IF NOT EXISTS "ministry_key" varchar(64)`,
     );
   }
 
