@@ -48,12 +48,9 @@ Have your National Insurance number ready. You can pay:
 - in person at the NIS office, Frank Walcott Building, Culloden Road, St Michael
 
 ## Check your record and benefits
-Find out how to check past payments and what to do if you missed any.
-You can also check whether work outside Barbados may count and which benefits you may get. 
+Find out how to check past payments, what to do if you missed payments, whether work outside Barbados may count and which benefits you may get.
 
-[Check your records](/money-financial-support/national-insurance-for-self-employed-workers/check-your-record)
-
-If you worked in a country that has a social security agreement with Barbados, those contributions may count towards your benefits here. Contact NIS and tell them where and when you worked.
+[Check your record and benefits](/money-financial-support/national-insurance-for-self-employed-workers/check-your-record)
 
 ## Get help
 Contact NIS on **431-7400** or visit the **NIS office** in person.
