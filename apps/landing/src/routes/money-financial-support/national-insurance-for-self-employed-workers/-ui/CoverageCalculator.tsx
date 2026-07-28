@@ -877,26 +877,17 @@ function PlanStep({
             </span>
           </p>
           <p className="text-[1rem] text-white-00/90">
-            About <strong className="tabular-nums">{money(chosen / 4)}</strong>{' '}
+            About{' '}
+            <strong className="tabular-nums">{money((chosen * 12) / 52)}</strong>{' '}
             a week.
           </p>
-          <div className="mt-4 grid grid-cols-2 gap-4 border-white-00/20 border-t pt-4">
-            <div>
-              <p className="text-[0.95rem] text-teal-40 uppercase tracking-wide">
-                In a year
-              </p>
-              <p className="font-bold text-[1.3rem] tabular-nums">
-                {money(chosen * 12)}
-              </p>
-            </div>
-            <div>
-              <p className="text-[0.95rem] text-teal-40 uppercase tracking-wide">
-                In 10 years
-              </p>
-              <p className="font-bold text-[1.3rem] tabular-nums">
-                {money(chosen * 12 * 10)}
-              </p>
-            </div>
+          <div className="mt-4 border-white-00/20 border-t pt-4">
+            <p className="text-[0.95rem] text-teal-40 uppercase tracking-wide">
+              In a year
+            </p>
+            <p className="font-bold text-[1.3rem] tabular-nums">
+              {money(chosen * 12)}
+            </p>
           </div>
         </div>
       )}
