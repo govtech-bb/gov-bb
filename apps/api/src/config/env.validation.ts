@@ -120,6 +120,14 @@ const baseSchema = z
     WEBHOOK_SECRET: z.string().default(""),
     WEBHOOK_TIMEOUT_MS: z.coerce.number().int().min(1000).default(10000),
 
+    // Per-MDA CMS destinations as one JSON object keyed by ministry
+    // ({ "<ministry>": { "url", "secret" } }) — from Secrets Manager via the
+    // ECS task-def `secrets` block (#1920/#2020). Optional at the boot gate:
+    // the destinations loader parses/validates it and surfaces problems on
+    // /health, and dispatch fails loud (→ DLQ) on a missing entry, so a blank
+    // value must not block boot.
+    MDA_WEBHOOK_DESTINATIONS: z.string().optional(),
+
     // Recipe preview (empty disables the per-request preview escape hatch)
     RECIPE_PREVIEW_TOKEN: z.string().default(""),
 

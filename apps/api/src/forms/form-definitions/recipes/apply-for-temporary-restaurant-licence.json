@@ -2,7 +2,6 @@
   "formId": "apply-for-temporary-restaurant-licence",
   "title": "Apply for a licence to operate a temporary restaurant",
   "description": "Apply for a licence to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
-  "version": "1.2.0",
   "createdAt": "2026-07-23T00:00:00Z",
   "updatedAt": "2026-07-27T00:00:00Z",
   "contactDetails": {
@@ -28,14 +27,6 @@
     {
       "type": "webhook",
       "config": {
-        "endpoint": {
-          "env": "WEBHOOK_URL"
-        },
-        "auth": {
-          "scheme": "apiKey",
-          "header": "X-API-Key",
-          "secretEnv": "WEBHOOK_SECRET"
-        },
         "mapping": {
           "programmeCode": "TEMP-RESTAURANT-LICENCE",
           "applicant": {
@@ -47,7 +38,6 @@
             "phone": "applicant-details.mobile-number"
           },
           "excludeSteps": [
-            "check-your-answers",
             "declaration",
             "submission-confirmation"
           ],
@@ -273,10 +263,15 @@
           }
         },
         {
-          "ref": "components/address",
+          "ref": "components/address-lookup",
           "overrides": {
             "label": "Event address line 1",
-            "fieldId": "event-address-line-1"
+            "fieldId": "event-address-line-1",
+            "geocodeTargets": {
+              "line2FieldId": "event-address-line-2",
+              "parishFieldId": "event-parish",
+              "coordinatesFieldId": "event-address-coordinates"
+            }
           }
         },
         {
@@ -296,6 +291,21 @@
           "overrides": {
             "label": "Parish of event",
             "fieldId": "event-parish"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Event location coordinates",
+            "fieldId": "event-address-coordinates",
+            "ui": {
+              "hidden": true
+            },
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {

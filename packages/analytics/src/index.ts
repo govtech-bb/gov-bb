@@ -1,3 +1,7 @@
+import { maskSearchQuery } from "./mask-search-query";
+
+export { maskSearchQuery } from "./mask-search-query";
+
 declare global {
   interface Window {
     umami?: {
@@ -73,17 +77,24 @@ export function trackEvent(
 ): void {
   if (typeof window === "undefined") return;
   if (!window.umami) return;
+  // Redact PII from a search `query` property before it leaves for the
+  // third-party analytics host (#2079). Shallow-copy so the caller's object is
+  // untouched. Covers every search event centrally — no call site can forget.
+  const safe =
+    data && typeof data.query === "string"
+      ? { ...data, query: maskSearchQuery(data.query) }
+      : data;
   if (
-    data &&
-    "form" in data &&
-    typeof data.form === "string" &&
+    safe &&
+    "form" in safe &&
+    typeof safe.form === "string" &&
     !event.includes(":")
   ) {
-    window.umami.track(`${data.form}:${event}`, data);
-  } else if (data === undefined) {
+    window.umami.track(`${safe.form}:${event}`, safe);
+  } else if (safe === undefined) {
     window.umami.track(event);
   } else {
-    window.umami.track(event, data);
+    window.umami.track(event, safe);
   }
 }
 

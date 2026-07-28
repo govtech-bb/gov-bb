@@ -41,9 +41,11 @@ export type {
   CheckboxPrimitive,
   CheckboxAccordionPrimitive,
   ShowHidePrimitive,
+  AddressLookupPrimitive,
   Primitive,
   HtmlTypes,
   PrimitiveUI,
+  GeocodeTargets,
 } from "./primitive.type";
 
 export {

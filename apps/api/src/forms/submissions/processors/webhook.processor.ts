@@ -8,9 +8,11 @@ import type {
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import { sign } from "./webhook-signature";
 import { assertSafeUrl } from "./url-safety";
-import { sanitizeForLog } from "./log-sanitize";
+import { sanitizeForLog } from "@/common/log-sanitize";
 import { buildMappedCasePayload } from "./webhook-mapping";
 import { idempotencyKey, timedPost } from "./http-post";
+import { WebhookConfigError } from "./webhook-errors";
+import { WebhookDestinationsService } from "@/forms/webhook-destinations/webhook-destinations.service";
 import { FormDefinitionsService } from "../../form-definitions/form-definitions.service";
 import { deriveHigherRiskSelection } from "../derive-higher-risk";
 
@@ -34,8 +36,11 @@ type WebhookAuth =
  *    recipe's declarative field mapping — the generic replacement for the old
  *    case-management processor, with no form-specific logic baked into the API.
  *
- * Endpoint and secret can come from env (`config.endpoint` / `auth.secretEnv`)
- * so deploy-specific URLs and keys stay out of the git-committed recipe.
+ * A mapped (case-management) webhook carries **no** destination in the recipe:
+ * its URL + `X-API-Key` secret resolve per-MDA from the `MDA_WEBHOOK_DESTINATIONS`
+ * secret via the `form_config → mda_contact` ministry key (#1920/#2020), and a
+ * miss fails loud (→ DLQ). A generic (envelope) webhook still takes its
+ * endpoint/url + auth from the recipe/env.
  */
 @Injectable()
 export class WebhookProcessor implements ISubmissionProcessor {
@@ -44,6 +49,7 @@ export class WebhookProcessor implements ISubmissionProcessor {
 
   constructor(
     private readonly http: HttpService,
+    private readonly destinations: WebhookDestinationsService,
     private readonly formDefinitions: FormDefinitionsService,
   ) {}
 
@@ -56,23 +62,41 @@ export class WebhookProcessor implements ISubmissionProcessor {
       unknown
     >;
 
-    const resolved = this.resolveUrl(cfg, payload.submissionId);
-    if (!resolved) return { kind: "completed" };
-    const { url, fromRecipe } = resolved;
-
-    // SSRF guard (#287): only a recipe-supplied literal url is attacker-
-    // controllable, so before dispatch we require https and refuse a host that
-    // resolves to an internal address (private/loopback/link-local — notably the
-    // cloud-metadata endpoint 169.254.169.254). Throws on violation: the entry
-    // fails loudly rather than letting a malicious recipe drive an internal
-    // request. An env-sourced endpoint is operator deploy config (may
-    // legitimately be internal), so it is exempt.
-    if (fromRecipe) await assertSafeUrl(url);
-
+    const mapping = cfg["mapping"] as WebhookMapping | undefined;
     const method = (cfg["method"] as string | undefined) ?? "POST";
     const timeoutMs =
       (cfg["timeoutMs"] as number | undefined) ?? DEFAULT_TIMEOUT_MS;
-    const mapping = cfg["mapping"] as WebhookMapping | undefined;
+
+    // Resolve the destination. A mapped (case-management) webhook resolves its
+    // URL + secret per-MDA from MDA_WEBHOOK_DESTINATIONS (via form_config →
+    // mda_contact ministry key) and fails loud (→ DLQ) on any miss. A generic
+    // webhook takes its endpoint/url from the recipe/env.
+    let url: string;
+    let apiKeySecret: string | null = null;
+    if (mapping) {
+      const dest = await this.destinations.resolveWebhookDestination(
+        payload.formId,
+      );
+      if (!dest) {
+        throw new WebhookConfigError(
+          `[webhook] no MDA destination for form "${sanitizeForLog(
+            payload.formId,
+          )}" — check its form_config ministry key and MDA_WEBHOOK_DESTINATIONS`,
+        );
+      }
+      url = dest.url;
+      apiKeySecret = dest.secret;
+      // Ops-provided endpoint: SSRF guard (#287) before dispatch — require https
+      // and refuse a host resolving to an internal address.
+      await assertSafeUrl(url);
+    } else {
+      const resolved = this.resolveUrl(cfg, payload.submissionId);
+      if (!resolved) return { kind: "completed" };
+      url = resolved.url;
+      // Only a recipe-supplied literal url is attacker-controllable; an
+      // env-sourced endpoint is operator deploy config, so it is exempt.
+      if (resolved.fromRecipe) await assertSafeUrl(url);
+    }
 
     // Derived reviewer signal (#2065): only mapped payloads carry it, and only
     // for forms with a checkbox-accordion field (deriveHigherRiskSelection
@@ -119,7 +143,10 @@ export class WebhookProcessor implements ISubmissionProcessor {
       "Content-Type": "application/json",
       "X-Idempotency-Key": idempotencyKey(payload.submissionId, index),
     };
-    if (!this.applyAuth(cfg, headers, body, payload.submissionId)) {
+    if (mapping) {
+      // Per-MDA API key from the resolved destination (sent as X-API-Key).
+      headers["X-API-Key"] = apiKeySecret as string;
+    } else if (!this.applyAuth(cfg, headers, body, payload.submissionId)) {
       return { kind: "completed" }; // auth configured to use env that isn't set
     }
 

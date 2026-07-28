@@ -13,6 +13,7 @@ import type { DateInputValue } from '@govtech-bb/react'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
+import { money } from '@/lib/money'
 import {
   avgWeeklyFromSimple,
   ceilingFor,
@@ -110,15 +111,6 @@ function parseDate(parts: DateInputValue): ParseDateResult {
   const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
   return { ok: true, date: dt, iso }
 }
-
-const moneyFmt = new Intl.NumberFormat('en-BB', {
-  style: 'currency',
-  currency: 'BBD',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})
-
-const money = (n: number) => moneyFmt.format(n || 0)
 
 function ServiceTitle() {
   return (

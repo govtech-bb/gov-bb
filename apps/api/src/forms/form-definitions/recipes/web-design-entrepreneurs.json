@@ -9,6 +9,27 @@
         "recipientField": "applicant-details.applicant-email",
         "subject": "Your application for Web Page Design and Maintenance for Entrepreneurs has been received"
       }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "mapping": {
+          "programmeCode": "WEBDEV",
+          "applicant": {
+            "name": [
+              "applicant-details.applicant-first-name",
+              "applicant-details.applicant-last-name"
+            ],
+            "email": "applicant-details.applicant-email",
+            "phone": "applicant-details.applicant-phone"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ]
+        }
+      }
     }
   ],
   "steps": [

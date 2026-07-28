@@ -10,8 +10,6 @@
  *  - storeFormData strips undefined from nested objects; filters undefined from arrays
  *  - getCompletedSteps: returns [] when not set; returns stored array
  *  - markStepCompleted: adds step; does not add duplicate
- *  - isStepCompleted: true for completed, false for incomplete
- *  - getLastCompletedStep: returns last completed; null if none completed
  *  - getFirstIncompleteActiveStep: first incomplete step object; null when all done
  *  - isStepAccessible: first step always accessible; true when all preceding completed;
  *                      false when preceding incomplete; false when stepId not in list
@@ -23,8 +21,6 @@ import {
   clearFormState,
   getCompletedSteps,
   markStepCompleted,
-  isStepCompleted,
-  getLastCompletedStep,
   getFirstIncompleteActiveStep,
   isStepAccessible,
   storeSubmissionState,
@@ -168,56 +164,6 @@ describe("markStepCompleted", () => {
     markStepCompleted(FORM_ID, "step1");
     markStepCompleted(FORM_ID, "step2");
     expect(getCompletedSteps(FORM_ID)).toEqual(["step1", "step2"]);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// isStepCompleted
-// ---------------------------------------------------------------------------
-
-describe("isStepCompleted", () => {
-  it("returns true when the step has been marked completed", () => {
-    markStepCompleted(FORM_ID, "step1");
-    expect(isStepCompleted(FORM_ID, "step1")).toBe(true);
-  });
-
-  it("returns false when the step has not been completed", () => {
-    expect(isStepCompleted(FORM_ID, "step1")).toBe(false);
-  });
-
-  it("returns false for a step that was not completed even if others were", () => {
-    markStepCompleted(FORM_ID, "step1");
-    expect(isStepCompleted(FORM_ID, "step2")).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// getLastCompletedStep
-// ---------------------------------------------------------------------------
-
-describe("getLastCompletedStep", () => {
-  const steps = [{ stepId: "step1" }, { stepId: "step2" }, { stepId: "step3" }];
-
-  it("returns null when no steps have been completed", () => {
-    expect(getLastCompletedStep(FORM_ID, steps)).toBeNull();
-  });
-
-  it("returns the id of the single completed step when only one is done", () => {
-    markStepCompleted(FORM_ID, "step1");
-    expect(getLastCompletedStep(FORM_ID, steps)).toBe("step1");
-  });
-
-  it("returns the last completed step id from the end of the steps array", () => {
-    markStepCompleted(FORM_ID, "step1");
-    markStepCompleted(FORM_ID, "step2");
-    expect(getLastCompletedStep(FORM_ID, steps)).toBe("step2");
-  });
-
-  it("returns the last completed step when the final step is done", () => {
-    markStepCompleted(FORM_ID, "step1");
-    markStepCompleted(FORM_ID, "step2");
-    markStepCompleted(FORM_ID, "step3");
-    expect(getLastCompletedStep(FORM_ID, steps)).toBe("step3");
   });
 });
 

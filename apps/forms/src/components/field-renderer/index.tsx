@@ -16,6 +16,7 @@ import { renderCheckboxField } from "./checkbox-field";
 import { renderCheckboxAccordionField } from "./checkbox-accordion-field";
 import { renderRadioField } from "./radio-field";
 import { renderShowHideField } from "./show-hide-field";
+import { AddressLookupField } from "./address-lookup-field";
 
 export type { InsetFieldEntry };
 
@@ -91,6 +92,21 @@ export default function FieldRenderer({
           draftToken,
         });
 
+        // A `ui.hidden` field carries a value (e.g. geocoded coordinates set by
+        // an address-lookup field) into the payload without any visible UI. It
+        // stays in the submission because it is not `isHidden`.
+        if (field.ui?.hidden) {
+          return (
+            <input
+              type="hidden"
+              id={field.id}
+              name={field.name}
+              value={typeof f.state.value === "string" ? f.state.value : ""}
+              readOnly
+            />
+          );
+        }
+
         switch (field.htmlType) {
           case "date":
             return renderDateField(ctx);
@@ -126,6 +142,8 @@ export default function FieldRenderer({
             );
           case "show-hide":
             return renderShowHideField(ctx);
+          case "address-lookup":
+            return <AddressLookupField ctx={ctx} />;
           default:
             return (
               <div style={{ color: "red" }}>

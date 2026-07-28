@@ -421,4 +421,26 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
     },
   ],
   "show-hide": [],
+  // A geocoder-backed single-line address; the value is a plain string, so it
+  // carries the same length rules as a text address field.
+  "address-lookup": [
+    {
+      type: "required",
+      label: "Required",
+      hasValue: false,
+      hasReference: false,
+    },
+    {
+      type: "minLength",
+      label: "Min Length",
+      hasValue: true,
+      hasReference: false,
+    },
+    {
+      type: "maxLength",
+      label: "Max Length",
+      hasValue: true,
+      hasReference: false,
+    },
+  ],
 };

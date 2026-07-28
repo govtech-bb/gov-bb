@@ -6,7 +6,7 @@
   "types": "./src/index.d.ts",
   "dependencies": {
     "@govtech-bb/form-types": "workspace:*",
-    "typeorm": "^0.3.28"
+    "typeorm": "^0.3.31"
   },
   "devDependencies": {
     "@types/pg": "^8.20.0",

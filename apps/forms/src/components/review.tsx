@@ -150,6 +150,9 @@ export default function Review({
           // regardless of toggle state.
           const rows = getVisibleFields(step, form)
             .filter((field) => field.htmlType !== "show-hide")
+            // ui.hidden fields (e.g. geocoded coordinates) carry data but are
+            // never shown to the applicant — omit them from the summary.
+            .filter((field) => !field.ui?.hidden)
             .map((field: ClientPrimitive) => ({
               field,
               value: getFieldDisplayValue(field),

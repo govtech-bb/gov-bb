@@ -80,6 +80,7 @@ function coerceCheckbox(field: Primitive, raw: string): Coerced {
 
 const COERCERS: Record<HtmlTypes, Coercer> = {
   text: (_f, raw) => ({ value: raw }),
+  "address-lookup": (_f, raw) => ({ value: raw }),
   textarea: (_f, raw) => ({ value: raw }),
   email: (_f, raw) => ({ value: raw }),
   tel: (_f, raw) => ({ value: raw }),
