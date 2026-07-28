@@ -2,7 +2,6 @@
   "formId": "apply-for-temporary-restaurant-licence",
   "title": "Apply for a licence to operate a temporary restaurant",
   "description": "Apply for a licence to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
-  "version": "1.2.0",
   "createdAt": "2026-07-23T00:00:00Z",
   "updatedAt": "2026-07-27T00:00:00Z",
   "contactDetails": {
