@@ -99,6 +99,7 @@ const COERCERS: Record<HtmlTypes, Coercer> = {
   checkbox: coerceCheckbox,
   file: () => ({ error: "file fields can't be completed in chat" }),
   "show-hide": (_f, raw) => coerceBoolean(raw),
+  content: () => ({ error: "content blocks are not answerable" }),
 };
 
 export function coerceValue(field: Primitive, raw: string): Coerced {
