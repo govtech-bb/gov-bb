@@ -13,11 +13,21 @@ describe("maskSearchQuery", () => {
     expect(maskSearchQuery("nis 123456")).toBe("nis 1****6");
   });
 
-  it("masks the 6-digit group of a dashed national ID (trailing 4-digit group stays)", () => {
-    // Threshold is 6+, so the 4-digit tail is left readable; the birthdate part
-    // (6 digits) is still masked.
+  it("masks a dashed national ID end to end (dash-joined groups count as one run)", () => {
+    // The two groups are joined only by a dash, so they form one 10-digit run
+    // (>= 6) and the whole thing is masked — including the trailing group.
     expect(maskSearchQuery("driver licence 850101-0001")).toBe(
-      "driver licence 8****1-0001",
+      "driver licence 8*********1",
+    );
+  });
+
+  it("masks a phone number typed with dashes or spaces (#2079 separator gap)", () => {
+    // Each group is < 6 digits, but joined by dashes/spaces they total 6+, so
+    // the whole run is masked instead of slipping through verbatim.
+    expect(maskSearchQuery("246-123-4567")).toBe("2**********7");
+    expect(maskSearchQuery("1 246 123 4567")).toBe("1************7");
+    expect(maskSearchQuery("call 246 123 4567 now")).toBe(
+      "call 2**********7 now",
     );
   });
 
