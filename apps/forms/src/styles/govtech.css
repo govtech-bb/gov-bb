@@ -484,6 +484,26 @@
   margin-bottom: 0;
 }
 
+/* ---- Content element (htmlType "content") ------------------------------- *
+ * Inset variant: light-blue panel with a navy left rule (same tokens as the
+ * service-title caption and closed panel). Text variant: block spacing only;
+ * the details variant reuses the .govbb-show-hide* classes. */
+.govbb-inset-text {
+  padding: var(--spacing-s) var(--spacing-m);
+  margin-bottom: var(--spacing-m);
+  background: var(--color-blue-10);
+  border-left: var(--color-blue-40) 0.25rem solid;
+}
+
+.govbb-inset-text > :last-child,
+.govbb-content-text > :last-child {
+  margin-bottom: 0;
+}
+
+.govbb-content-text {
+  margin-bottom: var(--spacing-m);
+}
+
 /* ---- Applicant name (declaration step) ----------------------------------- */
 .form-page__applicant {
   display: flex;
