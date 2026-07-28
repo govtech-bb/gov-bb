@@ -8,21 +8,13 @@ import {
 } from '@govtech-bb/react'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
+import { money } from '@/lib/money'
 import { calculatePension } from '../-lib/compute'
 import type { PensionEstimate } from '../-lib/compute'
 
 const SERVICE_PATH_SPLAT = 'pensions-and-gratuities/calculate-your-pension'
 const ABOUT_URL =
   '/pensions-and-gratuities/calculate-your-pension/about-government-pensions'
-
-const moneyFmt = new Intl.NumberFormat('en-BB', {
-  style: 'currency',
-  currency: 'BBD',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})
-
-const money = (n: number) => moneyFmt.format(n || 0)
 
 function ServiceTitle() {
   return (
