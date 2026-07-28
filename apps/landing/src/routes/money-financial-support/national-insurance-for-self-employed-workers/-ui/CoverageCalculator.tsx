@@ -1126,13 +1126,17 @@ function ResultStep({
         <p>
           NIS for self-employed workers does not include unemployment benefit.
         </p>
-        <p>
-          Estimates only. Benefit amounts are calculated from your insurable
-          earnings (your contribution ÷ {Math.round(NIS.SE_RATE * 10000) / 100}
-          %) and your most recent year of contributions, and are subject to
-          change. Final amounts are confirmed by NIS Benefits.
-        </p>
       </div>
+
+      <h2 className="mt-8 mb-2 font-bold text-[1.5rem] text-black-00">
+        How your estimate was worked out
+      </h2>
+      <p className="text-[1.125rem] text-mid-grey-00">
+        Your benefit estimates are based on the amount you choose to pay. If you
+        choose BDS $400 a month, we show the benefits you may get from paying
+        that amount. NIS will confirm whether you qualify and how much you may
+        get when you make a claim.
+      </p>
 
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
