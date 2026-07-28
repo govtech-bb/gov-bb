@@ -157,7 +157,6 @@ export function BodyEditor({ value, onChange, linkType }: BodyEditorProps) {
     el.innerHTML = mdToHtml(value);
     decorateChips();
     lastEmitted.current = value;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
   // Repaint on external value changes (page load, reset) — but never for our
@@ -334,8 +333,10 @@ export function BodyEditor({ value, onChange, linkType }: BodyEditorProps) {
             {tool("Bullet list", <LeftToRightListBulletIcon size={15} />, () =>
               exec("insertUnorderedList"),
             )}
-            {tool("Numbered list", <LeftToRightListNumberIcon size={15} />, () =>
-              exec("insertOrderedList"),
+            {tool(
+              "Numbered list",
+              <LeftToRightListNumberIcon size={15} />,
+              () => exec("insertOrderedList"),
             )}
             {tool("Quote", <QuoteUpIcon size={15} />, () =>
               exec("formatBlock", "blockquote"),
@@ -407,8 +408,8 @@ export function BodyEditor({ value, onChange, linkType }: BodyEditorProps) {
           />
           {hasButton && !hasMarker && (
             <small className={s.help}>
-              The Start button will be added at the end of the page — use
-              “Place Start button” to position it yourself.
+              The Start button will be added at the end of the page — use “Place
+              Start button” to position it yourself.
             </small>
           )}
         </>

@@ -1,5 +1,4 @@
 import type { Mock } from "vitest";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFn = (...args: any[]) => any;
 
 const { mockApiResponse, mockApiExtraModels, mockGetSchemaPath } = vi.hoisted(
@@ -35,7 +34,6 @@ describe("ApiWrappedResponse", () => {
   it("uses a $ref schema for a single item when isArray is false (default)", () => {
     ApiWrappedResponse({ type: DummyModel });
     const calls = (mockApiResponse as Mock).mock.calls;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const callArg: any = calls[0]?.[0];
     expect(callArg.schema.properties.data).toEqual({
       $ref: "#/ref/DummyModel",
@@ -45,7 +43,6 @@ describe("ApiWrappedResponse", () => {
   it("uses an array schema when isArray is true", () => {
     ApiWrappedResponse({ type: DummyModel, isArray: true });
     const calls = (mockApiResponse as Mock).mock.calls;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const callArg: any = calls[0]?.[0];
     expect(callArg.schema.properties.data).toEqual({
       type: "array",
@@ -56,7 +53,6 @@ describe("ApiWrappedResponse", () => {
   it("uses the provided status code", () => {
     ApiWrappedResponse({ type: DummyModel, status: 201 });
     const calls = (mockApiResponse as Mock).mock.calls;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const callArg: any = calls[0]?.[0];
     expect(callArg.status).toBe(201);
   });
@@ -64,7 +60,6 @@ describe("ApiWrappedResponse", () => {
   it("uses the provided description", () => {
     ApiWrappedResponse({ type: DummyModel, description: "Returns a model" });
     const calls = (mockApiResponse as Mock).mock.calls;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const callArg: any = calls[0]?.[0];
     expect(callArg.description).toBe("Returns a model");
   });

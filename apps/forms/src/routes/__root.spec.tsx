@@ -21,8 +21,8 @@ vi.mock("@tanstack/react-router-devtools", () => ({
   TanStackRouterDevtools: () => null,
 }));
 
-vi.mock("@forms/components", () => ({
-  NotFound: () => <div data-testid="not-found" />,
+vi.mock("../components/not-found", () => ({
+  default: () => <div data-testid="not-found" />,
 }));
 
 // Render banner/header to testids (not null) so a regression that drops

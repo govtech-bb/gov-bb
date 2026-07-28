@@ -47,7 +47,12 @@ function makeRes() {
   return res;
 }
 
-const mockReq = { method: "GET", url: "/test", path: "/test" };
+const mockReq = {
+  method: "GET",
+  url: "/test",
+  path: "/test",
+  route: { path: "/test" },
+};
 
 describe("GlobalExceptionFilter", () => {
   let filter: GlobalExceptionFilter;
@@ -108,7 +113,7 @@ describe("GlobalExceptionFilter", () => {
   });
 
   describe("metrics side-effects", () => {
-    it("400 HttpException → calls recordValidationFailure with req.path", () => {
+    it("400 HttpException → calls recordValidationFailure with the route template", () => {
       filter.catch(
         new HttpException("Bad input", 400),
         makeHost(makeRes(), mockReq),
@@ -139,6 +144,45 @@ describe("GlobalExceptionFilter", () => {
       );
 
       expect(mockMetricsService.recordValidationFailure).not.toHaveBeenCalled();
+    });
+
+    it("unmatched route (scanner 404) → records http.route as 'unmatched', never the raw path", () => {
+      const scannerReq = {
+        method: "GET",
+        url: "/config/secrets/db.cfg",
+        path: "/config/secrets/db.cfg",
+      };
+
+      filter.catch(
+        new HttpException("Not found", 404),
+        makeHost(makeRes(), scannerReq),
+      );
+
+      expect(mockMetricsService.recordHttpError).toHaveBeenCalledWith(
+        404,
+        "GET",
+        "unmatched",
+      );
+    });
+
+    it("matched route → records http.route as the route template, not the concrete URL", () => {
+      const matchedReq = {
+        method: "POST",
+        url: "/forms/abc-123",
+        path: "/forms/abc-123",
+        route: { path: "/forms/:id" },
+      };
+
+      filter.catch(
+        new HttpException("Bad input", 400),
+        makeHost(makeRes(), matchedReq),
+      );
+
+      expect(mockMetricsService.recordHttpError).toHaveBeenCalledWith(
+        400,
+        "POST",
+        "/forms/:id",
+      );
     });
   });
 

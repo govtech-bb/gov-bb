@@ -32,6 +32,12 @@ export interface PublicFormSummary {
    * the default no-token response is unchanged. Absent is treated as `public`.
    */
   visibility?: RecipeVisibility;
+  /**
+   * The form's application deadline (#1936), ISO-8601 with offset. Present when
+   * the recipe sets `meta.closingDateTime`; used by the API's `/closed`
+   * endpoint to decide which public forms have passed their deadline.
+   */
+  closingDateTime?: string;
 }
 
 /**

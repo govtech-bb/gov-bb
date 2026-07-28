@@ -8,7 +8,7 @@ import {
   type Block,
 } from "../ai/textract.js";
 import { isAvailable } from "../ai/client.js";
-import { getSystemPrompt } from "../ai/system-prompt.js";
+import { buildSystemPrompt } from "../ai/build-system-prompt.js";
 import {
   generateRecipeResponse,
   type RecipeResponse,
@@ -108,7 +108,7 @@ async function runBedrock(
 ): Promise<void> {
   try {
     const documentText = blocksToText(blocks);
-    const systemPrompt = getSystemPrompt();
+    const systemPrompt = await buildSystemPrompt();
     const userText = context
       ? "Convert this uploaded form into a complete, valid recipe.\n\n" +
         `Additional instructions from the user:\n${context}`

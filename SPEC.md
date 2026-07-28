@@ -84,9 +84,6 @@ Current apps (see each app's own README/SPEC for detail):
 | `form_builder` | Form recipe authoring tool | Vite + TanStack Start (Nitro) | — |
 | `form_builder_api` | Backend for the form builder (recipe CRUD, validation, AI conversion) | Express 5 | 3003 |
 
-> `apps/cms` and `apps/web` are empty stubs (no `package.json` or source) and
-> are candidates for removal.
-
 Shared app conventions:
 - TypeScript everywhere, with each app pinning its own `tsconfig.json` that extends `tsconfig.base.json`.
 - React-based frontends use **Vite**, the **TanStack** ecosystem (Router/Query/Start), and **Tailwind CSS**.

@@ -9,7 +9,8 @@
 import { Heading, Link, Text } from '@govtech-bb/react'
 import type { ReactNode } from 'react'
 import type { Shelter } from '../-data/emergency-shelters'
-import { formatDistance, type ShelterDistance } from '../-lib/shelter-distance'
+import { formatDistance } from '../-lib/shelter-distance'
+import type { ShelterDistance } from '../-lib/shelter-distance'
 import { MapPinIcon } from './icons'
 
 function mapsUrl(shelter: Shelter): string {

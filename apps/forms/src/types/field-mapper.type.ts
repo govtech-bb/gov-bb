@@ -6,6 +6,7 @@ import {
   fieldValueSchema,
   HtmlTypes,
   Option,
+  OptionGroup,
   PrimitiveUI,
   SubmissionValues,
   ValidationRule,
@@ -26,6 +27,7 @@ export interface ClientPrimitive {
   hidden: boolean;
   conditionallyHidden: boolean;
   options?: Option[];
+  groups?: OptionGroup[];
   multiple?: boolean;
   mask?: string;
   validations?: ValidationRule;
@@ -52,6 +54,7 @@ export interface ClientServiceContract {
   title: string;
   description?: string;
   contactDetails?: ContactDetails;
+  closingDateTime?: DateTimeFormat;
   steps: ClientFormStep[];
   createdAt: DateTimeFormat;
   updatedAt: DateTimeFormat;

@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { Footer, OfficialBanner } from "@govtech-bb/react";
-import { NotFound } from "@forms/components";
+import NotFound from "../components/not-found";
 import type { QueryClient } from "@tanstack/react-query";
 import { LANDING_URL } from "../config/landing";
 import { SiteHeader } from "../components/site-header";
@@ -60,7 +60,7 @@ const RootLayout = () => (
       logoAlt="Barbados Coat of Arms"
       copyrightText={`© ${new Date().getFullYear()} Government of Barbados`}
     />
-    <TanStackRouterDevtools />
+    {import.meta.env.DEV && <TanStackRouterDevtools />}
   </div>
 );
 

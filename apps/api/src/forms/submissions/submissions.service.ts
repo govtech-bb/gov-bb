@@ -6,6 +6,7 @@ import {
   FormSubmissionEntity,
 } from "@/database/entities/form-submission.entity";
 import { AppError } from "@/common/errors";
+import { isFormClosed } from "@govtech-bb/form-types";
 import { ExpressionsService } from "@/expressions/expressions.service";
 import { FormSubmissionRepository } from "./form-submission.repository";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
@@ -52,6 +53,16 @@ export class SubmissionsService {
 
     const { draft, contract, auditTrail, normalizedValues } =
       await this.pipeline.run(dto);
+
+    // #1936: reject a submission whose form has closed. The UI gates this too,
+    // but a direct POST would otherwise slip through. Smoke submissions bypass
+    // so the live-smoke gate is never blocked by a form's deadline.
+    if (
+      !dto.isSmokeSubmission &&
+      isFormClosed(contract.closingDateTime, new Date())
+    ) {
+      throw AppError.badRequest("Applications for this form have closed");
+    }
     // #1196: versionless submissions persist form_version = NULL (the recipe
     // resolves to the canonical flat file). A draft-sourced submission carries
     // its draft's pin (may itself be null) for the legacy fallback window.

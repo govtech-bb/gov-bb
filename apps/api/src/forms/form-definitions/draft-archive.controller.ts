@@ -1,21 +1,27 @@
-import { Controller, HttpCode, HttpStatus, Param, Post } from "@nestjs/common";
+import {
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { AdminTokenGuard } from "@/common/guards/admin-token.guard";
 import { DraftArchiveService } from "./draft-archive.service";
 
 /**
  * Admin endpoint for archiving builder drafts (`form_definitions` rows)
  * after the corresponding recipe is merged into `dev` via the publish flow.
  *
- * NOTE: This endpoint is auth-gated per issue #11. Until that lands, it is
- * reachable only from inside the VPC (network ACL). The
- * archive-merged-drafts.yml workflow runs from a GitHub-hosted runner; the
- * workflow either runs against a publicly-reachable URL with a bearer token
- * from secrets, or, when the network ACL is tightened, switches to a
- * self-hosted runner inside the VPC. See workflow comments for the current
- * configuration.
+ * SECURITY: Authenticated by `AdminTokenGuard` — the archive-merged-drafts.yml
+ * workflow already sends `Authorization: Bearer <ARCHIVE_DRAFTS_TOKEN>`, which
+ * this guard now validates (dev-bypass policy per ADR 0061). The network ACL
+ * remains as defence in depth.
  */
 @ApiTags("Admin — Drafts")
 @ApiBearerAuth()
+@UseGuards(new AdminTokenGuard())
 @Controller("admin/drafts")
 export class DraftArchiveController {
   constructor(private readonly draftArchive: DraftArchiveService) {}

@@ -3,8 +3,8 @@ import {
   parseFormIds,
   parseMaintenanceIds,
   resolveAvailableForms,
-  type CacheRef,
 } from './available-forms'
+import type { CacheRef } from './available-forms'
 
 describe('parseFormIds', () => {
   it('extracts form IDs from a success payload', () => {

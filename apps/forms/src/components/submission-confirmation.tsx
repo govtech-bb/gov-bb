@@ -33,6 +33,7 @@ export default function SubmissionConfirmation({
   markdownContent,
   contactDetails,
   onTryAgain,
+  onPaymentInitiated,
   submissionState,
   feedbackUrl,
 }: SubmissionConfirmationProps) {
@@ -183,11 +184,11 @@ export default function SubmissionConfirmation({
             <div className="form-width form-page__panel-body">
               <p className="form-page__panel-service-title">{serviceTitle}</p>
               <h1 className="govbb-text-h1">
-                We're processing your submission
+                We&apos;re processing your submission
               </h1>
               <p className="form-page__panel-subheading">
-                We've received your submission and it's being processed. We'll
-                email you when it's complete.
+                We&apos;ve received your submission and it&apos;s being
+                processed. We&apos;ll email you when it&apos;s complete.
               </p>
             </div>
           </div>
@@ -287,8 +288,8 @@ export default function SubmissionConfirmation({
                 Your payment was successful
               </h2>
               <p className="govbb-payment__description">
-                Your payment has been received. We've sent a confirmation email
-                to the address you provided.
+                Your payment has been received. We&apos;ve sent a confirmation
+                email to the address you provided.
               </p>
             </div>
             <div className="govbb-payment__items">
@@ -312,7 +313,11 @@ export default function SubmissionConfirmation({
               {paymentItem("Quantity:", quantity)}
               {paymentItem("Amount:", formattedAmount)}
             </div>
-            <a className="govbb-btn" href={paymentUrl}>
+            <a
+              className="govbb-btn"
+              href={paymentUrl}
+              onClick={() => onPaymentInitiated?.()}
+            >
               Continue to payment
             </a>
             <p className="govbb-payment__note">

@@ -6,11 +6,8 @@
  * ordering. Pure functions; no DOM or browser APIs.
  */
 
-import {
-  type LatLon,
-  PARISH_CENTROIDS,
-  type Shelter,
-} from '../-data/emergency-shelters'
+import { PARISH_CENTROIDS } from '../-data/emergency-shelters'
+import type { LatLon, Shelter } from '../-data/emergency-shelters'
 
 const EARTH_RADIUS_KM = 6371
 

@@ -8,9 +8,15 @@ import { DraftArchiveService } from "./draft-archive.service";
 import { FormDisabledOverridesModule } from "../form-disabled-overrides/form-disabled-overrides.module";
 import { FormConfigModule } from "../form-config/form-config.module";
 import { RegistryModule } from "@/registry/registry.module";
+import { ServiceStatusModule } from "@/services/service-status.module";
 
 @Module({
-  imports: [RegistryModule, FormDisabledOverridesModule, FormConfigModule],
+  imports: [
+    RegistryModule,
+    FormDisabledOverridesModule,
+    FormConfigModule,
+    ServiceStatusModule,
+  ],
   controllers: [FormDefinitionsController, DraftArchiveController],
   providers: [
     FormDefinitionsService,

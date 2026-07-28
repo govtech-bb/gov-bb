@@ -1,6 +1,7 @@
 import { createFileRoute, notFound, Outlet } from '@tanstack/react-router'
 import { isUrlVisible } from '../../../content/registry'
 import { PageShell } from '../../../components/PageShell'
+import { deriveVisibilityOverlay } from '../../../lib/service-status'
 import { META } from './-meta'
 
 // Layout for the Find an emergency shelter pages: provides the page chrome
@@ -11,7 +12,8 @@ export const Route = createFileRoute(
   '/health-and-emergency-services/find-an-emergency-shelter',
 )({
   beforeLoad: ({ context }) => {
-    if (!isUrlVisible(META.url, context.level)) throw notFound()
+    const overlay = deriveVisibilityOverlay(context.serviceStatuses)
+    if (!isUrlVisible(META.url, context.level, overlay)) throw notFound()
   },
   component: () => (
     <PageShell>

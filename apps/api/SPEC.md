@@ -95,7 +95,7 @@ The largest module. Houses:
 - **Controller** — `POST /submissions` with payload-size pipe + tiered rate limit.
 - **Pipeline service** — expand → evaluate conditions → validate → fold errors → normalize.
 - **Service** — idempotency check, transactional insert, payment-gating split, event emission.
-- **Processor framework** — pluggable `ISubmissionProcessor` interface with four built-in implementations (see §4).
+- **Processor framework** — pluggable `ISubmissionProcessor` interface with five built-in implementations (see §4).
 - **Async listener** — `submission.created` event handler that resolves processor configs (Expressions) and dispatches non-gating processors either in-process or onto SQS.
 - **SQS producer / consumer** — durable async processing path with retry and DLQ semantics. Toggled by `SQS_ENABLED`.
 
@@ -133,6 +133,7 @@ Processors are declared per-form (inside the contract's `processors` array) and 
 | `email` | Sends a confirmation email via **AWS SES v2** to a recipient field resolved from the submission values. Body is rendered from a form-specific Handlebars template, falling back to a generic table layout. | No |
 | `opencrvs` | `POST`s the submission payload to a configured OpenCRVS endpoint with an `X-Idempotency-Key` header (the submission id) so OpenCRVS dedupes retries. | No |
 | `spreadsheet` | Appends the submission to an `.xlsx` workbook (file path configured per form). Idempotent — skips the row if the submission id is already present. | No |
+| `webhook` | Generic outbound `POST` of the submission to an HTTP endpoint. The URL comes from either an env var (`config.endpoint.env` + optional `path` — operator deploy config) or a literal `config.url` in the recipe; a recipe-supplied literal must clear an SSRF guard (`https` only, no private/loopback/link-local hosts). Two payload modes: the default **envelope** (`{event, version, timestamp, data}`) or a flattened **mapped** case payload when `config.mapping` is set. Auth is `hmac` (signs the body), `apiKey` (header from env var), or `none` (plus a legacy inline-secret path). Sends `X-Idempotency-Key` (submission id + entry index) so each entry retries independently; skips (logs a warning) when a required env var is unset. | No |
 | `payment` | Creates an EzPay payment, persists a `payments` row with status `initiated`, and returns the hosted EzPay URL to the client in the response's `meta.deferred` block. Downstream non-gating processors run **only after** the EzPay webhook confirms `Success`. | **Yes** |
 
 **Dispatch flow:**

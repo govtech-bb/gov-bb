@@ -27,28 +27,30 @@ You can register at any time. If you register in June or July, the funds are mor
 
 ## How to register
 
-To register, you can complete the online form.
+There are 2 ways to register for the Primary School Textbook Grant. You can:
 
-<a data-start-link>Register online</a>
+1. #### Register online
 
-The form asks for:
+   The form asks for:
 
-- bank account information so the funds can be paid.
-- the student’s name, ID number and class.
-- the name of the child’s school and principal.
-- the parent or guardian’s contact details.
+   - bank account information so the funds can be paid.
+   - the student’s name, ID number and class.
+   - the name of the child’s school and principal.
+   - the parent or guardian’s contact details.
+
+   <a data-start-link>Register online</a>
+
+2. #### Get in touch with the Ministry
+
+   If you cannot complete the form online, you can get support by:
+
+   - making an appointment at your child’s school.
+   - visiting the Ministry of Educational Transformation at:
+
+        Elsie Payne Complex  
+        Constitution Road  
+        St.Michael
 
 ## After you’ve registered
 
 The school will check that your child is eligible for the grant and that a grant has not already been claimed during the academic year. If the principal approves the application, the $100 Barbados dollar grant will be paid to the account you provided. 
-
-## If you cannot complete the form online
-
-You can get support by:
-
-- making an appointment at your child’s school.
-- visiting the Ministry of Educational Transformation at:
-
-   Elsie Payne Complex  
-   Constitution Road  
-   St.Michael

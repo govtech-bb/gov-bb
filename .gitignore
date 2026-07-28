@@ -145,8 +145,6 @@ vite.config.ts.timestamp-*
 .nx/
 tmp/
 
-# Next.js generated
-apps/web/next-env.d.ts
 *.tsbuildinfo
 
 # Amplify
@@ -161,3 +159,6 @@ cicd-policy*.json
 # directory is intentionally left un-ignored so plans are reachable via
 # @-mention (the file picker respects .gitignore). A PreToolUse hook
 # (.claude/hooks/block-commit-plans.sh) blocks staging/committing them.
+
+# Playwright live-run output (smoke / a11y)
+apps/forms/test-results/

@@ -1,7 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
 import type { SubmissionCreatedEvent } from "../forms/submissions/submissions.types";
-import { generateApplicationCodeForService } from "./application-code";
 import { buildWebhookFormData, extractApplicant } from "./applicant-extractor";
 import { sanitizeForLog } from "./log-sanitize";
 import { resolveServiceCodeFromFormId } from "./youth-opportunity-codes";
@@ -41,10 +40,12 @@ export class YouthOpportunityWebhookListener {
     }
 
     const applicant = extractApplicant(event.values);
-    const code = generateApplicationCodeForService(serviceCode);
 
     await this.webhook.dispatch({
-      code,
+      // Reuse the submission's own reference — the one the citizen sees on the
+      // confirmation page / email — as the CMS case code, so a single reference
+      // ties the confirmation, both emails and the CMS case together (#841).
+      code: event.referenceCode,
       programmeCode: serviceCode,
       applicantName: applicant.name,
       applicantEmail: applicant.email,

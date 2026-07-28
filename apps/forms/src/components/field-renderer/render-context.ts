@@ -1,4 +1,4 @@
-import { AnyFieldApi } from "@tanstack/react-form";
+import { AnyFieldApi, type AnyFormApi } from "@tanstack/react-form";
 import { ClientPrimitive, FieldValidationProperties } from "@forms/types";
 import { FieldArrayBehaviour } from "@govtech-bb/form-types";
 import { isDateValidationError } from "@govtech-bb/form-validation";
@@ -21,7 +21,7 @@ export interface InsetFieldEntry {
  */
 export function buildFieldRenderContext(args: {
   field: ClientPrimitive;
-  form: any;
+  form: AnyFormApi;
   f: AnyFieldApi;
   fieldArray?: FieldArrayBehaviour;
   insetFieldsByOption?: Map<string, InsetFieldEntry[]>;

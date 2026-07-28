@@ -12,7 +12,6 @@ import type { Mock } from "vitest";
  * - Displays the current date formatted DD/MM/YYYY
  */
 
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import { useStore } from "@tanstack/react-form";
 import ApplicantNameDisplay from "./applicant-name-display";

@@ -1,4 +1,3 @@
-import React from "react";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { fetchFormDefinitions } from "@forms/form-api";
 import type { PublicFormSummary } from "@forms/types";

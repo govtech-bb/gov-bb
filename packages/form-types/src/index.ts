@@ -2,14 +2,17 @@ export {
   primitiveMetadataSchema,
   htmlTypesSchema,
   optionSchema,
+  optionGroupSchema,
   basePrimitiveSchema,
   textPrimitiveSchema,
   textAreaPrimitiveSchema,
   datePrimitiveSchema,
   numberPrimitiveSchema,
+  timePrimitiveSchema,
   telPrimitiveSchema,
   emailPrimitiveSchema,
   checkboxPrimitiveSchema,
+  checkboxAccordionPrimitiveSchema,
   selectPrimitiveSchema,
   radioPrimitiveSchema,
   filePrimitiveSchema,
@@ -24,6 +27,7 @@ export type {
   BasePrimitive,
   FieldOverrides,
   Option,
+  OptionGroup,
   SelectPrimitive,
   RadioPrimitive,
   FilePrimitive,
@@ -31,9 +35,11 @@ export type {
   TextAreaPrimitive,
   DatePrimitive,
   NumberPrimitive,
+  TimePrimitive,
   TelPrimitive,
   EmailPrimitive,
   CheckboxPrimitive,
+  CheckboxAccordionPrimitive,
   ShowHidePrimitive,
   Primitive,
   HtmlTypes,
@@ -120,6 +126,8 @@ export {
 } from "./processor.type";
 
 export { formConfigBlobSchema, parseFormConfigBlob } from "./form-config.type";
+
+export { isFormClosed, formatClosingDateTime } from "./closing";
 
 export type { FormConfigBlob } from "./form-config.type";
 

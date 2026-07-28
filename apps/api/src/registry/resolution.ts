@@ -115,5 +115,8 @@ export async function hydrateForm(
     createdAt: recipe.createdAt,
     updatedAt: recipe.updatedAt,
     version: recipe.version,
+    // Lift the optional application deadline (#1936) onto the served contract.
+    // Like every other field here it is dropped unless explicitly copied.
+    closingDateTime: recipe.meta?.closingDateTime,
   };
 }

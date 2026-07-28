@@ -119,13 +119,18 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       span.setAttributes({ "http.status_code": statusCode });
     }
 
+    // http.route must stay low-cardinality: use the matched route template and
+    // collapse unmatched routes (e.g. scanner 404s) into a single "unmatched"
+    // bucket. Using req.path here mints a new metric per unique URL.
+    const route = req.route?.path ?? "unmatched";
+
     if (
       statusCode === HttpStatus.BAD_REQUEST &&
       exception instanceof HttpException
     ) {
-      this.metricsService.recordValidationFailure(req.path);
+      this.metricsService.recordValidationFailure(route);
     }
-    this.metricsService.recordHttpError(statusCode, req.method, req.path);
+    this.metricsService.recordHttpError(statusCode, req.method, route);
 
     res
       .status(statusCode)

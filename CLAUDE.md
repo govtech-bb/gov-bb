@@ -2,6 +2,27 @@
 
 Guidance for working in this repo. Use **pnpm** for everything — never `npm`.
 
+## Trunk-based: open PRs against `main`
+
+`main` is the trunk and the default base for pull requests. Branch off `main`,
+keep the branch short-lived, and open the PR **against `main`** — never against
+`sandbox`/`staging`/`prod`. Merges to `main` are CI-gated (the "Main CI
+Required" ruleset: PR + status checks, no review required for now).
+
+Merging to `main` drives a **sequential deploy fan-out**:
+
+- **sandbox** — deploys automatically on every merge to `main`.
+- **staging** — deploys automatically, but only once the sandbox deploy is
+  fully green.
+- **prod** — **manual, windowed**: run the "Deploy Production" workflow from the
+  `staging` branch (Actions → Deploy Production → Run workflow → Branch:
+  `staging`). Never automatic.
+
+`sandbox`/`staging`/`prod` are **deploy pointers** the pipeline fast-forwards —
+they are not workspaces. Don't develop on them or open PRs against them; branch
+names must not contain a `.` (Amplify preview cert constraint). Full model:
+[docs/trunk-based-development.md](docs/trunk-based-development.md).
+
 ## Behavioral Guidelines
 
 These are the guidelines that you should adhere to as you work in this codebase.

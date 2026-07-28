@@ -54,6 +54,17 @@ describe("extractApplicant", () => {
       phone: null,
     });
   });
+
+  it("yields empty applicant when the applicant step is array-shaped", () => {
+    // The applicant step is never repeatable; an array shape is ignored, so
+    // every field reads as missing.
+    const arrayShaped: SubmissionValues = { "applicant-details": [] };
+    expect(extractApplicant(arrayShaped)).toEqual({
+      name: "",
+      email: null,
+      phone: null,
+    });
+  });
 });
 
 describe("buildWebhookFormData", () => {

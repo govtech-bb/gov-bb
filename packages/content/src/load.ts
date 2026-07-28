@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import matter from "gray-matter";
+import { findWorkspaceRoot } from "./paths";
 import { serviceFrontmatterSchema } from "./schemas";
 import type { ContentArtifact, ServiceEntity } from "./types";
 
@@ -10,22 +11,6 @@ export interface LoadContentOptions {
    * or `apps/landing/src/content` resolved from CWD.
    */
   contentDir?: string;
-}
-
-async function findWorkspaceRoot(start: string): Promise<string | null> {
-  let dir = start;
-  for (let i = 0; i < 8; i++) {
-    try {
-      await stat(join(dir, "pnpm-workspace.yaml"));
-      return dir;
-    } catch {
-      // ignore
-    }
-    const parent = join(dir, "..");
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return null;
 }
 
 async function resolveContentDir(opts: LoadContentOptions): Promise<string> {

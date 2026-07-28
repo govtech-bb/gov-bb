@@ -1,0 +1,64 @@
+import { Link, useRouterState } from '@tanstack/react-router'
+import { RANGE_OPTIONS } from '../lib/umami-server'
+import { GovbbLogo } from './GovbbLogo'
+
+// Full-width blue site bar shared by the overview and per-form pages: the
+// Government of Barbados wordmark + "Alpha.gov.bb analytics" on the left, and
+// the date-range filter on the right (with an "Updating…" spinner while the
+// loader re-runs). Range changes are handled by the caller so each page
+// navigates to its own route with full type safety.
+export function AnalyticsHeader({
+  range,
+  onRangeChange,
+}: {
+  // The date-range filter is shown only when both are provided (data pages);
+  // the "coming soon" pages render the bar without it.
+  range?: string
+  onRangeChange?: (range: string) => void
+}) {
+  const isLoading = useRouterState({ select: (s) => s.isLoading })
+  const showFilter = range !== undefined && onRangeChange !== undefined
+  return (
+    <div className="bg-blue-00 text-white-00">
+      <div className="container flex h-16 items-center gap-m">
+        <Link
+          to="/"
+          aria-label="Alpha.gov.bb analytics — home"
+          className="flex items-center gap-s focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal-100"
+        >
+          <GovbbLogo className="h-7 w-auto text-white-00" />
+          <span aria-hidden="true" className="h-4 w-px bg-blue-40/60" />
+          <span className="font-normal text-blue-40 text-caption">
+            Alpha.gov.bb analytics
+          </span>
+        </Link>
+
+        {showFilter ? (
+          <div className="ml-auto flex items-center gap-s text-caption">
+            <label className="flex items-center gap-xs">
+              <span className="sr-only">Date range</span>
+              <select
+                aria-label="Date range"
+                value={range}
+                disabled={isLoading}
+                onChange={(e) => onRangeChange(e.target.value)}
+                className="rounded-sm border border-blue-40/40 bg-blue-100 px-s py-xs font-bold text-white-00 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100 disabled:opacity-60"
+              >
+                {RANGE_OPTIONS.map((o) => (
+                  <option
+                    key={o.key}
+                    value={o.key}
+                    style={{ color: '#0b0c0c', backgroundColor: '#fff' }}
+                  >
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+

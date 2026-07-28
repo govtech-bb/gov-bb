@@ -237,6 +237,7 @@ function getIndex() {
 export function search(
   query: string,
   viewer: ViewLevel = 'public',
+  overlay?: ReadonlyMap<string, ViewLevel>,
 ): Array<SearchHit> {
   const trimmed = query.trim()
   if (!trimmed) return []
@@ -254,5 +255,7 @@ export function search(
         kind: (r.kind as SearchKind) ?? stored?.kind ?? 'service',
       }
     })
-    .filter((hit) => isUrlVisible(hit.id.slice('service:'.length), viewer))
+    .filter((hit) =>
+      isUrlVisible(hit.id.slice('service:'.length), viewer, overlay),
+    )
 }

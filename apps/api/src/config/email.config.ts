@@ -24,6 +24,15 @@ export default registerAs("email", () => ({
   // submissions away from real MDA inboxes. Defaults to a shared test inbox.
   defaultRecipient: process.env.SES_DEFAULT_RECIPIENT ?? "testing@govtech.bb",
 
+  // When true, a "config.*" recipient that resolves no MDA email is a hard
+  // (retryable) failure instead of silently falling back to `defaultRecipient`.
+  // Set true in PRODUCTION only (via IaC) so a real citizen submission can
+  // never be quietly routed to a test inbox — the summer-camp incident where a
+  // form went live before its MDA recipient was configured. Non-prod
+  // (sandbox/staging/local, which have no form_config rows) keeps defaulting so
+  // those environments stay usable. See EmailProcessor.resolveConfigRecipient.
+  requireResolvedRecipient: process.env.MDA_REQUIRE_RECIPIENT === "true",
+
   // Recipient for the public site feedback form (apps/landing /feedback).
   // Set explicitly per environment rather than routed through the form_config
   // directory, so it can never silently fall back to a test inbox the way a

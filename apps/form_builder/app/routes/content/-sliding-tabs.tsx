@@ -27,9 +27,7 @@ export function SlidingTabs<K extends string>({
   const moveTo = (animate: boolean) => {
     const bar = barRef.current;
     const pill = pillRef.current;
-    const tab = bar?.querySelector<HTMLButtonElement>(
-      '[aria-selected="true"]',
-    );
+    const tab = bar?.querySelector<HTMLButtonElement>('[aria-selected="true"]');
     if (!bar || !pill || !tab) return;
     if (!animate) {
       const prev = pill.style.transition;
@@ -47,14 +45,12 @@ export function SlidingTabs<K extends string>({
   useLayoutEffect(() => {
     moveTo(painted.current);
     painted.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   useLayoutEffect(() => {
     const onResize = () => moveTo(false);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

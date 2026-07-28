@@ -337,6 +337,64 @@ describe("SubmissionsService", () => {
       );
     });
 
+    it("rejects a submission after the form's closing datetime (#1936)", async () => {
+      const { pipeline, service } = makeMocks();
+      pipeline.run = vi.fn().mockResolvedValue({
+        draft: null,
+        contract: {
+          processors: [],
+          closingDateTime: "2020-01-01T00:00:00-04:00",
+        },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {},
+      });
+
+      await expect(
+        service.submit({ ...BASE_DTO, idempotencyKey: "closed-1" }),
+      ).rejects.toThrow("Applications for this form have closed");
+    });
+
+    it("allows a submission before the closing datetime (#1936)", async () => {
+      const { pipeline, service } = makeMocks();
+      pipeline.run = vi.fn().mockResolvedValue({
+        draft: null,
+        contract: {
+          processors: [],
+          closingDateTime: "2999-01-01T00:00:00-04:00",
+        },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {},
+      });
+
+      const result = await service.submit({
+        ...BASE_DTO,
+        idempotencyKey: "open-1",
+      });
+
+      expect(result.outcome).toBe("created");
+    });
+
+    it("allows a smoke submission even after the closing datetime (#1936)", async () => {
+      const { pipeline, service } = makeMocks();
+      pipeline.run = vi.fn().mockResolvedValue({
+        draft: null,
+        contract: {
+          processors: [],
+          closingDateTime: "2020-01-01T00:00:00-04:00",
+        },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {},
+      });
+
+      const result = await service.submit({
+        ...BASE_DTO,
+        idempotencyKey: "smoke-1",
+        isSmokeSubmission: true,
+      });
+
+      expect(result.outcome).toBe("created");
+    });
+
     it("uses empty processors array when contract.processors is undefined", async () => {
       // Branch: `contract.processors ?? []`
       const { processorFactory, pipeline, service } = makeMocks();

@@ -7,7 +7,7 @@ import { StatusBanner, Text } from '@govtech-bb/react'
  */
 export function MaintenanceNotice() {
   return (
-    <StatusBanner variant="service-issue">
+    <StatusBanner variant="service-issue" className="mb-s">
       <Text as="p">
         This form is currently being upgraded to serve you better. Please check
         back soon.

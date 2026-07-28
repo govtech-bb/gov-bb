@@ -35,7 +35,6 @@ export function MarkdownLink({
   }
 
   if (isAnchorHeading) {
-    // eslint-disable-next-line jsx-a11y/anchor-has-content
     return <a href={safeHref} {...rest} />
   }
 

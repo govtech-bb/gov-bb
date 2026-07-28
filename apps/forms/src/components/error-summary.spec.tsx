@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import { axe } from "jest-axe";
 import ErrorSummary from "./error-summary";

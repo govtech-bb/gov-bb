@@ -13,6 +13,8 @@ export interface FormMeta {
   formTitle: string;
   formDescription?: string;
   contactDetails?: ContactDetails;
+  /** Application deadline (#1936); when past, the closed page is shown. */
+  closingDateTime?: string;
   steps: ClientFormStep[];
   defaultValues: Record<string, unknown>;
   validationProperties: Record<string, FieldValidationProperties>;

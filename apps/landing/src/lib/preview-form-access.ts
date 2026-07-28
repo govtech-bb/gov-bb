@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { useRuntimeConfig } from 'nitro/runtime-config'
+import { formsApiBase } from './forms-api-url'
 
 /**
  * Per-form preview accessibility check (#1646 Phase 3).
@@ -15,7 +16,6 @@ import { useRuntimeConfig } from 'nitro/runtime-config'
  * reviewer's per-form check must never pollute what the public sees.
  */
 
-const DEFAULT_API_URL = 'https://forms.api.sandbox.alpha.gov.bb'
 const FETCH_TIMEOUT_MS = 15_000
 
 /**
@@ -70,14 +70,10 @@ export const checkFormAccessible = createServerFn()
     // Same dual-source as send-feedback.ts / resolveViewLevel: the build-baked
     // runtimeConfig is authoritative in prod (the SSR Lambda has no Console env
     // vars), with process.env as the local-dev source.
-    const config = useRuntimeConfig() as {
-      previewSecret?: string
-      formsApiUrl?: string
-    }
+    const config = useRuntimeConfig() as { previewSecret?: string }
     const previewSecret =
       config.previewSecret || process.env.PREVIEW_SECRET || undefined
-    const apiBase =
-      config.formsApiUrl || process.env.VITE_FORMS_API_URL || DEFAULT_API_URL
+    const apiBase = formsApiBase()
     return resolveFormAccessible({
       formId,
       previewSecret,

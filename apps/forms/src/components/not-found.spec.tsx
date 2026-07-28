@@ -9,7 +9,6 @@
  * - Passes jest-axe accessibility audit
  */
 
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { LANDING_URL } from "../config/landing";

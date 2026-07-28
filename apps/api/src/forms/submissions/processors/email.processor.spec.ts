@@ -2,7 +2,6 @@ import type { Mock, Mocked } from "vitest";
 import { Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
-  SESv2Client,
   SendEmailCommand,
   type SendEmailCommandInput,
 } from "@aws-sdk/client-sesv2";
@@ -18,6 +17,7 @@ import type { FormConfigService } from "@/forms/form-config/form-config.service"
 import type { ContactDetails, ServiceContract } from "@govtech-bb/form-types";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import { NonRetryableError } from "./non-retryable-error";
+import type { NotificationLogRepository } from "../notification-log.repository";
 
 const { mockSend } = vi.hoisted(() => ({
   mockSend: vi.fn().mockResolvedValue({ MessageId: "ses-msg-001" }),
@@ -173,6 +173,14 @@ function makeFormConfigService(
   } as unknown as Mocked<FormConfigService>;
 }
 
+/** NotificationLogRepository stub. `record` is best-effort and never throws;
+ *  returned so tests can assert what outcome was logged. */
+function makeNotificationLog(): Mocked<NotificationLogRepository> {
+  return {
+    record: vi.fn().mockResolvedValue(undefined),
+  } as unknown as Mocked<NotificationLogRepository>;
+}
+
 describe("EmailProcessor", () => {
   let processor: EmailProcessor;
 
@@ -185,6 +193,7 @@ describe("EmailProcessor", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(),
+      makeNotificationLog(),
     );
   });
 
@@ -307,6 +316,7 @@ describe("EmailProcessor", () => {
         makeBodyBuilder(),
         makeFilesService(),
         makeFormConfigService(),
+        makeNotificationLog(),
       );
       await processor.process(makePayload());
 
@@ -374,6 +384,7 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
+        makeNotificationLog(),
       );
       const payload = makePayload({ recipientField: "contactDetails.email" });
 
@@ -400,6 +411,7 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
+        makeNotificationLog(),
       );
       const payload = makePayload({ recipientField: "contactDetails.email" });
 
@@ -435,6 +447,7 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
+        makeNotificationLog(),
       );
       const payload = makePayload();
       payload.processors = [
@@ -458,6 +471,7 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
+        makeNotificationLog(),
       );
       const payload = makePayload();
       payload.processors = [
@@ -485,6 +499,7 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
+        makeNotificationLog(),
       );
       const payload = makePayload();
       payload.processors = [
@@ -515,6 +530,7 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
+        makeNotificationLog(),
       );
       // contactDetails has no `fax` key.
       const payload = makePayload({ recipientField: "contactDetails.fax" });
@@ -537,6 +553,7 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
+        makeNotificationLog(),
       );
       const payload = makePayload({ recipientField: "contactDetails.address" });
 
@@ -562,6 +579,7 @@ describe("EmailProcessor — config.* recipient resolution", () => {
       makeBodyBuilder(),
       makeFilesService(),
       formConfig,
+      makeNotificationLog(),
     );
     const payload = makePayload({ recipientField: "config.mdaEmail" });
 
@@ -581,6 +599,7 @@ describe("EmailProcessor — config.* recipient resolution", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(null),
+      makeNotificationLog(),
     );
     const payload = makePayload({ recipientField: "config.mdaEmail" });
 
@@ -599,6 +618,7 @@ describe("EmailProcessor — config.* recipient resolution", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(null),
+      makeNotificationLog(),
     );
     const payload = makePayload({ recipientField: "config.mdaEmail" });
 
@@ -615,6 +635,7 @@ describe("EmailProcessor — config.* recipient resolution", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(null),
+      makeNotificationLog(),
     );
     const payload = makePayload({ recipientField: "config.mdaEmail" });
 
@@ -640,6 +661,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(),
+      makeNotificationLog(),
     );
   }
 
@@ -655,6 +677,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(),
+      makeNotificationLog(),
     );
 
     await processor.process(makePayload());
@@ -682,6 +705,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(null, "Registration Department"),
+      makeNotificationLog(),
     );
 
     await processor.process(makePayload());
@@ -704,6 +728,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       makeBodyBuilder(),
       makeFilesService(),
       formConfig,
+      makeNotificationLog(),
     );
 
     await processor.process(makePayload({ recipientField: "config.mdaEmail" }));
@@ -720,6 +745,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService("mda@dept.gov.bb"),
+      makeNotificationLog(),
     );
 
     await processor.process(makePayload({ recipientField: "config.mdaEmail" }));
@@ -739,6 +765,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       bodyBuilder,
       makeFilesService(),
       makeFormConfigService(),
+      makeNotificationLog(),
     );
 
     await processor.process(makePayload());
@@ -761,6 +788,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       bodyBuilder,
       makeFilesService(),
       makeFormConfigService(),
+      makeNotificationLog(),
     );
 
     await processor.process(makePayload());
@@ -793,6 +821,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       bodyBuilder,
       makeFilesService(),
       makeFormConfigService(),
+      makeNotificationLog(),
     );
 
     await processor.process(makePayload());
@@ -822,6 +851,7 @@ describe("EmailProcessor — reference code in plain-text and fallback HTML bodi
       bodyBuilder,
       makeFilesService(),
       makeFormConfigService(),
+      makeNotificationLog(),
     );
 
     await processor.process(makePayload());
@@ -850,6 +880,7 @@ describe("EmailProcessor — reference code in plain-text and fallback HTML bodi
       bodyBuilder,
       makeFilesService(),
       makeFormConfigService(),
+      makeNotificationLog(),
     );
 
     // referenceCode === submissionId — this is what the consumer sets for legacy events.
@@ -924,6 +955,7 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
       makeBodyBuilder(STUB_CTX, undefined, FILE_CONTRACT),
       filesService,
       makeFormConfigService(),
+      makeNotificationLog(),
     );
   });
 
@@ -961,6 +993,7 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
       ),
       filesService,
       makeFormConfigService(),
+      makeNotificationLog(),
     );
 
     await processor.process(
@@ -980,6 +1013,7 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
       makeBodyBuilder(STUB_CTX, undefined, FILE_CONTRACT),
       filesService,
       makeFormConfigService("mda-notify@gov.bb"),
+      makeNotificationLog(),
     );
 
     await processor.process(makeFilePayload("config.mdaEmail", [SMALL_FILE]));
@@ -1008,6 +1042,7 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
       makeBodyBuilder(STUB_CTX, undefined, makeContract()),
       filesService,
       makeFormConfigService(),
+      makeNotificationLog(),
     );
 
     await processor.process(makePayload({ recipientField: "mda@govtech.bb" }));
@@ -1117,5 +1152,94 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
       processor.process(makeFilePayload("mda@govtech.bb", [SMALL_FILE])),
     ).rejects.toThrow(/Failed to send email/);
     expect(mockSend).not.toHaveBeenCalled();
+  });
+});
+
+describe("EmailProcessor — notification_log recording", () => {
+  // mockSend / SendEmailCommand are shared (vi.hoisted) across the file, so
+  // reset call history between tests — otherwise the "does NOT send" assertion
+  // sees sends from the earlier cases in this block.
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function build(
+    configOverrides: Record<string, unknown> = {},
+    mdaEmail: string | null = null,
+  ) {
+    const notificationLog = makeNotificationLog();
+    const processor = new EmailProcessor(
+      makeConfig(configOverrides),
+      makeMailer(),
+      makeTemplateService(),
+      makeBodyBuilder(),
+      makeFilesService(),
+      makeFormConfigService(mdaEmail),
+      notificationLog,
+    );
+    return { processor, notificationLog };
+  }
+
+  it("records a SENT outcome with the SES MessageId on a successful send", async () => {
+    const { processor, notificationLog } = build();
+
+    await processor.process(makePayload());
+
+    expect(notificationLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        submissionId: "sub-001",
+        formId: "passport-renewal",
+        recipientKind: "submitted",
+        recipient: "jane@example.com",
+        outcome: "sent",
+        providerMessageId: "ses-msg-001",
+      }),
+    );
+  });
+
+  it("records DEFAULTED when a config.* recipient falls back to the test inbox (non-prod)", async () => {
+    // mdaEmail null + requireResolvedRecipient unset → degrade to the test inbox.
+    const { processor, notificationLog } = build();
+
+    await processor.process(makePayload({ recipientField: "config.mdaEmail" }));
+
+    expect(notificationLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientKind: "config",
+        recipient: "testing@govtech.bb",
+        outcome: "defaulted",
+      }),
+    );
+  });
+
+  it("in prod (MDA_REQUIRE_RECIPIENT) throws a retryable error, does NOT send, and records FAILED", async () => {
+    const { processor, notificationLog } = build({
+      "email.requireResolvedRecipient": true,
+    });
+
+    await expect(
+      processor.process(makePayload({ recipientField: "config.mdaEmail" })),
+    ).rejects.toThrow(/MDA_REQUIRE_RECIPIENT/);
+
+    // Retryable (plain Error, not NonRetryableError) so SQS retries → DLQ; the
+    // send never happened, and the miss is recorded, not silent.
+    expect(mockSend).not.toHaveBeenCalled();
+    expect(notificationLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({ recipientKind: "config", outcome: "failed" }),
+    );
+  });
+
+  it("records NO_RECIPIENT when the configured recipient resolves to nothing", async () => {
+    const { processor, notificationLog } = build();
+
+    await expect(
+      processor.process(
+        makePayload({ recipientField: "personal.missingField" }),
+      ),
+    ).rejects.toBeInstanceOf(NonRetryableError);
+
+    expect(notificationLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: "no_recipient", recipient: null }),
+    );
   });
 });

@@ -99,6 +99,9 @@ export interface MappedCasePayload {
   };
   form_data: Record<string, unknown>;
   submitted_at: string;
+  /** Derived reviewer signal (#2065): present only for forms that carry a
+   * checkbox-accordion field, so other forms' payloads are unchanged. */
+  higher_risk?: boolean;
 }
 
 export function buildMappedCasePayload(args: {
@@ -106,8 +109,11 @@ export function buildMappedCasePayload(args: {
   values: SubmissionValues;
   referenceCode: string;
   submittedAt: string;
+  /** Whether a higher-risk category was selected; `null`/omitted when the form
+   * has no checkbox-accordion field, in which case the flag is not emitted. */
+  higherRisk?: boolean | null;
 }): MappedCasePayload {
-  const { mapping, values, referenceCode, submittedAt } = args;
+  const { mapping, values, referenceCode, submittedAt, higherRisk } = args;
   const namePaths = Array.isArray(mapping.applicant.name)
     ? mapping.applicant.name
     : [mapping.applicant.name];
@@ -127,5 +133,7 @@ export function buildMappedCasePayload(args: {
       mapping.groupByStep ?? false,
     ),
     submitted_at: submittedAt,
+    ...(higherRisk !== null &&
+      higherRisk !== undefined && { higher_risk: higherRisk }),
   };
 }

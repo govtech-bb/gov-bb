@@ -17,6 +17,7 @@ export default [
     },
   },
   {
-    ignores: ['eslint.config.js', 'prettier.config.js'],
+    // .amplify-hosting is generated deploy output, not source — don't lint it.
+    ignores: ['eslint.config.js', 'prettier.config.js', '.amplify-hosting/**'],
   },
 ]

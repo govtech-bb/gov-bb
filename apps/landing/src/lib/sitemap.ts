@@ -1,5 +1,6 @@
 import { CATEGORIES } from '../content/categories'
 import { PAGES, isCategoryVisible, isVisible } from '../content/registry'
+import type { ViewLevel } from './frontmatter'
 
 export interface SitemapEntry {
   /** Absolute path with leading slash, e.g. "/services". */
@@ -14,7 +15,9 @@ export interface SitemapEntry {
  * content is left out, mirroring what a public visitor can reach. Deduped so a
  * top-level page sharing a category slug can't appear twice.
  */
-export function collectSitemapEntries(): SitemapEntry[] {
+export function collectSitemapEntries(
+  overlay?: ReadonlyMap<string, ViewLevel>,
+): SitemapEntry[] {
   const entries: SitemapEntry[] = []
   const seen = new Set<string>()
   const add = (path: string, priority: number) => {
@@ -27,7 +30,7 @@ export function collectSitemapEntries(): SitemapEntry[] {
   add('/services', 0.9)
 
   for (const cat of CATEGORIES) {
-    if (!isCategoryVisible(cat, 'public')) continue
+    if (!isCategoryVisible(cat, 'public', overlay)) continue
     add(`/${cat.slug}`, 0.8)
     for (const sub of cat.subcategories ?? []) {
       add(`/${cat.slug}/${sub.slug}`, 0.7)
@@ -35,7 +38,7 @@ export function collectSitemapEntries(): SitemapEntry[] {
   }
 
   for (const page of PAGES) {
-    if (!isVisible(page, 'public')) continue
+    if (!isVisible(page, 'public', overlay)) continue
     if (page.slug.endsWith('/start')) continue
     add(`/${page.url}`, 0.7)
   }

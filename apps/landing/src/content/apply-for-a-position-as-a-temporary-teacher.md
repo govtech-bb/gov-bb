@@ -5,6 +5,7 @@ featured: false
 stage: "alpha"
 publish_date: 2026-01-15
 category: work-employment
+visibility: preview
 form_id: temp-teacher-application-barbados
 service_type: digital
 ---

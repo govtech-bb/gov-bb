@@ -5,6 +5,7 @@ const mockService = {
   findAll: vi.fn(),
   findByFormId: vi.fn(),
   findMaintenanceFormIds: vi.fn(),
+  findClosedFormIds: vi.fn(),
 };
 
 const mockOverridesService = {
@@ -177,6 +178,32 @@ describe("FormDefinitionsController", () => {
       mockService.findMaintenanceFormIds.mockResolvedValue([]);
 
       const result = await controller.getMaintenance();
+
+      expect(result.data).toEqual([]);
+    });
+  });
+
+  describe("getClosed (GET /form-definitions/closed)", () => {
+    it("returns the closed form IDs in the success shape", async () => {
+      mockService.findClosedFormIds.mockResolvedValue([
+        "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026",
+      ]);
+
+      const result = await controller.getClosed();
+
+      expect(mockService.findClosedFormIds).toHaveBeenCalled();
+      expect(result).toMatchObject({
+        status: "success",
+        data: [
+          "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026",
+        ],
+      });
+    });
+
+    it("returns an empty list when nothing is closed", async () => {
+      mockService.findClosedFormIds.mockResolvedValue([]);
+
+      const result = await controller.getClosed();
 
       expect(result.data).toEqual([]);
     });
