@@ -3,7 +3,7 @@
   "title": "Apply for a licence to operate a temporary restaurant",
   "description": "Apply for a licence to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
   "createdAt": "2026-07-23T00:00:00Z",
-  "updatedAt": "2026-07-27T00:00:00Z",
+  "updatedAt": "2026-07-28T00:00:00Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -797,6 +797,37 @@
               "required": {
                 "value": true,
                 "error": "You must confirm the declaration to continue"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Officer overtime costs",
+            "fieldId": "overtime-costs-acknowledged",
+            "ui": {
+              "hideLabel": true
+            },
+            "options": [
+              {
+                "label": "I understand that the event organiser is responsible for the overtime costs of the environmental health officers who provide public health surveillance and inspection during the event.",
+                "value": "acknowledged"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "event-organiser",
+                "targetFieldId": "is-organiser",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "You must confirm you understand the overtime costs to continue"
               }
             }
           }
