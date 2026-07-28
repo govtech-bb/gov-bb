@@ -36,7 +36,7 @@ function ServicesPage() {
   return (
     <>
       <section className="border-teal-40 border-b-4 bg-teal-10 py-8">
-        <div className="container">
+        <div className="govbb-width-container">
           <div className="flex flex-col gap-2">
             <Text as="p" className="font-bold">
               Search for a service
@@ -62,7 +62,7 @@ function ServicesPage() {
       </section>
 
       <section className="pt-4 pb-8">
-        <div className="container">
+        <div className="govbb-width-container">
           <Heading as="h1" className="mb-s">
             Alpha services
           </Heading>
@@ -96,7 +96,7 @@ function ServicesPage() {
         </div>
       </section>
 
-      <div className="container">
+      <div className="govbb-width-container">
         <HelpfulBox className="mb-4 lg:mb-16" />
       </div>
     </>

@@ -37,7 +37,7 @@ function Home() {
   return (
     <>
       <section className="border-b-4 border-yellow-100 bg-blue-00 text-white-00">
-        <div className="container">
+        <div className="govbb-width-container">
           <div className="space-y-m py-[clamp(var(--spacing-m),5vw,var(--spacing-l))]">
             <div className="max-w-210 space-y-s">
               <Heading as="h1" className="text-balance">
@@ -54,7 +54,7 @@ function Home() {
       </section>
 
       <section className="border-b-4 border-teal-100 bg-green-10">
-        <div className="container">
+        <div className="govbb-width-container">
           <div className="space-y-m py-m">
             <Heading as="h4">
               Or search all government services directly
@@ -77,7 +77,7 @@ function Home() {
       </section>
 
       <section>
-        <div className="container">
+        <div className="govbb-width-container">
           <div className="space-y-m py-m lg:py-l">
             <Heading as="h2" className="text-balance">
               All government services
@@ -106,7 +106,7 @@ function Home() {
         </div>
       </section>
 
-      <div className="container">
+      <div className="govbb-width-container">
         <HelpfulBox className="mb-s lg:mb-l" />
       </div>
     </>

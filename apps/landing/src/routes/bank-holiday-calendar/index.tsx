@@ -78,7 +78,7 @@ function BankHolidaysPage() {
 
   return (
     <PageShell>
-      <main className="max-w-220">
+      <div className="max-w-220">
         <div className="mb-6 flex flex-col items-center gap-6 lg:mb-10 lg:flex-row lg:justify-between lg:gap-0">
           <div>
             <Heading as="h1" className="mb-xs">
@@ -108,7 +108,7 @@ function BankHolidaysPage() {
         />
 
         <AboutSection />
-      </main>
+      </div>
     </PageShell>
   )
 }

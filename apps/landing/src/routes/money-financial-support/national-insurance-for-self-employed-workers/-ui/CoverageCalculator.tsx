@@ -280,7 +280,7 @@ export function CoverageCalculator() {
   }
 
   return (
-    <div className="container pt-4 pb-10 lg:py-8">
+    <div className="govbb-width-container govbb-main-wrapper">
       <article
         className="mx-auto w-full max-w-3xl outline-none"
         ref={topRef}

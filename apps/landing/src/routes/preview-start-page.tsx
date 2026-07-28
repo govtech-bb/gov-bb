@@ -115,10 +115,10 @@ function PreviewStartPage() {
   // *previewed* page's URL rather than this route's own /preview-start-page.
   return (
     <>
-      <div className="container py-4 lg:py-6">
+      <div className="govbb-width-container py-4 lg:py-6">
         <Breadcrumbs pathname={state?.path || '/'} />
       </div>
-      <div className="container pt-4 pb-8 lg:py-8">
+      <div className="govbb-width-container govbb-main-wrapper">
         {state && hast ? (
           <MarkdownContent
             frontmatter={state.frontmatter}
@@ -131,7 +131,7 @@ function PreviewStartPage() {
           </p>
         )}
       </div>
-      <div className="container">
+      <div className="govbb-width-container">
         <HelpfulBox className="mb-4 lg:mb-16" />
       </div>
     </>

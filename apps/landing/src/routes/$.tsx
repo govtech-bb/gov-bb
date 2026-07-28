@@ -474,11 +474,11 @@ function ReviewBanner({ level }: { level: Exclude<ViewLevel, 'public'> }) {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <div className="container py-4 lg:py-6 print:hidden">
+      <div className="govbb-width-container py-4 lg:py-6 print:hidden">
         <Breadcrumbs />
       </div>
-      <div className="container pt-4 pb-8 lg:py-8">{children}</div>
-      <div className="container print:hidden">
+      <div className="govbb-width-container govbb-main-wrapper">{children}</div>
+      <div className="govbb-width-container print:hidden">
         <HelpfulBox className="mb-4 lg:mb-16" />
       </div>
     </>

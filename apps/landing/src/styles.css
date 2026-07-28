@@ -6,41 +6,6 @@
 @import '@govtech-bb/frontend/css' layer(components);
 @plugin "@tailwindcss/typography";
 
-@theme {
-  --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-  background: var(--color-white-00);
-  color: var(--color-black-00);
-  font-family: var(--font-family-base);
-}
-
-.container {
-  margin-inline: auto;
-  width: 100%;
-  padding-inline: var(--spacing-s); /* 16px */
-
-  @media (width >= 640px) {
-    padding-inline: var(--spacing-m); /* 32px */
-  }
-
-  @media (width >= 1280px) {
-    padding-inline: var(--spacing-l); /* 64px */
-  }
-
-  @media (width >= 1512px) {
-    padding-inline: var(--spacing-xl); /* 128px */
-  }
-}
-
 /* Collapsible disclosure (`<details class="govbb-show-hide">`) for progressive
    disclosure in markdown content — a teal underlined summary with a rotating
    triangle and a left-bordered content panel. Ported from the design-system

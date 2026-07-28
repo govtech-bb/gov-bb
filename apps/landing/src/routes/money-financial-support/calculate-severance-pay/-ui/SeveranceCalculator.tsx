@@ -275,7 +275,7 @@ export function SeveranceCalculator() {
   }
 
   return (
-    <div className="container pt-4 pb-8 lg:py-8">
+    <div className="govbb-width-container govbb-main-wrapper">
       {step === 'q-employment' && (
         <form
           className="flex flex-col gap-6"

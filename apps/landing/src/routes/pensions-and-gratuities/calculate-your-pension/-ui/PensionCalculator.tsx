@@ -202,7 +202,7 @@ export function PensionCalculator() {
         `) and a last annual salary of ${money(sal)}.`
 
     return (
-      <div className="container pt-4 pb-8 lg:pt-6 lg:pb-12">
+      <div className="govbb-width-container govbb-main-wrapper">
         <section
           aria-live="polite"
           className="flex flex-col gap-6 focus:outline-none md:w-2/3"
@@ -331,7 +331,7 @@ export function PensionCalculator() {
 
   // ---- Form view ----------------------------------------------------------
   return (
-    <div className="container pt-4 pb-8 lg:pt-6 lg:pb-12">
+    <div className="govbb-width-container govbb-main-wrapper">
       <div className="flex flex-col gap-6 md:w-2/3">
         {errorItems.length > 0 && (
           <ErrorSummary

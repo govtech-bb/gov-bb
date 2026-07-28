@@ -249,7 +249,7 @@ export function CropOverPermitsForm() {
     .join(' · ')
 
   return (
-    <div className="container pt-4 pb-8 lg:py-8">
+    <div className="govbb-width-container govbb-main-wrapper">
       {step === 'q-event' && (
         <form
           className="flex flex-col gap-6"

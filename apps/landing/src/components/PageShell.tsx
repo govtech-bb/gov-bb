@@ -11,11 +11,11 @@ import { HelpfulBox } from './HelpfulBox'
 export function PageShell({ children }: { children: ReactNode }) {
   return (
     <>
-      <div className="container py-4 lg:py-6">
+      <div className="govbb-width-container py-4 lg:py-6">
         <Breadcrumbs />
       </div>
-      <div className="container pt-4 pb-8 lg:py-8">{children}</div>
-      <div className="container">
+      <div className="govbb-width-container govbb-main-wrapper">{children}</div>
+      <div className="govbb-width-container">
         <HelpfulBox className="mb-4 lg:mb-16" />
       </div>
     </>
