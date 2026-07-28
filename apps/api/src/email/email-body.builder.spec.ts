@@ -148,6 +148,95 @@ describe("EmailBodyBuilder", () => {
     builder = new EmailBodyBuilder(formSvc);
   });
 
+  describe("checkbox-accordion + higher-risk (#2065)", () => {
+    // A single-step contract with a checkbox-accordion food field.
+    function accordionContract(): ServiceContract {
+      return {
+        formId: "food-form",
+        title: "Food form",
+        version: "1.0.0",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        steps: [
+          {
+            stepId: "food",
+            title: "Food",
+            elements: [
+              {
+                fieldId: "food-served",
+                label: "Food served",
+                htmlType: "checkbox-accordion",
+                groups: [
+                  {
+                    label: "Meat",
+                    higherRisk: true,
+                    options: [
+                      { label: "Chicken", value: "chicken" },
+                      { label: "Beef", value: "beef" },
+                    ],
+                  },
+                  {
+                    label: "Snacks",
+                    options: [{ label: "Popcorn", value: "popcorn" }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      } as unknown as ServiceContract;
+    }
+
+    function foodPayload(selected: string[]): SubmissionCreatedEvent {
+      return makePayload({
+        formId: "food-form",
+        values: { food: { "food-served": selected } },
+        meta: {
+          schemaVersion: 1,
+          pinnedFormVersion: "1.0.0",
+          draftId: null,
+          activeStepIds: ["food"],
+          hiddenStepIds: [],
+          activeFieldIds: { food: ["food-served"] },
+          hiddenFieldIds: {},
+          visitedPages: [0],
+          submittedAt: "2026-05-12T10:00:00.000Z",
+        } as unknown as SubmissionCreatedEvent["meta"],
+      });
+    }
+
+    beforeEach(() => {
+      builder = new EmailBodyBuilder(
+        makeFormDefinitionsService(accordionContract()),
+      );
+    });
+
+    it("renders accordion item labels (flattened across groups) and flags higher-risk as Yes", async () => {
+      const ctx = await builder.build(foodPayload(["chicken", "popcorn"]));
+
+      const foodField = ctx.sections
+        .flatMap((s) => s.fields)
+        .find((f) => f.label === "Food served");
+      expect(foodField?.value).toBe("Chicken, Popcorn");
+
+      const risk = ctx.sections.find(
+        (s) => s.title === "Higher-risk assessment",
+      );
+      expect(risk?.fields[0]).toEqual({
+        label: "Higher-risk items selected",
+        value: "Yes",
+      });
+    });
+
+    it("flags higher-risk as No when only lower-risk items are selected", async () => {
+      const ctx = await builder.build(foodPayload(["popcorn"]));
+      const risk = ctx.sections.find(
+        (s) => s.title === "Higher-risk assessment",
+      );
+      expect(risk?.fields[0].value).toBe("No");
+    });
+  });
+
   describe("build()", () => {
     it("populates top-level metadata from the contract and payload", async () => {
       const ctx = await builder.build(makePayload());

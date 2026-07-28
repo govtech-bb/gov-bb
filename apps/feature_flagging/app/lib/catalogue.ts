@@ -34,7 +34,7 @@ export interface ServiceRow {
   /** Landing URL (content slug) when the service has a landing page. */
   landingUrl?: string;
   contentVisibility?: "public" | "preview" | "draft";
-  /** Current status; defaults to `enabled` when no service_status row exists. */
+  /** Current status; defaults to `disabled` when no service_status row exists. */
   status: ServiceStatus;
   /** True when this row exists only because of a stray service_status row. */
   orphan?: boolean;

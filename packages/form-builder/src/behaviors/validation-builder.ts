@@ -154,6 +154,14 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
       hasReference: true,
     },
   ],
+  time: [
+    {
+      type: "required",
+      label: "Required",
+      hasValue: false,
+      hasReference: false,
+    },
+  ],
   date: [
     {
       type: "required",
@@ -350,6 +358,28 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
       label: "Not Equal",
       hasValue: true,
       hasReference: true,
+    },
+  ],
+  // A collapsible multi-select: same flat string[] value as a checkbox group,
+  // so it carries the array-count rules (require at least one item selected).
+  "checkbox-accordion": [
+    {
+      type: "required",
+      label: "Required",
+      hasValue: false,
+      hasReference: false,
+    },
+    {
+      type: "minItems",
+      label: "Min Selected",
+      hasValue: true,
+      hasReference: false,
+    },
+    {
+      type: "maxItems",
+      label: "Max Selected",
+      hasValue: true,
+      hasReference: false,
     },
   ],
   file: [

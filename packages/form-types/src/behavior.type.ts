@@ -21,13 +21,17 @@ export type EqualityOperations = z.infer<typeof equalityOperationsSchema>;
 
 // Optional date→number derivation (#1020), shared by the branch (conditional)
 // and block (validation) engines. When set, the date value is passed through
-// `durationSince` (Barbados tz, truncated whole integer) before the operator /
-// numeric rule runs — so a form can gate on an age derived from a
-// date-of-birth field. Invalid/empty date → NaN → no match / validation-fail.
+// `durationSince`/`durationUntil` (Barbados tz, truncated whole integer) before
+// the operator / numeric rule runs — so a form can gate on an age derived from
+// a date-of-birth field, or a lead time until a future event date. Invalid/empty
+// date → NaN → no match / validation-fail. The `*Since` transforms count
+// backwards from today; `daysUntil` counts forwards to a future date (e.g.
+// `min: 14, transform: "daysUntil"` enforces a 14-day lead time).
 export const durationTransformSchema = z.enum([
   "yearsSince",
   "monthsSince",
   "daysSince",
+  "daysUntil",
 ]);
 export type DurationTransform = z.infer<typeof durationTransformSchema>;
 

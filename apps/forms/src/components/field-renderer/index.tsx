@@ -13,6 +13,7 @@ import { renderTextField } from "./text-field";
 import { renderTextareaField } from "./textarea-field";
 import { renderSelectField } from "./select-field";
 import { renderCheckboxField } from "./checkbox-field";
+import { renderCheckboxAccordionField } from "./checkbox-accordion-field";
 import { renderRadioField } from "./radio-field";
 import { renderShowHideField } from "./show-hide-field";
 
@@ -97,6 +98,7 @@ export default function FieldRenderer({
             return renderTextareaField(ctx);
           case "text":
           case "number":
+          case "time":
           case "tel":
           case "email":
             return renderTextField(ctx);
@@ -104,6 +106,8 @@ export default function FieldRenderer({
             return renderSelectField(ctx);
           case "checkbox":
             return renderCheckboxField(ctx);
+          case "checkbox-accordion":
+            return renderCheckboxAccordionField(ctx);
           case "radio":
             return renderRadioField(ctx);
           case "file":
