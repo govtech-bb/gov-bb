@@ -50,7 +50,7 @@ function maskToken(token: string): string {
   return `${token[0]}${"*".repeat(token.length - 2)}${token[token.length - 1]}`;
 }
 
-const digitCount = (s: string): number => (s.match(/\d/g) ?? []).length;
+const digitCount = (s: string): number => s.replace(/\D/g, "").length;
 
 /**
  * Redact PII from a search query before it is sent to analytics: any token
