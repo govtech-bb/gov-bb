@@ -915,7 +915,7 @@ function PlanStep({
           Previous
         </Button>
         <Button onClick={onContinue} type="button">
-          See what this protects
+          See your estimated benefits
         </Button>
       </div>
     </div>
@@ -1108,7 +1108,7 @@ function ResultStep({
     <div>
       <ServiceCaption />
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
-        What your plan protects you from
+        Benefits you may get
       </h1>
       <p className="mb-6 text-[1.125rem] text-mid-grey-00">
         For{' '}
