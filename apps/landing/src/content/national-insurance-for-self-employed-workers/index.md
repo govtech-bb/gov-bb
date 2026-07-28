@@ -13,7 +13,7 @@ categories:
 
 ## Who this is for
 
-You can pay National Insurance this way if you work for yourself. This can be your main job or extra work. This may include people who:
+You can pay National Insurance (NIS) this way if you work for yourself. This can be your main job or extra work. This may include people who:
 
 - drive or make deliveries
 - provide a trade or personal service
@@ -22,7 +22,7 @@ You can pay National Insurance this way if you work for yourself. This can be yo
 - rent a property to visitors
 - do domestic, casual or cash-in-hand work
 
-You don't need to fit one of these exactly. You don't need a registered business or a work permit. You can also contribute for work you do on the side, even if an employer pays National Insurance for your main job.
+You don't need to fit one of these exactly. You don't need a registered business or a work permit. You can also contribute for work you do on the side, even if an employer pays NIS for your main job.
 
 ## How much to pay
 The amount you pay is based on your earnings after business expenses. NIS sets minimum and maximum amounts, and your payment can change if your earnings change.

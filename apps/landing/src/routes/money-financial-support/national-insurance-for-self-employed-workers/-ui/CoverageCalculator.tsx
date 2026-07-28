@@ -14,7 +14,7 @@ import type { EarningsInputs } from '../-lib/compute'
 
 type Screen = 'hero' | 'benefits' | 'income' | 'plan' | 'result' | 'next-steps'
 
-const SERVICE_CAPTION = 'NISSS for self-employed and gig workers'
+const SERVICE_CAPTION = 'NIS for self-employed and gig workers'
 // The same NIS registration page the service page's "Register as self-employed"
 // links to, so both routes into registration land in one place.
 const REGISTER_HREF = 'https://www.nis.gov.bb/self-employment-registration/'
@@ -377,7 +377,7 @@ function Hero({
       >
         <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-teal-10 px-3 py-1.5 font-medium text-[0.95rem] text-teal-00">
           <Icon className="h-4 w-4" name="shield" />
-          From NISSS Barbados
+          From National Insurance (NIS)
         </span>
         <h1 className="mb-4 font-bold text-[2.75rem] text-black-00 leading-[1.1] tracking-tight sm:text-[3.5rem]">
           Protect your income.
@@ -386,7 +386,7 @@ function Hero({
         </h1>
         <p className="mb-6 text-[1.125rem] text-mid-grey-00">
           You work for yourself: driving, delivering, freelancing, building,
-          selling, creating. NISSS is how you look after yourself when life
+          selling, creating. NIS is how you look after yourself when life
           happens.
         </p>
         <div className="flex flex-col items-stretch gap-3 [&_button]:w-full [&_button]:justify-center">
@@ -401,24 +401,21 @@ function Hero({
             external
             href={REGISTER_HREF}
           >
-            I&rsquo;m ready to register for NISSS
+            I&rsquo;m ready to register for NIS
           </Link>
         </div>
       </div>
 
       <div className="mt-10">
         <h2 className="mb-3 font-bold text-[1.5rem] text-black-00">
-          What is NISSS, simply?
+          What is NIS, simply?
         </h2>
         <p className="mb-4 text-[1.125rem] text-mid-grey-00">
-          NISSS stands for the{' '}
-          <strong className="text-black-00">
-            National Insurance and Social Security Scheme
-          </strong>{' '}
-          (formerly known as NIS). Think of it as a safety net you build up bit
-          by bit. You put in a small amount when you earn. It&rsquo;s there when
-          you need it: when you&rsquo;re sick, when you have a baby, when you
-          retire.
+          NIS stands for{' '}
+          <strong className="text-black-00">National Insurance</strong>. Think of
+          it as a safety net you build up bit by bit. You put in a small amount
+          when you earn. It&rsquo;s there when you need it: when you&rsquo;re
+          sick, when you have a baby, when you retire.
         </p>
         <p className="mb-6 text-[1.125rem] text-mid-grey-00">
           Self-employed Bajans can join too. You choose how much you put in:{' '}
@@ -430,7 +427,7 @@ function Hero({
 
         <div className="mb-6 rounded-2xl border border-blue-10 bg-blue-10/40 p-5">
           <p className="mb-3 font-semibold text-black-00">
-            What NISSS can help with
+            What NIS can help with
           </p>
           <ul className="flex flex-col gap-2.5">
             {HELPS.map(([icon, text]) => (
@@ -511,7 +508,7 @@ function BenefitsQuick({ onBack }: { onBack: () => void }) {
   return (
     <div>
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
-        Six ways NISSS protects you.
+        Six ways NIS protects you.
       </h1>
       <p className="mb-6 text-[1.125rem] text-mid-grey-00">
         Quick read: about a minute.
@@ -961,13 +958,13 @@ function BenefitCard({
       <div className="flex flex-col gap-3 border-grey-00 border-t px-4 pt-4 pb-5">
         <div className="rounded-lg border border-red-40/60 bg-red-10 p-3">
           <p className="mb-1 font-semibold text-[0.95rem] text-red-00 uppercase tracking-wide">
-            Without NISSS
+            Without NIS
           </p>
           <p className="text-[1.125rem] text-black-00">{without}</p>
         </div>
         <div className="rounded-lg border border-green-40 bg-green-10 p-3">
           <p className="mb-1 font-semibold text-[0.95rem] text-green-00 uppercase tracking-wide">
-            With NISSS
+            With NIS
           </p>
           <p className="text-[1.125rem] text-black-00">{withNis}</p>
         </div>
@@ -1013,7 +1010,7 @@ function ResultStep({
           Sickness Benefit pays about <PerWeek weekly={b.sicknessWeekly} />,
           roughly two-thirds of your usual earnings, for up to{' '}
           {NIS.SICKNESS_MAX_WEEKS} weeks. If you&rsquo;re still unwell after
-          that, NISSS may pay for up to {NIS.SICKNESS_MAX_WEEKS} more weeks.
+          that, NIS may pay for up to {NIS.SICKNESS_MAX_WEEKS} more weeks.
         </>
       ),
     },
@@ -1116,7 +1113,7 @@ function ResultStep({
           {money(b.monthlyContribution)}
         </strong>
         /month, here&rsquo;s each moment{' '}
-        <strong className="text-red-00">without NISSS</strong> and{' '}
+        <strong className="text-red-00">without NIS</strong> and{' '}
         <strong className="text-green-00">with it</strong>. Figures are
         estimates based on the amount you chose to put in.
       </p>
@@ -1144,14 +1141,13 @@ function ResultStep({
           depend on your earnings and contribution record.
         </p>
         <p>
-          National Insurance for self-employed workers does not include
-          unemployment benefit.
+          NIS for self-employed workers does not include unemployment benefit.
         </p>
         <p>
           Estimates only. Benefit amounts are calculated from your insurable
           earnings (your contribution ÷ {Math.round(NIS.SE_RATE * 10000) / 100}
           %) and your most recent year of contributions, and are subject to
-          change. Final amounts are confirmed by NISSS Benefits.
+          change. Final amounts are confirmed by NIS Benefits.
         </p>
       </div>
 
@@ -1246,7 +1242,7 @@ function NextSteps({
         <NextStepCard
           icon="shield"
           sub="Get set up to start contributing. Takes about 10 minutes."
-          title="Register with NISSS"
+          title="Register with NIS"
           tone="teal"
         >
           <Link
@@ -1268,7 +1264,7 @@ function NextSteps({
           <OptionList
             items={[
               {
-                label: 'NISSS online portal',
+                label: 'NIS online portal',
                 detail: 'pay from your phone, anytime',
               },
               {
@@ -1295,7 +1291,7 @@ function NextSteps({
                 detail: 'standing order or one-off transfer',
               },
               {
-                label: 'In person at NISSS',
+                label: 'In person at NIS',
                 detail: 'pay at the office and get help',
               },
             ]}
@@ -1305,7 +1301,7 @@ function NextSteps({
         <NextStepCard
           icon="phone"
           sub="Have a question? Here’s how to reach them."
-          title="Contact NISSS"
+          title="Contact NIS"
           tone="yellow"
         >
           <OptionList
