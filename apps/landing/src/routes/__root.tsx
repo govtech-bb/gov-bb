@@ -5,7 +5,7 @@ import {
   createRootRouteWithContext,
   redirect,
 } from '@tanstack/react-router'
-import { Footer, textVariants } from '@govtech-bb/react'
+import { Footer, FooterLink } from '@govtech-bb/react'
 import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
 import { trackEvent } from '../lib/analytics'
@@ -166,9 +166,7 @@ function ServerErrorPage() {
 
 function RootLayout() {
   return (
-    <div
-      className={`${textVariants({ size: 'body' })} grid min-h-screen grid-rows-[auto_1fr_auto] font-sans antialiased text-black-00 bg-white-00 print:block print:min-h-0 print:h-auto`}
-    >
+    <div className="govbb-text-body grid min-h-[100dvh] grid-rows-[auto_1fr_auto] bg-white-00 font-sans text-black-00 antialiased print:block print:h-auto print:min-h-0">
       <div className="print:hidden">
         <Header />
       </div>
@@ -177,11 +175,15 @@ function RootLayout() {
       </main>
       <div className="print:hidden">
         <Footer
-          links={FOOTER_LINKS}
-          logoSrc="/images/coat-of-arms.png"
-          logoAlt="Barbados Coat of Arms"
-          copyrightText={`© ${new Date().getFullYear()} Government of Barbados`}
-        />
+          coatSrc="/images/coat-of-arms.png"
+          copy={`© ${new Date().getFullYear()} Government of Barbados`}
+        >
+          {FOOTER_LINKS.map(({ label, ...link }) => (
+            <FooterLink key={label} {...link}>
+              {label}
+            </FooterLink>
+          ))}
+        </Footer>
       </div>
     </div>
   )

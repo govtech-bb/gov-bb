@@ -43,10 +43,14 @@ function ServicesPage() {
             </Text>
             <Search
               action="/search-results"
-              name="q"
               label="Search for a service"
               buttonLabel="Search"
-              onSearch={(q) => {
+              inputProps={{ name: 'q' }}
+              onSubmit={(event) => {
+                event.preventDefault()
+                const q = String(
+                  new FormData(event.currentTarget).get('q') ?? '',
+                ).trim()
                 trackEvent('search-submit', { query: q, source: 'services' })
                 window.location.href = q
                   ? `/search-results?q=${encodeURIComponent(q)}`

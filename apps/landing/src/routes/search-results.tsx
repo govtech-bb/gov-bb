@@ -50,12 +50,18 @@ function SearchResultsPage() {
             </Text>
             <SearchInput
               action="/search-results"
-              name="q"
               label="Search for a service"
               buttonLabel="Search"
-              defaultValue={query}
-              onSearch={(submitted) => {
-                trackEvent('search-submit', { query: submitted, source: 'results' })
+              inputProps={{ defaultValue: query, name: 'q' }}
+              onSubmit={(event) => {
+                event.preventDefault()
+                const submitted = String(
+                  new FormData(event.currentTarget).get('q') ?? '',
+                ).trim()
+                trackEvent('search-submit', {
+                  query: submitted,
+                  source: 'results',
+                })
                 window.location.href = submitted
                   ? `/search-results?q=${encodeURIComponent(submitted)}`
                   : '/search-results'

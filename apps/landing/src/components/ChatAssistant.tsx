@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button, Heading, Input, Text } from '@govtech-bb/react'
 import { trackEvent } from '../lib/analytics'
-
-const CHAT_URL =
-  import.meta.env.VITE_CHAT_URL || 'https://chat.sandbox.alpha.gov.bb'
+import { CHAT_URL } from '../lib/chat-url'
 
 const MAX_QUERY_LENGTH = 2000
 
@@ -126,7 +124,8 @@ export function ChatAssistant({
             </div>
             <div className="rounded-2xl rounded-bl-xs bg-blue-10 px-s py-3.5 text-black-00 max-w-130">
               <Text as="p" className="text-pretty">
-                Welcome to <strong>alpha.gov.bb.</strong> What would you like help with today?
+                Welcome to <strong>alpha.gov.bb.</strong> What would you like
+                help with today?
               </Text>
             </div>
           </div>

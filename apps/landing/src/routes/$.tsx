@@ -1,10 +1,8 @@
 import { useEffect } from 'react'
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { Heading, Text, linkVariants } from '@govtech-bb/react'
+import { Heading, StatusBanner, Text } from '@govtech-bb/react'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
-import { MaintenanceNotice } from '../components/MaintenanceNotice'
-import { ApplicationClosedNotice } from '../components/ApplicationClosedNotice'
 import { MarkdownContent } from '../components/markdown'
 import {
   categoryServices,
@@ -324,8 +322,19 @@ function PageView({
   return (
     <Shell>
       {level !== 'public' ? <ReviewBanner level={level} /> : null}
-      {underMaintenance ? <MaintenanceNotice /> : null}
-      {applicationClosed ? <ApplicationClosedNotice /> : null}
+      {underMaintenance ? (
+        <StatusBanner variant="service" className="mb-s">
+          <p>
+            This form is currently being upgraded to serve you better. Please
+            check back soon.
+          </p>
+        </StatusBanner>
+      ) : null}
+      {applicationClosed ? (
+        <StatusBanner variant="service" className="mb-s">
+          <p>Applications for this service have closed.</p>
+        </StatusBanner>
+      ) : null}
       {Body ? (
         <Body />
       ) : (
@@ -382,7 +391,7 @@ function ServiceListView({
             >
               <a
                 href={item.href}
-                className={`${linkVariants()} text-[20px] leading-normal lg:text-3xl`}
+                className="govbb-link text-[20px] leading-normal lg:text-3xl"
               >
                 {item.title}
               </a>
@@ -412,7 +421,7 @@ function SubcategoryIndexView({
           >
             <a
               href={`/${category.slug}/${sub.slug}`}
-              className={`${linkVariants()} text-[20px] leading-normal lg:text-3xl`}
+              className="govbb-link text-[20px] leading-normal lg:text-3xl"
             >
               {sub.title}
             </a>

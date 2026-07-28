@@ -143,10 +143,7 @@ export function StormReadyChecklistPage() {
           block, not the flex fieldset. */}
       <div className="flex flex-col gap-m print:block">
         {STORMREADY_CHECKLIST.map((section) => (
-          <div
-            className="print:mb-m print:break-inside-avoid"
-            key={section.id}
-          >
+          <div className="print:mb-m print:break-inside-avoid" key={section.id}>
             <fieldset className="flex flex-col gap-s border-0 p-0">
               <legend className="w-full border-grey-00 border-b pb-xs">
                 <Heading as="h2">{section.title}</Heading>
@@ -163,8 +160,8 @@ export function StormReadyChecklistPage() {
                     id={item.id}
                     key={item.id}
                     label={item.label}
-                    onCheckedChange={(checked) =>
-                      setItem(item.id, checked === true)
+                    onChange={(event) =>
+                      setItem(item.id, event.currentTarget.checked)
                     }
                   />
                 ))}

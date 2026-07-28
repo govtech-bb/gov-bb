@@ -179,13 +179,13 @@ export function PensionCalculator() {
   }
 
   const errorItems = [
-    errors.startYear ? { text: errors.startYear, target: '#start-year' } : null,
-    errors.endYear ? { text: errors.endYear, target: '#end-year' } : null,
+    errors.startYear ? { href: '#start-year', label: errors.startYear } : null,
+    errors.endYear ? { href: '#end-year', label: errors.endYear } : null,
     errors.nopayMonths
-      ? { text: errors.nopayMonths, target: '#nopay-months' }
+      ? { href: '#nopay-months', label: errors.nopayMonths }
       : null,
-    errors.salary ? { text: errors.salary, target: '#salary' } : null,
-  ].filter((e): e is { text: string; target: string } => e !== null)
+    errors.salary ? { href: '#salary', label: errors.salary } : null,
+  ].filter((e): e is { href: string; label: string } => e !== null)
 
   // ---- Results view -------------------------------------------------------
   if (estimate) {
@@ -371,7 +371,7 @@ export function PensionCalculator() {
           <Input
             className="max-w-[8rem]"
             description="The year you began the service that counts towards your pension, for example 2005."
-            error={errors.startYear || undefined}
+            error={errors.startYear}
             id="start-year"
             inputMode="numeric"
             label="Year you started pensionable service"
@@ -383,7 +383,7 @@ export function PensionCalculator() {
           <Input
             className="max-w-[8rem]"
             description="The year your pensionable service ends. If you have not retired yet, use your expected retirement year."
-            error={errors.endYear || undefined}
+            error={errors.endYear}
             id="end-year"
             inputMode="numeric"
             label="Year you stopped or will retire"
@@ -395,7 +395,7 @@ export function PensionCalculator() {
           <Input
             className="max-w-[8rem]"
             description="Total months of no-pay leave you took during your service. These do not count towards your pension and will be subtracted."
-            error={errors.nopayMonths || undefined}
+            error={errors.nopayMonths}
             id="nopay-months"
             inputMode="numeric"
             label="Months of no-pay leave (optional)"
@@ -406,7 +406,7 @@ export function PensionCalculator() {
           <Input
             className="max-w-[18rem]"
             description="Enter your gross annual salary in Barbados dollars."
-            error={errors.salary || undefined}
+            error={errors.salary}
             id="salary"
             inputMode="decimal"
             label="Last annual salary (BDS$)"

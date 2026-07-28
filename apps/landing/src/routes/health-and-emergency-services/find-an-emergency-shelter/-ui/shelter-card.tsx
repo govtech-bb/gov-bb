@@ -103,7 +103,7 @@ export function ShelterCard({
       </div>
 
       <p>
-        <Link external href={mapsUrl(shelter)}>
+        <Link href={mapsUrl(shelter)} rel="noopener noreferrer" target="_blank">
           Get directions on Google Maps
         </Link>
       </p>

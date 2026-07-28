@@ -74,15 +74,16 @@ minimumReleaseAgeExclude:
   - form-data@4.0.6
   - js-yaml@4.1.2
   - js-yaml@3.15.0
-  - '@opentelemetry/core@2.8.0'
+  - "@opentelemetry/core@2.8.0"
   - multer@2.2.0
   - undici@7.28.0
   - nodemailer@9.0.1
-  - '@govtech-bb/design@1.0.0-alpha.17'
-  - '@govtech-bb/react@1.0.0-alpha.17'
-  - '@govtech-bb/styles@1.0.0-alpha.17'
-  - '@tanstack/ai-client@0.19.1'
-  - '@tanstack/ai-react@0.16.1'
-  - '@tanstack/ai@0.39.0'
-  - '@tanstack/ai-bedrock@0.1.0'
-  - '@tanstack/openai-base@0.9.6'
+  - "@govtech-bb/design@1.0.0-alpha.17"
+  - "@govtech-bb/react@1.0.0-alpha.17||1.0.0-alpha.18||1.0.0-alpha.19||1.0.0-alpha.20"
+  - "@govtech-bb/styles@1.0.0-alpha.17"
+  - "@tanstack/ai-client@0.19.1"
+  - "@tanstack/ai-react@0.16.1"
+  - "@tanstack/ai@0.39.0"
+  - "@tanstack/ai-bedrock@0.1.0"
+  - "@tanstack/openai-base@0.9.6"
+  - "@govtech-bb/frontend@1.0.0-alpha.18||1.0.0-alpha.19||1.0.0-alpha.20"

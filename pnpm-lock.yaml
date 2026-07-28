@@ -1007,9 +1007,12 @@ importers:
       '@govtech-bb/design':
         specifier: ^1.0.0-alpha.17
         version: 1.0.0-alpha.17
+      '@govtech-bb/frontend':
+        specifier: 1.0.0-alpha.20
+        version: 1.0.0-alpha.20
       '@govtech-bb/react':
-        specifier: ^1.0.0-alpha.17
-        version: 1.0.0-alpha.17(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)
+        specifier: 1.0.0-alpha.20
+        version: 1.0.0-alpha.20(react@19.2.7)
       '@mdx-js/react':
         specifier: ^3.1.1
         version: 3.1.1(@types/react@19.2.17)(react@19.2.7)
@@ -2459,12 +2462,20 @@ packages:
   '@govtech-bb/design@1.0.0-alpha.17':
     resolution: {integrity: sha512-hJ0VtPN+XaUWYCxKCZaCFdRpRf9Hd2vJGyH8gJ/AMKzd2AKQ6P2WnYAxL0W1b7tv9bSbJSK73k8NtLEYgtVL9A==}
 
+  '@govtech-bb/frontend@1.0.0-alpha.20':
+    resolution: {integrity: sha512-6JQbuO59qqUwec9E3B/n6YcdVw7bm9SgBBqstRy2VncuqPZd694KVxqBpZnvNkXcnev+tFKwnO+KUSeGTYjqVg==}
+
   '@govtech-bb/react@1.0.0-alpha.17':
     resolution: {integrity: sha512-CWb/7ntU51gmGLalvgFFedfyT4OYUyvVWWx4+4+rARYLp/aHd1anOeM2vEzTWUZYZHsdrCF7R7LDdE/qyxeafQ==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
       tailwindcss: ^4.0.0
+
+  '@govtech-bb/react@1.0.0-alpha.20':
+    resolution: {integrity: sha512-pK0mBjAff7E1WEF5Q+GrtQmdvQAURyft5EgJ1aaX6OBNei4TL9eq7CY8kUdb8tvaRIwyhkfj3DI8h4s5dd7Ufg==}
+    peerDependencies:
+      react: '>=18'
 
   '@govtech-bb/styles@1.0.0-alpha.17':
     resolution: {integrity: sha512-4klEF5AgbhXyIE11pdQQhqLH2dCWqZDLINcL516cpjMBzobkVqK5Jb41KvfSysUYUSGTEiv+XQrTzq+joHRM6Q==}
@@ -10896,6 +10907,8 @@ snapshots:
 
   '@govtech-bb/design@1.0.0-alpha.17': {}
 
+  '@govtech-bb/frontend@1.0.0-alpha.20': {}
+
   '@govtech-bb/react@1.0.0-alpha.17(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)':
     dependencies:
       '@govtech-bb/design': 1.0.0-alpha.17
@@ -10911,6 +10924,12 @@ snapshots:
     transitivePeerDependencies:
       - '@types/react'
       - '@types/react-dom'
+
+  '@govtech-bb/react@1.0.0-alpha.20(react@19.2.7)':
+    dependencies:
+      '@govtech-bb/frontend': 1.0.0-alpha.20
+      class-variance-authority: 0.7.1
+      react: 19.2.7
 
   '@govtech-bb/styles@1.0.0-alpha.17': {}
 

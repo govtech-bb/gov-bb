@@ -1,4 +1,4 @@
-import { Button, ErrorSummary, Link, linkVariants } from '@govtech-bb/react'
+import { Button, ErrorSummary, Link } from '@govtech-bb/react'
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode, RefObject } from 'react'
 import {
@@ -407,8 +407,9 @@ function Hero({
           </Button>
           <Link
             className="justify-center py-2 text-center"
-            external
             href={REGISTER_HREF}
+            rel="noopener noreferrer"
+            target="_blank"
           >
             I&rsquo;m ready to register for NISSS
           </Link>
@@ -631,10 +632,10 @@ function IncomeStep({
   slowMonth: string
 }) {
   const errorItems = [
-    errors.goodMonth && { text: errors.goodMonth, target: 'good-month' },
-    errors.slowMonth && { text: errors.slowMonth, target: 'slow-month' },
-    errors.goodMonths && { text: errors.goodMonths, target: 'good-months' },
-  ].filter(Boolean) as Array<{ text: string; target: string }>
+    errors.goodMonth && { href: '#good-month', label: errors.goodMonth },
+    errors.slowMonth && { href: '#slow-month', label: errors.slowMonth },
+    errors.goodMonths && { href: '#good-months', label: errors.goodMonths },
+  ].filter(Boolean) as Array<{ href: string; label: string }>
   return (
     <div>
       {errorItems.length > 0 && (
@@ -758,7 +759,7 @@ function PlanStep({
       {error && (
         <div className="mb-6">
           <ErrorSummary
-            errors={[{ text: error, target: 'tier-minimum' }]}
+            errors={[{ href: '#tier-minimum', label: error }]}
             ref={errorRef}
             title="There is a problem"
           />
@@ -781,13 +782,14 @@ function PlanStep({
         <span className="font-semibold text-black-00 tabular-nums">
           {money(monthlyAvg)}
         </span>
-        <button
-          className={`${linkVariants()} ml-auto`}
+        <Button
+          className="ml-auto"
           onClick={onBack}
           type="button"
+          variant="text"
         >
           Change your earnings
-        </button>
+        </Button>
       </div>
 
       <div className={error ? 'border-red-00 border-l-4 pl-4' : ''}>
@@ -1260,8 +1262,9 @@ function NextSteps({
         >
           <Link
             className="mt-3 inline-flex items-center gap-2"
-            external
             href={REGISTER_HREF}
+            rel="noopener noreferrer"
+            target="_blank"
           >
             Start registration
             <Icon className="h-4 w-4" name="arrowRight" strokeWidth={2} />

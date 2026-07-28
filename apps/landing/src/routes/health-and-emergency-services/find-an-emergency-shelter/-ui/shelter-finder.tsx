@@ -381,7 +381,7 @@ export function ShelterFinder() {
                       id={`parish-${name}`}
                       key={name}
                       label={name}
-                      onCheckedChange={() =>
+                      onChange={() =>
                         setParishes((list) => toggleValue(list, name))
                       }
                     />
@@ -396,7 +396,7 @@ export function ShelterFinder() {
                     checked={categories.includes('1')}
                     id="cat-1"
                     label="Category 1"
-                    onCheckedChange={() =>
+                    onChange={() =>
                       setCategories((list) => toggleValue(list, '1'))
                     }
                   />
@@ -404,7 +404,7 @@ export function ShelterFinder() {
                     checked={categories.includes('2')}
                     id="cat-2"
                     label="Category 2"
-                    onCheckedChange={() =>
+                    onChange={() =>
                       setCategories((list) => toggleValue(list, '2'))
                     }
                   />
@@ -418,8 +418,8 @@ export function ShelterFinder() {
                     checked={accessible}
                     id="filter-access"
                     label="Has an accessible bathroom"
-                    onCheckedChange={(checked) =>
-                      setAccessible(checked === true)
+                    onChange={(event) =>
+                      setAccessible(event.currentTarget.checked)
                     }
                   />
                 </FilterGroup>

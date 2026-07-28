@@ -261,7 +261,7 @@ export function CropOverPermitsForm() {
         >
           {eventError && (
             <ErrorSummary
-              errors={[{ text: eventError, target: 'event-fete' }]}
+              errors={[{ href: '#event-fete', label: eventError }]}
               title="There is a problem"
             />
           )}
@@ -309,7 +309,7 @@ export function CropOverPermitsForm() {
         >
           {venueError && (
             <ErrorSummary
-              errors={[{ text: venueError, target: 'venue-private' }]}
+              errors={[{ href: '#venue-private', label: venueError }]}
               title="There is a problem"
             />
           )}
@@ -352,7 +352,7 @@ export function CropOverPermitsForm() {
         >
           {sizeError && (
             <ErrorSummary
-              errors={[{ text: sizeError, target: 'size-small' }]}
+              errors={[{ href: '#size-small', label: sizeError }]}
               title="There is a problem"
             />
           )}
@@ -373,9 +373,7 @@ export function CropOverPermitsForm() {
           </fieldset>
           <div className="flex gap-3">
             <Button
-              onClick={() =>
-                go(eventType === 'cruise' ? 'q-event' : 'q-venue')
-              }
+              onClick={() => go(eventType === 'cruise' ? 'q-event' : 'q-venue')}
               type="button"
               variant="secondary"
             >
@@ -400,15 +398,18 @@ export function CropOverPermitsForm() {
           <Text as="p" size="body">
             Tick everything that applies. Leave blank any that do not.
           </Text>
-          <CheckboxGroup label="Select all that apply">
+          <CheckboxGroup legend="Select all that apply">
             {FEATURE_OPTIONS.map(({ id, label }) => (
               <Checkbox
                 checked={features[id]}
                 id={`feat-${id}`}
                 key={id}
                 label={label}
-                onCheckedChange={(checked) =>
-                  setFeatures((prev) => ({ ...prev, [id]: checked === true }))
+                onChange={(event) =>
+                  setFeatures((prev) => ({
+                    ...prev,
+                    [id]: event.currentTarget.checked,
+                  }))
                 }
               />
             ))}
@@ -485,7 +486,6 @@ export function CropOverPermitsForm() {
           </div>
         </div>
       )}
-
     </div>
   )
 }
@@ -497,7 +497,11 @@ function PermitCard({ permit }: { permit: Permit; displayStep: number }) {
         <div className="flex-1">
           <Heading as="h3">
             {permit.link ? (
-              <Link external href={permit.link}>
+              <Link
+                href={permit.link}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
                 {permit.name}
               </Link>
             ) : (
@@ -539,7 +543,11 @@ function PermitCard({ permit }: { permit: Permit; displayStep: number }) {
               </Text>
               {permit.applyOnline && (
                 <div className="mb-3">
-                  <LinkButton external href={permit.applyOnline}>
+                  <LinkButton
+                    href={permit.applyOnline}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
                     Apply online
                   </LinkButton>
                 </div>

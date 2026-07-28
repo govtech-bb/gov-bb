@@ -1,5 +1,4 @@
 import { Link, useLocation } from '@tanstack/react-router'
-import { linkVariants } from '@govtech-bb/react'
 import {
   getCategoryTitle,
   getPageTitle,
@@ -42,7 +41,7 @@ export function Breadcrumbs({
         <li className="flex items-center">
           <Link
             to="/"
-            className={linkVariants()}
+            className="govbb-link"
             data-umami-event="breadcrumb"
             data-umami-event-to="/"
             data-umami-event-depth={0}
@@ -60,7 +59,7 @@ export function Breadcrumbs({
             >
               <a
                 href={href}
-                className={`${linkVariants()} break-anywhere`}
+                className="govbb-link break-anywhere"
                 data-umami-event="breadcrumb"
                 data-umami-event-to={href}
                 data-umami-event-depth={index + 1}

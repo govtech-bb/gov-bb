@@ -1,4 +1,4 @@
-import { Heading, Link, Text } from '@govtech-bb/react'
+import { Feedback, Link, Text } from '@govtech-bb/react'
 import { useRouterState } from '@tanstack/react-router'
 
 interface HelpfulBoxProps {
@@ -15,20 +15,16 @@ export function HelpfulBox({ className }: HelpfulBoxProps) {
   }
 
   return (
-    <aside
-      className={`flex flex-col items-start gap-xs border-4 border-yellow-100 bg-yellow-40 px-s py-xm${className ? ` ${className}` : ''}`}
-    >
-      <Heading as="h3">Was this helpful?</Heading>
+    <Feedback className={className} heading="Was this helpful?">
       <Text as="p">Give us your feedback about this page.</Text>
       <Link
         href="/feedback"
         onClick={handleClick}
-        variant="secondary"
         data-umami-event="helpful-feedback"
         data-umami-event-path={pathname}
       >
         Help us improve alpha.gov.bb
       </Link>
-    </aside>
+    </Feedback>
   )
 }
