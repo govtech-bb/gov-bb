@@ -676,11 +676,22 @@ describe("EmailBodyBuilder", () => {
         "dob",
         "guidance",
       ];
+      // A content element carries no submission value in practice, but
+      // formatValue's raw lookup (stepValues[el.fieldId]) is unrelated to
+      // htmlType — nothing stops a stray value landing at its field key.
+      // Inject one so this test actually pins the explicit SKIP_TYPES entry
+      // rather than passing by coincidence via the empty-value filter.
+      payload.values["personal"] = {
+        ...payload.values["personal"],
+        guidance: "SHOULD NOT APPEAR",
+      };
 
       const ctx = await builder.build(payload);
       const labels = ctx.sections[0].fields.map((f) => f.label);
+      const values = ctx.sections[0].fields.map((f) => f.value);
 
       expect(labels).not.toContain("Guidance");
+      expect(values).not.toContain("SHOULD NOT APPEAR");
       expect(labels).toContain("First Name");
     });
 

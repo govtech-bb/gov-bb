@@ -396,7 +396,13 @@ describe("Review", () => {
         ],
       }),
     ];
+    // A content element carries no submission value in practice, but nothing
+    // about its htmlType prevents a stray value from landing at its field key
+    // (form.getFieldValue is a bare lookup, unrelated to htmlType). Inject one
+    // here so this test actually pins the explicit `htmlType !== "content"`
+    // guard rather than passing by coincidence via the empty-value filter.
     const form = makeMockForm({
+      "step-1.guidance": "SHOULD NOT APPEAR",
       "step-1.passport-number": "AB123456",
     });
 
@@ -410,9 +416,8 @@ describe("Review", () => {
 
     expect(screen.getByText("Passport number")).toBeInTheDocument();
     expect(screen.getByText("AB123456")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Have your passport ready before you continue."),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Guidance")).not.toBeInTheDocument();
+    expect(screen.queryByText("SHOULD NOT APPEAR")).not.toBeInTheDocument();
   });
 
   it("renders an empty section with title and Change link when all fields in a step are hidden", () => {
