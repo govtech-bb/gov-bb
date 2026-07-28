@@ -25,7 +25,7 @@ You can pay National Insurance (NIS) this way if you work for yourself. This can
 You don't need to fit one of these exactly. You don't need a registered business or a work permit. You can also contribute for work you do on the side, even if an employer pays NIS for your main job.
 
 ## How much to pay
-The amount you pay is based on your earnings after business expenses. NIS sets minimum and maximum amounts, and your payment can change if your earnings change.
+The amount you pay is based on your earnings after business expenses. Enter the money left after taking away what you spent to do your work that month. For example, if you receive BDS $2,000 and spend BDS $500 on your work, enter BDS $1,500. NIS sets minimum and maximum amounts, and your payment can change if your earnings change.
 
 <a data-start-link href="/money-financial-support/national-insurance-for-self-employed-workers/form">Calculate how much you may get</a>
 
