@@ -131,6 +131,13 @@ const baseSchema = z
     // Recipe preview (empty disables the per-request preview escape hatch)
     RECIPE_PREVIEW_TOKEN: z.string().default(""),
 
+    // When "true", every submission bypasses the visibility gate so a
+    // feature-flagged (non-public *published file*) form can be tested
+    // end-to-end without a per-request X-Recipe-Preview token. Scoped to
+    // sandbox/staging; leave unset ("false") in production. DB-only builder
+    // drafts stay unsubmittable regardless (ADR 0043 / #145). See ADR 0065.
+    ALLOW_PREVIEW_SUBMISSIONS: z.enum(["true", "false"]).default("false"),
+
     // Parent domain for the cross-app shared `preview` cookie (#1646 Phase 3),
     // e.g. ".sandbox.alpha.gov.bb". When set, the cookie the API mints is scoped
     // to this domain so landing, forms and the API (all subdomain siblings)
