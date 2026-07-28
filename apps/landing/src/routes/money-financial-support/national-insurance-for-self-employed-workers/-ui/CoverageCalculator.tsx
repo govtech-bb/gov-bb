@@ -1,6 +1,7 @@
 import { Button, ErrorSummary, Link, linkVariants } from '@govtech-bb/react'
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode, RefObject } from 'react'
+import { money } from '@/lib/money'
 import {
   earningsAtRisk,
   estimateBenefits,
@@ -21,16 +22,6 @@ const REGISTER_HREF = 'https://www.nis.gov.bb/self-employment-registration/'
 // The prototype's soft card shadow (no design token for it).
 const CARD =
   'rounded-2xl border border-grey-00 bg-white-00 shadow-[0_1px_2px_rgba(0,22,74,0.04),0_4px_14px_rgba(0,22,74,0.06)]'
-
-// Currency formatting in line with the sibling money-financial-support tools
-// (calculate-severance-pay, calculate-your-pension).
-const moneyFmt = new Intl.NumberFormat('en-BB', {
-  style: 'currency',
-  currency: 'BBD',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})
-const money = (n: number) => moneyFmt.format(n || 0)
 
 function PerWeek({ weekly }: { weekly: number }) {
   return (
