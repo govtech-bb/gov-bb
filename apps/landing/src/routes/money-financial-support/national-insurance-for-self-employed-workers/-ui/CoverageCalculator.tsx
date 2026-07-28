@@ -1,7 +1,7 @@
 import { Button, ErrorSummary, Link, linkVariants } from '@govtech-bb/react'
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode, RefObject } from 'react'
-import { money } from '@/lib/money'
+import { money as formatBbd } from '@/lib/money'
 import {
   earningsAtRisk,
   estimateBenefits,
@@ -13,6 +13,9 @@ import {
 import type { EarningsInputs } from '../-lib/compute'
 
 type Screen = 'hero' | 'benefits' | 'income' | 'plan' | 'result' | 'next-steps'
+
+// This service shows all amounts in Barbados dollars, prefixed "BDS $".
+const money = (n: number) => `BDS ${formatBbd(n)}`
 
 const SERVICE_CAPTION = 'NIS for self-employed and gig workers'
 // The same NIS registration page the service page's "Register as self-employed"
@@ -245,21 +248,21 @@ export function CoverageCalculator() {
   function submitIncome() {
     const next: typeof errors = {}
     if (!goodMonth.trim())
-      next.goodMonth = 'Enter your earnings in a good month'
+      next.goodMonth = 'Enter your earnings in a busy month'
     else if (!Number.isFinite(goodMonthNum) || goodMonthNum <= 0)
-      next.goodMonth = 'Good month earnings must be an amount greater than 0'
+      next.goodMonth = 'Busy month earnings must be an amount greater than 0'
     if (!slowMonth.trim())
       next.slowMonth = 'Enter your earnings in a slow month'
     else if (!Number.isFinite(slowMonthNum) || slowMonthNum < 0)
       next.slowMonth = 'Slow month earnings must be 0 or more'
     if (!goodMonths.trim())
-      next.goodMonths = 'Enter how many good months you have in a year'
+      next.goodMonths = 'Enter how many busy months you have in a year'
     else if (
       !/^\d+$/.test(goodMonths.trim()) ||
       goodMonthsNum < 1 ||
       goodMonthsNum > 12
     )
-      next.goodMonths = 'Enter a whole number of good months from 1 to 12'
+      next.goodMonths = 'Enter a whole number of busy months from 1 to 12'
     setErrors(next)
     if (Object.keys(next).length === 0) {
       setTierError('')
@@ -416,7 +419,7 @@ function Hero({
         <p className="mb-6 text-[1.125rem] text-mid-grey-00">
           Self-employed Bajans can join too. You choose how much you put in:{' '}
           <strong className="text-black-00">
-            more in good months, less in slow ones
+            more in busy months, less in slow ones
           </strong>
           . It&rsquo;s voluntary, and what matters is your total over the year.
         </p>
@@ -644,9 +647,9 @@ function IncomeStep({
           error={errors.goodMonth}
           hint="When work is steady and money comes in. A rough number is fine."
           id="good-month"
-          label="What does a good month look like?"
+          label="What does a busy month look like?"
           onChange={setGoodMonth}
-          prefix="$"
+          prefix="BDS $"
           value={goodMonth}
         />
         <MoneyField
@@ -655,14 +658,14 @@ function IncomeStep({
           id="slow-month"
           label="And a slow month?"
           onChange={setSlowMonth}
-          prefix="$"
+          prefix="BDS $"
           value={slowMonth}
         />
         <MoneyField
           error={errors.goodMonths}
           hint="Enter a number from 1 to 12."
           id="good-months"
-          label="How many good months do you usually have in a year?"
+          label="How many busy months do you usually have in a year?"
           onChange={setGoodMonths}
           value={goodMonths}
         />
@@ -897,7 +900,7 @@ function PlanStep({
 
       <div className="mt-6 space-y-2 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
         <p>
-          <strong>Good month?</strong> Pay a bit more.{' '}
+          <strong>Busy month?</strong> Pay a bit more.{' '}
           <strong>Slow month?</strong> Pay less, or skip it. What matters is
           your total for the year.
         </p>
