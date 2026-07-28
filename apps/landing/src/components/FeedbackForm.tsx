@@ -1,29 +1,30 @@
-import {
-  Button,
-  ErrorSummary,
-  Text,
-  TextArea
-  
-} from '@govtech-bb/react'
-import type {ErrorItem} from '@govtech-bb/react';
+import { Button, ErrorSummary, Text, TextArea } from '@govtech-bb/react'
+import type { ErrorItem } from '@govtech-bb/react'
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { sendFeedback  } from '../lib/send-feedback'
-import type {FeedbackState} from '../lib/send-feedback';
+import { sendFeedback } from '../lib/send-feedback'
+import type { FeedbackState } from '../lib/send-feedback'
 import { trackEvent } from '../lib/analytics'
 
 const INITIAL: FeedbackState = { error: null }
 
+function handleErrorClick(
+  error: ErrorItem,
+  event: React.MouseEvent<HTMLAnchorElement>,
+) {
+  event.preventDefault()
+  const el = document.getElementById(error.target)
+  if (el) {
+    el.focus()
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+}
+
 export function FeedbackForm() {
-  const [referrer, setReferrer] = useState('')
   const [state, setState] = useState<FeedbackState>(INITIAL)
   const [dismissed, setDismissed] = useState<FeedbackState | null>(null)
   const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
   const errorSummaryRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    setReferrer(sessionStorage.getItem('feedbackReferrer') ?? '')
-  }, [])
 
   useEffect(() => {
     if (state.success) {
@@ -54,23 +55,14 @@ export function FeedbackForm() {
     ([field, message]) => ({ text: message, target: field }),
   )
 
-  const handleErrorClick = (
-    error: ErrorItem,
-    event: React.MouseEvent<HTMLAnchorElement>,
-  ) => {
-    event.preventDefault()
-    const el = document.getElementById(error.target)
-    if (el) {
-      el.focus()
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }
-  }
-
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     trackEvent('feedback-submit')
     const formData = new FormData(e.currentTarget)
-    const data = Object.fromEntries(formData) as Record<string, string>
+    const data = {
+      ...Object.fromEntries(formData),
+      referrer: sessionStorage.getItem('feedbackReferrer') ?? '',
+    } as Record<string, string>
     startTransition(async () => {
       const result = await sendFeedback({ data })
       setState(result)
@@ -78,8 +70,7 @@ export function FeedbackForm() {
   }
 
   const showSuccess = state.success && dismissed !== state
-  const showServerError =
-    !!state.error && Object.keys(fieldErrors).length === 0
+  const showServerError = !!state.error && Object.keys(fieldErrors).length === 0
 
   return (
     <div className="mb-6 space-y-6">
@@ -118,7 +109,6 @@ export function FeedbackForm() {
             name="whatWentWrong"
             rows={4}
           />
-          <input name="referrer" readOnly type="hidden" value={referrer} />
           <Button className="w-full" type="submit" variant="primary">
             {isPending ? 'Submitting...' : 'Send Feedback'}
           </Button>

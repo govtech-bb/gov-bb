@@ -32,6 +32,16 @@ const moneyFmt = new Intl.NumberFormat('en-BB', {
 })
 const money = (n: number) => moneyFmt.format(n || 0)
 
+// Move focus to (and scroll to) an error summary when validation fails on a
+// step that stays on the same screen — mirrors the sibling calculators.
+function focusErrorSummary(ref: RefObject<HTMLDivElement | null>) {
+  if (typeof window === 'undefined') return
+  window.requestAnimationFrame(() => {
+    ref.current?.focus()
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
+
 function PerWeek({ weekly }: { weekly: number }) {
   return (
     <>
@@ -228,16 +238,6 @@ export function CoverageCalculator() {
     if (typeof window !== 'undefined') window.scrollTo({ top: 0 })
     topRef.current?.focus()
   }, [screen])
-
-  // Move focus to (and scroll to) an error summary when validation fails on a
-  // step that stays on the same screen — mirrors the sibling calculators.
-  const focusErrorSummary = (ref: RefObject<HTMLDivElement | null>) => {
-    if (typeof window === 'undefined') return
-    window.requestAnimationFrame(() => {
-      ref.current?.focus()
-      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-  }
 
   const go = (next: Screen) => setScreen(next)
 

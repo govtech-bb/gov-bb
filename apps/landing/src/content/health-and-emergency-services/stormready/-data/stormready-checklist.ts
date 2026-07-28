@@ -23,12 +23,6 @@ export interface ChecklistSection {
   items: ChecklistItem[]
 }
 
-/** ISO date — formatted for display the same way as markdown page freshness. */
-export const STORMREADY_LAST_UPDATED = '2026-06-04'
-
-/** Hurricane season runs 1 June to 30 November. */
-export const HURRICANE_SEASON_LABEL = '1 June to 30 November 2026'
-
 export const STORMREADY_CHECKLIST: ChecklistSection[] = [
   {
     id: 'water',

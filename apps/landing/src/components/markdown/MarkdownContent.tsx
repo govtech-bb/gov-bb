@@ -3,7 +3,8 @@ import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 import type { Root } from 'hast'
 import type { Frontmatter } from '../../lib/frontmatter'
-import { hideStartLinks, sectionise } from '../../utils/markdown/plugins'
+import hideStartLinks from '../../utils/markdown/plugins/hideStartLinks'
+import sectionise from '../../utils/markdown/plugins/sectionise'
 import { markdownComponents } from './MdComponents'
 import { formatPublishDate } from '../../lib/format-date'
 import { AvailableFormsContext } from './StartLink'
@@ -70,7 +71,8 @@ export function MarkdownContent({
               {frontmatter.publish_date ? (
                 <div className="border-blue-10 border-b-4 pb-4 text-mid-grey-00">
                   <Text as="p" size="caption">
-                    Last updated on {formatPublishDate(frontmatter.publish_date)}
+                    Last updated on{' '}
+                    {formatPublishDate(frontmatter.publish_date)}
                   </Text>
                 </div>
               ) : null}

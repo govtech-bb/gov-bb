@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type * as ReactRouter from '@tanstack/react-router'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { processMarkdown } from '../../utils/markdown/processor'
-import { bakeStartLinkFormId } from '../../utils/markdown/plugins'
+import { bakeStartLinkFormId } from '../../utils/markdown/plugins/bakeStartLinkFormId'
 import { MarkdownBody } from './MarkdownContent'
 
 // StartLink reads useLocation for analytics; stub it so form CTAs render
