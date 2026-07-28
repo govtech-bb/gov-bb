@@ -653,6 +653,37 @@ describe("EmailBodyBuilder", () => {
       expect(labels).not.toContain("Note");
     });
 
+    it("omits content elements entirely", async () => {
+      const contract = makeContract();
+      contract.steps[0].elements.push({
+        fieldId: "guidance",
+        label: "Guidance",
+        htmlType: "content",
+        content: "Have your documents ready.",
+        variant: "inset",
+      });
+      formSvc = makeFormDefinitionsService(contract);
+      builder = new EmailBodyBuilder(formSvc);
+
+      const payload = makePayload();
+      payload.meta.activeFieldIds["personal"] = [
+        "firstName",
+        "lastName",
+        "gender",
+        "interests",
+        "country",
+        "languages",
+        "dob",
+        "guidance",
+      ];
+
+      const ctx = await builder.build(payload);
+      const labels = ctx.sections[0].fields.map((f) => f.label);
+
+      expect(labels).not.toContain("Guidance");
+      expect(labels).toContain("First Name");
+    });
+
     it("omits sections whose every field resolved to empty", async () => {
       const payload = makePayload();
       payload.values["contact"] = { email: "", phone: "" };

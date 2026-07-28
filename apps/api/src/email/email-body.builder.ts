@@ -304,7 +304,7 @@ export class EmailBodyBuilder {
           ? [...new Set((rawHidden as string[][]).flat())]
           : (rawHidden as string[]);
 
-    const SKIP_TYPES = new Set<Primitive["htmlType"]>(["show-hide"]);
+    const SKIP_TYPES = new Set<Primitive["htmlType"]>(["show-hide", "content"]);
 
     const fields = step.elements
       .filter((el) => !SKIP_TYPES.has(el.htmlType))
