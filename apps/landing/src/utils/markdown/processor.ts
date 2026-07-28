@@ -6,7 +6,7 @@ import rehypeRaw from 'rehype-raw'
 import rehypeSlug from 'rehype-slug'
 import rehypeAutolinkHeadings from 'rehype-autolink-headings'
 import type { Root } from 'hast'
-import { sanitizeUrls } from './plugins'
+import sanitizeUrls from './plugins/sanitizeUrls'
 
 type ProcessedMarkdown = {
   hast: Root

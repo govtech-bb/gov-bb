@@ -1,0 +1,28 @@
+{
+  "$schema": "https://react.doctor/schema/config.json",
+  "ignore": {
+    // Generated Amplify bundles contain minified vendor code, not source.
+    "files": [".amplify-hosting/**"],
+    "overrides": [
+      {
+        // Nitro's server-only runtime helper is not a React Hook.
+        "files": ["src/lib/preview.ts", "src/lib/preview-form-access.ts"],
+        "rules": ["react-doctor/rules-of-hooks"],
+      },
+      {
+        // The health probe aborts on timeout and guards every post-await update
+        // with both an unmount flag and a monotonically increasing probe id.
+        "files": ["src/components/ChatAssistant.tsx"],
+        "rules": [
+          "react-doctor/no-fetch-in-effect",
+          "react-doctor/no-set-state-after-await-in-effect",
+        ],
+      },
+      {
+        // This static, presentational list is never reordered or filtered.
+        "files": ["src/components/ErrorPage.tsx"],
+        "rules": ["react-doctor/no-array-index-as-key"],
+      },
+    ],
+  },
+}

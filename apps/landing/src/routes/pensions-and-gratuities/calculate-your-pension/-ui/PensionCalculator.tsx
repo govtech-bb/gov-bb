@@ -23,6 +23,7 @@ const moneyFmt = new Intl.NumberFormat('en-BB', {
 })
 
 const money = (n: number) => moneyFmt.format(n || 0)
+const monthWord = (n: number) => `${n} month${n === 1 ? '' : 's'}`
 
 function ServiceTitle() {
   return (
@@ -196,7 +197,6 @@ export function PensionCalculator() {
       nopayMonths: np,
       salary: sal,
     } = estimate
-    const monthWord = (n: number) => `${n} month${n === 1 ? '' : 's'}`
     // months is capped at 600 in compute(); when the entered span is larger,
     // say so instead of showing a month count that contradicts the year range.
     const isCapped = (ey - sy) * 12 - np > months

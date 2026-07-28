@@ -52,17 +52,18 @@ export function StormReadyChecklistPage() {
     setHydrated(true)
   }, [])
 
+  useEffect(() => {
+    if (hydrated) {
+      saveState(state)
+    }
+  }, [hydrated, state])
+
   const setItem = useCallback((id: string, checked: boolean) => {
-    setState((prev) => {
-      const next = { ...prev, [id]: checked }
-      saveState(next)
-      return next
-    })
+    setState((prev) => ({ ...prev, [id]: checked }))
   }, [])
 
   const reset = useCallback(() => {
     setState({})
-    saveState({})
   }, [])
 
   const doneCount = useMemo(
@@ -143,10 +144,7 @@ export function StormReadyChecklistPage() {
           block, not the flex fieldset. */}
       <div className="flex flex-col gap-m print:block">
         {STORMREADY_CHECKLIST.map((section) => (
-          <div
-            className="print:mb-m print:break-inside-avoid"
-            key={section.id}
-          >
+          <div className="print:mb-m print:break-inside-avoid" key={section.id}>
             <fieldset className="flex flex-col gap-s border-0 p-0">
               <legend className="w-full border-grey-00 border-b pb-xs">
                 <Heading as="h2">{section.title}</Heading>

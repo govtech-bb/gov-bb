@@ -5,7 +5,7 @@ import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { MarkdownContent } from '../components/markdown'
 import { processMarkdown } from '../utils/markdown/processor'
-import { bakeStartLinkFormId } from '../utils/markdown/plugins'
+import { bakeStartLinkFormId } from '../utils/markdown/plugins/bakeStartLinkFormId'
 import type { Frontmatter, ViewLevel } from '../lib/frontmatter'
 
 /**

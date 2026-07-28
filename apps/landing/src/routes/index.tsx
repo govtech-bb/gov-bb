@@ -18,21 +18,21 @@ export const Route = createFileRoute('/')({
   component: Home,
 })
 
+function handleSearch(q: string) {
+  trackEvent('search-submit', { query: q, source: 'home' })
+  if (q === '') {
+    window.location.href = '/services'
+    return
+  }
+  window.location.href = `/search-results?q=${encodeURIComponent(q)}`
+}
+
 function Home() {
   const { level, serviceStatuses } = Route.useRouteContext()
   const overlay = deriveVisibilityOverlay(serviceStatuses)
   const categories = CATEGORIES.filter((cat) =>
     isCategoryVisible(cat, level, overlay),
   )
-
-  const handleSearch = (q: string) => {
-    trackEvent('search-submit', { query: q, source: 'home' })
-    if (q === '') {
-      window.location.href = '/services'
-      return
-    }
-    window.location.href = `/search-results?q=${encodeURIComponent(q)}`
-  }
 
   return (
     <>
@@ -56,7 +56,9 @@ function Home() {
       <section className="border-b-4 border-teal-100 bg-green-10">
         <div className="container">
           <div className="space-y-m py-m">
-            <Heading as="h4">Or search all government services directly</Heading>
+            <Heading as="h4">
+              Or search all government services directly
+            </Heading>
             <Search
               action="/search-results"
               name="q"
@@ -71,7 +73,9 @@ function Home() {
       <section>
         <div className="container">
           <div className="space-y-m py-m lg:py-l">
-            <Heading as="h2" className="text-balance">All government services</Heading>
+            <Heading as="h2" className="text-balance">
+              All government services
+            </Heading>
             <ul className="m-0 flex list-none flex-col p-0">
               {categories.map((cat) => (
                 <li
