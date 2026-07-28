@@ -10,7 +10,6 @@ import { RegistryModule } from "./registry/registry.module";
 import { FormsModule } from "./forms/forms.module";
 import { FilesModule } from "./files/files.module";
 import { PaymentsModule } from "./payments/payments.module";
-import { WebhooksModule } from "./webhooks/webhooks.module";
 import { FeedbackModule } from "./feedback/feedback.module";
 import { ServiceStatusModule } from "./services/service-status.module";
 import { ContentModule } from "./content/content.module";
@@ -49,7 +48,6 @@ import { envValidationSchema } from "./config/env.validation";
     FormsModule,
     FilesModule,
     PaymentsModule,
-    WebhooksModule,
     FeedbackModule,
     ServiceStatusModule,
     ContentModule,

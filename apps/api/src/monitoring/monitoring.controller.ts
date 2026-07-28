@@ -5,6 +5,10 @@ import { AdminTokenGuard } from "@/common/guards/admin-token.guard";
 import { ApiResponse } from "@/common/response";
 import type { ApiResponseShape } from "@/common/response";
 import { NotificationLogRepository } from "@/forms/submissions/notification-log.repository";
+import {
+  WebhookDestinationsService,
+  type WebhookDestinationsAudit,
+} from "@/forms/webhook-destinations/webhook-destinations.service";
 
 /** Read-only projection returned to the monitoring console's Delivery tab. */
 export interface NotificationLogRow {
@@ -43,7 +47,22 @@ export interface NotificationLogRow {
   medium: { limit: 30, ttl: 60_000 },
 })
 export class MonitoringController {
-  constructor(private readonly notificationLog: NotificationLogRepository) {}
+  constructor(
+    private readonly notificationLog: NotificationLogRepository,
+    private readonly webhookDestinations: WebhookDestinationsService,
+  ) {}
+
+  @Get("webhook-destinations")
+  @ApiBearerAuth()
+  @UseGuards(new AdminTokenGuard("MONITORING_API_TOKEN"))
+  webhookDestinationsAudit(): ApiResponseShape<WebhookDestinationsAudit> {
+    // The deploy-time per-MDA destinations audit (#1920/#2020): JSON parse
+    // issues + ministries a form points at that have no entry in the secret.
+    // Carries no secret values — only ministry keys and structural messages.
+    return ApiResponse.success(this.webhookDestinations.getAudit(), {
+      message: "Webhook destinations audit retrieved",
+    });
+  }
 
   @Get("notification-log")
   @ApiBearerAuth()
