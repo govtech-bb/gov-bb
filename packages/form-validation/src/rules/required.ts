@@ -1,10 +1,9 @@
 import { z } from "zod";
+import { defaultValidationMessage } from "../default-messages";
 import type { RuleRunner } from "../types";
 
-const DEFAULT_MSG = "This field is required";
-
 export const requiredRunner: RuleRunner = (value, config) => {
-  const msg = config.error ?? DEFAULT_MSG;
+  const msg = config.error ?? defaultValidationMessage("required");
   const schema = z.any().refine((v) => {
     if (v === undefined || v === null) return false;
     if (typeof v === "string") return v.trim().length > 0;

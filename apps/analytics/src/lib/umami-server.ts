@@ -5,12 +5,13 @@
 // fetched on demand and deduped by a short in-memory TTL (cache.ts). This
 // module deliberately has no `nitro/runtime-config` import so its pure shapers
 // stay unit-testable.
+import { defaultValidationMessage } from '@govtech-bb/form-validation'
 import {
   UmamiClient,
   aggregateFormEvents,
-  buildFormDetail,
   buildSources,
   startOfDayInTz,
+  tallyFieldErrors,
   tzOffsetMs,
   weightedAverage,
   weightedSum,
@@ -41,6 +42,17 @@ export interface UmamiConfig {
 
 export function isConfigured(cfg: UmamiConfig): boolean {
   return Boolean(cfg.apiKey && cfg.landingWebsiteId && cfg.formsWebsiteId)
+}
+
+/**
+ * Landing-only configured gate. The Search tab's data comes solely from the
+ * landing site (`fetchSearchData` reads `landingWebsiteId` only), so it must not
+ * be gated on the forms website id like `isConfigured` — otherwise a deploy with
+ * landing analytics but no forms site wrongly renders "Analytics is not
+ * configured" despite the search data being available.
+ */
+export function isLandingConfigured(cfg: UmamiConfig): boolean {
+  return Boolean(cfg.apiKey && cfg.landingWebsiteId)
 }
 
 // --- date-range presets (#homepage filter) ---------------------------------
@@ -156,6 +168,24 @@ export interface FieldCount {
   count: number
 }
 
+/** One reason a field failed, resolved for display. */
+export interface FieldFailureReason {
+  /** stable reason code (rule type or synthetic date code). */
+  code: string
+  /** the full error message a user would see, from the contract or defaults. */
+  message: string
+  count: number
+}
+
+/** A field's validation failures, with its human label and reason breakdown. */
+export interface FieldFailure {
+  fieldId: string
+  /** human label from the form contract; falls back to the field id. */
+  label: string
+  count: number
+  reasons: FieldFailureReason[]
+}
+
 export interface FormDetailData {
   formId: string
   title: string
@@ -172,13 +202,103 @@ export interface FormDetailData {
   totalFieldErrors: number
   /** Start → Step N (titled) → Submit, with view counts. Event counts. */
   funnel: FunnelStage[]
-  /** why fields fail (validation reason codes/messages), descending. */
-  validationReasons: FieldCount[]
+  /** which fields fail and why, most-problematic first (`[0]` is the worst). */
+  fieldFailures: FieldFailure[]
   /** submit reliability (#1916). */
   submitError: SubmitError
   generatedAt: string
   window: string
   range: string
+}
+
+// --- search analytics ------------------------------------------------------
+
+/** One row of the top-queries table. */
+export interface SearchQueryRow {
+  query: string
+  /** `search` events (results rendered) for this query in the window. */
+  searches: number
+  /** `search-result-click` events for this query. */
+  clicks: number
+  /** clicks ÷ searches, 0–1; 0 when no searches. */
+  ctr: number
+  /** observed to return zero results (`search-no-results` event). */
+  zeroResult: boolean
+}
+
+export interface SearchData {
+  /** total `search` events (results rendered) in the window. */
+  searches: number
+  /** total `search-result-click` events in the window. */
+  clicks: number
+  /** clicks ÷ searches, 0–1; the overall click-through rate. */
+  ctr: number
+  /** share of searches returning zero results, 0–1. */
+  zeroResultRate: number
+  /** top queries by search count. */
+  queries: SearchQueryRow[]
+  generatedAt: string
+  window: string
+  range: string
+}
+
+/**
+ * Join the four search event-value distributions into the search view. Counts
+ * come from summing each distribution's `total` (the `value` is the query text
+ * or the result count, not a weight). The overall zero-result rate is taken from
+ * the historical `search` `results` distribution (value 0), while the per-query
+ * zero-result flag comes from the `search-no-results` event — the only
+ * query-keyed signal, since Umami can't cross-tabulate query × results.
+ */
+export function shapeSearch(
+  queryRows: EventDataValue[],
+  resultsRows: EventDataValue[],
+  clickRows: EventDataValue[],
+  noResultRows: EventDataValue[],
+  topN = 20,
+): Omit<SearchData, 'generatedAt' | 'window' | 'range'> {
+  const clicksByQuery = new Map<string, number>()
+  for (const r of clickRows) {
+    const q = String(r.value)
+    clicksByQuery.set(q, (clicksByQuery.get(q) ?? 0) + r.total)
+  }
+  const zeroResultQueries = new Set(noResultRows.map((r) => String(r.value)))
+
+  const clicks = clickRows.reduce((s, r) => s + r.total, 0)
+  const resultsEvents = resultsRows.reduce((s, r) => s + r.total, 0)
+  const queryEvents = queryRows.reduce((s, r) => s + r.total, 0)
+  const zeroResults = resultsRows
+    .filter((r) => Number(r.value) === 0)
+    .reduce((s, r) => s + r.total, 0)
+
+  // Total searches from whichever distribution is more complete. The `results`
+  // property has tiny cardinality (a few counts) so it can't be row-capped,
+  // while the high-cardinality `query` distribution can be — taking the max
+  // stops a truncated or failed call from deflating the total and inflating CTR.
+  const searches = Math.max(queryEvents, resultsEvents)
+
+  const queries: SearchQueryRow[] = queryRows
+    .map((r) => {
+      const query = String(r.value)
+      const clicksForQuery = clicksByQuery.get(query) ?? 0
+      return {
+        query,
+        searches: r.total,
+        clicks: clicksForQuery,
+        ctr: r.total ? clicksForQuery / r.total : 0,
+        zeroResult: zeroResultQueries.has(query),
+      }
+    })
+    .sort((a, b) => b.searches - a.searches)
+    .slice(0, topN)
+
+  return {
+    searches,
+    clicks,
+    ctr: searches ? clicks / searches : 0,
+    zeroResultRate: resultsEvents ? zeroResults / resultsEvents : 0,
+    queries,
+  }
 }
 
 // --- pure shapers (unit-tested) --------------------------------------------
@@ -218,28 +338,69 @@ export function shapeFunnel(funnelRows: FunnelStepResult[]): FunnelStage[] {
 }
 
 /**
- * Step funnel labelled by step identity: Start → each defined step ("Step N:
- * <title>", declared order) → Submit. Counts are event views (`form-start`,
- * per-step `form-step-view`, `form-submit`). Keyed by stepId (not the funnel's
- * positional "Step N", which branching makes visitor-relative), so a conditional
- * step a visitor's answers skip shows fewer or zero views. `dropoffPct` is 0 —
- * step-over-step drop-off isn't meaningful across branch points.
+ * Post-submit / payment tail counts for the step funnel (#1955). All optional:
+ * `reviewCount`/`confirmationCount` are appended when provided; the payment
+ * stages render only when `paymentInitiatedCount > 0` (payment forms are
+ * detected by event presence — the public forms API doesn't expose processors).
+ */
+export interface StepFunnelTail {
+  reviewCount?: number
+  confirmationCount?: number
+  paymentInitiatedCount?: number
+  paymentSuccessCount?: number
+}
+
+/**
+ * Step funnel labelled by step identity, covering the full journey (#1955):
+ * Start → each defined step ("Step N: <title>", declared order) → Review →
+ * Submit → Confirmation → (payment forms) Payment initiated → Payment success.
+ * Counts are event views (`form-start`, per-step `form-step-view`,
+ * `form-review`, `form-submit`, `form-confirmation-view`, `payment-*`). Steps
+ * are keyed by stepId (not the funnel's positional "Step N", which branching
+ * makes visitor-relative), so a conditional step a visitor's answers skip shows
+ * fewer or zero views. `dropoffPct` is 0 throughout — step-over-step drop-off
+ * isn't meaningful across the branch points in the step portion, so the raw
+ * counts (not a computed rate) carry the drop-off signal.
  */
 export function buildStepFunnel(
   startCount: number,
   submitCount: number,
   orderedSteps: { stepId: string; title: string }[],
   reachedByStep: Record<string, number>,
+  tail: StepFunnelTail = {},
 ): FunnelStage[] {
-  return [
+  const stages: FunnelStage[] = [
     { label: 'Start', count: startCount, dropoffPct: 0 },
     ...orderedSteps.map((s, i) => ({
       label: `Step ${i + 1}: ${s.title}`,
       count: reachedByStep[s.stepId] ?? 0,
       dropoffPct: 0,
     })),
-    { label: 'Submit', count: submitCount, dropoffPct: 0 },
   ]
+  if (tail.reviewCount !== undefined) {
+    stages.push({ label: 'Review', count: tail.reviewCount, dropoffPct: 0 })
+  }
+  stages.push({ label: 'Submit', count: submitCount, dropoffPct: 0 })
+  if (tail.confirmationCount !== undefined) {
+    stages.push({
+      label: 'Confirmation',
+      count: tail.confirmationCount,
+      dropoffPct: 0,
+    })
+  }
+  if ((tail.paymentInitiatedCount ?? 0) > 0) {
+    stages.push({
+      label: 'Payment initiated',
+      count: tail.paymentInitiatedCount ?? 0,
+      dropoffPct: 0,
+    })
+    stages.push({
+      label: 'Payment success',
+      count: tail.paymentSuccessCount ?? 0,
+      dropoffPct: 0,
+    })
+  }
+  return stages
 }
 
 // The current app emits `errors: network | payment-init | server`; older data
@@ -586,32 +747,108 @@ function ymd(ms: number): string {
   }).format(new Date(ms))
 }
 
-async function fetchFormList(cfg: UmamiConfig): Promise<FormListItem[]> {
+// A slow or hung forms API must not stall the whole dashboard request. Cap each
+// fetch and fall back to the same empty shape a non-ok response already returns
+// (#2080). Non-timeout errors keep propagating as before.
+const FORMS_FETCH_TIMEOUT_MS = 15_000
+
+const isTimeout = (err: unknown): boolean =>
+  err instanceof DOMException &&
+  (err.name === 'TimeoutError' || err.name === 'AbortError')
+
+export async function fetchFormList(cfg: UmamiConfig): Promise<FormListItem[]> {
   const base = cfg.formsApiUrl.replace(/\/+$/, '')
-  const res = await fetch(`${base}/form-definitions`)
-  if (!res.ok) return []
-  const body = (await res.json()) as {
-    data?: { formId: string; title: string }[]
+  // The timeout must cover the body read too, not just the connection — a
+  // server that sends headers then stalls the body would otherwise abort
+  // outside this catch and throw past the fallback (#2080). Only a timeout
+  // falls back; other errors (network, malformed JSON) propagate as before.
+  let body: { data?: { formId: string; title: string }[] }
+  try {
+    const res = await fetch(`${base}/form-definitions`, {
+      signal: AbortSignal.timeout(FORMS_FETCH_TIMEOUT_MS),
+    })
+    if (!res.ok) return []
+    body = (await res.json()) as {
+      data?: { formId: string; title: string }[]
+    }
+  } catch (err) {
+    if (isTimeout(err)) return []
+    throw err
   }
   return (body.data ?? []).map((f) => ({ formId: f.formId, title: f.title }))
 }
 
-async function fetchFormDefinition(
+interface FormDefinition {
+  title: string
+  steps: { stepId: string; title: string }[]
+  /** bare fieldId → human label, for the field-failure table. */
+  labelByField: Record<string, string>
+  /** `${fieldId}:${code}` → the full error message a user would see. */
+  messageByFieldCode: Record<string, string>
+}
+
+export async function fetchFormDefinition(
   cfg: UmamiConfig,
   formId: string,
-): Promise<{ title: string; steps: { stepId: string; title: string }[] }> {
+): Promise<FormDefinition> {
+  const empty: FormDefinition = {
+    title: formId,
+    steps: [],
+    labelByField: {},
+    messageByFieldCode: {},
+  }
   const base = cfg.formsApiUrl.replace(/\/+$/, '')
-  const res = await fetch(
-    `${base}/form-definitions/${encodeURIComponent(formId)}`,
-  )
-  if (!res.ok) return { title: formId, steps: [] }
-  const body = (await res.json()) as {
-    data?: { title?: string; steps?: { stepId: string; title: string }[] }
+  // Timeout must cover the body read too (see fetchFormList) — return the empty
+  // shape on a timeout at either phase; other errors propagate (#2080).
+  let raw: unknown
+  try {
+    const res = await fetch(
+      `${base}/form-definitions/${encodeURIComponent(formId)}`,
+      { signal: AbortSignal.timeout(FORMS_FETCH_TIMEOUT_MS) },
+    )
+    if (!res.ok) return empty
+    raw = await res.json()
+  } catch (err) {
+    if (isTimeout(err)) return empty
+    throw err
+  }
+  const body = raw as {
+    data?: {
+      title?: string
+      steps?: {
+        stepId: string
+        title: string
+        elements?: {
+          fieldId: string
+          label?: string
+          validations?: Record<string, { error?: string; value?: unknown }>
+        }[]
+      }[]
+    }
   }
   const d = body.data
+  if (!d) return empty
+
+  const labelByField: Record<string, string> = {}
+  const messageByFieldCode: Record<string, string> = {}
+  for (const step of d.steps ?? []) {
+    for (const el of step.elements ?? []) {
+      if (el.label) labelByField[el.fieldId] = el.label
+      // The message a user sees is the authored `error` if the recipe set one,
+      // otherwise the runtime default — resolved from the same source the form
+      // validator uses (defaultValidationMessage), so hover text matches.
+      for (const [code, config] of Object.entries(el.validations ?? {})) {
+        messageByFieldCode[`${el.fieldId}:${code}`] =
+          config?.error ?? defaultValidationMessage(code, config)
+      }
+    }
+  }
+
   return {
-    title: d?.title ?? formId,
-    steps: (d?.steps ?? []).map((s) => ({ stepId: s.stepId, title: s.title })),
+    title: d.title ?? formId,
+    steps: (d.steps ?? []).map((s) => ({ stepId: s.stepId, title: s.title })),
+    labelByField,
+    messageByFieldCode,
   }
 }
 
@@ -766,6 +1003,33 @@ export async function fetchFormsData(
   })
 }
 
+/** Search queries + click-through for the "Search" tab (landing site). */
+export async function fetchSearchData(
+  cfg: UmamiConfig,
+  rangeKey: string,
+): Promise<SearchData> {
+  const range = normaliseRange(rangeKey)
+  return memoize(`search:${range}`, TTL_MS, async () => {
+    const client = new UmamiClient({ apiKey: cfg.apiKey })
+    const r = rangeForKey(range)
+    const wid = cfg.landingWebsiteId
+    const [queryRows, resultsRows, clickRows, noResultRows] = await Promise.all(
+      [
+        eventValues(client, wid, 'search', 'query', r),
+        eventValues(client, wid, 'search', 'results', r),
+        eventValues(client, wid, 'search-result-click', 'query', r),
+        eventValues(client, wid, 'search-no-results', 'query', r),
+      ],
+    )
+    return {
+      ...shapeSearch(queryRows, resultsRows, clickRows, noResultRows),
+      generatedAt: new Date().toISOString(),
+      window: rangeLabel(range),
+      range,
+    }
+  })
+}
+
 export async function fetchFormDetailData(
   cfg: UmamiConfig,
   formId: string,
@@ -782,8 +1046,9 @@ export async function fetchFormDetailData(
       stepViews,
       duration,
       errorCount,
-      errorTypes,
+      fieldErrorsRaw,
       submitErrRows,
+      paymentReturnedRows,
       def,
     ] = await Promise.all([
       client.reportFunnel(cfg.formsWebsiteId, {
@@ -797,23 +1062,48 @@ export async function fetchFormDetailData(
         range: r,
       }),
       client.metricsEvents(cfg.formsWebsiteId, r),
-      eventValues(client, cfg, `${formId}:form-step-view`, 'step', r),
-      eventValues(client, cfg, `${formId}:form-submit`, 'duration_seconds', r),
       eventValues(
         client,
-        cfg,
+        cfg.formsWebsiteId,
+        `${formId}:form-step-view`,
+        'step',
+        r,
+      ),
+      eventValues(
+        client,
+        cfg.formsWebsiteId,
+        `${formId}:form-submit`,
+        'duration_seconds',
+        r,
+      ),
+      eventValues(
+        client,
+        cfg.formsWebsiteId,
         `${formId}:form-validation-error`,
         'errorCount',
         r,
       ),
       eventValues(
         client,
-        cfg,
+        cfg.formsWebsiteId,
         `${formId}:form-validation-error`,
-        'errorTypes',
+        'fieldErrors',
         r,
       ),
-      eventValues(client, cfg, `${formId}:form-submit-error`, 'errors', r),
+      eventValues(
+        client,
+        cfg.formsWebsiteId,
+        `${formId}:form-submit-error`,
+        'errors',
+        r,
+      ),
+      eventValues(
+        client,
+        cfg.formsWebsiteId,
+        `${formId}:payment-returned`,
+        'outcome',
+        r,
+      ),
       fetchFormDefinition(cfg, formId),
     ])
 
@@ -847,12 +1137,21 @@ export async function fetchFormDetailData(
       counts: {},
       steps: [],
     }
-    const detail = buildFormDetail(formId, entry, {
-      duration,
-      errorCount,
-      fields: [],
-      errorTypes,
-    })
+
+    // Which fields fail and why — parse the `fieldErrors` pairs, then resolve
+    // each field's label and each reason's full message from the contract.
+    const fieldFailures: FieldFailure[] = tallyFieldErrors(fieldErrorsRaw).map(
+      (f) => ({
+        fieldId: f.field,
+        label: def.labelByField[f.field] ?? f.field,
+        count: f.count,
+        reasons: f.reasons.map((rn) => ({
+          code: rn.code,
+          message: def.messageByFieldCode[`${f.field}:${rn.code}`] ?? '',
+          count: rn.count,
+        })),
+      }),
+    )
 
     return {
       formId,
@@ -869,8 +1168,18 @@ export async function fetchFormDetailData(
         entry.counts['form-submit'] ?? 0,
         def.steps,
         reachedByStep,
+        {
+          reviewCount: entry.counts['form-review'] ?? 0,
+          confirmationCount: entry.counts['form-confirmation-view'] ?? 0,
+          paymentInitiatedCount: entry.counts['payment-initiated'] ?? 0,
+          // `payment-returned` splits by outcome; the funnel's terminal payment
+          // stage is the successful returns only.
+          paymentSuccessCount: paymentReturnedRows
+            .filter((v) => String(v.value) === 'success')
+            .reduce((s, v) => s + v.total, 0),
+        },
       ),
-      validationReasons: detail.errorTypes,
+      fieldFailures,
       submitError: shapeSubmitError(
         entry.counts['form-submit'] ?? 0,
         entry.counts['form-submit-error'] ?? 0,
@@ -883,21 +1192,16 @@ export async function fetchFormDetailData(
   })
 }
 
-/** eventDataValues that degrades to [] on error (a form may lack a given event). */
+/** eventDataValues that degrades to [] on error (an event may be absent). */
 async function eventValues(
   client: UmamiClient,
-  cfg: UmamiConfig,
+  websiteId: string,
   event: string,
   propertyName: string,
   r: Range,
 ): Promise<EventDataValue[]> {
   try {
-    return await client.eventDataValues(
-      cfg.formsWebsiteId,
-      event,
-      propertyName,
-      r,
-    )
+    return await client.eventDataValues(websiteId, event, propertyName, r)
   } catch {
     return []
   }

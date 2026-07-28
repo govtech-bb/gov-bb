@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { defaultValidationMessage } from "../default-messages";
 import type { RuleRunner } from "../types";
 import { resolveReference, MISSING } from "./resolve-reference";
 import { str, forEachString } from "./string-values";
 
 export const minLengthRunner: RuleRunner = (value, config) => {
   const min = config.value as number;
-  const msg = config.error ?? `Must be at least ${min} characters`;
+  const msg = config.error ?? defaultValidationMessage("minLength", config);
   return forEachString(value, (element) =>
     z.string().min(min, msg).safeParse(str(element)).success ? null : msg,
   );
@@ -13,21 +14,28 @@ export const minLengthRunner: RuleRunner = (value, config) => {
 
 export const maxLengthRunner: RuleRunner = (value, config) => {
   const max = config.value as number;
-  const msg = config.error ?? `Must be at most ${max} characters`;
+  const msg = config.error ?? defaultValidationMessage("maxLength", config);
   return forEachString(value, (element) =>
     z.string().max(max, msg).safeParse(str(element)).success ? null : msg,
   );
 };
 
 export const patternRunner: RuleRunner = (value, config) => {
-  const msg = config.error ?? "Invalid format";
+  const msg = config.error ?? defaultValidationMessage("pattern");
   // A misconfigured pattern rule fails closed rather than crashing the
   // validation loop (invalid regex) or silently passing everything
   // (undefined value becomes /(?:)/).
   if (typeof config.value !== "string" || config.value === "") return msg;
   let re: RegExp;
   try {
-    re = new RegExp(config.value);
+    // `u` (Unicode) mode so patterns can use `\p{L}`/`\p{M}` property escapes
+    // (e.g. the person-name pattern accepting any-script letters, #1843).
+    // Every builtin + committed-recipe pattern was checked to compile under `u`;
+    // DB-stored custom-component patterns and future recipe-authored patterns are
+    // NOT audited here, so a `u`-incompatible one (e.g. an identity escape like
+    // `\-` outside a class, or a literal `{`) will throw and fail closed via the
+    // catch below — rejecting that field's input rather than crashing.
+    re = new RegExp(config.value, "u");
   } catch {
     return msg;
   }
@@ -37,7 +45,7 @@ export const patternRunner: RuleRunner = (value, config) => {
 };
 
 export const emailRunner: RuleRunner = (value, config) => {
-  const msg = config.error ?? "Must be a valid email address";
+  const msg = config.error ?? defaultValidationMessage("email");
   return forEachString(value, (element) =>
     z.email(msg).safeParse(str(element)).success ? null : msg,
   );
@@ -45,7 +53,7 @@ export const emailRunner: RuleRunner = (value, config) => {
 
 export const containsRunner: RuleRunner = (value, config) => {
   const needle = config.value as string;
-  const msg = config.error ?? `Must contain "${needle}"`;
+  const msg = config.error ?? defaultValidationMessage("contains", config);
   return forEachString(value, (element) =>
     z.string().includes(needle, { message: msg }).safeParse(str(element))
       .success

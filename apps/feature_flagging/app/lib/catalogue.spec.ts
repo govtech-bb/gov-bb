@@ -27,8 +27,20 @@ describe("reconcileCatalogue", () => {
       hasForm: true,
       landingUrl: "family-birth-relationships/get-birth-certificate",
       contentVisibility: "public",
-      status: "enabled", // no status row → default
+      status: "disabled", // no status row → fail-closed default (#2003)
     });
+  });
+
+  it("defaults an unseeded service to `disabled` (fail-closed, matching the api)", () => {
+    const rows = reconcileCatalogue({
+      landing: [
+        { contentSlug: "brand-new-service", title: "Brand new service" },
+      ],
+      forms: [{ formId: "brand-new-form", title: "Brand new form" }],
+      statuses: [],
+    });
+
+    expect(rows.map((r) => r.status)).toEqual(["disabled", "disabled"]);
   });
 
   it("keys an info-only landing service by its content slug", () => {
