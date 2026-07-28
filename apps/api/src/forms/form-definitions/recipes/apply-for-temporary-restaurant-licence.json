@@ -28,14 +28,6 @@
     {
       "type": "webhook",
       "config": {
-        "endpoint": {
-          "env": "WEBHOOK_URL"
-        },
-        "auth": {
-          "scheme": "apiKey",
-          "header": "X-API-Key",
-          "secretEnv": "WEBHOOK_SECRET"
-        },
         "mapping": {
           "programmeCode": "TEMP-RESTAURANT-LICENCE",
           "applicant": {
@@ -47,7 +39,6 @@
             "phone": "applicant-details.mobile-number"
           },
           "excludeSteps": [
-            "check-your-answers",
             "declaration",
             "submission-confirmation"
           ],
