@@ -9,7 +9,7 @@ publish_date: 2026-05-13
 category: pensions-and-gratuities
 ---
 
-Use this tool to estimate your government or public sector pension if you are employed by a Ministry of the Government of Barbados. You can choose between a full pension or a reduced pension.
+Use this tool to estimate your government or public sector pension if you are employed by a Ministry of the Government of Barbados. You can choose between a full pension or a gratuity and a reduced pension.
 
 The tool will show you:
 
