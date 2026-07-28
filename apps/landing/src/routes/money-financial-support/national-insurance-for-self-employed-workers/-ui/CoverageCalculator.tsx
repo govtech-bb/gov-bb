@@ -829,30 +829,11 @@ function IncomeStep({
 /* ── Screen: plan ───────────────────────────────────────────────────── */
 const TIERS: Array<{
   id: Tier
-  label: string
   tone: Tone
-  recommended?: boolean
-  sub: string
 }> = [
-  {
-    id: Tier.Minimum,
-    label: 'Minimum',
-    tone: 'yellow',
-    sub: 'Smaller payouts, but every benefit still counts.',
-  },
-  {
-    id: Tier.Moderate,
-    label: 'Moderate',
-    tone: 'green',
-    recommended: true,
-    sub: 'A bigger share of your earnings.',
-  },
-  {
-    id: Tier.Stronger,
-    label: 'Stronger',
-    tone: 'teal',
-    sub: 'The strongest cover you can build.',
-  },
+  { id: Tier.Minimum, tone: 'yellow' },
+  { id: Tier.Moderate, tone: 'green' },
+  { id: Tier.Stronger, tone: 'teal' },
 ]
 
 function PlanStep({
@@ -958,24 +939,24 @@ function PlanStep({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1 text-black-00">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-[1.25rem]">{t.label}</p>
-                      {t.recommended && (
-                        <span
-                          className={`rounded-full border bg-white-00 ${tone.border} ${tone.text} px-2.5 py-1 font-semibold text-[0.85rem]`}
-                        >
-                          Recommended
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 font-bold text-[2rem] tabular-nums leading-none">
+                    <p className="font-bold text-[2rem] tabular-nums leading-none">
                       {money(suggested[t.id])}
                       <span className="font-normal text-[1rem] text-mid-grey-00">
                         {' '}
-                        /month
+                        a month
                       </span>
                     </p>
-                    <p className="mt-2 text-[1rem] text-mid-grey-00">{t.sub}</p>
+                    {t.id === Tier.Minimum && (
+                      <p className="mt-1 font-semibold text-[1rem]">
+                        Minimum payment
+                      </p>
+                    )}
+                    <p className="mt-2 text-[1rem] text-mid-grey-00 tabular-nums">
+                      {money((suggested[t.id] * 12) / 52)} a week
+                    </p>
+                    <p className="text-[1rem] text-mid-grey-00 tabular-nums">
+                      {money(suggested[t.id] * 12)} a year
+                    </p>
                   </div>
                   <span
                     className={`mt-1 inline-flex h-6 w-6 shrink-0 rounded-full ${
@@ -999,25 +980,22 @@ function PlanStep({
               'linear-gradient(to bottom right, var(--color-teal-00), var(--color-blue-100))',
           }}
         >
-          <div className="mb-1 flex items-start justify-between gap-3">
-            <p className="font-semibold text-[0.95rem] text-teal-40 uppercase tracking-wide">
-              Your plan
-            </p>
-            <span
-              className={`inline-flex items-center rounded-full ${TONE[selTier.tone].bg} ${TONE[selTier.tone].text} px-4 py-1.5 font-bold text-[1.05rem]`}
-            >
-              {selTier.label}
-            </span>
-          </div>
+          <p className="mb-1 font-semibold text-[0.95rem] text-teal-40 uppercase tracking-wide">
+            Your plan
+          </p>
           <p className="mb-1 font-bold text-[2rem] tabular-nums leading-tight">
             {money(chosen)}
             <span className="font-normal text-[1rem] text-teal-40">
               {' '}
-              / month
+              a month
             </span>
           </p>
+          {tier === Tier.Minimum && (
+            <p className="mb-1 font-semibold text-[1rem] text-white-00">
+              Minimum payment
+            </p>
+          )}
           <p className="text-[1rem] text-white-00/90">
-            About{' '}
             <strong className="tabular-nums">{money((chosen * 12) / 52)}</strong>{' '}
             a week.
           </p>
