@@ -1,5 +1,7 @@
-import { describe, expect, it, beforeAll } from "vitest";
+import { afterEach, describe, expect, it, beforeAll, vi } from "vitest";
+import { Logger } from "@nestjs/common";
 import { CatchmentRoutingService } from "./catchment-routing.service";
+import { PARISH_DEFAULTS, PROGRAMME_CODES } from "./polyclinic-routing";
 
 describe("CatchmentRoutingService", () => {
   let svc: CatchmentRoutingService;
@@ -56,5 +58,51 @@ describe("CatchmentRoutingService", () => {
     expect(r?.polyclinic).toBe("Frederick Miller Polyclinic");
     expect(r?.programmeCode).toBe("TEMP-RESTAURANT-LICENCE-FREDERICK-MILLER");
     expect(r?.mdaEmail).toBeNull();
+  });
+
+  it("logs a boot warning naming the emailless catchment (Frederick Miller)", () => {
+    const warnSpy = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => undefined);
+    new CatchmentRoutingService().onModuleInit();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Frederick Miller Polyclinic"),
+    );
+    warnSpy.mockRestore();
+  });
+});
+
+describe("CatchmentRoutingService boot validation (mocked data)", () => {
+  afterEach(() => {
+    vi.doUnmock("./polyclinic-routing");
+    vi.resetModules();
+  });
+
+  it("throws when a GeoJSON catchment has no PROGRAMME_CODES entry", async () => {
+    const { "Sir Winston Scott Polyclinic": _omit, ...rest } = PROGRAMME_CODES;
+    vi.doMock("./polyclinic-routing", () => ({
+      PROGRAMME_CODES: rest,
+      PARISH_DEFAULTS,
+    }));
+    vi.resetModules();
+    const { CatchmentRoutingService: Svc } =
+      await import("./catchment-routing.service");
+    const svc = new Svc();
+    expect(() => svc.onModuleInit()).toThrow(/Sir Winston Scott Polyclinic/);
+  });
+
+  it("throws when a PARISH_DEFAULTS value names an unknown catchment", async () => {
+    vi.doMock("./polyclinic-routing", () => ({
+      PROGRAMME_CODES,
+      PARISH_DEFAULTS: {
+        ...PARISH_DEFAULTS,
+        "st-lucy": "Not A Real Polyclinic",
+      },
+    }));
+    vi.resetModules();
+    const { CatchmentRoutingService: Svc } =
+      await import("./catchment-routing.service");
+    const svc = new Svc();
+    expect(() => svc.onModuleInit()).toThrow(/PARISH_DEFAULTS/);
   });
 });
