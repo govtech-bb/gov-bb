@@ -16,7 +16,7 @@ The tool will show you:
 - an estimated monthly pension amount
 - an estimated gratuity (lump sum)
 
-This is an estimate only. Your actual pension depends on records held by the People Resourcing and Compliance Directorate (PRC) and your last employer.
+This is an estimate only. Your actual pension depends on records held by the People Resourcing and Compliance Directorate (PRCD) and your last employer.
 
 <a data-start-link href="/pensions-and-gratuities/calculate-your-pension/form">Start now</a>
 
@@ -27,7 +27,7 @@ This is an estimate only. Your actual pension depends on records held by the Peo
 - The number of months of no-pay leave you took, if any
 - Your last annual salary in Barbados dollars (BDS$)
 
-Contact the People Resourcing and Compliance Directorate (PRC) or your last employer to confirm these figures.
+Contact the People Resourcing and Compliance Directorate (PRCD) or your last employer to confirm these figures.
 
 ## Before you start
 

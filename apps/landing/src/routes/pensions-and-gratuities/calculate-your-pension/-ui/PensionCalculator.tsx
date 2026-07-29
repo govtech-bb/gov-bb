@@ -229,7 +229,7 @@ export function PensionCalculator() {
                 <strong>You may not be entitled to a pension.</strong> Workers
                 with fewer than 10 years (120 months) of pensionable service who
                 leave during that period do not receive a pension. The figures
-                below are shown for information only. Contact the PRC to confirm
+                below are shown for information only. Contact the PRCD to confirm
                 your entitlement before making any plans.
               </Text>
             </div>
@@ -298,7 +298,7 @@ export function PensionCalculator() {
           </div>
 
           <Text as="p" className="text-mid-grey-00" size="caption">
-            These figures are estimates only. Contact the PRC to discuss which
+            These figures are estimates only. Contact the PRCD to discuss which
             option suits your circumstances before you retire.
           </Text>
 
@@ -354,7 +354,7 @@ export function PensionCalculator() {
           <Text as="p" size="body">
             <strong>This calculator gives an estimate only.</strong> Your actual
             pension depends on information held by the People Resourcing and
-            Compliance Directorate (PRC) and your last employer. Contact them
+            Compliance Directorate (PRCD) and your last employer. Contact them
             to confirm your exact figures before making any decisions.
           </Text>
         </div>

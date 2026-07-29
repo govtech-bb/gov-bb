@@ -31,7 +31,7 @@ Formula: (full pension ÷ 4) × 12.5
 
 ### Mixed service pension
 
-A fixed formula cannot be used for mixed service pensions because several varying factors apply. Contact the PRC for guidance.
+A fixed formula cannot be used for mixed service pensions because several varying factors apply. Contact the PRCD for guidance.
 
 ## More about pensions and gratuities
 
