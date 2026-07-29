@@ -112,15 +112,25 @@ export function buildMappedCasePayload(args: {
   /** Whether a higher-risk category was selected; `null`/omitted when the form
    * has no checkbox-accordion field, in which case the flag is not emitted. */
   higherRisk?: boolean | null;
+  /** When set (coordinate-based catchment routing), overrides the static
+   *  `mapping.programmeCode`. */
+  programmeCodeOverride?: string;
 }): MappedCasePayload {
-  const { mapping, values, referenceCode, submittedAt, higherRisk } = args;
+  const {
+    mapping,
+    values,
+    referenceCode,
+    submittedAt,
+    higherRisk,
+    programmeCodeOverride,
+  } = args;
   const namePaths = Array.isArray(mapping.applicant.name)
     ? mapping.applicant.name
     : [mapping.applicant.name];
 
   return {
     code: referenceCode,
-    programme_code: mapping.programmeCode,
+    programme_code: programmeCodeOverride ?? mapping.programmeCode,
     applicant: {
       name: readName(values, mapping.applicant.name),
       email: readPath(values, mapping.applicant.email),

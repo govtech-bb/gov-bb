@@ -8,10 +8,12 @@ import {
 import { AppError } from "@/common/errors";
 import { isFormClosed } from "@govtech-bb/form-types";
 import { ExpressionsService } from "@/expressions/expressions.service";
+import { CatchmentRoutingService } from "@/catchment/catchment-routing.service";
 import { FormSubmissionRepository } from "./form-submission.repository";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { ProcessorFactory } from "./processors/processor-factory.service";
 import { generateReferenceCode } from "./reference-code";
+import { readPath } from "./processors/webhook-mapping";
 import type {
   SubmitDto,
   SubmitResult,
@@ -26,6 +28,7 @@ export class SubmissionsService {
     private readonly eventEmitter: EventEmitter2,
     private readonly processorFactory: ProcessorFactory,
     private readonly expressions: ExpressionsService,
+    private readonly catchmentRouting: CatchmentRoutingService,
   ) {}
 
   async submit(dto: SubmitDto): Promise<SubmitResult> {
@@ -124,6 +127,19 @@ export class SubmissionsService {
       },
     );
 
+    // Coordinate-based catchment routing: when the recipe declares which fields
+    // hold the event coordinates + parish, resolve the serving polyclinic once
+    // here and attach it to the event so both the webhook (programme_code) and
+    // the MDA email (catchment.mdaEmail recipient) agree. Absent block → undefined.
+    const routing = contract.catchmentRouting;
+    const resolvedCatchment = routing
+      ? (this.catchmentRouting.resolve({
+          coordinates:
+            readPath(normalizedValues, routing.coordinatesField) ?? undefined,
+          parish: readPath(normalizedValues, routing.parishField) ?? undefined,
+        }) ?? undefined)
+      : undefined;
+
     const event: SubmissionCreatedEvent = {
       submissionId: saved.id,
       referenceCode: saved.referenceCode,
@@ -134,6 +150,7 @@ export class SubmissionsService {
       values: normalizedValues,
       meta: auditTrail,
       isSmokeSubmission: dto.isSmokeSubmission,
+      resolvedCatchment,
     };
 
     if (hasGating) {

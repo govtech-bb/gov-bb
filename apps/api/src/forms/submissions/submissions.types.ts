@@ -1,4 +1,5 @@
 import type { FormSubmissionEntity } from "@/database/entities/form-submission.entity";
+import type { CatchmentResolution } from "@/catchment/catchment-routing.service";
 import type { Processor, SubmissionValues } from "@govtech-bb/form-types";
 
 // SubmissionValues now lives in @govtech-bb/form-types (the browser↔backend wire
@@ -96,6 +97,13 @@ export interface SubmissionCreatedEvent {
    * Absent on non-payment submissions.
    */
   payment?: SubmissionPaymentSummary;
+  /**
+   * The polyclinic catchment resolved from the event location (coordinates →
+   * point-in-polygon, else parish). Present only for forms with a
+   * `catchmentRouting` block; drives webhook programme_code + the
+   * `catchment.mdaEmail` recipient. Serialisable so it survives the SQS hop.
+   */
+  resolvedCatchment?: CatchmentResolution;
 }
 
 /** Confirmed-payment details carried on a post-payment `submission.created`
