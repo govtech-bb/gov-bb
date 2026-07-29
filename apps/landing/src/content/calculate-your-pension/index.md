@@ -22,8 +22,8 @@ This is an estimate only. Your actual pension depends on records held by the Peo
 
 ## What you'll need
 
-- The year you started pensionable service
-- The year you stopped, or expect to retire
+- The month and year you started pensionable service
+- The month and year you stopped, or expect to retire
 - The number of months of no-pay leave you took, if any
 - Your last annual salary in Barbados dollars (BDS$)
 
