@@ -9,7 +9,7 @@
 
 The webhook processor's `programmeCode` and the MDA-notification email's recipient are both **static single values** in the recipe today:
 
-- `programmeCode: "TEMP-RESTAURANT-LICENCE"` — copied verbatim into the outbound webhook payload's `programme_code` by `webhook-mapping.ts`.
+- `programmeCode: "TEMP_RESTAURANT_LICENCE"` — copied verbatim into the outbound webhook payload's `programme_code` by `webhook-mapping.ts`.
 - MDA email `recipientField: "config.mdaEmail"` — resolved by `FormConfigService.resolveMdaEmail(formId)`, which returns **one email per form**.
 
 Environmental Health services in Barbados are organised into **polyclinic catchment areas**. An application must reach the polyclinic that serves the **event location**, so both values must be selected per-submission from where the event is.
@@ -65,14 +65,14 @@ The two pieces of routing data **not** in the GeoJSON are small, static, and our
 ```ts
 /** Derived placeholder programme codes — swap for real CMS codes when issued. */
 export const PROGRAMME_CODES: Record<string, string> = {
-  "Branford Taitt Polyclinic":                       "TEMP-RESTAURANT-LICENCE-BRANFORD-TAITT",
-  "David Thompson Health & Social Services Complex": "TEMP-RESTAURANT-LICENCE-DAVID-THOMPSON",
-  "Eunice Gibson Polyclinic":                        "TEMP-RESTAURANT-LICENCE-EUNICE-GIBSON",
-  "Frederick Miller Polyclinic":                     "TEMP-RESTAURANT-LICENCE-FREDERICK-MILLER",
-  "Maurice Byer Polyclinic":                         "TEMP-RESTAURANT-LICENCE-MAURICE-BYER",
-  "Randal Phillips Polyclinic":                      "TEMP-RESTAURANT-LICENCE-RANDAL-PHILLIPS",
-  "Sir Winston Scott Polyclinic":                    "TEMP-RESTAURANT-LICENCE-WINSTON-SCOTT",
-  "St. Philip Polyclinic":                           "TEMP-RESTAURANT-LICENCE-ST-PHILIP",
+  "Branford Taitt Polyclinic":                       "TEMP_RESTAURANT_LICENCE_BRANFORD_TAITT",
+  "David Thompson Health & Social Services Complex": "TEMP_RESTAURANT_LICENCE_DAVID_THOMPSON",
+  "Eunice Gibson Polyclinic":                        "TEMP_RESTAURANT_LICENCE_EUNICE_GIBSON",
+  "Frederick Miller Polyclinic":                     "TEMP_RESTAURANT_LICENCE_FREDERICK_MILLER",
+  "Maurice Byer Polyclinic":                         "TEMP_RESTAURANT_LICENCE_MAURICE_BYER",
+  "Randal Phillips Polyclinic":                      "TEMP_RESTAURANT_LICENCE_RANDAL_PHILLIPS",
+  "Sir Winston Scott Polyclinic":                    "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
+  "St. Philip Polyclinic":                           "TEMP_RESTAURANT_LICENCE_ST_PHILIP",
 };
 
 /** Parish select value → serving catchment (the coordinate-less fallback). */
@@ -91,7 +91,7 @@ export const PARISH_DEFAULTS: Record<string, string> = {
 };
 ```
 
-- **`PROGRAMME_CODES`** are **derived placeholders** (`TEMP-RESTAURANT-LICENCE-<SLUG>`), pinned explicitly (not computed at runtime) so they are reviewable and trivially swappable for real CMS-generated codes later.
+- **`PROGRAMME_CODES`** are **derived placeholders** (`TEMP_RESTAURANT_LICENCE_<SLUG>`), pinned explicitly (not computed at runtime) so they are reviewable and trivially swappable for real CMS-generated codes later.
 - **Emails are NOT here** — they come from each GeoJSON feature's `email` property.
 - **`PARISH_DEFAULTS`** uses the form's parish select values (kebab-case). The prototype keyed by display name ("St. Michael"); we normalise to the `components/parish` values to match `event-parish`. No parish maps to Branford Taitt or Frederick Miller (those catchments are reachable only by a coordinate hit).
 - **No `default`** entry — the ultimate default is intentionally removed.
@@ -141,7 +141,7 @@ Processors do **not** share a mutable context and the event is JSON-serialised a
 
 - Add the top-level `catchmentRouting` block (§6.1).
 - Change the MDA-notification email processor's `recipientField` from `"config.mdaEmail"` to `"catchment.mdaEmail"` (line ~24). The applicant-acknowledgement processor (`applicant-details.email`) is unchanged.
-- Keep `mapping.programmeCode: "TEMP-RESTAURANT-LICENCE"` as the fallback (line ~31).
+- Keep `mapping.programmeCode: "TEMP_RESTAURANT_LICENCE"` as the fallback (line ~31).
 
 ## 9. Testing
 

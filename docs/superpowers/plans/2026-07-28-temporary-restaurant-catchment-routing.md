@@ -361,15 +361,15 @@ Create `apps/api/src/catchment/polyclinic-routing.ts`:
  * when the CMS codes arrive — keys must stay in lockstep with the GeoJSON names.
  */
 export const PROGRAMME_CODES: Record<string, string> = {
-  "Branford Taitt Polyclinic": "TEMP-RESTAURANT-LICENCE-BRANFORD-TAITT",
+  "Branford Taitt Polyclinic": "TEMP_RESTAURANT_LICENCE_BRANFORD_TAITT",
   "David Thompson Health & Social Services Complex":
-    "TEMP-RESTAURANT-LICENCE-DAVID-THOMPSON",
-  "Eunice Gibson Polyclinic": "TEMP-RESTAURANT-LICENCE-EUNICE-GIBSON",
-  "Frederick Miller Polyclinic": "TEMP-RESTAURANT-LICENCE-FREDERICK-MILLER",
-  "Maurice Byer Polyclinic": "TEMP-RESTAURANT-LICENCE-MAURICE-BYER",
-  "Randal Phillips Polyclinic": "TEMP-RESTAURANT-LICENCE-RANDAL-PHILLIPS",
-  "Sir Winston Scott Polyclinic": "TEMP-RESTAURANT-LICENCE-WINSTON-SCOTT",
-  "St. Philip Polyclinic": "TEMP-RESTAURANT-LICENCE-ST-PHILIP",
+    "TEMP_RESTAURANT_LICENCE_DAVID_THOMPSON",
+  "Eunice Gibson Polyclinic": "TEMP_RESTAURANT_LICENCE_EUNICE_GIBSON",
+  "Frederick Miller Polyclinic": "TEMP_RESTAURANT_LICENCE_FREDERICK_MILLER",
+  "Maurice Byer Polyclinic": "TEMP_RESTAURANT_LICENCE_MAURICE_BYER",
+  "Randal Phillips Polyclinic": "TEMP_RESTAURANT_LICENCE_RANDAL_PHILLIPS",
+  "Sir Winston Scott Polyclinic": "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
+  "St. Philip Polyclinic": "TEMP_RESTAURANT_LICENCE_ST_PHILIP",
 };
 
 /**
@@ -457,7 +457,7 @@ describe("CatchmentRoutingService", () => {
     // "lat,lon" — a point in central Bridgetown / St. Michael.
     const r = svc.resolve({ coordinates: "13.0975,-59.6167" });
     expect(r?.polyclinic).toBe("Sir Winston Scott Polyclinic");
-    expect(r?.programmeCode).toBe("TEMP-RESTAURANT-LICENCE-WINSTON-SCOTT");
+    expect(r?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT");
     expect(r?.mdaEmail).toBe("ehd.wspc@health.gov.bb");
   });
 
@@ -492,7 +492,7 @@ describe("CatchmentRoutingService", () => {
     // Replace with a lat,lon confirmed inside the Frederick Miller polygon.
     const r = svc.resolve({ coordinates: "13.31,-59.63" });
     expect(r?.polyclinic).toBe("Frederick Miller Polyclinic");
-    expect(r?.programmeCode).toBe("TEMP-RESTAURANT-LICENCE-FREDERICK-MILLER");
+    expect(r?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_FREDERICK_MILLER");
     expect(r?.mdaEmail).toBeNull();
   });
 });
@@ -917,9 +917,9 @@ it("uses programmeCodeOverride when provided", () => {
     values: {},
     referenceCode: "R",
     submittedAt: "2026-07-28T00:00:00Z",
-    programmeCodeOverride: "TEMP-RESTAURANT-LICENCE-WINSTON-SCOTT",
+    programmeCodeOverride: "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
   });
-  expect(payload.programme_code).toBe("TEMP-RESTAURANT-LICENCE-WINSTON-SCOTT");
+  expect(payload.programme_code).toBe("TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT");
 });
 
 it("falls back to the static programmeCode when no override", () => {
@@ -1107,7 +1107,7 @@ Expected: all green.
 
 - [ ] **Step 5: Manual end-to-end sanity (optional but recommended)**
 
-Boot the API locally (see the local full-stack recipe) and submit the temp-restaurant form once with a St. Michael event address; confirm the `submission.created` handling routes `programme_code = TEMP-RESTAURANT-LICENCE-WINSTON-SCOTT` and the MDA email targets `ehd.wspc@health.gov.bb`. Watch the logs for the Frederick Miller "no Ministry email" warn at boot.
+Boot the API locally (see the local full-stack recipe) and submit the temp-restaurant form once with a St. Michael event address; confirm the `submission.created` handling routes `programme_code = TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT` and the MDA email targets `ehd.wspc@health.gov.bb`. Watch the logs for the Frederick Miller "no Ministry email" warn at boot.
 
 - [ ] **Step 6: Commit**
 

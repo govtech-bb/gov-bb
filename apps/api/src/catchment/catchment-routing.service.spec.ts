@@ -15,7 +15,7 @@ describe("CatchmentRoutingService", () => {
     // in-polygon (and not in any other catchment) via a throwaway script.
     const r = svc.resolve({ coordinates: "13.0901,-59.5861" });
     expect(r?.polyclinic).toBe("Sir Winston Scott Polyclinic");
-    expect(r?.programmeCode).toBe("TEMP-RESTAURANT-LICENCE-WINSTON-SCOTT");
+    expect(r?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT");
     expect(r?.mdaEmail).toBe("ehd.wspc@health.gov.bb");
   });
 
@@ -56,7 +56,7 @@ describe("CatchmentRoutingService", () => {
     // catchment at all.
     const r = svc.resolve({ coordinates: "13.1323,-59.5626" });
     expect(r?.polyclinic).toBe("Frederick Miller Polyclinic");
-    expect(r?.programmeCode).toBe("TEMP-RESTAURANT-LICENCE-FREDERICK-MILLER");
+    expect(r?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_FREDERICK_MILLER");
     expect(r?.mdaEmail).toBeNull();
   });
 

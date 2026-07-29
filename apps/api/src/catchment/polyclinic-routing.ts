@@ -11,15 +11,15 @@
  * when the CMS codes arrive — keys must stay in lockstep with the GeoJSON names.
  */
 export const PROGRAMME_CODES: Record<string, string> = {
-  "Branford Taitt Polyclinic": "TEMP-RESTAURANT-LICENCE-BRANFORD-TAITT",
+  "Branford Taitt Polyclinic": "TEMP_RESTAURANT_LICENCE_BRANFORD_TAITT",
   "David Thompson Health & Social Services Complex":
-    "TEMP-RESTAURANT-LICENCE-DAVID-THOMPSON",
-  "Eunice Gibson Polyclinic": "TEMP-RESTAURANT-LICENCE-EUNICE-GIBSON",
-  "Frederick Miller Polyclinic": "TEMP-RESTAURANT-LICENCE-FREDERICK-MILLER",
-  "Maurice Byer Polyclinic": "TEMP-RESTAURANT-LICENCE-MAURICE-BYER",
-  "Randal Phillips Polyclinic": "TEMP-RESTAURANT-LICENCE-RANDAL-PHILLIPS",
-  "Sir Winston Scott Polyclinic": "TEMP-RESTAURANT-LICENCE-WINSTON-SCOTT",
-  "St. Philip Polyclinic": "TEMP-RESTAURANT-LICENCE-ST-PHILIP",
+    "TEMP_RESTAURANT_LICENCE_DAVID_THOMPSON",
+  "Eunice Gibson Polyclinic": "TEMP_RESTAURANT_LICENCE_EUNICE_GIBSON",
+  "Frederick Miller Polyclinic": "TEMP_RESTAURANT_LICENCE_FREDERICK_MILLER",
+  "Maurice Byer Polyclinic": "TEMP_RESTAURANT_LICENCE_MAURICE_BYER",
+  "Randal Phillips Polyclinic": "TEMP_RESTAURANT_LICENCE_RANDAL_PHILLIPS",
+  "Sir Winston Scott Polyclinic": "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
+  "St. Philip Polyclinic": "TEMP_RESTAURANT_LICENCE_ST_PHILIP",
 };
 
 /**
