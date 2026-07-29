@@ -315,11 +315,12 @@ describe("EmailBodyBuilder", () => {
       expect(ctx.submissionId).toBe("JPP-20260604-130732-9JZRZC");
     });
 
-    it("fetches the contract by formId from the payload (#1196: no version)", async () => {
+    it("fetches the contract by formId from the payload (#1196: no version), bypassing visibility (#2125)", async () => {
       await builder.build(makePayload());
 
       expect(formSvc.findByFormId).toHaveBeenCalledWith({
         formId: "test-form",
+        bypassVisibility: true,
       });
     });
 

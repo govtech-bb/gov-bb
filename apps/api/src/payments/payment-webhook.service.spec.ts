@@ -162,6 +162,7 @@ describe("PaymentWebhookService", () => {
     expect(formDefs.findByFormId).toHaveBeenCalledWith({
       formId: "passport-renewal",
       includeProcessors: true,
+      bypassVisibility: true,
     });
     expect(payment.status).toBe(PaymentStatus.SUCCESS);
     expect(paymentRepo.save).toHaveBeenCalledWith(payment);

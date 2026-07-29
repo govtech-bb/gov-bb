@@ -371,6 +371,12 @@ describe("WebhookProcessor — mapped mode (per-MDA destination)", () => {
     await processor.process(payload);
 
     expect(JSON.parse(reqConfig().data).higher_risk).toBe(true);
+    // The contract lookup bypasses visibility (#2125) so a non-public form's
+    // submission still dispatches.
+    expect(findByFormId).toHaveBeenCalledWith({
+      formId: "science-camp",
+      bypassVisibility: true,
+    });
   });
 
   it("applies the SSRF guard to the resolved destination url (#287)", async () => {

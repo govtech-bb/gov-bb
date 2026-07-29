@@ -270,7 +270,14 @@ export class EmailBodyBuilder {
     const cached = this.contractCache.get<ServiceContract>(formId);
     if (cached) return cached;
 
-    const contract = await this.formDefinitionsService.findByFormId({ formId });
+    // Bypass the visibility gate (#2125): this builds the email for an
+    // already-created submission, so the published contract must resolve
+    // regardless of the form's current visibility (e.g. a draft/preview form).
+    // Serves the published recipe only — never the draft DB scratch.
+    const contract = await this.formDefinitionsService.findByFormId({
+      formId,
+      bypassVisibility: true,
+    });
     this.contractCache.set(formId, contract);
     return contract;
   }
