@@ -124,6 +124,7 @@ export class WebhookProcessor implements ISubmissionProcessor {
             referenceCode: payload.referenceCode,
             submittedAt: payload.meta.submittedAt,
             higherRisk,
+            programmeCodeOverride: payload.resolvedCatchment?.programmeCode,
           }),
         )
       : JSON.stringify({
