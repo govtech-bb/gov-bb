@@ -28,7 +28,7 @@
       "type": "webhook",
       "config": {
         "mapping": {
-          "programmeCode": "TEMP_RESTAURANT_LICENCE",
+          "programmeCode": "TEMP-RESTAURANT-LICENCE",
           "applicant": {
             "name": [
               "applicant-details.applicant-first-name",
