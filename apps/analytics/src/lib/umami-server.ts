@@ -16,6 +16,7 @@ import {
   weightedAverage,
   weightedSum,
   type EventDataValue,
+  type ExpandedRow,
   type FunnelStage,
   type FunnelStepInput,
   type FunnelStepResult,
@@ -25,6 +26,7 @@ import {
   type SourceRow,
 } from '@govtech-bb/umami-analytics'
 import { memoize } from './cache'
+import { liveTools, pathMatchesPrefix, type Tool } from './tools-config'
 
 const TTL_MS = 60_000
 // Max minutes Umami allows between funnel steps. A form start→submit can span a
@@ -997,6 +999,102 @@ export async function fetchFormsData(
       forms: shapeFormList(forms, headlines).sort((a, b) =>
         a.title.localeCompare(b.title),
       ),
+      range,
+      window: rangeLabel(range),
+    }
+  })
+}
+
+// --- tools (#2119) ---------------------------------------------------------
+
+/** One interactive tool's traffic on the "Tools" tab. */
+export interface ToolRow {
+  name: string
+  /** the tool's canonical entry path (the row links here). */
+  path: string
+  pageviews: number
+  /**
+   * Distinct visitors, SUMMED across the tool's sub-pages. Exact for
+   * single-page tools; may overcount a visitor who hits several sub-pages of a
+   * multi-page tool (only the shelter finder today) — surfaced with a caveat in
+   * the UI. True prefix-distinct isn't available from Umami's per-path metrics.
+   */
+  visitors: number
+  topSources: SourceRow[]
+}
+
+export interface ToolsData {
+  tools: ToolRow[]
+  range: string
+  window: string
+}
+
+/**
+ * Roll landing URL rows up into one row per tool: sum pageviews + visitors for
+ * every URL under the tool's route prefix, and attach the tool's entry-path
+ * referrers as its top source. Pure — the caller supplies the URL rows and a
+ * `primaryPath → referrers` map, so it's fully unit-testable. Every tool is
+ * returned (zeroes when it has no traffic) so owners always see it listed.
+ */
+export function shapeTools(
+  tools: Tool[],
+  urlRows: ExpandedRow[],
+  sourcesByPath: Map<string, SourceRow[]>,
+): ToolRow[] {
+  return tools.map((tool) => {
+    let pageviews = 0
+    let visitors = 0
+    for (const row of urlRows) {
+      const path = row.x ?? row.name ?? ''
+      if (!pathMatchesPrefix(path, tool.prefix)) continue
+      pageviews += row.pageviews ?? row.y ?? 0
+      visitors += row.visitors ?? 0
+    }
+    return {
+      name: tool.name,
+      path: tool.primaryPath,
+      pageviews,
+      visitors,
+      topSources: sourcesByPath.get(tool.primaryPath) ?? [],
+    }
+  })
+}
+
+/** Per-tool pageview/visitor rollup + entry-page referrers — the "Tools" tab. */
+export async function fetchToolsData(
+  cfg: UmamiConfig,
+  rangeKey: string,
+): Promise<ToolsData> {
+  const range = normaliseRange(rangeKey)
+  return memoize(`tools:${range}`, TTL_MS, async () => {
+    const client = new UmamiClient({ apiKey: cfg.apiKey })
+    const r = rangeForKey(range)
+    const tools = liveTools()
+    const urlRows = await client.metricsUrls(cfg.landingWebsiteId, r)
+    // One referrers call per tool entry path (throttled by the client), like
+    // the Home tab's per-page "Top source".
+    const sourcesByPath = new Map<string, SourceRow[]>()
+    await Promise.all(
+      tools.map(async (tool) => {
+        try {
+          sourcesByPath.set(
+            tool.primaryPath,
+            buildSources(
+              await client.metricsReferrers(
+                cfg.landingWebsiteId,
+                tool.primaryPath,
+                r,
+              ),
+              5,
+            ),
+          )
+        } catch {
+          sourcesByPath.set(tool.primaryPath, [])
+        }
+      }),
+    )
+    return {
+      tools: shapeTools(tools, urlRows, sourcesByPath),
       range,
       window: rangeLabel(range),
     }

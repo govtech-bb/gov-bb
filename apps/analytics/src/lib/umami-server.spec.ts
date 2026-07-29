@@ -15,8 +15,10 @@ import {
   shapeJourneyList,
   shapeSearch,
   shapeSubmitError,
+  shapeTools,
   type UmamiConfig,
 } from './umami-server'
+import type { Tool } from './tools-config'
 
 describe('configured gates', () => {
   const full = {
@@ -499,5 +501,74 @@ describe('forms-API fetch timeouts (#2080)', () => {
   it('re-throws a non-timeout fetch error rather than swallowing it', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
     await expect(fetchFormList(cfg)).rejects.toThrow('network down')
+  })
+})
+
+describe('shapeTools (per-tool rollup)', () => {
+  const shelter: Tool = {
+    name: 'Find an emergency shelter',
+    prefix: '/health-and-emergency-services/find-an-emergency-shelter',
+    primaryPath: '/health-and-emergency-services/find-an-emergency-shelter',
+    live: true,
+  }
+  const bankHoliday: Tool = {
+    name: 'Check bank holiday dates',
+    prefix: '/bank-holiday-calendar',
+    primaryPath: '/bank-holiday-calendar',
+    live: true,
+  }
+
+  it('rolls up all URL rows under a tool prefix (pageviews + visitors summed)', () => {
+    const rows = [
+      { x: shelter.prefix, pageviews: 100, visitors: 80 },
+      { x: `${shelter.prefix}/find`, pageviews: 40, visitors: 30 },
+      { x: `${shelter.prefix}/guidance`, pageviews: 10, visitors: 8 },
+    ]
+    const sources = new Map([
+      [shelter.primaryPath, [{ referrer: 'google', count: 12 }]],
+    ])
+    const [row] = shapeTools([shelter], rows, sources)
+    expect(row).toEqual({
+      name: shelter.name,
+      path: shelter.primaryPath,
+      pageviews: 150,
+      visitors: 118,
+      topSources: [{ referrer: 'google', count: 12 }],
+    })
+  })
+
+  it('does not swallow a same-stemmed sibling path (prefix boundary)', () => {
+    const rows = [
+      { x: bankHoliday.prefix, pageviews: 50, visitors: 40 },
+      { x: '/bank-holiday-calendar-archive', pageviews: 999, visitors: 999 },
+    ]
+    const [row] = shapeTools([bankHoliday], rows, new Map())
+    expect(row.pageviews).toBe(50)
+    expect(row.visitors).toBe(40)
+  })
+
+  it('lists a tool with no traffic at zero, with no sources', () => {
+    const [row] = shapeTools([bankHoliday], [], new Map())
+    expect(row).toEqual({
+      name: bankHoliday.name,
+      path: bankHoliday.primaryPath,
+      pageviews: 0,
+      visitors: 0,
+      topSources: [],
+    })
+  })
+
+  it('reads path from x or name and pageviews from pageviews or y', () => {
+    const rows = [
+      { name: bankHoliday.prefix, y: 7 }, // name + y fallbacks, no visitors
+    ]
+    const [row] = shapeTools([bankHoliday], rows, new Map())
+    expect(row.pageviews).toBe(7)
+    expect(row.visitors).toBe(0)
+  })
+
+  it('returns one row per tool, in the given order', () => {
+    const rows = shapeTools([shelter, bankHoliday], [], new Map())
+    expect(rows.map((r) => r.name)).toEqual([shelter.name, bankHoliday.name])
   })
 })
