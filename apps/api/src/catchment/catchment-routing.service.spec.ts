@@ -60,6 +60,20 @@ describe("CatchmentRoutingService", () => {
     expect(r?.mdaEmail).toBeNull();
   });
 
+  it("falls back to parish when the coordinate string is malformed (wrong part count)", () => {
+    expect(
+      svc.resolve({ coordinates: "13.1", parish: "st-michael" })?.polyclinic,
+    ).toBe("Sir Winston Scott Polyclinic");
+    expect(
+      svc.resolve({ coordinates: "1,2,3", parish: "st-michael" })?.polyclinic,
+    ).toBe("Sir Winston Scott Polyclinic");
+  });
+
+  it("falls back to parish when the coordinate string is non-numeric", () => {
+    const r = svc.resolve({ coordinates: "north,west", parish: "st-thomas" });
+    expect(r?.polyclinic).toBe("Eunice Gibson Polyclinic");
+  });
+
   it("logs a boot warning naming the emailless catchment (Frederick Miller)", () => {
     const warnSpy = vi
       .spyOn(Logger.prototype, "warn")
@@ -104,5 +118,108 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
       await import("./catchment-routing.service");
     const svc = new Svc();
     expect(() => svc.onModuleInit()).toThrow(/PARISH_DEFAULTS/);
+  });
+});
+
+describe("CatchmentRoutingService polygon geometry (mocked GeoJSON)", () => {
+  afterEach(() => {
+    vi.doUnmock("node:fs");
+    vi.doUnmock("./polyclinic-routing");
+    vi.resetModules();
+  });
+
+  // Outer ring: a 2x2 square centred on the origin. Hole: a 1x1 square cut
+  // out of its centre. GeoJSON coordinates are [lng, lat]; the service's
+  // input string is "lat,lng".
+  const outerRing = [
+    [-1, -1],
+    [-1, 1],
+    [1, 1],
+    [1, -1],
+    [-1, -1],
+  ];
+  const holeRing = [
+    [-0.5, -0.5],
+    [-0.5, 0.5],
+    [0.5, 0.5],
+    [0.5, -0.5],
+    [-0.5, -0.5],
+  ];
+
+  async function mockGeojsonFeature(feature: {
+    properties: { name: string; email?: string | null };
+    geometry: { type: string; coordinates: unknown };
+  }) {
+    vi.doMock("node:fs", async () => {
+      const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
+      return {
+        ...actual,
+        readFileSync: vi.fn(() => JSON.stringify({ features: [feature] })),
+      };
+    });
+    vi.resetModules();
+  }
+
+  it("excludes points inside a polygon's hole but resolves points inside the outer ring", async () => {
+    await mockGeojsonFeature({
+      properties: {
+        name: "Test Catchment With Hole",
+        email: "test@example.com",
+      },
+      geometry: { type: "Polygon", coordinates: [outerRing, holeRing] },
+    });
+    vi.doMock("./polyclinic-routing", () => ({
+      PROGRAMME_CODES: { "Test Catchment With Hole": "TEST-HOLE-CODE" },
+      PARISH_DEFAULTS: {},
+    }));
+    vi.resetModules();
+    const { CatchmentRoutingService: Svc } =
+      await import("./catchment-routing.service");
+    const svc = new Svc();
+    svc.onModuleInit();
+
+    // lat=0, lng=0 — inside the hole, so no catchment (and no parish given).
+    expect(svc.resolve({ coordinates: "0,0" })).toBeNull();
+
+    // lat=0, lng=0.9 — inside the outer ring, outside the hole.
+    const hit = svc.resolve({ coordinates: "0,0.9" });
+    expect(hit?.polyclinic).toBe("Test Catchment With Hole");
+    expect(hit?.programmeCode).toBe("TEST-HOLE-CODE");
+  });
+
+  it("throws on boot for an unsupported geometry type", async () => {
+    await mockGeojsonFeature({
+      properties: { name: "Test Point Catchment", email: null },
+      geometry: { type: "Point", coordinates: [0, 0] },
+    });
+    vi.doMock("./polyclinic-routing", () => ({
+      PROGRAMME_CODES: { "Test Point Catchment": "TEST-POINT-CODE" },
+      PARISH_DEFAULTS: {},
+    }));
+    vi.resetModules();
+    const { CatchmentRoutingService: Svc } =
+      await import("./catchment-routing.service");
+    const svc = new Svc();
+    expect(() => svc.onModuleInit()).toThrow(
+      /unsupported geometry type "Point"/,
+    );
+  });
+
+  it("treats a Polygon with no rings as never matching", async () => {
+    await mockGeojsonFeature({
+      properties: { name: "Test Empty Catchment", email: "test@example.com" },
+      geometry: { type: "Polygon", coordinates: [] },
+    });
+    vi.doMock("./polyclinic-routing", () => ({
+      PROGRAMME_CODES: { "Test Empty Catchment": "TEST-EMPTY-CODE" },
+      PARISH_DEFAULTS: {},
+    }));
+    vi.resetModules();
+    const { CatchmentRoutingService: Svc } =
+      await import("./catchment-routing.service");
+    const svc = new Svc();
+    svc.onModuleInit();
+
+    expect(svc.resolve({ coordinates: "0,0" })).toBeNull();
   });
 });
