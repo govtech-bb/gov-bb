@@ -599,7 +599,7 @@ describe("AiSidebar — Upload", () => {
   it("runs presign → S3 PUT → process → poll → applies the returned recipe", async () => {
     vi.useFakeTimers();
     const user = setupUser();
-    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", fields: { key: "uploads/abc.pdf" }, s3Key: "uploads/abc.pdf" });
     startPdfConvert.mockResolvedValue({ jobId: "job-1" });
     getPdfConvertStatus
       .mockResolvedValueOnce({ status: "processing" })
@@ -618,7 +618,7 @@ describe("AiSidebar — Upload", () => {
     await waitFor(() => expect(presignPdfUpload).toHaveBeenCalled());
     expect(fetchSpy).toHaveBeenCalledWith(
       "https://s3/url",
-      expect.objectContaining({ method: "PUT" }),
+      expect.objectContaining({ method: "POST", body: expect.any(FormData) }),
     );
     await waitFor(() =>
       expect(startPdfConvert).toHaveBeenCalledWith({ data: { s3Key: "uploads/abc.pdf" } }),
@@ -646,7 +646,7 @@ describe("AiSidebar — Upload", () => {
     // two consecutive failures are swallowed and the job recovers on the third.
     vi.useFakeTimers();
     const user = setupUser();
-    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", fields: { key: "uploads/abc.pdf" }, s3Key: "uploads/abc.pdf" });
     startPdfConvert.mockResolvedValue({ jobId: "job-1" });
     getPdfConvertStatus
       .mockRejectedValueOnce(new Error("502 Bad Gateway"))
@@ -681,7 +681,7 @@ describe("AiSidebar — Upload", () => {
   it("surfaces the error only after three consecutive poll failures", async () => {
     vi.useFakeTimers();
     const user = setupUser();
-    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", fields: { key: "uploads/abc.pdf" }, s3Key: "uploads/abc.pdf" });
     startPdfConvert.mockResolvedValue({ jobId: "job-1" });
     getPdfConvertStatus.mockRejectedValue(new Error("502 Bad Gateway"));
     setup();
@@ -712,7 +712,7 @@ describe("AiSidebar — Upload", () => {
   it("surfaces the mapped reason when the server reports a password-protected PDF", async () => {
     vi.useFakeTimers();
     const user = setupUser();
-    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", fields: { key: "uploads/abc.pdf" }, s3Key: "uploads/abc.pdf" });
     startPdfConvert.mockResolvedValue({ jobId: "job-1" });
     getPdfConvertStatus.mockResolvedValue({
       status: "failed",
@@ -737,7 +737,7 @@ describe("AiSidebar — Upload", () => {
   it("stops polling when the component unmounts", async () => {
     vi.useFakeTimers();
     const user = setupUser();
-    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", fields: { key: "uploads/abc.pdf" }, s3Key: "uploads/abc.pdf" });
     startPdfConvert.mockResolvedValue({ jobId: "job-1" });
     getPdfConvertStatus.mockResolvedValue({ status: "processing" });
     const { unmount } = render(
@@ -760,7 +760,7 @@ describe("AiSidebar — Upload", () => {
   it("times out after 3 minutes with a friendly error", async () => {
     vi.useFakeTimers();
     const user = setupUser();
-    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", fields: { key: "uploads/abc.pdf" }, s3Key: "uploads/abc.pdf" });
     startPdfConvert.mockResolvedValue({ jobId: "job-1" });
     getPdfConvertStatus.mockResolvedValue({ status: "processing" });
     setup();
@@ -779,7 +779,7 @@ describe("AiSidebar — Upload", () => {
 
   it("passes the typed prompt as context, clears the box, and shows it in the transcript", async () => {
     const user = setupUser();
-    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", fields: { key: "uploads/abc.pdf" }, s3Key: "uploads/abc.pdf" });
     startPdfConvert.mockResolvedValue({ jobId: "job-1" });
     getPdfConvertStatus.mockResolvedValue({ status: "processing" });
     setup();
@@ -824,7 +824,7 @@ describe("AiSidebar — Upload", () => {
   it("shows an apply-specific error, not an upload error, when apply rejects after a successful convert (#1532)", async () => {
     vi.useFakeTimers();
     const user = setupUser();
-    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", fields: { key: "uploads/abc.pdf" }, s3Key: "uploads/abc.pdf" });
     startPdfConvert.mockResolvedValue({ jobId: "job-1" });
     getPdfConvertStatus.mockResolvedValue({
       status: "done",
@@ -865,7 +865,7 @@ describe("AiSidebar — Upload", () => {
 
   it("omits context and keeps the box untouched when the prompt is empty", async () => {
     const user = setupUser();
-    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", s3Key: "uploads/abc.pdf" });
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", fields: { key: "uploads/abc.pdf" }, s3Key: "uploads/abc.pdf" });
     startPdfConvert.mockResolvedValue({ jobId: "job-1" });
     getPdfConvertStatus.mockResolvedValue({ status: "processing" });
     setup();

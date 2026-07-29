@@ -14,6 +14,7 @@ describe("primitiveSchema", () => {
       "tel",
       "email",
       "show-hide",
+      "address-lookup",
     ] as const;
 
     it.each(simpleTypes)("accepts a valid %s field", (htmlType) => {

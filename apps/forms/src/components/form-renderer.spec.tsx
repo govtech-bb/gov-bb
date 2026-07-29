@@ -81,6 +81,10 @@ vi.mock("./applicant-name-display", () => ({
   default: () => <div data-testid="applicant-name-display" />,
 }));
 
+vi.mock("../lib/analytics", () => ({ trackEvent: vi.fn() }));
+import { trackEvent } from "../lib/analytics";
+const mockTrackEvent = trackEvent as Mock;
+
 import * as formsLibMock from "@forms/lib";
 
 vi.mock("@forms/lib", () => ({
@@ -460,6 +464,61 @@ describe("FormRenderer", () => {
     expect(
       screen.queryByRole("button", { name: /previous/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("emits form-confirmation-view once on the confirmation step (#1955)", () => {
+    const step = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="submission-confirmation"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    const views = mockTrackEvent.mock.calls.filter(
+      (c) => c[0] === "form-confirmation-view",
+    );
+    expect(views).toHaveLength(1);
+    expect(views[0][1]).toMatchObject({
+      form: "test-form",
+      outcome: "success",
+      hasPayment: false,
+    });
+    // no payment return → no payment-returned event
+    expect(
+      mockTrackEvent.mock.calls.some((c) => c[0] === "payment-returned"),
+    ).toBe(false);
+  });
+
+  it("also emits payment-returned when returning from EzPay (#1955)", () => {
+    const step = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="submission-confirmation"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={
+          {
+            ...mockSubmissionState,
+            hasPayment: true,
+            paymentSuccess: true,
+          } as any
+        }
+      />,
+    );
+    const returned = mockTrackEvent.mock.calls.filter(
+      (c) => c[0] === "payment-returned",
+    );
+    expect(returned).toHaveLength(1);
+    expect(returned[0][1]).toMatchObject({
+      form: "test-form",
+      outcome: "success",
+    });
   });
 
   it("renders Review component on check-your-answers step", () => {

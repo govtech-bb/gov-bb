@@ -8,6 +8,7 @@ export type { DateParts } from "./parse-date-value";
 export { age } from "./operations/age";
 export { durationSince } from "./operations/duration-since";
 export type { DurationUnit } from "./operations/duration-since";
+export { durationUntil } from "./operations/duration-until";
 export { today } from "./operations/today";
 export { daysBetween } from "./operations/days-between";
 export { currency } from "./operations/currency";

@@ -16,6 +16,7 @@ import {
   weightedAverage,
   weightedSum,
   type EventDataValue,
+  type ExpandedRow,
   type FunnelStage,
   type FunnelStepInput,
   type FunnelStepResult,
@@ -25,6 +26,7 @@ import {
   type SourceRow,
 } from '@govtech-bb/umami-analytics'
 import { memoize } from './cache'
+import { liveTools, pathMatchesPrefix, type Tool } from './tools-config'
 
 const TTL_MS = 60_000
 // Max minutes Umami allows between funnel steps. A form start→submit can span a
@@ -42,6 +44,17 @@ export interface UmamiConfig {
 
 export function isConfigured(cfg: UmamiConfig): boolean {
   return Boolean(cfg.apiKey && cfg.landingWebsiteId && cfg.formsWebsiteId)
+}
+
+/**
+ * Landing-only configured gate. The Search tab's data comes solely from the
+ * landing site (`fetchSearchData` reads `landingWebsiteId` only), so it must not
+ * be gated on the forms website id like `isConfigured` — otherwise a deploy with
+ * landing analytics but no forms site wrongly renders "Analytics is not
+ * configured" despite the search data being available.
+ */
+export function isLandingConfigured(cfg: UmamiConfig): boolean {
+  return Boolean(cfg.apiKey && cfg.landingWebsiteId)
 }
 
 // --- date-range presets (#homepage filter) ---------------------------------
@@ -327,28 +340,69 @@ export function shapeFunnel(funnelRows: FunnelStepResult[]): FunnelStage[] {
 }
 
 /**
- * Step funnel labelled by step identity: Start → each defined step ("Step N:
- * <title>", declared order) → Submit. Counts are event views (`form-start`,
- * per-step `form-step-view`, `form-submit`). Keyed by stepId (not the funnel's
- * positional "Step N", which branching makes visitor-relative), so a conditional
- * step a visitor's answers skip shows fewer or zero views. `dropoffPct` is 0 —
- * step-over-step drop-off isn't meaningful across branch points.
+ * Post-submit / payment tail counts for the step funnel (#1955). All optional:
+ * `reviewCount`/`confirmationCount` are appended when provided; the payment
+ * stages render only when `paymentInitiatedCount > 0` (payment forms are
+ * detected by event presence — the public forms API doesn't expose processors).
+ */
+export interface StepFunnelTail {
+  reviewCount?: number
+  confirmationCount?: number
+  paymentInitiatedCount?: number
+  paymentSuccessCount?: number
+}
+
+/**
+ * Step funnel labelled by step identity, covering the full journey (#1955):
+ * Start → each defined step ("Step N: <title>", declared order) → Review →
+ * Submit → Confirmation → (payment forms) Payment initiated → Payment success.
+ * Counts are event views (`form-start`, per-step `form-step-view`,
+ * `form-review`, `form-submit`, `form-confirmation-view`, `payment-*`). Steps
+ * are keyed by stepId (not the funnel's positional "Step N", which branching
+ * makes visitor-relative), so a conditional step a visitor's answers skip shows
+ * fewer or zero views. `dropoffPct` is 0 throughout — step-over-step drop-off
+ * isn't meaningful across the branch points in the step portion, so the raw
+ * counts (not a computed rate) carry the drop-off signal.
  */
 export function buildStepFunnel(
   startCount: number,
   submitCount: number,
   orderedSteps: { stepId: string; title: string }[],
   reachedByStep: Record<string, number>,
+  tail: StepFunnelTail = {},
 ): FunnelStage[] {
-  return [
+  const stages: FunnelStage[] = [
     { label: 'Start', count: startCount, dropoffPct: 0 },
     ...orderedSteps.map((s, i) => ({
       label: `Step ${i + 1}: ${s.title}`,
       count: reachedByStep[s.stepId] ?? 0,
       dropoffPct: 0,
     })),
-    { label: 'Submit', count: submitCount, dropoffPct: 0 },
   ]
+  if (tail.reviewCount !== undefined) {
+    stages.push({ label: 'Review', count: tail.reviewCount, dropoffPct: 0 })
+  }
+  stages.push({ label: 'Submit', count: submitCount, dropoffPct: 0 })
+  if (tail.confirmationCount !== undefined) {
+    stages.push({
+      label: 'Confirmation',
+      count: tail.confirmationCount,
+      dropoffPct: 0,
+    })
+  }
+  if ((tail.paymentInitiatedCount ?? 0) > 0) {
+    stages.push({
+      label: 'Payment initiated',
+      count: tail.paymentInitiatedCount ?? 0,
+      dropoffPct: 0,
+    })
+    stages.push({
+      label: 'Payment success',
+      count: tail.paymentSuccessCount ?? 0,
+      dropoffPct: 0,
+    })
+  }
+  return stages
 }
 
 // The current app emits `errors: network | payment-init | server`; older data
@@ -695,12 +749,33 @@ function ymd(ms: number): string {
   }).format(new Date(ms))
 }
 
-async function fetchFormList(cfg: UmamiConfig): Promise<FormListItem[]> {
+// A slow or hung forms API must not stall the whole dashboard request. Cap each
+// fetch and fall back to the same empty shape a non-ok response already returns
+// (#2080). Non-timeout errors keep propagating as before.
+const FORMS_FETCH_TIMEOUT_MS = 15_000
+
+const isTimeout = (err: unknown): boolean =>
+  err instanceof DOMException &&
+  (err.name === 'TimeoutError' || err.name === 'AbortError')
+
+export async function fetchFormList(cfg: UmamiConfig): Promise<FormListItem[]> {
   const base = cfg.formsApiUrl.replace(/\/+$/, '')
-  const res = await fetch(`${base}/form-definitions`)
-  if (!res.ok) return []
-  const body = (await res.json()) as {
-    data?: { formId: string; title: string }[]
+  // The timeout must cover the body read too, not just the connection — a
+  // server that sends headers then stalls the body would otherwise abort
+  // outside this catch and throw past the fallback (#2080). Only a timeout
+  // falls back; other errors (network, malformed JSON) propagate as before.
+  let body: { data?: { formId: string; title: string }[] }
+  try {
+    const res = await fetch(`${base}/form-definitions`, {
+      signal: AbortSignal.timeout(FORMS_FETCH_TIMEOUT_MS),
+    })
+    if (!res.ok) return []
+    body = (await res.json()) as {
+      data?: { formId: string; title: string }[]
+    }
+  } catch (err) {
+    if (isTimeout(err)) return []
+    throw err
   }
   return (body.data ?? []).map((f) => ({ formId: f.formId, title: f.title }))
 }
@@ -714,7 +789,7 @@ interface FormDefinition {
   messageByFieldCode: Record<string, string>
 }
 
-async function fetchFormDefinition(
+export async function fetchFormDefinition(
   cfg: UmamiConfig,
   formId: string,
 ): Promise<FormDefinition> {
@@ -725,11 +800,21 @@ async function fetchFormDefinition(
     messageByFieldCode: {},
   }
   const base = cfg.formsApiUrl.replace(/\/+$/, '')
-  const res = await fetch(
-    `${base}/form-definitions/${encodeURIComponent(formId)}`,
-  )
-  if (!res.ok) return empty
-  const body = (await res.json()) as {
+  // Timeout must cover the body read too (see fetchFormList) — return the empty
+  // shape on a timeout at either phase; other errors propagate (#2080).
+  let raw: unknown
+  try {
+    const res = await fetch(
+      `${base}/form-definitions/${encodeURIComponent(formId)}`,
+      { signal: AbortSignal.timeout(FORMS_FETCH_TIMEOUT_MS) },
+    )
+    if (!res.ok) return empty
+    raw = await res.json()
+  } catch (err) {
+    if (isTimeout(err)) return empty
+    throw err
+  }
+  const body = raw as {
     data?: {
       title?: string
       steps?: {
@@ -920,6 +1005,102 @@ export async function fetchFormsData(
   })
 }
 
+// --- tools (#2119) ---------------------------------------------------------
+
+/** One interactive tool's traffic on the "Tools" tab. */
+export interface ToolRow {
+  name: string
+  /** the tool's canonical entry path (the row links here). */
+  path: string
+  pageviews: number
+  /**
+   * Distinct visitors, SUMMED across the tool's sub-pages. Exact for
+   * single-page tools; may overcount a visitor who hits several sub-pages of a
+   * multi-page tool (only the shelter finder today) — surfaced with a caveat in
+   * the UI. True prefix-distinct isn't available from Umami's per-path metrics.
+   */
+  visitors: number
+  topSources: SourceRow[]
+}
+
+export interface ToolsData {
+  tools: ToolRow[]
+  range: string
+  window: string
+}
+
+/**
+ * Roll landing URL rows up into one row per tool: sum pageviews + visitors for
+ * every URL under the tool's route prefix, and attach the tool's entry-path
+ * referrers as its top source. Pure — the caller supplies the URL rows and a
+ * `primaryPath → referrers` map, so it's fully unit-testable. Every tool is
+ * returned (zeroes when it has no traffic) so owners always see it listed.
+ */
+export function shapeTools(
+  tools: Tool[],
+  urlRows: ExpandedRow[],
+  sourcesByPath: Map<string, SourceRow[]>,
+): ToolRow[] {
+  return tools.map((tool) => {
+    let pageviews = 0
+    let visitors = 0
+    for (const row of urlRows) {
+      const path = row.x ?? row.name ?? ''
+      if (!pathMatchesPrefix(path, tool.prefix)) continue
+      pageviews += row.pageviews ?? row.y ?? 0
+      visitors += row.visitors ?? 0
+    }
+    return {
+      name: tool.name,
+      path: tool.primaryPath,
+      pageviews,
+      visitors,
+      topSources: sourcesByPath.get(tool.primaryPath) ?? [],
+    }
+  })
+}
+
+/** Per-tool pageview/visitor rollup + entry-page referrers — the "Tools" tab. */
+export async function fetchToolsData(
+  cfg: UmamiConfig,
+  rangeKey: string,
+): Promise<ToolsData> {
+  const range = normaliseRange(rangeKey)
+  return memoize(`tools:${range}`, TTL_MS, async () => {
+    const client = new UmamiClient({ apiKey: cfg.apiKey })
+    const r = rangeForKey(range)
+    const tools = liveTools()
+    const urlRows = await client.metricsUrls(cfg.landingWebsiteId, r)
+    // One referrers call per tool entry path (throttled by the client), like
+    // the Home tab's per-page "Top source".
+    const sourcesByPath = new Map<string, SourceRow[]>()
+    await Promise.all(
+      tools.map(async (tool) => {
+        try {
+          sourcesByPath.set(
+            tool.primaryPath,
+            buildSources(
+              await client.metricsReferrers(
+                cfg.landingWebsiteId,
+                tool.primaryPath,
+                r,
+              ),
+              5,
+            ),
+          )
+        } catch {
+          sourcesByPath.set(tool.primaryPath, [])
+        }
+      }),
+    )
+    return {
+      tools: shapeTools(tools, urlRows, sourcesByPath),
+      range,
+      window: rangeLabel(range),
+    }
+  })
+}
+
 /** Search queries + click-through for the "Search" tab (landing site). */
 export async function fetchSearchData(
   cfg: UmamiConfig,
@@ -965,6 +1146,7 @@ export async function fetchFormDetailData(
       errorCount,
       fieldErrorsRaw,
       submitErrRows,
+      paymentReturnedRows,
       def,
     ] = await Promise.all([
       client.reportFunnel(cfg.formsWebsiteId, {
@@ -1011,6 +1193,13 @@ export async function fetchFormDetailData(
         cfg.formsWebsiteId,
         `${formId}:form-submit-error`,
         'errors',
+        r,
+      ),
+      eventValues(
+        client,
+        cfg.formsWebsiteId,
+        `${formId}:payment-returned`,
+        'outcome',
         r,
       ),
       fetchFormDefinition(cfg, formId),
@@ -1077,6 +1266,16 @@ export async function fetchFormDetailData(
         entry.counts['form-submit'] ?? 0,
         def.steps,
         reachedByStep,
+        {
+          reviewCount: entry.counts['form-review'] ?? 0,
+          confirmationCount: entry.counts['form-confirmation-view'] ?? 0,
+          paymentInitiatedCount: entry.counts['payment-initiated'] ?? 0,
+          // `payment-returned` splits by outcome; the funnel's terminal payment
+          // stage is the successful returns only.
+          paymentSuccessCount: paymentReturnedRows
+            .filter((v) => String(v.value) === 'success')
+            .reduce((s, v) => s + v.total, 0),
+        },
       ),
       fieldFailures,
       submitError: shapeSubmitError(

@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
+import { parseDate } from "./parse-date";
 import { DEFAULT_ZONE } from "./zone";
-import { parseDateValue } from "../parse-date-value";
 
 export type DurationUnit = "years" | "months" | "days";
 
@@ -20,14 +20,4 @@ export function durationSince(date: unknown, unit: DurationUnit): number {
   if (dt === null || !dt.isValid) return NaN;
   const now = DateTime.now().setZone(DEFAULT_ZONE);
   return Math.floor(now.diff(dt, unit).as(unit));
-}
-
-// Shared parse (object / DD/MM/YYYY / ISO) → a Barbados-zone DateTime. The
-// validated calendar parts come from `parseDateValue` (#2072); we anchor them at
-// Barbados midnight here, preserving this package's wall-clock duration
-// semantics.
-function parseDate(value: unknown): DateTime | null {
-  const parts = parseDateValue(value);
-  if (!parts) return null;
-  return DateTime.fromObject(parts, { zone: DEFAULT_ZONE });
 }

@@ -23,7 +23,7 @@ import { badRequest } from "../lib/http-error.js";
 // `..` or extra `/` segments, and ends in `.pdf`.
 const KEY_PATTERN = /^uploads\/[A-Za-z0-9-]+\.pdf$/;
 
-// POST /builder/ai/upload/presign — returns { url, s3Key }
+// POST /builder/ai/upload/presign — returns { url, fields, s3Key }
 export async function presignHandler(
   _req: Request,
   res: Response,
@@ -32,8 +32,8 @@ export async function presignHandler(
     res.status(503).json({ error: "Upload service not configured" });
     return;
   }
-  const { url, s3Key } = await presignUpload();
-  res.json({ url, s3Key });
+  const { url, fields, s3Key } = await presignUpload();
+  res.json({ url, fields, s3Key });
 }
 
 // Cap the optional steering context, matching the .max(2000) convention used

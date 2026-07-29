@@ -25,14 +25,6 @@
     {
       "type": "webhook",
       "config": {
-        "endpoint": {
-          "env": "WEBHOOK_URL"
-        },
-        "auth": {
-          "scheme": "apiKey",
-          "header": "X-API-Key",
-          "secretEnv": "WEBHOOK_SECRET"
-        },
         "mapping": {
           "programmeCode": "SCIENCE2026",
           "applicant": {

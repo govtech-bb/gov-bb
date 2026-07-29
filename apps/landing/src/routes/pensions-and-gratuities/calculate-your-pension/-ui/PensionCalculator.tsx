@@ -8,21 +8,13 @@ import {
 } from '@govtech-bb/react'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
+import { money } from '@/lib/money'
 import { calculatePension } from '../-lib/compute'
 import type { PensionEstimate } from '../-lib/compute'
 
 const SERVICE_PATH_SPLAT = 'pensions-and-gratuities/calculate-your-pension'
 const ABOUT_URL =
   '/pensions-and-gratuities/calculate-your-pension/about-government-pensions'
-
-const moneyFmt = new Intl.NumberFormat('en-BB', {
-  style: 'currency',
-  currency: 'BBD',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})
-
-const money = (n: number) => moneyFmt.format(n || 0)
 
 function ServiceTitle() {
   return (
@@ -376,7 +368,6 @@ export function PensionCalculator() {
             inputMode="numeric"
             label="Year you started pensionable service"
             onInput={(e) => setStartYear(e.currentTarget.value)}
-            placeholder="YYYY"
             required
             value={startYear}
           />
@@ -389,32 +380,29 @@ export function PensionCalculator() {
             inputMode="numeric"
             label="Year you stopped or will retire"
             onInput={(e) => setEndYear(e.currentTarget.value)}
-            placeholder="YYYY"
             required
             value={endYear}
           />
 
           <Input
             className="max-w-[8rem]"
-            description="Total months of no-pay leave you took during your service. These do not count towards your pension and will be subtracted. Leave blank if none."
+            description="Total months of no-pay leave you took during your service. These do not count towards your pension and will be subtracted."
             error={errors.nopayMonths || undefined}
             id="nopay-months"
             inputMode="numeric"
             label="Months of no-pay leave (optional)"
             onInput={(e) => setNopayMonths(e.currentTarget.value)}
-            placeholder="0"
             value={nopayMonths}
           />
 
           <Input
             className="max-w-[18rem]"
-            description="Enter your gross annual salary in Barbados dollars. Do not include commas."
+            description="Enter your gross annual salary in Barbados dollars."
             error={errors.salary || undefined}
             id="salary"
             inputMode="decimal"
             label="Last annual salary (BDS$)"
             onInput={(e) => setSalary(e.currentTarget.value)}
-            placeholder="0.00"
             required
             value={salary}
           />

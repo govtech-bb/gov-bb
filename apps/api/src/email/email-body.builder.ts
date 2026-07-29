@@ -7,6 +7,7 @@ import type {
   FormStep,
   Primitive,
   ServiceContract,
+  SubmissionValues,
 } from "@govtech-bb/form-types";
 import {
   isCompleteDateValue,
@@ -17,6 +18,7 @@ import {
   type StepScopedValues,
 } from "@govtech-bb/form-conditions";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
+import { deriveHigherRiskSelection } from "../forms/submissions/derive-higher-risk";
 import type {
   SubmissionAuditTrail,
   SubmissionCreatedEvent,
@@ -187,6 +189,26 @@ export class EmailBodyBuilder {
         return section.fields.length > 0 ? [section] : [];
       });
 
+    // Derived reviewer signal (#2065): when the form has a checkbox-accordion
+    // field, surface whether any higher-risk category was selected so reviewers
+    // can decide how the set-up is inspected. Null = the form has no such field,
+    // so the section is omitted entirely rather than always reporting "No".
+    const higherRisk = deriveHigherRiskSelection(
+      contract,
+      values as SubmissionValues,
+    );
+    if (higherRisk !== null) {
+      sections.push({
+        title: "Higher-risk assessment",
+        fields: [
+          {
+            label: "Higher-risk items selected",
+            value: higherRisk ? "Yes" : "No",
+          },
+        ],
+      });
+    }
+
     // Authored confirmation guidance lives on the submission-confirmation step
     // regardless of step visibility, so read it straight off the contract
     // rather than the filtered `sections` (which only carry answered fields).
@@ -248,7 +270,14 @@ export class EmailBodyBuilder {
     const cached = this.contractCache.get<ServiceContract>(formId);
     if (cached) return cached;
 
-    const contract = await this.formDefinitionsService.findByFormId({ formId });
+    // Bypass the visibility gate (#2125): this builds the email for an
+    // already-created submission, so the published contract must resolve
+    // regardless of the form's current visibility (e.g. a draft/preview form).
+    // Serves the published recipe only — never the draft DB scratch.
+    const contract = await this.formDefinitionsService.findByFormId({
+      formId,
+      bypassVisibility: true,
+    });
     this.contractCache.set(formId, contract);
     return contract;
   }
@@ -282,7 +311,7 @@ export class EmailBodyBuilder {
           ? [...new Set((rawHidden as string[][]).flat())]
           : (rawHidden as string[]);
 
-    const SKIP_TYPES = new Set<Primitive["htmlType"]>(["show-hide"]);
+    const SKIP_TYPES = new Set<Primitive["htmlType"]>(["show-hide", "content"]);
 
     const fields = step.elements
       .filter((el) => !SKIP_TYPES.has(el.htmlType))
@@ -325,6 +354,14 @@ export class EmailBodyBuilder {
       case "checkbox":
         return this.resolveOptionLabels(
           field.options ?? [],
+          Array.isArray(raw) ? raw : [raw],
+        );
+
+      case "checkbox-accordion":
+        // Value is a flat string[] across all categories; resolve labels from
+        // the groups' options flattened into one list.
+        return this.resolveOptionLabels(
+          (field.groups ?? []).flatMap((g) => g.options),
           Array.isArray(raw) ? raw : [raw],
         );
 

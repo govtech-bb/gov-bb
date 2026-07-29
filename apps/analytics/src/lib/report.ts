@@ -10,13 +10,16 @@ import {
   fetchFormsData,
   fetchOverviewData,
   fetchSearchData,
+  fetchToolsData,
   isConfigured,
+  isLandingConfigured,
   normaliseRange,
   rangeLabel,
   type FormDetailData,
   type FormsData,
   type OverviewData,
   type SearchData,
+  type ToolsData,
   type UmamiConfig,
 } from './umami-server'
 
@@ -147,6 +150,31 @@ export const fetchForms = createServerFn({ method: 'GET' })
     }
   })
 
+export type ToolsPayload = { configured: boolean } & ToolsData
+
+/** Per-tool usage for the "Tools" tab (landing site). */
+export const fetchTools = createServerFn({ method: 'GET' })
+  .validator((raw: unknown) =>
+    normaliseRange(raw == null ? undefined : String(raw)),
+  )
+  .handler(async ({ data: range }): Promise<ToolsPayload> => {
+    const cfg = await getConfig()
+    const empty: ToolsPayload = {
+      configured: false,
+      tools: [],
+      range,
+      window: rangeLabel(range),
+    }
+    // Tools reads only the landing site, so gate on landing config alone —
+    // not the full isConfigured (which also requires the forms website id).
+    if (!isLandingConfigured(cfg)) return empty
+    try {
+      return { configured: true, ...(await fetchToolsData(cfg, range)) }
+    } catch {
+      return empty
+    }
+  })
+
 export type SearchPayload = { configured: boolean } & SearchData
 
 /** Search queries + click-through for the "Search" tab. */
@@ -155,7 +183,7 @@ export const fetchSearch = createServerFn({ method: 'GET' })
     normaliseRange(raw == null ? undefined : String(raw)),
   )
   .handler(async ({ data: range }): Promise<SearchPayload> => {
-    const cfg = getConfig()
+    const cfg = await getConfig()
     const empty: SearchPayload = {
       configured: false,
       searches: 0,
@@ -167,7 +195,9 @@ export const fetchSearch = createServerFn({ method: 'GET' })
       window: rangeLabel(range),
       range,
     }
-    if (!isConfigured(cfg)) return empty
+    // Search reads only the landing site, so gate on landing config alone —
+    // not the full isConfigured (which also requires the forms website id).
+    if (!isLandingConfigured(cfg)) return empty
     try {
       return { configured: true, ...(await fetchSearchData(cfg, range)) }
     } catch {
