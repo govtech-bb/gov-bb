@@ -419,7 +419,7 @@ export function PensionCalculator() {
           <Text as="p" size="body">
             <strong>This calculator gives an estimate only.</strong> Your actual
             pension depends on information held by the People Resourcing and
-            Compliance Directorate (PRCD) and your last employer. Contact them
+            Compliance Directorate (PRC) and your last employer. Contact them
             to confirm your exact figures before making any decisions.
           </Text>
         </div>
