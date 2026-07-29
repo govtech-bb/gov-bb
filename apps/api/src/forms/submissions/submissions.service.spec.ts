@@ -12,6 +12,7 @@ import { ProcessorFactory } from "./processors/processor-factory.service";
 import type { ISubmissionProcessor } from "./processors/submission-processor.interface";
 import type { SubmitDto } from "./submissions.types";
 import type { ExpressionsService } from "@/expressions/expressions.service";
+import type { CatchmentRoutingService } from "@/catchment/catchment-routing.service";
 
 function makeExpressions(
   impl: (cfg: Record<string, unknown>) => Record<string, unknown> = (cfg) =>
@@ -29,6 +30,13 @@ function makeExpressions(
 }
 
 const expressions = makeExpressions();
+
+function makeCatchmentRouting(
+  impl: (input: { coordinates?: string; parish?: string }) => unknown = () =>
+    null,
+): CatchmentRoutingService {
+  return { resolve: vi.fn(impl) } as unknown as CatchmentRoutingService;
+}
 
 function makeEntity(
   overrides: Partial<FormSubmissionEntity> = {},
@@ -69,6 +77,7 @@ interface MakeMocksOptions {
   // resolves to. Defaults to [] (the previous hardcoded shape). Set this when a
   // test needs the service to inspect a config, e.g. the payment amount guard.
   processors?: Array<{ type: string; config: Record<string, unknown> }>;
+  catchmentRouting?: CatchmentRoutingService;
 }
 
 function makeMocks(options: MakeMocksOptions = {}) {
@@ -77,6 +86,7 @@ function makeMocks(options: MakeMocksOptions = {}) {
     gating = [],
     nonGating = [],
     processors = [],
+    catchmentRouting = makeCatchmentRouting(),
   } = options;
 
   const txRepo = {
@@ -113,6 +123,7 @@ function makeMocks(options: MakeMocksOptions = {}) {
     eventEmitter,
     processorFactory,
     expressions,
+    catchmentRouting,
   );
   return {
     txRepo,
@@ -120,6 +131,7 @@ function makeMocks(options: MakeMocksOptions = {}) {
     pipeline,
     eventEmitter,
     processorFactory,
+    catchmentRouting,
     service,
   };
 }
@@ -225,6 +237,7 @@ describe("SubmissionsService", () => {
           resolveSplit: vi.fn().mockReturnValue({ gating: [], nonGating: [] }),
         } as unknown as ProcessorFactory,
         expressions,
+        makeCatchmentRouting(),
       );
 
       const result = await service.submit(BASE_DTO);
@@ -266,6 +279,7 @@ describe("SubmissionsService", () => {
         eventEmitter,
         processorFactory,
         customExpressions,
+        makeCatchmentRouting(),
       );
 
       await service.submit(BASE_DTO);
@@ -473,6 +487,7 @@ describe("SubmissionsService", () => {
         eventEmitter,
         processorFactory,
         expressions,
+        makeCatchmentRouting(),
       );
       return { txRepo, service, eventEmitter, processorFactory };
     }
@@ -797,6 +812,58 @@ describe("SubmissionsService", () => {
       expect(payment.process).not.toHaveBeenCalled();
       // Gating path does not emit submission.created.
       expect(eventEmitter.emit as Mock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("catchment routing (temp restaurant licence)", () => {
+    it("attaches resolvedCatchment to the emitted event when catchmentRouting is set", async () => {
+      const resolution = {
+        polyclinic: "Sir Winston Scott Polyclinic",
+        programmeCode: "C",
+        mdaEmail: "e@x.bb",
+      };
+      const catchmentRouting = makeCatchmentRouting(() => resolution);
+      const { pipeline, service, eventEmitter } = makeMocks({
+        catchmentRouting,
+      });
+      pipeline.run = vi.fn().mockResolvedValue({
+        draft: { formVersion: "1.0.0", lastActivePage: 0 },
+        contract: {
+          processors: [],
+          catchmentRouting: {
+            coordinatesField: "event-details.event-address-coordinates",
+            parishField: "event-details.event-parish",
+          },
+        },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {
+          "event-details": {
+            "event-address-coordinates": "13.0975,-59.6167",
+          },
+        },
+      });
+
+      await service.submit(BASE_DTO);
+
+      expect(eventEmitter.emit as Mock).toHaveBeenCalledWith(
+        "submission.created",
+        expect.objectContaining({
+          resolvedCatchment: expect.objectContaining({
+            polyclinic: "Sir Winston Scott Polyclinic",
+          }),
+        }),
+      );
+    });
+
+    it("leaves resolvedCatchment undefined when the contract has no catchmentRouting block", async () => {
+      const { service, eventEmitter } = makeMocks();
+
+      await service.submit(BASE_DTO);
+
+      expect(eventEmitter.emit as Mock).toHaveBeenCalledWith(
+        "submission.created",
+        expect.objectContaining({ resolvedCatchment: undefined }),
+      );
     });
   });
 });
