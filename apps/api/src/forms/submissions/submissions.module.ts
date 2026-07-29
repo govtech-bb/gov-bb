@@ -32,6 +32,7 @@ import { EmailTemplateService } from "@/email/email-template.service";
 import { EmailBodyBuilder } from "@/email/email-body.builder";
 import { SesMailer } from "@/email/ses-mailer";
 import { PaymentRequiredListener } from "@/email/payment-required.listener";
+import { CatchmentModule } from "@/catchment/catchment.module";
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { PaymentRequiredListener } from "@/email/payment-required.listener";
     ConfigModule.forFeature(sqsConfig),
     ConfigModule.forFeature(sesEventsConfig),
     ExpressionsModule,
+    CatchmentModule,
   ],
   controllers: [SubmissionsController],
   providers: [
