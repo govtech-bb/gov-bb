@@ -49,6 +49,6 @@ Contact the People Resourcing and Compliance Directorate (PRCD) or your last emp
 | 1 January 2014 | 66½ |
 | 1 January 2018 | 67  |
 
-If you joined the Government Service before **September 1, 1975**, you will receive both your Government pension and your National Insurance pension **in full**.
+If you joined the Government Service **on or before September 1, 1975**, you will receive both your Government pension and your National Insurance pension **in full**.
 
-If you joined the Government Service on or **after September 1, 1975**, you will receive a National Insurance pension. However, if this amount is less than your Government pension, you will be paid **the difference**.
+If you joined the Government Service **after September 1, 1975**, you will receive a National Insurance pension. However, if this amount is less than your Government pension, you will be paid **the difference**.
