@@ -587,6 +587,7 @@ function MoneyField({
   hint,
   id,
   label,
+  max,
   onChange,
   prefix,
   value,
@@ -595,10 +596,14 @@ function MoneyField({
   hint: string
   id: string
   label: string
+  max?: number
   onChange: (v: string) => void
   prefix?: string
   value: string
 }) {
+  const numeric = Number.parseFloat(value.replace(/,/g, '').trim())
+  const overCeiling =
+    max !== undefined && Number.isFinite(numeric) && numeric > max
   return (
     <div className={`${CARD} p-5`}>
       <label
@@ -635,6 +640,15 @@ function MoneyField({
         <p className="mt-2 text-[1rem] text-red-00" id={`${id}-error`}>
           {error}
         </p>
+      )}
+      {overCeiling && max !== undefined && (
+        <div
+          className="mt-4 border-blue-40 border-l-4 bg-grey-00/50 p-3 text-[1rem] text-black-00"
+          role="status"
+        >
+          The most NIS can insure is {money(max)} a month. Amounts above this do
+          not change your estimate.
+        </div>
       )}
     </div>
   )
@@ -776,6 +790,7 @@ function IncomeStep({
             hint="What you typically bring in each month. A rough number is fine."
             id="usual-month"
             label="How much do you usually earn each month?"
+            max={NIS.MAX_MONTHLY_INSURABLE}
             onChange={setUsualMonth}
             prefix="BDS $"
             value={usualMonth}
@@ -790,6 +805,7 @@ function IncomeStep({
             hint="When work is steady and money comes in. A rough number is fine."
             id="good-month"
             label="What does a busy month look like?"
+            max={NIS.MAX_MONTHLY_INSURABLE}
             onChange={setGoodMonth}
             prefix="BDS $"
             value={goodMonth}
@@ -799,6 +815,7 @@ function IncomeStep({
             hint="When work is quiet: slow season, hurricane month, sickness. A rough number is fine."
             id="slow-month"
             label="And a slow month?"
+            max={NIS.MAX_MONTHLY_INSURABLE}
             onChange={setSlowMonth}
             prefix="BDS $"
             value={slowMonth}

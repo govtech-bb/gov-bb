@@ -97,18 +97,38 @@ export function monthlyAverage(e: EarningsInputs): number {
 }
 
 /**
+ * The monthly contribution that reaches the maximum insurable earnings. Paying
+ * more than this buys no extra benefit (insurable earnings — and so every
+ * benefit — are pinned at the ceiling), so the Stronger suggestion never
+ * exceeds it.
+ */
+export const MAX_USEFUL_MONTHLY_CONTRIBUTION =
+  NIS.MAX_MONTHLY_INSURABLE * NIS.SE_RATE
+
+/**
  * Suggested monthly contribution for each tier, derived from average earnings.
  * Minimum is a flat floor; moderate/stronger are a share of the monthly
  * average, rounded to the nearest $10, with their own floors.
+ *
+ * Earnings above the insurable ceiling don't raise benefits, so above it:
+ * Moderate is computed from earnings capped at the ceiling (a sensible medium
+ * amount, not the ceiling-equivalent itself), while Stronger is capped at
+ * {@link MAX_USEFUL_MONTHLY_CONTRIBUTION} — the most that reaches full insurable
+ * earnings. So a high earner still sees a spread of options rather than two
+ * tiers pinned at the same figure.
  */
 export function suggestedContributions(
   e: EarningsInputs,
 ): Record<Tier, number> {
   const monthlyAvg = monthlyAverage(e)
+  const moderateBasis = Math.min(monthlyAvg, NIS.MAX_MONTHLY_INSURABLE)
   return {
     [Tier.Minimum]: 100,
-    [Tier.Moderate]: Math.max(150, Math.round((monthlyAvg * 0.1) / 10) * 10),
-    [Tier.Stronger]: Math.max(225, Math.round((monthlyAvg * 0.15) / 10) * 10),
+    [Tier.Moderate]: Math.max(150, Math.round((moderateBasis * 0.1) / 10) * 10),
+    [Tier.Stronger]: Math.min(
+      MAX_USEFUL_MONTHLY_CONTRIBUTION,
+      Math.max(225, Math.round((monthlyAvg * 0.15) / 10) * 10),
+    ),
   }
 }
 
