@@ -154,12 +154,7 @@ describe("FilesController", () => {
       stepId: "s",
       fieldId: "fi",
     };
-    await controller.confirmUpload(
-      dto,
-      undefined,
-      undefined,
-      "preview=draft",
-    );
+    await controller.confirmUpload(dto, undefined, undefined, "preview=draft");
     expect(svc.confirmUpload).toHaveBeenCalledWith(
       dto,
       undefined,

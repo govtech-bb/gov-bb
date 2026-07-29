@@ -53,7 +53,8 @@ export class SubmissionsController {
     // files source and stay unsubmittable (ADR 0043 / #145). Default false, so
     // production stays restricted until the flag is deliberately set.
     const allowPreviewSubmissions =
-      this.configService.get<string>("ALLOW_PREVIEW_SUBMISSIONS", "") === "true";
+      this.configService.get<string>("ALLOW_PREVIEW_SUBMISSIONS", "") ===
+      "true";
     const bypassVisibility =
       allowPreviewSubmissions ||
       isValidSecretToken(

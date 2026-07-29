@@ -92,7 +92,11 @@ describe("WebhookProcessor — generic (envelope) mode", () => {
     request.mockReturnValue(of({ status: 200, data: {} }));
     mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
     findByFormId.mockResolvedValue({ steps: [] });
-    processor = new WebhookProcessor(http, makeDestinations(null), formDefinitions);
+    processor = new WebhookProcessor(
+      http,
+      makeDestinations(null),
+      formDefinitions,
+    );
   });
 
   it("POSTs to the configured url with the configured method", async () => {
@@ -418,7 +422,11 @@ describe("WebhookProcessor — generic endpoint/auth branches", () => {
     request.mockReturnValue(of({ status: 200, data: {} }));
     mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
     findByFormId.mockResolvedValue({ steps: [] });
-    processor = new WebhookProcessor(http, makeDestinations(null), formDefinitions);
+    processor = new WebhookProcessor(
+      http,
+      makeDestinations(null),
+      formDefinitions,
+    );
     process.env.WEBHOOK_URL = "http://cms.local";
   });
   afterEach(() => {
