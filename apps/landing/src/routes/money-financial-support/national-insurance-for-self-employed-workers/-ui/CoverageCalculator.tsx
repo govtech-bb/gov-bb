@@ -587,6 +587,7 @@ function MoneyField({
   hint,
   id,
   label,
+  max,
   onChange,
   prefix,
   value,
@@ -595,10 +596,14 @@ function MoneyField({
   hint: string
   id: string
   label: string
+  max?: number
   onChange: (v: string) => void
   prefix?: string
   value: string
 }) {
+  const numeric = Number.parseFloat(value.replace(/,/g, '').trim())
+  const overCeiling =
+    max !== undefined && Number.isFinite(numeric) && numeric > max
   return (
     <div className={`${CARD} p-5`}>
       <label
@@ -635,6 +640,15 @@ function MoneyField({
         <p className="mt-2 text-[1rem] text-red-00" id={`${id}-error`}>
           {error}
         </p>
+      )}
+      {overCeiling && max !== undefined && (
+        <div
+          className="mt-4 border-blue-40 border-l-4 bg-grey-00/50 p-3 text-[1rem] text-black-00"
+          role="status"
+        >
+          The most NIS can insure is {money(max)} a month. Amounts above this do
+          not change your estimate.
+        </div>
       )}
     </div>
   )
@@ -776,6 +790,7 @@ function IncomeStep({
             hint="What you typically bring in each month. A rough number is fine."
             id="usual-month"
             label="How much do you usually earn each month?"
+            max={NIS.MAX_MONTHLY_INSURABLE}
             onChange={setUsualMonth}
             prefix="BDS $"
             value={usualMonth}
@@ -790,6 +805,7 @@ function IncomeStep({
             hint="When work is steady and money comes in. A rough number is fine."
             id="good-month"
             label="What does a busy month look like?"
+            max={NIS.MAX_MONTHLY_INSURABLE}
             onChange={setGoodMonth}
             prefix="BDS $"
             value={goodMonth}
@@ -799,6 +815,7 @@ function IncomeStep({
             hint="When work is quiet: slow season, hurricane month, sickness. A rough number is fine."
             id="slow-month"
             label="And a slow month?"
+            max={NIS.MAX_MONTHLY_INSURABLE}
             onChange={setSlowMonth}
             prefix="BDS $"
             value={slowMonth}
@@ -829,11 +846,30 @@ function IncomeStep({
 /* ── Screen: plan ───────────────────────────────────────────────────── */
 const TIERS: Array<{
   id: Tier
+  label: string
   tone: Tone
+  recommended?: boolean
+  sub: string
 }> = [
-  { id: Tier.Minimum, tone: 'yellow' },
-  { id: Tier.Moderate, tone: 'green' },
-  { id: Tier.Stronger, tone: 'teal' },
+  {
+    id: Tier.Minimum,
+    label: 'Minimum',
+    tone: 'yellow',
+    sub: 'Smaller payouts, but every benefit still counts.',
+  },
+  {
+    id: Tier.Moderate,
+    label: 'Moderate',
+    tone: 'green',
+    recommended: true,
+    sub: 'A bigger share of your earnings.',
+  },
+  {
+    id: Tier.Stronger,
+    label: 'Stronger',
+    tone: 'teal',
+    sub: 'The strongest cover you can build.',
+  },
 ]
 
 function PlanStep({
@@ -939,24 +975,24 @@ function PlanStep({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1 text-black-00">
-                    <p className="font-bold text-[2rem] tabular-nums leading-none">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-[1.25rem]">{t.label}</p>
+                      {t.recommended && (
+                        <span
+                          className={`rounded-full border bg-white-00 ${tone.border} ${tone.text} px-2.5 py-1 font-semibold text-[0.85rem]`}
+                        >
+                          Recommended
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 font-bold text-[2rem] tabular-nums leading-none">
                       {money(suggested[t.id])}
                       <span className="font-normal text-[1rem] text-mid-grey-00">
                         {' '}
-                        a month
+                        /month
                       </span>
                     </p>
-                    {t.id === Tier.Minimum && (
-                      <p className="mt-1 font-semibold text-[1rem]">
-                        Minimum payment
-                      </p>
-                    )}
-                    <p className="mt-2 text-[1rem] text-mid-grey-00 tabular-nums">
-                      {money((suggested[t.id] * 12) / 52)} a week
-                    </p>
-                    <p className="text-[1rem] text-mid-grey-00 tabular-nums">
-                      {money(suggested[t.id] * 12)} a year
-                    </p>
+                    <p className="mt-2 text-[1rem] text-mid-grey-00">{t.sub}</p>
                   </div>
                   <span
                     className={`mt-1 inline-flex h-6 w-6 shrink-0 rounded-full ${
@@ -980,22 +1016,25 @@ function PlanStep({
               'linear-gradient(to bottom right, var(--color-teal-00), var(--color-blue-100))',
           }}
         >
-          <p className="mb-1 font-semibold text-[0.95rem] text-teal-40 uppercase tracking-wide">
-            Your plan
-          </p>
+          <div className="mb-1 flex items-start justify-between gap-3">
+            <p className="font-semibold text-[0.95rem] text-teal-40 uppercase tracking-wide">
+              Your plan
+            </p>
+            <span
+              className={`inline-flex items-center rounded-full ${TONE[selTier.tone].bg} ${TONE[selTier.tone].text} px-4 py-1.5 font-bold text-[1.05rem]`}
+            >
+              {selTier.label}
+            </span>
+          </div>
           <p className="mb-1 font-bold text-[2rem] tabular-nums leading-tight">
             {money(chosen)}
             <span className="font-normal text-[1rem] text-teal-40">
               {' '}
-              a month
+              / month
             </span>
           </p>
-          {tier === Tier.Minimum && (
-            <p className="mb-1 font-semibold text-[1rem] text-white-00">
-              Minimum payment
-            </p>
-          )}
           <p className="text-[1rem] text-white-00/90">
+            About{' '}
             <strong className="tabular-nums">{money((chosen * 12) / 52)}</strong>{' '}
             a week.
           </p>
@@ -1041,14 +1080,16 @@ function BenefitCard({
   title,
   tone,
   explain,
-  estimate,
+  without,
+  withNis,
 }: {
   defaultOpen?: boolean
   icon: string
   title: string
   tone: Tone
   explain: ReactNode
-  estimate: ReactNode
+  without: ReactNode
+  withNis: ReactNode
 }) {
   return (
     <details
@@ -1066,9 +1107,20 @@ function BenefitCard({
           strokeWidth={2.25}
         />
       </summary>
-      <div className="flex flex-col gap-2 border-grey-00 border-t px-4 pt-4 pb-5">
+      <div className="flex flex-col gap-3 border-grey-00 border-t px-4 pt-4 pb-5">
         <p className="text-[1.125rem] text-black-00">{explain}</p>
-        <p className="text-[1.125rem] text-black-00">{estimate}</p>
+        <div className="rounded-lg border border-grey-00 bg-grey-00/40 p-3">
+          <p className="mb-1 font-semibold text-[0.95rem] text-mid-grey-00 uppercase tracking-wide">
+            Without NIS
+          </p>
+          <p className="text-[1.125rem] text-black-00">{without}</p>
+        </div>
+        <div className="rounded-lg border border-green-40 bg-green-10 p-3">
+          <p className="mb-1 font-semibold text-[0.95rem] text-green-00 uppercase tracking-wide">
+            With NIS
+          </p>
+          <p className="text-[1.125rem] text-black-00">{withNis}</p>
+        </div>
       </div>
     </details>
   )
@@ -1092,6 +1144,7 @@ function ResultStep({
     title: string
     tone: Tone
     explain: ReactNode
+    without: ReactNode
     estimate: ReactNode
   }> = [
     {
@@ -1099,6 +1152,7 @@ function ResultStep({
       title: 'Sickness Benefit',
       tone: 'teal',
       explain: 'May help if you cannot work because you are ill.',
+      without: 'Time off to recover would be unpaid.',
       estimate: (
         <>
           If you qualify, you may get about{' '}
@@ -1114,6 +1168,7 @@ function ResultStep({
       title: 'Maternity Benefit',
       tone: 'pink',
       explain: 'May help mothers who take time off to have a baby.',
+      without: 'Time off to have your baby would be unpaid.',
       estimate: (
         <>
           If you qualify, you may get about{' '}
@@ -1127,6 +1182,7 @@ function ResultStep({
       title: 'Paternity Benefit',
       tone: 'blue',
       explain: 'May help fathers who take time off after a baby is born.',
+      without: 'Time off after your baby arrives would be unpaid.',
       estimate: (
         <>
           If you qualify, you may get a {NIS.PATERNITY_WEEKS}-week paid
@@ -1141,6 +1197,8 @@ function ResultStep({
       tone: 'purple',
       explain:
         'May help if a long-term illness or injury stops you from working.',
+      without:
+        'There would be no ongoing income if you could not work long-term.',
       estimate: (
         <>
           If you qualify, you may get ongoing Invalidity Pension income of about{' '}
@@ -1154,6 +1212,7 @@ function ResultStep({
       title: "Survivors' Benefit",
       tone: 'yellow',
       explain: 'May help some family members after you die.',
+      without: 'Your family would not receive this support.',
       estimate: (
         <>
           If they qualify, Survivors&rsquo; Benefit may share about{' '}
@@ -1167,6 +1226,7 @@ function ResultStep({
       title: 'Old-Age Contributory Pension',
       tone: 'green',
       explain: <>May provide regular support from age {NIS.PENSIONABLE_AGE}.</>,
+      without: 'You would need to fund your retirement another way.',
       estimate: (
         <>
           If you qualify, you may get an Old-Age Pension for life from age{' '}
@@ -1181,6 +1241,7 @@ function ResultStep({
       title: 'Funeral Grant',
       tone: 'teal',
       explain: 'May help with funeral costs.',
+      without: 'Funeral costs would fall to your family.',
       estimate: (
         <>
           If you qualify, a one-time Funeral Grant of{' '}
@@ -1202,8 +1263,8 @@ function ResultStep({
         <strong className="text-black-00 tabular-nums">
           {money(b.monthlyContribution)}
         </strong>
-        /month, here are the benefits you may get. Figures are estimates based
-        on the amount you chose to put in.
+        /month, here&rsquo;s each benefit without NIS and with it. Figures are
+        estimates based on the amount you chose to put in.
       </p>
       <p className="mb-3 text-[1rem] text-mid-grey-00">
         Select a benefit to see who may get it and when.
@@ -1213,39 +1274,25 @@ function ResultStep({
         {items.map((it, i) => (
           <BenefitCard
             defaultOpen={i === 0}
+            explain={it.explain}
             icon={it.icon}
             key={it.title}
-            estimate={it.estimate}
-            explain={it.explain}
             title={it.title}
             tone={it.tone}
+            without={it.without}
+            withNis={it.estimate}
           />
         ))}
       </div>
 
       <div className="mt-6 space-y-2 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
-        <p>
-          This estimate uses only the answers you entered. It does not check
-          your NIS payment record.
-        </p>
-        <p>
-          Each benefit has its own qualifying rules. How much you receive may
-          depend on your earnings and contribution record.
-        </p>
-        <p>
-          NIS for self-employed workers does not include unemployment benefit.
+        <p className="text-mid-grey-00">
+          Your benefit estimates are based on the amount you choose to pay. If you
+          choose BDS $400 a month, we show the benefits you may get from paying
+          that amount. NIS will confirm whether you qualify and how much you may
+          get when you make a claim.
         </p>
       </div>
-
-      <h2 className="mt-8 mb-2 font-bold text-[1.5rem] text-black-00">
-        How your estimate was worked out
-      </h2>
-      <p className="text-[1.125rem] text-mid-grey-00">
-        Your benefit estimates are based on the amount you choose to pay. If you
-        choose BDS $400 a month, we show the benefits you may get from paying
-        that amount. NIS will confirm whether you qualify and how much you may
-        get when you make a claim.
-      </p>
 
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
@@ -1276,7 +1323,7 @@ function NextSteps({
         What to do next
       </h1>
       <p className="mb-6 text-[1.125rem] text-mid-grey-00">
-        This estimate does not register you or set your payment amount.
+        Below are a few steps you could take:
       </p>
 
       <ul className="flex flex-col gap-3 text-[1.125rem]">
@@ -1290,10 +1337,26 @@ function NextSteps({
             See how and when to pay National Insurance
           </Link>
         </li>
-        <li>
-          <Link href={`${serviceHref}#get-help`}>Contact NIS for help</Link>
-        </li>
       </ul>
+
+      <h2 className="mt-8 mb-2 font-bold text-[1.5rem] text-black-00">
+        Get help
+      </h2>
+      <p className="text-[1.125rem]">
+        Contact NIS on <strong>431-7400</strong> or visit the{' '}
+        <strong>NIS office</strong> in person.
+      </p>
+      <p className="mt-4 text-[1.125rem]">
+        <strong>NIS office</strong>
+        <br />
+        National Insurance and Social Security Service
+        <br />
+        Frank Walcott Building
+        <br />
+        Culloden Road
+        <br />
+        St Michael
+      </p>
 
       <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
