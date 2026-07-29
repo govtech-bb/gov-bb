@@ -109,6 +109,9 @@ export function hydrateForm(
     ...(recipe.processors !== undefined
       ? { processors: recipe.processors }
       : {}),
+    ...(recipe.catchmentRouting !== undefined
+      ? { catchmentRouting: recipe.catchmentRouting }
+      : {}),
     createdAt: now,
     updatedAt: now,
   };
