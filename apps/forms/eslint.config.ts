@@ -64,14 +64,6 @@ export default defineConfig([
     },
   },
   {
-    // form-renderer.tsx calls several hooks after an early `return null`
-    // (rules-of-hooks violations). Fixing it is a risky refactor of the core
-    // renderer, tracked in #1981 — downgrade to warn here so the rule stays
-    // `error` for every other file. Remove this override when #1981 lands.
-    files: ["**/components/form-renderer.tsx"],
-    rules: { "react-hooks/rules-of-hooks": "warn" },
-  },
-  {
     // Test and e2e files legitimately use `any` for mocks and fixtures;
     // no-explicit-any stays strict on production src.
     files: ["**/*.spec.{ts,tsx}", "**/*.test.{ts,tsx}", "e2e/**/*.{ts,tsx}"],

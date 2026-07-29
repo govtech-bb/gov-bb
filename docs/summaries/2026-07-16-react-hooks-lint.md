@@ -35,16 +35,20 @@ Plus a fix for the `useStore`-in-a-loop bug in the forms `$formId` route.
 
 - **form-renderer split out to #1981.** Turning on `rules-of-hooks=error`
   surfaced 6 real violations, all in `apps/forms/src/components/form-renderer.tsx`
-  — hooks called after an early `return null` (line 211). Fixing that is a risky
+  — hooks called after an early `return null` (line 211). Fixing that was a risky
   refactor of the core renderer (hoist every hook above the return), out of scope
-  for "enable a lint rule". Decision (with the owner): add a **targeted
-  `rules-of-hooks: warn` override for that one file** so the rule stays `error`
-  everywhere else, and track the real fix in #1981. New code is guarded
-  immediately; the legacy cluster is isolated, not ignored.
+  for "enable a lint rule", so it was split into **#1981**.
+
+  **Update (resync 2026-07-29):** #1981 has since landed on `main` — form-renderer
+  was refactored into a `FormRenderer` guard + `ActiveStep` child so every hook
+  runs unconditionally. On merging `main` into this branch the fix is present, so
+  the temporary `rules-of-hooks: warn` override for that file has been
+  **removed**: `rules-of-hooks` is now `error` for `form-renderer.tsx` too, with
+  no exemptions anywhere in the forms app.
 
 - **chat stays uncovered.** `apps/chat` has no lint target at all, so react-hooks
-  can't run there yet — flagged, tracked with the broader lint-target gap
-  (#1885), not addressed here.
+  can't run there yet — flagged with the broader lint-target gap (#1885, since
+  closed), not addressed here.
 
 ## Verification
 
@@ -54,5 +58,6 @@ early return in a non-exempt forms file) correctly errored. `forms:test` passed.
 
 ## Follow-ups
 
-- **#1981** — fix form-renderer's hook ordering and remove the per-file override.
-- Extend react-hooks to `apps/chat` once it has a lint target (#1885).
+- ~~**#1981** — fix form-renderer's hook ordering and remove the per-file
+  override.~~ **Done** — landed on `main`; override removed on resync (see above).
+- Extend react-hooks to `apps/chat` once it has a lint target (~~#1885~~ closed).
