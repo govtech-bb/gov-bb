@@ -21,7 +21,7 @@
       "type": "email",
       "config": {
         "subject": "A new temporary restaurant licence application has been received",
-        "recipientField": "config.mdaEmail"
+        "recipientField": "catchment.mdaEmail"
       }
     },
     {
@@ -47,6 +47,10 @@
       }
     }
   ],
+  "catchmentRouting": {
+    "coordinatesField": "event-details.event-address-coordinates",
+    "parishField": "event-details.event-parish"
+  },
   "steps": [
     {
       "stepId": "applicant-details",
