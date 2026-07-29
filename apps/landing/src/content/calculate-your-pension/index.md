@@ -45,9 +45,10 @@ Contact the People Resourcing and Compliance Directorate (PRC) or your last empl
 
 | Effective from | Age |
 | -------------- | --- |
-| 1 January 2010 | 66  |
 | 1 January 2014 | 66½ |
 | 1 January 2018 | 67  |
+| 1 January 2028 | 67½ |
+| 1 January 2034 | 68  |
 
 If you joined the Government Service **on or before September 1, 1975**, you will receive both your Government pension and your National Insurance pension **in full**.
 
