@@ -1,5 +1,9 @@
 export interface PensionInputs {
+  /** Month pensionable service started, 1 (January) to 12 (December). */
+  startMonth: number
   startYear: number
+  /** Month pensionable service stopped, 1 (January) to 12 (December). */
+  endMonth: number
   endYear: number
   /** Months of no-pay leave to deduct from pensionable service. */
   nopayMonths: number
@@ -8,7 +12,9 @@ export interface PensionInputs {
 
 export interface PensionEstimate {
   months: number
+  startMonth: number
   startYear: number
+  endMonth: number
   endYear: number
   nopayMonths: number
   salary: number
@@ -29,20 +35,42 @@ export const SERVICE_WARNING_MONTHS = 120
  */
 export const MAX_PENSIONABLE_MONTHS = 600
 
+/** A year+month expressed as a single month index, so spans can be subtracted. */
+function absoluteMonths(year: number, month: number): number {
+  return year * 12 + month
+}
+
+/**
+ * Elapsed months of pensionable service from the start month/year up to the
+ * stop month/year, less no-pay leave. Using the months (not just the years)
+ * means a mid-year start or stop is counted from that month rather than
+ * assuming the whole calendar year was worked.
+ */
+export function grossMonths(input: PensionInputs): number {
+  return (
+    absoluteMonths(input.endYear, input.endMonth) -
+    absoluteMonths(input.startYear, input.startMonth) -
+    input.nopayMonths
+  )
+}
+
 export function calculatePension(input: PensionInputs): PensionEstimate {
-  const { startYear, endYear, nopayMonths, salary } = input
-  // Clamp to [0, 600]: the upper cap stops a wide year range yielding a pension
+  const { startMonth, startYear, endMonth, endYear, nopayMonths, salary } =
+    input
+  // Clamp to [0, 600]: the upper cap stops a wide range yielding a pension
   // above 100% of salary; the lower bound of 0 keeps the function safe if a
   // caller passes no-pay leave that exceeds gross service.
   const months = Math.max(
     0,
-    Math.min((endYear - startYear) * 12 - nopayMonths, MAX_PENSIONABLE_MONTHS),
+    Math.min(grossMonths(input), MAX_PENSIONABLE_MONTHS),
   )
-  const fullAnnual = (months / 600) * salary
+  const fullAnnual = (months / MAX_PENSIONABLE_MONTHS) * salary
   const reducedAnnual = fullAnnual * 0.75
   return {
     months,
+    startMonth,
     startYear,
+    endMonth,
     endYear,
     nopayMonths,
     salary,

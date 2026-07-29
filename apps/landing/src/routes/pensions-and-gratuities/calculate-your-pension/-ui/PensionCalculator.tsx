@@ -4,6 +4,7 @@ import {
   Heading,
   Input,
   Link,
+  Select,
   Text,
 } from '@govtech-bb/react'
 import { useNavigate } from '@tanstack/react-router'
@@ -23,6 +24,24 @@ const moneyFmt = new Intl.NumberFormat('en-BB', {
 })
 
 const money = (n: number) => moneyFmt.format(n || 0)
+
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+
+const monthYear = (month: number, year: number) =>
+  `${MONTH_NAMES[month - 1] ?? ''} ${year}`
 
 function ServiceTitle() {
   return (
@@ -56,7 +75,9 @@ function ResultCard({
 }
 
 interface FieldErrors {
+  startMonth?: string
   startYear?: string
+  endMonth?: string
   endYear?: string
   nopayMonths?: string
   salary?: string
@@ -64,7 +85,9 @@ interface FieldErrors {
 
 export function PensionCalculator() {
   const navigate = useNavigate()
+  const [startMonth, setStartMonth] = useState('')
   const [startYear, setStartYear] = useState('')
+  const [endMonth, setEndMonth] = useState('')
   const [endYear, setEndYear] = useState('')
   const [nopayMonths, setNopayMonths] = useState('')
   const [salary, setSalary] = useState('')
@@ -81,31 +104,45 @@ export function PensionCalculator() {
   }, [estimate])
 
   function validate(): FieldErrors {
-    const startVal = startYear.trim()
-    const endVal = endYear.trim()
+    const startYearVal = startYear.trim()
+    const endYearVal = endYear.trim()
     const nopayVal = nopayMonths.trim()
     const salaryVal = salary.trim()
     const next: FieldErrors = {}
 
-    const startIsYear = /^\d+$/.test(startVal)
-    const endIsYear = /^\d+$/.test(endVal)
-    const startNum = Number.parseInt(startVal, 10)
-    const endNum = Number.parseInt(endVal, 10)
+    const startYearIsNum = /^\d+$/.test(startYearVal)
+    const endYearIsNum = /^\d+$/.test(endYearVal)
+    const startYearNum = Number.parseInt(startYearVal, 10)
+    const endYearNum = Number.parseInt(endYearVal, 10)
 
-    if (!startVal) {
+    if (!startMonth) next.startMonth = 'Select the month you started'
+    if (!startYearVal) {
       next.startYear = 'Enter the year you started pensionable service'
-    } else if (!startIsYear || startNum < 1900 || startNum > 2100) {
+    } else if (!startYearIsNum || startYearNum < 1900 || startYearNum > 2100) {
       next.startYear =
         'Enter the start year as a 4-digit year between 1900 and 2100, for example 1995'
     }
 
-    if (!endVal) {
+    if (!endMonth) next.endMonth = 'Select the month you stopped or will retire'
+    if (!endYearVal) {
       next.endYear = 'Enter the year you stopped or will retire'
-    } else if (!endIsYear || endNum < 1900 || endNum > 2100) {
+    } else if (!endYearIsNum || endYearNum < 1900 || endYearNum > 2100) {
       next.endYear =
         'Enter the end year as a 4-digit year between 1900 and 2100, for example 2020'
-    } else if (startIsYear && endNum <= startNum) {
-      next.endYear = 'The end year must be later than the start year'
+    }
+
+    // Compare the full start/end dates (year and month) once both are valid.
+    const datesOk =
+      startMonth &&
+      endMonth &&
+      startYearIsNum &&
+      endYearIsNum &&
+      !next.startYear &&
+      !next.endYear
+    const startAbs = startYearNum * 12 + Number.parseInt(startMonth, 10)
+    const endAbs = endYearNum * 12 + Number.parseInt(endMonth, 10)
+    if (datesOk && endAbs <= startAbs) {
+      next.endYear = 'The date you stopped must be after the date you started'
     }
 
     if (nopayVal) {
@@ -113,10 +150,9 @@ export function PensionCalculator() {
         next.nopayMonths =
           'Enter the months of no-pay leave as a whole number, for example 6, or leave it blank'
       } else if (
-        startIsYear &&
-        endIsYear &&
-        endNum > startNum &&
-        Number.parseInt(nopayVal, 10) >= (endNum - startNum) * 12
+        datesOk &&
+        endAbs > startAbs &&
+        Number.parseInt(nopayVal, 10) >= endAbs - startAbs
       ) {
         next.nopayMonths =
           'Your no-pay leave must be less than your total months of service'
@@ -162,7 +198,9 @@ export function PensionCalculator() {
     const nopayVal = nopayMonths.trim()
     setEstimate(
       calculatePension({
+        startMonth: Number.parseInt(startMonth, 10),
         startYear: Number.parseInt(startYear, 10),
+        endMonth: Number.parseInt(endMonth, 10),
         endYear: Number.parseInt(endYear, 10),
         nopayMonths: nopayVal ? Number.parseInt(nopayVal, 10) : 0,
         salary: Number.parseFloat(salary.trim().replace(/,/g, '')),
@@ -179,7 +217,11 @@ export function PensionCalculator() {
   }
 
   const errorItems = [
+    errors.startMonth
+      ? { text: errors.startMonth, target: '#start-month' }
+      : null,
     errors.startYear ? { text: errors.startYear, target: '#start-year' } : null,
+    errors.endMonth ? { text: errors.endMonth, target: '#end-month' } : null,
     errors.endYear ? { text: errors.endYear, target: '#end-year' } : null,
     errors.nopayMonths
       ? { text: errors.nopayMonths, target: '#nopay-months' }
@@ -187,25 +229,40 @@ export function PensionCalculator() {
     errors.salary ? { text: errors.salary, target: '#salary' } : null,
   ].filter((e): e is { text: string; target: string } => e !== null)
 
+  const monthOptions = (
+    <>
+      <option value="" />
+      {MONTH_NAMES.map((m, i) => (
+        <option key={m} value={String(i + 1)}>
+          {m}
+        </option>
+      ))}
+    </>
+  )
+
   // ---- Results view -------------------------------------------------------
   if (estimate) {
     const {
       months,
+      startMonth: sm,
       startYear: sy,
+      endMonth: em,
       endYear: ey,
       nopayMonths: np,
       salary: sal,
     } = estimate
     const monthWord = (n: number) => `${n} month${n === 1 ? '' : 's'}`
+    const span = `${monthYear(sm, sy)} to ${monthYear(em, ey)}`
     // months is capped at 600 in compute(); when the entered span is larger,
-    // say so instead of showing a month count that contradicts the year range.
-    const isCapped = (ey - sy) * 12 - np > months
+    // say so instead of showing a month count that contradicts the dates.
+    const gross = ey * 12 + em - (sy * 12 + sm) - np
+    const isCapped = gross > months
     const context = isCapped
       ? `Based on the maximum ${monthWord(months)} of pensionable service ` +
-        `(capped from your ${sy} to ${ey} service) and a last annual salary ` +
+        `(capped from your ${span} service) and a last annual salary ` +
         `of ${money(sal)}.`
       : `Based on ${monthWord(months)} of pensionable service ` +
-        `(${sy} to ${ey}` +
+        `(${span}` +
         (np > 0 ? `, less ${monthWord(np)} of no-pay leave` : '') +
         `) and a last annual salary of ${money(sal)}.`
 
@@ -229,7 +286,7 @@ export function PensionCalculator() {
                 <strong>You may not be entitled to a pension.</strong> Workers
                 with fewer than 10 years (120 months) of pensionable service who
                 leave during that period do not receive a pension. The figures
-                below are shown for information only. Contact the PRCD to confirm
+                below are shown for information only. Contact the PAD to confirm
                 your entitlement before making any plans.
               </Text>
             </div>
@@ -298,7 +355,7 @@ export function PensionCalculator() {
           </div>
 
           <Text as="p" className="text-mid-grey-00" size="caption">
-            These figures are estimates only. Contact the PRCD to discuss which
+            These figures are estimates only. Contact the PAD to discuss which
             option suits your circumstances before you retire.
           </Text>
 
@@ -321,7 +378,8 @@ export function PensionCalculator() {
               <Text as="p" size="body">
                 NISSS can help you understand your National Insurance Old Age
                 Contributory Pension entitlement alongside any government
-                pension.
+                pension. If you qualify for both, you will receive only the
+                higher of the two.
               </Text>
               <ul className="mt-2 list-disc space-y-2 pl-7">
                 <li>
@@ -367,29 +425,71 @@ export function PensionCalculator() {
             calculate()
           }}
         >
-          <Input
-            className="max-w-[8rem]"
-            description="The year you began the service that counts towards your pension, for example 2005."
-            error={errors.startYear || undefined}
-            id="start-year"
-            inputMode="numeric"
-            label="Year you started pensionable service"
-            onInput={(e) => setStartYear(e.currentTarget.value)}
-            required
-            value={startYear}
-          />
+          <fieldset>
+            <legend className="mb-1 font-bold">
+              When you started pensionable service
+            </legend>
+            <Text as="p" className="text-mid-grey-00" size="caption">
+              The month and year you began the service that counts towards your
+              pension, for example June 2005.
+            </Text>
+            <div className="mt-2 flex flex-wrap items-start gap-s">
+              <div className="w-[13rem]">
+                <Select
+                  error={errors.startMonth || undefined}
+                  id="start-month"
+                  label="Month"
+                  onChange={(e) => setStartMonth(e.currentTarget.value)}
+                  value={startMonth}
+                >
+                  {monthOptions}
+                </Select>
+              </div>
+              <div className="w-[7rem]">
+                <Input
+                  error={errors.startYear || undefined}
+                  id="start-year"
+                  inputMode="numeric"
+                  label="Year"
+                  onInput={(e) => setStartYear(e.currentTarget.value)}
+                  value={startYear}
+                />
+              </div>
+            </div>
+          </fieldset>
 
-          <Input
-            className="max-w-[8rem]"
-            description="The year your pensionable service ends. If you have not retired yet, use your expected retirement year."
-            error={errors.endYear || undefined}
-            id="end-year"
-            inputMode="numeric"
-            label="Year you stopped or will retire"
-            onInput={(e) => setEndYear(e.currentTarget.value)}
-            required
-            value={endYear}
-          />
+          <fieldset>
+            <legend className="mb-1 font-bold">
+              When you stopped or will retire
+            </legend>
+            <Text as="p" className="text-mid-grey-00" size="caption">
+              The month and year your pensionable service ends. If you have not
+              retired yet, use your expected retirement date.
+            </Text>
+            <div className="mt-2 flex flex-wrap items-start gap-s">
+              <div className="w-[13rem]">
+                <Select
+                  error={errors.endMonth || undefined}
+                  id="end-month"
+                  label="Month"
+                  onChange={(e) => setEndMonth(e.currentTarget.value)}
+                  value={endMonth}
+                >
+                  {monthOptions}
+                </Select>
+              </div>
+              <div className="w-[7rem]">
+                <Input
+                  error={errors.endYear || undefined}
+                  id="end-year"
+                  inputMode="numeric"
+                  label="Year"
+                  onInput={(e) => setEndYear(e.currentTarget.value)}
+                  value={endYear}
+                />
+              </div>
+            </div>
+          </fieldset>
 
           <Input
             className="max-w-[8rem]"
