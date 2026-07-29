@@ -1224,28 +1224,13 @@ function ResultStep({
       </div>
 
       <div className="mt-6 space-y-2 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
-        <p>
-          This estimate uses only the answers you entered. It does not check
-          your NIS payment record.
-        </p>
-        <p>
-          Each benefit has its own qualifying rules. How much you receive may
-          depend on your earnings and contribution record.
-        </p>
-        <p>
-          NIS for self-employed workers does not include unemployment benefit.
+        <p className="text-mid-grey-00">
+          Your benefit estimates are based on the amount you choose to pay. If you
+          choose BDS $400 a month, we show the benefits you may get from paying
+          that amount. NIS will confirm whether you qualify and how much you may
+          get when you make a claim.
         </p>
       </div>
-
-      <h2 className="mt-8 mb-2 font-bold text-[1.5rem] text-black-00">
-        How your estimate was worked out
-      </h2>
-      <p className="text-[1.125rem] text-mid-grey-00">
-        Your benefit estimates are based on the amount you choose to pay. If you
-        choose BDS $400 a month, we show the benefits you may get from paying
-        that amount. NIS will confirm whether you qualify and how much you may
-        get when you make a claim.
-      </p>
 
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
