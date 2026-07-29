@@ -178,6 +178,22 @@ describe("mapFieldToLocale", () => {
     const result = mapFieldToLocale(field, step);
     expect(result.validations?.required?.value).toBe(true);
   });
+
+  it("carries variant/content/summary onto the client field", () => {
+    const step = makeStep("s", []);
+    const field = {
+      fieldId: "officer-notice",
+      label: "Information",
+      htmlType: "content",
+      variant: "inset",
+      content: "Body text.",
+    } as unknown as Primitive;
+
+    const mapped = mapFieldToLocale(field, step);
+    expect(mapped.htmlType).toBe("content");
+    expect(mapped.variant).toBe("inset");
+    expect(mapped.content).toBe("Body text.");
+  });
 });
 
 // ---------------------------------------------------------------------------

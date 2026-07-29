@@ -45,10 +45,22 @@ export class SubmissionsController {
     // A valid X-Recipe-Preview token lets a reviewer submit a published-but-
     // flagged (non-public) form — the visibility gate is bypassed downstream
     // (#1682). Fail-closed: unset token / wrong value → false.
-    const bypassVisibility = isValidSecretToken(
-      this.configService.get<string>("RECIPE_PREVIEW_TOKEN", ""),
-      previewToken,
-    );
+    //
+    // ALLOW_PREVIEW_SUBMISSIONS opens that same bypass to *every* submission on
+    // an environment (sandbox/staging) so a feature-flagged form can be tested
+    // end-to-end without a per-request token. It only reaches non-public
+    // *published file* recipes — DB-only builder drafts still resolve from the
+    // files source and stay unsubmittable (ADR 0043 / #145). Default false, so
+    // production stays restricted until the flag is deliberately set.
+    const allowPreviewSubmissions =
+      this.configService.get<string>("ALLOW_PREVIEW_SUBMISSIONS", "") ===
+      "true";
+    const bypassVisibility =
+      allowPreviewSubmissions ||
+      isValidSecretToken(
+        this.configService.get<string>("RECIPE_PREVIEW_TOKEN", ""),
+        previewToken,
+      );
 
     const { data, message, statusCode, deferred } =
       await this.submissionsService.submit({

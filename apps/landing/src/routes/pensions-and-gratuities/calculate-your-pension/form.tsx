@@ -18,8 +18,8 @@ export const Route = createFileRoute(
   },
   head: () =>
     pageHead(
-      'Calculate your pension',
-      'Estimate your government pension, reduced pension, and gratuity lump sum from your months of pensionable service and last annual salary.',
+      'Government Pension calculator',
+      'Estimate your government pension, reduced pension, and gratuity lump sum from the years you were in pensionable service and your last annual salary.',
       { noindex: urlLevel(CONTENT_URL) !== 'public' },
     ),
   component: PensionCalculator,

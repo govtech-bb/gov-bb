@@ -120,8 +120,23 @@ const baseSchema = z
     WEBHOOK_SECRET: z.string().default(""),
     WEBHOOK_TIMEOUT_MS: z.coerce.number().int().min(1000).default(10000),
 
+    // Per-MDA CMS destinations as one JSON object keyed by ministry
+    // ({ "<ministry>": { "url", "secret" } }) — from Secrets Manager via the
+    // ECS task-def `secrets` block (#1920/#2020). Optional at the boot gate:
+    // the destinations loader parses/validates it and surfaces problems on
+    // /health, and dispatch fails loud (→ DLQ) on a missing entry, so a blank
+    // value must not block boot.
+    MDA_WEBHOOK_DESTINATIONS: z.string().optional(),
+
     // Recipe preview (empty disables the per-request preview escape hatch)
     RECIPE_PREVIEW_TOKEN: z.string().default(""),
+
+    // When "true", every submission bypasses the visibility gate so a
+    // feature-flagged (non-public *published file*) form can be tested
+    // end-to-end without a per-request X-Recipe-Preview token. Scoped to
+    // sandbox/staging; leave unset ("false") in production. DB-only builder
+    // drafts stay unsubmittable regardless (ADR 0043 / #145). See ADR 0065.
+    ALLOW_PREVIEW_SUBMISSIONS: z.enum(["true", "false"]).default("false"),
 
     // Parent domain for the cross-app shared `preview` cookie (#1646 Phase 3),
     // e.g. ".sandbox.alpha.gov.bb". When set, the cookie the API mints is scoped

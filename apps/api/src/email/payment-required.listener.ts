@@ -31,8 +31,12 @@ export class PaymentRequiredListener {
   @OnEvent("payment.required", { async: true })
   async handlePaymentRequired(event: PaymentRequiredEvent): Promise<void> {
     try {
+      // Bypass visibility (#2125): the submission requiring payment already
+      // exists, so resolve the published contract regardless of the form's
+      // current visibility.
       const contract = await this.formDefs.findByFormId({
         formId: event.formId,
+        bypassVisibility: true,
       });
       const formTitle = contract.title;
 

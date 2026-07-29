@@ -4,28 +4,55 @@
 // the overview loads with the page, each form's detail loads on its own page.
 import { createServerFn } from '@tanstack/react-start'
 import { useRuntimeConfig } from 'nitro/runtime-config'
+import { getCachedSecretJson } from '@govtech-bb/aws-secrets'
 import {
   fetchFormDetailData,
   fetchFormsData,
   fetchOverviewData,
+  fetchSearchData,
+  fetchToolsData,
   isConfigured,
+  isLandingConfigured,
   normaliseRange,
   rangeLabel,
   type FormDetailData,
   type FormsData,
   type OverviewData,
+  type SearchData,
+  type ToolsData,
   type UmamiConfig,
 } from './umami-server'
 
 const DEFAULT_FORMS_API = 'https://forms.api.sandbox.alpha.gov.bb'
 
-// Resolve the server-only config. Build-baked into the Nitro runtime config
-// (see vite.config.ts); the `process.env` fallback covers `nitro dev`, where
-// `.env` is loaded. Never runs in the browser.
-function getConfig(): UmamiConfig {
+// Resolve the API key. Prod uses the Secrets Manager pattern (chat /
+// feature_flagging): only the secret's ARN is baked in; the SSR Lambda fetches
+// the value at runtime under the compute role, keeping the plaintext out of the
+// bundle and the Amplify env vars. Sandbox/dev fall back to the build-baked key
+// (its pipeline still injects UMAMI_API_KEY) or `process.env` for `nitro dev`.
+async function resolveApiKey(
+  c: Record<string, string | undefined>,
+): Promise<string> {
+  const arn =
+    c.analyticsUmamiSecretArn || process.env.ANALYTICS_UMAMI_SECRET_ARN
+  if (arn) {
+    try {
+      const json = await getCachedSecretJson<{ umami_api_key?: string }>(arn)
+      if (json.umami_api_key) return json.umami_api_key
+    } catch {
+      // Fall through to the baked/env fallback so the page still renders.
+    }
+  }
+  return c.umamiApiKey || process.env.UMAMI_API_KEY || ''
+}
+
+// Resolve the server-only config. Non-secret values are build-baked into the
+// Nitro runtime config (see vite.config.ts); the API key is resolved at runtime
+// (see resolveApiKey). Never runs in the browser.
+async function getConfig(): Promise<UmamiConfig> {
   const c = useRuntimeConfig() as Record<string, string | undefined>
   return {
-    apiKey: c.umamiApiKey || process.env.UMAMI_API_KEY || '',
+    apiKey: await resolveApiKey(c),
     landingWebsiteId:
       c.umamiLandingWebsiteId || process.env.UMAMI_LANDING_WEBSITE_ID || '',
     formsWebsiteId:
@@ -71,7 +98,7 @@ function emptyDetail(formId: string, range: string): FormDetailData {
     avgDurationSeconds: null,
     totalFieldErrors: 0,
     funnel: [],
-    validationReasons: [],
+    fieldFailures: [],
     submitError: { total: 0, attempts: 0, rate: null, byReason: [] },
     generatedAt: '',
     window: rangeLabel(range),
@@ -89,7 +116,7 @@ export const fetchOverview = createServerFn({ method: 'GET' })
     normaliseRange(raw == null ? undefined : String(raw)),
   )
   .handler(async ({ data: range }): Promise<OverviewPayload> => {
-    const cfg = getConfig()
+    const cfg = await getConfig()
     if (!isConfigured(cfg)) return emptyOverview(range)
     try {
       const data = await fetchOverviewData(cfg, range)
@@ -107,7 +134,7 @@ export const fetchForms = createServerFn({ method: 'GET' })
     normaliseRange(raw == null ? undefined : String(raw)),
   )
   .handler(async ({ data: range }): Promise<FormsPayload> => {
-    const cfg = getConfig()
+    const cfg = await getConfig()
     const empty = {
       configured: false,
       forms: [],
@@ -118,6 +145,61 @@ export const fetchForms = createServerFn({ method: 'GET' })
     try {
       const data = await fetchFormsData(cfg, range)
       return { configured: true, ...data }
+    } catch {
+      return empty
+    }
+  })
+
+export type ToolsPayload = { configured: boolean } & ToolsData
+
+/** Per-tool usage for the "Tools" tab (landing site). */
+export const fetchTools = createServerFn({ method: 'GET' })
+  .validator((raw: unknown) =>
+    normaliseRange(raw == null ? undefined : String(raw)),
+  )
+  .handler(async ({ data: range }): Promise<ToolsPayload> => {
+    const cfg = await getConfig()
+    const empty: ToolsPayload = {
+      configured: false,
+      tools: [],
+      range,
+      window: rangeLabel(range),
+    }
+    // Tools reads only the landing site, so gate on landing config alone —
+    // not the full isConfigured (which also requires the forms website id).
+    if (!isLandingConfigured(cfg)) return empty
+    try {
+      return { configured: true, ...(await fetchToolsData(cfg, range)) }
+    } catch {
+      return empty
+    }
+  })
+
+export type SearchPayload = { configured: boolean } & SearchData
+
+/** Search queries + click-through for the "Search" tab. */
+export const fetchSearch = createServerFn({ method: 'GET' })
+  .validator((raw: unknown) =>
+    normaliseRange(raw == null ? undefined : String(raw)),
+  )
+  .handler(async ({ data: range }): Promise<SearchPayload> => {
+    const cfg = await getConfig()
+    const empty: SearchPayload = {
+      configured: false,
+      searches: 0,
+      clicks: 0,
+      ctr: 0,
+      zeroResultRate: 0,
+      queries: [],
+      generatedAt: '',
+      window: rangeLabel(range),
+      range,
+    }
+    // Search reads only the landing site, so gate on landing config alone —
+    // not the full isConfigured (which also requires the forms website id).
+    if (!isLandingConfigured(cfg)) return empty
+    try {
+      return { configured: true, ...(await fetchSearchData(cfg, range)) }
     } catch {
       return empty
     }
@@ -136,7 +218,7 @@ export const fetchFormDetail = createServerFn({ method: 'GET' })
     }
   })
   .handler(async ({ data }): Promise<FormDetailData> => {
-    const cfg = getConfig()
+    const cfg = await getConfig()
     if (!isConfigured(cfg)) return emptyDetail(data.formId, data.range)
     try {
       return await fetchFormDetailData(cfg, data.formId, data.range)

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -14,6 +15,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { Primitive, ServiceContract } from "@govtech-bb/form-types";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import { isValidSecretToken } from "../common/secret-token";
+import { AppError } from "../common/errors";
 import { buildSubmissionKey, parseSubmissionKey } from "./submission-key";
 import type {
   SubmissionValues,
@@ -34,6 +36,24 @@ export interface SubmissionFileEntry {
   type: string;
 }
 
+/**
+ * A HeadObject failure that means the object genuinely isn't there — as opposed
+ * to a transient or permission error where the object may still exist. S3
+ * returns `NotFound` (HTTP 404) for a missing key; `NoSuchKey` is matched
+ * defensively.
+ */
+function isGenuineMiss(err: unknown): boolean {
+  const e = err as {
+    name?: string;
+    $metadata?: { httpStatusCode?: number };
+  } | null;
+  return (
+    e?.name === "NotFound" ||
+    e?.name === "NoSuchKey" ||
+    e?.$metadata?.httpStatusCode === 404
+  );
+}
+
 @Injectable()
 export class FilesService {
   private readonly s3: S3Client;
@@ -41,6 +61,7 @@ export class FilesService {
   private readonly globalMaxSize: number;
   private readonly presignTtl: number;
   private readonly readTtl: number;
+  private readonly logger = new Logger(FilesService.name);
 
   constructor(
     private readonly config: ConfigService,
@@ -76,13 +97,16 @@ export class FilesService {
     dto: PresignUploadDto,
     previewToken?: string,
     draftToken?: string,
+    // A valid shared `preview` cookie grants the visibility bypass on its own
+    // (#2116) — the browser drops the URL token but still sends the cookie.
+    previewCookieBypass = false,
   ): Promise<PresignUploadResponseDto> {
     this.assertConfigured();
     const field = await this.resolveFileField(
       dto.formId,
       dto.stepId,
       dto.fieldId,
-      this.isValidRecipeToken(previewToken),
+      this.isValidRecipeToken(previewToken) || previewCookieBypass,
       this.isValidRecipeToken(draftToken),
     );
 
@@ -115,6 +139,8 @@ export class FilesService {
     dto: ConfirmUploadDto,
     previewToken?: string,
     draftToken?: string,
+    // See presignUpload — the shared `preview` cookie grants the bypass (#2116).
+    previewCookieBypass = false,
   ): Promise<FileAttachmentDto> {
     this.assertConfigured();
     // Bind confirm to presign (#284): the key embeds the (formId, stepId,
@@ -140,7 +166,7 @@ export class FilesService {
       dto.formId,
       dto.stepId,
       dto.fieldId,
-      this.isValidRecipeToken(previewToken),
+      this.isValidRecipeToken(previewToken) || previewCookieBypass,
       this.isValidRecipeToken(draftToken),
     );
 
@@ -187,8 +213,21 @@ export class FilesService {
             );
           } catch (err: unknown) {
             const name = (err as { name?: string } | null)?.name;
+            // Throttle → re-raise so the batch backs off (unchanged).
             if (name && /Throttl|SlowDown|Limit/i.test(name)) throw err;
-            missing.add(key);
+            // A genuine miss (object absent) stays a "missing" result so the
+            // citizen still sees the field-level "Uploaded file not found".
+            if (isGenuineMiss(err)) {
+              missing.add(key);
+              return;
+            }
+            // Anything else is a transient/unexpected S3 failure — the object
+            // may well exist. Fail loud with the real cause logged, rather than
+            // mislabelling a present file as missing (#1989).
+            this.logger.error(
+              `HeadObject failed for ${key}: ${name ?? "unknown error"}`,
+            );
+            throw AppError.internal("Could not verify uploaded files");
           }
         }),
       );

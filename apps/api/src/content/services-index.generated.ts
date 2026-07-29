@@ -97,6 +97,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
+    slug: "apply-for-temporary-restaurant-licence",
+    title: "Apply for a licence to operate a temporary restaurant",
+    category: "business-trade",
+    formId: "apply-for-temporary-restaurant-licence",
+    visibility: "preview",
+  },
+  {
     slug: "apply-for-terms-leave",
     title: "Apply for term’s leave",
     category: "education",
@@ -179,7 +186,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "calculate-your-pension",
-    title: "Calculate your pension",
+    title: "Calculate your Government pension",
     category: "pensions-and-gratuities",
     visibility: "preview",
   },
@@ -286,6 +293,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     title: "Apply to be a Camp Director or Assistant Camp Director",
     category: "ministry-of-youth",
     formId: "camp-director-application",
+    visibility: "preview",
+  },
+  {
+    slug: "national-insurance-for-self-employed-workers",
+    title: "Learn how to pay National Insurance when you work for yourself",
+    category: "money-financial-support",
     visibility: "preview",
   },
   {
@@ -410,6 +423,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
+    slug: "temporary-restaurants-what-you-need-to-know",
+    title: "Temporary restaurants: what you need to know",
+    category: "business-trade",
+    visibility: "public",
+  },
+  {
     slug: "tenant-notice-to-buy-freehold",
     title: "Tenant's Notice of Intention to Purchase Freehold",
     category: "housing",
@@ -419,11 +438,6 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   {
     slug: "terms-conditions",
     title: "Terms & Conditions",
-    visibility: "public",
-  },
-  {
-    slug: "welfare-department",
-    title: "Welfare Department",
     visibility: "public",
   },
   {

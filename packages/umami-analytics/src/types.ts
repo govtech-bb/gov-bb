@@ -67,6 +67,23 @@ export interface FieldErrorRow {
   count: number;
 }
 
+/** One reason a field failed, with how many times (from the `fieldErrors` pairs). */
+export interface FieldReason {
+  code: string;
+  count: number;
+}
+
+/**
+ * A field's validation failures: total occurrences plus the per-reason
+ * breakdown (descending). Parsed from the `fieldErrors` event property, which
+ * pairs each failing field id with its reason code(s).
+ */
+export interface FieldFailureTally {
+  field: string;
+  count: number;
+  reasons: FieldReason[];
+}
+
 export interface FormDetail {
   formId: string;
   funnel: FunnelStage[];

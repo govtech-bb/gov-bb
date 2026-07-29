@@ -148,6 +148,95 @@ describe("EmailBodyBuilder", () => {
     builder = new EmailBodyBuilder(formSvc);
   });
 
+  describe("checkbox-accordion + higher-risk (#2065)", () => {
+    // A single-step contract with a checkbox-accordion food field.
+    function accordionContract(): ServiceContract {
+      return {
+        formId: "food-form",
+        title: "Food form",
+        version: "1.0.0",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        steps: [
+          {
+            stepId: "food",
+            title: "Food",
+            elements: [
+              {
+                fieldId: "food-served",
+                label: "Food served",
+                htmlType: "checkbox-accordion",
+                groups: [
+                  {
+                    label: "Meat",
+                    higherRisk: true,
+                    options: [
+                      { label: "Chicken", value: "chicken" },
+                      { label: "Beef", value: "beef" },
+                    ],
+                  },
+                  {
+                    label: "Snacks",
+                    options: [{ label: "Popcorn", value: "popcorn" }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      } as unknown as ServiceContract;
+    }
+
+    function foodPayload(selected: string[]): SubmissionCreatedEvent {
+      return makePayload({
+        formId: "food-form",
+        values: { food: { "food-served": selected } },
+        meta: {
+          schemaVersion: 1,
+          pinnedFormVersion: "1.0.0",
+          draftId: null,
+          activeStepIds: ["food"],
+          hiddenStepIds: [],
+          activeFieldIds: { food: ["food-served"] },
+          hiddenFieldIds: {},
+          visitedPages: [0],
+          submittedAt: "2026-05-12T10:00:00.000Z",
+        } as unknown as SubmissionCreatedEvent["meta"],
+      });
+    }
+
+    beforeEach(() => {
+      builder = new EmailBodyBuilder(
+        makeFormDefinitionsService(accordionContract()),
+      );
+    });
+
+    it("renders accordion item labels (flattened across groups) and flags higher-risk as Yes", async () => {
+      const ctx = await builder.build(foodPayload(["chicken", "popcorn"]));
+
+      const foodField = ctx.sections
+        .flatMap((s) => s.fields)
+        .find((f) => f.label === "Food served");
+      expect(foodField?.value).toBe("Chicken, Popcorn");
+
+      const risk = ctx.sections.find(
+        (s) => s.title === "Higher-risk assessment",
+      );
+      expect(risk?.fields[0]).toEqual({
+        label: "Higher-risk items selected",
+        value: "Yes",
+      });
+    });
+
+    it("flags higher-risk as No when only lower-risk items are selected", async () => {
+      const ctx = await builder.build(foodPayload(["popcorn"]));
+      const risk = ctx.sections.find(
+        (s) => s.title === "Higher-risk assessment",
+      );
+      expect(risk?.fields[0].value).toBe("No");
+    });
+  });
+
   describe("build()", () => {
     it("populates top-level metadata from the contract and payload", async () => {
       const ctx = await builder.build(makePayload());
@@ -226,11 +315,12 @@ describe("EmailBodyBuilder", () => {
       expect(ctx.submissionId).toBe("JPP-20260604-130732-9JZRZC");
     });
 
-    it("fetches the contract by formId from the payload (#1196: no version)", async () => {
+    it("fetches the contract by formId from the payload (#1196: no version), bypassing visibility (#2125)", async () => {
       await builder.build(makePayload());
 
       expect(formSvc.findByFormId).toHaveBeenCalledWith({
         formId: "test-form",
+        bypassVisibility: true,
       });
     });
 
@@ -562,6 +652,48 @@ describe("EmailBodyBuilder", () => {
       const labels = ctx.sections[0].fields.map((f) => f.label);
 
       expect(labels).not.toContain("Note");
+    });
+
+    it("omits content elements entirely", async () => {
+      const contract = makeContract();
+      contract.steps[0].elements.push({
+        fieldId: "guidance",
+        label: "Guidance",
+        htmlType: "content",
+        content: "Have your documents ready.",
+        variant: "inset",
+      });
+      formSvc = makeFormDefinitionsService(contract);
+      builder = new EmailBodyBuilder(formSvc);
+
+      const payload = makePayload();
+      payload.meta.activeFieldIds["personal"] = [
+        "firstName",
+        "lastName",
+        "gender",
+        "interests",
+        "country",
+        "languages",
+        "dob",
+        "guidance",
+      ];
+      // A content element carries no submission value in practice, but
+      // formatValue's raw lookup (stepValues[el.fieldId]) is unrelated to
+      // htmlType — nothing stops a stray value landing at its field key.
+      // Inject one so this test actually pins the explicit SKIP_TYPES entry
+      // rather than passing by coincidence via the empty-value filter.
+      payload.values["personal"] = {
+        ...payload.values["personal"],
+        guidance: "SHOULD NOT APPEAR",
+      };
+
+      const ctx = await builder.build(payload);
+      const labels = ctx.sections[0].fields.map((f) => f.label);
+      const values = ctx.sections[0].fields.map((f) => f.value);
+
+      expect(labels).not.toContain("Guidance");
+      expect(values).not.toContain("SHOULD NOT APPEAR");
+      expect(labels).toContain("First Name");
     });
 
     it("omits sections whose every field resolved to empty", async () => {

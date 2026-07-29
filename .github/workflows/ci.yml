@@ -3,13 +3,23 @@ name: CI
 on:
   pull_request:
     branches: [main, sandbox, staging, dev]
+  # Re-validate the trunk after every merge. CI otherwise runs only on
+  # pull_request, so a break that emerges from the COMBINATION of two
+  # independently-green PRs (e.g. #1875's recipes + #1970's new lint, incident
+  # #2017) isn't caught until the next PR happens to open. A post-merge run on
+  # `main` flags a red trunk immediately. `validate-recipes` matters most here:
+  # it validates ALL recipes, not just nx-affected ones.
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Latest push to a PR wins — cancel superseded in-progress runs. Safe because
-# CI has no side effects (pull_request / workflow_dispatch only, no deploys).
+# Latest push wins — cancel superseded in-progress runs. On `main` this means
+# rapid merges leave only the newest tip fully validated, which is exactly the
+# "is the trunk red right now" signal we want. Safe because CI has no side
+# effects (pull_request / push-to-main / workflow_dispatch only, no deploys).
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -467,7 +477,9 @@ jobs:
       - name: Derive affected base/head
         uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
         with:
-          main-branch-name: ${{ github.base_ref }}
+          # On pull_request this is the target branch; on push to `main`
+          # base_ref is empty, so fall back to ref_name (= main).
+          main-branch-name: ${{ github.base_ref || github.ref_name }}
 
       - name: Run affected tests
         id: test
@@ -525,7 +537,9 @@ jobs:
       - name: Derive affected base/head
         uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
         with:
-          main-branch-name: ${{ github.base_ref }}
+          # On pull_request this is the target branch; on push to `main`
+          # base_ref is empty, so fall back to ref_name (= main).
+          main-branch-name: ${{ github.base_ref || github.ref_name }}
 
       - name: Build affected packages
         id: build
@@ -573,6 +587,49 @@ jobs:
       - name: Validate recipe files
         run: pnpm validate-recipes
 
+  generated-drift:
+    name: Generated Files Up To Date
+    # The services index (apps/api/src/content/services-index.generated.ts) is
+    # pre-baked from landing content by `pnpm generate:services-index` so the
+    # api carries no runtime dependency on @govtech-bb/content. Nothing else
+    # forces a regen, so a content PR that skips it leaves the committed index
+    # stale (#2070). Regenerate here and fail on any diff. The generator emits
+    # Prettier-formatted output, so an in-sync file produces a clean no-op diff.
+    # Skipped on staging-bound PRs (promotion-only, content doesn't change),
+    # matching validate-recipes.
+    if: github.base_ref != 'staging'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Regenerate services index
+        run: pnpm generate:services-index
+
+      - name: Fail on drift
+        run: |
+          if ! git diff --exit-code apps/api/src/content/services-index.generated.ts; then
+            {
+              echo "## ❌ services-index.generated.ts is out of date"
+              echo ""
+              echo "Landing content changed but the generated services index was not regenerated, so \`GET /services\` would serve stale data."
+              echo ""
+              echo "**Fix locally:**"
+              echo '```bash'
+              echo "pnpm generate:services-index"
+              echo '```'
+              echo "then commit the updated file."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -601,7 +658,9 @@ jobs:
       - name: Derive affected base/head
         uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
         with:
-          main-branch-name: ${{ github.base_ref }}
+          # On pull_request this is the target branch; on push to `main`
+          # base_ref is empty, so fall back to ref_name (= main).
+          main-branch-name: ${{ github.base_ref || github.ref_name }}
 
       - name: Lint affected projects
         id: lint

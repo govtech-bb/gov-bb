@@ -3,8 +3,10 @@ export { AccountNumber } from "./account-number";
 export { AccountType } from "./account-type";
 export { AdditionalDetails } from "./additional-details";
 export { Address } from "./address";
+export { AddressLookup } from "./address-lookup";
 export { Bank } from "./bank";
 export { Confirmation } from "./confirmation";
+export { Content } from "./content";
 export { ContactTelephone } from "./contact-number";
 export { Country } from "./country";
 export { GenericDate } from "./date";
@@ -39,9 +41,11 @@ export { GenericText } from "./generic-text";
 export { GenericTextarea } from "./generic-textarea";
 export { GenericNumber } from "./generic-number";
 export { GenericDateInput } from "./generic-date";
+export { GenericTime } from "./generic-time";
 export { GenericTel } from "./generic-tel";
 export { GenericEmail } from "./generic-email";
 export { GenericCheckbox } from "./generic-checkbox";
+export { GenericCheckboxAccordion } from "./generic-checkbox-accordion";
 export { GenericRadio } from "./generic-radio";
 export { GenericFile } from "./generic-file";
 export { GenericSelect } from "./generic-select";
@@ -52,8 +56,10 @@ import { AccountNumber } from "./account-number";
 import { AccountType } from "./account-type";
 import { AdditionalDetails } from "./additional-details";
 import { Address } from "./address";
+import { AddressLookup } from "./address-lookup";
 import { Bank } from "./bank";
 import { Confirmation } from "./confirmation";
+import { Content } from "./content";
 import { ContactTelephone } from "./contact-number";
 import { Country } from "./country";
 import { GenericDate } from "./date";
@@ -87,9 +93,11 @@ import { GenericText } from "./generic-text";
 import { GenericTextarea } from "./generic-textarea";
 import { GenericNumber } from "./generic-number";
 import { GenericDateInput } from "./generic-date";
+import { GenericTime } from "./generic-time";
 import { GenericTel } from "./generic-tel";
 import { GenericEmail } from "./generic-email";
 import { GenericCheckbox } from "./generic-checkbox";
+import { GenericCheckboxAccordion } from "./generic-checkbox-accordion";
 import { GenericRadio } from "./generic-radio";
 import { GenericFile } from "./generic-file";
 import { GenericSelect } from "./generic-select";
@@ -101,9 +109,11 @@ const PRIMITIVES = [
   GenericTextarea,
   GenericNumber,
   GenericDateInput,
+  GenericTime,
   GenericTel,
   GenericEmail,
   GenericCheckbox,
+  GenericCheckboxAccordion,
   GenericRadio,
   GenericFile,
   GenericSelect,
@@ -115,8 +125,10 @@ const ALL = [
   AccountType,
   AdditionalDetails,
   Address,
+  AddressLookup,
   Bank,
   Confirmation,
+  Content,
   ContactTelephone,
   Country,
   GenericDate,
@@ -152,7 +164,7 @@ const ALL = [
 
 // Completeness guard: bump the literal type whenever you add a component to
 // ALL, so a registered-but-unlisted component fails the build.
-const _componentCount: 47 = ALL.length;
+const _componentCount: 51 = ALL.length;
 
 export const REGISTRY_COMPONENTS: Record<`components/${string}`, Primitive> =
   Object.fromEntries(ALL.map((c) => [`components/${c.fieldId}`, c]));
