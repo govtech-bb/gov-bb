@@ -35,11 +35,11 @@ Since `event-parish` is required and geocoder-filled, step 2 effectively always 
 
 The prototype already reprojected the Ministry's `Barbados_Polyclinics.shp` (Barbados National Grid, EPSG:21292) to WGS84 and validated point-in-polygon against it. We **reuse that output** rather than re-doing the CRS transform.
 
-### 4.1 Geometry + emails — `apps/api/src/catchment/polyclinic-catchments.geojson`
+### 4.1 Geometry — `apps/api/src/catchment/polyclinic-catchments.geojson`
 
 Reused **verbatim** from the prototype's `Prototypes/polyclinic-catchments.geojson`: a `FeatureCollection` of 8 catchment features, WGS84, coordinates in `[lng, lat]` order. Checked in and registered as an `assets` glob in `apps/api/project.json` so it lands in `dist` (mirrors `RecipeFileLoaderService` / email templates).
 
-Each feature's `properties` carries `{ name, official_name, mock, phone, email }` — so the **per-catchment email is already in this file** and is read from it (not transcribed elsewhere). Join key is `properties.name` (the prototype display name, e.g. `"Sir Winston Scott Polyclinic"`); `official_name` is the raw shapefile name.
+Each feature's `properties` carries `{ name, official_name, mock, phone }` — geometry + identity only. The per-catchment **email lives in `polyclinic-routing.ts`** (§4.2), not here. Join key is `properties.name` (the prototype display name, e.g. `"Sir Winston Scott Polyclinic"`); `official_name` is the raw shapefile name.
 
 Geometry shape to handle: **7 are `Polygon`, 1 (`Maurice Byer Polyclinic`) is a `MultiPolygon`**, and a `Polygon` may include holes (`coordinates[0]` outer ring, `coordinates[1..]` holes). Point-in-polygon must handle both types and treat holes correctly.
 
@@ -60,7 +60,7 @@ The 8 catchment polyclinic names:
 
 ### 4.2 Routing constants — `apps/api/src/catchment/polyclinic-routing.ts`
 
-The two pieces of routing data **not** in the GeoJSON are small, static, and ours, so they live in a typed TS constants module (no second asset glob / fs parse), keyed by `properties.name`:
+The routing data (everything **not** geometry) is small, static, and ours, so it lives in a typed TS constants module (no second asset glob / fs parse), keyed by `properties.name` — programme codes, the parish fallback map, and the per-catchment MDA emails (`POLYCLINIC_EMAILS`):
 
 ```ts
 /** Derived placeholder programme codes — swap for real CMS codes when issued. */
@@ -92,17 +92,17 @@ export const PARISH_DEFAULTS: Record<string, string> = {
 ```
 
 - **`PROGRAMME_CODES`** are **derived placeholders** (`TEMP_RESTAURANT_LICENCE_<SLUG>`), pinned explicitly (not computed at runtime) so they are reviewable and trivially swappable for real CMS-generated codes later.
-- **Emails are NOT here** — they come from each GeoJSON feature's `email` property.
+- **`POLYCLINIC_EMAILS`** holds the per-catchment MDA inbox, keyed by catchment name, confirmed against the Ministry list. A catchment with no entry (e.g. Frederick Miller) resolves to `mdaEmail: null`.
 - **`PARISH_DEFAULTS`** uses the form's parish select values (kebab-case). The prototype keyed by display name ("St. Michael"); we normalise to the `components/parish` values to match `event-parish`. No parish maps to Branford Taitt or Frederick Miller (those catchments are reachable only by a coordinate hit).
 - **No `default`** entry — the ultimate default is intentionally removed.
 
 ## 5. `CatchmentRoutingService` (`apps/api/src/catchment/`)
 
-An `@Injectable` that at `onModuleInit` loads the GeoJSON once (via `fs.readFile` + `path.resolve(__dirname, …)`, mirroring `RecipeFileLoaderService`) and imports `PROGRAMME_CODES` / `PARISH_DEFAULTS`, building an in-memory index keyed by `properties.name` of `{ polygons, email, programmeCode }`.
+An `@Injectable` that at `onModuleInit` loads the GeoJSON once (via `fs.readFile` + `path.resolve(__dirname, …)`, mirroring `RecipeFileLoaderService`) and imports `PROGRAMME_CODES` / `PARISH_DEFAULTS` / `POLYCLINIC_EMAILS`, building an in-memory index keyed by `properties.name` of `{ polygons, email, programmeCode }` (email looked up from `POLYCLINIC_EMAILS`).
 
 **Boot-time validation — structural (our data, fail loud):** every GeoJSON `properties.name` MUST have a `PROGRAMME_CODES` entry, and every `PARISH_DEFAULTS` value MUST be a known catchment name. A mismatch throws at startup (a transcription slip in our own files must never ship silently). This is limited to data under our control.
 
-**Boot-time check — email (Ministry data, warn only):** any catchment whose GeoJSON `email` is null/blank is logged as a `warn` at startup (names Frederick Miller today). It does **not** fail boot — a missing Ministry email must not block the API from starting for unrelated work. It surfaces again, loudly and isolated, at send time (§7).
+**Boot-time check — email (warn only):** any catchment with no `POLYCLINIC_EMAILS` entry is logged as a `warn` at startup (none today — all 8 carry the shared test inbox). It does **not** fail boot — a missing email must not block the API from starting for unrelated work. Were one missing, it would surface again, loudly and isolated, at send time (§7).
 
 **Public method:**
 
@@ -134,7 +134,7 @@ Processors do **not** share a mutable context and the event is JSON-serialised a
 ## 7. Processor changes
 
 - **Webhook** (`webhook-mapping.ts` / `webhook.processor.ts`): add an optional `programmeCodeOverride?: string` arg to `buildMappedCasePayload`; the processor passes `payload.resolvedCatchment?.programmeCode`, and the payload sets `programme_code = programmeCodeOverride ?? mapping.programmeCode`. The recipe's static `programmeCode` stays as the **non-empty safety fallback** (an empty `programme_code` is invalid downstream). No webhook schema change — routing comes from the event, not a new mapping field.
-- **Email** (`email.processor.ts` + `recipient-field.ts`): add a new `RecipientKind` — `catchment`. `classifyRecipientField` returns `catchment` for the `catchment.` prefix (only `catchment.mdaEmail` is defined). A new `resolveCatchmentRecipient(payload)` returns `payload.resolvedCatchment?.mdaEmail ?? undefined`. When that is undefined (no resolution, or a catchment with no Ministry email — Frederick Miller), `recipient` is falsy and the existing `NO_RECIPIENT` **non-retryable** path fires for **this entry only** — per-entry dispatch means the applicant-acknowledgement email (a separate entry) is unaffected, and the failure is recorded to `notification_log` + DLQ, never silent. **No new default introduced.**
+- **Email** (`email.processor.ts` + `recipient-field.ts`): add a new `RecipientKind` — `catchment`. `classifyRecipientField` returns `catchment` for the `catchment.` prefix (only `catchment.mdaEmail` is defined). A new `resolveCatchmentRecipient(payload)` returns `payload.resolvedCatchment?.mdaEmail ?? undefined`. When that is undefined (no resolution, or a catchment with no `POLYCLINIC_EMAILS` entry), `recipient` is falsy and the existing `NO_RECIPIENT` **non-retryable** path fires for **this entry only** — per-entry dispatch means the applicant-acknowledgement email (a separate entry) is unaffected, and the failure is recorded to `notification_log` + DLQ, never silent. **No new default introduced.**
 - **Schema** (`packages/form-types/src/service-contract.type.ts`): declare the optional top-level `catchmentRouting` block on the service-contract / recipe schema so it is typed and survives parsing. No `processor.type.ts` change is needed: `recipientField` is already `z.string().min(1)` (author + resolved), so `catchment.mdaEmail` passes through verbatim, and `programmeCode` stays a plain literal.
 
 ## 8. Recipe changes (`apply-for-temporary-restaurant-licence.json`)
@@ -145,7 +145,7 @@ Processors do **not** share a mutable context and the event is JSON-serialised a
 
 ## 9. Testing
 
-- **`CatchmentRoutingService`** (`api`): a real lat/lon inside each of the 8 catchments → correct polyclinic + code + email; a point inside the `MultiPolygon` catchment (Maurice Byer) resolves; a point offshore → parish fallback; missing coordinates → parish fallback; unknown/missing parish with no coordinates → `null`; coordinate-order regression (a `lon,lat` mix-up lands in the sea → asserts we parse `lat,lon`); **structural boot validation throws** when a GeoJSON name lacks a `PROGRAMME_CODES` entry or a `PARISH_DEFAULTS` value is unknown; a catchment with a null email → resolves with `mdaEmail: null` and emits a startup `warn` (does not throw).
+- **`CatchmentRoutingService`** (`api`): a real lat/lon inside each of the 8 catchments → correct polyclinic + code + email; a point inside the `MultiPolygon` catchment (Maurice Byer) resolves; a point offshore → parish fallback; missing coordinates → parish fallback; unknown/missing parish with no coordinates → `null`; coordinate-order regression (a `lon,lat` mix-up lands in the sea → asserts we parse `lat,lon`); **structural boot validation throws** when a GeoJSON name lacks a `PROGRAMME_CODES` entry or a `PARISH_DEFAULTS` value is unknown; a catchment with no email entry (mocked omission) → resolves with `mdaEmail: null` and emits a startup `warn` (does not throw).
 - **Webhook** (`api`): `resolvedCatchment` present → its `programmeCode`; absent → static `programmeCode` (regression for other forms).
 - **Email** (`api`): `classifyRecipientField("catchment.mdaEmail") === "catchment"`; resolves from `resolvedCatchment.mdaEmail`; unresolved degrades exactly as `config.mdaEmail` does today.
 - **Schema** (`packages/form-types`): `catchmentRouting` and the `catchment.mdaEmail` token survive a resolved-time parse.
@@ -153,11 +153,10 @@ Processors do **not** share a mutable context and the event is JSON-serialised a
 
 ## 10. Open data items (launch blockers — data, not code)
 
-These block **go-live**, not the build (boot validation forces them to be filled before deploy):
+These block **go-live**, not the build:
 
-1. **Frederick Miller Polyclinic has no email** — its GeoJSON `email` is `null`, and no parish routes to it (reachable only by a coordinate hit). Startup logs a `warn`; a real coordinate hit in its polygon fails the MDA-email entry loudly (isolated, DLQ'd) until its EHD inbox is supplied or its polygon is merged into a neighbour.
-2. **Confirm all 8 emails with the Ministry** — the prototype values are self-described as approximate, and two are `@gmail.com`.
-3. **Real CMS routing codes** must replace the derived `programmeCode` placeholders once the CMS generates per-polyclinic queues (the [2026-07-22 spec §13](./2026-07-22-temporary-restaurant-licence-integration-design.md) notes these are CMS-generated and environment-specific).
+1. **Replace the shared test inbox with the real per-catchment MDA inboxes.** All 8 catchments in `POLYCLINIC_EMAILS` currently point at `testing@govtech.bb` so no environment can email the real polyclinics during testing. Before production, swap in the Ministry-confirmed inboxes (ideally per-environment, so sandbox stays safe) — including Frederick Miller's, which had no address in the prototype.
+2. **Real CMS routing codes** must replace the derived `programmeCode` placeholders once the CMS generates per-polyclinic queues (the [2026-07-22 spec §13](./2026-07-22-temporary-restaurant-licence-integration-design.md) notes these are CMS-generated and environment-specific).
 
 ## 11. Explicitly out of scope
 

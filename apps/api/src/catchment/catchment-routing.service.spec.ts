@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, beforeAll, vi } from "vitest";
 import { Logger } from "@nestjs/common";
 import { CatchmentRoutingService } from "./catchment-routing.service";
-import { PARISH_DEFAULTS, PROGRAMME_CODES } from "./polyclinic-routing";
+import {
+  PARISH_DEFAULTS,
+  POLYCLINIC_EMAILS,
+  PROGRAMME_CODES,
+} from "./polyclinic-routing";
 
 describe("CatchmentRoutingService", () => {
   let svc: CatchmentRoutingService;
@@ -16,7 +20,7 @@ describe("CatchmentRoutingService", () => {
     const r = svc.resolve({ coordinates: "13.0901,-59.5861" });
     expect(r?.polyclinic).toBe("Sir Winston Scott Polyclinic");
     expect(r?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT");
-    expect(r?.mdaEmail).toBe("ehd.wspc@health.gov.bb");
+    expect(r?.mdaEmail).toBe("testing@govtech.bb");
   });
 
   it("resolves a coordinate inside the MultiPolygon (Maurice Byer) catchment", () => {
@@ -50,14 +54,13 @@ describe("CatchmentRoutingService", () => {
     expect(svc.resolve({ parish: "not-a-parish" })).toBeNull();
   });
 
-  it("resolves Frederick Miller's programme code but a null email", () => {
+  it("resolves Frederick Miller's programme code and its (test-inbox) email", () => {
     // Centroid of the Frederick Miller outer ring, confirmed in-polygon via a
-    // throwaway script. The GeoJSON has no `email` property for this
-    // catchment at all.
+    // throwaway script.
     const r = svc.resolve({ coordinates: "13.1323,-59.5626" });
     expect(r?.polyclinic).toBe("Frederick Miller Polyclinic");
     expect(r?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_FREDERICK_MILLER");
-    expect(r?.mdaEmail).toBeNull();
+    expect(r?.mdaEmail).toBe("testing@govtech.bb");
   });
 
   it("falls back to parish when the coordinate string is malformed (wrong part count)", () => {
@@ -74,13 +77,13 @@ describe("CatchmentRoutingService", () => {
     expect(r?.polyclinic).toBe("Eunice Gibson Polyclinic");
   });
 
-  it("logs a boot warning naming the emailless catchment (Frederick Miller)", () => {
+  it("does not warn at boot when every catchment has an email", () => {
     const warnSpy = vi
       .spyOn(Logger.prototype, "warn")
       .mockImplementation(() => undefined);
     new CatchmentRoutingService().onModuleInit();
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Frederick Miller Polyclinic"),
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("no Ministry email"),
     );
     warnSpy.mockRestore();
   });
@@ -97,6 +100,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
     vi.doMock("./polyclinic-routing", () => ({
       PROGRAMME_CODES: rest,
       PARISH_DEFAULTS,
+      POLYCLINIC_EMAILS,
     }));
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
@@ -112,12 +116,34 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
         ...PARISH_DEFAULTS,
         "st-lucy": "Not A Real Polyclinic",
       },
+      POLYCLINIC_EMAILS,
     }));
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
       await import("./catchment-routing.service");
     const svc = new Svc();
     expect(() => svc.onModuleInit()).toThrow(/PARISH_DEFAULTS/);
+  });
+
+  it("warns at boot naming a catchment with no email", async () => {
+    const { "Sir Winston Scott Polyclinic": _omit, ...emails } =
+      POLYCLINIC_EMAILS;
+    vi.doMock("./polyclinic-routing", () => ({
+      PROGRAMME_CODES,
+      PARISH_DEFAULTS,
+      POLYCLINIC_EMAILS: emails,
+    }));
+    vi.resetModules();
+    const warnSpy = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => undefined);
+    const { CatchmentRoutingService: Svc } =
+      await import("./catchment-routing.service");
+    new Svc().onModuleInit();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Sir Winston Scott Polyclinic"),
+    );
+    warnSpy.mockRestore();
   });
 });
 
@@ -147,7 +173,7 @@ describe("CatchmentRoutingService polygon geometry (mocked GeoJSON)", () => {
   ];
 
   async function mockGeojsonFeature(feature: {
-    properties: { name: string; email?: string | null };
+    properties: { name: string };
     geometry: { type: string; coordinates: unknown };
   }) {
     vi.doMock("node:fs", async () => {
@@ -162,15 +188,13 @@ describe("CatchmentRoutingService polygon geometry (mocked GeoJSON)", () => {
 
   it("excludes points inside a polygon's hole but resolves points inside the outer ring", async () => {
     await mockGeojsonFeature({
-      properties: {
-        name: "Test Catchment With Hole",
-        email: "test@example.com",
-      },
+      properties: { name: "Test Catchment With Hole" },
       geometry: { type: "Polygon", coordinates: [outerRing, holeRing] },
     });
     vi.doMock("./polyclinic-routing", () => ({
       PROGRAMME_CODES: { "Test Catchment With Hole": "TEST-HOLE-CODE" },
       PARISH_DEFAULTS: {},
+      POLYCLINIC_EMAILS: {},
     }));
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
@@ -189,12 +213,13 @@ describe("CatchmentRoutingService polygon geometry (mocked GeoJSON)", () => {
 
   it("throws on boot for an unsupported geometry type", async () => {
     await mockGeojsonFeature({
-      properties: { name: "Test Point Catchment", email: null },
+      properties: { name: "Test Point Catchment" },
       geometry: { type: "Point", coordinates: [0, 0] },
     });
     vi.doMock("./polyclinic-routing", () => ({
       PROGRAMME_CODES: { "Test Point Catchment": "TEST-POINT-CODE" },
       PARISH_DEFAULTS: {},
+      POLYCLINIC_EMAILS: {},
     }));
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
@@ -207,12 +232,13 @@ describe("CatchmentRoutingService polygon geometry (mocked GeoJSON)", () => {
 
   it("treats a Polygon with no rings as never matching", async () => {
     await mockGeojsonFeature({
-      properties: { name: "Test Empty Catchment", email: "test@example.com" },
+      properties: { name: "Test Empty Catchment" },
       geometry: { type: "Polygon", coordinates: [] },
     });
     vi.doMock("./polyclinic-routing", () => ({
       PROGRAMME_CODES: { "Test Empty Catchment": "TEST-EMPTY-CODE" },
       PARISH_DEFAULTS: {},
+      POLYCLINIC_EMAILS: {},
     }));
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =

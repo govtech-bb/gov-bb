@@ -1,7 +1,7 @@
 /**
- * Routing data that is NOT in polyclinic-catchments.geojson. Keyed by the
- * GeoJSON `properties.name`. Emails live in the GeoJSON; only these two pieces
- * are ours.
+ * Routing data that is NOT geometry. Keyed by the GeoJSON `properties.name`.
+ * The GeoJSON holds only the catchment shapes + names; the programme codes,
+ * the parish fallback map, and the per-catchment MDA emails all live here.
  */
 
 /**
@@ -39,4 +39,24 @@ export const PARISH_DEFAULTS: Record<string, string> = {
   "st-philip": "St. Philip Polyclinic",
   "christ-church": "Randal Phillips Polyclinic",
   "st-michael": "Sir Winston Scott Polyclinic",
+};
+
+/**
+ * Per-catchment MDA (Environmental Health) inbox, keyed by the GeoJSON
+ * `properties.name`. All 8 currently point at the shared **test inbox**
+ * (`testing@govtech.bb`) so no environment can email the real polyclinics
+ * during testing — swap in the Ministry-confirmed per-catchment inboxes before
+ * production. A catchment with no entry here would resolve to `mdaEmail: null`
+ * (the service warns at boot and a coordinate hit there fails the MDA email
+ * loudly, isolated/DLQ'd, rather than misrouting).
+ */
+export const POLYCLINIC_EMAILS: Record<string, string> = {
+  "Branford Taitt Polyclinic": "testing@govtech.bb",
+  "David Thompson Health & Social Services Complex": "testing@govtech.bb",
+  "Eunice Gibson Polyclinic": "testing@govtech.bb",
+  "Frederick Miller Polyclinic": "testing@govtech.bb",
+  "Maurice Byer Polyclinic": "testing@govtech.bb",
+  "Randal Phillips Polyclinic": "testing@govtech.bb",
+  "Sir Winston Scott Polyclinic": "testing@govtech.bb",
+  "St. Philip Polyclinic": "testing@govtech.bb",
 };

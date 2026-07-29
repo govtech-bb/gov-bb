@@ -1,7 +1,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { PARISH_DEFAULTS, PROGRAMME_CODES } from "./polyclinic-routing";
+import {
+  PARISH_DEFAULTS,
+  POLYCLINIC_EMAILS,
+  PROGRAMME_CODES,
+} from "./polyclinic-routing";
 
 export interface CatchmentResolution {
   polyclinic: string;
@@ -31,7 +35,7 @@ export class CatchmentRoutingService implements OnModuleInit {
     const file = path.resolve(__dirname, "polyclinic-catchments.geojson");
     const geojson = JSON.parse(fs.readFileSync(file, "utf8")) as {
       features: {
-        properties: { name: string; email?: string | null };
+        properties: { name: string };
         geometry: { type: string; coordinates: unknown };
       }[];
     };
@@ -44,9 +48,11 @@ export class CatchmentRoutingService implements OnModuleInit {
           `[catchment] GeoJSON catchment "${name}" has no PROGRAMME_CODES entry`,
         );
       }
+      // Emails live in POLYCLINIC_EMAILS (not the GeoJSON). A catchment with no
+      // entry resolves to null and is reported by the boot warn below.
       return {
         name,
-        email: f.properties.email?.trim() ? f.properties.email : null,
+        email: POLYCLINIC_EMAILS[name] ?? null,
         programmeCode,
         polygons: this.normalisePolygons(f.geometry),
       };
