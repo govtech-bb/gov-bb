@@ -68,7 +68,7 @@ If you complete the paper form, you will be given a receipt when you return it t
 
 ## If basic information is unknown
 
-There are circumstances when you may not be able to provide all the information asked for in the form. For example, if there is estrangement in the family, or if the birth was registered in Barbados a significant time ago. Provide as much information as you can – the more details you can give, the better the chance of finding the records you are looking for.
+There are circumstances when you may not be able to provide all the information asked for in the form. For example, if there is estrangement in the family, or if the death was registered in Barbados a significant time ago. Provide as much information as you can – the more details you can give, the better the chance of finding the records you are looking for.
 
 ## Get a copy of a death certificate if you live overseas
 
