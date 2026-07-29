@@ -27,6 +27,8 @@ import {
 } from '@govtech-bb/umami-analytics'
 import { memoize } from './cache'
 import { liveTools, pathMatchesPrefix, type Tool } from './tools-config'
+import { isExcludedPath } from './page-exclusions'
+import type { ServiceIndexEntry } from '@govtech-bb/content'
 
 const TTL_MS = 60_000
 // Max minutes Umami allows between funnel steps. A form start→submit can span a
@@ -1095,6 +1097,135 @@ export async function fetchToolsData(
     )
     return {
       tools: shapeTools(tools, urlRows, sourcesByPath),
+      range,
+      window: rangeLabel(range),
+    }
+  })
+}
+
+// --- content pages (#2120) -------------------------------------------------
+
+/** One live content page's traffic on the "Pages" tab. */
+export interface PageListRow {
+  path: string
+  /** registry title. */
+  title: string
+  pageviews: number
+  visitors: number
+  /** linked form recipe id when the page is a guide page, else null. */
+  formId: string | null
+  topSources: SourceRow[]
+}
+
+export interface PagesData {
+  pages: PageListRow[]
+  range: string
+  window: string
+}
+
+/** A landing content service's public URL: /category/slug (or /slug). */
+function registryPath(entry: ServiceIndexEntry): string {
+  return entry.category ? `/${entry.category}/${entry.slug}` : `/${entry.slug}`
+}
+
+function stripTrailingSlash(path: string): string {
+  return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path
+}
+
+/**
+ * The Pages list: landing Umami URL rows joined to the public services registry
+ * on `/category/slug`. Only paths that match a public registry entry survive
+ * (unmatched = preview/draft or non-content → dropped), minus the hard route
+ * exclusions (tools/forms/system/`/start`). Trailing-slash URL variants merge.
+ * Pure — the caller supplies the URL rows, registry, and per-path referrers.
+ */
+export function shapePages(
+  urlRows: ExpandedRow[],
+  registry: ServiceIndexEntry[],
+  sourcesByPath: Map<string, SourceRow[]>,
+): PageListRow[] {
+  const byPath = new Map(registry.map((e) => [registryPath(e), e]))
+  const agg = new Map<string, { pageviews: number; visitors: number }>()
+  for (const row of urlRows) {
+    const path = stripTrailingSlash(String(row.x ?? row.name ?? ''))
+    if (!path || isExcludedPath(path) || !byPath.has(path)) continue
+    const acc = agg.get(path) ?? { pageviews: 0, visitors: 0 }
+    acc.pageviews += row.pageviews ?? row.y ?? 0
+    acc.visitors += row.visitors ?? 0
+    agg.set(path, acc)
+  }
+  return [...agg.entries()].map(([path, { pageviews, visitors }]) => {
+    const entry = byPath.get(path)!
+    return {
+      path,
+      title: entry.title,
+      pageviews,
+      visitors,
+      formId: entry.formId ?? null,
+      topSources: sourcesByPath.get(path) ?? [],
+    }
+  })
+}
+
+/**
+ * The public content-service registry from the forms API (`GET /services`,
+ * unauthenticated → public only). Mirrors fetchFormList: timeout or non-2xx →
+ * `[]` (the tab degrades to empty), other errors propagate.
+ */
+export async function fetchServicesIndex(
+  cfg: UmamiConfig,
+): Promise<ServiceIndexEntry[]> {
+  const base = cfg.formsApiUrl.replace(/\/+$/, '')
+  let body: { data?: ServiceIndexEntry[] }
+  try {
+    const res = await fetch(`${base}/services`, {
+      signal: AbortSignal.timeout(FORMS_FETCH_TIMEOUT_MS),
+    })
+    if (!res.ok) return []
+    body = (await res.json()) as { data?: ServiceIndexEntry[] }
+  } catch (err) {
+    if (isTimeout(err)) return []
+    throw err
+  }
+  return body.data ?? []
+}
+
+/** Live content pages + their traffic — the "Pages" tab (landing site). */
+export async function fetchPagesData(
+  cfg: UmamiConfig,
+  rangeKey: string,
+): Promise<PagesData> {
+  const range = normaliseRange(rangeKey)
+  return memoize(`pages:${range}`, TTL_MS, async () => {
+    const client = new UmamiClient({ apiKey: cfg.apiKey })
+    const r = rangeForKey(range)
+    const [urlRows, registry] = await Promise.all([
+      client.metricsUrls(cfg.landingWebsiteId, r),
+      fetchServicesIndex(cfg),
+    ])
+    // First pass yields the kept content-page paths; fetch each page's
+    // referrers (throttled by the client), then re-shape with the sources.
+    const kept = shapePages(urlRows, registry, new Map())
+    const sourcesByPath = new Map<string, SourceRow[]>()
+    await Promise.all(
+      kept.map(async (p) => {
+        try {
+          sourcesByPath.set(
+            p.path,
+            buildSources(
+              await client.metricsReferrers(cfg.landingWebsiteId, p.path, r),
+              5,
+            ),
+          )
+        } catch {
+          sourcesByPath.set(p.path, [])
+        }
+      }),
+    )
+    return {
+      pages: shapePages(urlRows, registry, sourcesByPath).sort(
+        (a, b) => b.pageviews - a.pageviews,
+      ),
       range,
       window: rangeLabel(range),
     }
