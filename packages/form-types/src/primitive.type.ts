@@ -24,6 +24,7 @@ export const htmlTypesSchema = z.enum([
   "select",
   "show-hide",
   "address-lookup",
+  "content",
 ]);
 export type HtmlTypes = z.infer<typeof htmlTypesSchema>;
 
@@ -44,6 +45,9 @@ export const optionGroupSchema = z.object({
   options: z.array(optionSchema),
 });
 export type OptionGroup = z.infer<typeof optionGroupSchema>;
+
+export const contentVariantSchema = z.enum(["inset", "text", "details"]);
+export type ContentVariant = z.infer<typeof contentVariantSchema>;
 
 export const primitiveUISchema = z.object({
   width: z.enum(["short", "medium", "long"]).optional(),
@@ -97,6 +101,12 @@ export const basePrimitiveSchema = z.object({
   step: z.number().optional(),
   ui: primitiveUISchema.optional(),
   geocodeTargets: geocodeTargetsSchema.optional(),
+  // Content element (htmlType "content"): a non-field static guidance block.
+  // `content` is the markdown body; `variant` selects the presentation; the
+  // `details` variant uses `summary` as the disclosure's clickable text.
+  content: z.string().optional(),
+  variant: contentVariantSchema.optional(),
+  summary: z.string().optional(),
 });
 export type BasePrimitive = z.infer<typeof basePrimitiveSchema>;
 
@@ -189,6 +199,17 @@ export type AddressLookupPrimitive = z.infer<
   typeof addressLookupPrimitiveSchema
 >;
 
+// A non-field static content block: renders markdown guidance (inset callout,
+// plain paragraph, or a collapsible details disclosure). Carries no submitted
+// value — the renderer draws it outside the form-field wrapper, so it is never
+// validated, summarised, or submitted.
+export const contentPrimitiveSchema = basePrimitiveSchema.extend({
+  htmlType: z.literal("content"),
+  content: z.string(),
+  variant: contentVariantSchema,
+});
+export type ContentPrimitive = z.infer<typeof contentPrimitiveSchema>;
+
 export const primitiveSchema = z.discriminatedUnion("htmlType", [
   textPrimitiveSchema,
   textAreaPrimitiveSchema,
@@ -204,6 +225,7 @@ export const primitiveSchema = z.discriminatedUnion("htmlType", [
   filePrimitiveSchema,
   showHidePrimitiveSchema,
   addressLookupPrimitiveSchema,
+  contentPrimitiveSchema,
 ]);
 export type Primitive = z.infer<typeof primitiveSchema>;
 
@@ -225,6 +247,9 @@ export const fieldOverridesSchema = basePrimitiveSchema
     step: true,
     ui: true,
     geocodeTargets: true,
+    content: true,
+    variant: true,
+    summary: true,
   })
   .partial();
 export type FieldOverrides = z.infer<typeof fieldOverridesSchema>;

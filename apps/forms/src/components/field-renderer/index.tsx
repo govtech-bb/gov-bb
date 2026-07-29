@@ -17,6 +17,7 @@ import { renderCheckboxAccordionField } from "./checkbox-accordion-field";
 import { renderRadioField } from "./radio-field";
 import { renderShowHideField } from "./show-hide-field";
 import { AddressLookupField } from "./address-lookup-field";
+import { renderContentElement } from "./content-field";
 
 export type { InsetFieldEntry };
 
@@ -77,6 +78,14 @@ export default function FieldRenderer({
 
   // If the field was conditionally hidden before, but reaches here, then it's fine
   if (field.conditionallyHidden) field.conditionallyHidden = false;
+
+  // Content elements carry no value — render outside the form-field wrapper so
+  // they never enter form state, validation, or the submission. They still
+  // respect fieldConditionalOn: the visibility check above already returned
+  // null when the condition is unmet.
+  if (field.htmlType === "content") {
+    return renderContentElement(field);
+  }
 
   return (
     <form.Field name={field.id} validators={validationProperties}>

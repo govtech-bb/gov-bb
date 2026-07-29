@@ -382,6 +382,7 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
       hasReference: false,
     },
   ],
+  content: [],
   file: [
     {
       type: "required",

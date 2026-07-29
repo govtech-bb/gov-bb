@@ -92,7 +92,11 @@ describe("WebhookProcessor — generic (envelope) mode", () => {
     request.mockReturnValue(of({ status: 200, data: {} }));
     mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
     findByFormId.mockResolvedValue({ steps: [] });
-    processor = new WebhookProcessor(http, makeDestinations(null), formDefinitions);
+    processor = new WebhookProcessor(
+      http,
+      makeDestinations(null),
+      formDefinitions,
+    );
   });
 
   it("POSTs to the configured url with the configured method", async () => {
@@ -371,6 +375,12 @@ describe("WebhookProcessor — mapped mode (per-MDA destination)", () => {
     await processor.process(payload);
 
     expect(JSON.parse(reqConfig().data).higher_risk).toBe(true);
+    // The contract lookup bypasses visibility (#2125) so a non-public form's
+    // submission still dispatches.
+    expect(findByFormId).toHaveBeenCalledWith({
+      formId: "science-camp",
+      bypassVisibility: true,
+    });
   });
 
   it("applies the SSRF guard to the resolved destination url (#287)", async () => {
@@ -412,7 +422,11 @@ describe("WebhookProcessor — generic endpoint/auth branches", () => {
     request.mockReturnValue(of({ status: 200, data: {} }));
     mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
     findByFormId.mockResolvedValue({ steps: [] });
-    processor = new WebhookProcessor(http, makeDestinations(null), formDefinitions);
+    processor = new WebhookProcessor(
+      http,
+      makeDestinations(null),
+      formDefinitions,
+    );
     process.env.WEBHOOK_URL = "http://cms.local";
   });
   afterEach(() => {

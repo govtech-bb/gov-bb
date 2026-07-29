@@ -34,7 +34,7 @@ export const buildValidation = (
     for (const field of step.fields) {
       fieldValidationProperties[field.id] =
         buildFieldValidationProperties(field);
-      if (field.defaultValue) {
+      if (field.htmlType !== "content" && field.defaultValue) {
         defaults[field.id] = field.defaultValue;
       }
     }
@@ -175,9 +175,14 @@ export const buildFieldValidationProperties = (
   field: ClientPrimitive,
 ): FieldValidationProperties => {
   // The show-hide toggle stores a boolean (open/closed state) and never has its
-  // own validation rules; fields without validations have nothing to check.
-  // Either way, return a pass-through handler so the pipeline ignores them.
-  if (field.htmlType === "show-hide" || !field.validations) {
+  // own validation rules; a content element carries no submission value at
+  // all; fields without validations have nothing to check. Either way, return
+  // a pass-through handler so the pipeline ignores them.
+  if (
+    field.htmlType === "show-hide" ||
+    field.htmlType === "content" ||
+    !field.validations
+  ) {
     return {
       onDynamic(_input) {
         return undefined;
@@ -274,7 +279,12 @@ export const collectStepErrorCodes = (
 ): { fieldId: string; codes: string[] }[] => {
   const out: { fieldId: string; codes: string[] }[] = [];
   for (const field of fields) {
-    if (field.htmlType === "show-hide" || !field.validations) continue;
+    if (
+      field.htmlType === "show-hide" ||
+      field.htmlType === "content" ||
+      !field.validations
+    )
+      continue;
     const primitive = clientPrimitiveToPrimitive(field);
     const { stepValues, allValues } = buildValueTrees(
       field,

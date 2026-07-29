@@ -374,6 +374,52 @@ describe("Review", () => {
     expect(screen.queryByText("true")).not.toBeInTheDocument();
   });
 
+  it("does not render content elements — they carry no submission value", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-1",
+        title: "Step One",
+        fields: [
+          makeField({
+            id: "step-1.guidance",
+            fieldId: "guidance",
+            label: "Guidance",
+            htmlType: "content",
+            content: "Have your passport ready before you continue.",
+            variant: "inset",
+          }),
+          makeField({
+            id: "step-1.passport-number",
+            fieldId: "passport-number",
+            label: "Passport number",
+          }),
+        ],
+      }),
+    ];
+    // A content element carries no submission value in practice, but nothing
+    // about its htmlType prevents a stray value from landing at its field key
+    // (form.getFieldValue is a bare lookup, unrelated to htmlType). Inject one
+    // here so this test actually pins the explicit `htmlType !== "content"`
+    // guard rather than passing by coincidence via the empty-value filter.
+    const form = makeMockForm({
+      "step-1.guidance": "SHOULD NOT APPEAR",
+      "step-1.passport-number": "AB123456",
+    });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.getByText("Passport number")).toBeInTheDocument();
+    expect(screen.getByText("AB123456")).toBeInTheDocument();
+    expect(screen.queryByText("Guidance")).not.toBeInTheDocument();
+    expect(screen.queryByText("SHOULD NOT APPEAR")).not.toBeInTheDocument();
+  });
+
   it("renders an empty section with title and Change link when all fields in a step are hidden", () => {
     const steps: ClientFormStep[] = [
       makeStep({

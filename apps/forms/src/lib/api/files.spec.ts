@@ -51,6 +51,9 @@ describe("files API client", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(presignReq),
+        // Sends the shared `preview` cookie cross-origin so a non-public form
+        // resolves after the URL token drops (#2116).
+        credentials: "include",
       }),
     );
     expect(result).toEqual(payload);

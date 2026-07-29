@@ -84,4 +84,11 @@ describe("BUILTIN_REGISTRY", () => {
       required: { value: true },
     });
   });
+
+  it("resolves components/content with defaults", () => {
+    const c = REGISTRY_COMPONENTS["components/content"];
+    expect(c).toBeDefined();
+    expect(c.htmlType).toBe("content");
+    expect(c.variant).toBe("text");
+  });
 });

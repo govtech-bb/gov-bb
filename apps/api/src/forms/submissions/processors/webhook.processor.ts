@@ -104,7 +104,13 @@ export class WebhookProcessor implements ISubmissionProcessor {
     // here mirrors the email processor's contract access.
     const higherRisk = mapping
       ? deriveHigherRiskSelection(
-          await this.formDefinitions.findByFormId({ formId: payload.formId }),
+          // Bypass visibility (#2125): dispatching for an already-created
+          // submission, so the published contract must resolve even for a
+          // non-public (draft/preview) form.
+          await this.formDefinitions.findByFormId({
+            formId: payload.formId,
+            bypassVisibility: true,
+          }),
           payload.values,
         )
       : null;

@@ -9,7 +9,9 @@ import {
   fetchFormDetailData,
   fetchFormsData,
   fetchOverviewData,
+  fetchPagesData,
   fetchSearchData,
+  fetchToolsData,
   isConfigured,
   isLandingConfigured,
   normaliseRange,
@@ -17,7 +19,9 @@ import {
   type FormDetailData,
   type FormsData,
   type OverviewData,
+  type PagesData,
   type SearchData,
+  type ToolsData,
   type UmamiConfig,
 } from './umami-server'
 
@@ -143,6 +147,57 @@ export const fetchForms = createServerFn({ method: 'GET' })
     try {
       const data = await fetchFormsData(cfg, range)
       return { configured: true, ...data }
+    } catch {
+      return empty
+    }
+  })
+
+export type ToolsPayload = { configured: boolean } & ToolsData
+
+/** Per-tool usage for the "Tools" tab (landing site). */
+export const fetchTools = createServerFn({ method: 'GET' })
+  .validator((raw: unknown) =>
+    normaliseRange(raw == null ? undefined : String(raw)),
+  )
+  .handler(async ({ data: range }): Promise<ToolsPayload> => {
+    const cfg = await getConfig()
+    const empty: ToolsPayload = {
+      configured: false,
+      tools: [],
+      range,
+      window: rangeLabel(range),
+    }
+    // Tools reads only the landing site, so gate on landing config alone —
+    // not the full isConfigured (which also requires the forms website id).
+    if (!isLandingConfigured(cfg)) return empty
+    try {
+      return { configured: true, ...(await fetchToolsData(cfg, range)) }
+    } catch {
+      return empty
+    }
+  })
+
+export type PagesPayload = { configured: boolean } & PagesData
+
+/** Live content pages + their traffic for the "Pages" tab (landing site). */
+export const fetchPages = createServerFn({ method: 'GET' })
+  .validator((raw: unknown) =>
+    normaliseRange(raw == null ? undefined : String(raw)),
+  )
+  .handler(async ({ data: range }): Promise<PagesPayload> => {
+    const cfg = await getConfig()
+    const empty: PagesPayload = {
+      configured: false,
+      pages: [],
+      range,
+      window: rangeLabel(range),
+    }
+    // Traffic comes from the landing site; the registry (GET /services) is a
+    // secondary join that degrades to empty on its own, so gate on landing
+    // config alone — not the full isConfigured (which needs the forms site id).
+    if (!isLandingConfigured(cfg)) return empty
+    try {
+      return { configured: true, ...(await fetchPagesData(cfg, range)) }
     } catch {
       return empty
     }

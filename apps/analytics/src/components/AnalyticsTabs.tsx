@@ -10,14 +10,19 @@ const TABS: { label: string; to: string; isActive: (p: string) => boolean }[] = 
     isActive: (p) => p.startsWith('/analytics/forms'),
   },
   {
+    label: 'Pages',
+    to: '/analytics/pages',
+    isActive: (p) => p.startsWith('/analytics/pages'),
+  },
+  {
     label: 'Search',
     to: '/analytics/search',
     isActive: (p) => p.startsWith('/analytics/search'),
   },
   {
-    label: 'Projects',
-    to: '/analytics/projects',
-    isActive: (p) => p.startsWith('/analytics/projects'),
+    label: 'Tools',
+    to: '/analytics/tools',
+    isActive: (p) => p.startsWith('/analytics/tools'),
   },
 ]
 

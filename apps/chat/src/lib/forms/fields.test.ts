@@ -78,7 +78,7 @@ test("carries options, hint, and multiple", () => {
   ]);
 });
 
-test("skips hidden fields and show-hide disclosure toggles", () => {
+test("skips hidden fields, show-hide disclosure toggles, and content blocks", () => {
   const fields = extractFields(
     contract([
       {
@@ -93,6 +93,13 @@ test("skips hidden fields and show-hide disclosure toggles", () => {
             isHidden: true,
           },
           { fieldId: "more", label: "More", htmlType: "show-hide" },
+          {
+            fieldId: "guidance",
+            label: "Information",
+            htmlType: "content",
+            variant: "text",
+            content: "Some guidance text.",
+          },
         ],
       },
     ]),
