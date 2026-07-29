@@ -49,6 +49,9 @@ export class SqsProducerService {
       meta: event.meta,
       processors: event.processors,
       enqueuedAt: new Date().toISOString(),
+      ...(event.resolvedCatchment
+        ? { resolvedCatchment: event.resolvedCatchment }
+        : {}),
     };
 
     const result = await this.client.send(

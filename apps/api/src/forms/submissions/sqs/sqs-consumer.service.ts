@@ -280,6 +280,7 @@ export class SqsConsumerService
       meta: msg.meta,
       processors: msg.processors,
       processorIndex: msg.processorIndex,
+      resolvedCatchment: msg.resolvedCatchment,
     };
   }
 
