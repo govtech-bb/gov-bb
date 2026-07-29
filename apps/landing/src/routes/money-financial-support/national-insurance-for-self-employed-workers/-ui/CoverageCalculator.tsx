@@ -1306,7 +1306,7 @@ function NextSteps({
         What to do next
       </h1>
       <p className="mb-6 text-[1.125rem] text-mid-grey-00">
-        This estimate does not register you or set your payment amount.
+        Below are a few steps you could take:
       </p>
 
       <ul className="flex flex-col gap-3 text-[1.125rem]">
@@ -1320,10 +1320,26 @@ function NextSteps({
             See how and when to pay National Insurance
           </Link>
         </li>
-        <li>
-          <Link href={`${serviceHref}#get-help`}>Contact NIS for help</Link>
-        </li>
       </ul>
+
+      <h2 className="mt-8 mb-2 font-bold text-[1.5rem] text-black-00">
+        Get help
+      </h2>
+      <p className="text-[1.125rem]">
+        Contact NIS on <strong>431-7400</strong> or visit the{' '}
+        <strong>NIS office</strong> in person.
+      </p>
+      <p className="mt-4 text-[1.125rem]">
+        <strong>NIS office</strong>
+        <br />
+        National Insurance and Social Security Service
+        <br />
+        Frank Walcott Building
+        <br />
+        Culloden Road
+        <br />
+        St Michael
+      </p>
 
       <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
