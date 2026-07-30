@@ -1355,7 +1355,7 @@ function NextSteps({
         <br />
         Culloden Road
         <br />
-        St Michael
+        St. Michael
       </p>
 
       <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">

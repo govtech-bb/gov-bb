@@ -60,5 +60,5 @@ Call NIS on **431-7400**. You can also get help in person at the **NIS office**.
 National Insurance and Social Security Service  
 Frank Walcott Building  
 Culloden Road  
-St Michael
+St. Michael
 
