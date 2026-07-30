@@ -171,6 +171,14 @@ export interface SubmitResult {
   data: FormSubmissionEntity;
   message: string;
   statusCode: number;
+  /**
+   * Name of the polyclinic the coordinate-based catchment router resolved for
+   * this submission (e.g. "Maurice Byer Polyclinic"). Surfaced so the
+   * confirmation page can tell the applicant which Environmental Health
+   * Department their request went to. Absent when the form has no catchment
+   * routing or nothing resolved. Never carries the MDA email.
+   */
+  resolvedPolyclinic?: string;
   deferred?: {
     paymentUrl: string;
     paymentId: string;

@@ -186,6 +186,7 @@ export type {
   DraftRecipe,
   DateTimeFormat,
   ContactDetails,
+  CatchmentRouting,
   RecipeVisibility,
   RecipeMeta,
 } from "./service-contract.type";

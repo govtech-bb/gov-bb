@@ -187,6 +187,9 @@ export class SubmissionsService {
         message: "Payment required",
         statusCode: HttpStatus.OK,
         deferred,
+        ...(resolvedCatchment && {
+          resolvedPolyclinic: resolvedCatchment.polyclinic,
+        }),
       };
     }
 
@@ -197,6 +200,9 @@ export class SubmissionsService {
       data: saved,
       message: "Submission created",
       statusCode: HttpStatus.CREATED,
+      ...(resolvedCatchment && {
+        resolvedPolyclinic: resolvedCatchment.polyclinic,
+      }),
     };
   }
 

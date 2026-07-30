@@ -53,5 +53,12 @@ export interface FormSubmissionResponse extends ApiResponse {
       amount: number;
       description: string;
     };
+    /**
+     * Name of the polyclinic the catchment router resolved for this submission
+     * (e.g. "Maurice Byer Polyclinic"). Present only for coordinate-routed
+     * forms; the confirmation page substitutes it into the `{polyclinic}` token
+     * in the confirmation copy. Never carries the MDA email.
+     */
+    resolvedPolyclinic?: string;
   };
 }

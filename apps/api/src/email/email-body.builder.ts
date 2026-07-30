@@ -215,9 +215,17 @@ export class EmailBodyBuilder {
     // It's the same markdown the live confirmation page renders; parsing it
     // synchronously (marked.parse returns a string when async isn't enabled)
     // keeps the email copy in step with the page.
-    const markdownContent = contract.steps.find(
+    const rawMarkdown = contract.steps.find(
       (s) => s.stepId === "submission-confirmation",
     )?.markdownContent;
+    // Substitute the resolved polyclinic into the `{polyclinic}` token so the
+    // email names the Environmental Health Department the request went to —
+    // same token + fallback as the live confirmation page
+    // (submission-confirmation.tsx), keeping the email and page copy in step.
+    const markdownContent = rawMarkdown?.replaceAll(
+      "{polyclinic}",
+      payload.resolvedCatchment?.polyclinic ?? "your local polyclinic",
+    );
     const markdownHtml = markdownContent
       ? markdownRenderer.render(markdownContent)
       : undefined;
