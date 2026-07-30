@@ -19,6 +19,10 @@ export const formStepSchema = z.object({
   // (e.g. a "What you need to know" section) without code changes. Distinct
   // from `nextSteps`, which renders structured title/content/items blocks.
   markdownContent: z.string().optional(),
+  // Suppress the "Submission ID" line on the submission-confirmation page. For
+  // an anonymous form (e.g. the exit survey) that issues no meaningful
+  // reference, the design shows no ID. Omitted ⇒ the ID is shown as before.
+  hideReferenceNumber: z.boolean().optional(),
   nextSteps: z
     .array(
       z.object({

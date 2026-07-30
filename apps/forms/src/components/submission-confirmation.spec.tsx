@@ -309,6 +309,25 @@ describe("SubmissionConfirmation — no-payment success branch", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("DL-REF-001")).toBeInTheDocument();
   });
+
+  it("hides the Submission ID when hideReferenceNumber is set (anonymous form, #2133)", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Help us improve this service"
+        stepTitle="Thank you for your feedback"
+        hideReferenceNumber
+        submissionState={{
+          hasPayment: false,
+          serviceName: "Help us improve this service",
+          submissionSuccess: true,
+          referenceNumber: "EXIT-REF-001",
+        }}
+      />,
+    );
+    expect(screen.getByText("Thank you for your feedback")).toBeInTheDocument();
+    expect(screen.queryByText("Submission ID")).not.toBeInTheDocument();
+    expect(screen.queryByText("EXIT-REF-001")).not.toBeInTheDocument();
+  });
 });
 
 describe("SubmissionConfirmation — payment success branch", () => {
