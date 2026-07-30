@@ -45,7 +45,7 @@ Have your National Insurance number ready. You can pay:
 - online through SurePay
 - online through EZpay+
 - through a bank
-- in person at the NIS office, Frank Walcott Building, Culloden Road, St Michael
+- in person at the NIS office, Frank Walcott Building, Culloden Road, St. Michael
 
 ## Check your record and benefits
 Find out how to check past payments, what to do if you missed payments, whether work outside Barbados may count and which benefits you may get.
@@ -59,4 +59,4 @@ Contact NIS on **431-7400** or visit the **NIS office** in person.
 National Insurance and Social Security Service  
 Frank Walcott Building  
 Culloden Road  
-St Michael
+St. Michael
