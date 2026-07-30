@@ -689,3 +689,105 @@ describe("SubmissionConfirmation — undefined submissionState", () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
+describe("SubmissionConfirmation — Print button (#2132)", () => {
+  const successPayment: SubmissionState = {
+    hasPayment: true,
+    serviceName: "Passport Renewal",
+    submissionSuccess: true,
+    paymentSuccess: true,
+    referenceNumber: "REF-PAY-OK",
+    date: "19/05/2026",
+    amount: "$100.00",
+    quantity: 1,
+  };
+
+  const renderWith = (submissionState: SubmissionState) =>
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={submissionState}
+        onTryAgain={vi.fn()}
+      />,
+    );
+
+  const printButton = () => screen.queryByRole("button", { name: /print/i });
+
+  it("shows the Print button on the no-payment success confirmation", () => {
+    renderWith(baseState);
+    expect(printButton()).toBeInTheDocument();
+  });
+
+  it("shows the Print button on the payment-success confirmation", () => {
+    renderWith(successPayment);
+    expect(printButton()).toBeInTheDocument();
+  });
+
+  it("does not show the Print button while the submission is processing", () => {
+    renderWith({ ...baseState, processing: true });
+    expect(printButton()).not.toBeInTheDocument();
+  });
+
+  it("does not show the Print button on the submission-failed state", () => {
+    renderWith({ ...baseState, submissionSuccess: false });
+    expect(printButton()).not.toBeInTheDocument();
+  });
+
+  it("does not show the Print button on the payment-failed state", () => {
+    renderWith({
+      hasPayment: true,
+      serviceName: "Passport Renewal",
+      submissionSuccess: true,
+      paymentSuccess: false,
+      referenceNumber: "REF-PAY-FAIL",
+      date: "19/05/2026",
+      paymentUrl: undefined,
+    });
+    expect(printButton()).not.toBeInTheDocument();
+  });
+
+  it("calls window.print when the Print button is clicked", () => {
+    const original = window.print;
+    window.print = vi.fn();
+    try {
+      renderWith(baseState);
+      fireEvent.click(screen.getByRole("button", { name: /print/i }));
+      expect(window.print).toHaveBeenCalledTimes(1);
+    } finally {
+      window.print = original;
+    }
+  });
+
+  it("is keyboard-reachable and has an accessible name", () => {
+    renderWith(baseState);
+    // Exact-name role query proves the accessible name is "Print".
+    const btn = screen.getByRole("button", { name: "Print" });
+    // Native, enabled button with no tabindex opt-out => in the tab order.
+    expect(btn.tagName).toBe("BUTTON");
+    expect(btn).toBeEnabled();
+    expect(btn).not.toHaveAttribute("tabindex", "-1");
+    // And it can actually take focus.
+    btn.focus();
+    expect(btn).toHaveFocus();
+  });
+
+  it("passes an axe audit on a success confirmation with the Print button", async () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={baseState}
+        nextSteps={[{ title: "What happens next", items: ["We review it"] }]}
+        contactDetails={{ email: "help@example.com" }}
+        feedbackUrl="https://survey.example/feedback"
+      />,
+    );
+    // heading-order is a pre-existing component issue (see the audit above),
+    // excluded so it doesn't mask a regression introduced by the Print button.
+    const results = await axe(container, {
+      rules: { "heading-order": { enabled: false } },
+    });
+    expect(results).toHaveNoViolations();
+  });
+});

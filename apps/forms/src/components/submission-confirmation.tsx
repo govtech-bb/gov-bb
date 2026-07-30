@@ -99,6 +99,21 @@ export default function SubmissionConfirmation({
         </div>
       )}
 
+      {/* Print the confirmation (submission ID, next steps, contact) for
+          citizens who need a paper copy. Sits directly after "what happens
+          next" so it's adjacent to the content it prints. The button itself is
+          hidden in the printed output via the `form-page__print` @media print
+          rule in govtech.css. */}
+      <div className={hasPayment ? "form-page__print" : ""}>
+        <button
+          type="button"
+          className="govbb-btn--secondary"
+          onClick={() => window.print()}
+        >
+          Print
+        </button>
+      </div>
+
       {markdownContent && (
         <div className="form-page__markdown-content">
           {/* Recipe-authored copy (e.g. "What you need to know"). react-markdown
@@ -314,13 +329,13 @@ export default function SubmissionConfirmation({
               {paymentItem("Amount:", formattedAmount)}
             </div>
             <a
-              className="govbb-btn"
+              className="govbb-btn no-print"
               href={paymentUrl}
               onClick={() => onPaymentInitiated?.()}
             >
               Continue to payment
             </a>
-            <p className="govbb-payment__note">
+            <p className="govbb-payment__note no-print">
               You will be redirected to EZ Pay to securely complete your
               payment.
             </p>
