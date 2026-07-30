@@ -241,6 +241,9 @@
               }
             ],
             "validations": {
+              "required": {
+                "value": false
+              },
               "email": {
                 "value": true,
                 "error": "Enter a valid email address"

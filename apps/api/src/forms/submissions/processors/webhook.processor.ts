@@ -165,7 +165,9 @@ export class WebhookProcessor implements ISubmissionProcessor {
       this.logger.log(
         `[webhook] POST ${sanitizeForLog(url)} code=${sanitizeForLog(
           payload.referenceCode,
-        )} programme=${mapping.programmeCode} bytes=${body.length}`,
+        )} programme=${
+          payload.resolvedCatchment?.programmeCode ?? mapping.programmeCode
+        } bytes=${body.length}`,
       );
     }
 
