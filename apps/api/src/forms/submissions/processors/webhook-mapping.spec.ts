@@ -153,4 +153,39 @@ describe("webhook-mapping", () => {
       ]);
     });
   });
+
+  describe("buildMappedCasePayload — programmeCodeOverride", () => {
+    it("uses programmeCodeOverride when provided", () => {
+      const payload = buildMappedCasePayload({
+        mapping: {
+          programmeCode: "STATIC",
+          applicant: { name: "a.b", email: "a.c", phone: "a.d" },
+          excludeSteps: [],
+          groupByStep: false,
+        },
+        values: {},
+        referenceCode: "R",
+        submittedAt: "2026-07-28T00:00:00Z",
+        programmeCodeOverride: "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
+      });
+      expect(payload.programme_code).toBe(
+        "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
+      );
+    });
+
+    it("falls back to the static programmeCode when no override", () => {
+      const payload = buildMappedCasePayload({
+        mapping: {
+          programmeCode: "STATIC",
+          applicant: { name: "a.b", email: "a.c", phone: "a.d" },
+          excludeSteps: [],
+          groupByStep: false,
+        },
+        values: {},
+        referenceCode: "R",
+        submittedAt: "2026-07-28T00:00:00Z",
+      });
+      expect(payload.programme_code).toBe("STATIC");
+    });
+  });
 });

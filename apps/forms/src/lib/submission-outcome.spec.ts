@@ -78,6 +78,18 @@ describe("resolveSubmissionOutcome", () => {
     expect(resolveSubmissionOutcome(response("draft"))).toEqual({});
   });
 
+  it("carries meta.resolvedPolyclinic into the submission state (coordinate-routed forms)", () => {
+    const outcome = resolveSubmissionOutcome(
+      response("submitted", { resolvedPolyclinic: "Maurice Byer Polyclinic" }),
+    );
+    expect(outcome.subState?.polyclinic).toBe("Maurice Byer Polyclinic");
+  });
+
+  it("leaves polyclinic undefined when the response carries no resolvedPolyclinic", () => {
+    const outcome = resolveSubmissionOutcome(response("submitted"));
+    expect(outcome.subState?.polyclinic).toBeUndefined();
+  });
+
   it("maps 'pending_payment' with deferred meta to a payment state and success event", () => {
     const outcome = resolveSubmissionOutcome(
       response("pending_payment", {

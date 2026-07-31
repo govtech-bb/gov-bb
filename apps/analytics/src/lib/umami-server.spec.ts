@@ -13,12 +13,14 @@ import {
   shapeFormList,
   shapeFunnel,
   shapeJourneyList,
+  shapePages,
   shapeSearch,
   shapeSubmitError,
   shapeTools,
   type UmamiConfig,
 } from './umami-server'
 import type { Tool } from './tools-config'
+import type { ServiceIndexEntry } from '@govtech-bb/content'
 
 describe('configured gates', () => {
   const full = {
@@ -570,5 +572,134 @@ describe('shapeTools (per-tool rollup)', () => {
   it('returns one row per tool, in the given order', () => {
     const rows = shapeTools([shelter, bankHoliday], [], new Map())
     expect(rows.map((r) => r.name)).toEqual([shelter.name, bankHoliday.name])
+  })
+})
+
+describe('shapePages (content pages joined to the public registry)', () => {
+  const registry: ServiceIndexEntry[] = [
+    {
+      slug: 'get-birth-certificate',
+      title: 'Get a copy of a birth certificate',
+      category: 'family-birth-relationships',
+      formId: 'get-birth-certificate',
+      visibility: 'public',
+    },
+    {
+      slug: 'stormready-barbados',
+      title: 'StormReady Barbados',
+      category: 'health-and-emergency-services',
+      visibility: 'public',
+    },
+  ]
+
+  it('joins a Umami path to its registry entry on /category/slug', () => {
+    const rows = shapePages(
+      [
+        {
+          x: '/family-birth-relationships/get-birth-certificate',
+          pageviews: 90,
+          visitors: 70,
+        },
+      ],
+      registry,
+      new Map([
+        [
+          '/family-birth-relationships/get-birth-certificate',
+          [{ referrer: 'google', count: 9 }],
+        ],
+      ]),
+    )
+    expect(rows).toEqual([
+      {
+        path: '/family-birth-relationships/get-birth-certificate',
+        title: 'Get a copy of a birth certificate',
+        pageviews: 90,
+        visitors: 70,
+        formId: 'get-birth-certificate',
+        topSources: [{ referrer: 'google', count: 9 }],
+      },
+    ])
+  })
+
+  it('sets formId null for a content page with no form', () => {
+    const [row] = shapePages(
+      [
+        {
+          x: '/health-and-emergency-services/stormready-barbados',
+          pageviews: 5,
+          visitors: 4,
+        },
+      ],
+      registry,
+      new Map(),
+    )
+    expect(row.formId).toBeNull()
+    expect(row.title).toBe('StormReady Barbados')
+  })
+
+  it('drops a trafficked path that matches no public registry entry', () => {
+    const rows = shapePages(
+      [{ x: '/some/preview-or-unknown-page', pageviews: 999, visitors: 999 }],
+      registry,
+      new Map(),
+    )
+    expect(rows).toEqual([])
+  })
+
+  it('excludes tool prefixes, /start, /forms/* and system routes even if registered', () => {
+    const rows = shapePages(
+      [
+        { x: '/bank-holiday-calendar', pageviews: 100, visitors: 80 },
+        { x: '/forms/get-birth-certificate', pageviews: 50, visitors: 40 },
+        {
+          x: '/family-birth-relationships/register-a-birth/start',
+          pageviews: 20,
+          visitors: 10,
+        },
+        { x: '/sitemap.xml', pageviews: 5, visitors: 5 },
+      ],
+      registry,
+      new Map(),
+    )
+    expect(rows).toEqual([])
+  })
+
+  it('normalises a trailing slash and aggregates duplicate rows for one path', () => {
+    const rows = shapePages(
+      [
+        {
+          x: '/family-birth-relationships/get-birth-certificate',
+          pageviews: 60,
+          visitors: 40,
+        },
+        {
+          x: '/family-birth-relationships/get-birth-certificate/',
+          pageviews: 30,
+          visitors: 25,
+        },
+      ],
+      registry,
+      new Map(),
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0].pageviews).toBe(90)
+    expect(rows[0].visitors).toBe(65)
+  })
+
+  it('is empty when the registry or the URL rows are empty', () => {
+    expect(shapePages([], registry, new Map())).toEqual([])
+    expect(
+      shapePages(
+        [
+          {
+            x: '/family-birth-relationships/get-birth-certificate',
+            pageviews: 1,
+            visitors: 1,
+          },
+        ],
+        [],
+        new Map(),
+      ),
+    ).toEqual([])
   })
 })

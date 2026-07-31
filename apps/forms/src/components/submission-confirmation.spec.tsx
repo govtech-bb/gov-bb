@@ -24,6 +24,37 @@ describe("SubmissionConfirmation", () => {
     expect(screen.getByText("REF-12345")).toBeInTheDocument();
   });
 
+  it("substitutes the resolved polyclinic into the {polyclinic} token", () => {
+    // The token sits inside bold (`**{polyclinic}**`), so react-markdown splits
+    // it across a <strong>; assert on the container text, not a single element.
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Temporary Restaurant Licence"
+        stepTitle="Application submitted"
+        submissionState={{
+          ...baseState,
+          polyclinic: "Maurice Byer Polyclinic",
+        }}
+        markdownContent="Sent to the Environmental Health Department at **{polyclinic}**."
+      />,
+    );
+    expect(container.textContent).toContain("Maurice Byer Polyclinic");
+    expect(container.textContent).not.toContain("{polyclinic}");
+  });
+
+  it("falls back to a generic phrase when no polyclinic resolved", () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Temporary Restaurant Licence"
+        stepTitle="Application submitted"
+        submissionState={baseState}
+        markdownContent="Sent to the Environmental Health Department at **{polyclinic}**."
+      />,
+    );
+    expect(container.textContent).toContain("your local polyclinic");
+    expect(container.textContent).not.toContain("{polyclinic}");
+  });
+
   it("renders contact details panel when contactDetails is present", () => {
     const contactDetails = {
       title: "Immigration Dept",

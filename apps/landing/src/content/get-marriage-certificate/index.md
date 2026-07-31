@@ -57,11 +57,11 @@ A certificate can sometimes be issued on the same day, in the case of a medical 
 
 If you complete the paper form, you will be given a receipt when you return it to the Applications Desk at the Registration Department. You will need to show your receipt when you collect your cop(y/ies) and you will be able to pay in cash or by card.
 
-## If basic information is unknwon
+## If basic information is unknown
 
-There are circumstances when you may not be able to provide all the information asked for in the form. For example, if there is estrangement in the family, or if the birth was registered in Barbados a significant time ago. Provide as much information as you can – the more details you can give, the better the chance of finding the records you are looking for.
+There are circumstances when you may not be able to provide all the information asked for in the form. For example, if there is estrangement in the family, or if the marriage was registered in Barbados a significant time ago. Provide as much information as you can – the more details you can give, the better the chance of finding the records you are looking for.
 
-## Get a copy of a birth certificate if you live overseas
+## Get a copy of a marriage certificate if you live overseas
 
 Contact the Registration Department.
 

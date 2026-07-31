@@ -290,6 +290,58 @@ describe("EmailBodyBuilder", () => {
       expect(ctx.markdownHtml).toContain("We will review your request.");
     });
 
+    it("substitutes the resolved polyclinic into the {polyclinic} token", async () => {
+      const base = makeContract();
+      const contract = makeContract({
+        steps: [
+          ...base.steps,
+          {
+            stepId: "submission-confirmation",
+            title: "Application submitted",
+            elements: [],
+            markdownContent:
+              "Sent to the Environmental Health Department at **{polyclinic}**.",
+          },
+        ] as unknown as ServiceContract["steps"],
+      });
+      builder = new EmailBodyBuilder(makeFormDefinitionsService(contract));
+
+      const ctx = await builder.build(
+        makePayload({
+          resolvedCatchment: {
+            polyclinic: "Maurice Byer Polyclinic",
+            programmeCode: "TEMP_RESTAURANT_LICENCE_MAURICE_BYER",
+            mdaEmail: null,
+          },
+        }),
+      );
+
+      expect(ctx.markdownHtml).toContain("Maurice Byer Polyclinic");
+      expect(ctx.markdownHtml).not.toContain("{polyclinic}");
+    });
+
+    it("falls back to a generic phrase when no catchment resolved", async () => {
+      const base = makeContract();
+      const contract = makeContract({
+        steps: [
+          ...base.steps,
+          {
+            stepId: "submission-confirmation",
+            title: "Application submitted",
+            elements: [],
+            markdownContent:
+              "Sent to the Environmental Health Department at **{polyclinic}**.",
+          },
+        ] as unknown as ServiceContract["steps"],
+      });
+      builder = new EmailBodyBuilder(makeFormDefinitionsService(contract));
+
+      const ctx = await builder.build(makePayload());
+
+      expect(ctx.markdownHtml).toContain("your local polyclinic");
+      expect(ctx.markdownHtml).not.toContain("{polyclinic}");
+    });
+
     it("leaves markdownHtml undefined when the form authors none", async () => {
       const ctx = await builder.build(makePayload());
       expect(ctx.markdownHtml).toBeUndefined();

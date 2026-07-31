@@ -21,6 +21,11 @@
             "input": "apps/api/src/email/templates",
             "glob": "**/*.hbs",
             "output": "src/email/templates"
+          },
+          {
+            "input": "apps/api/src/catchment",
+            "glob": "**/*.geojson",
+            "output": "src/catchment"
           }
         ]
       },
