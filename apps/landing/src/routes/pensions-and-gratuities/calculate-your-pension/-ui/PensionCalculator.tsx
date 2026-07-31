@@ -360,25 +360,37 @@ export function PensionCalculator() {
           <div className="mt-4 border-grey-00 border-t-2 pt-6">
             <Heading as="h2">Next steps</Heading>
             <Text as="p" size="body">
-                Once you have your estimate and you are eligible and ready to retire, submit the following documents to your employer’s Human Resources department/division.
-                <ul>
-                  <li>Your letter of intent to retire</li>
-                  <li>Birth certificate</li>
-                  <li>Marriage certificate and/or decree absolute (if divorced), if/as applicable</li>
-                  <li>Valid Barbados Trident Card (or other valid national picture)</li>
-                  <li>Your completed Option Form (available from your employer)</li>
-                  <li>Banking information to facilitate direct deposit of pension.</li>
-                </ul>
+              Once you have your estimate and you are eligible and ready to
+              retire, submit the following documents to your employer’s Human
+              Resources department/division.
             </Text>
+            <ul className="mt-2 list-disc space-y-2 pl-7">
+              <li>Your letter of intent to retire</li>
+              <li>Birth certificate</li>
+              <li>
+                Marriage certificate and/or decree absolute (if divorced), if/as
+                applicable
+              </li>
+              <li>
+                Valid Barbados Trident Card (or other valid national picture)
+              </li>
+              <li>Your completed Option Form (available from your employer)</li>
+              <li>
+                Banking information to facilitate direct deposit of pension
+              </li>
+            </ul>
 
-            <p>
-              <strong>Important:</strong> You should commence your retirement process at least six months before your official retirement date. 
-            </p>
+            <Text as="p" className="mt-4" size="body">
+              <strong>Important:</strong> You should commence your retirement
+              process at least six months before your official retirement date.
+            </Text>
 
             <div className="mt-4">
               <Heading as="h3">National Insurance (NIS) Pensions</Heading>
               <Text as="p" size="body">
-                The National Insurance and Social Security Service (NISSS) can help you understand your National Insurance Old Age Contributory Pension entitlement alongside any government pension. 
+                The National Insurance and Social Security Service (NISSS) can
+                help you understand your National Insurance Old Age Contributory
+                Pension entitlement alongside any government pension.
               </Text>
               <ul className="mt-2 list-disc space-y-2 pl-7">
                 <li>
@@ -411,8 +423,8 @@ export function PensionCalculator() {
           <Text as="p" size="body">
             <strong>This calculator gives an estimate only.</strong> Your actual
             pension depends on information held by the People Resourcing and
-            Compliance Directorate (PRC) and your last employer. Contact them
-            to confirm your exact figures before making any decisions.
+            Compliance Directorate (PRC) and your last employer. Contact them to
+            confirm your exact figures before making any decisions.
           </Text>
         </div>
 
