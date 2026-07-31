@@ -363,7 +363,7 @@ export function CoverageCalculator() {
             onBack={() => go('income')}
             onContinue={() => {
               if (!tier) {
-                setTierError('Select a contribution level')
+                setTierError('Select an amount to compare')
                 focusErrorSummary(planErrorRef)
                 return
               }
@@ -844,32 +844,18 @@ function IncomeStep({
 }
 
 /* ── Screen: plan ───────────────────────────────────────────────────── */
+// The options are deliberately unnamed (no Minimum/Moderate/Stronger tiers,
+// no "Recommended" badge): each is just an amount to compare, so none reads
+// as the endorsed choice. Only the minimum carries a label, because that
+// amount is a rule, not a suggestion.
 const TIERS: Array<{
   id: Tier
-  label: string
+  label?: string
   tone: Tone
-  recommended?: boolean
-  sub: string
 }> = [
-  {
-    id: Tier.Minimum,
-    label: 'Minimum',
-    tone: 'yellow',
-    sub: 'Smaller payouts, but every benefit still counts.',
-  },
-  {
-    id: Tier.Moderate,
-    label: 'Moderate',
-    tone: 'green',
-    recommended: true,
-    sub: 'A bigger share of your earnings.',
-  },
-  {
-    id: Tier.Stronger,
-    label: 'Stronger',
-    tone: 'teal',
-    sub: 'The strongest cover you can build.',
-  },
+  { id: Tier.Minimum, label: 'Minimum contribution', tone: 'yellow' },
+  { id: Tier.Moderate, tone: 'green' },
+  { id: Tier.Stronger, tone: 'teal' },
 ]
 
 function PlanStep({
@@ -917,12 +903,11 @@ function PlanStep({
       )}
       <ServiceCaption />
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
-        What should you put in?
+        Choose an amount to compare
       </h1>
       <p className="mb-5 text-[1.125rem] text-mid-grey-00">
-        Pick a level you can afford. The more you put in, the bigger your
-        benefits. You&rsquo;ll see what each one protects next. These estimates
-        are based on the earnings you entered.
+        Compare how much you could pay and the benefits you may get. You can
+        choose a different amount when you make a payment.
       </p>
 
       {/* A caption, not a card: the contribution levels below are the things to
@@ -952,7 +937,7 @@ function PlanStep({
         )}
         <div
           aria-describedby={error ? 'tier-error' : undefined}
-          aria-label="Contribution level"
+          aria-label="Contribution amount to compare"
           className="flex flex-col gap-3"
           role="radiogroup"
         >
@@ -979,24 +964,25 @@ function PlanStep({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1 text-black-00">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-[1.25rem]">{t.label}</p>
-                      {t.recommended && (
-                        <span
-                          className={`rounded-full border bg-white-00 ${tone.border} ${tone.text} px-2.5 py-1 font-semibold text-[0.85rem]`}
-                        >
-                          Recommended
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 font-bold text-[2rem] tabular-nums leading-none">
+                    {t.label && (
+                      <p className="mb-1 font-semibold text-[1rem] text-mid-grey-00">
+                        {t.label}
+                      </p>
+                    )}
+                    <p className="font-bold text-[2rem] tabular-nums leading-none">
                       {money(suggested[t.id])}
                       <span className="font-normal text-[1rem] text-mid-grey-00">
                         {' '}
                         /month
                       </span>
                     </p>
-                    <p className="mt-2 text-[1rem] text-mid-grey-00">{t.sub}</p>
+                    <p className="mt-1 text-[1rem] text-mid-grey-00">
+                      About{' '}
+                      <span className="tabular-nums">
+                        {money((suggested[t.id] * 12) / 52)}
+                      </span>{' '}
+                      a week
+                    </p>
                     {t.id === Tier.Minimum && minimumApplies && (
                       <p className="mt-3 text-[1rem] text-black-00">
                         <strong>Why have we shown this minimum</strong>
@@ -1041,13 +1027,15 @@ function PlanStep({
         >
           <div className="mb-1 flex items-start justify-between gap-3">
             <p className="font-semibold text-[0.95rem] text-teal-40 uppercase tracking-wide">
-              Your plan
+              Your selected amount
             </p>
-            <span
-              className={`inline-flex items-center rounded-full ${TONE[selTier.tone].bg} ${TONE[selTier.tone].text} px-4 py-1.5 font-bold text-[1.05rem]`}
-            >
-              {selTier.label}
-            </span>
+            {selTier.label && (
+              <span
+                className={`inline-flex items-center rounded-full ${TONE[selTier.tone].bg} ${TONE[selTier.tone].text} px-4 py-1.5 font-bold text-[1.05rem]`}
+              >
+                {selTier.label}
+              </span>
+            )}
           </div>
           <p className="mb-1 font-bold text-[2rem] tabular-nums leading-tight">
             {money(chosen)}
