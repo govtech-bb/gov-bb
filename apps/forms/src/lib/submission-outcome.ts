@@ -30,6 +30,10 @@ export function resolveSubmissionOutcome(
     // formatDate() handle it cleanly.
     date: response.data.submittedAt ?? undefined,
     serviceName: response.data.formId,
+    // Polyclinic the catchment router resolved (coordinate-routed forms only).
+    // The confirmation page substitutes it into the `{polyclinic}` token; absent
+    // for every other form, where the token falls back to a generic phrase.
+    polyclinic: response.meta?.resolvedPolyclinic,
   };
 
   // Drive the UI off the SUBMISSION status (`data.status`: submitted /

@@ -241,6 +241,9 @@
               }
             ],
             "validations": {
+              "required": {
+                "value": false
+              },
               "email": {
                 "value": true,
                 "error": "Enter a valid email address"
@@ -899,7 +902,7 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "elements": [],
-      "markdownContent": "We have sent a confirmation email to the address you gave.\n\n## What happens next\n\n- The Environmental Health Department for your area will review your application.\n- If you do not already have a licensed food business, an officer will inspect your set-up before the licence is issued.\n- You must collect your licence from the polyclinic before your event.\n- The licence is valid for 30 days from the date it is issued.\n\nKeep your reference number for any follow-up."
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your request and your temporary restaurant licence application.\n- Environmental health officers will attend on the dates and times you gave. The department will confirm arrangements and any overtime costs.\n- They may arrange an inspection before issuing the licence. The licence is collected from the polyclinic, and an electronic copy is emailed to you. It is valid for 30 days from the date it is issued.\n- If there are overtime costs, they will send an invoice after the request is approved.\n\nKeep your reference number for any follow-up."
     }
   ],
   "meta": {

@@ -42,6 +42,7 @@ import {
   resolveSubmissionOutcome,
   applyPaymentReturn,
 } from "../../../lib/submission-outcome";
+import { fillParishRoutingCoordinate } from "../../../lib/parish-routing-points";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
@@ -263,10 +264,13 @@ function FormView() {
         );
         return step.fields.filter((field) => !visibleFieldIds.has(field.id));
       });
-      const formattedData: FormValuesByStep = formatDataForSubmission(
-        values,
-        repeatableStepSettingsRef.current,
-        hiddenFields,
+      const formattedData: FormValuesByStep = fillParishRoutingCoordinate(
+        formatDataForSubmission(
+          values,
+          repeatableStepSettingsRef.current,
+          hiddenFields,
+        ),
+        formMeta.catchmentRouting,
       );
       let response;
       try {

@@ -98,6 +98,13 @@ export interface SubmissionState {
    * receipt (#463). Absent on every other state.
    */
   processing?: boolean;
+  /**
+   * Name of the polyclinic the catchment router resolved for this submission
+   * (from the submit response `meta.resolvedPolyclinic`). Used by the
+   * confirmation page to name the Environmental Health Department the request
+   * went to. Absent for forms without coordinate-based routing.
+   */
+  polyclinic?: string;
   referenceNumber: string;
   // Optional: payment ("gated") submissions are not finalised yet, so the
   // server returns `submittedAt: null` — there is no submission date to show

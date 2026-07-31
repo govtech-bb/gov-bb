@@ -62,7 +62,7 @@ export class SubmissionsController {
         previewToken,
       );
 
-    const { data, message, statusCode, deferred } =
+    const { data, message, statusCode, deferred, resolvedPolyclinic } =
       await this.submissionsService.submit({
         ...body,
         idempotencyKey,
@@ -70,10 +70,19 @@ export class SubmissionsController {
         ...(bypassVisibility && { bypassVisibility: true }),
       });
 
+    // Extra outcome data rides on `meta` (like `deferred`): the resolved
+    // polyclinic name lets the confirmation page name the Environmental Health
+    // Department the request went to. Only attach `meta` when there is
+    // something to carry.
+    const meta = {
+      ...(deferred && { deferred }),
+      ...(resolvedPolyclinic && { resolvedPolyclinic }),
+    };
+
     return ApiResponse.success(data, {
       message,
       statusCode,
-      ...(deferred && { meta: { deferred } }),
+      ...(Object.keys(meta).length > 0 && { meta }),
     });
   }
 }

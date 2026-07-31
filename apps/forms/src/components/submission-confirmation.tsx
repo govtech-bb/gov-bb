@@ -60,7 +60,18 @@ export default function SubmissionConfirmation({
     date,
     paymentUrl,
     paymentDescription,
+    polyclinic,
   } = submissionState;
+
+  // Substitute the resolved polyclinic name into the recipe's `{polyclinic}`
+  // token (coordinate-routed forms only). Absent → a generic phrase so
+  // non-routed forms and unresolved submissions still read correctly. Same
+  // token + fallback as the confirmation email (email-body.builder), so the
+  // page and the email stay in step.
+  const resolvedMarkdown = markdownContent?.replaceAll(
+    "{polyclinic}",
+    polyclinic ?? "your local polyclinic",
+  );
 
   const serviceLabel = paymentDescription || serviceName;
   const formattedAmount = formatMoney(amount);
@@ -114,7 +125,7 @@ export default function SubmissionConfirmation({
         </button>
       </div>
 
-      {markdownContent && (
+      {resolvedMarkdown && (
         <div className="form-page__markdown-content">
           {/* Recipe-authored copy (e.g. "What you need to know"). react-markdown
               escapes raw HTML by default and we deliberately omit rehype-raw, so
@@ -123,7 +134,7 @@ export default function SubmissionConfirmation({
             remarkPlugins={[remarkGfm]}
             components={markdownComponents}
           >
-            {markdownContent}
+            {resolvedMarkdown}
           </ReactMarkdown>
         </div>
       )}
