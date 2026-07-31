@@ -148,8 +148,9 @@ const webhookConfigAuthorSchema = z
     mapping: webhookMappingSchema.optional(),
     timeoutMs: z.number().int().positive().max(30_000).default(10_000),
   })
-  .refine((c) => Boolean(c.url) || Boolean(c.endpoint), {
-    message: "webhook config requires either `url` or `endpoint`",
+  .refine((c) => Boolean(c.url) || Boolean(c.endpoint) || Boolean(c.mapping), {
+    message:
+      "webhook config requires `url`, `endpoint`, or `mapping` (a mapped webhook resolves its destination per-MDA from MDA_WEBHOOK_DESTINATIONS)",
   });
 
 const emailProcessorSchema = z.object({
@@ -215,8 +216,9 @@ const webhookConfigResolvedSchema = z
     mapping: webhookMappingSchema.optional(),
     timeoutMs: z.number().int().positive().max(30_000).default(10_000),
   })
-  .refine((c) => Boolean(c.url) || Boolean(c.endpoint), {
-    message: "webhook config requires either `url` or `endpoint`",
+  .refine((c) => Boolean(c.url) || Boolean(c.endpoint) || Boolean(c.mapping), {
+    message:
+      "webhook config requires `url`, `endpoint`, or `mapping` (a mapped webhook resolves its destination per-MDA from MDA_WEBHOOK_DESTINATIONS)",
   });
 
 export const resolvedProcessorSchema = z.discriminatedUnion("type", [

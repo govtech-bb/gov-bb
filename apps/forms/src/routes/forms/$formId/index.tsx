@@ -42,6 +42,7 @@ import {
   resolveSubmissionOutcome,
   applyPaymentReturn,
 } from "../../../lib/submission-outcome";
+import { fillParishRoutingCoordinate } from "../../../lib/parish-routing-points";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
@@ -263,10 +264,13 @@ function FormView() {
         );
         return step.fields.filter((field) => !visibleFieldIds.has(field.id));
       });
-      const formattedData: FormValuesByStep = formatDataForSubmission(
-        values,
-        repeatableStepSettingsRef.current,
-        hiddenFields,
+      const formattedData: FormValuesByStep = fillParishRoutingCoordinate(
+        formatDataForSubmission(
+          values,
+          repeatableStepSettingsRef.current,
+          hiddenFields,
+        ),
+        formMeta.catchmentRouting,
       );
       let response;
       try {
@@ -325,22 +329,24 @@ function FormView() {
     storeFormData(formMeta.formId, formValues);
   }, [formMeta.formId, formValues]);
 
-  const targetStores = [];
-
-  for (const [stepId, fieldId] of Object.entries(
-    formMeta.stepConditionalTargets,
-  )) {
-    targetStores.push(
-      useStore(
-        form.store,
-        (state) => state.values[getFullFieldId(stepId, fieldId)],
-      ),
-    );
-  }
+  // Visible steps depend on the values of the fields that other steps'
+  // visibility conditions reference. `formValues` (subscribed above) already
+  // updates on every value change, so derive a stable primitive key from just
+  // those conditional-target values and recompute only when one of them
+  // changes. This replaces a `useStore`-in-a-loop (a rules-of-hooks violation)
+  // whose fresh-array dependency also defeated the memo on every render.
+  const conditionalTargetKey = Object.entries(formMeta.stepConditionalTargets)
+    .map(([stepId, fieldId]) =>
+      String(formValues[getFullFieldId(stepId, fieldId)] ?? ""),
+    )
+    .join("|");
 
   const visibleSteps = React.useMemo(
     () => getVisibleSteps(formMeta.steps, form),
-    [targetStores, formMeta.steps],
+    // `form` is a stable ref; the recompute is intentionally keyed off the
+    // conditional-target values captured in conditionalTargetKey.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [conditionalTargetKey, formMeta.steps],
   );
 
   return (

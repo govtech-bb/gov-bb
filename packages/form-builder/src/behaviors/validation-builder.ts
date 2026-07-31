@@ -154,6 +154,14 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
       hasReference: true,
     },
   ],
+  time: [
+    {
+      type: "required",
+      label: "Required",
+      hasValue: false,
+      hasReference: false,
+    },
+  ],
   date: [
     {
       type: "required",
@@ -352,6 +360,29 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
       hasReference: true,
     },
   ],
+  // A collapsible multi-select: same flat string[] value as a checkbox group,
+  // so it carries the array-count rules (require at least one item selected).
+  "checkbox-accordion": [
+    {
+      type: "required",
+      label: "Required",
+      hasValue: false,
+      hasReference: false,
+    },
+    {
+      type: "minItems",
+      label: "Min Selected",
+      hasValue: true,
+      hasReference: false,
+    },
+    {
+      type: "maxItems",
+      label: "Max Selected",
+      hasValue: true,
+      hasReference: false,
+    },
+  ],
+  content: [],
   file: [
     {
       type: "required",
@@ -391,4 +422,26 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
     },
   ],
   "show-hide": [],
+  // A geocoder-backed single-line address; the value is a plain string, so it
+  // carries the same length rules as a text address field.
+  "address-lookup": [
+    {
+      type: "required",
+      label: "Required",
+      hasValue: false,
+      hasReference: false,
+    },
+    {
+      type: "minLength",
+      label: "Min Length",
+      hasValue: true,
+      hasReference: false,
+    },
+    {
+      type: "maxLength",
+      label: "Max Length",
+      hasValue: true,
+      hasReference: false,
+    },
+  ],
 };

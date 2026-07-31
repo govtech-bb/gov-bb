@@ -16,6 +16,7 @@ import {
   weightedAverage,
   weightedSum,
   type EventDataValue,
+  type ExpandedRow,
   type FunnelStage,
   type FunnelStepInput,
   type FunnelStepResult,
@@ -25,6 +26,9 @@ import {
   type SourceRow,
 } from '@govtech-bb/umami-analytics'
 import { memoize } from './cache'
+import { liveTools, pathMatchesPrefix, type Tool } from './tools-config'
+import { isExcludedPath } from './page-exclusions'
+import type { ServiceIndexEntry } from '@govtech-bb/content'
 
 const TTL_MS = 60_000
 // Max minutes Umami allows between funnel steps. A form start→submit can span a
@@ -42,6 +46,17 @@ export interface UmamiConfig {
 
 export function isConfigured(cfg: UmamiConfig): boolean {
   return Boolean(cfg.apiKey && cfg.landingWebsiteId && cfg.formsWebsiteId)
+}
+
+/**
+ * Landing-only configured gate. The Search tab's data comes solely from the
+ * landing site (`fetchSearchData` reads `landingWebsiteId` only), so it must not
+ * be gated on the forms website id like `isConfigured` — otherwise a deploy with
+ * landing analytics but no forms site wrongly renders "Analytics is not
+ * configured" despite the search data being available.
+ */
+export function isLandingConfigured(cfg: UmamiConfig): boolean {
+  return Boolean(cfg.apiKey && cfg.landingWebsiteId)
 }
 
 // --- date-range presets (#homepage filter) ---------------------------------
@@ -736,12 +751,33 @@ function ymd(ms: number): string {
   }).format(new Date(ms))
 }
 
-async function fetchFormList(cfg: UmamiConfig): Promise<FormListItem[]> {
+// A slow or hung forms API must not stall the whole dashboard request. Cap each
+// fetch and fall back to the same empty shape a non-ok response already returns
+// (#2080). Non-timeout errors keep propagating as before.
+const FORMS_FETCH_TIMEOUT_MS = 15_000
+
+const isTimeout = (err: unknown): boolean =>
+  err instanceof DOMException &&
+  (err.name === 'TimeoutError' || err.name === 'AbortError')
+
+export async function fetchFormList(cfg: UmamiConfig): Promise<FormListItem[]> {
   const base = cfg.formsApiUrl.replace(/\/+$/, '')
-  const res = await fetch(`${base}/form-definitions`)
-  if (!res.ok) return []
-  const body = (await res.json()) as {
-    data?: { formId: string; title: string }[]
+  // The timeout must cover the body read too, not just the connection — a
+  // server that sends headers then stalls the body would otherwise abort
+  // outside this catch and throw past the fallback (#2080). Only a timeout
+  // falls back; other errors (network, malformed JSON) propagate as before.
+  let body: { data?: { formId: string; title: string }[] }
+  try {
+    const res = await fetch(`${base}/form-definitions`, {
+      signal: AbortSignal.timeout(FORMS_FETCH_TIMEOUT_MS),
+    })
+    if (!res.ok) return []
+    body = (await res.json()) as {
+      data?: { formId: string; title: string }[]
+    }
+  } catch (err) {
+    if (isTimeout(err)) return []
+    throw err
   }
   return (body.data ?? []).map((f) => ({ formId: f.formId, title: f.title }))
 }
@@ -755,7 +791,7 @@ interface FormDefinition {
   messageByFieldCode: Record<string, string>
 }
 
-async function fetchFormDefinition(
+export async function fetchFormDefinition(
   cfg: UmamiConfig,
   formId: string,
 ): Promise<FormDefinition> {
@@ -766,11 +802,21 @@ async function fetchFormDefinition(
     messageByFieldCode: {},
   }
   const base = cfg.formsApiUrl.replace(/\/+$/, '')
-  const res = await fetch(
-    `${base}/form-definitions/${encodeURIComponent(formId)}`,
-  )
-  if (!res.ok) return empty
-  const body = (await res.json()) as {
+  // Timeout must cover the body read too (see fetchFormList) — return the empty
+  // shape on a timeout at either phase; other errors propagate (#2080).
+  let raw: unknown
+  try {
+    const res = await fetch(
+      `${base}/form-definitions/${encodeURIComponent(formId)}`,
+      { signal: AbortSignal.timeout(FORMS_FETCH_TIMEOUT_MS) },
+    )
+    if (!res.ok) return empty
+    raw = await res.json()
+  } catch (err) {
+    if (isTimeout(err)) return empty
+    throw err
+  }
+  const body = raw as {
     data?: {
       title?: string
       steps?: {
@@ -954,6 +1000,231 @@ export async function fetchFormsData(
     return {
       forms: shapeFormList(forms, headlines).sort((a, b) =>
         a.title.localeCompare(b.title),
+      ),
+      range,
+      window: rangeLabel(range),
+    }
+  })
+}
+
+// --- tools (#2119) ---------------------------------------------------------
+
+/** One interactive tool's traffic on the "Tools" tab. */
+export interface ToolRow {
+  name: string
+  /** the tool's canonical entry path (the row links here). */
+  path: string
+  pageviews: number
+  /**
+   * Distinct visitors, SUMMED across the tool's sub-pages. Exact for
+   * single-page tools; may overcount a visitor who hits several sub-pages of a
+   * multi-page tool (only the shelter finder today) — surfaced with a caveat in
+   * the UI. True prefix-distinct isn't available from Umami's per-path metrics.
+   */
+  visitors: number
+  topSources: SourceRow[]
+}
+
+export interface ToolsData {
+  tools: ToolRow[]
+  range: string
+  window: string
+}
+
+/**
+ * Roll landing URL rows up into one row per tool: sum pageviews + visitors for
+ * every URL under the tool's route prefix, and attach the tool's entry-path
+ * referrers as its top source. Pure — the caller supplies the URL rows and a
+ * `primaryPath → referrers` map, so it's fully unit-testable. Every tool is
+ * returned (zeroes when it has no traffic) so owners always see it listed.
+ */
+export function shapeTools(
+  tools: Tool[],
+  urlRows: ExpandedRow[],
+  sourcesByPath: Map<string, SourceRow[]>,
+): ToolRow[] {
+  return tools.map((tool) => {
+    let pageviews = 0
+    let visitors = 0
+    for (const row of urlRows) {
+      const path = row.x ?? row.name ?? ''
+      if (!pathMatchesPrefix(path, tool.prefix)) continue
+      pageviews += row.pageviews ?? row.y ?? 0
+      visitors += row.visitors ?? 0
+    }
+    return {
+      name: tool.name,
+      path: tool.primaryPath,
+      pageviews,
+      visitors,
+      topSources: sourcesByPath.get(tool.primaryPath) ?? [],
+    }
+  })
+}
+
+/** Per-tool pageview/visitor rollup + entry-page referrers — the "Tools" tab. */
+export async function fetchToolsData(
+  cfg: UmamiConfig,
+  rangeKey: string,
+): Promise<ToolsData> {
+  const range = normaliseRange(rangeKey)
+  return memoize(`tools:${range}`, TTL_MS, async () => {
+    const client = new UmamiClient({ apiKey: cfg.apiKey })
+    const r = rangeForKey(range)
+    const tools = liveTools()
+    const urlRows = await client.metricsUrls(cfg.landingWebsiteId, r)
+    // One referrers call per tool entry path (throttled by the client), like
+    // the Home tab's per-page "Top source".
+    const sourcesByPath = new Map<string, SourceRow[]>()
+    await Promise.all(
+      tools.map(async (tool) => {
+        try {
+          sourcesByPath.set(
+            tool.primaryPath,
+            buildSources(
+              await client.metricsReferrers(
+                cfg.landingWebsiteId,
+                tool.primaryPath,
+                r,
+              ),
+              5,
+            ),
+          )
+        } catch {
+          sourcesByPath.set(tool.primaryPath, [])
+        }
+      }),
+    )
+    return {
+      tools: shapeTools(tools, urlRows, sourcesByPath),
+      range,
+      window: rangeLabel(range),
+    }
+  })
+}
+
+// --- content pages (#2120) -------------------------------------------------
+
+/** One live content page's traffic on the "Pages" tab. */
+export interface PageListRow {
+  path: string
+  /** registry title. */
+  title: string
+  pageviews: number
+  visitors: number
+  /** linked form recipe id when the page is a guide page, else null. */
+  formId: string | null
+  topSources: SourceRow[]
+}
+
+export interface PagesData {
+  pages: PageListRow[]
+  range: string
+  window: string
+}
+
+/** A landing content service's public URL: /category/slug (or /slug). */
+function registryPath(entry: ServiceIndexEntry): string {
+  return entry.category ? `/${entry.category}/${entry.slug}` : `/${entry.slug}`
+}
+
+function stripTrailingSlash(path: string): string {
+  return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path
+}
+
+/**
+ * The Pages list: landing Umami URL rows joined to the public services registry
+ * on `/category/slug`. Only paths that match a public registry entry survive
+ * (unmatched = preview/draft or non-content → dropped), minus the hard route
+ * exclusions (tools/forms/system/`/start`). Trailing-slash URL variants merge.
+ * Pure — the caller supplies the URL rows, registry, and per-path referrers.
+ */
+export function shapePages(
+  urlRows: ExpandedRow[],
+  registry: ServiceIndexEntry[],
+  sourcesByPath: Map<string, SourceRow[]>,
+): PageListRow[] {
+  const byPath = new Map(registry.map((e) => [registryPath(e), e]))
+  const agg = new Map<string, { pageviews: number; visitors: number }>()
+  for (const row of urlRows) {
+    const path = stripTrailingSlash(String(row.x ?? row.name ?? ''))
+    if (!path || isExcludedPath(path) || !byPath.has(path)) continue
+    const acc = agg.get(path) ?? { pageviews: 0, visitors: 0 }
+    acc.pageviews += row.pageviews ?? row.y ?? 0
+    acc.visitors += row.visitors ?? 0
+    agg.set(path, acc)
+  }
+  return [...agg.entries()].map(([path, { pageviews, visitors }]) => {
+    const entry = byPath.get(path)!
+    return {
+      path,
+      title: entry.title,
+      pageviews,
+      visitors,
+      formId: entry.formId ?? null,
+      topSources: sourcesByPath.get(path) ?? [],
+    }
+  })
+}
+
+/**
+ * The public content-service registry from the forms API (`GET /services`,
+ * unauthenticated → public only). Mirrors fetchFormList: timeout or non-2xx →
+ * `[]` (the tab degrades to empty), other errors propagate.
+ */
+export async function fetchServicesIndex(
+  cfg: UmamiConfig,
+): Promise<ServiceIndexEntry[]> {
+  const base = cfg.formsApiUrl.replace(/\/+$/, '')
+  let body: { data?: ServiceIndexEntry[] }
+  try {
+    const res = await fetch(`${base}/services`, {
+      signal: AbortSignal.timeout(FORMS_FETCH_TIMEOUT_MS),
+    })
+    if (!res.ok) return []
+    body = (await res.json()) as { data?: ServiceIndexEntry[] }
+  } catch (err) {
+    if (isTimeout(err)) return []
+    throw err
+  }
+  return body.data ?? []
+}
+
+/** Live content pages + their traffic — the "Pages" tab (landing site). */
+export async function fetchPagesData(
+  cfg: UmamiConfig,
+  rangeKey: string,
+): Promise<PagesData> {
+  const range = normaliseRange(rangeKey)
+  return memoize(`pages:${range}`, TTL_MS, async () => {
+    const client = new UmamiClient({ apiKey: cfg.apiKey })
+    const r = rangeForKey(range)
+    const [urlRows, registry] = await Promise.all([
+      client.metricsUrls(cfg.landingWebsiteId, r),
+      fetchServicesIndex(cfg),
+    ])
+    // First pass yields the kept content-page paths; fetch each page's
+    // referrers (throttled by the client), then re-shape with the sources.
+    const kept = shapePages(urlRows, registry, new Map())
+    const sourcesByPath = new Map<string, SourceRow[]>()
+    await Promise.all(
+      kept.map(async (p) => {
+        try {
+          sourcesByPath.set(
+            p.path,
+            buildSources(
+              await client.metricsReferrers(cfg.landingWebsiteId, p.path, r),
+              5,
+            ),
+          )
+        } catch {
+          sourcesByPath.set(p.path, [])
+        }
+      }),
+    )
+    return {
+      pages: shapePages(urlRows, registry, sourcesByPath).sort(
+        (a, b) => b.pageviews - a.pageviews,
       ),
       range,
       window: rangeLabel(range),

@@ -700,4 +700,35 @@ describe("hydrateForm", () => {
 
     expect(contract.contactDetails).toBeUndefined();
   });
+
+  it("carries catchmentRouting through to the served contract", () => {
+    const recipe = {
+      formId: "f",
+      title: "T",
+      steps: [],
+      createdAt: "2026-07-28T00:00:00Z",
+      updatedAt: "2026-07-28T00:00:00Z",
+      catchmentRouting: {
+        coordinatesField: "event-details.event-address-coordinates",
+        parishField: "event-details.event-parish",
+      },
+    };
+    const contract = hydrateForm(recipe as never, {} as never);
+    expect(contract.catchmentRouting?.parishField).toBe(
+      "event-details.event-parish",
+    );
+  });
+
+  it("omits catchmentRouting when the recipe has none", () => {
+    const recipe = {
+      formId: "f",
+      title: "T",
+      steps: [],
+      createdAt: "2026-07-28T00:00:00Z",
+      updatedAt: "2026-07-28T00:00:00Z",
+    };
+    expect(
+      hydrateForm(recipe as never, {} as never).catchmentRouting,
+    ).toBeUndefined();
+  });
 });

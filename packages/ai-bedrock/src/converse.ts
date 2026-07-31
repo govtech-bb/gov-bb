@@ -8,6 +8,12 @@ import { resolveBedrockModelId } from "./models.js";
 const DEFAULT_REGION =
   process.env.BEDROCK_REGION ?? process.env.AWS_REGION ?? "ca-central-1";
 
+// Cap the Bedrock round-trip so a stuck socket can't hang the caller forever
+// (the sync /builder/ai/content route, and the edit/upload job path that would
+// otherwise leak a permanently-"running" job) (#2080). Generous enough for a
+// full LLM generation (maxTokens up to 16384), but finite.
+const BEDROCK_TIMEOUT_MS = 90_000;
+
 export interface ConverseMessage {
   role: "user" | "assistant";
   content: string;
@@ -61,7 +67,9 @@ export async function bedrockConverse(
     inferenceConfig: { maxTokens: opts.maxTokens ?? 16384 },
   });
 
-  const response = await client.send(command);
+  const response = await client.send(command, {
+    abortSignal: AbortSignal.timeout(BEDROCK_TIMEOUT_MS),
+  });
   const textBlock = response.output?.message?.content?.find((b) => b.text);
   return textBlock?.text ?? "";
 }

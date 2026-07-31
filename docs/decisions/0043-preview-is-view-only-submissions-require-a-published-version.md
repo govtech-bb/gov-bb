@@ -56,6 +56,10 @@ published (file) recipe version.**
   honouring the preview token on `POST /submissions` — point at this record. The
   correct path is a dedicated test-submission harness that produces isolated,
   clearly-marked test artifacts, decided separately.
+  - **Update (ADR 0065):** this still holds for **DB-only builder drafts**.
+    Non-public *published file* recipes (the #1682 `bypassVisibility` case) are a
+    different animal and are now submittable per-environment via
+    `ALLOW_PREVIEW_SUBMISSIONS`; that path never reaches a DB draft.
 - The backend 400 is **defense-in-depth**, not the primary UX: the disabled
   button is what citizens/operators hit. The 400 covers stale tabs, direct
   POSTs, API consumers, and logs — cases the button can't.

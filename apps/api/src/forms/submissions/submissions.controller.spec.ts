@@ -358,4 +358,39 @@ describe("SubmissionsController", () => {
       expect(arg.bypassVisibility).toBeFalsy();
     });
   });
+
+  describe("preview-submission env flag (ALLOW_PREVIEW_SUBMISSIONS)", () => {
+    beforeEach(() => {
+      (service.submit as Mock).mockResolvedValue({
+        data: makeEntity(),
+        message: "Submission created",
+        statusCode: HttpStatus.CREATED,
+        deferred: undefined,
+      });
+    });
+
+    it("threads bypassVisibility:true when the flag is 'true', with no preview token", async () => {
+      config.get.mockImplementation((key: string) =>
+        key === "ALLOW_PREVIEW_SUBMISSIONS" ? "true" : "",
+      );
+
+      await controller.create("key-abc", undefined, undefined, baseDto);
+
+      expect(config.get).toHaveBeenCalledWith("ALLOW_PREVIEW_SUBMISSIONS", "");
+      expect(service.submit).toHaveBeenCalledWith(
+        expect.objectContaining({ bypassVisibility: true }),
+      );
+    });
+
+    it("does NOT set bypassVisibility when the flag is anything other than 'true'", async () => {
+      config.get.mockImplementation((key: string) =>
+        key === "ALLOW_PREVIEW_SUBMISSIONS" ? "false" : "",
+      );
+
+      await controller.create("key-abc", undefined, undefined, baseDto);
+
+      const arg = (service.submit as Mock).mock.calls[0][0];
+      expect(arg.bypassVisibility).toBeFalsy();
+    });
+  });
 });

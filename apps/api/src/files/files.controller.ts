@@ -3,6 +3,7 @@ import { ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { ApiResponse } from "../common/response";
 import type { ApiResponseShape } from "../common/response";
+import { hasPreviewCookieBypass } from "@/common/preview-cookie";
 import { FilesService } from "./files.service";
 import {
   ConfirmUploadDto,
@@ -30,11 +31,18 @@ export class FilesController {
     // Absent/invalid → published recipes only.
     @Headers("x-recipe-preview") previewToken?: string,
     @Headers("x-recipe-draft") draftToken?: string,
+    // Cookie fallback (#2116): once `canDropPreviewToken` removes `?preview=`
+    // from the URL, the browser no longer sends the header on this client-side
+    // fetch, but it still sends the same-site `preview` cookie. Honour it as a
+    // visibility bypass so a non-public form's upload resolves, mirroring the
+    // form-GET path. Visibility only — never DB/draft sourcing.
+    @Headers("cookie") cookieHeader?: string,
   ): Promise<ApiResponseShape<PresignUploadResponseDto>> {
     const data = await this.filesService.presignUpload(
       dto,
       previewToken,
       draftToken,
+      hasPreviewCookieBypass(cookieHeader),
     );
     return ApiResponse.success(data, { message: "Upload URL generated" });
   }
@@ -45,11 +53,14 @@ export class FilesController {
     @Body() dto: ConfirmUploadDto,
     @Headers("x-recipe-preview") previewToken?: string,
     @Headers("x-recipe-draft") draftToken?: string,
+    // Cookie fallback (#2116) — see presignUpload above.
+    @Headers("cookie") cookieHeader?: string,
   ): Promise<ApiResponseShape<FileAttachmentDto>> {
     const data = await this.filesService.confirmUpload(
       dto,
       previewToken,
       draftToken,
+      hasPreviewCookieBypass(cookieHeader),
     );
     return ApiResponse.success(data, { message: "Upload confirmed" });
   }

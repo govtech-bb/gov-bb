@@ -41,9 +41,15 @@ export const getEditStatus = createServerFn({ method: "GET", strict: false })
 
 export const presignPdfUpload = createServerFn({ method: "POST" })
   .middleware([requireSession])
-  .handler(async (): Promise<{ url: string; s3Key: string }> => {
-    return api.post("/builder/ai/upload/presign", {});
-  });
+  .handler(
+    async (): Promise<{
+      url: string;
+      fields: Record<string, string>;
+      s3Key: string;
+    }> => {
+      return api.post("/builder/ai/upload/presign", {});
+    },
+  );
 
 export const startPdfConvert = createServerFn({ method: "POST" })
   .middleware([requireSession])

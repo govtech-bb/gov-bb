@@ -312,7 +312,11 @@ export class FormDefinitionsService {
 
     if (!includeProcessors) {
       // Client path: strip processors, surface only the safe flag.
-      const { processors: _processors, ...stripped } = contract;
+      const {
+        processors: _processors,
+        catchmentRouting: _catchmentRouting,
+        ...stripped
+      } = contract;
       return { ...stripped, requiresPayment } as ServiceContract;
     }
 

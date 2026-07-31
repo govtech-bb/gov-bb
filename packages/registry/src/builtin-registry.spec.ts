@@ -33,6 +33,15 @@ describe("BUILTIN_REGISTRY", () => {
     );
   });
 
+  it("exposes the Barbados geocoder address-lookup component", () => {
+    const addressLookup = BUILTIN_REGISTRY["components/address-lookup"];
+    expect(addressLookup).toMatchObject({
+      fieldId: "address-lookup",
+      htmlType: "address-lookup",
+      validations: { required: { value: true } },
+    });
+  });
+
   it("exposes the primary-school select with all 70 schools", () => {
     const primarySchool = BUILTIN_REGISTRY["components/primary-school"];
     expect(primarySchool).toMatchObject({
@@ -74,5 +83,12 @@ describe("BUILTIN_REGISTRY", () => {
     expect(maritalStatus.validations).toMatchObject({
       required: { value: true },
     });
+  });
+
+  it("resolves components/content with defaults", () => {
+    const c = REGISTRY_COMPONENTS["components/content"];
+    expect(c).toBeDefined();
+    expect(c.htmlType).toBe("content");
+    expect(c.variant).toBe("text");
   });
 });

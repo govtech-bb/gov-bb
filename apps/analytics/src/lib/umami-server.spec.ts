@@ -1,17 +1,48 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   buildFunnelSteps,
   buildStepFunnel,
   buildVisitFunnelSteps,
+  fetchFormDefinition,
+  fetchFormList,
   funnelHeadline,
   humanizeStep,
+  isConfigured,
+  isLandingConfigured,
   shapeFlow,
   shapeFormList,
   shapeFunnel,
   shapeJourneyList,
+  shapePages,
   shapeSearch,
   shapeSubmitError,
+  shapeTools,
+  type UmamiConfig,
 } from './umami-server'
+import type { Tool } from './tools-config'
+import type { ServiceIndexEntry } from '@govtech-bb/content'
+
+describe('configured gates', () => {
+  const full = {
+    apiKey: 'k',
+    landingWebsiteId: 'land',
+    formsWebsiteId: 'forms',
+    formsApiUrl: 'https://api',
+  }
+
+  it('isConfigured requires apiKey + landing + forms', () => {
+    expect(isConfigured(full)).toBe(true)
+    expect(isConfigured({ ...full, formsWebsiteId: '' })).toBe(false)
+    expect(isConfigured({ ...full, landingWebsiteId: '' })).toBe(false)
+    expect(isConfigured({ ...full, apiKey: '' })).toBe(false)
+  })
+
+  it('isLandingConfigured needs only apiKey + landing (not the forms site)', () => {
+    expect(isLandingConfigured({ ...full, formsWebsiteId: '' })).toBe(true)
+    expect(isLandingConfigured({ ...full, landingWebsiteId: '' })).toBe(false)
+    expect(isLandingConfigured({ ...full, apiKey: '' })).toBe(false)
+  })
+})
 
 describe('buildFunnelSteps', () => {
   it('builds start→review→submit event steps for a formId', () => {
@@ -413,5 +444,262 @@ describe('shapeSearch', () => {
       zeroResultRate: 0,
       queries: [],
     })
+  })
+})
+
+// A hung forms API must not stall the dashboard: each fetch is capped with
+// AbortSignal.timeout and falls back to its empty shape on a timeout (#2080).
+describe('forms-API fetch timeouts (#2080)', () => {
+  const cfg: UmamiConfig = {
+    apiKey: 'k',
+    landingWebsiteId: 'l',
+    formsWebsiteId: 'f',
+    formsApiUrl: 'http://forms.test',
+  }
+  const timeoutError = () => new DOMException('timed out', 'TimeoutError')
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('fetchFormList returns [] on a fetch timeout', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(timeoutError()))
+    expect(await fetchFormList(cfg)).toEqual([])
+  })
+
+  it('fetchFormDefinition returns the empty shape on a fetch timeout', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(timeoutError()))
+    const result = await fetchFormDefinition(cfg, 'passport-renewal')
+    expect(result).toEqual({
+      title: 'passport-renewal',
+      steps: [],
+      labelByField: {},
+      messageByFieldCode: {},
+    })
+  })
+
+  it('fetchFormList returns [] when the timeout fires during the body read', async () => {
+    // Headers arrive (fetch resolves ok) but the body stalls, so the abort
+    // lands on res.json(). This must still fall back, not throw past it (#2080).
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.reject(timeoutError()),
+      }),
+    )
+    expect(await fetchFormList(cfg)).toEqual([])
+  })
+
+  it('passes an AbortSignal to fetch', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ data: [] }) })
+    vi.stubGlobal('fetch', fetchMock)
+    await fetchFormList(cfg)
+    expect(fetchMock.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it('re-throws a non-timeout fetch error rather than swallowing it', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
+    await expect(fetchFormList(cfg)).rejects.toThrow('network down')
+  })
+})
+
+describe('shapeTools (per-tool rollup)', () => {
+  const shelter: Tool = {
+    name: 'Find an emergency shelter',
+    prefix: '/health-and-emergency-services/find-an-emergency-shelter',
+    primaryPath: '/health-and-emergency-services/find-an-emergency-shelter',
+    live: true,
+  }
+  const bankHoliday: Tool = {
+    name: 'Check bank holiday dates',
+    prefix: '/bank-holiday-calendar',
+    primaryPath: '/bank-holiday-calendar',
+    live: true,
+  }
+
+  it('rolls up all URL rows under a tool prefix (pageviews + visitors summed)', () => {
+    const rows = [
+      { x: shelter.prefix, pageviews: 100, visitors: 80 },
+      { x: `${shelter.prefix}/find`, pageviews: 40, visitors: 30 },
+      { x: `${shelter.prefix}/guidance`, pageviews: 10, visitors: 8 },
+    ]
+    const sources = new Map([
+      [shelter.primaryPath, [{ referrer: 'google', count: 12 }]],
+    ])
+    const [row] = shapeTools([shelter], rows, sources)
+    expect(row).toEqual({
+      name: shelter.name,
+      path: shelter.primaryPath,
+      pageviews: 150,
+      visitors: 118,
+      topSources: [{ referrer: 'google', count: 12 }],
+    })
+  })
+
+  it('does not swallow a same-stemmed sibling path (prefix boundary)', () => {
+    const rows = [
+      { x: bankHoliday.prefix, pageviews: 50, visitors: 40 },
+      { x: '/bank-holiday-calendar-archive', pageviews: 999, visitors: 999 },
+    ]
+    const [row] = shapeTools([bankHoliday], rows, new Map())
+    expect(row.pageviews).toBe(50)
+    expect(row.visitors).toBe(40)
+  })
+
+  it('lists a tool with no traffic at zero, with no sources', () => {
+    const [row] = shapeTools([bankHoliday], [], new Map())
+    expect(row).toEqual({
+      name: bankHoliday.name,
+      path: bankHoliday.primaryPath,
+      pageviews: 0,
+      visitors: 0,
+      topSources: [],
+    })
+  })
+
+  it('reads path from x or name and pageviews from pageviews or y', () => {
+    const rows = [
+      { name: bankHoliday.prefix, y: 7 }, // name + y fallbacks, no visitors
+    ]
+    const [row] = shapeTools([bankHoliday], rows, new Map())
+    expect(row.pageviews).toBe(7)
+    expect(row.visitors).toBe(0)
+  })
+
+  it('returns one row per tool, in the given order', () => {
+    const rows = shapeTools([shelter, bankHoliday], [], new Map())
+    expect(rows.map((r) => r.name)).toEqual([shelter.name, bankHoliday.name])
+  })
+})
+
+describe('shapePages (content pages joined to the public registry)', () => {
+  const registry: ServiceIndexEntry[] = [
+    {
+      slug: 'get-birth-certificate',
+      title: 'Get a copy of a birth certificate',
+      category: 'family-birth-relationships',
+      formId: 'get-birth-certificate',
+      visibility: 'public',
+    },
+    {
+      slug: 'stormready-barbados',
+      title: 'StormReady Barbados',
+      category: 'health-and-emergency-services',
+      visibility: 'public',
+    },
+  ]
+
+  it('joins a Umami path to its registry entry on /category/slug', () => {
+    const rows = shapePages(
+      [
+        {
+          x: '/family-birth-relationships/get-birth-certificate',
+          pageviews: 90,
+          visitors: 70,
+        },
+      ],
+      registry,
+      new Map([
+        [
+          '/family-birth-relationships/get-birth-certificate',
+          [{ referrer: 'google', count: 9 }],
+        ],
+      ]),
+    )
+    expect(rows).toEqual([
+      {
+        path: '/family-birth-relationships/get-birth-certificate',
+        title: 'Get a copy of a birth certificate',
+        pageviews: 90,
+        visitors: 70,
+        formId: 'get-birth-certificate',
+        topSources: [{ referrer: 'google', count: 9 }],
+      },
+    ])
+  })
+
+  it('sets formId null for a content page with no form', () => {
+    const [row] = shapePages(
+      [
+        {
+          x: '/health-and-emergency-services/stormready-barbados',
+          pageviews: 5,
+          visitors: 4,
+        },
+      ],
+      registry,
+      new Map(),
+    )
+    expect(row.formId).toBeNull()
+    expect(row.title).toBe('StormReady Barbados')
+  })
+
+  it('drops a trafficked path that matches no public registry entry', () => {
+    const rows = shapePages(
+      [{ x: '/some/preview-or-unknown-page', pageviews: 999, visitors: 999 }],
+      registry,
+      new Map(),
+    )
+    expect(rows).toEqual([])
+  })
+
+  it('excludes tool prefixes, /start, /forms/* and system routes even if registered', () => {
+    const rows = shapePages(
+      [
+        { x: '/bank-holiday-calendar', pageviews: 100, visitors: 80 },
+        { x: '/forms/get-birth-certificate', pageviews: 50, visitors: 40 },
+        {
+          x: '/family-birth-relationships/register-a-birth/start',
+          pageviews: 20,
+          visitors: 10,
+        },
+        { x: '/sitemap.xml', pageviews: 5, visitors: 5 },
+      ],
+      registry,
+      new Map(),
+    )
+    expect(rows).toEqual([])
+  })
+
+  it('normalises a trailing slash and aggregates duplicate rows for one path', () => {
+    const rows = shapePages(
+      [
+        {
+          x: '/family-birth-relationships/get-birth-certificate',
+          pageviews: 60,
+          visitors: 40,
+        },
+        {
+          x: '/family-birth-relationships/get-birth-certificate/',
+          pageviews: 30,
+          visitors: 25,
+        },
+      ],
+      registry,
+      new Map(),
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0].pageviews).toBe(90)
+    expect(rows[0].visitors).toBe(65)
+  })
+
+  it('is empty when the registry or the URL rows are empty', () => {
+    expect(shapePages([], registry, new Map())).toEqual([])
+    expect(
+      shapePages(
+        [
+          {
+            x: '/family-birth-relationships/get-birth-certificate',
+            pageviews: 1,
+            visitors: 1,
+          },
+        ],
+        [],
+        new Map(),
+      ),
+    ).toEqual([])
   })
 })

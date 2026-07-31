@@ -7,6 +7,7 @@ import { validateDateField } from "./validate-date";
 const EMPTY_BY_TYPE: Partial<Record<string, unknown>> = {
   number: undefined,
   checkbox: [],
+  "checkbox-accordion": [],
   select: [],
   file: [],
 };

@@ -270,3 +270,52 @@ describe("numeric runners with transform: yearsSince", () => {
     ).toBe("Must be less than 24");
   });
 });
+
+// A date exactly `days` from today, as the { day, month, year } object a date
+// field stores — so the derived lead time is deterministic regardless of run
+// date (or the time of day the test runs).
+const dateDaysAhead = (
+  days: number,
+): { day: number; month: number; year: number } => {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return { day: d.getDate(), month: d.getMonth() + 1, year: d.getFullYear() };
+};
+
+describe("minRunner with transform: daysUntil (lead-time gate)", () => {
+  it("accepts a start date exactly 14 days ahead", () => {
+    expect(
+      minRunner(
+        dateDaysAhead(14),
+        { value: 14, transform: "daysUntil", error: "Apply 14 days ahead" },
+        {},
+      ),
+    ).toBeNull();
+  });
+
+  it("rejects a start date fewer than 14 days ahead", () => {
+    expect(
+      minRunner(
+        dateDaysAhead(13),
+        { value: 14, transform: "daysUntil", error: "Apply 14 days ahead" },
+        {},
+      ),
+    ).toBe("Apply 14 days ahead");
+  });
+
+  it("rejects a start date in the past", () => {
+    expect(
+      minRunner(
+        dateDaysAhead(-1),
+        { value: 14, transform: "daysUntil", error: "Apply 14 days ahead" },
+        {},
+      ),
+    ).toBe("Apply 14 days ahead");
+  });
+
+  it("an empty/invalid date fails (NaN never satisfies the bound)", () => {
+    expect(
+      minRunner("", { value: 14, transform: "daysUntil", error: "e" }, {}),
+    ).toBe("e");
+  });
+});

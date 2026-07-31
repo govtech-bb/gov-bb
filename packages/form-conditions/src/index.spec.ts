@@ -1295,6 +1295,44 @@ describe("evaluateCondition — transform (yearsSince/monthsSince/daysSince)", (
   });
 });
 
+describe("evaluateCondition — transform daysUntil (future lead time)", () => {
+  const make = (operator: "gte" | "lt", value: number) =>
+    ({
+      type: "fieldConditionalOn",
+      targetFieldId: "event-date",
+      operator,
+      value,
+      transform: "daysUntil",
+    }) as unknown as FieldConditionalOnBehaviour;
+
+  const dateDaysAhead = (
+    days: number,
+  ): { day: number; month: number; year: number } => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return { day: d.getDate(), month: d.getMonth() + 1, year: d.getFullYear() };
+  };
+
+  it("gte 14: matches a date at least 14 days ahead, not one that is sooner", () => {
+    expect(
+      evaluateCondition(make("gte", 14), EMPTY_VALUES, {
+        "event-date": dateDaysAhead(14) as unknown as string,
+      }),
+    ).toBe(true);
+    expect(
+      evaluateCondition(make("gte", 14), EMPTY_VALUES, {
+        "event-date": dateDaysAhead(13) as unknown as string,
+      }),
+    ).toBe(false);
+  });
+
+  it("an invalid/empty date never matches (NaN)", () => {
+    expect(
+      evaluateCondition(make("gte", 14), EMPTY_VALUES, { "event-date": "" }),
+    ).toBe(false);
+  });
+});
+
 // ─── resolveStepTitle ────────────────────────────────────────────────────────
 
 describe("resolveStepTitle", () => {

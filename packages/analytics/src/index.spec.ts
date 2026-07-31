@@ -40,6 +40,22 @@ describe("trackEvent", () => {
     expect(track).toHaveBeenCalledTimes(1);
     expect(track).toHaveBeenCalledWith("search", { query: "x", results: 0 });
   });
+
+  it("masks PII in a search query before sending (#2079)", () => {
+    const track = vi.fn();
+    window.umami = { track };
+    const data = {
+      query: "john smith national insurance 1234567890",
+      results: 3,
+    };
+    trackEvent("search", data);
+    expect(track).toHaveBeenCalledWith("search", {
+      query: "john smith national insurance 1********0",
+      results: 3,
+    });
+    // caller's object is not mutated
+    expect(data.query).toBe("john smith national insurance 1234567890");
+  });
 });
 
 describe("trackPageview", () => {

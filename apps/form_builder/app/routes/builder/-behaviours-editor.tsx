@@ -36,7 +36,12 @@ const OPERATOR_OPTIONS = [
 // `transform` is meaningful, so the transform selector is gated on them.
 const NUMERIC_OPERATORS = new Set(["gte", "lte", "gt", "lt"]);
 
-const TRANSFORM_OPTIONS = ["yearsSince", "monthsSince", "daysSince"] as const;
+const TRANSFORM_OPTIONS = [
+  "yearsSince",
+  "monthsSince",
+  "daysSince",
+  "daysUntil",
+] as const;
 
 type BehaviourDescriptor = (typeof BEHAVIOUR_TYPE_DESCRIPTORS)[number];
 

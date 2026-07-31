@@ -3,7 +3,6 @@ import {
   ApiNotFoundResponse,
   ApiOperation,
   ApiParam,
-  ApiQuery,
   ApiResponse,
 } from "@nestjs/swagger";
 
@@ -11,12 +10,13 @@ export function GetFormDefinitionDocs() {
   return applyDecorators(
     ApiOperation({
       summary: "Get a form definition",
-      description:
-        "Returns the hydrated form definition for the given formId. " +
-        "Defaults to the latest version when no version is specified.",
+      description: "Returns the hydrated form definition for the given formId.",
     }),
-    ApiParam({ name: "formId", description: "The unique form identifier", example: "passport-renewal" }),
-    ApiQuery({ name: "version", required: false, description: "Specific form version to retrieve", example: "1.0.0" }),
+    ApiParam({
+      name: "formId",
+      description: "The unique form identifier",
+      example: "passport-renewal",
+    }),
     ApiResponse({
       status: 200,
       description: "Form definition retrieved",
@@ -27,7 +27,8 @@ export function GetFormDefinitionDocs() {
           statusCode: { type: "number", example: 200 },
           data: {
             type: "object",
-            description: "Hydrated ServiceContract containing steps, processors, and metadata",
+            description:
+              "Hydrated ServiceContract containing steps, processors, and metadata",
           },
         },
       },

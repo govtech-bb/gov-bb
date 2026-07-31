@@ -353,6 +353,28 @@ describe("hydrateForm", () => {
     const result = await hydrateForm(baseRecipe, resolver);
     expect(result.closingDateTime).toBeUndefined();
   });
+
+  // Regression: the submission pipeline hydrates through THIS resolver (not
+  // @govtech-bb/form-builder's). catchmentRouting was dropped here, so
+  // resolvedCatchment was never computed and the webhook fell back to the
+  // static programmeCode — while form-builder's copy (which has the field, and
+  // its own tests) kept CI green. Guard the field on the api-side hydrate.
+  it("carries catchmentRouting through to the served contract (submission path)", async () => {
+    const catchmentRouting = {
+      coordinatesField: "event-details.event-address-coordinates",
+      parishField: "event-details.event-parish",
+    };
+    const result = await hydrateForm(
+      { ...baseRecipe, catchmentRouting },
+      resolver,
+    );
+    expect(result.catchmentRouting).toEqual(catchmentRouting);
+  });
+
+  it("leaves catchmentRouting undefined when the recipe has none", async () => {
+    const result = await hydrateForm(baseRecipe, resolver);
+    expect(result.catchmentRouting).toBeUndefined();
+  });
 });
 
 // ─── RegistryService ───────────────────────────────────────────────────────

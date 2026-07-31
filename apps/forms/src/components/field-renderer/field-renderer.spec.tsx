@@ -108,6 +108,27 @@ describe("FieldRenderer", () => {
     expect(container.querySelector("input")).toBeTruthy();
   });
 
+  it("time with step → passes the native step to the input", () => {
+    const { container } = renderField(primitive("time", { step: 1800 }));
+    const input = container.querySelector('input[type="time"]');
+    expect(input?.getAttribute("step")).toBe("1800");
+  });
+
+  it("ui.hidden → renders a hidden input (no visible control)", () => {
+    mockState = {
+      value: "13.1,-59.6",
+      meta: { isValid: true, errors: [] },
+    };
+    const { container } = renderField(
+      primitive("text", { ui: { hidden: true } }),
+    );
+    const input = container.querySelector("input");
+    expect(input?.getAttribute("type")).toBe("hidden");
+    expect(input?.getAttribute("value")).toBe("13.1,-59.6");
+    // No visible label rendered for a hidden field.
+    expect(container.querySelector("label")).toBeNull();
+  });
+
   it("textarea → renders a textarea element", () => {
     const { container } = renderField(primitive("textarea"));
     expect(container.querySelector("textarea")).toBeTruthy();
@@ -144,6 +165,60 @@ describe("FieldRenderer", () => {
     );
     const inputs = container.querySelectorAll("input");
     expect(inputs.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("time → renders a native time input", () => {
+    const { container } = renderField(primitive("time"));
+    expect(container.querySelector('input[type="time"]')).toBeTruthy();
+  });
+
+  const accordionGroups = [
+    {
+      label: "Meat and poultry",
+      higherRisk: true,
+      options: [
+        { value: "chicken", label: "Chicken" },
+        { value: "beef", label: "Beef" },
+      ],
+    },
+    {
+      label: "Snacks and sweets",
+      options: [{ value: "popcorn", label: "Popcorn" }],
+    },
+  ];
+
+  it("checkbox-accordion → one category checkbox per group, collapsed by default, with a higher-risk badge", () => {
+    const { container } = renderField(
+      primitive("checkbox-accordion", { groups: accordionGroups }),
+    );
+    // One category checkbox per group; collapsed, so no item checkboxes yet.
+    expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(
+      2,
+    );
+    expect(screen.queryByLabelText("Chicken")).toBeNull();
+    // Higher-risk badge only on the flagged category.
+    const badges = container.querySelectorAll(".govbb-tag");
+    expect(badges).toHaveLength(1);
+    expect(badges[0]).toHaveTextContent(/higher-risk/i);
+  });
+
+  it("checkbox-accordion → ticking a category expands it to reveal its items", async () => {
+    const user = userEvent.setup();
+    renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
+    expect(screen.queryByLabelText("Popcorn")).toBeNull();
+    await user.click(screen.getByLabelText("Snacks and sweets"));
+    expect(screen.getByLabelText("Popcorn")).toBeInTheDocument();
+    await user.click(screen.getByLabelText("Popcorn"));
+    expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["popcorn"]);
+  });
+
+  it("checkbox-accordion → a category with an existing selection opens expanded and accumulates", async () => {
+    const user = userEvent.setup();
+    mockState = { value: ["beef"], meta: { isValid: true, errors: [] } };
+    renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
+    // Meat holds "beef", so it renders expanded and its items are visible.
+    await user.click(screen.getByLabelText("Chicken"));
+    expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["beef", "chicken"]);
   });
 
   it("date → renders three text inputs with numeric inputmode (day/month/year)", () => {

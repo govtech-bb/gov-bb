@@ -32,7 +32,12 @@ const isManaged = (type: ValidationType) => type !== "required";
 // Date→number transforms for the duration rules (#1020). Added rules seed
 // `yearsSince` so a date's "Min (duration)" rule is functional immediately
 // rather than comparing an underived date (which would always fail).
-const TRANSFORM_OPTIONS = ["yearsSince", "monthsSince", "daysSince"] as const;
+const TRANSFORM_OPTIONS = [
+  "yearsSince",
+  "monthsSince",
+  "daysSince",
+  "daysUntil",
+] as const;
 
 export function ValidationRulesEditor({
   htmlType,

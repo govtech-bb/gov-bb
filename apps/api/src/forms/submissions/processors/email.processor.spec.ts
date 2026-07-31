@@ -1243,3 +1243,71 @@ describe("EmailProcessor — notification_log recording", () => {
     );
   });
 });
+
+describe("EmailProcessor — catchment.mdaEmail recipient resolution", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("sends the MDA email to the resolved catchment address", async () => {
+    const processor = new EmailProcessor(
+      makeConfig(),
+      makeMailer(),
+      makeTemplateService(),
+      makeBodyBuilder(),
+      makeFilesService(),
+      makeFormConfigService(),
+      makeNotificationLog(),
+    );
+    const payload = makePayload(
+      { recipientField: "catchment.mdaEmail" },
+      {},
+      {
+        resolvedCatchment: {
+          polyclinic: "P",
+          programmeCode: "C",
+          mdaEmail: "ehd.wspc@health.gov.bb",
+        },
+      },
+    );
+
+    await processor.process(payload);
+
+    expect(getSentInput().Destination?.ToAddresses).toEqual([
+      "ehd.wspc@health.gov.bb",
+    ]);
+  });
+
+  it("fails NO_RECIPIENT when the resolved catchment has no email", async () => {
+    const notificationLog = makeNotificationLog();
+    const processor = new EmailProcessor(
+      makeConfig(),
+      makeMailer(),
+      makeTemplateService(),
+      makeBodyBuilder(),
+      makeFilesService(),
+      makeFormConfigService(),
+      notificationLog,
+    );
+    const payload = makePayload(
+      { recipientField: "catchment.mdaEmail" },
+      {},
+      {
+        resolvedCatchment: {
+          polyclinic: "P",
+          programmeCode: "C",
+          mdaEmail: null,
+        },
+      },
+    );
+
+    await expect(processor.process(payload)).rejects.toBeInstanceOf(
+      NonRetryableError,
+    );
+
+    expect(mockSend).not.toHaveBeenCalled();
+    expect(notificationLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: "no_recipient", recipient: null }),
+    );
+  });
+});

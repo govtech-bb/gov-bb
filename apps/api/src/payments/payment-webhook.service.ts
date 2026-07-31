@@ -236,9 +236,13 @@ export class PaymentWebhookService {
           return null;
         }
 
+        // Bypass visibility (#2125): an inbound payment webhook finalizes an
+        // existing submission, so the published contract (with processors)
+        // must resolve regardless of the form's current visibility.
         const contract = await this.formDefs.findByFormId({
           formId: payment.formId,
           includeProcessors: true,
+          bypassVisibility: true,
         });
         const downstreamProcessors = (contract.processors ?? []).filter(
           (p) => p.type !== "payment",

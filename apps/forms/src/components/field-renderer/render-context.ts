@@ -84,6 +84,9 @@ export function buildFieldRenderContext(args: {
     placeholder: field.placeholder,
     onBlur: f.handleBlur,
     "aria-describedby": describedBy,
+    // Native `step` for time/number inputs — e.g. 30-minute time increments.
+    // Ignored by input types that don't support it.
+    ...(field.step !== undefined ? { step: field.step } : {}),
   };
 
   // Surface required state to assistive tech. Not spread onto multi-option

@@ -63,6 +63,26 @@ describe('suggestedContributions', () => {
       stronger: 225,
     })
   })
+  it('above the ceiling: moderate uses capped earnings, stronger the ceiling-equivalent', () => {
+    const high: EarningsInputs = {
+      goodMonth: 12_000,
+      slowMonth: 12_000,
+      goodMonthsPerYear: 12,
+    }
+    // monthlyAvg = 12000. Moderate is 10% of earnings capped at the insurable
+    // ceiling (5360) → 540, a medium amount rather than the cap itself.
+    // Stronger caps at the ceiling-equivalent contribution.
+    const s = suggestedContributions(high)
+    const ceiling = NIS.MAX_MONTHLY_INSURABLE * NIS.SE_RATE
+    expect(s.moderate).toBe(540)
+    expect(s.stronger).toBeCloseTo(ceiling, 6)
+    expect(s.moderate).toBeLessThan(s.stronger)
+    // Stronger's contribution yields exactly the insurable ceiling — no more.
+    expect(monthlyInsurableFromContribution(s.stronger * 12)).toBeCloseTo(
+      NIS.MAX_MONTHLY_INSURABLE,
+      6,
+    )
+  })
 })
 
 describe('monthlyInsurableFromContribution', () => {
@@ -108,7 +128,11 @@ describe('estimateBenefits', () => {
       goodMonthsPerYear: 12,
     }
     const b = estimateBenefits(high, Tier.Stronger)
-    expect(b.monthlyContribution).toBe(3000) // 15% of 20,000
+    // Capped at the ceiling-equivalent contribution, not 15% of 20,000 (3000).
+    expect(b.monthlyContribution).toBeCloseTo(
+      NIS.MAX_MONTHLY_INSURABLE * NIS.SE_RATE,
+      6,
+    )
     expect(b.monthlyInsurable).toBe(NIS.MAX_MONTHLY_INSURABLE)
     expect(b.weeklyInsurable).toBeCloseTo(1236.92, 2)
     expect(b.sicknessWeekly).toBeCloseTo(824.62, 2)

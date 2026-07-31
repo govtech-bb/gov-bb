@@ -41,4 +41,15 @@ export class MdaContactEntity extends TimestampedEntity {
   /** Private notification recipient — DB-only, never sent to the client. */
   @Column({ name: "mda_email", type: "varchar", length: 255 })
   mdaEmail!: string;
+
+  /**
+   * Stable ministry key (e.g. `youth`, `education`) tying this MDA to its CMS
+   * webhook destination. Nullable — only MDAs that sync to a case-management
+   * system carry one. It is the key into the `MDA_WEBHOOK_DESTINATIONS` JSON
+   * (#1920/#2020): `resolveWebhookDestination(formId)` walks
+   * `form_config → mda_contact.ministry_key → MDA_WEBHOOK_DESTINATIONS[key]`.
+   * DB-only, never sent to the client.
+   */
+  @Column({ name: "ministry_key", type: "varchar", length: 64, nullable: true })
+  ministryKey!: string | null;
 }

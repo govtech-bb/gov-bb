@@ -118,5 +118,10 @@ export async function hydrateForm(
     // Lift the optional application deadline (#1936) onto the served contract.
     // Like every other field here it is dropped unless explicitly copied.
     closingDateTime: recipe.meta?.closingDateTime,
+    // Coordinate-based catchment routing: carry the top-level block through so
+    // the submission pipeline (submissions.service) can resolve the serving
+    // polyclinic. This api-side hydrate — not @govtech-bb/form-builder's — is
+    // the one the submission path uses, so the block is dropped without this.
+    catchmentRouting: recipe.catchmentRouting,
   };
 }

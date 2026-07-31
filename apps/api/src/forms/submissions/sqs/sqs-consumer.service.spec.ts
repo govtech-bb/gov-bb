@@ -507,6 +507,26 @@ describe("SqsConsumerService", () => {
       const event = (processor.process as Mock).mock.calls[0][0];
       expect(event.referenceCode).toBe("sub-legacy-001");
     });
+
+    it("carries resolvedCatchment from the message onto the processed event", async () => {
+      const processor = makeProcessor();
+      factory.resolveByType.mockReturnValue(processor);
+      sendMock.mockResolvedValue({});
+
+      const resolvedCatchment = {
+        polyclinic: "P",
+        programmeCode: "C",
+        mdaEmail: "e@x.bb",
+      };
+
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({ resolvedCatchment }),
+      );
+
+      const event = (processor.process as Mock).mock.calls[0][0];
+      expect(event.resolvedCatchment).toEqual(resolvedCatchment);
+    });
   });
 
   // ── lifecycle ───────────────────────────────────────────────────────────

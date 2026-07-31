@@ -23,7 +23,7 @@ import type {
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import { FormConfigService } from "@/forms/form-config/form-config.service";
 import { NonRetryableError } from "./non-retryable-error";
-import { redactPii } from "./log-sanitize";
+import { redactPii } from "@/common/log-sanitize";
 import { NotificationLogRepository } from "../notification-log.repository";
 import { NotificationOutcome } from "@/database/entities/notification-log.entity";
 
@@ -135,6 +135,8 @@ export class EmailProcessor implements ISubmissionProcessor {
         const resolved = await this.resolveConfigRecipient(payload);
         recipient = resolved.recipient;
         defaulted = resolved.defaulted;
+      } else if (kind === "catchment") {
+        recipient = this.resolveCatchmentRecipient(payload);
       } else {
         recipient = this.resolveSubmittedRecipient(payload, recipientField);
       }
@@ -305,6 +307,19 @@ export class EmailProcessor implements ISubmissionProcessor {
     return stepValues && !Array.isArray(stepValues)
       ? (stepValues[fieldId] as string | undefined)
       : undefined;
+  }
+
+  /**
+   * Resolves the MDA recipient for the reserved "catchment.mdaEmail" token from
+   * the catchment resolved at submission time (coordinate/parish routing).
+   * Returns undefined when nothing resolved or the catchment has no Ministry
+   * email yet — the caller then fails this entry NO_RECIPIENT (non-retryable),
+   * isolated to this email by per-entry dispatch.
+   */
+  private resolveCatchmentRecipient(
+    payload: SubmissionCreatedEvent,
+  ): string | undefined {
+    return payload.resolvedCatchment?.mdaEmail ?? undefined;
   }
 
   /**

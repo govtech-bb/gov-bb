@@ -1,11 +1,14 @@
 import {
   Behaviour,
+  CatchmentRouting,
   ConditionalTitle,
   ContactDetails,
   DateTimeFormat,
   fieldValueSchema,
+  GeocodeTargets,
   HtmlTypes,
   Option,
+  OptionGroup,
   PrimitiveUI,
   SubmissionValues,
   ValidationRule,
@@ -26,11 +29,23 @@ export interface ClientPrimitive {
   hidden: boolean;
   conditionallyHidden: boolean;
   options?: Option[];
+  groups?: OptionGroup[];
   multiple?: boolean;
   mask?: string;
+  /** HTML `step` for time/number inputs (time is in seconds). */
+  step?: number;
   validations?: ValidationRule;
   behaviours?: Behaviour[];
   ui?: PrimitiveUI;
+  /** For `address-lookup`: sibling fields to populate when a suggestion is
+   * picked (see {@link GeocodeTargets}). */
+  geocodeTargets?: GeocodeTargets;
+  /** Content element (`htmlType: "content"`) markdown body. */
+  content?: string;
+  /** Content element presentation: "inset" | "text" | "details". */
+  variant?: "inset" | "text" | "details";
+  /** Content element `details`-variant disclosure summary. */
+  summary?: string;
 }
 
 export interface ClientFormStep {
@@ -53,6 +68,7 @@ export interface ClientServiceContract {
   description?: string;
   contactDetails?: ContactDetails;
   closingDateTime?: DateTimeFormat;
+  catchmentRouting?: CatchmentRouting;
   steps: ClientFormStep[];
   createdAt: DateTimeFormat;
   updatedAt: DateTimeFormat;

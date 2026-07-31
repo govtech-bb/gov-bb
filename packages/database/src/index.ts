@@ -36,6 +36,7 @@ import { CreateServiceStatusTables1783356461699 } from "./migrations/17833564616
 import { RenameServiceStatusFormIdToSlug1783440984875 } from "./migrations/1783440984875-RenameServiceStatusFormIdToSlug";
 import { CreateNotificationLog1783458705143 } from "./migrations/1783458705143-CreateNotificationLog";
 import { SeedServiceStatus1783520007424 } from "./migrations/1783520007424-SeedServiceStatus";
+import { AddMinistryKeyToMdaContact1784000000000 } from "./migrations/1784000000000-AddMinistryKeyToMdaContact";
 
 export const entities = [
   FormComponentEntity,
@@ -74,6 +75,7 @@ export const migrations = [
   RenameServiceStatusFormIdToSlug1783440984875,
   CreateNotificationLog1783458705143,
   SeedServiceStatus1783520007424,
+  AddMinistryKeyToMdaContact1784000000000,
 ];
 
 /**

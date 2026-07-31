@@ -42,6 +42,19 @@ export const contactDetailsSchema = z.object({
 });
 export type ContactDetails = z.infer<typeof contactDetailsSchema>;
 
+/**
+ * Coordinate-based catchment routing (#temp-restaurant). Names the submitted
+ * fields the server reads to route a submission to the polyclinic serving the
+ * event location: `coordinatesField` holds a "lat,lon" string, `parishField`
+ * the parish fallback. Both are "stepId.fieldId" paths. Server-side only —
+ * inert if leaked, but stripped from the public contract.
+ */
+export const catchmentRoutingSchema = z.object({
+  coordinatesField: z.string().min(1),
+  parishField: z.string().min(1),
+});
+export type CatchmentRouting = z.infer<typeof catchmentRoutingSchema>;
+
 export const serviceContractSchema = z.object({
   formId: formIdSchema,
   title: titleSchema,
@@ -64,6 +77,7 @@ export const serviceContractSchema = z.object({
   // comparison uses the absolute instant, display formats in AST. Rides as a
   // top-level field on the served contract (which has no `meta`).
   closingDateTime: dateTimeFormatSchema.optional(),
+  catchmentRouting: catchmentRoutingSchema.optional(),
 });
 export type ServiceContract = z.infer<typeof serviceContractSchema>;
 
@@ -109,6 +123,7 @@ export const serviceContractRecipeSchema = z.object({
   // See serviceContractSchema.version — optional during the #1196 two-phase retire.
   version: semverSchema.optional(),
   meta: recipeMetaSchema.optional(),
+  catchmentRouting: catchmentRoutingSchema.optional(),
 });
 export type ServiceContractRecipe = z.infer<typeof serviceContractRecipeSchema>;
 

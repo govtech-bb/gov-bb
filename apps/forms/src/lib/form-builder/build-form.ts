@@ -61,6 +61,7 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
     formDescription: contract.description,
     contactDetails: contract.contactDetails,
     closingDateTime: contract.closingDateTime,
+    catchmentRouting: contract.catchmentRouting,
     steps,
     defaultValues: defaults,
     validationProperties: properties,

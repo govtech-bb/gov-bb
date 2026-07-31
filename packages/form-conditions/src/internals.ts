@@ -1,16 +1,29 @@
+import { durationSince, durationUntil } from "@govtech-bb/expressions";
 import type {
   DurationTransform,
   EqualityOperations,
 } from "@govtech-bb/form-types";
-import { durationSince } from "@govtech-bb/expressions";
 import type { StepScopedValues } from "./index";
 
-// Map the conditional `transform` keyword to the unit `durationSince` expects.
+// Map the conditional `transform` keyword to the unit + direction the duration
+// primitives expect. `*Since` count backwards from today; `daysUntil` counts
+// forwards to a future date.
 const TRANSFORM_UNIT: Record<DurationTransform, "years" | "months" | "days"> = {
   yearsSince: "years",
   monthsSince: "months",
   daysSince: "days",
+  daysUntil: "days",
 };
+
+// Derive the numeric value from a (date) target using the direction the
+// transform implies.
+const deriveDuration = (
+  value: unknown,
+  transform: DurationTransform,
+): number =>
+  transform === "daysUntil"
+    ? durationUntil(value, TRANSFORM_UNIT[transform])
+    : durationSince(value, TRANSFORM_UNIT[transform]);
 
 // The structural condition fields `evaluateCondition` actually reads. Every
 // `*ConditionalOn` behaviour satisfies it (they add a `type` discriminant), and
@@ -90,7 +103,7 @@ export function evaluateCondition(
   // Invalid/empty dates become NaN here, which the numeric operators below
   // reject (NaN never matches), so a missing date reads as condition-not-met.
   const target = behaviour.transform
-    ? durationSince(rawTarget, TRANSFORM_UNIT[behaviour.transform])
+    ? deriveDuration(rawTarget, behaviour.transform)
     : rawTarget;
 
   // Coerce both sides to string so a numeric condition value (e.g. value: 5)

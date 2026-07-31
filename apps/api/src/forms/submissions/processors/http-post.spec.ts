@@ -8,6 +8,12 @@ function mockHttp(status: number): HttpService {
   } as unknown as HttpService;
 }
 
+function mockHttpWithBody(status: number, data: unknown): HttpService {
+  return {
+    request: vi.fn(() => of({ status, data })),
+  } as unknown as HttpService;
+}
+
 function calls(http: HttpService): unknown[][] {
   return (http.request as unknown as { mock: { calls: unknown[][] } }).mock
     .calls;
@@ -82,6 +88,54 @@ describe("timedPost", () => {
         timeoutMs: 1_000,
       }),
     ).rejects.toMatchObject({ status: 503, url: "https://x.example/hook" });
+  });
+
+  it("carries a sanitized slice of the response body on non-2xx (#2127)", async () => {
+    const http = mockHttpWithBody(422, {
+      message: "programme_code 'TEMP-RESTAURANT-LICENCE' is not recognised",
+    });
+    await expect(
+      timedPost(http, "https://x.example/hook", "b", {
+        headers: {},
+        timeoutMs: 1_000,
+      }),
+    ).rejects.toMatchObject({
+      status: 422,
+      responseBody: expect.stringContaining("not recognised"),
+    });
+  });
+
+  it("includes the response body in the HttpPostError message (#2127)", async () => {
+    const http = mockHttpWithBody(422, "validation failed: phone");
+    await timedPost(http, "https://x.example/hook", "b", {
+      headers: {},
+      timeoutMs: 1_000,
+    }).catch((err: HttpPostError) => {
+      expect(err.message).toContain("HTTP 422");
+      expect(err.message).toContain("validation failed: phone");
+    });
+    expect.assertions(2);
+  });
+
+  it("omits responseBody for an empty object body", async () => {
+    const http = mockHttpWithBody(500, {});
+    await expect(
+      timedPost(http, "https://x.example/hook", "b", {
+        headers: {},
+        timeoutMs: 1_000,
+      }),
+    ).rejects.toMatchObject({ status: 500, responseBody: undefined });
+  });
+
+  it("strips control characters from the response body (CWE-117)", async () => {
+    const http = mockHttpWithBody(400, "bad\ninput\r\n[forged] line");
+    await timedPost(http, "https://x.example/hook", "b", {
+      headers: {},
+      timeoutMs: 1_000,
+    }).catch((err: HttpPostError) => {
+      expect(err.responseBody).not.toMatch(/[\n\r]/);
+    });
+    expect.assertions(1);
   });
 
   it("HttpPostError message includes the HTTP status", () => {
