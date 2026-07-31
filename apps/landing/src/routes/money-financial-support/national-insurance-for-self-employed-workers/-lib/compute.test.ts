@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   annualIncome,
-  earningsAtRisk,
   estimateBenefits,
   goodMonthsValue,
   monthlyAverage,
@@ -137,14 +136,5 @@ describe('estimateBenefits', () => {
     expect(b.weeklyInsurable).toBeCloseTo(1236.92, 2)
     expect(b.sicknessWeekly).toBeCloseTo(824.62, 2)
     expect(b.invalidityWeekly).toBeCloseTo(494.77, 2) // above the floor
-  })
-})
-
-describe('earningsAtRisk', () => {
-  it('derives the "without NIS" loss figures from earnings', () => {
-    const r = earningsAtRisk(seasonal)
-    // Weighted monthly average (40,000 / 12 = 3333.33) halved for two weeks.
-    expect(r.twoWeeksLost).toBe(1667)
-    expect(r.yearLost).toBe(40_000)
   })
 })

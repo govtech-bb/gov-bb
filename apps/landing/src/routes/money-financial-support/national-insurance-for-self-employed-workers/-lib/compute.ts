@@ -183,21 +183,3 @@ export function estimateBenefits(
     childGrant: NIS.CHILD_GRANT,
   }
 }
-
-export interface EarningsAtRisk {
-  /**
-   * Roughly what two weeks off work costs, from the seasonality-weighted
-   * monthly average — consistent with every other figure on the page.
-   */
-  twoWeeksLost: number
-  /** A whole year of earnings — the "without a pension" framing figure. */
-  yearLost: number
-}
-
-/** The "without NIS" side of the result: earnings the user would lose. */
-export function earningsAtRisk(e: EarningsInputs): EarningsAtRisk {
-  return {
-    twoWeeksLost: Math.round(monthlyAverage(e) / 2),
-    yearLost: Math.round(annualIncome(e)),
-  }
-}

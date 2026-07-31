@@ -646,8 +646,8 @@ function MoneyField({
           className="mt-4 border-blue-40 border-l-4 bg-grey-00/50 p-3 text-[1rem] text-black-00"
           role="status"
         >
-          The most NIS can insure is {money(max)} a month. Amounts above this do
-          not change your estimate.
+          The most NIS can insure is {money(max)} a month, so earning more than
+          this will not increase most of your benefits.
         </div>
       )}
     </div>
@@ -805,7 +805,6 @@ function IncomeStep({
             hint="When work is steady and money comes in. A rough number is fine."
             id="good-month"
             label="What does a busy month look like?"
-            max={NIS.MAX_MONTHLY_INSURABLE}
             onChange={setGoodMonth}
             prefix="BDS $"
             value={goodMonth}
@@ -815,7 +814,6 @@ function IncomeStep({
             hint="When work is quiet: slow season, hurricane month, sickness. A rough number is fine."
             id="slow-month"
             label="And a slow month?"
-            max={NIS.MAX_MONTHLY_INSURABLE}
             onChange={setSlowMonth}
             prefix="BDS $"
             value={slowMonth}
