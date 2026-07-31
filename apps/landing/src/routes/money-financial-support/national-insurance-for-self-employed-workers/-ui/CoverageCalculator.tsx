@@ -453,10 +453,10 @@ function Hero({
         </h2>
         <p className="mb-4 text-[1.125rem] text-mid-grey-00">
           NIS stands for{' '}
-          <strong className="text-black-00">National Insurance</strong>. Think of
-          it as a safety net you build up bit by bit. You put in a small amount
-          when you earn. It&rsquo;s there when you need it: when you&rsquo;re
-          sick, when you have a baby, when you retire.
+          <strong className="text-black-00">National Insurance</strong>. Think
+          of it as a safety net you build up bit by bit. You put in a small
+          amount when you earn. It&rsquo;s there when you need it: when
+          you&rsquo;re sick, when you have a baby, when you retire.
         </p>
         <p className="mb-6 text-[1.125rem] text-mid-grey-00">
           Self-employed Bajans can join too. You choose how much you put in:{' '}
@@ -891,6 +891,10 @@ function PlanStep({
 }) {
   const suggested = suggestedContributions(earnings)
   const monthlyAvg = monthlyAverage(earnings)
+  // When 17.25% of the entered earnings comes out below the flat minimum, the
+  // Minimum card explains why it shows $100 rather than the calculated amount.
+  const rateFromEarnings = monthlyAvg * NIS.SE_RATE
+  const minimumApplies = rateFromEarnings < suggested[Tier.Minimum]
   const chosen = tier ? suggested[tier] : null
   const selTier = TIERS.find((t) => t.id === tier)
   const tierRadio = rovingRadioProps(
@@ -993,6 +997,25 @@ function PlanStep({
                       </span>
                     </p>
                     <p className="mt-2 text-[1rem] text-mid-grey-00">{t.sub}</p>
+                    {t.id === Tier.Minimum && minimumApplies && (
+                      <p className="mt-3 text-[1rem] text-black-00">
+                        <strong>Why have we shown this minimum</strong>
+                        <br />
+                        {(NIS.SE_RATE * 100).toFixed(2)}% of the{' '}
+                        <span className="tabular-nums">
+                          {money(monthlyAvg)}
+                        </span>{' '}
+                        monthly earnings you entered is about{' '}
+                        <span className="tabular-nums">
+                          {money(rateFromEarnings)}
+                        </span>
+                        . The lowest contribution is{' '}
+                        <span className="tabular-nums">
+                          {money(suggested[Tier.Minimum])}
+                        </span>{' '}
+                        a month, so we have shown the minimum.
+                      </p>
+                    )}
                   </div>
                   <span
                     className={`mt-1 inline-flex h-6 w-6 shrink-0 rounded-full ${
@@ -1035,7 +1058,9 @@ function PlanStep({
           </p>
           <p className="text-[1rem] text-white-00/90">
             About{' '}
-            <strong className="tabular-nums">{money((chosen * 12) / 52)}</strong>{' '}
+            <strong className="tabular-nums">
+              {money((chosen * 12) / 52)}
+            </strong>{' '}
             a week.
           </p>
           <div className="mt-4 border-white-00/20 border-t pt-4">
@@ -1155,11 +1180,10 @@ function ResultStep({
       without: 'Time off to recover would be unpaid.',
       estimate: (
         <>
-          If you qualify, you may get about{' '}
-          <PerWeek weekly={b.sicknessWeekly} /> in Sickness Benefit, roughly
-          two-thirds of your usual earnings, for up to {NIS.SICKNESS_MAX_WEEKS}{' '}
-          weeks. If you&rsquo;re still unwell after that, NIS may pay for up to{' '}
-          {NIS.SICKNESS_MAX_WEEKS} more weeks.
+          Based on the contribution you selected, your estimated Sickness
+          Benefit is about <PerWeek weekly={b.sicknessWeekly} />. If you
+          qualify, NIS may pay it for up to {NIS.SICKNESS_MAX_WEEKS} weeks and,
+          in some cases, for up to {NIS.SICKNESS_MAX_WEEKS} more weeks.
         </>
       ),
     },
@@ -1259,12 +1283,13 @@ function ResultStep({
         Benefits you may get
       </h1>
       <p className="mb-6 text-[1.125rem] text-mid-grey-00">
-        For{' '}
+        These estimates are based on the{' '}
         <strong className="text-black-00 tabular-nums">
           {money(b.monthlyContribution)}
-        </strong>
-        /month, here&rsquo;s each benefit without NIS and with it. Figures are
-        estimates based on the amount you chose to put in.
+        </strong>{' '}
+        a month contribution you selected. They are not based directly on the
+        earnings you entered. NIS will confirm whether you qualify and how much
+        you may get when you claim.
       </p>
       <p className="mb-3 text-[1rem] text-mid-grey-00">
         Select a benefit to see who may get it and when.
@@ -1283,15 +1308,6 @@ function ResultStep({
             withNis={it.estimate}
           />
         ))}
-      </div>
-
-      <div className="mt-6 space-y-2 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
-        <p className="text-mid-grey-00">
-          Your benefit estimates are based on the amount you choose to pay. If you
-          choose BDS $400 a month, we show the benefits you may get from paying
-          that amount. NIS will confirm whether you qualify and how much you may
-          get when you make a claim.
-        </p>
       </div>
 
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
