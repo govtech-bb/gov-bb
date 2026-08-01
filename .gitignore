@@ -162,3 +162,6 @@ cicd-policy*.json
 
 # Playwright live-run output (smoke / a11y)
 apps/forms/test-results/
+
+# Generated at Amplify preview build time (VITE_PREVIEW_CONTRACTS=1); never committed.
+apps/forms/contracts/preview/*.json

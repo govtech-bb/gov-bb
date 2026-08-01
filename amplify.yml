@@ -90,6 +90,11 @@ applications:
           commands:
             - pnpm exec nx run form-types:build
             - pnpm exec nx run form-conditions:build
+            # PR previews only (VITE_PREVIEW_CONTRACTS=1, set branch-scoped by
+            # pr-preview.yml when a recipe changed): hydrate the branch's recipes
+            # into apps/forms/contracts/preview/*.json so the forms loader can
+            # render branch-only forms. Never runs on sandbox/prod (flag unset).
+            - if [ "$VITE_PREVIEW_CONTRACTS" = "1" ]; then pnpm generate:preview-contracts; fi
             - pnpm exec nx run forms:build
       artifacts:
         baseDirectory: apps/forms/dist
