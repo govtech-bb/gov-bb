@@ -138,7 +138,14 @@ jobs:
           echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
           echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
 
-          if git diff --name-only "$NX_BASE" "$NX_HEAD" | grep -q '^apps/api/src/database/migrations/'; then
+          # TypeORM migrations live in packages/database/src/migrations/; the old
+          # pattern matched only apps/api/src/database/migrations/, which holds
+          # just .gitkeep, a README and smoke specs — so this never fired for a
+          # real migration and staging shipped API code against an unmigrated
+          # schema. Both paths match; chat's drizzle migrations are excluded
+          # because the ingest image applies those itself. See deploy-prod.yml.
+          if git diff --name-only "$NX_BASE" "$NX_HEAD" \
+              | grep -qE '^(packages/database/src|apps/api/src/database)/migrations/'; then
             echo "migrations=true" >> "$GITHUB_OUTPUT"
           else
             echo "migrations=false" >> "$GITHUB_OUTPUT"
