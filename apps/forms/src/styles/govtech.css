@@ -711,6 +711,19 @@
     width: 100% !important;
   }
 
+  /* Page-break control below relies on `break-inside: avoid`, which Chrome
+     IGNORES on flex children. The confirmation is built from flex columns
+     (form-page__confirmation wraps every block; the payment card, contact and
+     lead panel are flex too), so those rules silently no-op and content splits
+     mid-block. Flatten these containers to plain block flow in print so the
+     browser honours the page-break rules. */
+  .form-page__confirmation,
+  .form-page__panel-body,
+  .govbb-payment,
+  .form-page__contact {
+    display: block !important;
+  }
+
   /* The success/error banner is a tall (16.75rem) coloured block; print drops
      the background, leaving a big empty gap. Collapse it to plain heading text. */
   .form-page__panel {

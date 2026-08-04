@@ -115,7 +115,7 @@ export default function SubmissionConfirmation({
           next" so it's adjacent to the content it prints. The button itself is
           hidden in the printed output via the `form-page__print` @media print
           rule in govtech.css. */}
-      <div className={hasPayment ? "form-page__print" : ""}>
+      <div className="form-page__print">
         <button
           type="button"
           className="govbb-btn--secondary"
