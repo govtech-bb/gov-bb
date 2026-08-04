@@ -37,12 +37,15 @@ const RootLayout = () => (
     <a href="#main-content" className="govbb-visually-hidden-focusable">
       Skip to main content
     </a>
-    <OfficialBanner
-      imageSrc="/images/coat-of-arms.png"
-      imageAlt=""
-      showLearnMore={false}
-    />
-    <div className="bg-blue-10">
+    {/* Page chrome (banners, header) — hidden in print output (#2132). */}
+    <div className="no-print">
+      <OfficialBanner
+        imageSrc="/images/coat-of-arms.png"
+        imageAlt=""
+        showLearnMore={false}
+      />
+    </div>
+    <div className="bg-blue-10 no-print">
       <div className="container">
         <StageBanner
           stage="alpha"
@@ -55,6 +58,7 @@ const RootLayout = () => (
       <Outlet />
     </main>
     <Footer
+      className="no-print"
       links={FOOTER_LINKS}
       logoSrc="/images/coat-of-arms.png"
       logoAlt="Barbados Coat of Arms"
