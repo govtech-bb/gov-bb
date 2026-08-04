@@ -34,6 +34,7 @@ export default function SubmissionConfirmation({
   contactDetails,
   onTryAgain,
   onPaymentInitiated,
+  hideReferenceNumber,
   submissionState,
   feedbackUrl,
 }: SubmissionConfirmationProps) {
@@ -274,7 +275,7 @@ export default function SubmissionConfirmation({
         </div>
         <div className="container pb-8 lg:pb-16">
           <div className="form-width form-page__confirmation">
-            {referenceNumber && (
+            {referenceNumber && !hideReferenceNumber && (
               <dl className="form-page__reference">
                 <dt>Submission ID</dt>
                 <dd>{referenceNumber}</dd>

@@ -133,6 +133,11 @@ export interface SubmissionConfirmationProps {
    * HTML escaping (no raw HTML), so recipe-authored content is XSS-safe.
    */
   markdownContent?: string;
+  /**
+   * Suppress the "Submission ID" line on the confirmation page. Set for
+   * anonymous forms (e.g. the exit survey) that issue no meaningful reference.
+   */
+  hideReferenceNumber?: boolean;
   contactDetails?: ContactDetails;
   onTryAgain?: () => void;
   /** Fired when the citizen clicks "Continue to payment" (#1955 analytics). */

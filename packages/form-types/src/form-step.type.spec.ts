@@ -38,6 +38,22 @@ describe("formStepSchema", () => {
     ).toBe(false);
   });
 
+  it("preserves an optional hideReferenceNumber flag", () => {
+    expect(
+      formStepSchema.parse({ ...validStep, hideReferenceNumber: true })
+        .hideReferenceNumber,
+    ).toBe(true);
+    // omitted → undefined (the Submission ID shows as before)
+    expect(formStepSchema.parse(validStep).hideReferenceNumber).toBeUndefined();
+  });
+
+  it("rejects a non-boolean hideReferenceNumber", () => {
+    expect(
+      formStepSchema.safeParse({ ...validStep, hideReferenceNumber: "yes" })
+        .success,
+    ).toBe(false);
+  });
+
   it("accepts and preserves a conditionalTitle array", () => {
     const parsed = formStepSchema.parse({
       ...validStep,
