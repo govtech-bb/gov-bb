@@ -87,7 +87,6 @@ jobs:
       fb-api: ${{ steps.affected.outputs.fb-api }}
       forms: ${{ steps.affected.outputs.forms }}
       landing: ${{ steps.affected.outputs.landing }}
-      chat: ${{ steps.affected.outputs.chat }}
       fb-app: ${{ steps.affected.outputs.fb-app }}
       ff-app: ${{ steps.affected.outputs.ff-app }}
       analytics: ${{ steps.affected.outputs.analytics }}
@@ -130,7 +129,6 @@ jobs:
           echo "fb-api=$(has form-builder-api)" >> "$GITHUB_OUTPUT"
           echo "forms=$(has forms)" >> "$GITHUB_OUTPUT"
           echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
-          echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
           echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
           echo "ff-app=$(has feature-flagging-app)" >> "$GITHUB_OUTPUT"
           echo "analytics=$(has analytics-app)" >> "$GITHUB_OUTPUT"
@@ -799,197 +797,6 @@ jobs:
           echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
           exit 1
 
-  amplify-chat:
-    name: Amplify build (chat)
-    needs: setup
-    if: needs.setup.outputs.chat == 'true' || needs.setup.outputs.amplify-config == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-      - name: Trigger and monitor Amplify build
-        env:
-          AMPLIFY_APP_ID: d3snq1f0c10466
-          AMPLIFY_BRANCH: sandbox
-          # Needed for the CANCELLED→superseded check below to call gh api.
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APP_LABEL: chat
-          # /api/health is SSR-rendered (not the static fallback) and reports
-          # db connectivity + indexed doc count — catches more than a root
-          # 200 would. We assert docCount > 0 to surface "ingest is broken"
-          # at deploy time rather than via user reports of empty answers.
-          HEALTH_URL: https://chat.sandbox.alpha.gov.bb/api/health
-        run: |
-          JOB_ID=$(aws amplify start-job \
-            --app-id "$AMPLIFY_APP_ID" \
-            --branch-name "$AMPLIFY_BRANCH" \
-            --job-type RELEASE \
-            --region "$AWS_REGION" \
-            --query jobSummary.jobId \
-            --output text)
-          echo "Amplify $APP_LABEL job started: $JOB_ID"
-
-          for i in $(seq 1 30); do
-            STATUS=$(aws amplify get-job \
-              --app-id "$AMPLIFY_APP_ID" \
-              --branch-name "$AMPLIFY_BRANCH" \
-              --job-id "$JOB_ID" \
-              --region "$AWS_REGION" \
-              --query job.summary.status \
-              --output text)
-            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
-            if [ "$STATUS" = "SUCCEED" ]; then
-              echo "✅ Amplify $APP_LABEL build succeeded — running smoke test on $HEALTH_URL"
-              for j in 1 2 3 4 5; do
-                BODY=$(curl -fsS --max-time 10 "$HEALTH_URL" 2>/dev/null || echo "")
-                if [ -n "$BODY" ] && echo "$BODY" | jq -e '.ok == true and .db == "connected" and .docCount > 0' >/dev/null 2>&1; then
-                  echo "✅ $APP_LABEL smoke test passed: $(echo "$BODY" | jq -c '{db, docCount, chunkCount}')"
-                  exit 0
-                fi
-                echo "[$j/5] smoke test pending — body: $(echo "$BODY" | head -c 200), retrying in 5s..."
-                sleep 5
-              done
-              echo "❌ $APP_LABEL smoke test failed — /api/health did not return ok:true,db:connected,docCount>0"
-              exit 1
-            elif [ "$STATUS" = "FAILED" ]; then
-              echo "❌ Amplify $APP_LABEL build FAILED"
-              exit 1
-            elif [ "$STATUS" = "CANCELLED" ]; then
-              # Amplify cancels in-flight builds when a newer commit lands on
-              # the same branch (configured in #441). If sandbox HEAD has
-              # advanced past us, the cancellation is correct — exit clean so
-              # rapid-fire merges don't spam this workflow with red runs that
-              # mean nothing.
-              CURRENT_HEAD=$(gh api "repos/${{ github.repository }}/commits/sandbox" --jq '.sha' 2>/dev/null || echo "")
-              if [ -n "$CURRENT_HEAD" ] && [ "$CURRENT_HEAD" != "${{ github.sha }}" ]; then
-                echo "✅ Amplify $APP_LABEL build CANCELLED — superseded by ${CURRENT_HEAD:0:7}; not failing"
-                exit 0
-              fi
-              echo "❌ Amplify $APP_LABEL build CANCELLED (no newer commit on sandbox — likely manual cancel or Amplify infra issue)"
-              exit 1
-            fi
-            sleep 30
-          done
-          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
-          exit 1
-
-  deploy-chat-ingest:
-    # Chatbot RAG ingest image — one-shot Fargate task that runs
-    # `pnpm exec tsx src/ingest/cli.ts` from apps/chat against the sandbox
-    # pgvector RDS. Infra (ECR repo, ECS task def, indexer Lambda, 15-min
-    # EventBridge cron) lives in govtech-bb/alpha-infra — see
-    # SANDBOX-CHATBOT-INGEST.md there. This job builds the image and fires
-    # an instant ingest so content changes reach chat.sandbox.alpha.gov.bb
-    # in seconds instead of waiting for the cron.
-    #
-    # Gated on the same `chat` affected output as amplify-chat — nx-affected
-    # marks chat as affected when packages/content changes (chat depends on
-    # it via workspace), so this captures both code- and content-driven
-    # rebuilds without a second gate.
-    name: Build, Push & Trigger chat-ingest
-    needs: setup
-    if: needs.setup.outputs.chat == 'true'
-    runs-on: ubuntu-latest
-    outputs:
-      image: ${{ steps.build.outputs.image }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          persist-credentials: false
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to ECR
-        id: ecr-login
-        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
-
-      - name: Build and push chat-ingest image
-        id: build
-        env:
-          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          INGEST_URI="$REGISTRY/chatbot-ingest-sandbox:$IMAGE_TAG"
-          INGEST_LATEST="$REGISTRY/chatbot-ingest-sandbox:latest"
-
-          docker build --platform linux/amd64 -f apps/chat/Dockerfile.ingest -t "$INGEST_URI" -t "$INGEST_LATEST" .
-          docker push "$INGEST_URI"
-          docker push "$INGEST_LATEST"
-
-          echo "image=$INGEST_URI" >> "$GITHUB_OUTPUT"
-          echo "✅ Pushed chat-ingest $INGEST_URI"
-
-      - name: Trigger chatbot RAG ingest
-        env:
-          COMMIT_SHA: ${{ github.sha }}
-        run: |
-          INDEXER=$(aws ssm get-parameter \
-            --name /chatbot/sandbox/rag-indexer-name \
-            --region "$AWS_REGION" \
-            --query Parameter.Value --output text)
-
-          PAYLOAD=$(printf '{"startedBy":"gh-%.36s"}' "$COMMIT_SHA")
-
-          aws lambda invoke \
-            --function-name "$INDEXER" \
-            --payload "$PAYLOAD" \
-            --cli-binary-format raw-in-base64-out \
-            --region "$AWS_REGION" \
-            /tmp/indexer-out.json
-
-          echo "Indexer response:"
-          cat /tmp/indexer-out.json
-          echo
-          echo "✅ Ingest task started — follow with: aws logs tail /ecs/chatbot-ingest-sandbox --follow"
-
-      # Fire-and-forget left the deploy green while the chat served stale
-      # content when ingest failed (#1269). The CLI records every run in
-      # ingest_runs and /api/health surfaces the latest one, so poll until a
-      # run STARTED AFTER our trigger finishes — any such run carries the
-      # just-pushed image — and fail the job if it failed. The 15-minute
-      # EventBridge cron also starts runs; one of those completing counts too.
-      - name: Wait for ingest to complete
-        run: |
-          HEALTH_URL="https://chat.sandbox.alpha.gov.bb/api/health"
-          TRIGGER_TS=$(date -u +%s)
-          DEADLINE=$(( TRIGGER_TS + 900 ))  # 15 min, > task cold-start + full re-embed
-
-          while [ "$(date -u +%s)" -lt "$DEADLINE" ]; do
-            sleep 20
-            BODY=$(curl -sf -m 15 "$HEALTH_URL") || { echo "health fetch failed, retrying"; continue; }
-            STATUS=$(echo "$BODY" | jq -r '.lastIngest.status // empty')
-            STARTED=$(echo "$BODY" | jq -r '.lastIngest.startedAt // empty')
-            FINISHED=$(echo "$BODY" | jq -r '.lastIngest.finishedAt // empty')
-            [ -n "$STARTED" ] || { echo "no ingest run visible yet"; continue; }
-            STARTED_TS=$(date -u -d "$STARTED" +%s 2>/dev/null || echo 0)
-            if [ "$STARTED_TS" -lt "$TRIGGER_TS" ]; then
-              echo "latest run predates this trigger (started $STARTED), waiting"
-              continue
-            fi
-            if [ -z "$FINISHED" ] || [ "$STATUS" = "running" ]; then
-              echo "ingest running (started $STARTED)"
-              continue
-            fi
-            if [ "$STATUS" = "success" ]; then
-              echo "✅ Ingest succeeded (started $STARTED, finished $FINISHED)"
-              echo "$BODY" | jq '{docCount, chunkCount, lastUpdatedAt}'
-              exit 0
-            fi
-            echo "❌ Ingest failed: $(echo "$BODY" | jq -r '.lastIngest.error // "no error recorded"')"
-            exit 1
-          done
-          echo "❌ Timed out waiting for an ingest run to complete after the trigger"
-          echo "   Follow: aws logs tail /ecs/chatbot-ingest-sandbox --follow"
-          exit 1
-
   amplify-form-builder:
     name: Amplify build (form-builder)
     needs: setup
@@ -1054,7 +861,7 @@ jobs:
 
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, deploy-chat-ingest, amplify-form-builder, amplify-feature-flagging]
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1064,10 +871,8 @@ jobs:
           FB_API_RESULT: ${{ needs.deploy-form-builder.result }}
           FORMS_RESULT: ${{ needs.amplify-forms.result }}
           LANDING_RESULT: ${{ needs.amplify-landing.result }}
-          CHAT_RESULT: ${{ needs.amplify-chat.result }}
           FB_APP_RESULT: ${{ needs.amplify-form-builder.result }}
           FF_APP_RESULT: ${{ needs.amplify-feature-flagging.result }}
-          CHAT_INGEST_RESULT: ${{ needs.deploy-chat-ingest.result }}
           MIGRATIONS_GATE: ${{ needs.setup.outputs.migrations }}
         run: |
           # Report each target's ACTUAL job result, not just the
@@ -1106,22 +911,19 @@ jobs:
             echo "| form-builder API | $(outcome "$FB_API_RESULT") |"
             echo "| Amplify forms | $(outcome "$FORMS_RESULT") |"
             echo "| Amplify landing | $(outcome "$LANDING_RESULT") |"
-            echo "| Amplify chat | $(outcome "$CHAT_RESULT") |"
             echo "| Amplify form-builder | $(outcome "$FB_APP_RESULT") |"
             echo "| Amplify feature-flagging | $(outcome "$FF_APP_RESULT") |"
-            echo "| chat-ingest image | $(outcome "$CHAT_INGEST_RESULT") |"
             echo ""
             echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb"
             echo "**Landing URL:** https://landing.sandbox.alpha.gov.bb"
             echo "**Forms URL:** https://forms.sandbox.alpha.gov.bb"
-            echo "**Chat URL:** https://chat.sandbox.alpha.gov.bb"
             echo "**Form Builder URL:** https://builder.sandbox.alpha.gov.bb"
             echo "**Feature Flagging URL:** https://feature-flagging.sandbox.alpha.gov.bb"
           } >> "$GITHUB_STEP_SUMMARY"
 
   notify-failure:
     name: Notify Slack on failure
-    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, deploy-chat-ingest, amplify-form-builder, amplify-feature-flagging]
+    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
     if: always() && contains(needs.*.result, 'failure')
     runs-on: ubuntu-latest
     steps:
@@ -1142,7 +944,7 @@ jobs:
   # code sandbox couldn't ship.
   promote-to-staging:
     name: Promote to staging (on sandbox green)
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-chat, deploy-chat-ingest, amplify-form-builder, amplify-feature-flagging]
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
     if: ${{ github.event_name == 'push' && !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
