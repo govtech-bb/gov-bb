@@ -87,17 +87,19 @@ sandbox deploys go green and `Promote to staging` runs again.
 
 ### Component 2 — Content-contract gate in gov-bb CI (the anti-drift mechanism)
 
-A gov-bb test that validates `apps/landing/src/content` against the ingest
-contract govbb-chatbot's `loadContentDir` depends on. Contract (mirrored from
-govbb-chatbot `src/lib/rag/content.ts`):
+A gov-bb test that validates `apps/landing/src/content` against the conditions
+that actually HARD-FAIL govbb-chatbot's ingest — a faithful mirror of its raw
+parser (`src/lib/rag/content.ts` → `loadContentDir`/`splitFrontmatter`) and
+`corpus-source.ts`, verified against `types.ts`. It flags only what would break
+ingest, not stricter content-quality rules (spec-owner ruling 2026-08-04):
 
-- Every `*.md` except `README.md`, recursively, has a well-formed `---`-fenced
-  YAML frontmatter block that parses without error.
-- Body after the frontmatter is non-empty (trimmed).
-- A usable `title` resolves (frontmatter `title` string, else the slug).
-- The corpus directory exists at the expected path and is non-empty
-  (guards the `CONTENT_SUBDIR` move that would otherwise fail ingest loudly
-  only in govbb-chatbot).
+- Any `*.md` except `README.md`, recursively, that opens with a `---`-fenced
+  frontmatter block must have YAML that parses. A missing fence, non-mapping
+  frontmatter, and an empty body are all tolerated by the parser (body = whole
+  text / meta = `{}` / page skipped), so they are NOT flagged.
+- The corpus directory resolves at the expected path with at least one markdown
+  page (mirrors `corpus-source.ts`, which throws on zero pages — guards a
+  `CONTENT_SUBDIR` move/wipe).
 
 Placement: extend the existing content-test pattern
 (`apps/landing/src/content/registry.test.ts`) rather than introduce a new

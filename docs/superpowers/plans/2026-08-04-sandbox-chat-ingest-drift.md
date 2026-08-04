@@ -14,7 +14,7 @@
 - Do NOT pin the ingest tarball or change govbb-chatbot; the per-run `main` fetch is the anti-drift feature.
 - Branch is already created: `chore/sandbox-chat-jobs-removal-and-content-contract` off `origin/main`. The design doc is committed at `docs/superpowers/specs/2026-08-04-sandbox-chat-ingest-drift-design.md`.
 - Contract source of truth is govbb-chatbot `src/lib/rag/content.ts` (`loadContentDir`) — mirror it, cross-link it in a comment. Keep the mirror minimal (four rules below).
-- The four contract rules (verbatim): each `*.md` except `README.md`, recursively, (1) has a `---`-fenced YAML frontmatter block that parses to a mapping; (2) has a non-empty trimmed body; (3) resolves a usable title (frontmatter `title` string, else the path slug); (4) the corpus dir exists and is non-empty.
+- The contract rules (faithful mirror — spec-owner ruling 2026-08-04, supersedes the stricter "four rules" and the Task 1 code below): (1) any `*.md` except `README.md`, recursively, that opens with a `---`-fenced frontmatter block must have parseable YAML — a missing fence, non-mapping frontmatter, and an empty body are TOLERATED (the parser uses whole text as body / `meta={}` / skips the page); (2) the corpus dir resolves at the expected path with >=1 markdown page (mirrors `corpus-source.ts`). Only conditions that actually hard-fail govbb-chatbot ingest are flagged. The authoritative implementation is commit `cd183ab1`.
 - Commit messages end with the repo's `Co-Authored-By` trailer.
 
 ## File Structure
