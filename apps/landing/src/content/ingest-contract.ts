@@ -1,14 +1,20 @@
-// The raw contract govbb-chatbot's RAG ingest applies to this corpus.
+// The hard-failure contract govbb-chatbot's RAG ingest applies to this corpus.
 //
 // chat.sandbox.alpha.gov.bb is served by govtech-bb/govbb-chatbot, whose
 // ingest fetches gov-bb `main` per run and reads THIS directory
 // (apps/landing/src/content) with its own raw parser
-// (govbb-chatbot/src/lib/rag/content.ts → loadContentDir). A content change
-// here that breaks that parser passes gov-bb CI today and only breaks later,
-// in govbb-chatbot's ingest. This mirrors that parser's hard rules so such a
-// change fails THIS repo's CI instead. Keep it minimal; if the contract grows,
-// promote it to a shared package. Design:
-// docs/superpowers/specs/2026-08-04-sandbox-chat-ingest-drift-design.md
+// (govbb-chatbot/src/lib/rag/content.ts → loadContentDir / splitFrontmatter).
+// This test fails gov-bb CI when a content change here would HARD-FAIL that
+// ingest, so the break surfaces at PR time instead of 15 min after merge.
+//
+// Faithful to the parser's real failure surface (verified against content.ts
+// and types.ts): the ONLY per-file hard failure is a `---` frontmatter block
+// whose YAML does not parse. A missing fence (body = whole text), non-mapping
+// frontmatter (meta = {}), and an empty body (page skipped) are all tolerated
+// by the parser, so they are NOT flagged here. The corpus-level hard failure
+// is an empty/moved directory (corpus-source.ts throws when zero .md pages
+// resolve). Keep this minimal; if it grows, promote to a shared package.
+// Design: docs/superpowers/specs/2026-08-04-sandbox-chat-ingest-drift-design.md
 import { readdir, readFile } from 'node:fs/promises'
 import { join, posix, relative, sep } from 'node:path'
 import { parse as parseYaml } from 'yaml'
@@ -30,40 +36,19 @@ async function markdownFiles(dir: string): Promise<string[]> {
     .map((e) => join(e.parentPath, e.name))
 }
 
-/** Apply the ingest contract to one file's raw text. `[]` = passes. */
-export function checkIngestDoc(
-  raw: string,
-  sourceId: string,
-  slug: string,
-): IngestViolation[] {
-  const file = sourceId
+/**
+ * Apply the ingest hard-failure contract to one file's raw text. `[]` = passes.
+ * Mirrors govbb-chatbot splitFrontmatter: only a present-but-unparseable
+ * frontmatter block fails; everything else is tolerated.
+ */
+export function checkIngestDoc(raw: string, file: string): IngestViolation[] {
   const match = FRONTMATTER.exec(raw)
-  if (!match) {
-    return [{ file, reason: 'no --- fenced frontmatter block at file start' }]
-  }
-  let meta: unknown
+  if (!match) return []
   try {
-    meta = parseYaml(match[1])
+    parseYaml(match[1])
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     return [{ file, reason: `invalid frontmatter YAML: ${message}` }]
-  }
-  if (!meta || typeof meta !== 'object' || Array.isArray(meta)) {
-    return [{ file, reason: 'frontmatter is not a YAML mapping' }]
-  }
-  const body = raw.slice(match[0].length).trim()
-  if (!body) {
-    return [{ file, reason: 'empty body — chat ingest would drop this page' }]
-  }
-  const title = (meta as Record<string, unknown>).title
-  const resolved = typeof title === 'string' && title ? title : slug
-  if (!resolved) {
-    return [
-      {
-        file,
-        reason: 'no usable title (frontmatter title missing and slug empty)',
-      },
-    ]
   }
   return []
 }
@@ -79,10 +64,7 @@ export async function collectIngestViolations(
       .split(sep)
       .join(posix.sep)
       .replace(/\.md$/, '')
-    const slug = sourceId.replace(/\/index$/, '')
-    violations.push(
-      ...checkIngestDoc(await readFile(file, 'utf8'), sourceId, slug),
-    )
+    violations.push(...checkIngestDoc(await readFile(file, 'utf8'), sourceId))
   }
   return violations
 }

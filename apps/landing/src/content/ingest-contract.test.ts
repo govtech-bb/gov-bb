@@ -12,43 +12,52 @@ import {
 // The real corpus lives in this same directory.
 const CORPUS_DIR = fileURLToPath(new URL('.', import.meta.url))
 
-describe('checkIngestDoc — govbb-chatbot ingest contract', () => {
+describe('checkIngestDoc — faithful to govbb-chatbot ingest hard-failures', () => {
   it('passes a well-formed page', () => {
-    expect(
-      checkIngestDoc('---\ntitle: "A"\n---\nBody text.', 'a', 'a'),
-    ).toEqual([])
+    expect(checkIngestDoc('---\ntitle: "A"\n---\nBody text.', 'a')).toEqual([])
   })
 
-  it('rejects a page with no frontmatter fence', () => {
-    const v = checkIngestDoc('just a body, no fence', 'a', 'a')
+  it('flags malformed frontmatter YAML (the only per-file hard failure)', () => {
+    const v = checkIngestDoc('---\ntitle: "unterminated\n---\nBody.', 'a')
     expect(v).toHaveLength(1)
-    expect(v[0].reason).toMatch(/frontmatter/)
-  })
-
-  it('rejects malformed frontmatter YAML', () => {
-    const v = checkIngestDoc('---\ntitle: "unterminated\n---\nBody.', 'a', 'a')
     expect(v[0].reason).toMatch(/invalid frontmatter YAML/)
   })
 
-  it('rejects an empty body', () => {
-    const v = checkIngestDoc('---\ntitle: A\n---\n   \n', 'a', 'a')
-    expect(v[0].reason).toMatch(/empty body/)
+  it('tolerates a page with no frontmatter fence (parser uses whole text as body)', () => {
+    expect(checkIngestDoc('just a body, no fence', 'a')).toEqual([])
   })
 
-  it('falls back to the slug when frontmatter title is absent', () => {
-    expect(checkIngestDoc('---\ncategory: x\n---\nBody.', 'a', 'a')).toEqual([])
+  it('tolerates non-mapping frontmatter (parser falls back to {})', () => {
+    expect(checkIngestDoc('---\n- one\n- two\n---\nBody.', 'a')).toEqual([])
+  })
+
+  it('tolerates an empty body (parser skips the page, does not fail)', () => {
+    expect(checkIngestDoc('---\ntitle: A\n---\n   \n', 'a')).toEqual([])
   })
 })
 
 describe('collectIngestViolations — fixture dir', () => {
-  it('names the offending file and passes the good one', async () => {
+  it('names the file with malformed frontmatter and passes the good one', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'corpus-'))
     try {
       await writeFile(join(dir, 'good.md'), '---\ntitle: Good\n---\nHello.')
-      await writeFile(join(dir, 'bad.md'), 'no frontmatter here')
+      await writeFile(
+        join(dir, 'bad.md'),
+        '---\ntitle: "unterminated\n---\nHi.',
+      )
       const v = await collectIngestViolations(dir)
       expect(v).toHaveLength(1)
       expect(v[0].file).toBe('bad')
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('tolerates a fence-less page in the corpus dir', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'corpus-'))
+    try {
+      await writeFile(join(dir, 'plain.md'), 'no frontmatter, just prose')
+      expect(await collectIngestViolations(dir)).toEqual([])
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -61,7 +70,9 @@ describe('the live landing corpus satisfies the chat ingest contract', () => {
     expect(violations, JSON.stringify(violations, null, 2)).toEqual([])
   })
 
-  it('is non-empty at the expected path (guards a corpus move/wipe)', async () => {
-    expect(await countMarkdownDocs(CORPUS_DIR)).toBeGreaterThanOrEqual(50)
+  it('resolves at the expected path with markdown pages (guards a move/wipe)', async () => {
+    // corpus-source.ts throws when the CONTENT_SUBDIR resolves to zero .md
+    // pages — mirror exactly that hard-failure boundary.
+    expect(await countMarkdownDocs(CORPUS_DIR)).toBeGreaterThanOrEqual(1)
   })
 })
