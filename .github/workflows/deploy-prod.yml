@@ -94,6 +94,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # fast-forward the prod branch ref
+    outputs:
+      # The SHA prod was serving BEFORE this deploy. `setup` uses it as the
+      # affected base — see the rationale on its "Derive base/head SHAs" step.
+      previous-sha: ${{ steps.previous.outputs.sha }}
     steps:
       - name: Guard — prod ships staging-proven code only
         env:
@@ -128,6 +132,10 @@ jobs:
       analytics: ${{ steps.affected.outputs.analytics }}
       migrations: ${{ steps.affected.outputs.migrations }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
+      # Surfaced so the deployment summary records the exact window deployed —
+      # a green run that rebuilt nothing should be visible, not inferred.
+      base: ${{ steps.shas.outputs.base }}
+      head: ${{ steps.shas.outputs.head }}
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -142,15 +150,67 @@ jobs:
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
 
+      # The affected base is the SHA prod was ACTUALLY serving before this run,
+      # captured by advance-prod before it moved the ref.
+      #
+      # This replaced nx-set-shas (main-branch-name: staging, workflow-id:
+      # deploy-prod.yml). That action resolves the base from the last successful
+      # run on a branch, and when the lookup misses it falls back to HEAD~1 with
+      # only a WARNING — so the deploy stays green while shipping one commit's
+      # worth of targets. Run 30490271277 (2026-07-29, dd3297ef) hit exactly
+      # that: a 96-commit promotion logged `Affected apps: ["landing"]` and
+      # deployed landing alone, skipping api (89 changed files), forms (29) and
+      # analytics (18). The analytics Amplify app then had to be rebuilt from
+      # the console by hand, and prod's api had no successful deploy from
+      # 2026-07-20 onward while the prod ref claimed otherwise.
+      #
+      # Deriving from the ref cannot degrade that way: it asks the question that
+      # actually matters ("what changed since prod last shipped"), needs no
+      # bootstrap run, and fails loudly below rather than under-deploying.
+      # sandbox/staging keep nx-set-shas — they run on `main`, which matches
+      # their main-branch-name, so their lookup chains correctly.
       - name: Derive base/head SHAs
-        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
-        with:
-          # Prod is run from the `staging` ref (the proven code), so the affected
-          # base is the last successful deploy-prod run on staging. (Was `prod`
-          # when this triggered on push:prod.) First run after cutover marks
-          # nothing affected → use the deploy_all input to bootstrap.
-          main-branch-name: staging
-          workflow-id: deploy-prod.yml
+        id: shas
+        env:
+          PROD_BEFORE: ${{ needs.advance-prod.outputs.previous-sha }}
+          DEPLOY_ALL: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_all }}
+        run: |
+          echo "NX_HEAD=$GITHUB_SHA" >> "$GITHUB_ENV"
+          echo "head=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+
+          if [ "$DEPLOY_ALL" = "true" ]; then
+            echo "deploy_all=true — affected detection bypassed; every target deploys."
+            echo "NX_BASE=${PROD_BEFORE:-$GITHUB_SHA}" >> "$GITHUB_ENV"
+            echo "base=${PROD_BEFORE:-(bypassed)}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          fail() {
+            echo "$1"
+            echo "   Re-run with deploy_all=true to deploy every target."
+            exit 1
+          }
+
+          [ -n "$PROD_BEFORE" ] ||
+            fail "❌ Could not read the prod ref, so the affected base is unknown."
+
+          git cat-file -e "${PROD_BEFORE}^{commit}" 2>/dev/null ||
+            fail "❌ prod's current SHA ($PROD_BEFORE) is not present in this checkout."
+
+          # A non-ancestor base means a rollback or an out-of-line ref. Diffing
+          # against it would mark only the divergent paths, leaving prod running
+          # a mix of old and new — so require the explicit full deploy instead.
+          git merge-base --is-ancestor "$PROD_BEFORE" "$GITHUB_SHA" ||
+            fail "❌ prod's SHA ($PROD_BEFORE) is not an ancestor of $GITHUB_SHA (rollback or out-of-line ref); a partial deploy would leave prod mixing commits."
+
+          echo "NX_BASE=$PROD_BEFORE" >> "$GITHUB_ENV"
+          echo "base=$PROD_BEFORE" >> "$GITHUB_OUTPUT"
+
+          if [ "$PROD_BEFORE" = "$GITHUB_SHA" ]; then
+            echo "prod is already at $GITHUB_SHA — no new commits to deploy."
+          else
+            echo "Affected window: $PROD_BEFORE..$GITHUB_SHA ($(git rev-list --count "${PROD_BEFORE}..${GITHUB_SHA}") commits)"
+          fi
 
       - name: Compute affected deploy targets
         id: affected
@@ -176,7 +236,25 @@ jobs:
           echo "ff-app=$(has feature-flagging-app)" >> "$GITHUB_OUTPUT"
           echo "analytics=$(has analytics-app)" >> "$GITHUB_OUTPUT"
 
-          if [ "$DEPLOY_ALL" = "true" ] || git diff --name-only "$NX_BASE" "$NX_HEAD" | grep -q '^apps/api/src/database/migrations/'; then
+          # TypeORM migrations live in packages/database/src/migrations/ (22 of
+          # them). The previous pattern matched only apps/api/src/database/
+          # migrations/, which holds nothing but .gitkeep, a README and smoke
+          # specs — so this gate never fired for a real migration and
+          # `pnpm migration:run` executed only when deploy_all forced it.
+          #
+          # That is worse than a missed deploy: `api` still deploys whenever it
+          # is affected, so new code ships against an unmigrated schema.
+          # 1784000000000-AddMinistryKeyToMdaContact (2026-07-28) adds
+          # mda_contact.ministry_key, which MdaContact declares and the
+          # form-config + webhook-destination services read — without the column
+          # those queries error in prod.
+          #
+          # Both paths match: the apps/api tree's migration smoke specs are
+          # legitimately migration-adjacent, so a change there should still run
+          # them. Chat's drizzle migrations are deliberately absent — the ingest
+          # image applies those itself via its entrypoint.
+          if [ "$DEPLOY_ALL" = "true" ] || git diff --name-only "$NX_BASE" "$NX_HEAD" \
+              | grep -qE '^(packages/database/src|apps/api/src/database)/migrations/'; then
             echo "migrations=true" >> "$GITHUB_OUTPUT"
           else
             echo "migrations=false" >> "$GITHUB_OUTPUT"
@@ -729,6 +807,8 @@ jobs:
             echo ""
             echo "**Commit:** \`${{ github.sha }}\`"
             echo ""
+            echo "**Deployed window:** \`${{ needs.setup.outputs.base }}..${{ needs.setup.outputs.head }}\`"
+            echo ""
             echo "| Target | Result |"
             echo "|--------|--------|"
             row "SSR smoke (pre-deploy)" "${{ needs.ssr-smoke.result }}"
@@ -738,6 +818,10 @@ jobs:
             row "Amplify landing"      "${{ needs.amplify-landing.result }}"
             row "Amplify chat"         "${{ needs.amplify-chat.result }}"
             row "Amplify feature-flagging" "${{ needs.amplify-feature-flagging.result }}"
+            # analytics was already in this job's `needs` but had no row, so the
+            # 2026-07-29 deploy reported success without ever showing that
+            # analytics had been skipped. Unreported targets hide drift.
+            row "Amplify analytics"   "${{ needs.amplify-analytics.result }}"
             echo ""
             echo "**URLs (ALB / amplifyapp.com until DNS lands):**"
             echo "- API: ${{ env.API_SMOKE_URL }}"
