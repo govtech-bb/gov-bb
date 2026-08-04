@@ -63,3 +63,20 @@ into a clean paper copy.
   `window.print`, keyboard/name, axe no-violations).
 - Live DOM inspection confirmed the `no-print` chrome hiding under print rules.
 - `nx run forms:build` compiles.
+
+## Follow-up: page breaks were silently broken (flex-item gotcha)
+
+The first cut's page-break rules didn't actually work — printed content still
+split mid-block. Root cause: **`break-inside: avoid` is ignored by Chrome on
+flex children**, and the confirmation is built from flex columns
+(`.form-page__confirmation` wraps every block; the payment card, contact panel
+and lead panel are flex too), so every page-break rule silently no-op'd.
+
+Fix — modelled on the landing app's StormReady checklist, which documents the
+same gotcha: flatten those containers to `display: block` inside `@media print`,
+so the browser honours the existing `break-inside` / `break-after` rules. Also
+made the Print wrapper's `form-page__print` class unconditional (it had been
+gated on `hasPayment`, so the non-payment print lost its consistent spacing).
+
+Verified live: the print flatten rule flips `.form-page__confirmation` from
+flex to block; `submission-confirmation.spec.tsx` 46 tests pass.
