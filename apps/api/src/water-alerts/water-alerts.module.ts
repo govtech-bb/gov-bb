@@ -1,9 +1,11 @@
 import { HttpModule } from "@nestjs/axios";
 import { Module } from "@nestjs/common";
 import { SesMailer } from "../email/ses-mailer";
+import { CheckerService } from "./checker.service";
 import { FeedService } from "./feed.service";
 import { SubscriptionService } from "./subscription.service";
 import { WaterAlertsController } from "./water-alerts.controller";
+import { WaterSentAlertRepository } from "./water-sent-alert.repository";
 import { WaterSubscriberRepository } from "./water-subscriber.repository";
 
 /**
@@ -18,7 +20,9 @@ import { WaterSubscriberRepository } from "./water-subscriber.repository";
   providers: [
     FeedService,
     SubscriptionService,
+    CheckerService,
     WaterSubscriberRepository,
+    WaterSentAlertRepository,
     SesMailer,
   ],
 })

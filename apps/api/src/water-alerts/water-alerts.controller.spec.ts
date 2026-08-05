@@ -1,4 +1,9 @@
-import { ServiceUnavailableException } from "@nestjs/common";
+import {
+  ForbiddenException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from "@nestjs/common";
+import type { CheckerService } from "./checker.service";
 import type { FeedService } from "./feed.service";
 import type { Outage } from "./outages.domain";
 import type { SubscriptionService } from "./subscription.service";
@@ -17,10 +22,12 @@ const OUTAGE: Outage = {
 function make(
   feed: Partial<FeedService>,
   subs: Partial<SubscriptionService> = {},
+  checker: Partial<CheckerService> = {},
 ): WaterAlertsController {
   return new WaterAlertsController(
     feed as FeedService,
     subs as SubscriptionService,
+    checker as CheckerService,
   );
 }
 
@@ -70,5 +77,33 @@ describe("WaterAlertsController", () => {
     const controller = make({}, { unsubscribe });
     await expect(controller.unsubscribeOneClick("t3")).resolves.toBeUndefined();
     expect(unsubscribe).toHaveBeenCalledWith("t3");
+  });
+
+  describe("demo (preview-gated)", () => {
+    const prev = process.env.WATER_DEMO_TOKEN;
+    afterEach(() => {
+      if (prev === undefined) delete process.env.WATER_DEMO_TOKEN;
+      else process.env.WATER_DEMO_TOKEN = prev;
+    });
+
+    it("404s when the demo token is not configured", () => {
+      delete process.env.WATER_DEMO_TOKEN;
+      const controller = make({}, {}, { runDemo: vi.fn() });
+      expect(() => controller.demo("anything")).toThrow(NotFoundException);
+    });
+
+    it("403s when the header does not match", () => {
+      process.env.WATER_DEMO_TOKEN = "secret";
+      const controller = make({}, {}, { runDemo: vi.fn() });
+      expect(() => controller.demo("wrong")).toThrow(ForbiddenException);
+    });
+
+    it("runs the demo when the header matches", async () => {
+      process.env.WATER_DEMO_TOKEN = "secret";
+      const runDemo = vi.fn().mockResolvedValue({ sent: 1 });
+      const controller = make({}, {}, { runDemo });
+      await controller.demo("secret");
+      expect(runDemo).toHaveBeenCalled();
+    });
   });
 });
