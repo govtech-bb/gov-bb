@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 import tailwindcss from "@tailwindcss/vite";
+import { assertDeployedLinkOrigins } from "./build-env";
 
 const preset = process.env.NITRO_PRESET || "aws_amplify";
 
@@ -19,24 +20,9 @@ export default defineConfig(({ mode, command }) => {
   const pick = (key: string, fallback = ""): string =>
     env[key] || process.env[key] || fallback;
 
-  // A deployed build with LANDING_URL/FORMS_URL unset bakes an empty string,
-  // app/lib/service-url.ts falls back to the docker-stack origins, and every
-  // service link in the table points at the reader's own machine (#2167). The
-  // localhost fallback is only ever right for a local run, so refuse to produce
-  // a deployed bundle without them. AWS_APP_ID is set by the Amplify build
-  // container and by nothing else — a local or CI `vite build` is unaffected.
-  if (command === "build" && process.env.AWS_APP_ID) {
-    const missing = ["LANDING_URL", "FORMS_URL"].filter((key) => !pick(key));
-    if (missing.length > 0) {
-      throw new Error(
-        `feature_flagging: ${missing.join(" and ")} must be set on the Amplify ` +
-          `branch (${process.env.AWS_BRANCH || "unknown"}) — without them the ` +
-          `services table links at http://localhost (see #2167). Set e.g. ` +
-          `LANDING_URL=https://landing.sandbox.alpha.gov.bb and ` +
-          `FORMS_URL=https://forms.sandbox.alpha.gov.bb.`,
-      );
-    }
-  }
+  // Refuse to produce a deployed bundle that would link the services table at
+  // localhost (#2167) — see build-env.ts, tested in build-env.spec.ts.
+  assertDeployedLinkOrigins(command, pick);
 
   return {
     // Pin the local dev server to a fixed port so it matches the GitHub OAuth

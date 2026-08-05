@@ -111,7 +111,9 @@ Unset, they fall back to the localhost defaults — right for a local run, usele
 anywhere else. So a **deployed** build (one where Amplify's `AWS_APP_ID` is
 present) with either var missing **fails the build** instead of shipping links to
 the reader's own machine, which is how they went unnoticed on sandbox in
-[#2167](https://github.com/govtech-bb/gov-bb/issues/2167).
+[#2167](https://github.com/govtech-bb/gov-bb/issues/2167). That guard is
+`build-env.ts`, called from `vite.config.ts` and covered by `build-env.spec.ts`
+— the spec fails if it's ever weakened back to a silent fallback.
 
 ## Deployment / infra checklist
 
