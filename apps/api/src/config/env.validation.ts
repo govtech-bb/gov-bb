@@ -99,6 +99,12 @@ const baseSchema = z
     SQS_REGION: z.string().optional(),
     SQS_ENDPOINT: z.url().optional(), // LocalStack / custom endpoint
     SQS_QUEUE_URL: urlOrEmpty().optional(),
+    // Mirrors the queue's AWS-side redrive maxReceiveCount (#2168) — the
+    // consumer uses it to detect the terminal attempt for the DLQ Slack alert.
+    SQS_MAX_RECEIVE_COUNT: z.coerce.number().int().min(1).default(3),
+    // Slack incoming-webhook for operator DLQ/failure alerts (#2168). Optional:
+    // unset ⇒ the notifier no-ops (dev/sandbox/unconfigured envs).
+    SLACK_ALERTS_WEBHOOK_URL: urlOrEmpty().optional(),
 
     // SES delivery-events queue (optional). When set, the SesEventConsumer
     // polls it to reconcile notification_log.delivery_status; empty = disabled.

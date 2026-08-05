@@ -14,6 +14,11 @@ import {
   MessageSystemAttributeName,
 } from "@aws-sdk/client-sqs";
 import sqsConfig from "@/config/sqs.config";
+import { sanitizeForLog } from "@/common/log-sanitize";
+import {
+  SlackNotifierService,
+  mrkdwnEscape,
+} from "@/notifications/slack-notifier.service";
 import { ProcessorFactory } from "../processors/processor-factory.service";
 import { NonRetryableError } from "../processors/non-retryable-error";
 import type { SubmissionCreatedEvent } from "../submissions.types";
@@ -38,6 +43,7 @@ export class SqsConsumerService
     @Inject(sqsConfig.KEY)
     private readonly config: ConfigType<typeof sqsConfig>,
     private readonly processorFactory: ProcessorFactory,
+    private readonly slack: SlackNotifierService,
   ) {
     this.client = new SQSClient({
       region: config.region,
@@ -236,6 +242,9 @@ export class SqsConsumerService
             `dropping message (no retry)`,
           err,
         );
+        // Permanent config failure: the submission never reaches its
+        // destination and isn't retried — alert an operator (#2168).
+        await this.alertTerminalFailure(payload, receiveCount, "config", err);
         await this.deleteMessage(queueUrl, message.ReceiptHandle!);
         return;
       }
@@ -245,7 +254,50 @@ export class SqsConsumerService
         err,
       );
       // Do NOT delete — visibility timeout expires and SQS automatically
-      // requeues up to maxReceiveCount times, then routes to the DLQ.
+      // requeues up to maxReceiveCount times, then routes to the DLQ. When this
+      // is the terminal attempt, the un-deleted message is about to dead-letter
+      // — alert an operator (#2168).
+      if (receiveCount >= this.config.maxReceiveCount) {
+        await this.alertTerminalFailure(payload, receiveCount, "delivery", err);
+      }
+    }
+  }
+
+  /**
+   * Best-effort operator Slack alert for a submission dispatch that has
+   * permanently failed — either heading to the DLQ (`delivery`, retries
+   * exhausted) or dropped as a permanent config error (`config`). Non-PII only:
+   * formId, reference, processor, attempt — never the submission `values`. The
+   * notifier never throws, so this cannot affect the delete/redrive decision.
+   */
+  private async alertTerminalFailure(
+    payload: SubmissionSqsMessage,
+    receiveCount: number,
+    kind: "config" | "delivery",
+    err: unknown,
+  ): Promise<void> {
+    const reference = payload.referenceCode ?? payload.submissionId;
+    const reason =
+      kind === "config"
+        ? "permanent config error — not retried (dropped)"
+        : `delivery failed after ${receiveCount} attempts — routed to the DLQ`;
+    const errName = err instanceof Error ? err.name : "UnknownError";
+    const summary =
+      `:rotating_light: Submission dispatch failed to deliver — ${reason}. ` +
+      `form=${payload.formId} reference=${reference} ` +
+      `processor=${payload.processorType} error=${errName}. ` +
+      `Fix the cause and redrive the DLQ.`;
+    // Guarded so a misbehaving notifier can never surface into the catch block
+    // and change the delete/redrive decision (SlackNotifierService already
+    // swallows, but this makes the guarantee independent of that contract).
+    try {
+      await this.slack.notify(mrkdwnEscape(sanitizeForLog(summary)));
+    } catch (alertErr) {
+      this.logger.warn(
+        `[slack] terminal-failure alert failed: ${
+          alertErr instanceof Error ? alertErr.message : String(alertErr)
+        }`,
+      );
     }
   }
 

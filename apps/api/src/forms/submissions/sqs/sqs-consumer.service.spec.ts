@@ -66,7 +66,13 @@ function makeConfig(enabled = true) {
     region: "ca-central-1",
     endpoint: undefined,
     queueUrl: QUEUE_URL,
+    maxReceiveCount: 3,
   };
+}
+
+/** A SlackNotifierService stub whose notify() is asserted on / can be made to reject. */
+function makeSlack(notify: Mock = vi.fn().mockResolvedValue(undefined)) {
+  return { notify } as any;
 }
 
 function makeProcessor(
@@ -86,6 +92,7 @@ describe("SqsConsumerService", () => {
   let sendMock: Mock;
   let service: SqsConsumerService;
   let factory: Mocked<Pick<ProcessorFactory, "resolveByType">>;
+  let slackNotify: Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -96,7 +103,12 @@ describe("SqsConsumerService", () => {
       resolveByType: vi.fn(),
     } as any;
 
-    service = new SqsConsumerService(makeConfig() as any, factory as any);
+    slackNotify = vi.fn().mockResolvedValue(undefined);
+    service = new SqsConsumerService(
+      makeConfig() as any,
+      factory as any,
+      makeSlack(slackNotify),
+    );
   });
 
   /* processMessage */
@@ -173,6 +185,84 @@ describe("SqsConsumerService", () => {
         ([cmd]) => cmd instanceof DeleteMessageCommand,
       );
       expect(deleteCalls).toHaveLength(1);
+    });
+
+    it("Slack-alerts on a NonRetryableError (permanent config failure), non-PII", async () => {
+      factory.resolveByType.mockReturnValue(
+        makeProcessor(
+          "email",
+          vi.fn().mockRejectedValue(new NonRetryableError("missing dest")),
+        ),
+      );
+      sendMock.mockResolvedValue({});
+
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({
+          referenceCode: "JPP-20260604-9JZRZC",
+          values: { applicant: { email: "citizen@example.com" } },
+        }),
+      );
+
+      expect(slackNotify).toHaveBeenCalledTimes(1);
+      const msg = slackNotify.mock.calls[0][0] as string;
+      expect(msg).toContain("form=form-1");
+      expect(msg).toContain("reference=JPP-20260604-9JZRZC");
+      expect(msg).toContain("not retried");
+      // no applicant PII leaks into the alert
+      expect(msg).not.toContain("citizen@example.com");
+    });
+
+    it("Slack-alerts when a retryable failure hits the terminal attempt (about to DLQ)", async () => {
+      factory.resolveByType.mockReturnValue(
+        makeProcessor(
+          "email",
+          vi.fn().mockRejectedValue(new Error("SES down")),
+        ),
+      );
+
+      await service.processMessage(QUEUE_URL, sqsMessage({}, "3")); // receiveCount = maxReceiveCount
+
+      expect(slackNotify).toHaveBeenCalledTimes(1);
+      expect(slackNotify.mock.calls[0][0]).toContain("routed to the DLQ");
+      // still not deleted — SQS redrive moves it to the DLQ
+      expect(
+        sendMock.mock.calls.filter(
+          ([cmd]) => cmd instanceof DeleteMessageCommand,
+        ),
+      ).toHaveLength(0);
+    });
+
+    it("does NOT alert on a non-final retryable attempt", async () => {
+      factory.resolveByType.mockReturnValue(
+        makeProcessor(
+          "email",
+          vi.fn().mockRejectedValue(new Error("SES down")),
+        ),
+      );
+
+      await service.processMessage(QUEUE_URL, sqsMessage({}, "1")); // 1 < maxReceiveCount
+
+      expect(slackNotify).not.toHaveBeenCalled();
+    });
+
+    it("still deletes a NonRetryable message even if the alert notifier throws", async () => {
+      slackNotify.mockRejectedValue(new Error("slack exploded"));
+      factory.resolveByType.mockReturnValue(
+        makeProcessor(
+          "email",
+          vi.fn().mockRejectedValue(new NonRetryableError("bad config")),
+        ),
+      );
+      sendMock.mockResolvedValue({});
+
+      await service.processMessage(QUEUE_URL, sqsMessage());
+
+      expect(
+        sendMock.mock.calls.filter(
+          ([cmd]) => cmd instanceof DeleteMessageCommand,
+        ),
+      ).toHaveLength(1);
     });
 
     it("deletes malformed JSON messages immediately without calling the processor", async () => {
@@ -536,6 +626,7 @@ describe("SqsConsumerService", () => {
       const disabledService = new SqsConsumerService(
         makeConfig(false) as any,
         factory as any,
+        makeSlack(),
       );
       const pollSpy = vi.spyOn(disabledService as any, "pollQueue");
 

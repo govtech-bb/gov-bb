@@ -19,4 +19,10 @@ export default registerAs("sqs", () => ({
    *  DLQ:   modular-forms-submissions-dlq-sandbox (14-day retention, maxReceiveCount = 3)
    */
   queueUrl: process.env.SQS_QUEUE_URL ?? "",
+
+  /** Mirrors the queue's AWS-side redrive `maxReceiveCount` (default 3). The
+   *  consumer uses it to detect the terminal attempt — a retryable failure at
+   *  this receive count is the one that routes the message to the DLQ, so it's
+   *  where the operator Slack alert fires (#2168). Keep in sync with the infra. */
+  maxReceiveCount: Number(process.env.SQS_MAX_RECEIVE_COUNT ?? 3),
 }));
