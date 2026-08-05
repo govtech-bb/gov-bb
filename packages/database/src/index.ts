@@ -15,6 +15,8 @@ import { FormEditingSessionEntity } from "./entities/form-editing-session.entity
 import { ServiceStatusEntity } from "./entities/service-status.entity";
 import { ServiceStatusAuditLogEntity } from "./entities/service-status-audit-log.entity";
 import { NotificationLogEntity } from "./entities/notification-log.entity";
+import { WaterSubscriberEntity } from "./entities/water-subscriber.entity";
+import { WaterSentAlertEntity } from "./entities/water-sent-alert.entity";
 
 // Migrations
 import { CreateFormsTables1774544962999 } from "./migrations/1774544962999-CreateFormsTables";
@@ -37,6 +39,7 @@ import { RenameServiceStatusFormIdToSlug1783440984875 } from "./migrations/17834
 import { CreateNotificationLog1783458705143 } from "./migrations/1783458705143-CreateNotificationLog";
 import { SeedServiceStatus1783520007424 } from "./migrations/1783520007424-SeedServiceStatus";
 import { AddMinistryKeyToMdaContact1784000000000 } from "./migrations/1784000000000-AddMinistryKeyToMdaContact";
+import { CreateWaterAlertsTables1785917644000 } from "./migrations/1785917644000-CreateWaterAlertsTables";
 
 export const entities = [
   FormComponentEntity,
@@ -53,6 +56,8 @@ export const entities = [
   ServiceStatusEntity,
   ServiceStatusAuditLogEntity,
   NotificationLogEntity,
+  WaterSubscriberEntity,
+  WaterSentAlertEntity,
 ];
 
 export const migrations = [
@@ -76,6 +81,7 @@ export const migrations = [
   CreateNotificationLog1783458705143,
   SeedServiceStatus1783520007424,
   AddMinistryKeyToMdaContact1784000000000,
+  CreateWaterAlertsTables1785917644000,
 ];
 
 /**
