@@ -24,8 +24,8 @@ export function assertDeployedLinkOrigins(
   throw new Error(
     `feature_flagging: ${missing.join(" and ")} must be set on the Amplify ` +
       `branch (${process.env.AWS_BRANCH || "unknown"}) — without them the ` +
-      `services table links at http://localhost (see #2167). Set e.g. ` +
-      `LANDING_URL=https://landing.sandbox.alpha.gov.bb and ` +
-      `FORMS_URL=https://forms.sandbox.alpha.gov.bb.`,
+      `services table links at localhost. Set each to this environment's ` +
+      `public landing and forms origin; README.md ("Where a service title ` +
+      `links to") says where to read the current values from. See #2167.`,
   );
 }

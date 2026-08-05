@@ -7,9 +7,11 @@ const picker =
   (key: string): string =>
     vars[key] ?? "";
 
+// Placeholder origins — the guard only cares whether a value is present, so
+// these deliberately aren't any real environment's hostnames.
 const bothSet = picker({
-  LANDING_URL: "https://landing.sandbox.alpha.gov.bb",
-  FORMS_URL: "https://forms.sandbox.alpha.gov.bb",
+  LANDING_URL: "https://landing.example",
+  FORMS_URL: "https://forms.example",
 });
 const noneSet = picker({});
 
@@ -32,9 +34,7 @@ describe("assertDeployedLinkOrigins", () => {
     });
 
     it("throws naming only the missing var", () => {
-      const landingOnly = picker({
-        LANDING_URL: "https://landing.sandbox.alpha.gov.bb",
-      });
+      const landingOnly = picker({ LANDING_URL: "https://landing.example" });
       expect(() => assertDeployedLinkOrigins("build", landingOnly)).toThrow(
         /^feature_flagging: FORMS_URL must be set/,
       );
