@@ -14,10 +14,29 @@ const preset = process.env.NITRO_PRESET || "aws_amplify";
 // GITHUB_OAUTH_CLIENT_ID/SECRET) are intentionally NOT baked — only their
 // Secrets Manager ARNs are, and app/server/secrets.ts fetches the real values
 // at request time (mirrors form_builder, alpha-infra#202/#203).
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const pick = (key: string, fallback = ""): string =>
     env[key] || process.env[key] || fallback;
+
+  // A deployed build with LANDING_URL/FORMS_URL unset bakes an empty string,
+  // app/lib/service-url.ts falls back to the docker-stack origins, and every
+  // service link in the table points at the reader's own machine (#2167). The
+  // localhost fallback is only ever right for a local run, so refuse to produce
+  // a deployed bundle without them. AWS_APP_ID is set by the Amplify build
+  // container and by nothing else — a local or CI `vite build` is unaffected.
+  if (command === "build" && process.env.AWS_APP_ID) {
+    const missing = ["LANDING_URL", "FORMS_URL"].filter((key) => !pick(key));
+    if (missing.length > 0) {
+      throw new Error(
+        `feature_flagging: ${missing.join(" and ")} must be set on the Amplify ` +
+          `branch (${process.env.AWS_BRANCH || "unknown"}) — without them the ` +
+          `services table links at http://localhost (see #2167). Set e.g. ` +
+          `LANDING_URL=https://landing.sandbox.alpha.gov.bb and ` +
+          `FORMS_URL=https://forms.sandbox.alpha.gov.bb.`,
+      );
+    }
+  }
 
   return {
     // Pin the local dev server to a fixed port so it matches the GitHub OAuth
@@ -39,7 +58,7 @@ export default defineConfig(({ mode }) => {
       ),
       // Public origins the services table links out to (not secrets). Unset in
       // local dev → app/lib/service-url.ts falls back to the docker-stack
-      // origins; deployed builds MUST set both per environment.
+      // origins; a deployed build without them fails above.
       "process.env.LANDING_URL": JSON.stringify(pick("LANDING_URL")),
       "process.env.FORMS_URL": JSON.stringify(pick("FORMS_URL")),
       // OAuth callback base (not a secret).
