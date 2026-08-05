@@ -19,24 +19,30 @@ export class WaterSentAlertRepository extends BaseRepository<WaterSentAlertEntit
   }
 
   /**
-   * Claim the right to email this subscriber about this notice. The
-   * UNIQUE(notice_id, subscriber_id) constraint makes this idempotent: the
-   * first caller inserts the row, any later/concurrent caller is a no-op — so
-   * the same notice never reaches the same person twice.
+   * Claim (notice, subscriber) pairs for every confirmed subscriber matching the
+   * given (notice_id, area) pairs — in a SINGLE set-based statement, whatever the
+   * subscriber count. `noticeIds[i]`/`areas[i]` are parallel arrays zipped by
+   * `unnest`; the join finds confirmed subscribers, and UNIQUE(notice_id,
+   * subscriber_id) + ON CONFLICT DO NOTHING makes it idempotent (the exactly-once
+   * guarantee). No per-subscriber round-trips.
    */
-  async claim(noticeId: string, subscriberId: string): Promise<void> {
+  async claimForPairs(noticeIds: string[], areas: string[]): Promise<void> {
+    if (noticeIds.length === 0) return;
     await this.manager.query(
       `INSERT INTO "water_sent_alerts" ("notice_id", "subscriber_id")
-       VALUES ($1, $2)
+       SELECT p."notice_id", s."id"
+       FROM unnest($1::text[], $2::text[]) AS p("notice_id", "area")
+       JOIN "water_subscribers" s
+         ON s."area" = p."area" AND s."status" = 'confirmed'
        ON CONFLICT ("notice_id", "subscriber_id") DO NOTHING`,
-      [noticeId, subscriberId],
+      [noticeIds, areas],
     );
   }
 
   /**
    * Claimed-but-not-yet-sent alerts for the given active notices, with the
    * subscriber's email/area/unsubscribe token. Covers both brand-new claims and
-   * ones whose send failed on a previous run (retry).
+   * ones whose send failed on a previous run (retry). One query.
    */
   async pendingUnsent(noticeIds: string[]): Promise<PendingAlert[]> {
     if (noticeIds.length === 0) return [];
@@ -48,13 +54,26 @@ export class WaterSentAlertRepository extends BaseRepository<WaterSentAlertEntit
               s."unsubscribe_token" AS "unsubscribeToken"
        FROM "water_sent_alerts" sa
        JOIN "water_subscribers" s ON s."id" = sa."subscriber_id"
-       WHERE sa."sent" = false AND sa."notice_id" = ANY($1)`,
+       WHERE sa."sent" = false AND sa."notice_id" = ANY($1::text[])`,
       [noticeIds],
     );
   }
 
-  /** Mark a claimed alert as truly sent, once the email has gone out. */
-  async markSent(noticeId: string, subscriberId: string): Promise<void> {
-    await this.update({ noticeId, subscriberId }, { sent: true });
+  /**
+   * Mark a batch of claimed alerts as sent — one statement for the whole batch.
+   * `noticeIds[i]`/`subscriberIds[i]` are parallel arrays zipped by `unnest`.
+   */
+  async markManySent(
+    noticeIds: string[],
+    subscriberIds: string[],
+  ): Promise<void> {
+    if (noticeIds.length === 0) return;
+    await this.manager.query(
+      `UPDATE "water_sent_alerts" sa SET "sent" = true
+       FROM unnest($1::text[], $2::uuid[]) AS b("notice_id", "subscriber_id")
+       WHERE sa."notice_id" = b."notice_id"
+         AND sa."subscriber_id" = b."subscriber_id"`,
+      [noticeIds, subscriberIds],
+    );
   }
 }

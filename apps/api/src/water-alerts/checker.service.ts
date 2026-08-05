@@ -22,11 +22,14 @@ import { WaterSubscriberRepository } from "./water-subscriber.repository";
 const WATER_OUTAGES_PATH = "/health-and-emergency-services/water-outages";
 // Session-scoped advisory-lock key so only one API task runs the check at once.
 const CHECK_LOCK_KEY = 91442;
-const SEND_BATCH = 10;
+// How many emails to send concurrently, and mark sent per batch. Bounds SES
+// concurrency and keeps the number of UPDATEs to ceil(recipients / batch).
+const SEND_BATCH = 25;
 
 export interface CheckSummary {
   activeNotices: number;
-  recipients: number;
+  /** Matched (notice, subscriber) pairs — dry-run only. */
+  recipients?: number;
   attempted: number;
   sent: number;
   failed: number;
@@ -118,9 +121,14 @@ export class CheckerService {
   }
 
   /**
-   * Core check. Phase 1: match confirmed subscribers per active notice and claim
-   * each (notice, subscriber) pair. Phase 2: send every still-unsent claim
-   * (new + previously-failed) in small batches, marking each sent on success.
+   * Core check. Everything is set-based — the number of DB round-trips does NOT
+   * grow with the subscriber count, so it stays fast and reliable when a notice
+   * fans out to thousands of citizens.
+   *
+   * Phase 1: claim every matching (notice, subscriber) pair in ONE statement.
+   * Phase 2: fetch still-unsent claims (one query), send in bounded concurrent
+   * batches, and mark each batch sent in one statement. Failed or SES-throttled
+   * sends stay unsent and are retried on the next run.
    */
   async runAlertCheck(
     opts: { notices?: Outage[]; dryRun?: boolean; demo?: boolean } = {},
@@ -130,40 +138,47 @@ export class CheckerService {
     const active = notices.filter((o) => !isPast(o, now));
     const noticeById = new Map(active.map((n) => [n.id, n]));
 
-    let recipients = 0;
-    const plan: Array<{ notice: string; recipients: string[] }> = [];
-
+    // Flatten active notices into parallel (notice_id, area) arrays so matching
+    // is one set-based query, not a query per notice or per subscriber.
+    const pairNoticeIds: string[] = [];
+    const pairAreas: string[] = [];
     for (const notice of active) {
-      const subs = await this.subscribers.findConfirmedForAreas(
-        areasFor(notice),
-      );
-      recipients += subs.length;
-      if (opts.dryRun) {
-        plan.push({
-          notice: notice.title,
-          recipients: subs.map((s) => s.email),
-        });
-        continue;
-      }
-      for (const sub of subs) {
-        await this.sentAlerts.claim(notice.id, sub.id);
+      for (const area of areasFor(notice)) {
+        pairNoticeIds.push(notice.id);
+        pairAreas.push(area);
       }
     }
 
     if (opts.dryRun) {
+      const matched = await this.subscribers.matchedRecipients(
+        pairNoticeIds,
+        pairAreas,
+      );
+      const byNotice = new Map<string, string[]>();
+      for (const m of matched) {
+        const list = byNotice.get(m.noticeId);
+        if (list) list.push(m.email);
+        else byNotice.set(m.noticeId, [m.email]);
+      }
       return {
         activeNotices: active.length,
-        recipients,
+        recipients: matched.length,
         attempted: 0,
         sent: 0,
         failed: 0,
         dryRun: true,
-        plan,
+        plan: active.map((n) => ({
+          notice: n.title,
+          recipients: byNotice.get(n.id) ?? [],
+        })),
       };
     }
 
-    const pending = await this.sentAlerts.pendingUnsent([...noticeById.keys()]);
+    // Phase 1 — claim all pairs in a single statement.
+    await this.sentAlerts.claimForPairs(pairNoticeIds, pairAreas);
 
+    // Phase 2 — send the unsent claims, batch-marking each group sent.
+    const pending = await this.sentAlerts.pendingUnsent([...noticeById.keys()]);
     let sent = 0;
     let failed = 0;
     for (let i = 0; i < pending.length; i += SEND_BATCH) {
@@ -171,21 +186,29 @@ export class CheckerService {
       const results = await Promise.allSettled(
         batch.map((row) => this.sendOne(row, noticeById, opts.demo ?? false)),
       );
-      for (const r of results) {
-        if (r.status === "fulfilled" && r.value) sent++;
-        else failed++;
-      }
+      const okNoticeIds: string[] = [];
+      const okSubscriberIds: string[] = [];
+      results.forEach((r, idx) => {
+        if (r.status === "fulfilled" && r.value) {
+          sent++;
+          okNoticeIds.push(batch[idx].noticeId);
+          okSubscriberIds.push(batch[idx].subscriberId);
+        } else {
+          failed++;
+        }
+      });
+      await this.sentAlerts.markManySent(okNoticeIds, okSubscriberIds);
     }
 
     return {
       activeNotices: active.length,
-      recipients,
       attempted: pending.length,
       sent,
       failed,
     };
   }
 
+  /** Builds and sends one alert. Returns whether it was sent (never throws). */
   private async sendOne(
     row: PendingAlert,
     noticeById: Map<string, Outage>,
@@ -207,9 +230,7 @@ export class CheckerService {
       ? buildDemoAlertEmail(areaLabel, notice, bodyUnsubUrl)
       : buildAlertEmail(areaLabel, notice, bodyUnsubUrl);
 
-    const ok = await this.sendAlert(row.email, content, oneClickUnsubUrl);
-    if (ok) await this.sentAlerts.markSent(row.noticeId, row.subscriberId);
-    return ok;
+    return this.sendAlert(row.email, content, oneClickUnsubUrl);
   }
 
   /** Sends an alert with RFC 8058 one-click unsubscribe headers. Never throws. */

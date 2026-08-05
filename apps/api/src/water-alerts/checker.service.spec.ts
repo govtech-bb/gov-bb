@@ -21,24 +21,19 @@ function outage(overrides: Partial<Outage> = {}): Outage {
 
 function makeDeps(
   over: {
-    fetchOutages?: unknown;
-    findConfirmedForAreas?: unknown;
+    matchedRecipients?: unknown;
     pendingUnsent?: unknown;
     send?: unknown;
   } = {},
 ) {
-  const feed = {
-    fetchOutages: vi.fn().mockResolvedValue([]),
-    ...(over.fetchOutages ? { fetchOutages: over.fetchOutages } : {}),
-  };
+  const feed = { fetchOutages: vi.fn().mockResolvedValue([]) };
   const subscribers = {
-    findConfirmedForAreas:
-      over.findConfirmedForAreas ?? vi.fn().mockResolvedValue([]),
+    matchedRecipients: over.matchedRecipients ?? vi.fn().mockResolvedValue([]),
   };
   const sentAlerts = {
-    claim: vi.fn().mockResolvedValue(undefined),
+    claimForPairs: vi.fn().mockResolvedValue(undefined),
     pendingUnsent: over.pendingUnsent ?? vi.fn().mockResolvedValue([]),
-    markSent: vi.fn().mockResolvedValue(undefined),
+    markManySent: vi.fn().mockResolvedValue(undefined),
   };
   const send = over.send ?? vi.fn().mockResolvedValue({});
   const mailer = {
@@ -57,12 +52,20 @@ function makeDeps(
   return { service, feed, subscribers, sentAlerts, send };
 }
 
+const PENDING_ROW = {
+  noticeId: "n1",
+  subscriberId: "s1",
+  email: "a@x",
+  area: "all",
+  unsubscribeToken: "u1",
+};
+
 describe("CheckerService.runAlertCheck", () => {
   it("dry-run computes recipients without claiming or sending", async () => {
-    const { service, subscribers, sentAlerts } = makeDeps({
-      findConfirmedForAreas: vi.fn().mockResolvedValue([
-        { id: "s1", email: "a@x" },
-        { id: "s2", email: "b@x" },
+    const { service, sentAlerts } = makeDeps({
+      matchedRecipients: vi.fn().mockResolvedValue([
+        { noticeId: "n1", email: "a@x" },
+        { noticeId: "n1", email: "b@x" },
       ]),
     });
 
@@ -74,8 +77,7 @@ describe("CheckerService.runAlertCheck", () => {
     expect(res.dryRun).toBe(true);
     expect(res.recipients).toBe(2);
     expect(res.plan?.[0]?.recipients).toEqual(["a@x", "b@x"]);
-    expect(sentAlerts.claim).not.toHaveBeenCalled();
-    expect(subscribers.findConfirmedForAreas).toHaveBeenCalledOnce();
+    expect(sentAlerts.claimForPairs).not.toHaveBeenCalled();
   });
 
   it("skips past notices", async () => {
@@ -88,58 +90,39 @@ describe("CheckerService.runAlertCheck", () => {
     expect(res.activeNotices).toBe(0);
   });
 
-  it("matches a parish notice to that parish and 'all'", async () => {
-    const find = vi.fn().mockResolvedValue([]);
-    const { service } = makeDeps({ findConfirmedForAreas: find });
+  it("claims a parish notice against that parish and 'all' in one call", async () => {
+    const { service, sentAlerts } = makeDeps();
     await service.runAlertCheck({
       notices: [outage({ parishes: ["saint-michael"] })],
     });
-    expect(find).toHaveBeenCalledWith(["saint-michael", "all"]);
+    expect(sentAlerts.claimForPairs).toHaveBeenCalledWith(
+      ["n1", "n1"],
+      ["saint-michael", "all"],
+    );
   });
 
-  it("matches an untagged notice to 'all' only", async () => {
-    const find = vi.fn().mockResolvedValue([]);
-    const { service } = makeDeps({ findConfirmedForAreas: find });
+  it("claims an untagged notice against 'all' only", async () => {
+    const { service, sentAlerts } = makeDeps();
     await service.runAlertCheck({ notices: [outage({ parishes: [] })] });
-    expect(find).toHaveBeenCalledWith(["all"]);
+    expect(sentAlerts.claimForPairs).toHaveBeenCalledWith(["n1"], ["all"]);
   });
 
-  it("claims each pair then sends unsent claims and marks them", async () => {
+  it("sends unsent claims and marks the batch sent in one call", async () => {
     const { service, sentAlerts, send } = makeDeps({
-      findConfirmedForAreas: vi
-        .fn()
-        .mockResolvedValue([{ id: "s1" }, { id: "s2" }]),
-      pendingUnsent: vi.fn().mockResolvedValue([
-        {
-          noticeId: "n1",
-          subscriberId: "s1",
-          email: "a@x",
-          area: "all",
-          unsubscribeToken: "u1",
-        },
-      ]),
+      pendingUnsent: vi.fn().mockResolvedValue([PENDING_ROW]),
     });
 
     const res = await service.runAlertCheck({ notices: [outage()] });
 
-    expect(sentAlerts.claim).toHaveBeenCalledTimes(2);
     expect(send).toHaveBeenCalledOnce();
-    expect(sentAlerts.markSent).toHaveBeenCalledWith("n1", "s1");
+    expect(sentAlerts.markManySent).toHaveBeenCalledWith(["n1"], ["s1"]);
     expect(res.sent).toBe(1);
     expect(res.failed).toBe(0);
   });
 
-  it("counts a failed send and does not mark it sent", async () => {
+  it("does not mark a failed send as sent", async () => {
     const { service, sentAlerts } = makeDeps({
-      pendingUnsent: vi.fn().mockResolvedValue([
-        {
-          noticeId: "n1",
-          subscriberId: "s1",
-          email: "a@x",
-          area: "all",
-          unsubscribeToken: "u1",
-        },
-      ]),
+      pendingUnsent: vi.fn().mockResolvedValue([PENDING_ROW]),
       send: vi.fn().mockRejectedValue(new Error("SES down")),
     });
 
@@ -147,21 +130,14 @@ describe("CheckerService.runAlertCheck", () => {
 
     expect(res.failed).toBe(1);
     expect(res.sent).toBe(0);
-    expect(sentAlerts.markSent).not.toHaveBeenCalled();
+    // Batch marked with no successes.
+    expect(sentAlerts.markManySent).toHaveBeenCalledWith([], []);
   });
 
   it("demo run uses the [DEMO] template with one-click unsubscribe header", async () => {
     const send = vi.fn().mockResolvedValue({});
     const { service } = makeDeps({
-      pendingUnsent: vi.fn().mockResolvedValue([
-        {
-          noticeId: "n1",
-          subscriberId: "s1",
-          email: "a@x",
-          area: "all",
-          unsubscribeToken: "u1",
-        },
-      ]),
+      pendingUnsent: vi.fn().mockResolvedValue([PENDING_ROW]),
       send,
     });
 
