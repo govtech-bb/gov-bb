@@ -620,14 +620,30 @@ export async function updateFormHandler(
     `SELECT id FROM form_definitions WHERE form_id = $1 LIMIT 1`,
     [req.params.formId],
   );
-  if (!rows.length) {
+  // Consulted for the title check below, and — when there's no draft row — to
+  // decide whether this is a published-only form we should seed a row for.
+  const publishedForms = await fetchPublishedFormsFailOpen();
+  // A published-only form has no scratch row: its recipe lives solely as the
+  // committed canonical flat file, which the builder's GET path serves via its
+  // published fallback (resolveStoredRecipe, #1196) — so the form opens and
+  // edits normally and only the save failed. Seed the row here instead of 404ing
+  // on an edit of a form the builder just handed the user. Gated on the form
+  // actually being published upstream so a formId with neither a draft nor a
+  // published recipe (e.g. a stale tab saving after a delete, which writes no
+  // tombstone) still 404s rather than silently resurrecting the form. Because
+  // fetchPublishedFormsFailOpen fails open to [], an upstream outage keeps the
+  // pre-existing 404 — no worse than before, and never a row we can't justify.
+  const needsSeed = !rows.length;
+  if (
+    needsSeed &&
+    !publishedForms.some((p) => p.formId === req.params.formId)
+  ) {
     throw notFound(`No recipe found for formId: ${req.params.formId}`);
   }
   // title uniqueness on rename — reject renaming into another form's title
   // (drafts + published), while keeping this form's own title (excluded by
   // formId) is allowed. formId is not reassigned on update, so there's no
   // published-formId check here. Fails open if upstream is down.
-  const publishedForms = await fetchPublishedFormsFailOpen();
   const titleCollision = await findTitleCollisionInDb(
     ds,
     recipe.title ?? "",
@@ -650,10 +666,27 @@ export async function updateFormHandler(
     return;
   }
   await ds.transaction(async (manager) => {
-    await manager.query(
-      `UPDATE form_definitions SET schema = $1 WHERE id = $2`,
-      [recipe, rows[0].id],
-    );
+    if (needsSeed) {
+      // Same row shape createFormHandler writes: one versionless, unpublished
+      // scratch row per form (#1196). ON CONFLICT on the UNIQUE(form_id)
+      // constraint rather than a plain insert so two concurrent saves of the
+      // same published-only form (both seeing no row) resolve to
+      // last-write-wins — the same semantics as the UPDATE branch — instead of
+      // the loser raising an unhandled 23505 and 500ing. Raw SQL, like the
+      // UPDATE below: TypeORM's upsert() types the recipe through
+      // QueryDeepPartialEntity, which can't express its nested element unions.
+      await manager.query(
+        `INSERT INTO form_definitions (form_id, version, schema, published_at)
+         VALUES ($1, NULL, $2, NULL)
+         ON CONFLICT (form_id) DO UPDATE SET schema = EXCLUDED.schema`,
+        [req.params.formId, recipe],
+      );
+    } else {
+      await manager.query(
+        `UPDATE form_definitions SET schema = $1 WHERE id = $2`,
+        [recipe, rows[0].id],
+      );
+    }
     if (mdaContactId !== undefined) {
       await upsertFormConfig(manager, String(req.params.formId), mdaContactId);
     }
