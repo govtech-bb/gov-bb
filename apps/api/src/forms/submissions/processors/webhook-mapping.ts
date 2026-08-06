@@ -1,5 +1,10 @@
-import type { WebhookMapping } from "@govtech-bb/form-types";
+import type {
+  Primitive,
+  ServiceContract,
+  WebhookMapping,
+} from "@govtech-bb/form-types";
 import type { SubmissionValues } from "../submissions.types";
+import { isOptionField, resolveOptionDisplay } from "@/forms/field-display";
 
 /**
  * Builds the external "case" payload from a submission using the recipe's
@@ -53,32 +58,58 @@ function readName(values: SubmissionValues, name: string | string[]): string {
  * Non-repeatable content fields are either hoisted to the top level (default)
  * or, when `groupByStep` is set, kept nested under their step id (empty groups
  * omitted).
+ *
+ * Option fields (radio/select/checkbox/checkbox-accordion) whose definition is
+ * in `fieldByPath` have their stored value-slugs resolved to display labels
+ * (#842); every other field passes through raw. An empty map ⇒ full passthrough.
  */
 function buildFormData(
   values: SubmissionValues,
   excludeSteps: string[],
   applicantPaths: string[],
   groupByStep: boolean,
+  fieldByPath: Map<string, Primitive>,
 ): Record<string, unknown> {
   const excluded = new Set(excludeSteps);
   const dropped = new Set(applicantPaths); // "stepId.fieldId"
   const result: Record<string, unknown> = {};
 
+  const display = (
+    stepId: string,
+    fieldId: string,
+    value: unknown,
+  ): unknown => {
+    const field = fieldByPath.get(`${stepId}.${fieldId}`);
+    return field && isOptionField(field)
+      ? resolveOptionDisplay(field, value)
+      : value;
+  };
+
   for (const [stepId, stepValue] of Object.entries(values)) {
     if (excluded.has(stepId)) continue;
 
     if (Array.isArray(stepValue)) {
-      result[stepId] = stepValue;
+      // Repeatable step — resolve option labels within each instance's fields.
+      result[stepId] = stepValue.map((instance) =>
+        instance && typeof instance === "object" && !Array.isArray(instance)
+          ? Object.fromEntries(
+              Object.entries(instance as Record<string, unknown>).map(
+                ([fieldId, v]) => [fieldId, display(stepId, fieldId, v)],
+              ),
+            )
+          : instance,
+      );
       continue;
     }
 
     const group: Record<string, unknown> = {};
     for (const [fieldId, fieldValue] of Object.entries(stepValue)) {
       if (dropped.has(`${stepId}.${fieldId}`)) continue;
+      const resolved = display(stepId, fieldId, fieldValue);
       if (groupByStep) {
-        group[fieldId] = fieldValue;
+        group[fieldId] = resolved;
       } else {
-        result[fieldId] = fieldValue;
+        result[fieldId] = resolved;
       }
     }
     if (groupByStep && Object.keys(group).length > 0) {
@@ -87,6 +118,19 @@ function buildFormData(
   }
 
   return result;
+}
+
+/** Index a hydrated contract's option fields by `"stepId.fieldId"` so the
+ * form_data builder can resolve value-slugs to labels. */
+function indexFields(contract?: ServiceContract): Map<string, Primitive> {
+  const byPath = new Map<string, Primitive>();
+  for (const step of contract?.steps ?? []) {
+    for (const element of step.elements) {
+      if (element.fieldId)
+        byPath.set(`${step.stepId}.${element.fieldId}`, element);
+    }
+  }
+  return byPath;
 }
 
 export interface MappedCasePayload {
@@ -115,6 +159,9 @@ export function buildMappedCasePayload(args: {
   /** When set (coordinate-based catchment routing), overrides the static
    *  `mapping.programmeCode`. */
   programmeCodeOverride?: string;
+  /** Hydrated form contract; when present, option field values in `form_data`
+   *  are resolved to their display labels (#842). Omitted ⇒ raw passthrough. */
+  contract?: ServiceContract;
 }): MappedCasePayload {
   const {
     mapping,
@@ -123,6 +170,7 @@ export function buildMappedCasePayload(args: {
     submittedAt,
     higherRisk,
     programmeCodeOverride,
+    contract,
   } = args;
   const namePaths = Array.isArray(mapping.applicant.name)
     ? mapping.applicant.name
@@ -141,6 +189,7 @@ export function buildMappedCasePayload(args: {
       mapping.excludeSteps ?? [],
       [...namePaths, mapping.applicant.email, mapping.applicant.phone],
       mapping.groupByStep ?? false,
+      indexFields(contract),
     ),
     submitted_at: submittedAt,
     ...(higherRisk !== null &&
