@@ -21,7 +21,9 @@ import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BankHolidayCalendarIndexRouteImport } from './routes/bank-holiday-calendar/index'
+import { Route as HealthAndEmergencyServicesWaterOutagesRouteRouteImport } from './routes/health-and-emergency-services/water-outages/route'
 import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/route'
+import { Route as HealthAndEmergencyServicesWaterOutagesIndexRouteImport } from './routes/health-and-emergency-services/water-outages/index'
 import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterIndexRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/index'
 import { Route as PensionsAndGratuitiesCalculateYourPensionFormRouteImport } from './routes/pensions-and-gratuities/calculate-your-pension/form'
 import { Route as MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRouteImport } from './routes/money-financial-support/national-insurance-for-self-employed-workers/form'
@@ -91,11 +93,23 @@ const BankHolidayCalendarIndexRoute =
     path: '/bank-holiday-calendar/',
     getParentRoute: () => rootRouteImport,
   } as any)
+const HealthAndEmergencyServicesWaterOutagesRouteRoute =
+  HealthAndEmergencyServicesWaterOutagesRouteRouteImport.update({
+    id: '/health-and-emergency-services/water-outages',
+    path: '/health-and-emergency-services/water-outages',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute =
   HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteImport.update({
     id: '/health-and-emergency-services/find-an-emergency-shelter',
     path: '/health-and-emergency-services/find-an-emergency-shelter',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const HealthAndEmergencyServicesWaterOutagesIndexRoute =
+  HealthAndEmergencyServicesWaterOutagesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => HealthAndEmergencyServicesWaterOutagesRouteRoute,
   } as any)
 const HealthAndEmergencyServicesFindAnEmergencyShelterIndexRoute =
   HealthAndEmergencyServicesFindAnEmergencyShelterIndexRouteImport.update({
@@ -158,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tell-us': typeof TellUsRoute
   '/health-and-emergency-services/find-an-emergency-shelter': typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren
+  '/health-and-emergency-services/water-outages': typeof HealthAndEmergencyServicesWaterOutagesRouteRouteWithChildren
   '/bank-holiday-calendar/': typeof BankHolidayCalendarIndexRoute
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
@@ -166,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/money-financial-support/national-insurance-for-self-employed-workers/form': typeof MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/': typeof HealthAndEmergencyServicesFindAnEmergencyShelterIndexRoute
+  '/health-and-emergency-services/water-outages/': typeof HealthAndEmergencyServicesWaterOutagesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -187,6 +203,7 @@ export interface FileRoutesByTo {
   '/money-financial-support/national-insurance-for-self-employed-workers/form': typeof MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter': typeof HealthAndEmergencyServicesFindAnEmergencyShelterIndexRoute
+  '/health-and-emergency-services/water-outages': typeof HealthAndEmergencyServicesWaterOutagesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -202,6 +219,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tell-us': typeof TellUsRoute
   '/health-and-emergency-services/find-an-emergency-shelter': typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren
+  '/health-and-emergency-services/water-outages': typeof HealthAndEmergencyServicesWaterOutagesRouteRouteWithChildren
   '/bank-holiday-calendar/': typeof BankHolidayCalendarIndexRoute
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
@@ -210,6 +228,7 @@ export interface FileRoutesById {
   '/money-financial-support/national-insurance-for-self-employed-workers/form': typeof MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/': typeof HealthAndEmergencyServicesFindAnEmergencyShelterIndexRoute
+  '/health-and-emergency-services/water-outages/': typeof HealthAndEmergencyServicesWaterOutagesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -226,6 +245,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/tell-us'
     | '/health-and-emergency-services/find-an-emergency-shelter'
+    | '/health-and-emergency-services/water-outages'
     | '/bank-holiday-calendar/'
     | '/business-trade/crop-over-permits/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
@@ -234,6 +254,7 @@ export interface FileRouteTypes {
     | '/money-financial-support/national-insurance-for-self-employed-workers/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/'
+    | '/health-and-emergency-services/water-outages/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -255,6 +276,7 @@ export interface FileRouteTypes {
     | '/money-financial-support/national-insurance-for-self-employed-workers/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
     | '/health-and-emergency-services/find-an-emergency-shelter'
+    | '/health-and-emergency-services/water-outages'
   id:
     | '__root__'
     | '/'
@@ -269,6 +291,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/tell-us'
     | '/health-and-emergency-services/find-an-emergency-shelter'
+    | '/health-and-emergency-services/water-outages'
     | '/bank-holiday-calendar/'
     | '/business-trade/crop-over-permits/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
@@ -277,6 +300,7 @@ export interface FileRouteTypes {
     | '/money-financial-support/national-insurance-for-self-employed-workers/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/'
+    | '/health-and-emergency-services/water-outages/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -292,6 +316,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TellUsRoute: typeof TellUsRoute
   HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute: typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren
+  HealthAndEmergencyServicesWaterOutagesRouteRoute: typeof HealthAndEmergencyServicesWaterOutagesRouteRouteWithChildren
   BankHolidayCalendarIndexRoute: typeof BankHolidayCalendarIndexRoute
   BusinessTradeCropOverPermitsFormRoute: typeof BusinessTradeCropOverPermitsFormRoute
   MoneyFinancialSupportCalculateSeverancePayFormRoute: typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
@@ -385,12 +410,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BankHolidayCalendarIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/health-and-emergency-services/water-outages': {
+      id: '/health-and-emergency-services/water-outages'
+      path: '/health-and-emergency-services/water-outages'
+      fullPath: '/health-and-emergency-services/water-outages'
+      preLoaderRoute: typeof HealthAndEmergencyServicesWaterOutagesRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/health-and-emergency-services/find-an-emergency-shelter': {
       id: '/health-and-emergency-services/find-an-emergency-shelter'
       path: '/health-and-emergency-services/find-an-emergency-shelter'
       fullPath: '/health-and-emergency-services/find-an-emergency-shelter'
       preLoaderRoute: typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/health-and-emergency-services/water-outages/': {
+      id: '/health-and-emergency-services/water-outages/'
+      path: '/'
+      fullPath: '/health-and-emergency-services/water-outages/'
+      preLoaderRoute: typeof HealthAndEmergencyServicesWaterOutagesIndexRouteImport
+      parentRoute: typeof HealthAndEmergencyServicesWaterOutagesRouteRoute
     }
     '/health-and-emergency-services/find-an-emergency-shelter/': {
       id: '/health-and-emergency-services/find-an-emergency-shelter/'
@@ -465,6 +504,21 @@ const HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren =
     HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteChildren,
   )
 
+interface HealthAndEmergencyServicesWaterOutagesRouteRouteChildren {
+  HealthAndEmergencyServicesWaterOutagesIndexRoute: typeof HealthAndEmergencyServicesWaterOutagesIndexRoute
+}
+
+const HealthAndEmergencyServicesWaterOutagesRouteRouteChildren: HealthAndEmergencyServicesWaterOutagesRouteRouteChildren =
+  {
+    HealthAndEmergencyServicesWaterOutagesIndexRoute:
+      HealthAndEmergencyServicesWaterOutagesIndexRoute,
+  }
+
+const HealthAndEmergencyServicesWaterOutagesRouteRouteWithChildren =
+  HealthAndEmergencyServicesWaterOutagesRouteRoute._addFileChildren(
+    HealthAndEmergencyServicesWaterOutagesRouteRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
@@ -479,6 +533,8 @@ const rootRouteChildren: RootRouteChildren = {
   TellUsRoute: TellUsRoute,
   HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute:
     HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren,
+  HealthAndEmergencyServicesWaterOutagesRouteRoute:
+    HealthAndEmergencyServicesWaterOutagesRouteRouteWithChildren,
   BankHolidayCalendarIndexRoute: BankHolidayCalendarIndexRoute,
   BusinessTradeCropOverPermitsFormRoute: BusinessTradeCropOverPermitsFormRoute,
   MoneyFinancialSupportCalculateSeverancePayFormRoute:
