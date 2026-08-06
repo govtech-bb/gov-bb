@@ -209,6 +209,13 @@ describe("SqsConsumerService", () => {
       expect(msg).toContain("form=form-1");
       expect(msg).toContain("reference=JPP-20260604-9JZRZC");
       expect(msg).toContain("not retried");
+      // config failures delete the message — the remediation must NOT tell the
+      // operator to redrive (there is nothing in the DLQ).
+      expect(msg).toContain("nothing to redrive");
+      expect(msg).not.toContain("redrive the DLQ");
+      // env (from the queue URL) + processor index disambiguate the alert
+      expect(msg).toContain("env=sandbox");
+      expect(msg).toContain("index=0");
       // no applicant PII leaks into the alert
       expect(msg).not.toContain("citizen@example.com");
     });

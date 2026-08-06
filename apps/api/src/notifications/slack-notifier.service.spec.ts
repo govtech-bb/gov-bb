@@ -1,16 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { Logger } from "@nestjs/common";
 import { SlackNotifierService, mrkdwnEscape } from "./slack-notifier.service";
 
 const WEBHOOK = "https://hooks.slack.com/services/x";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
 
 describe("SlackNotifierService", () => {
   it("posts the message text to the configured webhook", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(undefined);
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
     vi.stubGlobal("fetch", fetchMock);
 
     await new SlackNotifierService(WEBHOOK).notify("hello");
@@ -20,6 +22,21 @@ describe("SlackNotifierService", () => {
     expect(url).toBe(WEBHOOK);
     expect(init).toMatchObject({ method: "POST" });
     expect(JSON.parse(init.body)).toEqual({ text: "hello" });
+  });
+
+  it("warns on a non-2xx Slack response and still does not throw", async () => {
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 404 }),
+    );
+
+    await expect(
+      new SlackNotifierService(WEBHOOK).notify("hello"),
+    ).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("404"));
   });
 
   it("is a no-op when no webhook is configured", async () => {
@@ -40,6 +57,35 @@ describe("SlackNotifierService", () => {
     await expect(
       new SlackNotifierService(WEBHOOK).notify("hello"),
     ).resolves.toBeUndefined();
+  });
+
+  describe("onApplicationBootstrap — configured-state log", () => {
+    it("warns in production when the webhook is unset", () => {
+      const warn = vi
+        .spyOn(Logger.prototype, "warn")
+        .mockImplementation(() => {});
+      vi.stubEnv("NODE_ENV", "production");
+
+      new SlackNotifierService("").onApplicationBootstrap();
+
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("SLACK_ALERTS_WEBHOOK_URL unset"),
+      );
+    });
+
+    it("stays quiet at boot when a webhook is configured", () => {
+      const warn = vi
+        .spyOn(Logger.prototype, "warn")
+        .mockImplementation(() => {});
+      const debug = vi
+        .spyOn(Logger.prototype, "debug")
+        .mockImplementation(() => {});
+
+      new SlackNotifierService(WEBHOOK).onApplicationBootstrap();
+
+      expect(warn).not.toHaveBeenCalled();
+      expect(debug).not.toHaveBeenCalled();
+    });
   });
 });
 
