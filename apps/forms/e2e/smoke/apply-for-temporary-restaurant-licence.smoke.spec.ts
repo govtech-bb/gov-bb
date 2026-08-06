@@ -45,7 +45,7 @@
  *    asserted (mirrors the vendor-registration spec).
  *  - food-served is a checkbox-accordion: open a category, then tick one leaf.
  *    The run also ticks the "Something else" category's `other` leaf, which
- *    reveals the required free-text food-served-other.
+ *    reveals the required free-text other-food-description.
  *  - food-from-supplier is a single-option checkbox (value "yes", so the input
  *    id is `<step>_food-from-supplier-yes`). It gates the supplier name /
  *    address / phone / email fields, which are asserted hidden before it is
@@ -382,7 +382,7 @@ test.describe("Temporary Restaurant Licence — Live Smoke", () => {
     });
     await expect(otherLeaf).toBeVisible({ timeout: STEP_TIMEOUT });
     await otherLeaf.check();
-    await field(page, step, "food-served-other", data.otherFood);
+    await field(page, step, "other-food-description", data.otherFood);
 
     // The supplier fields are gated behind food-from-supplier: absent until the
     // box is ticked, so assert that before ticking it and filling them in.

@@ -620,7 +620,7 @@
           "ref": "components/generic-textarea",
           "overrides": {
             "label": "What else will you serve?",
-            "fieldId": "food-served-other",
+            "fieldId": "other-food-description",
             "hint": "Tell us what you will serve that is not on the list.",
             "ui": {
               "width": "long"
