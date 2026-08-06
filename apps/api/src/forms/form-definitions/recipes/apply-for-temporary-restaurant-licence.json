@@ -621,7 +621,8 @@
             "fieldId": "other-food-description",
             "hint": "Tell us what you will serve that is not on the list.",
             "ui": {
-              "width": "long"
+              "width": "long",
+              "indent": true
             },
             "behaviours": [
               {
