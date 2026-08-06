@@ -85,6 +85,15 @@ describe("parseDate — DateValue object format", () => {
     );
   });
 
+  // #2072 Bug 1: the object branch previously skipped the round-trip guard the
+  // DD/MM/YYYY branch has, so 31/02 silently became 2 Mar and slipped past date
+  // comparisons. It must now be rejected like an impossible literal.
+  it("rejects an impossible DateValue object (31 Feb) instead of rolling it over", () => {
+    expect(pastRunner({ day: "31", month: "2", year: "2020" }, cfg(), {})).toBe(
+      "Date must be in the past",
+    );
+  });
+
   it("returns error for non-string non-object value", () => {
     expect(pastRunner(12345, cfg(), {})).toBe("Date must be in the past");
   });
