@@ -65,7 +65,17 @@ export function hydrateForm(
         const overrides =
           (field as { ref: string; overrides?: FieldOverrides }).overrides ??
           {};
-        elements.push(applyFieldOverrides(componentDef.primitive, overrides));
+        // structuredClone before merging: applyFieldOverrides shallow-spreads,
+        // so without this the served element's nested objects (validations / ui
+        // / options) alias the module-level REGISTRY_* singleton. In a
+        // long-lived process a single in-place mutation would then corrupt every
+        // subsequent request. The retired api-side resolver cloned here too.
+        elements.push(
+          applyFieldOverrides(
+            structuredClone(componentDef.primitive),
+            overrides,
+          ),
+        );
       } else if (field.ref.startsWith("blocks/")) {
         const blockDef = item as BlockDefinition;
         const childOverrides =
@@ -74,7 +84,10 @@ export function hydrateForm(
 
         for (const element of blockDef.block.elements) {
           const childOverride = childOverrides[element.fieldId] ?? {};
-          elements.push(applyFieldOverrides(element, childOverride));
+          // Clone for the same singleton-aliasing reason as the component branch.
+          elements.push(
+            applyFieldOverrides(structuredClone(element), childOverride),
+          );
         }
       }
     });

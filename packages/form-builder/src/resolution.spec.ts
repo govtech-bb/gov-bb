@@ -2,7 +2,8 @@ import { hydrateForm, collectUnknownRefs } from "./resolution";
 import { UnknownRefError } from "./errors";
 import { getCatalog, getRegistryItem } from "./catalog";
 import type { RegistryCatalog } from "./catalog";
-import type { ServiceContractRecipe } from "@govtech-bb/form-types";
+import type { ServiceContractRecipe, Primitive } from "@govtech-bb/form-types";
+import { REGISTRY_COMPONENTS } from "@govtech-bb/registry";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -155,6 +156,28 @@ describe("hydrateForm", () => {
 
   beforeEach(() => {
     catalog = getCatalog();
+  });
+
+  // Guard the deep clone: applyFieldOverrides shallow-spreads, so hydrated
+  // elements must not alias the module-level REGISTRY_* singletons — otherwise a
+  // single in-place mutation of a served element corrupts every later request.
+  it("returns elements detached from the builtin registry (no singleton aliasing)", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/account-name" }],
+        },
+      ],
+    });
+
+    const el = hydrateForm(recipe, catalog).steps[0].elements[0] as Primitive;
+    const builtin = REGISTRY_COMPONENTS["components/account-name"] as Primitive;
+
+    expect(el).toEqual(expect.objectContaining({ fieldId: builtin.fieldId }));
+    // Structurally equal, but a distinct object — mutating `el` can't touch the singleton.
+    expect(el.validations).not.toBe(builtin.validations);
   });
 
   it("preserves formId, title, and version", () => {
