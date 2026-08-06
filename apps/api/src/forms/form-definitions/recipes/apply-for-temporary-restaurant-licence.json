@@ -602,10 +602,8 @@
                 ]
               },
               {
-                "label": "Something else",
-                "options": [
-                  { "label": "Other food or drink not listed", "value": "other" }
-                ]
+                "label": "Other food",
+                "options": [{ "label": "Other food", "value": "other" }]
               }
             ],
             "validations": {

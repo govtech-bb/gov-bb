@@ -44,8 +44,9 @@
  *    raw digits are typed with pressSequentially and the YYMMDD-NNNN shape is
  *    asserted (mirrors the vendor-registration spec).
  *  - food-served is a checkbox-accordion: open a category, then tick one leaf.
- *    The run also ticks the "Something else" category's `other` leaf, which
- *    reveals the required free-text other-food-description.
+ *    "Other food" is the exception: a single-option group renders as one plain
+ *    checkbox (no expander), and ticking it reveals the required free-text
+ *    other-food-description.
  *  - food-from-supplier is a single-option checkbox (value "yes", so the input
  *    id is `<step>_food-from-supplier-yes`). It gates the supplier name /
  *    address / phone / email fields, which are asserted hidden before it is
@@ -133,8 +134,7 @@ const RICE_ITEMS = [
 ] as const;
 
 /** The "Other" escape hatch at the foot of the accordion. */
-const OTHER_GROUP_LABEL = "Something else";
-const OTHER_ITEM_LABEL = "Other food or drink not listed";
+const OTHER_LABEL = "Other food";
 
 /** Build a complete, valid set of answers for the is-organiser=no path. */
 function buildData() {
@@ -374,14 +374,11 @@ test.describe("Temporary Restaurant Licence — Live Smoke", () => {
     await leaf.check();
     await afterField(page);
 
-    // "Something else" → the `other` leaf reveals the required free-text field.
-    await page.getByRole("checkbox", { name: OTHER_GROUP_LABEL }).click();
-    const otherLeaf = page.getByRole("checkbox", {
-      name: OTHER_ITEM_LABEL,
-      exact: true,
-    });
-    await expect(otherLeaf).toBeVisible({ timeout: STEP_TIMEOUT });
-    await otherLeaf.check();
+    // "Other food" is a single-option group, so it renders as one plain
+    // checkbox (no expander) and ticking it reveals the required free-text.
+    await page
+      .getByRole("checkbox", { name: OTHER_LABEL, exact: true })
+      .check();
     await field(page, step, "other-food-description", data.otherFood);
 
     // The supplier fields are gated behind food-from-supplier: absent until the
