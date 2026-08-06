@@ -116,50 +116,62 @@ export default function FieldRenderer({
           );
         }
 
-        switch (field.htmlType) {
-          case "date":
-            return renderDateField(ctx);
-          case "textarea":
-            return renderTextareaField(ctx);
-          case "text":
-          case "number":
-          case "time":
-          case "tel":
-          case "email":
-            return renderTextField(ctx);
-          case "select":
-            return renderSelectField(ctx);
-          case "checkbox":
-            return renderCheckboxField(ctx);
-          case "checkbox-accordion":
-            return renderCheckboxAccordionField(ctx);
-          case "radio":
-            return renderRadioField(ctx);
-          case "file":
-            return (
-              <FileUpload
-                field={field}
-                sharedProps={ctx.sharedProps}
-                value={f.state.value as UploadedFile[] | null | undefined}
-                onFileChange={(files) => ctx.commitChange(files)}
-                errorMessage={ctx.errorMessage}
-                errorId={ctx.errorId}
-                formId={formId}
-                previewToken={previewToken}
-                draftToken={draftToken}
-              />
-            );
-          case "show-hide":
-            return renderShowHideField(ctx);
-          case "address-lookup":
-            return <AddressLookupField ctx={ctx} />;
-          default:
-            return (
-              <div style={{ color: "red" }}>
-                No field for {field.htmlType} designed
-              </div>
-            );
-        }
+        const renderByType = () => {
+          switch (field.htmlType) {
+            case "date":
+              return renderDateField(ctx);
+            case "textarea":
+              return renderTextareaField(ctx);
+            case "text":
+            case "number":
+            case "time":
+            case "tel":
+            case "email":
+              return renderTextField(ctx);
+            case "select":
+              return renderSelectField(ctx);
+            case "checkbox":
+              return renderCheckboxField(ctx);
+            case "checkbox-accordion":
+              return renderCheckboxAccordionField(ctx);
+            case "radio":
+              return renderRadioField(ctx);
+            case "file":
+              return (
+                <FileUpload
+                  field={field}
+                  sharedProps={ctx.sharedProps}
+                  value={f.state.value as UploadedFile[] | null | undefined}
+                  onFileChange={(files) => ctx.commitChange(files)}
+                  errorMessage={ctx.errorMessage}
+                  errorId={ctx.errorId}
+                  formId={formId}
+                  previewToken={previewToken}
+                  draftToken={draftToken}
+                />
+              );
+            case "show-hide":
+              return renderShowHideField(ctx);
+            case "address-lookup":
+              return <AddressLookupField ctx={ctx} />;
+            default:
+              return (
+                <div style={{ color: "red" }}>
+                  No field for {field.htmlType} designed
+                </div>
+              );
+          }
+        };
+
+        // `ui.indent` puts the field behind the same inset rail the radio /
+        // select option-reveals use (#863), so a field revealed by an earlier
+        // answer reads as belonging to it. Adjacent indented fields each draw
+        // their own rail segment, and those butt together into one line.
+        return field.ui?.indent ? (
+          <div className="govbb-field--indented">{renderByType()}</div>
+        ) : (
+          renderByType()
+        );
       }}
     </form.Field>
   );

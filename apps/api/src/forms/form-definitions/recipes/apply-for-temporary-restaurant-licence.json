@@ -3,7 +3,7 @@
   "title": "Apply for a licence to operate a temporary restaurant",
   "description": "Apply for a licence to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
   "createdAt": "2026-07-23T00:00:00Z",
-  "updatedAt": "2026-07-28T00:00:00Z",
+  "updatedAt": "2026-08-06T00:00:00Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -600,6 +600,10 @@
                   { "label": "Sno-cones", "value": "sno-cones" },
                   { "label": "Wines and spirits", "value": "wines-and-spirits" }
                 ]
+              },
+              {
+                "label": "Other food",
+                "options": [{ "label": "Other food", "value": "other" }]
               }
             ],
             "validations": {
@@ -611,18 +615,138 @@
           }
         },
         {
-          "ref": "components/additional-details",
+          "ref": "components/generic-textarea",
           "overrides": {
-            "label": "Where will you get the food from?",
-            "fieldId": "food-source",
-            "hint": "List your suppliers or sources. For example, fish from Oistins market; flour and oil from a wholesaler.",
+            "label": "What else will you serve?",
+            "fieldId": "other-food-description",
+            "hint": "Tell us what you will serve that is not on the list.",
             "ui": {
-              "width": "long"
+              "width": "long",
+              "indent": true
             },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-served",
+                "operator": "in",
+                "value": ["other"]
+              }
+            ],
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter where you will get the food from"
+                "error": "Tell us what else you will serve"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Where will you get the food from?",
+            "fieldId": "food-from-supplier",
+            "hint": "Tick this box if anyone else provides food for you. Leave it blank if you buy and prepare everything yourself.",
+            "options": [
+              {
+                "label": "I get some or all of my food from another supplier",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Supplier's name",
+            "fieldId": "supplier-name",
+            "ui": { "indent": true },
+            "hint": "The business or person you get the food from.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-from-supplier",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the supplier's name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Supplier's address",
+            "fieldId": "supplier-address",
+            "ui": { "indent": true },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-from-supplier",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-tel",
+          "overrides": {
+            "label": "Supplier's phone number",
+            "fieldId": "supplier-phone",
+            "ui": { "indent": true },
+            "hint": "For example, (246) 249 1234.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-from-supplier",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the supplier's phone number"
+              },
+              "phone": {
+                "value": true,
+                "error": "Please enter a valid phone number"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-email",
+          "overrides": {
+            "label": "Supplier's email address (optional)",
+            "fieldId": "supplier-email",
+            "ui": { "indent": true },
+            "hint": "For example, supplier@example.com.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-from-supplier",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "email": {
+                "value": true,
+                "error": "Enter a valid email address"
               }
             }
           }

@@ -172,6 +172,21 @@ describe("FieldRenderer", () => {
     expect(container.querySelector('input[type="time"]')).toBeTruthy();
   });
 
+  it("ui.indent → wraps the field in the inset rail", () => {
+    const { container } = renderField(
+      primitive("text", { ui: { indent: true } }),
+    );
+    const rail = container.querySelector(".govbb-field--indented");
+    expect(rail).toBeTruthy();
+    // The rail wraps the real control rather than replacing it.
+    expect(rail?.querySelector("input")).toBeTruthy();
+  });
+
+  it("ui.indent absent → no inset rail", () => {
+    const { container } = renderField(primitive("text"));
+    expect(container.querySelector(".govbb-field--indented")).toBeNull();
+  });
+
   const accordionGroups = [
     {
       label: "Meat and poultry",
@@ -183,7 +198,15 @@ describe("FieldRenderer", () => {
     },
     {
       label: "Snacks and sweets",
-      options: [{ value: "popcorn", label: "Popcorn" }],
+      options: [
+        { value: "popcorn", label: "Popcorn" },
+        { value: "cotton-candy", label: "Cotton candy" },
+      ],
+    },
+    // A single-option group is NOT an expander — see the two tests below.
+    {
+      label: "Other food",
+      options: [{ value: "other", label: "Other food" }],
     },
   ];
 
@@ -191,15 +214,35 @@ describe("FieldRenderer", () => {
     const { container } = renderField(
       primitive("checkbox-accordion", { groups: accordionGroups }),
     );
-    // One category checkbox per group; collapsed, so no item checkboxes yet.
+    // One checkbox per group; the multi-option ones are collapsed, so none of
+    // their items render yet.
     expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(
-      2,
+      3,
     );
     expect(screen.queryByLabelText("Chicken")).toBeNull();
     // Higher-risk badge only on the flagged category.
     const badges = container.querySelectorAll(".govbb-tag");
     expect(badges).toHaveLength(1);
     expect(badges[0]).toHaveTextContent(/higher-risk/i);
+  });
+
+  it("checkbox-accordion → a single-option group is one plain checkbox that selects the value directly", async () => {
+    const user = userEvent.setup();
+    renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
+    // It carries the GROUP's label, and ticking it selects the option value
+    // rather than expanding a category — so a lone "Other food" escape hatch
+    // costs one tick, not two.
+    await user.click(screen.getByLabelText("Other food"));
+    expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["other"]);
+  });
+
+  it("checkbox-accordion → a single-option group reflects and clears an existing selection", async () => {
+    const user = userEvent.setup();
+    mockState = { value: ["other"], meta: { isValid: true, errors: [] } };
+    renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
+    expect(screen.getByLabelText("Other food")).toBeChecked();
+    await user.click(screen.getByLabelText("Other food"));
+    expect(mockFieldApi.handleChange).toHaveBeenCalledWith([]);
   });
 
   it("checkbox-accordion → ticking a category expands it to reveal its items", async () => {

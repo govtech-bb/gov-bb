@@ -59,6 +59,13 @@ export const primitiveUISchema = z.object({
    * `isHidden`, which strips the field). For values computed by another field,
    * e.g. geocoded coordinates written by an `address-lookup` field. */
   hidden: z.boolean().optional(),
+  /** When true, the field renders behind the same inset rail the radio/select
+   * option-reveals use (#863), so a field revealed by an earlier answer reads
+   * as belonging to it. Opt-in per field: the automatic inset only covers
+   * single-choice radios and selects, so a reveal driven by a CHECKBOX has to
+   * ask for the treatment. Set it on every field in the revealed run — adjacent
+   * indented fields join into one continuous rail. */
+  indent: z.boolean().optional(),
 });
 
 export type PrimitiveUI = z.infer<typeof primitiveUISchema>;

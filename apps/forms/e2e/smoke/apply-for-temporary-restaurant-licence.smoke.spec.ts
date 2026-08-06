@@ -44,6 +44,13 @@
  *    raw digits are typed with pressSequentially and the YYMMDD-NNNN shape is
  *    asserted (mirrors the vendor-registration spec).
  *  - food-served is a checkbox-accordion: open a category, then tick one leaf.
+ *    "Other food" is the exception: a single-option group renders as one plain
+ *    checkbox (no expander), and ticking it reveals the required free-text
+ *    other-food-description.
+ *  - food-from-supplier is a single-option checkbox (value "yes", so the input
+ *    id is `<step>_food-from-supplier-yes`). It gates the supplier name /
+ *    address / phone / email fields, which are asserted hidden before it is
+ *    ticked and then filled.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
@@ -126,6 +133,9 @@ const RICE_ITEMS = [
   "Soup",
 ] as const;
 
+/** The "Other" escape hatch at the foot of the accordion. */
+const OTHER_LABEL = "Other food";
+
 /** Build a complete, valid set of answers for the is-organiser=no path. */
 function buildData() {
   if (process.env.FAKER_SEED) faker.seed(Number(process.env.FAKER_SEED));
@@ -169,7 +179,11 @@ function buildData() {
     endTime: "22:00",
 
     foodItem: faker.helpers.arrayElement(RICE_ITEMS),
-    foodSource: `${faker.company.name()} (${faker.location.city()})`,
+    otherFood: `${faker.commerce.productName()} (smoke test)`,
+    supplierName: faker.company.name(),
+    supplierAddress: faker.location.streetAddress(),
+    supplierPhone: bbMobileNumber(),
+    supplierEmail: faker.internet.email().toLowerCase(),
 
     handlersMale: String(faker.number.int({ min: 0, max: 6 })),
     handlersFemale: String(faker.number.int({ min: 1, max: 6 })),
@@ -359,7 +373,25 @@ test.describe("Temporary Restaurant Licence — Live Smoke", () => {
     await expect(leaf).toBeVisible({ timeout: STEP_TIMEOUT });
     await leaf.check();
     await afterField(page);
-    await field(page, step, "food-source", data.foodSource);
+
+    // "Other food" is a single-option group, so it renders as one plain
+    // checkbox (no expander) and ticking it reveals the required free-text.
+    await page
+      .getByRole("checkbox", { name: OTHER_LABEL, exact: true })
+      .check();
+    await field(page, step, "other-food-description", data.otherFood);
+
+    // The supplier fields are gated behind food-from-supplier: absent until the
+    // box is ticked, so assert that before ticking it and filling them in.
+    const supplierName = page.locator(`[id="${step}_supplier-name"]`);
+    await expect(supplierName).toBeHidden();
+    await page.locator(`input[id="${step}_food-from-supplier-yes"]`).check();
+    await expect(supplierName).toBeVisible({ timeout: STEP_TIMEOUT });
+    await afterField(page);
+    await field(page, step, "supplier-name", data.supplierName);
+    await field(page, step, "supplier-address", data.supplierAddress);
+    await field(page, step, "supplier-phone", data.supplierPhone);
+    await field(page, step, "supplier-email", data.supplierEmail);
     await advance(page, step);
 
     // ─── Step 5: Food safety ─────────────────────────────────────────────────

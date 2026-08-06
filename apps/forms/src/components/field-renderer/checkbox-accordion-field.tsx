@@ -29,6 +29,39 @@ function AccordionCategory({
   const [open, setOpen] = useState(hasSelection);
   const itemsId = `${idBase}-items`;
 
+  // A category holding exactly ONE item has nothing worth expanding: the
+  // expander would cost two ticks (open the category, then tick its lone item)
+  // to say one thing. Render it as a plain checkbox carrying the GROUP's label
+  // and bound straight to that item's value. This is what makes a lone "Other
+  // food" escape hatch at the foot of the list behave like a single choice.
+  if (group.options.length === 1) {
+    const option = group.options[0];
+    return (
+      <div className="govbb-accordion-group">
+        <div className="govbb-checkbox-item">
+          <input
+            type="checkbox"
+            className="govbb-checkbox"
+            id={`${fieldId}-${option.value}`}
+            checked={selected.includes(option.value)}
+            onChange={() => onToggleItem(option.value)}
+          />
+          <label
+            className="govbb-checkbox-item__label"
+            htmlFor={`${fieldId}-${option.value}`}
+          >
+            {group.label}
+            {group.higherRisk && (
+              <span className="govbb-tag govbb-tag--higher-risk">
+                Higher-risk
+              </span>
+            )}
+          </label>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="govbb-accordion-group">
       <div className="govbb-checkbox-item">
