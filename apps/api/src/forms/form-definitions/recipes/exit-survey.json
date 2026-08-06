@@ -176,21 +176,26 @@
       "description": "You can comment on anything, such as the questions, wording, layout, or how easy the form was to use."
     },
     {
-      "title": "Application submitted",
+      "title": "Thank you for your feedback",
       "stepId": "submission-confirmation",
       "elements": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "We have received your submission. You will receive a confirmation email at the address you provided."
-        }
-      ]
+      "description": "Your feedback has been submitted successfully.",
+      "hideReferenceNumber": true,
+      "markdownContent": "It helps us understand what is working well and what we can improve. This supports the development of better public services for everyone in Barbados.\n\n## What happens next\n\nWe will review the feedback we receive to identify ways to improve this service and the website.\n\nYour responses are combined with other feedback and used to inform future updates.\n\nYou do not need to do anything else.\n\nYou can now close this page or [return to alpha.gov.bb](https://alpha.gov.bb) for more services and information."
     }
   ],
   "title": "Help us improve this service",
   "formId": "exit-survey",
   "createdAt": "2026-05-07T00:00:00Z",
-  "updatedAt": "2026-06-10T00:00:00Z",
-  "processors": [],
+  "updatedAt": "2026-07-30T00:00:00Z",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "New exit survey response",
+        "recipientField": "feedback@govtech.bb"
+      }
+    }
+  ],
   "description": "Your feedback helps us improve this service. This will take about 30 seconds and includes 4 short questions."
 }

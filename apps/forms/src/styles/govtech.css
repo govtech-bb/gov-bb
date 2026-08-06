@@ -420,6 +420,10 @@
   margin-top: 0;
 }
 
+.form-page__print {
+  margin-top: var(--spacing-m);
+}
+
 /* ---- Next steps + contact details ---------------------------------------- */
 .form-page__next-steps {
   margin-top: var(--spacing-m);
@@ -676,4 +680,97 @@
 .govbb-address-suggestion:hover,
 .govbb-address-suggestion[aria-selected="true"] {
   background: var(--color-blue-10);
+}
+
+/* ---- Print: a clean paper copy of the confirmation (#2132) --------------- */
+/* Goal: both confirmation variants (payment and non-payment) print as one
+   consistent, plain black-on-white document — the submission ID, what-happens-
+   next and contact details — with no page chrome, no action controls, an even
+   vertical rhythm, and no block split across a page break. */
+@media print {
+  /* Chrome + every interactive control (actions are useless on paper): the
+     Print button, feedback link, "Continue to payment" and "Try again" buttons.
+     `[class*="govbb-btn"]` covers both the primary and --secondary variants. */
+  .no-print,
+  .form-page__print,
+  .form-page__feedback,
+  .govbb-btn,
+  [class*="govbb-btn"] {
+    display: none !important;
+  }
+
+  /* Use the paper's own margin: drop the on-screen page gutters and the fixed
+     two-thirds measure so content isn't boxed into a narrow column. */
+  .container {
+    max-width: none !important;
+    padding-inline: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .form-width {
+    width: 100% !important;
+  }
+
+  /* Page-break control below relies on `break-inside: avoid`, which Chrome
+     IGNORES on flex children. The confirmation is built from flex columns
+     (form-page__confirmation wraps every block; the payment card, contact and
+     lead panel are flex too), so those rules silently no-op and content splits
+     mid-block. Flatten these containers to plain block flow in print so the
+     browser honours the page-break rules. */
+  .form-page__confirmation,
+  .form-page__panel-body,
+  .govbb-payment,
+  .form-page__contact {
+    display: block !important;
+  }
+
+  /* The success/error banner is a tall (16.75rem) coloured block; print drops
+     the background, leaving a big empty gap. Collapse it to plain heading text. */
+  .form-page__panel {
+    min-height: 0 !important;
+    padding-block: 0 !important;
+  }
+
+  .form-page__panel--success,
+  .form-page__panel--error {
+    background: none !important;
+    color: var(--color-black-00) !important;
+  }
+
+  /* Payment summary card: drop its surface/border/shadow so the receipt lines
+     print as plain text, consistent with the non-payment layout. */
+  .govbb-payment {
+    background: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  /* One consistent gap between every confirmation block, both variants. */
+  .form-page__reference,
+  .govbb-payment,
+  .form-page__next-steps,
+  .form-page__markdown-content,
+  .form-page__contact {
+    margin-top: var(--spacing-m) !important;
+  }
+
+  /* Page breaks: keep a cohesive block whole and never orphan a heading from
+     the content it introduces. */
+  h1,
+  h2,
+  h3,
+  .govbb-text-h1,
+  .govbb-text-h2,
+  .govbb-text-h3 {
+    break-after: avoid-page;
+  }
+
+  .form-page__reference,
+  .form-page__contact,
+  .govbb-payment__item,
+  .form-page__next-steps > div,
+  .form-page__next-steps li {
+    break-inside: avoid;
+  }
 }
