@@ -197,6 +197,28 @@
   gap: var(--spacing-s);
 }
 
+/* ---- Opt-in indented field (ui.indent) ------------------------------------
+ * The same inset rail as .govbb-select__conditional, but requested per field
+ * instead of derived from an option list — the automatic inset only covers
+ * single-choice radios and selects, so a run of fields revealed by a CHECKBOX
+ * opts in via `ui.indent`. No vertical margin: consecutive indented fields
+ * each draw a rail segment and those butt together into one continuous line
+ * down the whole revealed group. */
+.govbb-field--indented {
+  padding-left: 2.5rem;
+  border-left: 8px solid var(--color-grey-00);
+}
+
+/* `.form-page__step` lays its fields out as a flex column with a `gap`, so
+ * each indented field would draw a rail segment separated by that gap —
+ * a dashed-looking ladder rather than one line. Every indented field after
+ * the first pulls itself up by the gap and re-adds it as padding INSIDE its
+ * own border, closing the seams into a single continuous rail. */
+.govbb-field--indented + .govbb-field--indented {
+  margin-top: calc(-1 * var(--spacing-s));
+  padding-top: var(--spacing-s);
+}
+
 /* ---- Checkbox accordion (#2065) ------------------------------------------
  * A collapsible multi-select matching the prototype: each category is a
  * checkbox that, when ticked, expands to reveal its item checkboxes in a

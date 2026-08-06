@@ -663,6 +663,7 @@
           "overrides": {
             "label": "Supplier's name",
             "fieldId": "supplier-name",
+            "ui": { "indent": true },
             "hint": "The business or person you get the food from.",
             "behaviours": [
               {
@@ -685,6 +686,7 @@
           "overrides": {
             "label": "Supplier's address",
             "fieldId": "supplier-address",
+            "ui": { "indent": true },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -700,6 +702,7 @@
           "overrides": {
             "label": "Supplier's phone number",
             "fieldId": "supplier-phone",
+            "ui": { "indent": true },
             "hint": "For example, (246) 249 1234.",
             "behaviours": [
               {
@@ -726,6 +729,7 @@
           "overrides": {
             "label": "Supplier's email address (optional)",
             "fieldId": "supplier-email",
+            "ui": { "indent": true },
             "hint": "For example, supplier@example.com.",
             "behaviours": [
               {

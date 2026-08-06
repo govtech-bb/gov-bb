@@ -172,6 +172,21 @@ describe("FieldRenderer", () => {
     expect(container.querySelector('input[type="time"]')).toBeTruthy();
   });
 
+  it("ui.indent → wraps the field in the inset rail", () => {
+    const { container } = renderField(
+      primitive("text", { ui: { indent: true } }),
+    );
+    const rail = container.querySelector(".govbb-field--indented");
+    expect(rail).toBeTruthy();
+    // The rail wraps the real control rather than replacing it.
+    expect(rail?.querySelector("input")).toBeTruthy();
+  });
+
+  it("ui.indent absent → no inset rail", () => {
+    const { container } = renderField(primitive("text"));
+    expect(container.querySelector(".govbb-field--indented")).toBeNull();
+  });
+
   const accordionGroups = [
     {
       label: "Meat and poultry",
