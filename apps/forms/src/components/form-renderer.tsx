@@ -569,6 +569,7 @@ function ActiveStep({
           processingMessage={currentStep.description}
           nextSteps={currentStep.nextSteps}
           markdownContent={currentStep.markdownContent}
+          hideReferenceNumber={currentStep.hideReferenceNumber}
           contactDetails={formMeta.contactDetails}
           onTryAgain={() => navigateToStep("check-your-answers")}
           onPaymentInitiated={() =>

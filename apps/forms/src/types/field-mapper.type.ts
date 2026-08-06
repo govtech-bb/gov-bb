@@ -60,6 +60,8 @@ export interface ClientFormStep {
   nextSteps?: { title: string; content?: string; items?: string[] }[];
   /** Raw markdown rendered on the submission-confirmation page. */
   markdownContent?: string;
+  /** Suppress the "Submission ID" on the confirmation page (anonymous forms). */
+  hideReferenceNumber?: boolean;
 }
 
 export interface ClientServiceContract {

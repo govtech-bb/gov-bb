@@ -363,7 +363,7 @@ export function CoverageCalculator() {
             onBack={() => go('income')}
             onContinue={() => {
               if (!tier) {
-                setTierError('Select a contribution level')
+                setTierError('Select an amount to compare')
                 focusErrorSummary(planErrorRef)
                 return
               }
@@ -453,10 +453,10 @@ function Hero({
         </h2>
         <p className="mb-4 text-[1.125rem] text-mid-grey-00">
           NIS stands for{' '}
-          <strong className="text-black-00">National Insurance</strong>. Think of
-          it as a safety net you build up bit by bit. You put in a small amount
-          when you earn. It&rsquo;s there when you need it: when you&rsquo;re
-          sick, when you have a baby, when you retire.
+          <strong className="text-black-00">National Insurance</strong>. Think
+          of it as a safety net you build up bit by bit. You put in a small
+          amount when you earn. It&rsquo;s there when you need it: when
+          you&rsquo;re sick, when you have a baby, when you retire.
         </p>
         <p className="mb-6 text-[1.125rem] text-mid-grey-00">
           Self-employed Bajans can join too. You choose how much you put in:{' '}
@@ -646,8 +646,8 @@ function MoneyField({
           className="mt-4 border-blue-40 border-l-4 bg-grey-00/50 p-3 text-[1rem] text-black-00"
           role="status"
         >
-          The most NIS can insure is {money(max)} a month. Amounts above this do
-          not change your estimate.
+          The most NIS can insure is {money(max)} a month, so earning more than
+          this will not increase most of your benefits.
         </div>
       )}
     </div>
@@ -805,7 +805,6 @@ function IncomeStep({
             hint="When work is steady and money comes in. A rough number is fine."
             id="good-month"
             label="What does a busy month look like?"
-            max={NIS.MAX_MONTHLY_INSURABLE}
             onChange={setGoodMonth}
             prefix="BDS $"
             value={goodMonth}
@@ -815,7 +814,6 @@ function IncomeStep({
             hint="When work is quiet: slow season, hurricane month, sickness. A rough number is fine."
             id="slow-month"
             label="And a slow month?"
-            max={NIS.MAX_MONTHLY_INSURABLE}
             onChange={setSlowMonth}
             prefix="BDS $"
             value={slowMonth}
@@ -844,32 +842,18 @@ function IncomeStep({
 }
 
 /* ── Screen: plan ───────────────────────────────────────────────────── */
+// The options are deliberately unnamed (no Minimum/Moderate/Stronger tiers,
+// no "Recommended" badge): each is just an amount to compare, so none reads
+// as the endorsed choice. Only the minimum carries a label, because that
+// amount is a rule, not a suggestion.
 const TIERS: Array<{
   id: Tier
-  label: string
+  label?: string
   tone: Tone
-  recommended?: boolean
-  sub: string
 }> = [
-  {
-    id: Tier.Minimum,
-    label: 'Minimum',
-    tone: 'yellow',
-    sub: 'Smaller payouts, but every benefit still counts.',
-  },
-  {
-    id: Tier.Moderate,
-    label: 'Moderate',
-    tone: 'green',
-    recommended: true,
-    sub: 'A bigger share of your earnings.',
-  },
-  {
-    id: Tier.Stronger,
-    label: 'Stronger',
-    tone: 'teal',
-    sub: 'The strongest cover you can build.',
-  },
+  { id: Tier.Minimum, label: 'Minimum contribution', tone: 'yellow' },
+  { id: Tier.Moderate, tone: 'green' },
+  { id: Tier.Stronger, tone: 'teal' },
 ]
 
 function PlanStep({
@@ -891,6 +875,10 @@ function PlanStep({
 }) {
   const suggested = suggestedContributions(earnings)
   const monthlyAvg = monthlyAverage(earnings)
+  // When 17.25% of the entered earnings comes out below the flat minimum, the
+  // Minimum card explains why it shows $100 rather than the calculated amount.
+  const rateFromEarnings = monthlyAvg * NIS.SE_RATE
+  const minimumApplies = rateFromEarnings < suggested[Tier.Minimum]
   const chosen = tier ? suggested[tier] : null
   const selTier = TIERS.find((t) => t.id === tier)
   const tierRadio = rovingRadioProps(
@@ -913,12 +901,11 @@ function PlanStep({
       )}
       <ServiceCaption />
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
-        What should you put in?
+        Choose an amount to compare
       </h1>
       <p className="mb-5 text-[1.125rem] text-mid-grey-00">
-        Pick a level you can afford. The more you put in, the bigger your
-        benefits. You&rsquo;ll see what each one protects next. These estimates
-        are based on the earnings you entered.
+        Compare how much you could pay and the benefits you may get. You can
+        choose a different amount when you make a payment.
       </p>
 
       {/* A caption, not a card: the contribution levels below are the things to
@@ -948,7 +935,7 @@ function PlanStep({
         )}
         <div
           aria-describedby={error ? 'tier-error' : undefined}
-          aria-label="Contribution level"
+          aria-label="Contribution amount to compare"
           className="flex flex-col gap-3"
           role="radiogroup"
         >
@@ -975,24 +962,44 @@ function PlanStep({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1 text-black-00">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-[1.25rem]">{t.label}</p>
-                      {t.recommended && (
-                        <span
-                          className={`rounded-full border bg-white-00 ${tone.border} ${tone.text} px-2.5 py-1 font-semibold text-[0.85rem]`}
-                        >
-                          Recommended
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 font-bold text-[2rem] tabular-nums leading-none">
+                    {t.label && (
+                      <p className="mb-1 font-semibold text-[1rem] text-mid-grey-00">
+                        {t.label}
+                      </p>
+                    )}
+                    <p className="font-bold text-[2rem] tabular-nums leading-none">
                       {money(suggested[t.id])}
                       <span className="font-normal text-[1rem] text-mid-grey-00">
                         {' '}
                         /month
                       </span>
                     </p>
-                    <p className="mt-2 text-[1rem] text-mid-grey-00">{t.sub}</p>
+                    <p className="mt-1 text-[1rem] text-mid-grey-00">
+                      About{' '}
+                      <span className="tabular-nums">
+                        {money((suggested[t.id] * 12) / 52)}
+                      </span>{' '}
+                      a week
+                    </p>
+                    {t.id === Tier.Minimum && minimumApplies && (
+                      <p className="mt-3 text-[1rem] text-black-00">
+                        <strong>Why have we shown this minimum</strong>
+                        <br />
+                        {(NIS.SE_RATE * 100).toFixed(2)}% of the{' '}
+                        <span className="tabular-nums">
+                          {money(monthlyAvg)}
+                        </span>{' '}
+                        monthly earnings you entered is about{' '}
+                        <span className="tabular-nums">
+                          {money(rateFromEarnings)}
+                        </span>
+                        . The lowest contribution is{' '}
+                        <span className="tabular-nums">
+                          {money(suggested[Tier.Minimum])}
+                        </span>{' '}
+                        a month, so we have shown the minimum.
+                      </p>
+                    )}
                   </div>
                   <span
                     className={`mt-1 inline-flex h-6 w-6 shrink-0 rounded-full ${
@@ -1018,13 +1025,15 @@ function PlanStep({
         >
           <div className="mb-1 flex items-start justify-between gap-3">
             <p className="font-semibold text-[0.95rem] text-teal-40 uppercase tracking-wide">
-              Your plan
+              Your selected amount
             </p>
-            <span
-              className={`inline-flex items-center rounded-full ${TONE[selTier.tone].bg} ${TONE[selTier.tone].text} px-4 py-1.5 font-bold text-[1.05rem]`}
-            >
-              {selTier.label}
-            </span>
+            {selTier.label && (
+              <span
+                className={`inline-flex items-center rounded-full ${TONE[selTier.tone].bg} ${TONE[selTier.tone].text} px-4 py-1.5 font-bold text-[1.05rem]`}
+              >
+                {selTier.label}
+              </span>
+            )}
           </div>
           <p className="mb-1 font-bold text-[2rem] tabular-nums leading-tight">
             {money(chosen)}
@@ -1035,7 +1044,9 @@ function PlanStep({
           </p>
           <p className="text-[1rem] text-white-00/90">
             About{' '}
-            <strong className="tabular-nums">{money((chosen * 12) / 52)}</strong>{' '}
+            <strong className="tabular-nums">
+              {money((chosen * 12) / 52)}
+            </strong>{' '}
             a week.
           </p>
           <div className="mt-4 border-white-00/20 border-t pt-4">
@@ -1155,11 +1166,10 @@ function ResultStep({
       without: 'Time off to recover would be unpaid.',
       estimate: (
         <>
-          If you qualify, you may get about{' '}
-          <PerWeek weekly={b.sicknessWeekly} /> in Sickness Benefit, roughly
-          two-thirds of your usual earnings, for up to {NIS.SICKNESS_MAX_WEEKS}{' '}
-          weeks. If you&rsquo;re still unwell after that, NIS may pay for up to{' '}
-          {NIS.SICKNESS_MAX_WEEKS} more weeks.
+          Based on the contribution you selected, your estimated Sickness
+          Benefit is about <PerWeek weekly={b.sicknessWeekly} />. If you
+          qualify, NIS may pay it for up to {NIS.SICKNESS_MAX_WEEKS} weeks and,
+          in some cases, for up to {NIS.SICKNESS_MAX_WEEKS} more weeks.
         </>
       ),
     },
@@ -1259,12 +1269,13 @@ function ResultStep({
         Benefits you may get
       </h1>
       <p className="mb-6 text-[1.125rem] text-mid-grey-00">
-        For{' '}
+        These estimates are based on the{' '}
         <strong className="text-black-00 tabular-nums">
           {money(b.monthlyContribution)}
-        </strong>
-        /month, here&rsquo;s each benefit without NIS and with it. Figures are
-        estimates based on the amount you chose to put in.
+        </strong>{' '}
+        a month contribution you selected. They are not based directly on the
+        earnings you entered. NIS will confirm whether you qualify and how much
+        you may get when you claim.
       </p>
       <p className="mb-3 text-[1rem] text-mid-grey-00">
         Select a benefit to see who may get it and when.
@@ -1283,15 +1294,6 @@ function ResultStep({
             withNis={it.estimate}
           />
         ))}
-      </div>
-
-      <div className="mt-6 space-y-2 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
-        <p className="text-mid-grey-00">
-          Your benefit estimates are based on the amount you choose to pay. If you
-          choose BDS $400 a month, we show the benefits you may get from paying
-          that amount. NIS will confirm whether you qualify and how much you may
-          get when you make a claim.
-        </p>
       </div>
 
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
