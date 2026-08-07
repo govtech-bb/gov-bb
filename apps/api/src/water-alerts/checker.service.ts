@@ -3,12 +3,7 @@ import { Cron } from "@nestjs/schedule";
 import { SendEmailCommand } from "@aws-sdk/client-sesv2";
 import { DataSource } from "typeorm";
 import { SesMailer } from "../email/ses-mailer";
-import {
-  type AlertNotice,
-  buildAlertEmail,
-  buildDemoAlertEmail,
-  type EmailContent,
-} from "./emails";
+import { type AlertNotice, buildAlertEmail, type EmailContent } from "./emails";
 import { FeedService } from "./feed.service";
 import { isPast, type Outage } from "./outages.domain";
 import { areaLabelFor } from "./parishes";
@@ -105,21 +100,6 @@ export class CheckerService {
     }
   }
 
-  /** On-demand demo: one synthetic all-parish notice, sent with the demo template. */
-  async runDemo(): Promise<CheckSummary> {
-    const notice: Outage = {
-      id: `demo-${new Date().toISOString()}`,
-      title: "Demonstration water notice",
-      link: "https://barbadoswaterauthority.com/",
-      published: new Date().toISOString(),
-      summary:
-        "This is a test of the water-alerts feature. No real outage is in progress.",
-      parishes: [],
-      type: "emergency",
-    };
-    return this.runAlertCheck({ notices: [notice], demo: true });
-  }
-
   /**
    * Core check. Everything is set-based — the number of DB round-trips does NOT
    * grow with the subscriber count, so it stays fast and reliable when a notice
@@ -131,7 +111,7 @@ export class CheckerService {
    * sends stay unsent and are retried on the next run.
    */
   async runAlertCheck(
-    opts: { notices?: Outage[]; dryRun?: boolean; demo?: boolean } = {},
+    opts: { notices?: Outage[]; dryRun?: boolean } = {},
   ): Promise<CheckSummary> {
     const now = Date.now();
     const notices = opts.notices ?? (await this.feed.fetchOutages());
@@ -184,7 +164,7 @@ export class CheckerService {
     for (let i = 0; i < pending.length; i += SEND_BATCH) {
       const batch = pending.slice(i, i + SEND_BATCH);
       const results = await Promise.allSettled(
-        batch.map((row) => this.sendOne(row, noticeById, opts.demo ?? false)),
+        batch.map((row) => this.sendOne(row, noticeById)),
       );
       const okNoticeIds: string[] = [];
       const okSubscriberIds: string[] = [];
@@ -212,7 +192,6 @@ export class CheckerService {
   private async sendOne(
     row: PendingAlert,
     noticeById: Map<string, Outage>,
-    demo: boolean,
   ): Promise<boolean> {
     const outage = noticeById.get(row.noticeId);
     if (!outage) return false;
@@ -226,10 +205,7 @@ export class CheckerService {
     const bodyUnsubUrl = `${this.siteUrl}${WATER_OUTAGES_PATH}/unsubscribe?token=${row.unsubscribeToken}`;
     const oneClickUnsubUrl = `${this.apiUrl}/water-alerts/unsubscribe/${row.unsubscribeToken}`;
 
-    const content = demo
-      ? buildDemoAlertEmail(areaLabel, notice, bodyUnsubUrl)
-      : buildAlertEmail(areaLabel, notice, bodyUnsubUrl);
-
+    const content = buildAlertEmail(areaLabel, notice, bodyUnsubUrl);
     return this.sendAlert(row.email, content, oneClickUnsubUrl);
   }
 

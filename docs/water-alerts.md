@@ -37,7 +37,6 @@ recipients. A Postgres advisory lock keeps a single api task running each round.
 | POST | `/water-alerts/subscribe` | `{ email, area }` → pending subscriber + confirm email |
 | GET | `/water-alerts/confirm/:token` | Confirm a sign-up → `done \| already \| invalid` |
 | GET/POST | `/water-alerts/unsubscribe/:token` | Unsubscribe (POST = one-click) |
-| POST | `/water-alerts/demo` | Preview-gated demo alert (see `WATER_DEMO_TOKEN`) |
 
 ## Configuration
 
@@ -49,7 +48,6 @@ recipients. A Postgres advisory lock keeps a single api task running each round.
 | `PUBLIC_SITE_URL` | `http://localhost:3000` | Landing origin for confirm/unsubscribe links in emails |
 | `API_PUBLIC_URL` | `http://localhost:3001` | This API's origin for the one-click List-Unsubscribe header |
 | `WATER_OPS_RECIPIENT` | _(unset → skipped)_ | Inbox for checker failure alerts |
-| `WATER_DEMO_TOKEN` | _(unset → demo 404)_ | Enables `/water-alerts/demo`; requests need a matching `X-Water-Demo` header. **Never set in prod.** |
 
 Email sending reuses the api's existing SES config (`SES_*` / `email.*`) and the
 shared `SesMailer` (sender = `SES_FROM_ADDRESS`).
@@ -103,7 +101,6 @@ What the app team builds vs. what infra needs to provide.
 >    host** (`barbadoswaterauthority.com`).
 > 4. **Env vars/secrets** per environment: `PUBLIC_SITE_URL`, `API_PUBLIC_URL`,
 >    `WATER_OPS_RECIPIENT` (and `BWA_FEED_URL` only if overriding the default).
->    Do **not** set `WATER_DEMO_TOKEN` in production.
 > 5. **Scheduling:** nothing — the checker runs in-process via `@nestjs/schedule`
 >    on the existing api container (guarded by a Postgres advisory lock). No
 >    EventBridge/GitHub Action needed.

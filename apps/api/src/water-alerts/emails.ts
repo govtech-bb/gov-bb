@@ -86,41 +86,6 @@ export function buildAlertEmail(
   };
 }
 
-/** Demo variant — clearly labelled so it can never be mistaken for a real notice. */
-export function buildDemoAlertEmail(
-  areaLabel: string,
-  notice: AlertNotice,
-  unsubscribeUrl: string,
-): EmailContent {
-  const html = renderEmail(`
-    <div style="background:#fff3cd;border:1px solid #e0c040;border-radius:6px;padding:12px 16px;margin:16px 0;font-size:14px;color:#5a4a00;">
-      <strong>DEMONSTRATION</strong> — this is a test of the water-alerts feature, not a real Barbados Water Authority notice.
-    </div>
-    <h1 class="title">Water notice for ${areaLabel}</h1>
-    <p class="intro"><strong>${notice.title}</strong></p>
-    <p class="intro">${notice.summary}</p>
-    <p style="margin: 24px 0;"><a class="btn" href="${notice.link}">Read the full BWA notice</a></p>
-    <p class="muted">You're getting this because you signed up for water alerts in ${areaLabel}. <a href="${unsubscribeUrl}">Unsubscribe</a>.</p>
-  `);
-  const text = [
-    "DEMONSTRATION — test alert, not a real Barbados Water Authority notice.",
-    "",
-    `Water notice for ${areaLabel}`,
-    "",
-    notice.title,
-    notice.summary,
-    "",
-    `Read the full BWA notice: ${notice.link}`,
-    "",
-    `Unsubscribe: ${unsubscribeUrl}`,
-  ].join("\n");
-  return {
-    subject: `[DEMO] Water notice for ${areaLabel}: ${notice.title}`,
-    html,
-    text,
-  };
-}
-
 /** Double-opt-in confirmation email. */
 export function buildConfirmEmail(
   areaLabel: string,

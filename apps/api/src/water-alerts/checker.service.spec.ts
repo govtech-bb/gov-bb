@@ -134,17 +134,16 @@ describe("CheckerService.runAlertCheck", () => {
     expect(sentAlerts.markManySent).toHaveBeenCalledWith([], []);
   });
 
-  it("demo run uses the [DEMO] template with one-click unsubscribe header", async () => {
+  it("sends the alert with RFC 8058 one-click unsubscribe headers", async () => {
     const send = vi.fn().mockResolvedValue({});
     const { service } = makeDeps({
       pendingUnsent: vi.fn().mockResolvedValue([PENDING_ROW]),
       send,
     });
 
-    await service.runAlertCheck({ notices: [outage()], demo: true });
+    await service.runAlertCheck({ notices: [outage()] });
 
     const input = (send.mock.calls[0][0] as { input: any }).input;
-    expect(input.Content.Simple.Subject.Data).toMatch(/^\[DEMO\]/);
     const headerNames = input.Content.Simple.Headers.map(
       (h: { Name: string }) => h.Name,
     );
