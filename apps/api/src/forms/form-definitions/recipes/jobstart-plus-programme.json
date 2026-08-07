@@ -302,15 +302,29 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-radio",
           "overrides": {
-            "isDisabled": true,
+            "ui": {
+              "width": "medium"
+            },
+            "fieldId": "age-disability-eligibility",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
             "validations": {
               "required": {
                 "value": true,
                 "error": "If you are over 24, you must have a disability or long-term health condition to apply."
               },
               "equal": {
+                "value": "no",
                 "error": "If you are over 24, you must have a disability or long-term health condition to apply."
               }
             },
