@@ -86,3 +86,46 @@ export const subscribeWaterAlerts = createServerFn({ method: 'POST' })
     async ({ data }): Promise<SubscribeState> =>
       postSubscribe(data, { apiBase: formsApiBase() }),
   )
+
+export type TokenOutcome = 'done' | 'already' | 'invalid'
+
+/**
+ * Pure caller for the confirm/unsubscribe token endpoints
+ * (GET /water-alerts/{confirm,unsubscribe}/:token). A bad token or any failure
+ * resolves to 'invalid' so the page always renders a sensible message.
+ */
+export async function callTokenEndpoint(
+  kind: 'confirm' | 'unsubscribe',
+  token: string,
+  opts: { apiBase: string; fetchImpl?: typeof fetch },
+): Promise<TokenOutcome> {
+  if (!token) return 'invalid'
+  const apiBase = opts.apiBase.replace(/\/+$/, '')
+  const doFetch = opts.fetchImpl ?? fetch
+  try {
+    const res = await doFetch(
+      `${apiBase}/water-alerts/${kind}/${encodeURIComponent(token)}`,
+    )
+    if (!res.ok) return 'invalid'
+    const body = (await res.json()) as { result?: TokenOutcome }
+    return body.result ?? 'invalid'
+  } catch {
+    return 'invalid'
+  }
+}
+
+/** Confirm a sign-up from the emailed link (GET /water-alerts/confirm/:token). */
+export const confirmSubscription = createServerFn({ method: 'GET' })
+  .validator((raw: unknown) => String(raw))
+  .handler(
+    async ({ data }): Promise<TokenOutcome> =>
+      callTokenEndpoint('confirm', data, { apiBase: formsApiBase() }),
+  )
+
+/** Unsubscribe from the emailed link (GET /water-alerts/unsubscribe/:token). */
+export const unsubscribeSubscription = createServerFn({ method: 'GET' })
+  .validator((raw: unknown) => String(raw))
+  .handler(
+    async ({ data }): Promise<TokenOutcome> =>
+      callTokenEndpoint('unsubscribe', data, { apiBase: formsApiBase() }),
+  )

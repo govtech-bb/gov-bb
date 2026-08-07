@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { postSubscribe } from './water-alerts'
+import { callTokenEndpoint, postSubscribe } from './water-alerts'
 
 function jsonFetch(ok: boolean, body: unknown = {}) {
   return vi.fn().mockResolvedValue({ ok, json: async () => body })
@@ -72,5 +72,57 @@ describe('postSubscribe', () => {
     expect(fetchImpl.mock.calls[0][0]).toBe(
       'https://api.example/water-alerts/subscribe',
     )
+  })
+})
+
+describe('callTokenEndpoint', () => {
+  it('calls the right endpoint and returns the outcome', async () => {
+    const fetchImpl = jsonFetch(true, { result: 'done' })
+    const outcome = await callTokenEndpoint('confirm', 'tok-123', {
+      apiBase: 'https://api.example',
+      fetchImpl,
+    })
+    expect(outcome).toBe('done')
+    expect(fetchImpl.mock.calls[0][0]).toBe(
+      'https://api.example/water-alerts/confirm/tok-123',
+    )
+  })
+
+  it('url-encodes the token and hits the unsubscribe path', async () => {
+    const fetchImpl = jsonFetch(true, { result: 'already' })
+    await callTokenEndpoint('unsubscribe', 'a/b c', {
+      apiBase: 'https://api.example',
+      fetchImpl,
+    })
+    expect(fetchImpl.mock.calls[0][0]).toBe(
+      'https://api.example/water-alerts/unsubscribe/a%2Fb%20c',
+    )
+  })
+
+  it("returns 'invalid' for an empty token without calling the API", async () => {
+    const fetchImpl = jsonFetch(true, { result: 'done' })
+    const outcome = await callTokenEndpoint('confirm', '', {
+      apiBase: 'https://api.example',
+      fetchImpl,
+    })
+    expect(outcome).toBe('invalid')
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("returns 'invalid' on a non-2xx response", async () => {
+    const outcome = await callTokenEndpoint('confirm', 'x', {
+      apiBase: 'https://api.example',
+      fetchImpl: jsonFetch(false),
+    })
+    expect(outcome).toBe('invalid')
+  })
+
+  it("returns 'invalid' when the request throws", async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new Error('network'))
+    const outcome = await callTokenEndpoint('confirm', 'x', {
+      apiBase: 'https://api.example',
+      fetchImpl,
+    })
+    expect(outcome).toBe('invalid')
   })
 })

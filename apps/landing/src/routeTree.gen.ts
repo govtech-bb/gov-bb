@@ -28,6 +28,8 @@ import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterIndexRouteImpo
 import { Route as PensionsAndGratuitiesCalculateYourPensionFormRouteImport } from './routes/pensions-and-gratuities/calculate-your-pension/form'
 import { Route as MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRouteImport } from './routes/money-financial-support/national-insurance-for-self-employed-workers/form'
 import { Route as MoneyFinancialSupportCalculateSeverancePayFormRouteImport } from './routes/money-financial-support/calculate-severance-pay/form'
+import { Route as HealthAndEmergencyServicesWaterOutagesUnsubscribeRouteImport } from './routes/health-and-emergency-services/water-outages/unsubscribe'
+import { Route as HealthAndEmergencyServicesWaterOutagesConfirmRouteImport } from './routes/health-and-emergency-services/water-outages/confirm'
 import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/guidance'
 import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterFindRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/find'
 import { Route as BusinessTradeCropOverPermitsFormRouteImport } from './routes/business-trade/crop-over-permits/form'
@@ -138,6 +140,18 @@ const MoneyFinancialSupportCalculateSeverancePayFormRoute =
     path: '/money-financial-support/calculate-severance-pay/form',
     getParentRoute: () => rootRouteImport,
   } as any)
+const HealthAndEmergencyServicesWaterOutagesUnsubscribeRoute =
+  HealthAndEmergencyServicesWaterOutagesUnsubscribeRouteImport.update({
+    id: '/unsubscribe',
+    path: '/unsubscribe',
+    getParentRoute: () => HealthAndEmergencyServicesWaterOutagesRouteRoute,
+  } as any)
+const HealthAndEmergencyServicesWaterOutagesConfirmRoute =
+  HealthAndEmergencyServicesWaterOutagesConfirmRouteImport.update({
+    id: '/confirm',
+    path: '/confirm',
+    getParentRoute: () => HealthAndEmergencyServicesWaterOutagesRouteRoute,
+  } as any)
 const HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute =
   HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRouteImport.update({
     id: '/guidance',
@@ -177,6 +191,8 @@ export interface FileRoutesByFullPath {
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
   '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
+  '/health-and-emergency-services/water-outages/confirm': typeof HealthAndEmergencyServicesWaterOutagesConfirmRoute
+  '/health-and-emergency-services/water-outages/unsubscribe': typeof HealthAndEmergencyServicesWaterOutagesUnsubscribeRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   '/money-financial-support/national-insurance-for-self-employed-workers/form': typeof MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
@@ -199,6 +215,8 @@ export interface FileRoutesByTo {
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
   '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
+  '/health-and-emergency-services/water-outages/confirm': typeof HealthAndEmergencyServicesWaterOutagesConfirmRoute
+  '/health-and-emergency-services/water-outages/unsubscribe': typeof HealthAndEmergencyServicesWaterOutagesUnsubscribeRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   '/money-financial-support/national-insurance-for-self-employed-workers/form': typeof MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
@@ -224,6 +242,8 @@ export interface FileRoutesById {
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
   '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
+  '/health-and-emergency-services/water-outages/confirm': typeof HealthAndEmergencyServicesWaterOutagesConfirmRoute
+  '/health-and-emergency-services/water-outages/unsubscribe': typeof HealthAndEmergencyServicesWaterOutagesUnsubscribeRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   '/money-financial-support/national-insurance-for-self-employed-workers/form': typeof MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
@@ -250,6 +270,8 @@ export interface FileRouteTypes {
     | '/business-trade/crop-over-permits/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
     | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
+    | '/health-and-emergency-services/water-outages/confirm'
+    | '/health-and-emergency-services/water-outages/unsubscribe'
     | '/money-financial-support/calculate-severance-pay/form'
     | '/money-financial-support/national-insurance-for-self-employed-workers/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
@@ -272,6 +294,8 @@ export interface FileRouteTypes {
     | '/business-trade/crop-over-permits/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
     | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
+    | '/health-and-emergency-services/water-outages/confirm'
+    | '/health-and-emergency-services/water-outages/unsubscribe'
     | '/money-financial-support/calculate-severance-pay/form'
     | '/money-financial-support/national-insurance-for-self-employed-workers/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
@@ -296,6 +320,8 @@ export interface FileRouteTypes {
     | '/business-trade/crop-over-permits/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
     | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
+    | '/health-and-emergency-services/water-outages/confirm'
+    | '/health-and-emergency-services/water-outages/unsubscribe'
     | '/money-financial-support/calculate-severance-pay/form'
     | '/money-financial-support/national-insurance-for-self-employed-workers/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
@@ -459,6 +485,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MoneyFinancialSupportCalculateSeverancePayFormRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/health-and-emergency-services/water-outages/unsubscribe': {
+      id: '/health-and-emergency-services/water-outages/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/health-and-emergency-services/water-outages/unsubscribe'
+      preLoaderRoute: typeof HealthAndEmergencyServicesWaterOutagesUnsubscribeRouteImport
+      parentRoute: typeof HealthAndEmergencyServicesWaterOutagesRouteRoute
+    }
+    '/health-and-emergency-services/water-outages/confirm': {
+      id: '/health-and-emergency-services/water-outages/confirm'
+      path: '/confirm'
+      fullPath: '/health-and-emergency-services/water-outages/confirm'
+      preLoaderRoute: typeof HealthAndEmergencyServicesWaterOutagesConfirmRouteImport
+      parentRoute: typeof HealthAndEmergencyServicesWaterOutagesRouteRoute
+    }
     '/health-and-emergency-services/find-an-emergency-shelter/guidance': {
       id: '/health-and-emergency-services/find-an-emergency-shelter/guidance'
       path: '/guidance'
@@ -505,11 +545,17 @@ const HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren =
   )
 
 interface HealthAndEmergencyServicesWaterOutagesRouteRouteChildren {
+  HealthAndEmergencyServicesWaterOutagesConfirmRoute: typeof HealthAndEmergencyServicesWaterOutagesConfirmRoute
+  HealthAndEmergencyServicesWaterOutagesUnsubscribeRoute: typeof HealthAndEmergencyServicesWaterOutagesUnsubscribeRoute
   HealthAndEmergencyServicesWaterOutagesIndexRoute: typeof HealthAndEmergencyServicesWaterOutagesIndexRoute
 }
 
 const HealthAndEmergencyServicesWaterOutagesRouteRouteChildren: HealthAndEmergencyServicesWaterOutagesRouteRouteChildren =
   {
+    HealthAndEmergencyServicesWaterOutagesConfirmRoute:
+      HealthAndEmergencyServicesWaterOutagesConfirmRoute,
+    HealthAndEmergencyServicesWaterOutagesUnsubscribeRoute:
+      HealthAndEmergencyServicesWaterOutagesUnsubscribeRoute,
     HealthAndEmergencyServicesWaterOutagesIndexRoute:
       HealthAndEmergencyServicesWaterOutagesIndexRoute,
   }
