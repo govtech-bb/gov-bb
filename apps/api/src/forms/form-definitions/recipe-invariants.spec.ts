@@ -92,6 +92,24 @@ function checkRecipe(fileFormId: string, raw: unknown): string[] {
           `${fileFormId}.json: step "${step.stepId}" has unresolvable ref "${el.ref}"`,
         );
       }
+      // A disabled field that is also required can never be satisfied: the
+      // citizen sees a greyed-out control they cannot fill and Continue stays
+      // blocked with no way forward (#2199). Eligibility gates belong on an
+      // answerable control with an `equal`/`notEqual` rule instead.
+      const overrides = el.overrides as
+        | {
+            isDisabled?: boolean;
+            validations?: { required?: { value?: unknown } };
+          }
+        | undefined;
+      if (
+        overrides?.isDisabled &&
+        overrides.validations?.required?.value === true
+      ) {
+        problems.push(
+          `${fileFormId}.json: step "${step.stepId}" has a disabled but required field ("${overrides && "fieldId" in overrides ? (overrides as { fieldId?: string }).fieldId : el.ref}") — unsatisfiable`,
+        );
+      }
       for (const fieldId of elementAuthoredFieldIds(el)) {
         if (seenFieldIds.has(fieldId)) {
           problems.push(
@@ -237,6 +255,26 @@ describe("checkRecipe rejects malformed recipes", () => {
     expect(
       checkRecipe(base.fileFormId, r).some((p) =>
         p.includes("duplicate stepId"),
+      ),
+    ).toBe(true);
+  });
+
+  it("fails on a disabled but required field", () => {
+    const r = clone() as { steps: Step[] };
+    r.steps[0].elements = [
+      ...(r.steps[0].elements ?? []),
+      {
+        ref: "components/generic-text",
+        overrides: {
+          fieldId: "unsatisfiable",
+          isDisabled: true,
+          validations: { required: { value: true } },
+        },
+      } as unknown as Element,
+    ];
+    expect(
+      checkRecipe(base.fileFormId, r).some((p) =>
+        p.includes("disabled but required"),
       ),
     ).toBe(true);
   });
