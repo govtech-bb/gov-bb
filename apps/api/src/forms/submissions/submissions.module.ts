@@ -33,6 +33,7 @@ import { EmailBodyBuilder } from "@/email/email-body.builder";
 import { SesMailer } from "@/email/ses-mailer";
 import { PaymentRequiredListener } from "@/email/payment-required.listener";
 import { CatchmentModule } from "@/catchment/catchment.module";
+import { NotificationsModule } from "@/notifications/notifications.module";
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { CatchmentModule } from "@/catchment/catchment.module";
     FormDefinitionsModule,
     FormConfigModule,
     WebhookDestinationsModule,
+    NotificationsModule,
     FormDraftsModule,
     PaymentsModule,
     FilesModule,

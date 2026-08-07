@@ -429,6 +429,11 @@
             },
             "label": "Address line 2, optional",
             "fieldId": "parent-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",

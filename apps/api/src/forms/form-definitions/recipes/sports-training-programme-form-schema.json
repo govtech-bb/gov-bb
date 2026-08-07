@@ -537,7 +537,12 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address line 2",
-            "fieldId": "emergency-address-2"
+            "fieldId": "emergency-address-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
