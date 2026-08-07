@@ -183,13 +183,23 @@
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/generic-text",
           "overrides": {
             "ui": {
               "width": "short"
             },
             "label": "Salary",
-            "fieldId": "salary"
+            "fieldId": "salary",
+            "validations": {
+              "pattern": {
+                "value": "^[0-9]+(\\.[0-9]{1,2})?$",
+                "error": "Enter a valid number"
+              },
+              "required": {
+                "error": "Enter your salary",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -500,13 +510,23 @@
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/generic-text",
           "overrides": {
             "ui": {
               "width": "short"
             },
             "label": "Salary",
-            "fieldId": "co-applicant-salary"
+            "fieldId": "co-applicant-salary",
+            "validations": {
+              "pattern": {
+                "value": "^[0-9]+(\\.[0-9]{1,2})?$",
+                "error": "Enter a valid number"
+              },
+              "required": {
+                "error": "Enter your salary",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1117,7 +1137,7 @@
                 "targetStepId": "financing",
                 "targetFieldId": "financing-method",
                 "operator": "equal",
-                "value": "cash"
+                "value": "full-cash"
               }
             ]
           }
@@ -1172,5 +1192,5 @@
     }
   ],
   "createdAt": "2026-06-17T13:00:42.221Z",
-  "updatedAt": "2026-08-06T16:11:08.760Z"
+  "updatedAt": "2026-08-06T16:17:30.930Z"
 }
