@@ -1039,7 +1039,12 @@
               "width": "long"
             },
             "label": "Address line 2",
-            "fieldId": "child-address-line-2"
+            "fieldId": "child-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -1270,6 +1275,11 @@
             },
             "label": "Address line 2",
             "fieldId": "parent-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",

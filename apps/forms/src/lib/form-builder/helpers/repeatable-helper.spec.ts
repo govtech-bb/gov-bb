@@ -749,6 +749,40 @@ describe("addRepeatableStep", () => {
     );
   });
 
+  // #2205: the renderer's visibleSteps useMemo is keyed on `formMeta.steps`
+  // identity. Mutating that array in place leaves the memo stale, the step guard
+  // treats the new instance as inactive and bounces the citizen onward — the
+  // "Add another?" answer looks ignored. Replacing the array is what makes the
+  // new instance visible, so assert the identity change, not just the contents.
+  it("replaces formMeta.steps rather than mutating it in place", () => {
+    const repeatBehaviour = makeRepeatableBehaviour(1, 3);
+    const step = makeStep("personalInfo", ["firstName"], [repeatBehaviour]);
+    const repeatSettings: RepeatableStepSettings = {
+      personalInfo: {
+        minRepeats: 1,
+        maxRepeats: 3,
+        orderedStepIds: ["personalInfo"],
+        stepData: {},
+      },
+    };
+    const formMeta = makeFormMeta([step]);
+    const before = formMeta.steps;
+
+    addRepeatableStep({
+      currentStep: step,
+      repeatableStepSettings: repeatSettings,
+      repeatableBehaviour: repeatBehaviour,
+      visibleSteps: [step],
+      formMeta,
+    });
+
+    expect(formMeta.steps).not.toBe(before);
+    expect(formMeta.steps.map((s) => s.stepId)).toEqual([
+      "personalInfo",
+      "personalInfo~1",
+    ]);
+  });
+
   it("carries addAnotherLabel onto the new instance's addAnother control", () => {
     const repeatBehaviour: RepeatableBehaviour = {
       ...makeRepeatableBehaviour(1, 4),
