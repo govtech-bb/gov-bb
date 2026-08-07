@@ -1,7 +1,11 @@
 # 0065 — Feature-flagged forms are submittable per-environment via an opt-in flag
 
 **Date:** 2026-07-28
-**Status:** Accepted
+**Status:** Superseded by [ADR 0066](0066-preview-submissions-are-scoped-to-named-forms.md)
+— the environment-wide switch below was replaced by the per-form
+`PREVIEW_SUBMISSION_FORM_IDS` allowlist on 2026-08-07. The reasoning about
+*which recipes* may be submitted (published files yes, DB drafts no) still
+holds; only the granularity of the opt-in changed.
 
 ## Context
 

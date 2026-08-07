@@ -233,6 +233,8 @@ Optional / conditionally required:
 - `SES_REGION`, `SES_FROM_ADDRESS` (default `noreply@gov.bb`), `SES_CONFIGURATION_SET`
 - `SPREADSHEET_EXPORT_DIR` (defaults to `<cwd>/exports`)
 - `SQS_ENABLED`, `SQS_REGION`, `SQS_QUEUE_URL`, `SQS_ENDPOINT` (LocalStack)
+- `SQS_MAX_RECEIVE_COUNT` (default `3`; must mirror the queue's AWS-side redrive policy — the consumer uses it to detect the terminal attempt that fires the operator alert)
+- `SLACK_ALERTS_WEBHOOK_URL` (operator alert webhook for permanently-failed submission dispatch, #2168; unset ⇒ silent no-op, logged once at boot)
 - `EZPAY_WEBHOOK_VERIFY_SIGNATURE`, `EZPAY_WEBHOOK_SECRET`
 - `SEED_ON_BOOT` (dev convenience — applies the seed form definitions in `database/seed.ts`)
 

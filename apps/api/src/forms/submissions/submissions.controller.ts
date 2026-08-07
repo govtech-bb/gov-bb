@@ -1,4 +1,4 @@
-import { Body, Controller, Headers, Post } from "@nestjs/common";
+import { Body, Controller, Headers, Logger, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { ConfigService } from "@nestjs/config";
@@ -15,10 +15,24 @@ import { SubmissionPayloadSizePipe } from "./submission-payload-size.pipe";
 @ApiBearerAuth()
 @Controller("submissions")
 export class SubmissionsController {
+  private readonly logger = new Logger(SubmissionsController.name);
+
   constructor(
     private readonly submissionsService: SubmissionsService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    // ALLOW_PREVIEW_SUBMISSIONS was retired in favour of the per-form
+    // allowlist below (ADR 0066). The env schema is .passthrough(), so a value
+    // still sitting in a deployed task definition is silently ignored — say so
+    // once at boot rather than leaving the behaviour change to be rediscovered.
+    if (this.configService.get<string>("ALLOW_PREVIEW_SUBMISSIONS")) {
+      this.logger.warn(
+        "ALLOW_PREVIEW_SUBMISSIONS is set but no longer read — preview " +
+          "submissions are now scoped per form via PREVIEW_SUBMISSION_FORM_IDS " +
+          "(ADR 0066).",
+      );
+    }
+  }
 
   @Post()
   @Throttle({
@@ -46,17 +60,21 @@ export class SubmissionsController {
     // flagged (non-public) form — the visibility gate is bypassed downstream
     // (#1682). Fail-closed: unset token / wrong value → false.
     //
-    // ALLOW_PREVIEW_SUBMISSIONS opens that same bypass to *every* submission on
-    // an environment (sandbox/staging) so a feature-flagged form can be tested
-    // end-to-end without a per-request token. It only reaches non-public
-    // *published file* recipes — DB-only builder drafts still resolve from the
-    // files source and stay unsubmittable (ADR 0043 / #145). Default false, so
-    // production stays restricted until the flag is deliberately set.
-    const allowPreviewSubmissions =
-      this.configService.get<string>("ALLOW_PREVIEW_SUBMISSIONS", "") ===
-      "true";
+    // PREVIEW_SUBMISSION_FORM_IDS names the forms that get that same bypass on
+    // an environment (sandbox/staging) without a per-request token, so a
+    // feature-flagged form can be tested end-to-end. Every other form still
+    // needs the token. It only reaches non-public *published file* recipes —
+    // DB-only builder drafts still resolve from the files source and stay
+    // unsubmittable (ADR 0043 / #145). Empty by default, so production has no
+    // env-level bypass at all (ADR 0066, superseding the blanket ADR 0065).
+    const previewSubmissionFormIds = this.configService
+      .get<string>("PREVIEW_SUBMISSION_FORM_IDS", "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+
     const bypassVisibility =
-      allowPreviewSubmissions ||
+      previewSubmissionFormIds.includes(body.formId) ||
       isValidSecretToken(
         this.configService.get<string>("RECIPE_PREVIEW_TOKEN", ""),
         previewToken,

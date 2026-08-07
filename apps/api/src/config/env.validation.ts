@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_MAX_RECEIVE_COUNT } from "./sqs.config";
 
 // Env validation for apps/api, migrated from Joi to Zod (#1422 / TECH-05) so all
 // Node services share one validation library. Wired in app.module.ts via
@@ -99,6 +100,17 @@ const baseSchema = z
     SQS_REGION: z.string().optional(),
     SQS_ENDPOINT: z.url().optional(), // LocalStack / custom endpoint
     SQS_QUEUE_URL: urlOrEmpty().optional(),
+    // Mirrors the queue's AWS-side redrive maxReceiveCount (#2168) — the
+    // consumer uses it to detect the terminal attempt for the DLQ Slack alert.
+    // Default shared with sqs.config.ts so the two can't drift.
+    SQS_MAX_RECEIVE_COUNT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(DEFAULT_MAX_RECEIVE_COUNT),
+    // Slack incoming-webhook for operator DLQ/failure alerts (#2168). Optional:
+    // unset ⇒ the notifier no-ops (dev/sandbox/unconfigured envs).
+    SLACK_ALERTS_WEBHOOK_URL: urlOrEmpty().optional(),
 
     // SES delivery-events queue (optional). When set, the SesEventConsumer
     // polls it to reconcile notification_log.delivery_status; empty = disabled.
@@ -131,12 +143,15 @@ const baseSchema = z
     // Recipe preview (empty disables the per-request preview escape hatch)
     RECIPE_PREVIEW_TOKEN: z.string().default(""),
 
-    // When "true", every submission bypasses the visibility gate so a
-    // feature-flagged (non-public *published file*) form can be tested
-    // end-to-end without a per-request X-Recipe-Preview token. Scoped to
-    // sandbox/staging; leave unset ("false") in production. DB-only builder
-    // drafts stay unsubmittable regardless (ADR 0043 / #145). See ADR 0065.
-    ALLOW_PREVIEW_SUBMISSIONS: z.enum(["true", "false"]).default("false"),
+    // Comma-separated form IDs whose non-public *published file* recipe may be
+    // submitted without a per-request X-Recipe-Preview token, so a
+    // feature-flagged form can be tested end-to-end on sandbox/staging. Empty
+    // (the default) disables the bypass entirely — leave unset in production.
+    // A free string, not an enum: valid form IDs aren't known at boot (recipes
+    // resolve from files at runtime) and an unknown ID simply never matches.
+    // DB-only builder drafts stay unsubmittable regardless (ADR 0043 / #145).
+    // Replaces the blanket ALLOW_PREVIEW_SUBMISSIONS boolean — see ADR 0066.
+    PREVIEW_SUBMISSION_FORM_IDS: z.string().default(""),
 
     // Parent domain for the cross-app shared `preview` cookie (#1646 Phase 3),
     // e.g. ".sandbox.alpha.gov.bb". When set, the cookie the API mints is scoped
