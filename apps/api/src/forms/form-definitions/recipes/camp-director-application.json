@@ -242,7 +242,12 @@
           "ref": "components/address",
           "overrides": {
             "label": "Street address line 2",
-            "fieldId": "address-line-2"
+            "fieldId": "address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -423,6 +428,11 @@
           "overrides": {
             "label": "Work address line 2",
             "fieldId": "work-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",

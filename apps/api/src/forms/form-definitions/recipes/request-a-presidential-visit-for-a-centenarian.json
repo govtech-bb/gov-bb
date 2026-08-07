@@ -75,7 +75,12 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address line 2 (optional)",
-            "fieldId": "home-address-2"
+            "fieldId": "home-address-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -185,6 +190,11 @@
           "overrides": {
             "label": "Visit address line 2 (optional)",
             "fieldId": "visit-address-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -305,7 +315,12 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address line 2 (optional)",
-            "fieldId": "contact-address-2"
+            "fieldId": "contact-address-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
