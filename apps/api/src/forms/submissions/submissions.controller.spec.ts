@@ -1,6 +1,6 @@
 import type { Mock, Mocked } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
-import { HttpStatus } from "@nestjs/common";
+import { HttpStatus, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { SubmissionsController } from "./submissions.controller";
 import { SubmissionsService } from "./submissions.service";
@@ -32,6 +32,15 @@ const baseDto: CreateSubmissionDto = {
   formVersion: "1.0.0",
   values: { "step-1": { field1: "value1" } },
 };
+
+// Keyed ConfigService.get stub. The controller now reads three env vars on the
+// submit path, so a blanket mockReturnValue would feed the same string to all
+// of them — e.g. a RECIPE_PREVIEW_TOKEN value would also land in the
+// PREVIEW_SUBMISSION_FORM_IDS allowlist. Unlisted keys fall back to "".
+const envMock =
+  (env: Record<string, string>) =>
+  (key: string): string =>
+    env[key] ?? "";
 
 describe("SubmissionsController", () => {
   let controller: SubmissionsController;
@@ -321,7 +330,9 @@ describe("SubmissionsController", () => {
     });
 
     it("threads bypassVisibility:true when the token matches", async () => {
-      config.get.mockReturnValue("preview-s3cret");
+      config.get.mockImplementation(
+        envMock({ RECIPE_PREVIEW_TOKEN: "preview-s3cret" }),
+      );
 
       await controller.create("key-abc", undefined, "preview-s3cret", baseDto);
 
@@ -359,7 +370,7 @@ describe("SubmissionsController", () => {
     });
   });
 
-  describe("preview-submission env flag (ALLOW_PREVIEW_SUBMISSIONS)", () => {
+  describe("preview-submission allowlist (PREVIEW_SUBMISSION_FORM_IDS)", () => {
     beforeEach(() => {
       (service.submit as Mock).mockResolvedValue({
         data: makeEntity(),
@@ -369,28 +380,129 @@ describe("SubmissionsController", () => {
       });
     });
 
-    it("threads bypassVisibility:true when the flag is 'true', with no preview token", async () => {
-      config.get.mockImplementation((key: string) =>
-        key === "ALLOW_PREVIEW_SUBMISSIONS" ? "true" : "",
+    it("threads bypassVisibility:true for a listed form, with no preview token", async () => {
+      config.get.mockImplementation(
+        envMock({ PREVIEW_SUBMISSION_FORM_IDS: "test-form" }),
       );
 
       await controller.create("key-abc", undefined, undefined, baseDto);
 
-      expect(config.get).toHaveBeenCalledWith("ALLOW_PREVIEW_SUBMISSIONS", "");
+      expect(config.get).toHaveBeenCalledWith(
+        "PREVIEW_SUBMISSION_FORM_IDS",
+        "",
+      );
       expect(service.submit).toHaveBeenCalledWith(
         expect.objectContaining({ bypassVisibility: true }),
       );
     });
 
-    it("does NOT set bypassVisibility when the flag is anything other than 'true'", async () => {
-      config.get.mockImplementation((key: string) =>
-        key === "ALLOW_PREVIEW_SUBMISSIONS" ? "false" : "",
+    it("does NOT set bypassVisibility for a form absent from a non-empty list", async () => {
+      config.get.mockImplementation(
+        envMock({ PREVIEW_SUBMISSION_FORM_IDS: "some-other-form" }),
       );
 
       await controller.create("key-abc", undefined, undefined, baseDto);
 
       const arg = (service.submit as Mock).mock.calls[0][0];
       expect(arg.bypassVisibility).toBeFalsy();
+    });
+
+    it("does NOT set bypassVisibility when the list is empty", async () => {
+      config.get.mockImplementation(envMock({}));
+
+      await controller.create("key-abc", undefined, undefined, baseDto);
+
+      const arg = (service.submit as Mock).mock.calls[0][0];
+      expect(arg.bypassVisibility).toBeFalsy();
+    });
+
+    it("matches any id in the list, ignoring surrounding whitespace", async () => {
+      config.get.mockImplementation(
+        envMock({
+          PREVIEW_SUBMISSION_FORM_IDS: " some-other-form , test-form ",
+        }),
+      );
+
+      await controller.create("key-abc", undefined, undefined, baseDto);
+
+      expect(service.submit).toHaveBeenCalledWith(
+        expect.objectContaining({ bypassVisibility: true }),
+      );
+    });
+
+    it("still honours a valid X-Recipe-Preview token for an unlisted form", async () => {
+      config.get.mockImplementation(
+        envMock({
+          PREVIEW_SUBMISSION_FORM_IDS: "some-other-form",
+          RECIPE_PREVIEW_TOKEN: "preview-s3cret",
+        }),
+      );
+
+      await controller.create("key-abc", undefined, "preview-s3cret", baseDto);
+
+      expect(service.submit).toHaveBeenCalledWith(
+        expect.objectContaining({ bypassVisibility: true }),
+      );
+    });
+
+    it("grants nothing for the retired ALLOW_PREVIEW_SUBMISSIONS", async () => {
+      config.get.mockImplementation(
+        envMock({ ALLOW_PREVIEW_SUBMISSIONS: "true" }),
+      );
+
+      await controller.create("key-abc", undefined, undefined, baseDto);
+
+      const arg = (service.submit as Mock).mock.calls[0][0];
+      expect(arg.bypassVisibility).toBeFalsy();
+    });
+
+    it("warns once at construction when the retired ALLOW_PREVIEW_SUBMISSIONS is still set", async () => {
+      const warn = vi
+        .spyOn(Logger.prototype, "warn")
+        .mockImplementation(() => {});
+      const staleModule = await Test.createTestingModule({
+        controllers: [SubmissionsController],
+        providers: [
+          { provide: SubmissionsService, useValue: service },
+          {
+            provide: ConfigService,
+            useValue: {
+              get: vi.fn(envMock({ ALLOW_PREVIEW_SUBMISSIONS: "true" })),
+            },
+          },
+          SubmissionPayloadSizePipe,
+        ],
+      }).compile();
+
+      staleModule.get(SubmissionsController);
+
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("PREVIEW_SUBMISSION_FORM_IDS"),
+      );
+
+      await staleModule.close();
+      warn.mockRestore();
+    });
+
+    it("does not warn when ALLOW_PREVIEW_SUBMISSIONS is absent", async () => {
+      const warn = vi
+        .spyOn(Logger.prototype, "warn")
+        .mockImplementation(() => {});
+      const cleanModule = await Test.createTestingModule({
+        controllers: [SubmissionsController],
+        providers: [
+          { provide: SubmissionsService, useValue: service },
+          { provide: ConfigService, useValue: { get: vi.fn(envMock({})) } },
+          SubmissionPayloadSizePipe,
+        ],
+      }).compile();
+
+      cleanModule.get(SubmissionsController);
+
+      expect(warn).not.toHaveBeenCalled();
+
+      await cleanModule.close();
+      warn.mockRestore();
     });
   });
 });
