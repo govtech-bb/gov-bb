@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_MAX_RECEIVE_COUNT } from "./sqs.config";
 
 // Env validation for apps/api, migrated from Joi to Zod (#1422 / TECH-05) so all
 // Node services share one validation library. Wired in app.module.ts via
@@ -99,6 +100,17 @@ const baseSchema = z
     SQS_REGION: z.string().optional(),
     SQS_ENDPOINT: z.url().optional(), // LocalStack / custom endpoint
     SQS_QUEUE_URL: urlOrEmpty().optional(),
+    // Mirrors the queue's AWS-side redrive maxReceiveCount (#2168) — the
+    // consumer uses it to detect the terminal attempt for the DLQ Slack alert.
+    // Default shared with sqs.config.ts so the two can't drift.
+    SQS_MAX_RECEIVE_COUNT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(DEFAULT_MAX_RECEIVE_COUNT),
+    // Slack incoming-webhook for operator DLQ/failure alerts (#2168). Optional:
+    // unset ⇒ the notifier no-ops (dev/sandbox/unconfigured envs).
+    SLACK_ALERTS_WEBHOOK_URL: urlOrEmpty().optional(),
 
     // SES delivery-events queue (optional). When set, the SesEventConsumer
     // polls it to reconcile notification_log.delivery_status; empty = disabled.
