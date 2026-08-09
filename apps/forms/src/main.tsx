@@ -4,6 +4,7 @@ import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/query-client";
 import { trackPageview } from "./lib/analytics";
+import { datadogRum } from "@datadog/browser-rum";
 // GOV.BB design system — compiled, class-based stylesheet (govbb-* classes).
 // Loaded before the app's Tailwind entry so app tokens/chrome utilities win.
 import "@govtech-bb/styles";
@@ -14,6 +15,30 @@ import { ErrorBoundary } from "./components/error-boundary";
 
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
+
+// Datadog RUM — only initialises when the RUM env vars are present (injected
+// at build by the Amplify app; see alpha-infra's datadog-rum.tf). Init as early
+// as possible so it captures the full session. Session Replay is enabled with
+// defaultPrivacyLevel "mask": this app collects citizen PII, so all text and
+// input CONTENT is masked in replays — we still see structure and interactions
+// (which fields, order, validation errors, step drop-off), never typed values.
+const ddRumApplicationId = import.meta.env.VITE_DD_RUM_APPLICATION_ID;
+const ddRumClientToken = import.meta.env.VITE_DD_RUM_CLIENT_TOKEN;
+if (ddRumApplicationId && ddRumClientToken) {
+  datadogRum.init({
+    applicationId: ddRumApplicationId,
+    clientToken: ddRumClientToken,
+    site: import.meta.env.VITE_DD_RUM_SITE ?? "datadoghq.com",
+    service: import.meta.env.VITE_DD_SERVICE ?? "gov-bb-forms",
+    env: import.meta.env.VITE_DD_ENV ?? "sandbox",
+    sessionSampleRate: 100,
+    sessionReplaySampleRate: 100,
+    trackUserInteractions: true,
+    trackResources: true,
+    trackLongTasks: true,
+    defaultPrivacyLevel: "mask",
+  });
+}
 
 // Umami Cloud analytics — only loads when VITE_UMAMI_WEBSITE_ID is set.
 // data-auto-track="false" so pageviews come from the router subscriber

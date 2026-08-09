@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@datadog/browser-rum": "^7.8.0",
     "@fontsource/figtree": "^5.2.10",
     "@govtech-bb/analytics": "workspace:*",
     "@govtech-bb/content": "workspace:*",
