@@ -35,8 +35,17 @@ services:
       POSTGRES_USER: ${DB_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: ${DB_NAME:-modular_forms}
+    # Bound to the loopback interface, not 0.0.0.0. A bare "5432:5432" publishes
+    # the database to every interface on the dev machine, so anything else on the
+    # same network can reach it with the default postgres/postgres credentials
+    # below. Set DB_PORT to change the host port; the 127.0.0.1 prefix stays.
+    #
+    # If you have a native Postgres on 5432, this now fails at startup with
+    # "bind: ... forbidden by its access permissions" instead of silently
+    # starting alongside it — two listeners on one port meant `psql -h localhost`
+    # could reach either. Set DB_PORT (e.g. 5433) to pick a free host port.
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./scripts/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -215,9 +224,21 @@ services:
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_NAME: ${DB_NAME:-modular_forms}
-      # Session signing secret — required, app throws on missing. The default
-      # is dev-only padding; override in .env for anything real.
-      SESSION_SECRET: ${SESSION_SECRET:-dev-only-do-not-use-in-production-padding-padding=}
+      # Session signing secret. Deliberately has NO default: a literal key in
+      # tracked source is a known-public signing key, and anything that booted
+      # without a .env would sign real sessions with it.
+      #
+      # Leaving it empty is the supported path, not a broken one. Unset,
+      # getSessionSecret() throws, and require-session.ts catches that to
+      # synthesise a {login: "dev"} session — the sanctioned dev bypass from
+      # ADR 0061 ("no secret + non-prod → passthrough"). So `docker compose up`
+      # with no .env still boots and /builder still works.
+      #
+      # Set it in .env (`openssl rand -base64 32`) to exercise the real
+      # GitHub-OAuth cookie session. Deployed environments never use this file —
+      # they inject SESSION_SECRET from Secrets Manager, where the same ADR's
+      # "no secret + production → fail closed" applies.
+      SESSION_SECRET: ${SESSION_SECRET:-}
       # GitHub OAuth wraps the /builder routes. Empty defaults let the app boot
       # and serve the redirect-to-login flow without crashing; the actual login
       # round-trip needs real creds.
