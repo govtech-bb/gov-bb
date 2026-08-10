@@ -206,7 +206,7 @@ six fields (`has-food-licence` radio, `handlers-male`, `handlers-female`,
 
 | `fieldId` | Required | Condition | Types |
 |---|---|---|---|
-| `vendor-list` | yes | always | PDF, JPG, PNG, DOC, DOCX |
+| `vendor-list` | yes | always | PDF, JPG, PNG |
 | `site-plan` | yes | always | PDF, JPG, PNG |
 | `medical-certs` | yes | `operating-restaurant = yes` | PDF, JPG, PNG |
 | `food-licence` | no | `operating-restaurant = yes` | PDF, JPG, PNG |
@@ -427,13 +427,13 @@ These are recorded, not resolved. None blocks implementation.
    to its own `ENV_HEALTH_OFFICER_*` codes instead of the licence form's
    `TEMP_RESTAURANT_LICENCE_*` codes for the same catchment.
    `CatchmentRoutingService.onModuleInit` validates every form's map against
-   the GeoJSON catchments at boot. One deliberate asymmetry: `Frederick Miller
-   Polyclinic` has no Environmental Health Department and no officer-request
-   queue of its own, so it reuses `ENV_HEALTH_OFFICER_ST_PHILIP` rather than
-   getting its own code (service owner decision, 2026-08-10) — the licence
-   form is unaffected and keeps its own Frederick Miller code.
-   `docs/webhook-destinations.md` now documents the mechanism as per-form,
-   naming both catchment-routed forms.
+   the GeoJSON catchments at boot. `Frederick Miller Polyclinic` has no
+   Environmental Health Department of its own, so **both** forms route it to
+   their own `..._ST_PHILIP` code rather than a Frederick-Miller-specific one
+   (service owner decision, 2026-08-10) — there is no per-form asymmetry
+   here, and each form ends up with seven distinct queues over the same
+   eight catchments. `docs/webhook-destinations.md` now documents the
+   mechanism as per-form, naming both catchment-routed forms.
 5. **Dangling `/start` reference.** PR #2242 deletes the licence `start.md` but
    leaves the commented-out block in the licence `index.md` that links to it. The
    reference is inert, but this design edits that same file, so clearing it here

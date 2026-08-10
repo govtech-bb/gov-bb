@@ -846,7 +846,7 @@
           "overrides": {
             "label": "List of vendors",
             "fieldId": "vendor-list",
-            "hint": "A list of the food vendors taking part in your event. PDF, JPG, PNG, DOC or DOCX.",
+            "hint": "A list of the food vendors taking part in your event. PDF, JPG or PNG.",
             "validations": {
               "required": {
                 "value": true,
@@ -856,11 +856,9 @@
                 "value": [
                   "application/pdf",
                   "image/jpeg",
-                  "image/png",
-                  "application/msword",
-                  "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  "image/png"
                 ],
-                "error": "Upload a PDF, JPG, PNG, DOC or DOCX"
+                "error": "Upload a PDF, JPG or PNG"
               }
             }
           }

@@ -64,25 +64,21 @@ makes. `apply-for-temporary-restaurant-licence` and
 `request-an-environmental-health-officer` both route by **polyclinic
 catchment**, so:
 
-**Two forms routed over the same eight catchments, with different queue
-counts.** `programme_code` is chosen per submission from the event's catchment
+**Two forms routed over the same eight catchments, seven distinct queues
+each.** `programme_code` is chosen per submission from the event's catchment
 (coordinates → point-in-polygon, else parish fallback), not fixed per form —
 and the code depends on **which form** as well as which catchment, because one
-polyclinic catchment serves both services with distinct CMS queues. The licence
-form has **eight** distinct queues, one per catchment. The officer-request form
-has only **seven**: Frederick Miller has no Environmental Health Department and
-no queue of its own, so it shares `ENV_HEALTH_OFFICER_ST_PHILIP` with the
-St. Philip catchment instead of getting an eighth. The codes live in
+polyclinic catchment serves both services with distinct CMS queues. Both the
+licence form and the officer-request form have **seven** distinct queues over
+the eight catchments: Frederick Miller has no Environmental Health Department
+of its own, so both forms route it to their own St. Philip queue instead of
+giving it an eighth. The codes live in
 [`apps/api/src/catchment/polyclinic-routing.ts`](../apps/api/src/catchment/polyclinic-routing.ts)
 (`PROGRAMME_CODES_BY_FORM`, keyed by formId then catchment) and are
 **CMS-issued** — MOH created the CMS programmes using exactly these
 `TEMP_RESTAURANT_LICENCE_*` / `ENV_HEALTH_OFFICER_*` strings, so a rename has to
-happen in the CMS first. `Frederick Miller Polyclinic` has no Environmental
-Health Department and no officer-request queue of its own, so officer requests
-there route to the St. Philip queue instead — the licence form is unaffected and
-keeps its own Frederick Miller code. Keys must match the GeoJSON
-`properties.name` values, for every form; a mismatch **throws at boot**, by
-design.
+happen in the CMS first. Keys must match the GeoJSON `properties.name` values,
+for every form; a mismatch **throws at boot**, by design.
 
 **The `mda_contact` row is not in this form's email path.** Its MDA notification
 resolves via `catchment.mdaEmail` (the per-polyclinic Environmental Health

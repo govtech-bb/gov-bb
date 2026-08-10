@@ -24,12 +24,14 @@
  *   (two Ls). The CMS queue name and the catchment name simply spell the
  *   place differently — do not "fix" the code to one L, and do not derive
  *   either form's codes from the other by swapping a prefix.
- * - `Frederick Miller Polyclinic` has no Environmental Health Department and
- *   no officer-request queue of its own; its area falls under St. Philip, so
- *   officer requests there deliberately reuse `ENV_HEALTH_OFFICER_ST_PHILIP`.
- *   It cannot simply be omitted: the GeoJSON catchment still exists and is
- *   reachable by a coordinate hit (no parish maps to it), and every GeoJSON
- *   catchment must have a code for every form or boot throws.
+ * - `Frederick Miller Polyclinic` has no Environmental Health Department of
+ *   its own; its area falls under St. Philip, so **both** forms route it to
+ *   their own `..._ST_PHILIP` code rather than a Frederick-Miller-specific
+ *   one. There is no per-form asymmetry here: each form ends up with seven
+ *   distinct queues over the same eight catchments. It cannot simply be
+ *   omitted: the GeoJSON catchment still exists and is reachable by a
+ *   coordinate hit (no parish maps to it), and every GeoJSON catchment must
+ *   have a code for every form or boot throws.
  */
 export const PROGRAMME_CODES_BY_FORM: Record<string, Record<string, string>> = {
   "apply-for-temporary-restaurant-licence": {
@@ -37,7 +39,7 @@ export const PROGRAMME_CODES_BY_FORM: Record<string, Record<string, string>> = {
     "David Thompson Health & Social Services Complex":
       "TEMP_RESTAURANT_LICENCE_DAVID_THOMPSON",
     "Eunice Gibson Polyclinic": "TEMP_RESTAURANT_LICENCE_EUNICE_GIBSON",
-    "Frederick Miller Polyclinic": "TEMP_RESTAURANT_LICENCE_FREDERICK_MILLER",
+    "Frederick Miller Polyclinic": "TEMP_RESTAURANT_LICENCE_ST_PHILIP",
     "Maurice Byer Polyclinic": "TEMP_RESTAURANT_LICENCE_MAURICE_BYER",
     "Randal Phillips Polyclinic": "TEMP_RESTAURANT_LICENCE_RANDAL_PHILLIPS",
     "Sir Winston Scott Polyclinic": "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
@@ -48,8 +50,8 @@ export const PROGRAMME_CODES_BY_FORM: Record<string, Record<string, string>> = {
     "David Thompson Health & Social Services Complex":
       "ENV_HEALTH_OFFICER_DAVID_THOMPSON",
     "Eunice Gibson Polyclinic": "ENV_HEALTH_OFFICER_EUNICE_GIBSON",
-    // No officer-request queue of its own — see the note above. Deliberate,
-    // not a typo: do not point this at a Frederick Miller code.
+    // No Environmental Health Department of its own — see the note above.
+    // Deliberate, not a typo: do not point this at a Frederick Miller code.
     "Frederick Miller Polyclinic": "ENV_HEALTH_OFFICER_ST_PHILIP",
     "Maurice Byer Polyclinic": "ENV_HEALTH_OFFICER_MAURICE_BYER",
     // Two Ls, unlike the catchment name and the licence code — see the note

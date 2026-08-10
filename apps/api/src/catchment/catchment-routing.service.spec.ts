@@ -78,7 +78,7 @@ describe("CatchmentRoutingService", () => {
       coordinates: "13.1323,-59.5626",
     });
     expect(r?.polyclinic).toBe("Frederick Miller Polyclinic");
-    expect(r?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_FREDERICK_MILLER");
+    expect(r?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_ST_PHILIP");
     expect(r?.mdaEmail).toBe("testing@govtech.bb");
   });
 
@@ -136,11 +136,10 @@ describe("CatchmentRoutingService", () => {
     expect(officer?.programmeCode).toBe("ENV_HEALTH_OFFICER_WINSTON_SCOTT");
   });
 
-  it("resolves Frederick Miller to St. Philip's officer-request code, but to its own licence code — the deliberate asymmetry", () => {
+  it("resolves Frederick Miller to each form's own St. Philip code — no per-form asymmetry", () => {
     // Same coordinate as the Frederick Miller test above, confirmed in-polygon
     // there. Frederick Miller has no Environmental Health Department of its
-    // own, so officer requests there fall to the St. Philip queue; the
-    // licence form is unaffected and keeps its own Frederick Miller code.
+    // own, so both forms fall to their own St. Philip queue.
     const officer = svc.resolve({
       formId: OFFICER_FORM,
       coordinates: "13.1323,-59.5626",
@@ -153,9 +152,7 @@ describe("CatchmentRoutingService", () => {
       coordinates: "13.1323,-59.5626",
     });
     expect(licence?.polyclinic).toBe("Frederick Miller Polyclinic");
-    expect(licence?.programmeCode).toBe(
-      "TEMP_RESTAURANT_LICENCE_FREDERICK_MILLER",
-    );
+    expect(licence?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_ST_PHILIP");
   });
 
   it("returns null and logs an error for a formId with no programme-code map", () => {

@@ -1253,7 +1253,7 @@ Insert this object **between** `food-safety` and `check-your-answers`. Note `med
           "overrides": {
             "label": "List of vendors",
             "fieldId": "vendor-list",
-            "hint": "A list of the food vendors taking part in your event. PDF, JPG, PNG, DOC or DOCX.",
+            "hint": "A list of the food vendors taking part in your event. PDF, JPG or PNG.",
             "validations": {
               "required": {
                 "value": true,
@@ -1263,11 +1263,9 @@ Insert this object **between** `food-safety` and `check-your-answers`. Note `med
                 "value": [
                   "application/pdf",
                   "image/jpeg",
-                  "image/png",
-                  "application/msword",
-                  "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  "image/png"
                 ],
-                "error": "Upload a PDF, JPG, PNG, DOC or DOCX"
+                "error": "Upload a PDF, JPG or PNG"
               }
             }
           }
@@ -2234,5 +2232,5 @@ Expected: no conflicts. #2242 only deletes `apply-for-temporary-restaurant-licen
 
 One thing already fixed in this branch, and one thing the delivery team must still do outside it:
 
-1. **Fixed: per-form catchment programme codes.** The recipe's own `mapping.programmeCode: "ENV_HEALTH_OFFICER_REQUEST"` is never emitted while a catchment resolves: `apps/api/src/forms/submissions/processors/webhook.processor.ts` passes `payload.resolvedCatchment?.programmeCode` as `programmeCodeOverride`, and `webhook-mapping.ts` resolves `programme_code: programmeCodeOverride ?? mapping.programmeCode` — the override wins whenever `catchmentRouting` is present, as it is here. `apps/api/src/catchment/polyclinic-routing.ts` now keys its programme codes by **formId then catchment** (`PROGRAMME_CODES_BY_FORM`), so `apply-for-temporary-restaurant-licence` and `request-an-environmental-health-officer` each resolve to their own CMS code for the same catchment instead of the officer-request form picking up the licence's code. The seven officer-request codes are `ENV_HEALTH_OFFICER_BRANFORD_TAITT`, `_DAVID_THOMPSON`, `_EUNICE_GIBSON`, `_MAURICE_BYER`, `_RANDALL_PHILLIPS` (two Ls — the catchment name has one), `_WINSTON_SCOTT`, and `_ST_PHILIP`. `Frederick Miller Polyclinic` has no Environmental Health Department and no officer-request queue of its own, so it deliberately reuses `ENV_HEALTH_OFFICER_ST_PHILIP` rather than getting its own code (service owner decision, 2026-08-10). `CatchmentRoutingService.onModuleInit` now validates every form's map against the GeoJSON catchments at boot (fails loud on a gap or a typo'd key), and `resolve()` requires a `formId` and returns `null` — logging an error — if a form has no code for the resolved catchment, rather than inventing one. What remains for the delivery team: **confirm the seven `(EHO)` CMS queues exist**, and that the MOH `ministry_key` webhook destination is configured (webhook destinations resolve per-MDA by ministry key, not by programme code, so this is a provisioning step, not a code change — see [docs/webhook-destinations.md](../../webhook-destinations.md)).
+1. **Fixed: per-form catchment programme codes.** The recipe's own `mapping.programmeCode: "ENV_HEALTH_OFFICER_REQUEST"` is never emitted while a catchment resolves: `apps/api/src/forms/submissions/processors/webhook.processor.ts` passes `payload.resolvedCatchment?.programmeCode` as `programmeCodeOverride`, and `webhook-mapping.ts` resolves `programme_code: programmeCodeOverride ?? mapping.programmeCode` — the override wins whenever `catchmentRouting` is present, as it is here. `apps/api/src/catchment/polyclinic-routing.ts` now keys its programme codes by **formId then catchment** (`PROGRAMME_CODES_BY_FORM`), so `apply-for-temporary-restaurant-licence` and `request-an-environmental-health-officer` each resolve to their own CMS code for the same catchment instead of the officer-request form picking up the licence's code. The seven officer-request codes are `ENV_HEALTH_OFFICER_BRANFORD_TAITT`, `_DAVID_THOMPSON`, `_EUNICE_GIBSON`, `_MAURICE_BYER`, `_RANDALL_PHILLIPS` (two Ls — the catchment name has one), `_WINSTON_SCOTT`, and `_ST_PHILIP`. `Frederick Miller Polyclinic` has no Environmental Health Department of its own, so **both** forms route it to their own `..._ST_PHILIP` code rather than a Frederick-Miller-specific one — there is no per-form asymmetry here, and each form ends up with seven distinct queues over the same eight catchments (service owner decision, 2026-08-10). `CatchmentRoutingService.onModuleInit` now validates every form's map against the GeoJSON catchments at boot (fails loud on a gap or a typo'd key), and `resolve()` requires a `formId` and returns `null` — logging an error — if a form has no code for the resolved catchment, rather than inventing one. What remains for the delivery team: **confirm the seven `(EHO)` CMS queues exist**, and that the MOH `ministry_key` webhook destination is configured (webhook destinations resolve per-MDA by ministry key, not by programme code, so this is a provisioning step, not a code change — see [docs/webhook-destinations.md](../../webhook-destinations.md)).
 2. **Publish when MOH signs off, and once the seven `(EHO)` CMS queues are confirmed** — flip the recipe's `meta.visibility` to `public` and the content page's `visibility` to `public`. Only then does the Start button render. If the form is made public, it must also be added to the `deploy-sandbox.yml` post-deploy smoke matrix, which lists **only** `visibility: public` forms — a private form in that matrix 404s and breaks the gate.
