@@ -385,6 +385,457 @@
       ]
     },
     {
+      "stepId": "food-details",
+      "title": "What food and drink will you serve?",
+      "description": "Tick the items you will serve in each category that applies. Categories marked higher-risk need extra care and may affect how your set-up is inspected.",
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "operating-restaurant",
+          "targetFieldId": "operating-restaurant",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ],
+      "elements": [
+        {
+          "ref": "components/generic-checkbox-accordion",
+          "overrides": {
+            "label": "Food and drink you will serve",
+            "fieldId": "food-served",
+            "hint": "Open each category that applies and tick the items you will serve.",
+            "groups": [
+              {
+                "label": "Meat and poultry",
+                "higherRisk": true,
+                "options": [
+                  { "label": "Chicken", "value": "chicken" },
+                  { "label": "Lamb", "value": "lamb" },
+                  { "label": "Beef", "value": "beef" },
+                  { "label": "Pork", "value": "pork" },
+                  { "label": "Duck", "value": "duck" },
+                  { "label": "Rabbit", "value": "rabbit" },
+                  { "label": "Goat", "value": "goat" },
+                  { "label": "Turkey", "value": "turkey" },
+                  { "label": "Hotdogs", "value": "hotdogs" },
+                  { "label": "Burgers", "value": "burgers" },
+                  { "label": "Souse", "value": "souse" },
+                  { "label": "Canned meats", "value": "canned-meats" },
+                  { "label": "Tacos", "value": "tacos" }
+                ]
+              },
+              {
+                "label": "Seafood and fish products",
+                "higherRisk": true,
+                "options": [
+                  { "label": "Fish", "value": "fish" },
+                  { "label": "Fish cakes", "value": "fish-cakes" },
+                  { "label": "Canned fish", "value": "canned-fish" },
+                  { "label": "Shrimp", "value": "shrimp" },
+                  { "label": "Crab", "value": "crab" },
+                  { "label": "Lobster", "value": "lobster" },
+                  { "label": "Sushi", "value": "sushi" }
+                ]
+              },
+              {
+                "label": "Dairy products",
+                "higherRisk": true,
+                "options": [
+                  { "label": "Ice-cream", "value": "ice-cream" },
+                  { "label": "Cheese", "value": "cheese" },
+                  { "label": "Milk products", "value": "milk-products" }
+                ]
+              },
+              {
+                "label": "Eggs and egg products",
+                "higherRisk": true,
+                "options": [
+                  { "label": "Eggs", "value": "eggs" },
+                  { "label": "Salads", "value": "salads" },
+                  { "label": "Pastries", "value": "pastries" },
+                  { "label": "Other baked goods", "value": "other-baked-goods" }
+                ]
+              },
+              {
+                "label": "Cooked rice, pasta and starches",
+                "options": [
+                  { "label": "Rice", "value": "rice" },
+                  { "label": "Macaroni pie", "value": "macaroni-pie" },
+                  { "label": "Pasta", "value": "pasta" },
+                  { "label": "Cou-cou", "value": "cou-cou" },
+                  { "label": "Fries", "value": "fries" },
+                  { "label": "English or Irish potato", "value": "english-or-irish-potato" },
+                  { "label": "Sweet potato", "value": "sweet-potato" },
+                  { "label": "Breadfruit", "value": "breadfruit" },
+                  { "label": "Cassava", "value": "cassava" },
+                  { "label": "Soup", "value": "soup" },
+                  { "label": "Dry goods", "value": "dry-goods" }
+                ]
+              },
+              {
+                "label": "Fresh fruits and vegetables",
+                "options": [
+                  { "label": "Fruits and vegetables (sliced or diced)", "value": "fruits-and-vegetables" }
+                ]
+              },
+              {
+                "label": "Salads and condiments",
+                "options": [
+                  { "label": "Tossed salad", "value": "tossed-salad" },
+                  { "label": "Cold salads", "value": "cold-salads" },
+                  { "label": "Condiments", "value": "condiments" }
+                ]
+              },
+              {
+                "label": "Snacks and sweets",
+                "options": [
+                  { "label": "Popcorn", "value": "popcorn" },
+                  { "label": "Cotton candy", "value": "cotton-candy" },
+                  { "label": "Packaged goods", "value": "packaged-goods" },
+                  { "label": "Confectioneries", "value": "confectioneries" },
+                  { "label": "Jams and jellies", "value": "jams-and-jellies" }
+                ]
+              },
+              {
+                "label": "Drinks and beverages",
+                "options": [
+                  { "label": "Soft drinks", "value": "soft-drinks" },
+                  { "label": "Homemade juices", "value": "homemade-juices" },
+                  { "label": "Coconut water", "value": "coconut-water" },
+                  { "label": "Slushies", "value": "slushies" },
+                  { "label": "Sno-cones", "value": "sno-cones" },
+                  { "label": "Wines and spirits", "value": "wines-and-spirits" }
+                ]
+              },
+              {
+                "label": "Other food",
+                "options": [{ "label": "Other food", "value": "other" }]
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select at least one food or drink item you will serve"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "label": "What else will you serve?",
+            "fieldId": "other-food-description",
+            "hint": "Describe the main ingredients and how you will cook it. This is how we grade the risk, so an officer knows what to expect.",
+            "ui": {
+              "width": "long",
+              "indent": true
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-served",
+                "operator": "in",
+                "value": ["other"]
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us what else you will serve"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Where will you get your food from?",
+            "fieldId": "food-source",
+            "hint": "Tick everything that applies.",
+            "options": [
+              { "label": "Supplier", "value": "supplier" },
+              { "label": "Caterer or cook", "value": "caterer" }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select where you will get your food from"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "label": "Which suppliers will you use?",
+            "fieldId": "supplier-details",
+            "hint": "A short list is enough. You do not need to name every item. For example, fish from Oistins market; flour and oil from a wholesaler; beer from a supermarket.",
+            "ui": {
+              "width": "long",
+              "indent": true
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["supplier"]
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us which suppliers you will use"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Name of the caterer or cook",
+            "fieldId": "caterer-name",
+            "hint": "The business or person preparing the food. Only give this if someone other than you is preparing it.",
+            "ui": { "indent": true },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the name of the caterer or cook"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Their address",
+            "fieldId": "caterer-address",
+            "ui": { "indent": true },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the address of the caterer or cook"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-tel",
+          "overrides": {
+            "label": "Their phone number",
+            "fieldId": "caterer-phone",
+            "hint": "For example, (246) 249 1234.",
+            "ui": { "indent": true },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the phone number of the caterer or cook"
+              },
+              "phone": {
+                "value": true,
+                "error": "Please enter a valid phone number"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-email",
+          "overrides": {
+            "label": "Their email address (optional)",
+            "fieldId": "caterer-email",
+            "hint": "For example, cook@example.com.",
+            "ui": { "indent": true },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "email": {
+                "value": true,
+                "error": "Enter a valid email address"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "caterer-licence-note",
+            "variant": "text",
+            "content": "You do not need to send us the caterer's or cook's licence.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "food-safety",
+      "title": "Food safety",
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "operating-restaurant",
+          "targetFieldId": "operating-restaurant",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ],
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Do you already have a valid food business licence?",
+            "fieldId": "has-food-licence",
+            "hint": "A current licence for your own food business or premises.",
+            "options": [
+              { "label": "Yes", "value": "yes" },
+              { "label": "No", "value": "no" }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether you already have a valid food business licence"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "food-handlers-note",
+            "variant": "details",
+            "summary": "Why we ask, and what officers may check on the day",
+            "content": "The number tells us how many people an officer needs to check at your stall. Everyone handling food must wear a hairnet, wear a beard net if they have a beard, remove jewellery, and keep nails short, clean and free of varnish or false nails.\n\nEach person needs their own valid medical certificate with them on the day. You only upload your own — we check the rest at the stall.\n\nWe know who works an event can change at short notice. Give the number you expect; you will not be penalised if the people change.\n\n[Read the full hygiene requirements](/business-trade/temporary-restaurants-what-you-need-to-know#personal-hygiene-for-food-handlers)"
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Number of male food handlers",
+            "fieldId": "handlers-male",
+            "hint": "For example, 2.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of male food handlers"
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Number of female food handlers",
+            "fieldId": "handlers-female",
+            "hint": "For example, 3.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of female food handlers"
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "water-sanitation-note",
+            "variant": "details",
+            "summary": "Why we ask about water and sanitation",
+            "content": "Running water is mandatory. A stall without it can be closed on the day, and a licence cannot be issued in advance because an officer has to verify this in place.\n\n**Contact your event organiser to check whether water will be available — but be prepared to bring your own.** Vendors have arrived at events expecting water to be provided and found none. Whoever supplies it, it is your stall that is closed without it.\n\n[Read more about keeping food safe](/business-trade/temporary-restaurants-what-you-need-to-know#keeping-food-safe)"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Water source",
+            "fieldId": "water-source",
+            "hint": "Where will safe water come from? For example, mains supply, a water tank, or bottled water.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the water source for the event"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Handwashing arrangements",
+            "fieldId": "handwashing",
+            "hint": "For example, a portable handwashing station with soap and paper towels.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe the handwashing arrangements"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Waste disposal",
+            "fieldId": "waste-disposal",
+            "hint": "How will food waste and rubbish be stored and removed?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe how waste will be disposed of"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "stepId": "check-your-answers",
       "title": "Check your answers",
       "description": "Review all the information you have provided before submitting your request.",
