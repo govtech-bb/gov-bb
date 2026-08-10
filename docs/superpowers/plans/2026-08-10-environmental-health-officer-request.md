@@ -23,7 +23,9 @@
 - **`meta.visibility` is `"draft"`** and the content page's `visibility` is `preview`. Do not set either to `public` in this work.
 - **Never put a query parameter on a `data-start-link`.** Hardcoding `?preview=…` leaks `PREVIEW_SECRET` into the client bundle and fails the Amplify build. The anchor stays bare.
 - **Branch names must not contain a `.`** — a local PreToolUse hook and CI both block it. Work happens on `eho-request-recipe`.
-- **Do not modify** `apps/forms`, `packages/registry`, `packages/form-types`, or the licence recipe. Task 6 is the only edit to an existing file.
+- **Do not modify** `apps/forms/src`, `packages/registry`, `packages/form-types`, or the licence recipe. Tasks 7–8 add a **new** file under `apps/forms/e2e/smoke/` — that is the only permitted `apps/forms` change, and it adds a test rather than touching the renderer. The design requires zero renderer, registry and type changes; if a task appears to need one, stop and report rather than making it.
+- **Only one existing file is edited by this plan:** `apps/landing/src/content/apply-for-temporary-restaurant-licence/index.md`, in Task 6. `apps/api/src/content/services-index.generated.ts` also changes, but only ever by running its generator — never by hand.
+- **The working tree already carries an unrelated modification** to `apps/forms/src/routeTree.gen.ts` (a generated file, 41 insertions / 41 deletions) that predates this work. Never stage or commit it, and never revert it. Stage files by explicit path — never `git add -A` or `git commit -a`.
 - **Do not touch `apps/landing/src/content/apply-for-temporary-restaurant-licence/start.md`.** It is deleted by PR #2242, separately.
 - **Contact details, verbatim, on every surface:** Ministry of Health and Wellness / `info@health.gov.bb` / `+1 (246) 536-3800`.
 
@@ -2176,7 +2178,7 @@ apps/landing/src/content/apply-for-temporary-restaurant-licence/index.md
 apps/landing/src/content/request-an-environmental-health-officer/index.md
 ```
 
-Plus the two design/plan docs. If `apps/forms/src`, `packages/`, or the licence recipe appear, something went outside scope — stop and report.
+Plus the two design/plan docs. If `packages/` or the licence recipe appear, something went outside scope — stop and report. `apps/forms/src/routeTree.gen.ts` will show as *unstaged* in `git status` throughout: that is the pre-existing modification named in the Global Constraints, and it must never appear in `git diff main...HEAD`.
 
 - [ ] **Rebase on `main` once PR #2242 has merged**
 
