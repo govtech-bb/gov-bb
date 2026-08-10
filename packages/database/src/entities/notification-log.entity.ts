@@ -14,9 +14,13 @@ export enum NotificationOutcome {
   SENT = "sent",
   /** Transient/SES/resolver error — the send threw and (in prod) retries → DLQ. */
   FAILED = "failed",
-  /** config.* recipient had no MDA row, so it fell back to the default test
-   *  inbox. Non-prod only — in prod a missing MDA recipient is a FAILED send
-   *  (see EmailProcessor.resolveConfigRecipient / MDA_REQUIRE_RECIPIENT). */
+  /** The MDA notification went to the default test inbox instead of the real
+   *  address. Non-prod only (MDA_REQUIRE_RECIPIENT unset), in two flavours:
+   *  a `config.*` recipient with no MDA row fell back (in prod that is a FAILED
+   *  send), or a `catchment.*` recipient was overridden so a test submission
+   *  can't email a real polyclinic (in prod the resolved catchment inbox is
+   *  used). See EmailProcessor.resolveConfigRecipient /
+   *  resolveCatchmentRecipient. */
   DEFAULTED = "defaulted",
   /** The configured recipientField resolved to nothing (non-retryable). */
   NO_RECIPIENT = "no_recipient",
