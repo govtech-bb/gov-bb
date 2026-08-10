@@ -1987,7 +1987,8 @@ Expected: PASS (this builds `src`, confirming nothing about the spec was broken 
 This is the real compile gate: Playwright imports the module, so a syntax error, a bad import path or a missing helper export fails here.
 
 ```bash
-pnpm --filter @govtech-bb/forms exec playwright test \
+SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb \
+  pnpm --filter @govtech-bb/forms exec playwright test \
   --config playwright.smoke.config.ts \
   request-an-environmental-health-officer --list
 ```
@@ -2017,7 +2018,36 @@ The one assertion that cannot be made anywhere else: answering "no" removes the 
 - Consumes: `buildData()`, `openForm()`, `fillGateApplicantAndEvent()` and `FORM_ID` from Task 7.
 - Produces: nothing.
 
-- [ ] **Step 1: Add `currentStep` to the helper import**
+- [ ] **Step 1: Correct the file header's `SMOKE_BASE_URL` line**
+
+Task 7 transcribed this line from the plan, which had copied it from the sibling smoke spec — and it is **wrong in both**. `playwright.smoke.config.ts:25-28` requires `SMOKE_BASE_URL` and throws without it; there is no default. An engineer following the header as written gets a config-load crash, not a sandbox run. Fix it in the new file.
+
+Replace this line:
+
+```
+ *   SMOKE_BASE_URL   target environment (default https://forms.sandbox.alpha.gov.bb)
+```
+
+with:
+
+```
+ *   SMOKE_BASE_URL   target environment. REQUIRED — playwright.smoke.config.ts throws
+ *                    without it, deliberately, so a real submission can never go to an
+ *                    unintended environment by default. Use
+ *                    https://forms.sandbox.alpha.gov.bb for sandbox.
+```
+
+And in the "Run them on demand" example just above it, add the variable so the command actually works as written:
+
+```
+ *   SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb PREVIEW_TOKEN=… \
+ *     pnpm --filter @govtech-bb/forms exec playwright test \
+ *     --config playwright.smoke.config.ts request-an-environmental-health-officer
+```
+
+Leave the sibling spec `apply-for-temporary-restaurant-licence.smoke.spec.ts` alone — it carries the same inaccuracy, but it is outside this plan's scope.
+
+- [ ] **Step 2: Add `currentStep` to the helper import**
 
 This test needs one helper the first test did not. In the `from "../helpers/smoke"` import block, add `currentStep` between `advance` and `expectStep`, keeping the list alphabetical:
 
@@ -2036,7 +2066,7 @@ import {
 } from "../helpers/smoke";
 ```
 
-- [ ] **Step 2: Add the second test**
+- [ ] **Step 3: Add the second test**
 
 Inside the existing `test.describe(...)` block in `apps/forms/e2e/smoke/request-an-environmental-health-officer.smoke.spec.ts`, add this test after the first one:
 
@@ -2115,17 +2145,18 @@ Inside the existing `test.describe(...)` block in `apps/forms/e2e/smoke/request-
   });
 ```
 
-- [ ] **Step 3: Confirm both tests are discovered**
+- [ ] **Step 4: Confirm both tests are discovered**
 
 ```bash
-pnpm --filter @govtech-bb/forms exec playwright test \
+SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb \
+  pnpm --filter @govtech-bb/forms exec playwright test \
   --config playwright.smoke.config.ts \
   request-an-environmental-health-officer --list
 ```
 
-Expected: two tests listed. A failure here means the module did not load — most likely the `currentStep` import from Step 1 was missed.
+Expected: two tests listed. A failure here means the module did not load — most likely the `currentStep` import from Step 2 was missed.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add apps/forms/e2e/smoke/request-an-environmental-health-officer.smoke.spec.ts
