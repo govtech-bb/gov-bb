@@ -64,11 +64,15 @@ makes. `apply-for-temporary-restaurant-licence` and
 `request-an-environmental-health-officer` both route by **polyclinic
 catchment**, so:
 
-**Two forms, each with its own eight CMS queues.** `programme_code` is chosen
-per submission from the event's catchment (coordinates → point-in-polygon, else
-parish fallback), not fixed per form — and the code depends on **which form**
-as well as which catchment, because one polyclinic catchment serves both
-services with distinct CMS queues. The codes live in
+**Two forms routed over the same eight catchments, with different queue
+counts.** `programme_code` is chosen per submission from the event's catchment
+(coordinates → point-in-polygon, else parish fallback), not fixed per form —
+and the code depends on **which form** as well as which catchment, because one
+polyclinic catchment serves both services with distinct CMS queues. The licence
+form has **eight** distinct queues, one per catchment. The officer-request form
+has only **seven**: Frederick Miller has no Environmental Health Department and
+no queue of its own, so it shares `ENV_HEALTH_OFFICER_ST_PHILIP` with the
+St. Philip catchment instead of getting an eighth. The codes live in
 [`apps/api/src/catchment/polyclinic-routing.ts`](../apps/api/src/catchment/polyclinic-routing.ts)
 (`PROGRAMME_CODES_BY_FORM`, keyed by formId then catchment) and are
 **CMS-issued** — MOH created the CMS programmes using exactly these

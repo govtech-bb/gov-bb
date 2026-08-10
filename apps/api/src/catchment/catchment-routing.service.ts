@@ -105,8 +105,11 @@ export class CatchmentRoutingService implements OnModuleInit {
       // No fallback code is invented here: returning null makes the caller's
       // resolvedCatchment undefined, so the webhook falls back to the
       // recipe's own mapping.programmeCode and catchment.mdaEmail fails
-      // loudly (isolated/DLQ'd) rather than misrouting — this file's existing
-      // fail-loud stance, now applied per form as well as per catchment.
+      // loudly — resolveCatchmentRecipient finds no recipient, the !recipient
+      // guard throws NonRetryableError, and sqs-consumer.service.ts logs it
+      // and deletes the message rather than letting it churn into the DLQ —
+      // rather than misrouting. This file's existing fail-loud stance, now
+      // applied per form as well as per catchment.
       this.logger.error(
         `[catchment] no programme code for form "${input.formId}" / catchment "${entry.name}"`,
       );
