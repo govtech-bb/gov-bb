@@ -13,11 +13,15 @@
  * directory (ADR 0027 / 0029), and no workflow runs them automatically.
  *
  * Run them on demand (from the repo root):
- *   PREVIEW_TOKEN=… pnpm --filter @govtech-bb/forms exec playwright test \
+ *   SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb PREVIEW_TOKEN=… \
+ *     pnpm --filter @govtech-bb/forms exec playwright test \
  *     --config playwright.smoke.config.ts request-an-environmental-health-officer
  *
  * Useful env overrides:
- *   SMOKE_BASE_URL   target environment (default https://forms.sandbox.alpha.gov.bb)
+ *   SMOKE_BASE_URL   target environment. REQUIRED — playwright.smoke.config.ts throws
+ *                    without it, deliberately, so a real submission can never go to an
+ *                    unintended environment by default. Use
+ *                    https://forms.sandbox.alpha.gov.bb for sandbox.
  *   PREVIEW_TOKEN    forms preview secret — appended as ?preview=<token>. REQUIRED
  *                    while the recipe is visibility:draft, because a non-public
  *                    recipe 404s without a token. Pass it on the command line so
@@ -49,6 +53,7 @@ import { test, expect, type Page } from "@playwright/test";
 import {
   STEP_TIMEOUT,
   advance,
+  currentStep,
   expectStep,
   fillDate,
   fillField,
@@ -345,6 +350,81 @@ test.describe("Request an Environmental Health Officer — Live Smoke", () => {
     await page
       .getByRole("checkbox", {
         name: /Health Services \(Restaurants\) Regulations, 1969/,
+      })
+      .check();
+    await page
+      .getByRole("checkbox", {
+        name: /responsible for the overtime costs/,
+      })
+      .check();
+
+    await submitAndConfirm(page, {
+      heading: "Request submitted",
+      referenceLabel: "Submission ID",
+    });
+
+    if (process.env.SMOKE_HOLD) await page.pause();
+  });
+
+  test("skips the food steps and submits when not operating a temporary restaurant", async ({
+    page,
+  }) => {
+    const data = buildData();
+    if (process.env.SMOKE_LOG_DATA)
+      console.log("[smoke-data]", JSON.stringify(data, null, 2));
+
+    await openForm(page);
+    await fillGateApplicantAndEvent(page, data, "no");
+
+    // The gate's whole purpose: food-details and food-safety are absent from the
+    // journey, so leaving event-details lands directly on documents.
+    const afterEvent = currentStep(page);
+    expect(
+      afterEvent,
+      "answering no to operating-restaurant must skip food-details",
+    ).not.toContain("food-details");
+    expect(
+      afterEvent,
+      "answering no to operating-restaurant must skip food-safety",
+    ).not.toContain("food-safety");
+
+    // ─── Supporting documents (only two required on this branch) ─────────────
+    let step = expectStep(page, "documents");
+    await uploadOne(page, step, "vendor-list", {
+      name: "vendor-list.png",
+      mimeType: TEST_PNG.mimeType,
+      buffer: TEST_PNG.buffer,
+    });
+    await uploadOne(page, step, "site-plan", {
+      name: "site-plan.png",
+      mimeType: TEST_PNG.mimeType,
+      buffer: TEST_PNG.buffer,
+    });
+    // The medical certificate and food licence are gated on the yes branch, so
+    // neither should be on the page at all here.
+    await expect(
+      page.locator(`input[id="${step}_medical-certs"]`),
+    ).toBeHidden();
+    await expect(page.locator(`input[id="${step}_food-licence"]`)).toBeHidden();
+    await advance(page, step);
+
+    // ─── Check your answers ──────────────────────────────────────────────────
+    step = expectStep(page, "check-your-answers");
+    await expect(page.locator("h1")).toContainText("Check your answers");
+    // The skipped steps must not appear in the review either.
+    await expect(page.getByText("Water source")).toHaveCount(0);
+    await advance(page, step);
+
+    // ─── Declaration: only two boxes on this branch ──────────────────────────
+    expectStep(page, "declaration");
+    await expect(
+      page.getByRole("checkbox", {
+        name: /Health Services \(Restaurants\) Regulations, 1969/,
+      }),
+    ).toBeHidden();
+    await page
+      .getByRole("checkbox", {
+        name: /I confirm that my information is correct/,
       })
       .check();
     await page
