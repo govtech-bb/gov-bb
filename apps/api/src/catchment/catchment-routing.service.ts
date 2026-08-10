@@ -4,7 +4,7 @@ import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import {
   PARISH_DEFAULTS,
   POLYCLINIC_EMAILS,
-  PROGRAMME_CODES,
+  PROGRAMME_CODES_BY_FORM,
 } from "./polyclinic-routing";
 
 export interface CatchmentResolution {
@@ -20,7 +20,6 @@ type Ring = [number, number][];
 interface CatchmentEntry {
   name: string;
   email: string | null;
-  programmeCode: string;
   /** Normalised to a list of polygons, each polygon a list of rings. */
   polygons: Ring[][];
 }
@@ -42,18 +41,11 @@ export class CatchmentRoutingService implements OnModuleInit {
 
     this.entries = geojson.features.map((f) => {
       const name = f.properties.name;
-      const programmeCode = PROGRAMME_CODES[name];
-      if (!programmeCode) {
-        throw new Error(
-          `[catchment] GeoJSON catchment "${name}" has no PROGRAMME_CODES entry`,
-        );
-      }
       // Emails live in POLYCLINIC_EMAILS (not the GeoJSON). A catchment with no
       // entry resolves to null and is reported by the boot warn below.
       return {
         name,
         email: POLYCLINIC_EMAILS[name] ?? null,
-        programmeCode,
         polygons: this.normalisePolygons(f.geometry),
       };
     });
@@ -69,6 +61,28 @@ export class CatchmentRoutingService implements OnModuleInit {
       }
     }
 
+    // Every form's programme-code map must cover every GeoJSON catchment, and
+    // every key in it must name a real GeoJSON catchment (catches a typo'd
+    // key that the old, catchment-only check could not).
+    for (const [formId, codesByCatchment] of Object.entries(
+      PROGRAMME_CODES_BY_FORM,
+    )) {
+      for (const entry of this.entries) {
+        if (!(entry.name in codesByCatchment)) {
+          throw new Error(
+            `[catchment] form "${formId}" has no programme code for catchment "${entry.name}"`,
+          );
+        }
+      }
+      for (const catchmentName of Object.keys(codesByCatchment)) {
+        if (!this.byName.has(catchmentName)) {
+          throw new Error(
+            `[catchment] form "${formId}" has a programme code for unknown catchment "${catchmentName}"`,
+          );
+        }
+      }
+    }
+
     // Ministry email gap — warn, do not fail boot.
     const noEmail = this.entries.filter((e) => !e.email).map((e) => e.name);
     if (noEmail.length > 0) {
@@ -79,15 +93,28 @@ export class CatchmentRoutingService implements OnModuleInit {
   }
 
   resolve(input: {
+    formId: string;
     coordinates?: string;
     parish?: string;
   }): CatchmentResolution | null {
     const hit = this.pointHit(input.coordinates);
     const entry = hit ?? this.parishHit(input.parish);
     if (!entry) return null;
+    const programmeCode = PROGRAMME_CODES_BY_FORM[input.formId]?.[entry.name];
+    if (!programmeCode) {
+      // No fallback code is invented here: returning null makes the caller's
+      // resolvedCatchment undefined, so the webhook falls back to the
+      // recipe's own mapping.programmeCode and catchment.mdaEmail fails
+      // loudly (isolated/DLQ'd) rather than misrouting — this file's existing
+      // fail-loud stance, now applied per form as well as per catchment.
+      this.logger.error(
+        `[catchment] no programme code for form "${input.formId}" / catchment "${entry.name}"`,
+      );
+      return null;
+    }
     return {
       polyclinic: entry.name,
-      programmeCode: entry.programmeCode,
+      programmeCode,
       mdaEmail: entry.email,
     };
   }

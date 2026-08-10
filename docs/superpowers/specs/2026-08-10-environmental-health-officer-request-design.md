@@ -416,19 +416,24 @@ These are recorded, not resolved. None blocks implementation.
 3. **Food handlers split by sex.** The prototype carries a draft note saying
    whether handlers should be split male/female or counted as one total is under
    review. Ported as-is (split), matching the licence recipe.
-4. **Webhook destination — resolved, and it's worse than a missing row.** The
-   recipe's `programmeCode: "ENV_HEALTH_OFFICER_REQUEST"` is never emitted:
-   `webhook.processor.ts` passes `resolvedCatchment?.programmeCode` as an
-   override, and `webhook-mapping.ts` resolves
-   `programme_code: programmeCodeOverride ?? mapping.programmeCode`, so the
-   override wins whenever `catchmentRouting` is present, as it is here. The
-   codes it resolves to (`polyclinic-routing.ts`'s `PROGRAMME_CODES`) are all
-   licence-specific, so every officer request would be filed in the CMS as a
-   temporary restaurant licence application. `docs/webhook-destinations.md`
-   documents the per-catchment mechanism as specific to
-   `apply-for-temporary-restaurant-licence`; this branch adds a second
-   catchment-routed form and that documentation is now incomplete. Needs an
-   `apps/api` fix before this form can go live.
+4. **Webhook destination — fixed.** The recipe's own
+   `programmeCode: "ENV_HEALTH_OFFICER_REQUEST"` is never emitted while a
+   catchment resolves: `webhook.processor.ts` passes
+   `resolvedCatchment?.programmeCode` as an override, and `webhook-mapping.ts`
+   resolves `programme_code: programmeCodeOverride ?? mapping.programmeCode`,
+   so the override wins whenever `catchmentRouting` is present, as it is here.
+   `polyclinic-routing.ts` now keys its programme codes by **formId then
+   catchment** (`PROGRAMME_CODES_BY_FORM`), so this form's submissions resolve
+   to its own `ENV_HEALTH_OFFICER_*` codes instead of the licence form's
+   `TEMP_RESTAURANT_LICENCE_*` codes for the same catchment.
+   `CatchmentRoutingService.onModuleInit` validates every form's map against
+   the GeoJSON catchments at boot. One deliberate asymmetry: `Frederick Miller
+   Polyclinic` has no Environmental Health Department and no officer-request
+   queue of its own, so it reuses `ENV_HEALTH_OFFICER_ST_PHILIP` rather than
+   getting its own code (service owner decision, 2026-08-10) — the licence
+   form is unaffected and keeps its own Frederick Miller code.
+   `docs/webhook-destinations.md` now documents the mechanism as per-form,
+   naming both catchment-routed forms.
 5. **Dangling `/start` reference.** PR #2242 deletes the licence `start.md` but
    leaves the commented-out block in the licence `index.md` that links to it. The
    reference is inert, but this design edits that same file, so clearing it here
