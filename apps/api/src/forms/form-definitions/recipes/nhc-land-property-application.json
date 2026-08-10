@@ -192,8 +192,8 @@
             "fieldId": "salary",
             "validations": {
               "pattern": {
-                "value": "^[0-9]+(\\.[0-9]{1,2})?$",
-                "error": "Enter a valid number"
+                "error": "Enter a valid number",
+                "value": "^[0-9]+(\\.[0-9]{1,2})?$"
               },
               "required": {
                 "error": "Enter your salary",
@@ -519,8 +519,8 @@
             "fieldId": "co-applicant-salary",
             "validations": {
               "pattern": {
-                "value": "^[0-9]+(\\.[0-9]{1,2})?$",
-                "error": "Enter a valid number"
+                "error": "Enter a valid number",
+                "value": "^[0-9]+(\\.[0-9]{1,2})?$"
               },
               "required": {
                 "error": "Enter your salary",
@@ -798,7 +798,7 @@
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/generic-text",
           "overrides": {
             "ui": {
               "width": "short"
@@ -806,9 +806,9 @@
             "label": "Amount",
             "fieldId": "income-amount",
             "validations": {
-              "min": {
-                "error": "Amount must be 0 or more",
-                "value": 0
+              "pattern": {
+                "error": "Enter a valid number",
+                "value": "^[0-9]+(\\.[0-9]{1,2})?$"
               },
               "required": {
                 "error": "Enter the amount",
@@ -847,9 +847,9 @@
       ],
       "behaviours": [
         {
-          "type": "repeatable",
-          "min": 1,
           "max": 5,
+          "min": 1,
+          "type": "repeatable",
           "addAnotherLabel": "Do you have another source of income?"
         }
       ]
@@ -889,7 +889,7 @@
       "title": "Give us your rental details",
       "elements": [
         {
-          "ref": "components/generic-number",
+          "ref": "components/generic-text",
           "overrides": {
             "ui": {
               "width": "short"
@@ -897,9 +897,9 @@
             "label": "Monthly rent",
             "fieldId": "monthly-rent",
             "validations": {
-              "min": {
-                "error": "Amount must be 0 or more",
-                "value": 0
+              "pattern": {
+                "error": "Enter a valid number",
+                "value": "^[0-9]+(\\.[0-9]{1,2})?$"
               },
               "required": {
                 "error": "Enter the monthly rent",
@@ -1052,7 +1052,7 @@
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/generic-text",
           "overrides": {
             "ui": {
               "width": "short"
@@ -1060,9 +1060,9 @@
             "label": "Deposit available",
             "fieldId": "deposit-available",
             "validations": {
-              "min": {
-                "error": "Amount must be 0 or more",
-                "value": 0
+              "pattern": {
+                "error": "Enter a valid number",
+                "value": "^[0-9]+(\\.[0-9]{1,2})?$"
               },
               "required": {
                 "error": "Enter the deposit amount",
@@ -1072,7 +1072,7 @@
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/generic-text",
           "overrides": {
             "ui": {
               "width": "short"
@@ -1080,9 +1080,9 @@
             "label": "Qualifying amount (mortgage certificate)",
             "fieldId": "qualifying-amount",
             "validations": {
-              "min": {
-                "error": "Amount must be 0 or more",
-                "value": 0
+              "pattern": {
+                "error": "Enter a valid number",
+                "value": "^[0-9]+(\\.[0-9]{1,2})?$"
               },
               "required": {
                 "error": "Enter the qualifying amount",
@@ -1114,20 +1114,20 @@
           "overrides": {
             "label": "Bank statement",
             "fieldId": "bank-statement",
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "value": "full-cash",
+                "operator": "notEqual",
+                "targetStepId": "financing",
+                "targetFieldId": "financing-method"
+              }
+            ],
             "validations": {
               "required": {
                 "value": true
               }
-            },
-            "behaviours": [
-              {
-                "type": "optionalIf",
-                "targetStepId": "financing",
-                "targetFieldId": "financing-method",
-                "operator": "notEqual",
-                "value": "full-cash"
-              }
-            ]
+            }
           }
         },
         {
@@ -1135,20 +1135,20 @@
           "overrides": {
             "label": "Mortgage certificate",
             "fieldId": "mortgage-certificate",
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "value": "full-cash",
+                "operator": "equal",
+                "targetStepId": "financing",
+                "targetFieldId": "financing-method"
+              }
+            ],
             "validations": {
               "required": {
                 "value": true
               }
-            },
-            "behaviours": [
-              {
-                "type": "optionalIf",
-                "targetStepId": "financing",
-                "targetFieldId": "financing-method",
-                "operator": "equal",
-                "value": "full-cash"
-              }
-            ]
+            }
           }
         }
       ],
@@ -1201,5 +1201,5 @@
     }
   ],
   "createdAt": "2026-06-17T13:00:42.221Z",
-  "updatedAt": "2026-08-06T16:30:45.421Z"
+  "updatedAt": "2026-08-10T20:52:19.261Z"
 }
