@@ -344,7 +344,7 @@ organiser's door**, not as a second task for someone already applying:
 
 That is true and non-overlapping: an organiser who serves food uses the licence
 form (which requests the officer for them); an organiser who does not serve food
-uses the officer service. Wording to get a content review before merge.
+uses the officer service. **Wording approved 2026-08-10.**
 
 Nothing is added to `apply-for-temporary-restaurant-licence/start.md` — that page
 is deleted by PR #2242 (*chore(landing): remove orphaned temporary restaurant
@@ -381,7 +381,11 @@ system (`SHOW_DRAFT_NOTES`, `confirmNote()`) and the two notes it renders.
 
 - The live *"📍 Branford Taitt Polyclinic serves this location"* card on the
   event step. The platform reveals the assigned polyclinic at the confirmation
-  step instead. Worth revisiting — it was reassurance at the point of doubt.
+  step instead, via the `{polyclinic}` placeholder. **Settled, not open:** the
+  same call was already made for the sibling licence recipe, whose
+  `event-details` step likewise carries no live routing feedback and whose
+  `submission-confirmation` names the polyclinic. Matching it keeps the two
+  services consistent.
 - The prototype's client-side non-blocking 14-day warning (§8).
 - Confirmation-page branching (§5.3).
 - *Print this page* and *Start another request* on the confirmation.
