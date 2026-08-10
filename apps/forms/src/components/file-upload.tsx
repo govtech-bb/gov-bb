@@ -160,9 +160,11 @@ export default function FileUpload({
             {field.label ?? "Upload a file"}
           </span>
           <span className="govbb-file-upload__subtitle">
-            {readableFileTypes.length
-              ? `Attach a ${fileTypeFormatter.format(readableFileTypes)} file`
-              : "No file type restrictions"}
+            {field.hint?.trim()
+              ? field.hint
+              : readableFileTypes.length
+                ? `Attach a ${fileTypeFormatter.format(readableFileTypes)} file`
+                : "No file type restrictions"}
           </span>
         </div>
 

@@ -390,6 +390,54 @@ describe("FileUpload", () => {
     expect(screen.getByText(/no file type restrictions/i)).toBeInTheDocument();
   });
 
+  it("renders the authored hint instead of the derived file-type description, without leaking raw MIME subtypes", () => {
+    renderComponent({
+      field: {
+        ...baseField,
+        hint: "A list of the food vendors taking part in your event. PDF, JPG, PNG, DOC or DOCX.",
+        validations: {
+          fileTypes: {
+            value: [
+              "application/pdf",
+              "image/jpeg",
+              "image/png",
+              "application/msword",
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ],
+          },
+        },
+      },
+    });
+    expect(
+      screen.getByText(
+        "A list of the food vendors taking part in your event. PDF, JPG, PNG, DOC or DOCX.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        /vnd\.openxmlformats-officedocument\.wordprocessingml\.document/i,
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders fallback description when hint is absent and no fileTypes validation is set", () => {
+    renderComponent({ field: { ...baseField, hint: undefined } });
+    expect(screen.getByText(/no file type restrictions/i)).toBeInTheDocument();
+  });
+
+  it("treats a whitespace-only hint as absent, falling back to the derived file-type description", () => {
+    renderComponent({
+      field: {
+        ...baseField,
+        hint: "   ",
+        validations: {
+          fileTypes: { value: ["image/png", "image/jpeg"] },
+        },
+      },
+    });
+    expect(screen.getByText(/attach a png or jpeg file/i)).toBeInTheDocument();
+  });
+
   it("derives the accept attribute from MIME-type validations", () => {
     const { fileInput } = renderComponent({
       field: {
