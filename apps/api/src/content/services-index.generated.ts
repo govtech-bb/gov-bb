@@ -403,6 +403,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
+    slug: "request-an-environmental-health-officer",
+    title: "Request an environmental health officer",
+    category: "business-trade",
+    formId: "request-an-environmental-health-officer",
+    visibility: "preview",
+  },
+  {
     slug: "request-assistance-or-transport-from-sea",
     title: "Request assistance or transport from the Social Empowerment Agency",
     category: "social-empowerment",
