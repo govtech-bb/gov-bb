@@ -694,6 +694,7 @@
             "fieldId": "caterer-licence-note",
             "variant": "text",
             "content": "You do not need to send us the caterer's or cook's licence.",
+            "ui": { "indent": true },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -743,7 +744,7 @@
             "fieldId": "food-handlers-note",
             "variant": "details",
             "summary": "Why we ask, and what officers may check on the day",
-            "content": "The number tells us how many people an officer needs to check at your stall. Everyone handling food must wear a hairnet, wear a beard net if they have a beard, remove jewellery, and keep nails short, clean and free of varnish or false nails.\n\nEach person needs their own valid medical certificate with them on the day. You only upload your own — we check the rest at the stall.\n\nWe know who works an event can change at short notice. Give the number you expect; you will not be penalised if the people change.\n\n[Read the full hygiene requirements](/business-trade/temporary-restaurants-what-you-need-to-know#personal-hygiene-for-food-handlers)"
+            "content": "The number tells us how many people an officer needs to check at your stall. Everyone handling food must wear a hairnet, wear a beard net if they have a beard, remove jewellery, and keep nails short, clean and free of varnish or false nails.\n\nEach person needs their own valid medical certificate with them on the day. You only upload your own — we check the rest at the stall.\n\nWe know who works an event can change at short notice. Give the number you expect; you will not be penalised if the people change.\n\n[Read the full hygiene requirements](https://alpha.gov.bb/business-trade/temporary-restaurants-what-you-need-to-know#personal-hygiene-for-food-handlers)"
           }
         },
         {
@@ -788,7 +789,7 @@
             "fieldId": "water-sanitation-note",
             "variant": "details",
             "summary": "Why we ask about water and sanitation",
-            "content": "Running water is mandatory. A stall without it can be closed on the day, and a licence cannot be issued in advance because an officer has to verify this in place.\n\n**Contact your event organiser to check whether water will be available — but be prepared to bring your own.** Vendors have arrived at events expecting water to be provided and found none. Whoever supplies it, it is your stall that is closed without it.\n\n[Read more about keeping food safe](/business-trade/temporary-restaurants-what-you-need-to-know#keeping-food-safe)"
+            "content": "Running water is mandatory. A stall without it can be closed on the day, and a licence cannot be issued in advance because an officer has to verify this in place.\n\n**Contact your event organiser to check whether water will be available — but be prepared to bring your own.** Vendors have arrived at events expecting water to be provided and found none. Whoever supplies it, it is your stall that is closed without it.\n\n[Read more about keeping food safe](https://alpha.gov.bb/business-trade/temporary-restaurants-what-you-need-to-know#keeping-food-safe)"
           }
         },
         {

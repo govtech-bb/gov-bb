@@ -416,9 +416,19 @@ These are recorded, not resolved. None blocks implementation.
 3. **Food handlers split by sex.** The prototype carries a draft note saying
    whether handlers should be split male/female or counted as one total is under
    review. Ported as-is (split), matching the licence recipe.
-4. **Webhook destination.** Check whether `docs/webhook-destinations.md` needs a
-   row for `ENV_HEALTH_OFFICER_REQUEST`, and whether the per-catchment MOH
-   destination recorded there covers this programme code as well as the licence.
+4. **Webhook destination — resolved, and it's worse than a missing row.** The
+   recipe's `programmeCode: "ENV_HEALTH_OFFICER_REQUEST"` is never emitted:
+   `webhook.processor.ts` passes `resolvedCatchment?.programmeCode` as an
+   override, and `webhook-mapping.ts` resolves
+   `programme_code: programmeCodeOverride ?? mapping.programmeCode`, so the
+   override wins whenever `catchmentRouting` is present, as it is here. The
+   codes it resolves to (`polyclinic-routing.ts`'s `PROGRAMME_CODES`) are all
+   licence-specific, so every officer request would be filed in the CMS as a
+   temporary restaurant licence application. `docs/webhook-destinations.md`
+   documents the per-catchment mechanism as specific to
+   `apply-for-temporary-restaurant-licence`; this branch adds a second
+   catchment-routed form and that documentation is now incomplete. Needs an
+   `apps/api` fix before this form can go live.
 5. **Dangling `/start` reference.** PR #2242 deletes the licence `start.md` but
    leaves the commented-out block in the licence `index.md` that links to it. The
    reference is inert, but this design edits that same file, so clearing it here
