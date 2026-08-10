@@ -47,6 +47,10 @@
       }
     }
   ],
+  "catchmentRouting": {
+    "coordinatesField": "event-details.event-address-coordinates",
+    "parishField": "event-details.event-parish"
+  },
   "steps": [
     {
       "stepId": "operating-restaurant",
@@ -191,6 +195,191 @@
           "overrides": {
             "label": "Email address",
             "hint": "We will use this to contact you about your request. For example, you@example.com."
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "event-details",
+      "title": "About the event",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Name of event",
+            "fieldId": "event-name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the name of the event"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address-lookup",
+          "overrides": {
+            "label": "Event address line 1",
+            "fieldId": "event-address-line-1",
+            "hint": "Start typing, then choose your location from the list. We use it to send your request to the polyclinic that covers the area.",
+            "geocodeTargets": {
+              "line2FieldId": "event-address-line-2",
+              "parishFieldId": "event-parish",
+              "coordinatesFieldId": "event-address-coordinates"
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Event address line 2 (optional)",
+            "fieldId": "event-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Parish of event",
+            "fieldId": "event-parish"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Event location coordinates",
+            "fieldId": "event-address-coordinates",
+            "ui": {
+              "hidden": true
+            },
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "Start date",
+            "fieldId": "event-from",
+            "hint": "The first day of the event. You must apply at least 14 days before this date. For example, 27 8 2026.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the event start date"
+              },
+              "min": {
+                "value": 14,
+                "transform": "daysUntil",
+                "error": "You must apply at least 14 days before the event start date"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "End date",
+            "fieldId": "event-to",
+            "hint": "The last day of the event.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the event end date"
+              },
+              "onOrAfter": {
+                "referenceFieldId": "event-from",
+                "referenceStepId": "event-details",
+                "error": "The end date must be the same as or after the start date"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-time",
+          "overrides": {
+            "label": "Start time",
+            "fieldId": "event-start-time",
+            "hint": "The time the event starts each day. For example, 4:00pm.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the time the event will start each day"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-time",
+          "overrides": {
+            "label": "End time",
+            "fieldId": "event-end-time",
+            "hint": "The time the event finishes each day. If it runs past midnight, enter the time it ends — for example, 2:00am.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the time the event will finish each day"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "event-officer-reg-note",
+            "variant": "details",
+            "summary": "Why you do not choose officer times",
+            "content": "The Environmental Health Department assigns officers based on your event's dates and times. This follows the Health Services (Assignment of Public Health Inspectors to Private Businesses) Regulations, 1986, which set officers' working days and hours (regulation 2 and the First Schedule) and the fees for attendance outside those hours (regulation 7 and the Second Schedule)."
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "event-size-note",
+            "variant": "text",
+            "content": "Give your best estimate of the size of your event. We know these numbers change — you will not be penalised if they do."
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Expected number of patrons",
+            "fieldId": "num-patrons",
+            "hint": "For example, 300.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the expected number of patrons"
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Number of food stalls, including bars",
+            "fieldId": "num-stalls",
+            "hint": "Count each bar as a stall. For example, 4.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of food stalls including bars"
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more"
+              }
+            }
           }
         }
       ]
