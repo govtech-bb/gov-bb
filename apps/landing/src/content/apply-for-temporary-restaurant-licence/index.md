@@ -16,6 +16,8 @@ Use this service to apply for a licence to operate a temporary restaurant — fo
 
 You need a licence if you will serve any food or drink at an event, whether you sell it or give it away, including free samples. Both the event organiser and each food vendor must apply. Read [what counts as a temporary restaurant, who must apply, and what your event needs](/business-trade/temporary-restaurants-what-you-need-to-know#what-counts-as-a-temporary-restaurant).
 
+If you are organising the event but not serving food yourself, you do not need a licence — use [Request an environmental health officer](/business-trade/request-an-environmental-health-officer) instead.
+
 ## When to apply and what it costs
 
 Apply at least **14 days** before your event. Applications made later than this may not be accepted.
