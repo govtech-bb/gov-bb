@@ -1249,39 +1249,13 @@ describe("EmailProcessor — catchment.mdaEmail recipient resolution", () => {
     vi.clearAllMocks();
   });
 
-  it("sends the MDA email to the resolved catchment address", async () => {
-    const processor = new EmailProcessor(
-      makeConfig(),
-      makeMailer(),
-      makeTemplateService(),
-      makeBodyBuilder(),
-      makeFilesService(),
-      makeFormConfigService(),
-      makeNotificationLog(),
-    );
-    const payload = makePayload(
-      { recipientField: "catchment.mdaEmail" },
-      {},
-      {
-        resolvedCatchment: {
-          polyclinic: "P",
-          programmeCode: "C",
-          mdaEmail: "ehd.wspc@health.gov.bb",
-        },
-      },
-    );
-
-    await processor.process(payload);
-
-    expect(getSentInput().Destination?.ToAddresses).toEqual([
-      "ehd.wspc@health.gov.bb",
-    ]);
-  });
-
-  it("fails NO_RECIPIENT when the resolved catchment has no email", async () => {
+  /** Non-prod is the default (`email.requireResolvedRecipient` unset, i.e. no
+   *  MDA_REQUIRE_RECIPIENT on the task). `{ prod: true }` models a production
+   *  task, where the real per-catchment inbox must be used. */
+  function build({ prod = false }: { prod?: boolean } = {}) {
     const notificationLog = makeNotificationLog();
     const processor = new EmailProcessor(
-      makeConfig(),
+      makeConfig(prod ? { "email.requireResolvedRecipient": true } : {}),
       makeMailer(),
       makeTemplateService(),
       makeBodyBuilder(),
@@ -1289,17 +1263,69 @@ describe("EmailProcessor — catchment.mdaEmail recipient resolution", () => {
       makeFormConfigService(),
       notificationLog,
     );
-    const payload = makePayload(
+    return { processor, notificationLog };
+  }
+
+  function catchmentPayload(mdaEmail: string | null) {
+    return makePayload(
       { recipientField: "catchment.mdaEmail" },
       {},
-      {
-        resolvedCatchment: {
-          polyclinic: "P",
-          programmeCode: "C",
-          mdaEmail: null,
-        },
-      },
+      { resolvedCatchment: { polyclinic: "P", programmeCode: "C", mdaEmail } },
     );
+  }
+
+  it("degrades to the test inbox and records DEFAULTED off production, even when the catchment resolves", async () => {
+    // The whole point: POLYCLINIC_EMAILS will hold real Environmental Health
+    // inboxes once prod is provisioned, and staging shares that file. Without
+    // this override a staging test submission emails a real polyclinic.
+    const { processor, notificationLog } = build();
+
+    await processor.process(catchmentPayload("ehd.wspc@health.gov.bb"));
+
+    expect(getSentInput().Destination?.ToAddresses).toEqual([
+      "testing@govtech.bb",
+    ]);
+    expect(notificationLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientKind: "catchment",
+        recipient: "testing@govtech.bb",
+        outcome: "defaulted",
+      }),
+    );
+  });
+
+  it("degrades to the test inbox off production when the catchment has no email (no NO_RECIPIENT noise)", async () => {
+    const { processor, notificationLog } = build();
+
+    await processor.process(catchmentPayload(null));
+
+    expect(getSentInput().Destination?.ToAddresses).toEqual([
+      "testing@govtech.bb",
+    ]);
+    expect(notificationLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: "defaulted" }),
+    );
+  });
+
+  it("sends the MDA email to the resolved catchment address in production", async () => {
+    const { processor, notificationLog } = build({ prod: true });
+
+    await processor.process(catchmentPayload("ehd.wspc@health.gov.bb"));
+
+    expect(getSentInput().Destination?.ToAddresses).toEqual([
+      "ehd.wspc@health.gov.bb",
+    ]);
+    expect(notificationLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipient: "ehd.wspc@health.gov.bb",
+        outcome: "sent",
+      }),
+    );
+  });
+
+  it("fails NO_RECIPIENT in production when the resolved catchment has no email", async () => {
+    const { processor, notificationLog } = build({ prod: true });
+    const payload = catchmentPayload(null);
 
     await expect(processor.process(payload)).rejects.toBeInstanceOf(
       NonRetryableError,

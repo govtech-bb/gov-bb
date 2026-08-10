@@ -136,7 +136,9 @@ export class EmailProcessor implements ISubmissionProcessor {
         recipient = resolved.recipient;
         defaulted = resolved.defaulted;
       } else if (kind === "catchment") {
-        recipient = this.resolveCatchmentRecipient(payload);
+        const resolved = this.resolveCatchmentRecipient(payload);
+        recipient = resolved.recipient;
+        defaulted = resolved.defaulted;
       } else {
         recipient = this.resolveSubmittedRecipient(payload, recipientField);
       }
@@ -312,14 +314,32 @@ export class EmailProcessor implements ISubmissionProcessor {
   /**
    * Resolves the MDA recipient for the reserved "catchment.mdaEmail" token from
    * the catchment resolved at submission time (coordinate/parish routing).
-   * Returns undefined when nothing resolved or the catchment has no Ministry
-   * email yet — the caller then fails this entry NO_RECIPIENT (non-retryable),
+   * Returns `{ recipient, defaulted }`.
+   *
+   * Off production (`MDA_REQUIRE_RECIPIENT` unset) the resolved address is
+   * *overridden* with the default test inbox and flagged `defaulted: true`.
+   * That is deliberately stronger than the `config.*` degrade, which only
+   * defaults when no MDA row resolves: the per-catchment inboxes live in a
+   * checked-in file (`POLYCLINIC_EMAILS`) shared by every environment, so once
+   * it holds the real Environmental Health addresses a staging test submission
+   * would otherwise email a real polyclinic.
+   *
+   * In production the real per-catchment inbox is used. A catchment that
+   * resolved with no Ministry email returns undefined, and the caller fails this
+   * entry NO_RECIPIENT (non-retryable, ADR 0032) rather than misrouting —
    * isolated to this email by per-entry dispatch.
    */
-  private resolveCatchmentRecipient(
-    payload: SubmissionCreatedEvent,
-  ): string | undefined {
-    return payload.resolvedCatchment?.mdaEmail ?? undefined;
+  private resolveCatchmentRecipient(payload: SubmissionCreatedEvent): {
+    recipient: string | undefined;
+    defaulted: boolean;
+  } {
+    if (!this.requireResolvedRecipient) {
+      return { recipient: this.defaultRecipient, defaulted: true };
+    }
+    return {
+      recipient: payload.resolvedCatchment?.mdaEmail ?? undefined,
+      defaulted: false,
+    };
   }
 
   /**
