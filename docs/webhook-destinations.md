@@ -26,9 +26,13 @@ keyed by ministry:
 ```json
 {
   "youth":     { "url": "https://cms.youth.gov.bb/api/intake",     "secret": "…" },
-  "education": { "url": "https://cms.education.gov.bb/api/intake", "secret": "…" }
+  "education": { "url": "https://cms.education.gov.bb/api/intake", "secret": "…" },
+  "health":    { "url": "https://cms.health.gov.bb/api/intake",    "secret": "…" }
 }
 ```
+
+The parser is an N-ministry map, so adding a ministry is a secret edit plus the DB
+link below — never a code change.
 
 - `url` — the MDA's CMS endpoint (must be **https** and externally resolvable;
   the dispatch SSRF guard rejects non-https / internal hosts).
@@ -53,6 +57,68 @@ destination is missing.
 4. **Verify** — `GET /monitoring/webhook-destinations` (see below) reports `ok:
    true` with the ministry listed under `configuredMinistries`.
 
+## Ministry of Health (`health`) — the per-catchment destination
+
+MOH is the first destination that breaks two assumptions the rest of this runbook
+makes. `apply-for-temporary-restaurant-licence` routes by **polyclinic
+catchment**, so:
+
+**One form, eight CMS queues.** `programme_code` is chosen per submission from
+the event's catchment (coordinates → point-in-polygon, else parish fallback), not
+fixed per form. The codes live in
+[`apps/api/src/catchment/polyclinic-routing.ts`](../apps/api/src/catchment/polyclinic-routing.ts)
+and are **CMS-issued** — MOH created the eight CMS programmes using exactly these
+`TEMP_RESTAURANT_LICENCE_*` strings, so a rename has to happen in the CMS first.
+Keys must match the GeoJSON `properties.name` values; a mismatch **throws at
+boot**, by design.
+
+**The `mda_contact` row is not in this form's email path.** Its MDA notification
+resolves via `catchment.mdaEmail` (the per-polyclinic Environmental Health
+inbox), *not* `config.mdaEmail`. So `mda_contact.mda_email` for MOH is unused by
+this form. The row still has to exist, for two other reasons:
+
+- the **ministry-key walk** this runbook describes (`resolveMinistryKey`) — no
+  row, no `ministry_key`, no webhook destination;
+- `resolveDepartmentName`, which names the department in the citizen
+  confirmation email.
+
+Don't "clean up" that row because its email looks unused, and don't expect a
+change to it to alter where the MDA notification goes.
+
+**Non-prod never emails a real polyclinic.** `resolveCatchmentRecipient`
+overrides the resolved catchment inbox with `SES_DEFAULT_RECIPIENT`
+(`testing@govtech.bb`) and records `DEFAULTED` in `notification_log` whenever
+`MDA_REQUIRE_RECIPIENT` is unset. Two consequences:
+
+- `POLYCLINIC_EMAILS` is a checked-in file shared by every environment — the
+  guard, not the data, is what protects staging.
+- **Production must have `MDA_REQUIRE_RECIPIENT` set**, or prod silently emails
+  the test inbox. Check this before loading the real addresses, not after.
+
+**The form is `visibility: "draft"`.** Staging therefore needs
+`ALLOW_PREVIEW_SUBMISSIONS` to accept a submission (ADR 0065); without it a
+submission 404s, then hits the ADR 0043 "unpublished preview cannot be submitted"
+400. Do **not** flip the recipe to `public` as a workaround — the post-deploy
+smoke matrix only lists `visibility: public` forms, and a non-public form in that
+matrix 404s and breaks the deploy gate (#1842).
+
+### Environment status
+
+| | staging | production |
+|---|---|---|
+| `health` in `MDA_WEBHOOK_DESTINATIONS` | provisioned | **outstanding** (#2211) |
+| `mda_contact` row + `form_config` link | provisioned | **outstanding** (#2211) |
+| `POLYCLINIC_EMAILS` | test inbox, by design | real inboxes pending (#2211) |
+| `MDA_REQUIRE_RECIPIENT` | unset (override active) | must be set |
+| CMS programme codes | `TEMP_RESTAURANT_LICENCE_*` | same — codes do not differ by env |
+
+Because the codes are identical in both environments, they stay in the
+checked-in file. If prod ever needs different codes, that file is the wrong home
+for them and the DB-backed routing table (design spec §11, deferred on purpose)
+comes back on the table.
+
+Staging provisioning history: #2150. Prod cutover: #2211.
+
 ## Rotating a URL or secret
 
 Task-def secrets freeze at container start, so **rotation requires a redeploy**:
@@ -74,7 +140,7 @@ At boot the API logs, and `GET /monitoring/webhook-destinations` returns:
 {
   "issues": [],                 // JSON parse/validation problems (no secret values)
   "missingMinistries": [],      // ministry_key on an mda_contact but absent from the JSON
-  "configuredMinistries": ["youth", "education"],
+  "configuredMinistries": ["youth", "education", "health"],
   "ok": true
 }
 ```
@@ -98,3 +164,5 @@ secret values.)
 - Processor: `apps/api/src/forms/submissions/processors/webhook.processor.ts`
 - Resolver: `apps/api/src/forms/webhook-destinations/`
 - Recipe lint (CI gate): `scripts/webhook-recipe-guards.ts` (via `pnpm validate-recipes`)
+- Catchment routing data (MOH): `apps/api/src/catchment/polyclinic-routing.ts`
+- Catchment/config email degrade: `EmailProcessor.resolveCatchmentRecipient` / `resolveConfigRecipient`
