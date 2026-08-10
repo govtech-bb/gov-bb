@@ -32,7 +32,7 @@
   cd apps/api && DB_HOST= pnpm exec vitest run && cd ..
   ```
 
-  Expected on a clean tree: `Test Files 102 passed | 7 skipped (109)`, `Tests 1276 passed | 9 skipped`. To target one spec, append its name: `DB_HOST= pnpm exec vitest run recipe-invariants`. Do not treat the 7 migration-smoke file failures as caused by your change, and do not try to fix them — but if the *individual test* count ever shows a failure, that is real and yours to fix.
+  Expected on a clean tree: `Test Files 102 passed | 7 skipped (109)`, `Tests 1276 passed | 9 skipped`. To target ONE spec, append its name AND disable coverage: `DB_HOST= pnpm exec vitest run recipe-invariants --coverage.enabled=false`. The `--coverage.enabled=false` is required on any filtered run: coverage thresholds are global (98/95/97/89%), so running a single spec file reports ~0% and exits non-zero even when every test passes. Without the flag the exit code tells you nothing. Keep coverage ON for full-suite runs — there it is the real gate. Do not treat the 7 migration-smoke file failures as caused by your change, and do not try to fix them — but if the *individual test* count ever shows a failure, that is real and yours to fix.
 - **Do not touch `apps/landing/src/content/apply-for-temporary-restaurant-licence/start.md`.** It is deleted by PR #2242, separately.
 - **Contact details, verbatim, on every surface:** Ministry of Health and Wellness / `info@health.gov.bb` / `+1 (246) 536-3800`.
 
@@ -68,7 +68,7 @@ Produces a complete, submittable minimal journey: ask whether the user is servin
 
 ```bash
 pnpm validate-recipes
-cd apps/api && DB_HOST= pnpm exec vitest run recipe-invariants && cd ..
+cd apps/api && DB_HOST= pnpm exec vitest run recipe-invariants --coverage.enabled=false && cd ..
 ```
 
 Expected: both PASS. You have added nothing yet; this is the baseline.
@@ -384,7 +384,7 @@ Expected: PASS, with the new recipe counted. If it fails on `unresolvable ref`, 
 - [ ] **Step 4: Run the invariants sweep**
 
 ```bash
-cd apps/api && DB_HOST= pnpm exec vitest run recipe-invariants && cd ..
+cd apps/api && DB_HOST= pnpm exec vitest run recipe-invariants --coverage.enabled=false && cd ..
 ```
 
 Expected: PASS. This proves the file parses under `serviceContractRecipeSchema`, `formId` matches the filename, and no `stepId` or authored `fieldId` is duplicated.
@@ -618,7 +618,7 @@ Insert this key between `processors` and `steps`:
 - [ ] **Step 3: Run the recipe gates**
 
 ```bash
-pnpm validate-recipes && cd apps/api && DB_HOST= pnpm exec vitest run recipe-invariants && cd ..
+pnpm validate-recipes && cd apps/api && DB_HOST= pnpm exec vitest run recipe-invariants --coverage.enabled=false && cd ..
 ```
 
 Expected: both PASS.
@@ -728,7 +728,7 @@ it("leaves every other step ungated, so the officer request always runs", async 
 - [ ] **Step 2: Run the test to verify it fails**
 
 ```bash
-cd apps/api && DB_HOST= pnpm exec vitest run request-an-environmental-health-officer && cd ..
+cd apps/api && DB_HOST= pnpm exec vitest run request-an-environmental-health-officer --coverage.enabled=false && cd ..
 ```
 
 Expected: FAIL — two failures reading `step "food-details" is missing from the recipe` and `step "food-safety" is missing from the recipe`. The third test passes (vacuously — there are no gated steps yet).
@@ -1201,7 +1201,7 @@ Insert this object **between** `food-details` and `check-your-answers`:
 - [ ] **Step 5: Run the test to verify it passes**
 
 ```bash
-cd apps/api && DB_HOST= pnpm exec vitest run request-an-environmental-health-officer && cd ..
+cd apps/api && DB_HOST= pnpm exec vitest run request-an-environmental-health-officer --coverage.enabled=false && cd ..
 ```
 
 Expected: PASS, three tests. If a gated step fails with "lost its stepConditionalOn behaviour in hydration", the step-level `behaviours` key is not being carried by `hydrateStep` — stop and report it; that is an `apps/api` bug, not a recipe bug, and this plan does not authorise an `apps/api` change.
@@ -1209,7 +1209,7 @@ Expected: PASS, three tests. If a gated step fails with "lost its stepConditiona
 - [ ] **Step 6: Run the recipe gates**
 
 ```bash
-pnpm validate-recipes && cd apps/api && DB_HOST= pnpm exec vitest run recipe-invariants && cd ..
+pnpm validate-recipes && cd apps/api && DB_HOST= pnpm exec vitest run recipe-invariants --coverage.enabled=false && cd ..
 ```
 
 Expected: both PASS.
