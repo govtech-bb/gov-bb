@@ -15,6 +15,7 @@ import {
 } from "@govtech-bb/form-validation";
 import {
   resolveStepTitle,
+  interpolateConfirmationMarkdown,
   type StepScopedValues,
 } from "@govtech-bb/form-conditions";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
@@ -220,13 +221,12 @@ export class EmailBodyBuilder {
       (s) => s.stepId === "submission-confirmation",
     )?.markdownContent;
     // Substitute the resolved polyclinic into the `{polyclinic}` token so the
-    // email names the Environmental Health Department the request went to —
-    // same token + fallback as the live confirmation page
-    // (submission-confirmation.tsx), keeping the email and page copy in step.
-    const markdownContent = rawMarkdown?.replaceAll(
-      "{polyclinic}",
-      payload.resolvedCatchment?.polyclinic ?? "your local polyclinic",
-    );
+    // email names the polyclinic the request went to. Shared with the live
+    // confirmation page via interpolateConfirmationMarkdown so the email and
+    // page copy can't drift (#2201).
+    const markdownContent = interpolateConfirmationMarkdown(rawMarkdown, {
+      polyclinic: payload.resolvedCatchment?.polyclinic,
+    });
     const markdownHtml = markdownContent
       ? markdownRenderer.render(markdownContent)
       : undefined;

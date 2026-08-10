@@ -1,6 +1,7 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { interpolateConfirmationMarkdown } from "@govtech-bb/form-conditions";
 import { markdownComponents } from "./markdown-components";
 import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
 import { SubmissionConfirmationProps } from "../types/props.type";
@@ -65,14 +66,12 @@ export default function SubmissionConfirmation({
   } = submissionState;
 
   // Substitute the resolved polyclinic name into the recipe's `{polyclinic}`
-  // token (coordinate-routed forms only). Absent → a generic phrase so
-  // non-routed forms and unresolved submissions still read correctly. Same
-  // token + fallback as the confirmation email (email-body.builder), so the
-  // page and the email stay in step.
-  const resolvedMarkdown = markdownContent?.replaceAll(
-    "{polyclinic}",
-    polyclinic ?? "your local polyclinic",
-  );
+  // token (coordinate-routed forms only). Shared with the applicant email via
+  // interpolateConfirmationMarkdown so the page and email copy can't drift
+  // (#2201).
+  const resolvedMarkdown = interpolateConfirmationMarkdown(markdownContent, {
+    polyclinic,
+  });
 
   const serviceLabel = paymentDescription || serviceName;
   const formattedAmount = formatMoney(amount);
