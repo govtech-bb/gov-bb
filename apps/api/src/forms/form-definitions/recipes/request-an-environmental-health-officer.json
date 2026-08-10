@@ -836,6 +836,126 @@
       ]
     },
     {
+      "stepId": "documents",
+      "title": "Supporting documents",
+      "description": "Upload your list of vendors and a site or stall plan.",
+      "elements": [
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "label": "List of vendors",
+            "fieldId": "vendor-list",
+            "hint": "A list of the food vendors taking part in your event. PDF, JPG, PNG, DOC or DOCX.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload your list of vendors"
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  "application/msword",
+                  "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                ],
+                "error": "Upload a PDF, JPG, PNG, DOC or DOCX"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "label": "Site or stall plan",
+            "fieldId": "site-plan",
+            "hint": "A plan of the event site, showing stall positions, waste disposal, water supply and facilities. PDF, JPG or PNG.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload a site or stall plan"
+              },
+              "fileTypes": {
+                "value": ["application/pdf", "image/jpeg", "image/png"],
+                "error": "Upload a PDF, JPG or PNG"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "label": "Your medical certificate",
+            "fieldId": "medical-certs",
+            "hint": "Your own valid medical certificate. PDF, JPG or PNG.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "operating-restaurant",
+                "targetFieldId": "operating-restaurant",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload your medical certificate"
+              },
+              "fileTypes": {
+                "value": ["application/pdf", "image/jpeg", "image/png"],
+                "error": "Upload a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "medical-certs-note",
+            "variant": "inset",
+            "content": "You only upload your own. Everyone else working with you on the day must **walk with their own valid medical certificate** — the officer checks them at the stall. We know your team can change at short notice, so there is nothing to upload for them here.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "operating-restaurant",
+                "targetFieldId": "operating-restaurant",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "label": "Food business licence (optional)",
+            "fieldId": "food-licence",
+            "hint": "A copy of your valid food business licence, if you have one. PDF, JPG or PNG.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "operating-restaurant",
+                "targetFieldId": "operating-restaurant",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "fileTypes": {
+                "value": ["application/pdf", "image/jpeg", "image/png"],
+                "error": "Upload a PDF, JPG or PNG"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "stepId": "check-your-answers",
       "title": "Check your answers",
       "description": "Review all the information you have provided before submitting your request.",
