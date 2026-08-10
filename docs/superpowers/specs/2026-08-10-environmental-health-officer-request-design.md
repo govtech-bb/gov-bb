@@ -347,9 +347,16 @@ form (which requests the officer for them); an organiser who does not serve food
 uses the officer service. Wording to get a content review before merge.
 
 Nothing is added to `apply-for-temporary-restaurant-licence/start.md` — that page
-is being removed separately. The stale commented-out "Apply online" block in the
-licence `index.md`, which references the `/start` sub-page, is left alone as part
-of that separate removal.
+is deleted by PR #2242 (*chore(landing): remove orphaned temporary restaurant
+start page*), open against `main` at the time of writing. This branch rebases on
+`main` once #2242 lands; the two changes touch different files and do not
+conflict.
+
+Note that #2242 removes only `start.md`. The commented-out "Apply online" block
+in the licence `index.md` — which carries an explicit
+`href="/business-trade/apply-for-temporary-restaurant-licence/start"` — is left
+behind by it, pointing at a route that will no longer resolve. It is inert
+(commented out, so never rendered) and out of scope here; see §8.6.
 
 ## 7. Not transferred
 
@@ -408,7 +415,12 @@ These are recorded, not resolved. None blocks implementation.
 4. **Webhook destination.** Check whether `docs/webhook-destinations.md` needs a
    row for `ENV_HEALTH_OFFICER_REQUEST`, and whether the per-catchment MOH
    destination recorded there covers this programme code as well as the licence.
-5. **Adjacent, out of scope:** the guidance page
+5. **Dangling `/start` reference.** PR #2242 deletes the licence `start.md` but
+   leaves the commented-out block in the licence `index.md` that links to it. The
+   reference is inert, but this design edits that same file, so clearing it here
+   would cost nothing if wanted. Left alone by default, on the rule that changed
+   lines should trace to the request.
+6. **Adjacent, out of scope:** the guidance page
    `temporary-restaurants-what-you-need-to-know.md:12` still carries a leftover
    prototype link, `[applying for a temporary restaurant licence](temporary-restaurant-licence.html)`,
    which does not resolve. Flagged only; not touched by this work.
