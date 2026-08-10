@@ -26,6 +26,13 @@
 - **Do not modify** `apps/forms/src`, `packages/registry`, `packages/form-types`, or the licence recipe. Tasks 7–8 add a **new** file under `apps/forms/e2e/smoke/` — that is the only permitted `apps/forms` change, and it adds a test rather than touching the renderer. The design requires zero renderer, registry and type changes; if a task appears to need one, stop and report rather than making it.
 - **Only one existing file is edited by this plan:** `apps/landing/src/content/apply-for-temporary-restaurant-licence/index.md`, in Task 6. `apps/api/src/content/services-index.generated.ts` also changes, but only ever by running its generator — never by hand.
 - **The working tree already carries an unrelated modification** to `apps/forms/src/routeTree.gen.ts` (a generated file, 41 insertions / 41 deletions) that predates this work. Never stage or commit it, and never revert it. Stage files by explicit path — never `git add -A` or `git commit -a`.
+- **Running the `api` tests locally: use `DB_HOST=` to blank the database host.** `apps/api/.env` sets a `DB_HOST` pointing at a Postgres that is not running in this environment, so `pnpm exec nx run api:test` fails 7 test *files* — every `src/database/migrations/*.smoke.spec.ts` — at suite setup, with 0 individual test failures. CI has no `.env`, so those specs skip there and the job is green. Verified on a clean tree before Task 1. **The command to run and trust is:**
+
+  ```bash
+  cd apps/api && DB_HOST= pnpm exec vitest run && cd ..
+  ```
+
+  Expected on a clean tree: `Test Files 102 passed | 7 skipped (109)`, `Tests 1276 passed | 9 skipped`. To target one spec, append its name: `DB_HOST= pnpm exec vitest run recipe-invariants`. Do not treat the 7 migration-smoke file failures as caused by your change, and do not try to fix them — but if the *individual test* count ever shows a failure, that is real and yours to fix.
 - **Do not touch `apps/landing/src/content/apply-for-temporary-restaurant-licence/start.md`.** It is deleted by PR #2242, separately.
 - **Contact details, verbatim, on every surface:** Ministry of Health and Wellness / `info@health.gov.bb` / `+1 (246) 536-3800`.
 
@@ -61,7 +68,7 @@ Produces a complete, submittable minimal journey: ask whether the user is servin
 
 ```bash
 pnpm validate-recipes
-pnpm exec nx run api:test -- recipe-invariants
+cd apps/api && DB_HOST= pnpm exec vitest run recipe-invariants && cd ..
 ```
 
 Expected: both PASS. You have added nothing yet; this is the baseline.
@@ -377,7 +384,7 @@ Expected: PASS, with the new recipe counted. If it fails on `unresolvable ref`, 
 - [ ] **Step 4: Run the invariants sweep**
 
 ```bash
-pnpm exec nx run api:test -- recipe-invariants
+cd apps/api && DB_HOST= pnpm exec vitest run recipe-invariants && cd ..
 ```
 
 Expected: PASS. This proves the file parses under `serviceContractRecipeSchema`, `formId` matches the filename, and no `stepId` or authored `fieldId` is duplicated.
@@ -611,7 +618,7 @@ Insert this key between `processors` and `steps`:
 - [ ] **Step 3: Run the recipe gates**
 
 ```bash
-pnpm validate-recipes && pnpm exec nx run api:test -- recipe-invariants
+pnpm validate-recipes && cd apps/api && DB_HOST= pnpm exec vitest run recipe-invariants && cd ..
 ```
 
 Expected: both PASS.
@@ -721,7 +728,7 @@ it("leaves every other step ungated, so the officer request always runs", async 
 - [ ] **Step 2: Run the test to verify it fails**
 
 ```bash
-pnpm exec nx run api:test -- request-an-environmental-health-officer
+cd apps/api && DB_HOST= pnpm exec vitest run request-an-environmental-health-officer && cd ..
 ```
 
 Expected: FAIL — two failures reading `step "food-details" is missing from the recipe` and `step "food-safety" is missing from the recipe`. The third test passes (vacuously — there are no gated steps yet).
@@ -1194,7 +1201,7 @@ Insert this object **between** `food-details` and `check-your-answers`:
 - [ ] **Step 5: Run the test to verify it passes**
 
 ```bash
-pnpm exec nx run api:test -- request-an-environmental-health-officer
+cd apps/api && DB_HOST= pnpm exec vitest run request-an-environmental-health-officer && cd ..
 ```
 
 Expected: PASS, three tests. If a gated step fails with "lost its stepConditionalOn behaviour in hydration", the step-level `behaviours` key is not being carried by `hydrateStep` — stop and report it; that is an `apps/api` bug, not a recipe bug, and this plan does not authorise an `apps/api` change.
@@ -1202,7 +1209,7 @@ Expected: PASS, three tests. If a gated step fails with "lost its stepConditiona
 - [ ] **Step 6: Run the recipe gates**
 
 ```bash
-pnpm validate-recipes && pnpm exec nx run api:test -- recipe-invariants
+pnpm validate-recipes && cd apps/api && DB_HOST= pnpm exec vitest run recipe-invariants && cd ..
 ```
 
 Expected: both PASS.
@@ -1377,7 +1384,7 @@ If the order differs, move the step objects until it matches — the array order
 - [ ] **Step 3: Run every recipe gate and the full api suite**
 
 ```bash
-pnpm validate-recipes && pnpm exec nx run api:test
+pnpm validate-recipes && (cd apps/api && DB_HOST= pnpm exec vitest run) 
 ```
 
 Expected: PASS. The full `api` suite is cheap (~30s) and catches anything the targeted runs missed.
@@ -2147,10 +2154,11 @@ Expected: PASS.
 - [ ] **Full test suite**
 
 ```bash
-pnpm exec nx run-many -t test
+pnpm exec nx run-many -t test --exclude=api
+(cd apps/api && DB_HOST= pnpm exec vitest run)
 ```
 
-Expected: PASS, ~30s.
+Expected: both PASS. `api` is run separately with `DB_HOST=` blanked for the reason given in the Global Constraints — under plain `nx run-many -t test` it reports 7 failed migration-smoke *files* purely because no local Postgres is running, which masks whether anything real broke. Expected `api` totals: `Tests 1276 passed | 9 skipped` plus whatever Task 3 added.
 
 - [ ] **Both recipe gates and the generated-drift gate**
 
