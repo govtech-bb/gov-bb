@@ -7,7 +7,12 @@ Guidance for working in this repo. Use **pnpm** for everything — never `npm`.
 `main` is the trunk and the default base for pull requests. Branch off `main`,
 keep the branch short-lived, and open the PR **against `main`** — never against
 `sandbox`/`staging`/`prod`. Merges to `main` are CI-gated (the "Main CI
-Required" ruleset: PR + status checks, no review required for now).
+Required" ruleset: PR + status checks, no review required for now). The ruleset
+runs status checks in **strict** mode — a branch **must be up to date with
+`main`** before it can merge, so the checks re-run against the latest trunk. If
+GitHub shows "This branch is out-of-date," update it (merge/rebase `main` in)
+and let CI re-run before merging. This catches breakage that emerges from the
+**combination** of two individually-green PRs (incident #2017 / #2021).
 
 Merging to `main` drives a **sequential deploy fan-out**:
 
