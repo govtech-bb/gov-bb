@@ -891,19 +891,18 @@
     {
       "stepId": "documents",
       "title": "Supporting documents",
-      "description": "You must upload a medical certificate for everyone handling food. All staff must also carry their certificate during the event.",
+      "description": "You must upload your own medical certificate. As the event organiser, you must also upload your list of vendors and a site or stall plan. A food business licence is optional.",
       "elements": [
         {
           "ref": "components/upload-document",
           "overrides": {
-            "label": "Staff medical certificates",
+            "label": "Your medical certificate",
             "fieldId": "medical-certs",
-            "hint": "A valid medical certificate for you and everyone handling food. PDF, JPG or PNG.",
-            "multiple": true,
+            "hint": "Your own valid medical certificate. PDF, JPG or PNG.",
             "validations": {
               "required": {
                 "value": true,
-                "error": "Upload a medical certificate for everyone handling food"
+                "error": "Upload your medical certificate"
               },
               "fileTypes": {
                 "value": ["application/pdf", "image/jpeg", "image/png"],
@@ -914,6 +913,22 @@
                 "error": "Each file must be 5 MB or smaller"
               }
             }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "medical-certs-note",
+            "variant": "inset",
+            "content": "You only upload your own. Everyone else working with you on the day must **walk with their own valid medical certificate** — the officer checks them at the stall. We know your team can change at short notice, so there is nothing to upload for them here."
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "medical-certs-help",
+            "variant": "text",
+            "content": "Ask your polyclinic or doctor if you do not have a current certificate."
           }
         },
         {
