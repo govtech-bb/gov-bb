@@ -1,22 +1,21 @@
 ---
-title: "Apply for a licence to operate a temporary restaurant"
-description: "Apply online for a licence to serve food or drink at a temporary event in Barbados, such as a stall, booth or bar operating for up to 30 days. Issued by the Environmental Health Department."
-stage: "alpha"
+title: Apply for a licence to operate a temporary restaurant
+description: >-
+  Apply online for a licence to serve food or drink at a temporary event in
+  Barbados, such as a stall, booth or bar operating for up to 30 days. Issued by
+  the Environmental Health Department.
+stage: alpha
 visibility: preview
 featured: false
-publish_date: 2026-07-23
+publish_date: '2026-08-11'
 category: business-trade
-form_id: apply-for-temporary-restaurant-licence
 service_type: digital
 ---
-
 Use this service to apply for a licence to operate a temporary restaurant — for example, to serve food at an event.
 
 ## Who needs a licence
 
 You need a licence if you will serve any food or drink at an event, whether you sell it or give it away, including free samples. Both the event organiser and each food vendor must apply. Read [what counts as a temporary restaurant, who must apply, and what your event needs](/business-trade/temporary-restaurants-what-you-need-to-know#what-counts-as-a-temporary-restaurant).
-
-If you are organising the event but not serving food yourself, you do not need a licence — use [Request an environmental health officer](/business-trade/request-an-environmental-health-officer) instead.
 
 ## When to apply and what it costs
 
@@ -24,34 +23,39 @@ Apply at least **14 days** before your event. Applications made later than this 
 
 There is no application fee. If you are organising the event, you must pay any overtime costs for the environmental health officers attending. See [how to pay](/business-trade/temporary-restaurants-what-you-need-to-know#paying-for-environmental-health-officers).
 
-<!-- ## Apply online
+See the legal definitions ## What you will need (--spacing-s);"> See the legal definitions
 
-You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.
+In law, a temporary restaurant is “a restaurant which operates for a period not exceeding 30 days” (Health Services (Restaurants) Regulations, 1969).
 
-<a data-start-link href="/business-trade/apply-for-temporary-restaurant-licence/start">Start now</a> -->
+In law, food is “any substance, whether processed, semi-processed or raw, which is intended for human consumption and includes drink, chewing gum and other substances which are used in the manufacture or treatment of food, but does not include cosmetics, tobacco or substances used only as drugs” (Health Services (Food Hygiene) Regulations, 1969).
 
-## What you will need
+You need a licence if you will serve any food or drink, whether you sell it or give it away. This includes **bars that sell snacks or prepared drinks**, and **free samples or product promotions**.
 
-- Your name, National Registration Number, address, phone number and email address
-- The name, address and dates of the event
-- The food and drinks you will serve, and where you will get them from
-- The number of food handlers, your water and sanitation arrangements, and the expected number of people attending the event
-- The organiser's details, if someone else is organising the event
-- A medical certificate for you and everyone handling food
-- If someone else is organising the event, a letter from the organiser or venue confirming you can operate there
-- **If you are organising the event,** a [site or stall plan](/business-trade/temporary-restaurants-what-you-need-to-know#setting-up-your-stall)
-- If you have one, a copy of your food business licence
+Weddings do not need a licence. Some other private events may need one, depending on how many people are there.
 
-<a data-start-link>Start now</a>
+[Apply for a licence](temporary-restaurant-licence.html)
+
+-   Your name, National Registration Number, address, phone number and email address
+-   The name, address and dates of the event
+-   The food and drinks you will serve and where you will get them
+-   The number of food handlers, your water and sanitation arrangements, and the expected number of people attending the event
+-   The organiser's details, if someone else is organising the event
+-   Your own medical certificate. Everyone else working with you must walk with theirs on the day
+-   Hairnets, beard nets and clean covered clothing for everyone handling food — and no jewellery, false nails, false eyelashes, make-up or perfume (see the full list)
+-   If someone else is organising the event, a letter from the venue or organiser confirming you can operate there
+-   If you are organising the event, a site or stall plan
+-   If you have one, a copy of your food business licence
+
+<a data-start-link href="/business-trade/apply-for-temporary-restaurant-licence/start">Start now</a>
 
 You can also apply in person at your nearest polyclinic while we introduce this online service. Staff can email you the forms.
 
 ## What happens next
 
-- The Environmental Health Department at the  where you applied will review your application.
-- If you do not already have a licensed food business, an environmental health officer will inspect your set-up before the licence is issued.
-- You must collect your temporary restaurant licence from the polyclinic before your event.
-- The licence is valid for 30 days from the date it is issued.
+-   The Environmental Health Department where you have applied to will review your application.
+-   If you do not already have a licensed food business, an environmental health officer will inspect where the food is being prepared and stored.
+-   Your licence is issued at the event, not in advance. An officer checks your set-up on the day and issues it there if it meets the requirements.
+-   The licence is valid for 30 days in the same location from the date it is issued.
 
 ## Contact us
 
