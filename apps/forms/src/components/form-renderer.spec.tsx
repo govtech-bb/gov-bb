@@ -953,6 +953,131 @@ describe("FormRenderer", () => {
     expect(selectEl.getAttribute("data-inset-options")).toBe("");
   });
 
+  it("checkbox-conditional: a child revealed by one option is grouped with insetFieldsByOption", () => {
+    const checkboxField = {
+      id: "step1_choice",
+      fieldId: "choice",
+      stepId: "step1",
+      name: "choice",
+      label: "Choice",
+      htmlType: "checkbox" as const,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      options: [
+        { value: "yes", label: "Yes" },
+        { value: "no", label: "No" },
+      ],
+      behaviours: [],
+    };
+    const conditionalChild = {
+      id: "step1_extra",
+      fieldId: "extra",
+      stepId: "step1",
+      name: "extra",
+      label: "Extra",
+      htmlType: "text" as const,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      behaviours: [
+        {
+          type: "fieldConditionalOn",
+          targetFieldId: "choice",
+          operator: "in",
+          value: ["yes"],
+        },
+      ],
+    };
+    const step = makeStep("step1", [checkboxField, conditionalChild]);
+
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    const renderers = screen.getAllByTestId("field-renderer");
+    const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
+    expect(fieldIds).toContain("step1_choice");
+    expect(fieldIds).not.toContain("step1_extra");
+
+    const checkboxEl = renderers.find(
+      (el) => el.getAttribute("data-field-id") === "step1_choice",
+    )!;
+    const insetOptions = JSON.parse(
+      checkboxEl.getAttribute("data-inset-options") || "[]",
+    ) as Array<[string, string[]]>;
+    expect(insetOptions).toEqual([["yes", ["step1_extra"]]]);
+  });
+
+  it("checkbox-conditional: a child revealed by several options keeps the page-level fallback", () => {
+    const checkboxField = {
+      id: "step1_choice",
+      fieldId: "choice",
+      stepId: "step1",
+      name: "choice",
+      label: "Choice",
+      htmlType: "checkbox" as const,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      options: [
+        { value: "yes", label: "Yes" },
+        { value: "maybe", label: "Maybe" },
+        { value: "no", label: "No" },
+      ],
+      behaviours: [],
+    };
+    const conditionalChild = {
+      id: "step1_extra",
+      fieldId: "extra",
+      stepId: "step1",
+      name: "extra",
+      label: "Extra",
+      htmlType: "text" as const,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      behaviours: [
+        {
+          type: "fieldConditionalOn",
+          targetFieldId: "choice",
+          operator: "in",
+          value: ["yes", "maybe"],
+        },
+      ],
+    };
+    const step = makeStep("step1", [checkboxField, conditionalChild]);
+
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    // There is no single option to nest under, so both fields stay page-level.
+    const renderers = screen.getAllByTestId("field-renderer");
+    const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
+    expect(fieldIds).toContain("step1_choice");
+    expect(fieldIds).toContain("step1_extra");
+
+    const checkboxEl = renderers.find(
+      (el) => el.getAttribute("data-field-id") === "step1_choice",
+    )!;
+    expect(checkboxEl.getAttribute("data-inset-options")).toBe("");
+  });
+
   it("clicking Previous calls navigateToStep with the previous step's id", async () => {
     const user = userEvent.setup();
     mockUseStepGuard.mockReturnValue({

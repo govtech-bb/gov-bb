@@ -8,6 +8,27 @@
 
 **Tech Stack:** NestJS (apps/api), Zod (packages/form-types), TypeScript project-references monorepo (nx + `@nx/js:tsc`), Vitest 4, pnpm.
 
+> **This plan is COMPLETE and partly superseded — do not execute it.** It shipped
+> in July 2026 and is kept as the record of how catchment routing was built. Two
+> of its code blocks would now write the wrong thing, because
+> `request-an-environmental-health-officer` became a second catchment-routed form
+> on 2026-08-10:
+>
+> - **`PROGRAMME_CODES` (Task 4) is now `PROGRAMME_CODES_BY_FORM`**, keyed
+>   **formId → catchment → code**, because one catchment serves several services
+>   and each has its own CMS queue. `resolve()` takes a `formId`, and boot
+>   validation checks every form's map against the GeoJSON in both directions
+>   (missing code, and unknown catchment key).
+> - **The codes are CMS-issued, not derived placeholders**, and
+>   `Frederick Miller Polyclinic` routes to each form's `…_ST_PHILIP` code — it
+>   has no Environmental Health Department and its area falls under St. Philip.
+>   `TEMP_RESTAURANT_LICENCE_FREDERICK_MILLER`, asserted in Task 5's test below,
+>   is no longer used by this codebase.
+>
+> Current behaviour lives in `apps/api/src/catchment/polyclinic-routing.ts` and
+> `catchment-routing.service.ts`. The reasoning for the change is in
+> [the 2026-08-10 officer-request design](../specs/2026-08-10-environmental-health-officer-request-design.md) §8.4.
+
 ## Global Constraints
 
 - Use **pnpm** for everything, never npm.
@@ -360,6 +381,8 @@ Create `apps/api/src/catchment/polyclinic-routing.ts`:
  * these stable slugs make `programme_code` vary by location. Swap the values
  * when the CMS codes arrive — keys must stay in lockstep with the GeoJSON names.
  */
+/* SUPERSEDED 2026-08-10: now PROGRAMME_CODES_BY_FORM, keyed formId -> catchment.
+   See the banner at the top of this plan. */
 export const PROGRAMME_CODES: Record<string, string> = {
   "Branford Taitt Polyclinic": "TEMP_RESTAURANT_LICENCE_BRANFORD_TAITT",
   "David Thompson Health & Social Services Complex":
@@ -492,6 +515,8 @@ describe("CatchmentRoutingService", () => {
     // Replace with a lat,lon confirmed inside the Frederick Miller polygon.
     const r = svc.resolve({ coordinates: "13.31,-59.63" });
     expect(r?.polyclinic).toBe("Frederick Miller Polyclinic");
+    // SUPERSEDED 2026-08-10: now TEMP_RESTAURANT_LICENCE_ST_PHILIP — Frederick
+    // Miller reuses St. Philip's code for both forms. See the top-of-plan banner.
     expect(r?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_FREDERICK_MILLER");
     expect(r?.mdaEmail).toBeNull();
   });

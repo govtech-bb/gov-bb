@@ -5,21 +5,61 @@
  */
 
 /**
- * Derived placeholder programme codes, one per catchment. The CMS will
- * eventually issue real per-polyclinic routing codes (env-specific); until then
- * these stable slugs make `programme_code` vary by location. Swap the values
- * when the CMS codes arrive — keys must stay in lockstep with the GeoJSON names.
+ * CMS programme codes, keyed by **formId then catchment**, not by catchment
+ * alone: one polyclinic catchment serves several services, and each service
+ * has its own CMS queue, so the same catchment needs a different code per
+ * form. Keys (both the formId and, within each form's map, the catchment
+ * name) must stay in lockstep with the GeoJSON `properties.name` values —
+ * `CatchmentRoutingService.onModuleInit` throws at boot if either drifts.
+ *
+ * `apply-for-temporary-restaurant-licence` codes are CMS-issued and must not
+ * change here without a corresponding CMS rename.
+ *
+ * `request-an-environmental-health-officer` codes, and two things about them
+ * that look like mistakes and are not (confirmed by the service owner,
+ * 2026-08-10):
+ *
+ * - `Randal Phillips Polyclinic` (one L, matching the GeoJSON and the licence
+ *   catchment name) has the CMS code `ENV_HEALTH_OFFICER_RANDALL_PHILLIPS`
+ *   (two Ls). The CMS queue name and the catchment name simply spell the
+ *   place differently — do not "fix" the code to one L, and do not derive
+ *   either form's codes from the other by swapping a prefix.
+ * - `Frederick Miller Polyclinic` has no Environmental Health Department of
+ *   its own; its area falls under St. Philip, so **both** forms route it to
+ *   their own `..._ST_PHILIP` code rather than a Frederick-Miller-specific
+ *   one. There is no per-form asymmetry here: each form ends up with seven
+ *   distinct queues over the same eight catchments. It cannot simply be
+ *   omitted: the GeoJSON catchment still exists and is reachable by a
+ *   coordinate hit (no parish maps to it), and every GeoJSON catchment must
+ *   have a code for every form or boot throws.
  */
-export const PROGRAMME_CODES: Record<string, string> = {
-  "Branford Taitt Polyclinic": "TEMP_RESTAURANT_LICENCE_BRANFORD_TAITT",
-  "David Thompson Health & Social Services Complex":
-    "TEMP_RESTAURANT_LICENCE_DAVID_THOMPSON",
-  "Eunice Gibson Polyclinic": "TEMP_RESTAURANT_LICENCE_EUNICE_GIBSON",
-  "Frederick Miller Polyclinic": "TEMP_RESTAURANT_LICENCE_FREDERICK_MILLER",
-  "Maurice Byer Polyclinic": "TEMP_RESTAURANT_LICENCE_MAURICE_BYER",
-  "Randal Phillips Polyclinic": "TEMP_RESTAURANT_LICENCE_RANDAL_PHILLIPS",
-  "Sir Winston Scott Polyclinic": "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
-  "St. Philip Polyclinic": "TEMP_RESTAURANT_LICENCE_ST_PHILIP",
+export const PROGRAMME_CODES_BY_FORM: Record<string, Record<string, string>> = {
+  "apply-for-temporary-restaurant-licence": {
+    "Branford Taitt Polyclinic": "TEMP_RESTAURANT_LICENCE_BRANFORD_TAITT",
+    "David Thompson Health & Social Services Complex":
+      "TEMP_RESTAURANT_LICENCE_DAVID_THOMPSON",
+    "Eunice Gibson Polyclinic": "TEMP_RESTAURANT_LICENCE_EUNICE_GIBSON",
+    "Frederick Miller Polyclinic": "TEMP_RESTAURANT_LICENCE_ST_PHILIP",
+    "Maurice Byer Polyclinic": "TEMP_RESTAURANT_LICENCE_MAURICE_BYER",
+    "Randal Phillips Polyclinic": "TEMP_RESTAURANT_LICENCE_RANDAL_PHILLIPS",
+    "Sir Winston Scott Polyclinic": "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
+    "St. Philip Polyclinic": "TEMP_RESTAURANT_LICENCE_ST_PHILIP",
+  },
+  "request-an-environmental-health-officer": {
+    "Branford Taitt Polyclinic": "ENV_HEALTH_OFFICER_BRANFORD_TAITT",
+    "David Thompson Health & Social Services Complex":
+      "ENV_HEALTH_OFFICER_DAVID_THOMPSON",
+    "Eunice Gibson Polyclinic": "ENV_HEALTH_OFFICER_EUNICE_GIBSON",
+    // No Environmental Health Department of its own — see the note above.
+    // Deliberate, not a typo: do not point this at a Frederick Miller code.
+    "Frederick Miller Polyclinic": "ENV_HEALTH_OFFICER_ST_PHILIP",
+    "Maurice Byer Polyclinic": "ENV_HEALTH_OFFICER_MAURICE_BYER",
+    // Two Ls, unlike the catchment name and the licence code — see the note
+    // above. Deliberate, not a typo.
+    "Randal Phillips Polyclinic": "ENV_HEALTH_OFFICER_RANDALL_PHILLIPS",
+    "Sir Winston Scott Polyclinic": "ENV_HEALTH_OFFICER_WINSTON_SCOTT",
+    "St. Philip Polyclinic": "ENV_HEALTH_OFFICER_ST_PHILIP",
+  },
 };
 
 /**

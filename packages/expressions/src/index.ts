@@ -3,6 +3,8 @@ export { applyIfRule } from "./apply-if-rule";
 export { resolveConfig } from "./resolve-config";
 export { registerOperations } from "./operations/register";
 export { DEFAULT_ZONE } from "./operations/zone";
+export { parseDateValue } from "./parse-date-value";
+export type { DateParts } from "./parse-date-value";
 export { age } from "./operations/age";
 export { durationSince } from "./operations/duration-since";
 export type { DurationUnit } from "./operations/duration-since";

@@ -197,6 +197,21 @@
   gap: var(--spacing-s);
 }
 
+/* ---- Checkbox conditional reveal ------------------------------------------
+ * @govtech-bb/styles ships the inset look for a checkbox reveal, but lays it
+ * out as a block — fine for one revealed field, and the caterer reveal is
+ * four. Elsewhere on the step the fields are spaced by the parent flex `gap`,
+ * so restate that here (this rule is unlayered and the package's is inside
+ * `@layer base`, so it wins on `display`). The checked-sibling guard is kept
+ * so the package's hide-when-unticked rule still holds; the app renders the
+ * wrapper only when ticked anyway. */
+.govbb-checkbox-item:has(> .govbb-checkbox:checked)
+  + .govbb-checkbox-item__conditional {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
 /* ---- Opt-in indented field (ui.indent) ------------------------------------
  * The same inset rail as .govbb-select__conditional, but requested per field
  * instead of derived from an option list — the automatic inset only covers
