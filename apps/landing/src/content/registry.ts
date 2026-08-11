@@ -498,12 +498,15 @@ export function resolveServiceHref(href: string): string {
  * consults this just before 404ing, so an intuitive bare slug lands on the page
  * that exists instead of a dead end.
  *
- * Returns `undefined` — leaving the caller to 404 — when the slug:
+ * Returns the bare canonical URL (no leading slash, matching how `PAGES`/
+ * `URL_BY_LEAF` store URLs — the caller prepends `/`), or `undefined` —
+ * leaving the caller to 404 — when the slug:
  *   - is empty or multi-segment (sub-page slugs like `.../start` are out of
  *     scope; only top-level service slugs redirect);
  *   - has an ambiguous leaf shared by multiple pages (`URL_BY_LEAF` drops these,
  *     so we never guess which page was meant);
- *   - is already the canonical URL (guards against a redirect loop);
+ *   - resolves to a page whose canonical URL *is* the bare slug — a top-level
+ *     page with no category prefix — where redirecting would loop it to itself;
  *   - resolves to a page the viewer may not see — a redirect must never reveal
  *     (or even hint at the existence of) a page `isVisible` would have hidden.
  */
