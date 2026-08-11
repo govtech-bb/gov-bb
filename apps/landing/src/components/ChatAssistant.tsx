@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Button, Heading, Input, Text } from '@govtech-bb/react'
 import { trackEvent } from '../lib/analytics'
+import { requireEnv } from '@/config/env'
 
-const CHAT_URL =
-  import.meta.env.VITE_CHAT_URL || 'https://chat.sandbox.alpha.gov.bb'
+const CHAT_URL = requireEnv(
+  import.meta.env.VITE_CHAT_URL,
+  'VITE_CHAT_URL',
+  'https://chat.sandbox.alpha.gov.bb',
+)
 
 const MAX_QUERY_LENGTH = 2000
 

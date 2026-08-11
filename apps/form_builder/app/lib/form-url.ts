@@ -13,11 +13,14 @@
  * `?preview=` param now serves the *published* recipe and is submittable, so it
  * is the wrong source for a builder preview (#1682). The token comes from
  * VITE_RECIPE_PREVIEW_TOKEN (baked into the bundle by Vite; acceptable because
- * the builder is gated behind GitHub OAuth) and defaults to "demo".
+ * the builder is gated behind GitHub OAuth). It fails closed (#1366): when
+ * unset the token is empty, so no preview matches — there is no guessable
+ * "demo" fallback.
  */
 
+import { requireEnv } from "../config/env";
+
 const DEFAULT_FORMS_URL = "http://localhost:3000";
-const DEFAULT_PREVIEW_TOKEN = "demo";
 
 /**
  * Joins a forms-app origin with a form id and draft token →
@@ -35,13 +38,19 @@ export function joinFormPreviewUrl(
 }
 
 /**
- * Preview URL for a form on the live forms app, sourced from VITE_FORMS_URL and
- * VITE_RECIPE_PREVIEW_TOKEN (defaulting to "demo" when the token is unset).
+ * Preview URL for a form on the live forms app, sourced from VITE_FORMS_URL
+ * (required in production, localhost only in dev — #1366) and
+ * VITE_RECIPE_PREVIEW_TOKEN (fails closed: empty when unset, so no preview
+ * matches rather than a guessable "demo").
  */
 export function formPreviewUrl(formId: string): string {
   return joinFormPreviewUrl(
-    import.meta.env.VITE_FORMS_URL || "",
+    requireEnv(
+      import.meta.env.VITE_FORMS_URL,
+      "VITE_FORMS_URL",
+      DEFAULT_FORMS_URL,
+    ),
     formId,
-    import.meta.env.VITE_RECIPE_PREVIEW_TOKEN || DEFAULT_PREVIEW_TOKEN,
+    import.meta.env.VITE_RECIPE_PREVIEW_TOKEN || "",
   );
 }
