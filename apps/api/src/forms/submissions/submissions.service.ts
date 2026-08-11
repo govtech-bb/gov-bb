@@ -134,6 +134,7 @@ export class SubmissionsService {
     const routing = contract.catchmentRouting;
     const resolvedCatchment = routing
       ? (this.catchmentRouting.resolve({
+          formId: dto.formId,
           coordinates:
             readPath(normalizedValues, routing.coordinatesField) ?? undefined,
           parish: readPath(normalizedValues, routing.parishField) ?? undefined,
