@@ -10,6 +10,7 @@ import {
   isVisible,
   PAGES,
   pageLevel,
+  resolveBareSlugRedirect,
   resolvePageLevel,
   resolveServiceHref,
   startSubPageLevel,
@@ -59,6 +60,65 @@ describe('resolveServiceHref', () => {
     expect(resolveServiceHref('/not-a-real-service')).toBe(
       '/not-a-real-service',
     )
+  })
+})
+
+describe('resolveBareSlugRedirect (#2145)', () => {
+  const PUBLIC: ViewLevel = 'public'
+
+  it('resolves a bare public service slug to its canonical category-prefixed URL', () => {
+    expect(resolveBareSlugRedirect('/get-a-document-notarised', PUBLIC)).toBe(
+      'travel-id-citizenship/get-a-document-notarised',
+    )
+  })
+
+  it('tolerates surrounding slashes on the slug', () => {
+    expect(resolveBareSlugRedirect('get-a-document-notarised/', PUBLIC)).toBe(
+      'travel-id-citizenship/get-a-document-notarised',
+    )
+  })
+
+  it('returns undefined for an already-canonical URL (no redirect loop)', () => {
+    expect(
+      resolveBareSlugRedirect(
+        '/travel-id-citizenship/get-a-document-notarised',
+        PUBLIC,
+      ),
+    ).toBeUndefined()
+  })
+
+  it('returns undefined for an unknown slug', () => {
+    expect(
+      resolveBareSlugRedirect('/not-a-real-service', PUBLIC),
+    ).toBeUndefined()
+  })
+
+  it('returns undefined for an empty slug', () => {
+    expect(resolveBareSlugRedirect('/', PUBLIC)).toBeUndefined()
+  })
+
+  it('returns undefined for an ambiguous leaf shared by many pages (e.g. `start`)', () => {
+    expect(resolveBareSlugRedirect('/start', PUBLIC)).toBeUndefined()
+  })
+
+  it('returns undefined for a multi-segment sub-page slug (out of scope)', () => {
+    expect(
+      resolveBareSlugRedirect('/get-a-document-notarised/start', PUBLIC),
+    ).toBeUndefined()
+  })
+
+  it('does not redirect a slug the viewer cannot see, but does for one who can', () => {
+    const page = findPage('travel-id-citizenship/get-a-document-notarised')!
+    // Overlay gates the target page to preview-only.
+    const overlay = new Map<string, ViewLevel>([[page.slug, 'preview']])
+    // Public viewer: no redirect (never expose a hidden page).
+    expect(
+      resolveBareSlugRedirect('/get-a-document-notarised', 'public', overlay),
+    ).toBeUndefined()
+    // Preview viewer: still redirected to the canonical URL.
+    expect(
+      resolveBareSlugRedirect('/get-a-document-notarised', 'preview', overlay),
+    ).toBe('travel-id-citizenship/get-a-document-notarised')
   })
 })
 
