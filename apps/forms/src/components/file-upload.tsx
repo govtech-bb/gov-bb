@@ -182,9 +182,15 @@ export default function FileUpload({
           <span className="govbb-btn--tertiary" aria-hidden="true">
             Choose file
           </span>
-          <span className="govbb-file-upload__max-size">
-            Max Size: {maxSize ? formatMb(maxSize) : "--"}
-          </span>
+          {/* Only shown when the field actually caps size. A recipe that sets
+              only `itemMaxSize` (a per-file cap) has no `maxSize`, and the old
+              "Max Size: --" placeholder read as a broken value rather than as
+              "no limit". Ternary, not `&&` — a 0 would render as "0". */}
+          {maxSize ? (
+            <span className="govbb-file-upload__max-size">
+              Max Size: {formatMb(maxSize)}
+            </span>
+          ) : null}
         </div>
       </label>
 

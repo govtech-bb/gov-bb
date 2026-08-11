@@ -518,9 +518,23 @@ describe("FileUpload", () => {
     expect(screen.getByText(/5\.0 MB/i)).toBeInTheDocument();
   });
 
-  it("renders '--' for max size when validations has no maxSize", () => {
+  // A recipe that caps per-file size only (`itemMaxSize`) sets no `maxSize`, and
+  // the old "Max Size: --" placeholder read as a broken value rather than as "no
+  // limit" — so the label is omitted entirely instead.
+  it("omits the max-size label entirely when validations has no maxSize", () => {
     renderComponent({ field: { ...baseField, validations: {} } });
-    expect(screen.getByText(/Max Size:.*--/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Max Size/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("--")).not.toBeInTheDocument();
+  });
+
+  it("omits the max-size label when only itemMaxSize (a per-file cap) is set", () => {
+    renderComponent({
+      field: {
+        ...baseField,
+        validations: { itemMaxSize: { value: 5 * 1024 * 1024 } },
+      },
+    });
+    expect(screen.queryByText(/Max Size/i)).not.toBeInTheDocument();
   });
 
   // -------------------------------------------------------------------------
