@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { createFileRoute, notFound } from '@tanstack/react-router'
+import { createFileRoute, notFound, redirect } from '@tanstack/react-router'
 import { Heading, Text, linkVariants } from '@govtech-bb/react'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
@@ -13,6 +13,7 @@ import {
   isStartSubPageVisible,
   isVisible,
   pageLevel,
+  resolveBareSlugRedirect,
 } from '../content/registry'
 import type { ContentPage } from '../content/registry'
 import type { ViewLevel } from '../lib/frontmatter'
@@ -184,6 +185,16 @@ export const Route = createFileRoute('/$')({
           .map(toListItem)
         return { kind: 'subcategory', category: cat, subcategory: sub, items }
       }
+    }
+
+    // Before 404ing, try the bare slug: an intuitive URL like
+    // `/get-marriage-certificate` should land on the page that exists at its
+    // canonical category-prefixed URL rather than a dead end (#2145). Gated
+    // pages and ambiguous/unknown slugs resolve to undefined and fall through
+    // to the 404 below.
+    const redirectTo = resolveBareSlugRedirect(splat, level, overlay)
+    if (redirectTo) {
+      throw redirect({ href: `/${redirectTo}`, statusCode: 301 })
     }
 
     throw notFound()
