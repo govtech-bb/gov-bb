@@ -894,6 +894,67 @@ describe("FieldRenderer", () => {
   });
 
   // -------------------------------------------------------------------------
+  // Checkbox with inset fields — the reveal sits directly under the ticked
+  // option, the same conditional-reveal pattern radios use.
+  // -------------------------------------------------------------------------
+  describe("checkbox with insetFieldsByOption", () => {
+    const multiOptions = [
+      { value: "a", label: "Option A" },
+      { value: "b", label: "Option B" },
+    ];
+
+    function insetEntriesFor(value: string) {
+      const insetField = primitive("text", {
+        id: "step-1.inset-field",
+        fieldId: "inset-field",
+        name: "inset-field",
+        label: "Inset field label",
+        htmlType: "text",
+      });
+      return new Map([
+        [value, [{ field: insetField, validationProperties: noValidation }]],
+      ]);
+    }
+
+    it("shows the inset fields under a ticked option", () => {
+      mockState = { value: ["a"], meta: { isValid: true, errors: [] } };
+
+      const { container } = renderField(
+        primitive("checkbox", { options: multiOptions }),
+        { insetFieldsByOption: insetEntriesFor("a") },
+      );
+
+      const inset = container.querySelector(
+        ".govbb-checkbox-item__conditional",
+      );
+      expect(inset).toBeTruthy();
+      expect(inset?.querySelector("input")).toBeTruthy();
+      // The reveal must sit between the two options, not after the group —
+      // the CSS reveal rule and the reading order both depend on it.
+      expect(
+        inset?.previousElementSibling?.querySelector("input"),
+      ).toHaveAttribute("id", "step-1.checkbox-field-a");
+      expect(inset?.nextElementSibling?.querySelector("input")).toHaveAttribute(
+        "id",
+        "step-1.checkbox-field-b",
+      );
+    });
+
+    it("does not show the inset fields while its option is unticked", () => {
+      mockState = { value: ["b"], meta: { isValid: true, errors: [] } };
+
+      const { container } = renderField(
+        primitive("checkbox", { options: multiOptions }),
+        { insetFieldsByOption: insetEntriesFor("a") },
+      );
+
+      expect(
+        container.querySelector(".govbb-checkbox-item__conditional"),
+      ).toBeNull();
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Date onChange handlers
   // -------------------------------------------------------------------------
   describe("date field onChange handlers", () => {

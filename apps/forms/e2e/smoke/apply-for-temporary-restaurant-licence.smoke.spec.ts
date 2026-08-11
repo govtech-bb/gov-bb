@@ -44,13 +44,13 @@
  *    raw digits are typed with pressSequentially and the YYMMDD-NNNN shape is
  *    asserted (mirrors the vendor-registration spec).
  *  - food-served is a checkbox-accordion: open a category, then tick one leaf.
- *    "Other food" is the exception: a single-option group renders as one plain
- *    checkbox (no expander), and ticking it reveals the required free-text
+ *    "Other food or drink" is the exception: a single-option group renders as one
+ *    plain checkbox (no expander), and ticking it reveals the required free-text
  *    other-food-description.
- *  - food-from-supplier is a single-option checkbox (value "yes", so the input
- *    id is `<step>_food-from-supplier-yes`). It gates the supplier name /
- *    address / phone / email fields, which are asserted hidden before it is
- *    ticked and then filled.
+ *  - food-source is a TWO-option checkbox (values "supplier" and "caterer"), so
+ *    the input ids are `<step>_food-source-supplier` / `-caterer`. It gates the
+ *    supplier textarea and the caterer contact fields respectively; both are
+ *    asserted hidden before the boxes are ticked and then filled.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
@@ -134,7 +134,7 @@ const RICE_ITEMS = [
 ] as const;
 
 /** The "Other" escape hatch at the foot of the accordion. */
-const OTHER_LABEL = "Other food";
+const OTHER_LABEL = "Other food or drink";
 
 /** Build a complete, valid set of answers for the is-organiser=no path. */
 function buildData() {
@@ -180,10 +180,11 @@ function buildData() {
 
     foodItem: faker.helpers.arrayElement(RICE_ITEMS),
     otherFood: `${faker.commerce.productName()} (smoke test)`,
-    supplierName: faker.company.name(),
-    supplierAddress: faker.location.streetAddress(),
-    supplierPhone: bbMobileNumber(),
-    supplierEmail: faker.internet.email().toLowerCase(),
+    supplierDetails: "Fish from Oistins market; dry goods from a wholesaler",
+    catererName: faker.company.name(),
+    catererAddress: faker.location.streetAddress(),
+    catererPhone: bbMobileNumber(),
+    catererEmail: faker.internet.email().toLowerCase(),
 
     handlersMale: String(faker.number.int({ min: 0, max: 6 })),
     handlersFemale: String(faker.number.int({ min: 1, max: 6 })),
@@ -381,17 +382,23 @@ test.describe("Temporary Restaurant Licence — Live Smoke", () => {
       .check();
     await field(page, step, "other-food-description", data.otherFood);
 
-    // The supplier fields are gated behind food-from-supplier: absent until the
-    // box is ticked, so assert that before ticking it and filling them in.
-    const supplierName = page.locator(`[id="${step}_supplier-name"]`);
-    await expect(supplierName).toBeHidden();
-    await page.locator(`input[id="${step}_food-from-supplier-yes"]`).check();
-    await expect(supplierName).toBeVisible({ timeout: STEP_TIMEOUT });
+    // food-source gates two separate runs of fields: "supplier" reveals the
+    // free-text supplier list, "caterer" the caterer's contact details. Assert
+    // both are absent, then tick both options and fill them in.
+    const supplierDetails = page.locator(`[id="${step}_supplier-details"]`);
+    const catererName = page.locator(`[id="${step}_caterer-name"]`);
+    await expect(supplierDetails).toBeHidden();
+    await expect(catererName).toBeHidden();
+    await page.locator(`input[id="${step}_food-source-supplier"]`).check();
+    await page.locator(`input[id="${step}_food-source-caterer"]`).check();
+    await expect(supplierDetails).toBeVisible({ timeout: STEP_TIMEOUT });
+    await expect(catererName).toBeVisible({ timeout: STEP_TIMEOUT });
     await afterField(page);
-    await field(page, step, "supplier-name", data.supplierName);
-    await field(page, step, "supplier-address", data.supplierAddress);
-    await field(page, step, "supplier-phone", data.supplierPhone);
-    await field(page, step, "supplier-email", data.supplierEmail);
+    await field(page, step, "supplier-details", data.supplierDetails);
+    await field(page, step, "caterer-name", data.catererName);
+    await field(page, step, "caterer-address", data.catererAddress);
+    await field(page, step, "caterer-phone", data.catererPhone);
+    await field(page, step, "caterer-email", data.catererEmail);
     await advance(page, step);
 
     // ─── Step 5: Food safety ─────────────────────────────────────────────────

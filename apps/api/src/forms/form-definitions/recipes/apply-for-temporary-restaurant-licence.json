@@ -3,7 +3,7 @@
   "title": "Apply for a licence to operate a temporary restaurant",
   "description": "Apply for a licence to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
   "createdAt": "2026-07-23T00:00:00Z",
-  "updatedAt": "2026-08-06T00:00:00Z",
+  "updatedAt": "2026-08-10T00:00:00Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -602,8 +602,10 @@
                 ]
               },
               {
-                "label": "Other food",
-                "options": [{ "label": "Other food", "value": "other" }]
+                "label": "Other food or drink",
+                "options": [
+                  { "label": "Other food or drink", "value": "other" }
+                ]
               }
             ],
             "validations": {
@@ -617,9 +619,9 @@
         {
           "ref": "components/generic-textarea",
           "overrides": {
-            "label": "What else will you serve?",
+            "label": "Tell us more about the other food and drink you will serve",
             "fieldId": "other-food-description",
-            "hint": "Tell us what you will serve that is not on the list.",
+            "hint": "Describe the main ingredients and how you will cook it. This is how we grade the risk, so an officer knows what to expect.",
             "ui": {
               "width": "long",
               "indent": true
@@ -643,18 +645,42 @@
         {
           "ref": "components/generic-checkbox",
           "overrides": {
-            "label": "Where will you get the food from?",
-            "fieldId": "food-from-supplier",
-            "hint": "Tick this box if anyone else provides food for you. Leave it blank if you buy and prepare everything yourself.",
+            "label": "Where will you get your food from?",
+            "fieldId": "food-source",
+            "hint": "Tick everything that applies.",
             "options": [
+              { "label": "Supplier", "value": "supplier" },
+              { "label": "Caterer or cook", "value": "caterer" }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select where you will get your food from"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "label": "Which suppliers will you use?",
+            "fieldId": "supplier-details",
+            "hint": "A short list is enough. You do not need to name every item. For example, fish from Oistins market; flour and oil from a wholesaler; beer from a supermarket.",
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
               {
-                "label": "I get some or all of my food from another supplier",
-                "value": "yes"
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["supplier"]
               }
             ],
             "validations": {
               "required": {
-                "value": false
+                "value": true,
+                "error": "Tell us which suppliers you will use"
               }
             }
           }
@@ -662,22 +688,21 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Supplier's name",
-            "fieldId": "supplier-name",
-            "ui": { "indent": true },
-            "hint": "The business or person you get the food from.",
+            "label": "Name of the caterer or cook",
+            "fieldId": "caterer-name",
+            "hint": "The business or person preparing the food. Only give this if someone other than you is preparing it.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "food-from-supplier",
-                "operator": "equal",
-                "value": "yes"
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
               }
             ],
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter the supplier's name"
+                "error": "Enter the name of the caterer or cook"
               }
             }
           }
@@ -685,38 +710,42 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Supplier's address",
-            "fieldId": "supplier-address",
-            "ui": { "indent": true },
+            "label": "Their address",
+            "fieldId": "caterer-address",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "food-from-supplier",
-                "operator": "equal",
-                "value": "yes"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-tel",
-          "overrides": {
-            "label": "Supplier's phone number",
-            "fieldId": "supplier-phone",
-            "ui": { "indent": true },
-            "hint": "For example, (246) 249 1234.",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "food-from-supplier",
-                "operator": "equal",
-                "value": "yes"
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
               }
             ],
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter the supplier's phone number"
+                "error": "Enter the address of the caterer or cook"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-tel",
+          "overrides": {
+            "label": "Their phone number",
+            "fieldId": "caterer-phone",
+            "hint": "For example, (246) 249 1234.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the phone number of the caterer or cook"
               },
               "phone": {
                 "value": true,
@@ -728,16 +757,15 @@
         {
           "ref": "components/generic-email",
           "overrides": {
-            "label": "Supplier's email address (optional)",
-            "fieldId": "supplier-email",
-            "ui": { "indent": true },
-            "hint": "For example, supplier@example.com.",
+            "label": "Their email address (optional)",
+            "fieldId": "caterer-email",
+            "hint": "For example, cook@example.com.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "food-from-supplier",
-                "operator": "equal",
-                "value": "yes"
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
               }
             ],
             "validations": {
@@ -858,19 +886,18 @@
     {
       "stepId": "documents",
       "title": "Supporting documents",
-      "description": "You must upload a medical certificate for everyone handling food. All staff must also carry their certificate during the event.",
+      "description": "You must upload your own medical certificate. As the event organiser, you must also upload your list of vendors and a site or stall plan. A food business licence is optional.",
       "elements": [
         {
           "ref": "components/upload-document",
           "overrides": {
-            "label": "Staff medical certificates",
+            "label": "Your medical certificate",
             "fieldId": "medical-certs",
-            "hint": "A valid medical certificate for you and everyone handling food. PDF, JPG or PNG.",
-            "multiple": true,
+            "hint": "Your own valid medical certificate. PDF, JPG or PNG.",
             "validations": {
               "required": {
                 "value": true,
-                "error": "Upload a medical certificate for everyone handling food"
+                "error": "Upload your medical certificate"
               },
               "fileTypes": {
                 "value": ["application/pdf", "image/jpeg", "image/png"],
@@ -881,6 +908,22 @@
                 "error": "Each file must be 5 MB or smaller"
               }
             }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "medical-certs-note",
+            "variant": "inset",
+            "content": "You only upload your own. Everyone else working with you on the day must **walk with their own valid medical certificate** — the officer checks them at the stall. We know your team can change at short notice, so there is nothing to upload for them here."
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "medical-certs-help",
+            "variant": "text",
+            "content": "Ask your polyclinic or doctor if you do not have a current certificate."
           }
         },
         {

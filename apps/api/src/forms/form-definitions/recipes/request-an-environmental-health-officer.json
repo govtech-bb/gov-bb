@@ -596,7 +596,6 @@
             "label": "Name of the caterer or cook",
             "fieldId": "caterer-name",
             "hint": "The business or person preparing the food. Only give this if someone other than you is preparing it.",
-            "ui": { "indent": true },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -618,7 +617,6 @@
           "overrides": {
             "label": "Their address",
             "fieldId": "caterer-address",
-            "ui": { "indent": true },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -641,7 +639,6 @@
             "label": "Their phone number",
             "fieldId": "caterer-phone",
             "hint": "For example, (246) 249 1234.",
-            "ui": { "indent": true },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -668,7 +665,6 @@
             "label": "Their email address (optional)",
             "fieldId": "caterer-email",
             "hint": "For example, cook@example.com.",
-            "ui": { "indent": true },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -694,7 +690,6 @@
             "fieldId": "caterer-licence-note",
             "variant": "text",
             "content": "You do not need to send us the caterer's or cook's licence.",
-            "ui": { "indent": true },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",

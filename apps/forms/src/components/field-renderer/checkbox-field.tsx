@@ -1,13 +1,15 @@
-import { JSX } from "react";
+import React, { JSX } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import ErrorMessage from "../error-message";
 import { markdownComponents } from "../markdown-components";
 import { FieldRenderContext } from "./render-context";
+import FieldRenderer from "./index";
 
 export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
   const {
     field,
+    form,
     f,
     sharedProps,
     requiredProps,
@@ -17,6 +19,10 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
     errorMessage,
     labelClass,
     commitChange,
+    insetFieldsByOption,
+    formId,
+    previewToken,
+    draftToken,
   } = ctx;
 
   if (field.options && field.options.length === 1) {
@@ -92,23 +98,52 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
       <ErrorMessage id={errorId} message={errorMessage} />
       <div className="form-page__options">
         {field.options?.map((option) => {
+          const insetEntries = insetFieldsByOption?.get(option.value);
+          const isChecked = checkboxValues.includes(option.value);
           return (
-            <div className="govbb-checkbox-item" key={option.value}>
-              <input
-                {...sharedProps}
-                id={`${field.id}-${option.value}`}
-                className="govbb-checkbox"
-                checked={checkboxValues.includes(option.value)}
-                aria-invalid={invalid}
-                onChange={() => toggle(option.value)}
-              />
-              <label
-                className="govbb-checkbox-item__label"
-                htmlFor={`${field.id}-${option.value}`}
-              >
-                {option.label}
-              </label>
-            </div>
+            <React.Fragment key={option.value}>
+              <div className="govbb-checkbox-item">
+                <input
+                  {...sharedProps}
+                  id={`${field.id}-${option.value}`}
+                  className="govbb-checkbox"
+                  checked={isChecked}
+                  aria-invalid={invalid}
+                  onChange={() => toggle(option.value)}
+                />
+                <label
+                  className="govbb-checkbox-item__label"
+                  htmlFor={`${field.id}-${option.value}`}
+                >
+                  {option.label}
+                </label>
+              </div>
+              {/* Conditional reveal: inset fields shown below the ticked
+                  option, so a follow-up question reads as belonging to the
+                  box that asked for it rather than trailing the whole group.
+                  Rendered as a sibling immediately after the checkbox item so
+                  the govbb `:has(:checked) + __conditional` styling applies. */}
+              {insetEntries && isChecked && (
+                <div className="govbb-checkbox-item__conditional">
+                  {insetEntries.map(
+                    ({
+                      field: insetField,
+                      validationProperties: insetValidation,
+                    }) => (
+                      <FieldRenderer
+                        key={insetField.id}
+                        form={form}
+                        field={insetField}
+                        validationProperties={insetValidation}
+                        formId={formId}
+                        previewToken={previewToken}
+                        draftToken={draftToken}
+                      />
+                    ),
+                  )}
+                </div>
+              )}
+            </React.Fragment>
           );
         })}
       </div>
