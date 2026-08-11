@@ -1,18 +1,19 @@
 ---
-title: "Request an environmental health officer"
-description: "Event organisers in Barbados can request an environmental health officer to attend an event where food or drink is served to the public."
-stage: "alpha"
+title: Request an environmental health officer
+description: >-
+  Event organisers in Barbados can request an environmental health officer to
+  attend an event where food or drink is served to the public.
+stage: alpha
 visibility: preview
 featured: false
-publish_date: 2026-08-10
+publish_date: '2026-08-11'
 category: business-trade
 form_id: request-an-environmental-health-officer
 service_type: digital
 ---
-
 Use this service to request an environmental health officer to attend your event. This is required whenever food or drink is served to the public.
 
-The first question asks whether you are operating a temporary restaurant — that is, serving food yourself. If you are, this same service also completes your **temporary restaurant licence** application. You will be asked about the food you serve, your food-safety arrangements, and asked to upload your own medical certificate.
+The first question asks whether you are operating a temporary restaurant — that is, serving food yourself. If you are, this same service also completes your **temporary restaurant licence** application. You will be asked about the food and drink you serve, your food-safety arrangements, and asked to upload your own medical certificate.
 
 ## Who needs to request an officer
 
@@ -28,19 +29,19 @@ There is no fee to request an officer. If there are overtime costs for officers 
 
 ## What you will need
 
-- Your name, address, phone number and email address
-- The name and address of the event, and the dates and times it will run
-- The expected number of patrons, and the number of food stalls including bars
-- A list of the food vendors taking part
-- A [site or stall plan](/business-trade/temporary-restaurants-what-you-need-to-know#setting-up-your-stall)
+-   Your name, address, phone number and email address
+-   The name and address of the event, and the dates and times it will run
+-   The expected number of patrons, and the number of food stalls including bars
+-   A list of the food vendors taking part
+-   A [site or stall plan](/business-trade/temporary-restaurants-what-you-need-to-know#setting-up-your-stall)
 
 If you are serving food, and so also need a licence, you will also need:
 
-- The food and drink you will serve, and where you will get it from
-- Your food-safety arrangements — water, handwashing, waste disposal, and the number of food handlers
-- Your own medical certificate. Everyone else working with you must carry theirs on the day
-- Hairnets, beard nets and clean covered clothing for everyone handling food, and no jewellery, false nails, false eyelashes, make-up or perfume ([see the full list](/business-trade/temporary-restaurants-what-you-need-to-know#personal-hygiene-for-food-handlers))
-- If you have one, a copy of your food business licence
+-   The food and drink you will serve, and where you will get it from
+-   Your food-safety arrangements — water, handwashing, waste disposal, and the number of food handlers
+-   Your own medical certificate. Everyone else working with you must carry theirs on the day
+-   Hairnets, beard nets and clean covered clothing for everyone handling food, and no jewellery, false nails, false eyelashes, make-up or perfume ([see the full list](/business-trade/temporary-restaurants-what-you-need-to-know#personal-hygiene-for-food-handlers))
+-   If you have one, a copy of your food business licence
 
 <a data-start-link>Start now</a>
 
@@ -48,9 +49,9 @@ You can also make this request in person at your nearest polyclinic while we int
 
 ## What happens next
 
-- The Environmental Health Department at the polyclinic for your area will review your request.
-- They will contact you to arrange the officers' attendance.
-- If there are overtime costs, they will send an invoice after the request is approved.
+-   The Environmental Health Department at the where you applied will review your application.
+-   They will contact you to arrange the officers' attendance.
+-   If there are overtime costs, they will send an invoice after the request is approved.
 
 ## Contact us
 
