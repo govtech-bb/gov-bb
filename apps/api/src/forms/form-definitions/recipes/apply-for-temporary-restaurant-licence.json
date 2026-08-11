@@ -3,7 +3,7 @@
   "title": "Apply for a licence to operate a temporary restaurant",
   "description": "Apply for a licence to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
   "createdAt": "2026-07-23T00:00:00Z",
-  "updatedAt": "2026-08-06T00:00:00Z",
+  "updatedAt": "2026-08-10T00:00:00Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -602,8 +602,10 @@
                 ]
               },
               {
-                "label": "Other food",
-                "options": [{ "label": "Other food", "value": "other" }]
+                "label": "Other food or drink",
+                "options": [
+                  { "label": "Other food or drink", "value": "other" }
+                ]
               }
             ],
             "validations": {
@@ -617,9 +619,9 @@
         {
           "ref": "components/generic-textarea",
           "overrides": {
-            "label": "What else will you serve?",
+            "label": "Tell us more about the other food and drink you will serve",
             "fieldId": "other-food-description",
-            "hint": "Tell us what you will serve that is not on the list.",
+            "hint": "Describe the main ingredients and how you will cook it. This is how we grade the risk, so an officer knows what to expect.",
             "ui": {
               "width": "long",
               "indent": true
@@ -643,18 +645,43 @@
         {
           "ref": "components/generic-checkbox",
           "overrides": {
-            "label": "Where will you get the food from?",
-            "fieldId": "food-from-supplier",
-            "hint": "Tick this box if anyone else provides food for you. Leave it blank if you buy and prepare everything yourself.",
+            "label": "Where will you get your food from?",
+            "fieldId": "food-source",
+            "hint": "Tick everything that applies.",
             "options": [
+              { "label": "Supplier", "value": "supplier" },
+              { "label": "Caterer or cook", "value": "caterer" }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select where you will get your food from"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "label": "Which suppliers will you use?",
+            "fieldId": "supplier-details",
+            "hint": "A short list is enough. You do not need to name every item. For example, fish from Oistins market; flour and oil from a wholesaler; beer from a supermarket.",
+            "ui": {
+              "width": "long",
+              "indent": true
+            },
+            "behaviours": [
               {
-                "label": "I get some or all of my food from another supplier",
-                "value": "yes"
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["supplier"]
               }
             ],
             "validations": {
               "required": {
-                "value": false
+                "value": true,
+                "error": "Tell us which suppliers you will use"
               }
             }
           }
@@ -662,22 +689,22 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Supplier's name",
-            "fieldId": "supplier-name",
+            "label": "Name of the caterer or cook",
+            "fieldId": "caterer-name",
+            "hint": "The business or person preparing the food. Only give this if someone other than you is preparing it.",
             "ui": { "indent": true },
-            "hint": "The business or person you get the food from.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "food-from-supplier",
-                "operator": "equal",
-                "value": "yes"
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
               }
             ],
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter the supplier's name"
+                "error": "Enter the name of the caterer or cook"
               }
             }
           }
@@ -685,38 +712,44 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Supplier's address",
-            "fieldId": "supplier-address",
+            "label": "Their address",
+            "fieldId": "caterer-address",
             "ui": { "indent": true },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "food-from-supplier",
-                "operator": "equal",
-                "value": "yes"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-tel",
-          "overrides": {
-            "label": "Supplier's phone number",
-            "fieldId": "supplier-phone",
-            "ui": { "indent": true },
-            "hint": "For example, (246) 249 1234.",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "food-from-supplier",
-                "operator": "equal",
-                "value": "yes"
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
               }
             ],
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter the supplier's phone number"
+                "error": "Enter the address of the caterer or cook"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-tel",
+          "overrides": {
+            "label": "Their phone number",
+            "fieldId": "caterer-phone",
+            "hint": "For example, (246) 249 1234.",
+            "ui": { "indent": true },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the phone number of the caterer or cook"
               },
               "phone": {
                 "value": true,
@@ -728,16 +761,16 @@
         {
           "ref": "components/generic-email",
           "overrides": {
-            "label": "Supplier's email address (optional)",
-            "fieldId": "supplier-email",
+            "label": "Their email address (optional)",
+            "fieldId": "caterer-email",
+            "hint": "For example, cook@example.com.",
             "ui": { "indent": true },
-            "hint": "For example, supplier@example.com.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "food-from-supplier",
-                "operator": "equal",
-                "value": "yes"
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
               }
             ],
             "validations": {
