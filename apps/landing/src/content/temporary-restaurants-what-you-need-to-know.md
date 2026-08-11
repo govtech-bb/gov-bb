@@ -7,10 +7,12 @@ description: >-
 stage: alpha
 visibility: public
 service_type: information
-publish_date: '2026-08-07'
+publish_date: '2026-08-11'
 category: business-trade
 ---
 This page explains the rules for temporary restaurants — who needs a licence, what it costs and what to have ready. It covers [applying for a temporary restaurant licence](temporary-restaurant-licence.html)
+
+Click me
 
 ## What counts as a temporary restaurant
 
@@ -18,7 +20,7 @@ A **temporary restaurant** is a food stall, booth, tent, table, bar or any simil
 
 **Food** means anything people eat or drink. This includes meals, snacks, sweets, cut fruit, drinks and chewing gum, as well as anything used to make or prepare food. It does not include cosmetics, tobacco or anything used only as medicine. This applies even if food is not your main business.
 
-See the legal definitions
+**See the legal definitions**
 
 In law, a temporary restaurant is “a restaurant which operates for a period not exceeding 30 days” (Health Services (Restaurants) Regulations, 1969).
 
