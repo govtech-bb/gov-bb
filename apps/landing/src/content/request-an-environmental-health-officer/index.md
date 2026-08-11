@@ -49,7 +49,7 @@ You can also make this request in person at your nearest polyclinic while we int
 
 ## What happens next
 
--   The Environmental Health Department at the where you applied will review your application.
+-   The Environmental Health Department where you have applied to will review your application.
 -   They will contact you to arrange the officers' attendance.
 -   If there are overtime costs, they will send an invoice after the request is approved.
 
