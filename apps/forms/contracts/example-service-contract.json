@@ -359,7 +359,7 @@
           "htmlType": "text",
           "validations": {
             "pattern": {
-              "value": "^BB\\d{5}$",
+              "value": "^[Bb]{2} ?\\d{5}$",
               "error": "Enter a valid postcode (for example, BB17004)"
             }
           },
@@ -501,7 +501,7 @@
           "htmlType": "text",
           "validations": {
             "pattern": {
-              "value": "^BB\\d{5}$",
+              "value": "^[Bb]{2} ?\\d{5}$",
               "error": "Enter a valid postcode (for example, BB17004)"
             }
           },

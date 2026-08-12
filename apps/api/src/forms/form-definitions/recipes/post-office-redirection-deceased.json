@@ -197,12 +197,6 @@
           "overrides": {
             "fieldId": "deceased-postcode",
             "hint": "For example, BB17004 (optional)",
-            "validations": {
-              "pattern": {
-                "error": "Enter a valid postcode (for example, BB17004)",
-                "value": "^[A-Z]{2}\\d{5}$"
-              }
-            },
             "ui": {
               "width": "short"
             }
@@ -459,12 +453,6 @@
           "overrides": {
             "fieldId": "new-postcode",
             "hint": "For example, BB17004 (optional)",
-            "validations": {
-              "pattern": {
-                "error": "Enter a valid postcode (for example, BB17004)",
-                "value": "^[A-Z]{2}\\d{5}$"
-              }
-            },
             "ui": {
               "width": "short"
             }

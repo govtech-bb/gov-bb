@@ -39,8 +39,11 @@ export const patternRunner: RuleRunner = (value, config) => {
   } catch {
     return msg;
   }
+  // A leading/trailing space is a typing artefact, not an answer, and no form
+  // author means `^BB\d{5}$` to reject `BB17004 `. `required` already trims the
+  // same way.
   return forEachString(value, (element) =>
-    re.test(str(element)) ? null : msg,
+    re.test(str(element).trim()) ? null : msg,
   );
 };
 
