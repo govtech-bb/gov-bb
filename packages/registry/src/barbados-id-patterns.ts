@@ -27,8 +27,11 @@ export const NATIONAL_INSURANCE_FORMAT: IdFormat = {
   error: "Enter a valid National Insurance number (for example, 123456)",
 };
 
+// A citizen typing `bb17004` or `BB 17004` means the same postcode as
+// `BB17004`. Surrounding whitespace is handled by the pattern runner, which
+// trims before testing.
 export const POSTCODE_FORMAT: IdFormat = {
-  pattern: "^BB\\d{5}$",
+  pattern: "^[Bb]{2} ?\\d{5}$",
   error: "Enter a valid postcode (for example, BB17004)",
 };
 
