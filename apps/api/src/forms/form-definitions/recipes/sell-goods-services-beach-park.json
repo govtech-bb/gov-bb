@@ -596,7 +596,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/relationship",
           "overrides": {
             "fieldId": "prof-ref-relationship",
             "label": "Relationship",
@@ -767,7 +767,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/relationship",
           "overrides": {
             "fieldId": "pers-ref-relationship",
             "label": "Relationship",
@@ -938,7 +938,7 @@
           }
         },
         {
-          "ref": "components/parish",
+          "ref": "components/generic-select",
           "overrides": {
             "fieldId": "testimonial1-relationship",
             "label": "Relationship",
@@ -1117,7 +1117,7 @@
           }
         },
         {
-          "ref": "components/parish",
+          "ref": "components/generic-select",
           "overrides": {
             "fieldId": "testimonial2-relationship",
             "label": "Relationship",
