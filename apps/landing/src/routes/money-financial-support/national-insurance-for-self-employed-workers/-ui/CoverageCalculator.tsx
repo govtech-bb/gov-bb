@@ -802,7 +802,7 @@ function IncomeStep({
         <div className="flex flex-col gap-4">
           <MoneyField
             error={errors.goodMonth}
-            hint="When work is steady and money comes in. A rough number is fine."
+            hint="When work is steady and money comes in. A rough estimate is fine."
             id="good-month"
             label="What does a busy month look like?"
             onChange={setGoodMonth}
@@ -1345,8 +1345,9 @@ function NextSteps({
         Get help
       </h2>
       <p className="text-[1.125rem]">
-        Contact NIS on <strong>431-7400</strong> or visit the{' '}
-        <strong>NIS office</strong> in person.
+        Contact the <strong>Self-Employed Unit</strong> at NIS by calling{' '}
+        <strong>431-7400</strong>, or visit the <strong>NIS office</strong> in
+        person.
       </p>
       <p className="mt-4 text-[1.125rem]">
         <strong>NIS office</strong>

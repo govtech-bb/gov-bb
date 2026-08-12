@@ -54,7 +54,7 @@ NIS for self-employed workers does not include unemployment benefit.
 
 NIS can help with your National Insurance number, registration, payments, contribution record or benefits.
 
-Call NIS on **431-7400**. You can also get help in person at the **NIS office**.
+Call the **Self-Employed Unit** at NIS on **431-7400**. You can also get help in person at the **NIS office**.
 
 **NIS office**  
 National Insurance and Social Security Service  
