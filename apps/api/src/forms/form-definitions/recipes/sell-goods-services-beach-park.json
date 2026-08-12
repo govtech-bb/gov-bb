@@ -1364,6 +1364,8 @@
     {
       "stepId": "submission-confirmation",
       "title": "Thank you for your application",
+      "description": "Your information has been sent to the National Conservation Commission (NCC).",
+      "markdownContent": "## What happens next\n\nYou will meet with representatives from the NCC at the location where you would like to sell goods or services. They will assess suitability.\n\nIf the outcome is positive, you will need to visit the National Conservation Commission to collect:\n\n1. A letter of authorisation.\n2. A licence book outlining the conditions of where and what you can sell.\n3. Your vendor identification.\n\n## Paying for your licence\n\nYou can pay for your vendor documentation in cash or by card when you visit the NCC.\n\nThe prices include VAT.\n\n- Licence: $117.50\n  - A watersports licence costs $176.25\n- Licence book: $11.75\n- ID badge: $12.87",
       "elements": [],
       "behaviours": []
     }
