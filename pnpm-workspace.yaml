@@ -21,8 +21,9 @@ confirmModulesPurge: false
 # Lived in package.json "pnpm.overrides" until pnpm 11 stopped reading it.
 overrides:
   uuid@<11.1.1: ^11.1.1
-  js-yaml@>=3.0.0 <3.15.0: ^3.15.0
-  js-yaml@>=4.0.0 <4.3.0: ^4.3.0
+  js-yaml@>=3.0.0 <3.15.1: ^3.15.1
+  js-yaml@>=4.0.0 <4.3.1: ^4.3.1
+  nanoid@<3.3.17: ^3.3.17
   esbuild@<0.28.1: ^0.28.1
   postcss@<8.5.18: ^8.5.18
   linkify-it@<5.0.2: ^5.0.2
