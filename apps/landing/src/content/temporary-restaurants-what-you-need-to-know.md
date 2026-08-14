@@ -10,7 +10,7 @@ service_type: information
 publish_date: '2026-08-14'
 category: business-trade
 ---
-This page explains the rules for temporary restaurants — who needs a licence, what it costs and what to have ready. It covers [applying for a temporary restaurant licence](temporary-restaurant-licence.html)
+This page explains the rules for temporary restaurants — who needs a licence, what it costs and what to have ready. It covers [applying for a temporary restaurant licence](https://landing.sandbox.alpha.gov.bb/business-trade/apply-for-temporary-restaurant-licence) and [requesting an environmental health officer](https://landing.sandbox.alpha.gov.bb/business-trade/request-an-environmental-health-officer).
 
 ## What counts as a temporary restaurant
 
@@ -28,7 +28,7 @@ You need a licence if you will serve any food or drink, whether you sell it or g
 
 Weddings do not need a licence. Some other private events may need one, depending on how many people are there.
 
-[Apply for a licence](business-trade/apply-for-temporary-restaurant-licence)
+[Apply for a licence](https://landing.sandbox.alpha.gov.bb/business-trade/apply-for-temporary-restaurant-licence)
 
 ## Who needs to apply
 
@@ -51,8 +51,10 @@ There is no application fee. If you are organising the event, you must pay any o
 -   The fees are **payable in advance**, to the Accountant General — not to the polyclinic. This is set by regulation 7(2) of the Health Services (Assignment of Public Health Inspectors to Private Businesses) Regulations, 1986.
 -   Pay at least 2 days before your event.
 -   Pay by cash or cheque only. Make cheques payable to the Accountant General.
--   Take your payment to the polyclinic or to the Environment Health Department Ministry of Health and Wellness.
+-   Take your payment to the polyclinic or to the Environment Health Department, Ministry of Health and Wellness.
 -   You will get a receipt.
+
+[Request an environmental health officer](https://landing.sandbox.alpha.gov.bb/business-trade/request-an-environmental-health-officer)
 
 ## Setting up your stall
 
