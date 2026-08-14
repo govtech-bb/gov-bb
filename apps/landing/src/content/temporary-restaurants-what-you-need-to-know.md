@@ -7,12 +7,10 @@ description: >-
 stage: alpha
 visibility: public
 service_type: information
-publish_date: '2026-08-11'
+publish_date: '2026-08-14'
 category: business-trade
 ---
 This page explains the rules for temporary restaurants — who needs a licence, what it costs and what to have ready. It covers [applying for a temporary restaurant licence](temporary-restaurant-licence.html)
-
-Click me
 
 ## What counts as a temporary restaurant
 
@@ -53,7 +51,7 @@ There is no application fee. If you are organising the event, you must pay any o
 -   The fees are **payable in advance**, to the Accountant General — not to the polyclinic. This is set by regulation 7(2) of the Health Services (Assignment of Public Health Inspectors to Private Businesses) Regulations, 1986.
 -   Pay at least 2 days before your event.
 -   Pay by cash or cheque only. Make cheques payable to the Accountant General.
--   Take your payment to the polyclinic or to the Ministry of Health and Wellness.
+-   Take your payment to the polyclinic or to the Environment Health Department Ministry of Health and Wellness.
 -   You will get a receipt.
 
 ## Setting up your stall
@@ -116,7 +114,7 @@ Everyone handling food must follow these rules on the day. An officer will check
 
 ## Contact us
 
-You do not need to choose a polyclinic. When you apply, the right polyclinic will be worked out from your event location and shown to you before you submit. If you are unsure, you can call the Ministry to check.
+You do not need to choose a polyclinic. When you apply, your application will be directed to the appropriate polyclinic based on the event location and shown to you before you submit. If you are unsure, you can call the Ministry to check.
 
 **Ministry of Health and Wellness**
 
