@@ -7,7 +7,7 @@ description: >-
 stage: alpha
 visibility: preview
 featured: false
-publish_date: '2026-08-11'
+publish_date: '2026-08-14'
 category: business-trade
 service_type: digital
 ---
@@ -23,7 +23,7 @@ Apply at least **14 days** before your event. Applications made later than this 
 
 There is no application fee. If you are organising the event, you must pay any overtime costs for the environmental health officers attending. See [how to pay](/business-trade/temporary-restaurants-what-you-need-to-know#paying-for-environmental-health-officers).
 
-See the legal definitions ## What you will need (--spacing-s);"> See the legal definitions
+**See the legal definitions**
 
 In law, a temporary restaurant is “a restaurant which operates for a period not exceeding 30 days” (Health Services (Restaurants) Regulations, 1969).
 
@@ -33,7 +33,7 @@ You need a licence if you will serve any food or drink, whether you sell it or g
 
 Weddings do not need a licence. Some other private events may need one, depending on how many people are there.
 
-[Apply for a licence](temporary-restaurant-licence.html)
+## What you will need
 
 -   Your name, National Registration Number, address, phone number and email address
 -   The name, address and dates of the event
@@ -41,7 +41,7 @@ Weddings do not need a licence. Some other private events may need one, dependin
 -   The number of food handlers, your water and sanitation arrangements, and the expected number of people attending the event
 -   The organiser's details, if someone else is organising the event
 -   Your own medical certificate. Everyone else working with you must walk with theirs on the day
--   Hairnets, beard nets and clean covered clothing for everyone handling food — and no jewellery, false nails, false eyelashes, make-up or perfume (see the full list)
+-   Hairnets, beard nets and clean covered clothing for everyone handling food — and no jewellery, false nails, false eyelashes, make-up or perfume ([see the full list](https://landing.sandbox.alpha.gov.bb/business-trade/temporary-restaurants-what-you-need-to-know#personal-hygiene-for-food-handlers))
 -   If someone else is organising the event, a letter from the venue or organiser confirming you can operate there
 -   If you are organising the event, a site or stall plan
 -   If you have one, a copy of your food business licence
