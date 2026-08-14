@@ -3,27 +3,22 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import NodeCache from "node-cache";
 import { CustomComponent } from "./entities/custom-component.entity";
-import { BUILTIN_REGISTRY, RegistryEntry } from "@govtech-bb/registry";
-import {
-  hydrateForm,
-  Resolver,
-  UnresolvableComponentError,
-} from "./resolution";
+import { getCatalog, hydrateForm } from "@govtech-bb/form-builder";
+import type {
+  RegistryCatalog,
+  CustomComponentEntry,
+} from "@govtech-bb/form-builder";
 import type {
   ServiceContract,
   ServiceContractRecipe,
 } from "@govtech-bb/form-types";
 
 const CACHE_TTL_SECONDS = 60;
-const CACHE_LOADED_KEY = "__loaded__";
+const CACHE_KEY = "__catalog__";
 
 @Injectable()
 export class RegistryService {
   private readonly logger = new Logger(RegistryService.name);
-
-  private readonly builtins: ReadonlyMap<string, RegistryEntry> = new Map(
-    Object.entries(BUILTIN_REGISTRY),
-  );
 
   private readonly cache = new NodeCache({ stdTTL: CACHE_TTL_SECONDS });
 
@@ -32,40 +27,38 @@ export class RegistryService {
     private readonly customComponentRepo: Repository<CustomComponent>,
   ) {}
 
-  async resolve(ref: string): Promise<RegistryEntry | null> {
-    const builtin = this.builtins.get(ref);
-    if (builtin) return builtin;
-
-    await this.ensureCacheFresh();
-
-    return this.cache.get<RegistryEntry>(ref) ?? null;
-  }
-
   async hydrateForm(recipe: ServiceContractRecipe): Promise<ServiceContract> {
-    const resolver: Resolver = (ref) => this.resolve(ref);
-    return hydrateForm(recipe, resolver);
+    const catalog = await this.getCatalog();
+    return hydrateForm(recipe, catalog);
   }
 
-  private async ensureCacheFresh(): Promise<void> {
-    if (this.cache.has(CACHE_LOADED_KEY)) return;
+  /**
+   * The registry catalog the shared `hydrateForm` resolves refs against.
+   * Builtins resolve via the package's registry fallback, so only DB-backed
+   * custom components need to be merged on top. Cached for 60s so hydration
+   * doesn't hit the database on every request.
+   */
+  private async getCatalog(): Promise<RegistryCatalog> {
+    const cached = this.cache.get<RegistryCatalog>(CACHE_KEY);
+    if (cached) return cached;
 
-    this.logger.debug("Custom component cache stale — reloading from database");
+    this.logger.debug("Registry catalog stale — reloading custom components");
 
-    this.cache.flushAll();
     const customs = await this.customComponentRepo.find();
+    const custom: CustomComponentEntry[] = customs.map((c) => ({
+      ref: `components/${c.namespace}/${c.type}`,
+      displayName: `${c.namespace}/${c.type}`,
+      namespace: c.namespace,
+      type: c.type,
+      definition: c.definition,
+    }));
+    const catalog: RegistryCatalog = { ...getCatalog(), custom };
 
-    for (const custom of customs) {
-      this.cache.set(
-        `components/${custom.namespace}/${custom.type}`,
-        custom.definition,
-      );
-    }
-
-    this.cache.set(CACHE_LOADED_KEY, true);
+    this.cache.set(CACHE_KEY, catalog);
     this.logger.debug(
-      `Loaded ${customs.length} custom component(s) into cache`,
+      `Loaded ${customs.length} custom component(s) into catalog`,
     );
+
+    return catalog;
   }
 }
-
-export { UnresolvableComponentError };

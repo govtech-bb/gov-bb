@@ -45,8 +45,6 @@ export function hydrateForm(
   recipe: ServiceContractRecipe,
   catalog: RegistryCatalog,
 ): ServiceContract {
-  const now = new Date().toISOString();
-
   // Reject up front if any ref is unresolvable — collect them all together,
   // then throw (the API resolver throws too — this keeps the preview path
   // consistent instead of silently dropping fields).
@@ -67,7 +65,17 @@ export function hydrateForm(
         const overrides =
           (field as { ref: string; overrides?: FieldOverrides }).overrides ??
           {};
-        elements.push(applyFieldOverrides(componentDef.primitive, overrides));
+        // structuredClone before merging: applyFieldOverrides shallow-spreads,
+        // so without this the served element's nested objects (validations / ui
+        // / options) alias the module-level REGISTRY_* singleton. In a
+        // long-lived process a single in-place mutation would then corrupt every
+        // subsequent request. The retired api-side resolver cloned here too.
+        elements.push(
+          applyFieldOverrides(
+            structuredClone(componentDef.primitive),
+            overrides,
+          ),
+        );
       } else if (field.ref.startsWith("blocks/")) {
         const blockDef = item as BlockDefinition;
         const childOverrides =
@@ -76,7 +84,10 @@ export function hydrateForm(
 
         for (const element of blockDef.block.elements) {
           const childOverride = childOverrides[element.fieldId] ?? {};
-          elements.push(applyFieldOverrides(element, childOverride));
+          // Clone for the same singleton-aliasing reason as the component branch.
+          elements.push(
+            applyFieldOverrides(structuredClone(element), childOverride),
+          );
         }
       }
     });
@@ -84,12 +95,25 @@ export function hydrateForm(
     return {
       stepId: recipeStep.stepId,
       title: recipeStep.title,
+      // Per-answer title overrides (#871). The live serving path reads
+      // `conditionalTitle` off the resolved step (resolveStepTitle in
+      // form-conditions), so it must survive hydration or the heading never
+      // adapts.
+      ...(recipeStep.conditionalTitle !== undefined
+        ? { conditionalTitle: recipeStep.conditionalTitle }
+        : {}),
       ...(recipeStep.description !== undefined
         ? { description: recipeStep.description }
         : {}),
       elements,
       ...(recipeStep.behaviours !== undefined
         ? { behaviours: recipeStep.behaviours }
+        : {}),
+      // Recipe-authored markdown (e.g. a confirmation "What you need to know"
+      // section) carried through to the citizen-facing form. Note: `nextSteps`
+      // is intentionally NOT carried — it is unused by the live serving path.
+      ...(recipeStep.markdownContent !== undefined
+        ? { markdownContent: recipeStep.markdownContent }
         : {}),
     };
   });
@@ -109,10 +133,18 @@ export function hydrateForm(
     ...(recipe.processors !== undefined
       ? { processors: recipe.processors }
       : {}),
+    // Carry coordinate-based catchment routing through to the served
+    // contract (#2137).
     ...(recipe.catchmentRouting !== undefined
       ? { catchmentRouting: recipe.catchmentRouting }
       : {}),
-    createdAt: now,
-    updatedAt: now,
+    // Preserve the recipe's own timestamps rather than regenerating them, so a
+    // client-side hydrated preview matches exactly what the API serves.
+    createdAt: recipe.createdAt,
+    updatedAt: recipe.updatedAt,
+    // Lift the optional application deadline (#1936) onto the served contract.
+    ...(recipe.meta?.closingDateTime !== undefined
+      ? { closingDateTime: recipe.meta.closingDateTime }
+      : {}),
   };
 }
