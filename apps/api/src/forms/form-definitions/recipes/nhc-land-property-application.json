@@ -1117,9 +1117,9 @@
             "fieldId": "bank-statement",
             "behaviours": [
               {
-                "type": "optionalIf",
+                "type": "fieldConditionalOn",
                 "value": "full-cash",
-                "operator": "notEqual",
+                "operator": "equal",
                 "targetStepId": "financing",
                 "targetFieldId": "financing-method"
               }
@@ -1138,9 +1138,9 @@
             "fieldId": "mortgage-certificate",
             "behaviours": [
               {
-                "type": "optionalIf",
+                "type": "fieldConditionalOn",
                 "value": "full-cash",
-                "operator": "equal",
+                "operator": "notEqual",
                 "targetStepId": "financing",
                 "targetFieldId": "financing-method"
               }
