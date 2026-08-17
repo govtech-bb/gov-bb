@@ -649,6 +649,14 @@
                 "value": "3-bedroom"
               }
             ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "empty-lot",
+                "operator": "notEqual",
+                "targetFieldId": "house-type"
+              }
+            ],
             "validations": {
               "required": {
                 "error": "Select a house type",
