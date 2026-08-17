@@ -27,7 +27,14 @@
       "title": "Tell us about yourself",
       "elements": [
         {
-          "ref": "components/title"
+          "ref": "components/title",
+          "overrides": {
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
         },
         {
           "ref": "components/first-name"
@@ -298,7 +305,12 @@
           "ref": "components/title",
           "overrides": {
             "label": "Title",
-            "fieldId": "co-applicant-title"
+            "fieldId": "co-applicant-title",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
