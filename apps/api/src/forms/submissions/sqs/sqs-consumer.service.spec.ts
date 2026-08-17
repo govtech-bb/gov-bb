@@ -190,7 +190,7 @@ describe("SqsConsumerService", () => {
     it("Slack-alerts on a NonRetryableError (permanent config failure), non-PII", async () => {
       factory.resolveByType.mockReturnValue(
         makeProcessor(
-          "email",
+          "webhook",
           vi.fn().mockRejectedValue(new NonRetryableError("missing dest")),
         ),
       );
@@ -199,6 +199,7 @@ describe("SqsConsumerService", () => {
       await service.processMessage(
         QUEUE_URL,
         sqsMessage({
+          processorType: "webhook",
           referenceCode: "JPP-20260604-9JZRZC",
           values: { applicant: { email: "citizen@example.com" } },
         }),
@@ -208,6 +209,7 @@ describe("SqsConsumerService", () => {
       const msg = slackNotify.mock.calls[0][0] as string;
       expect(msg).toContain("form=form-1");
       expect(msg).toContain("reference=JPP-20260604-9JZRZC");
+      expect(msg).toContain("processor=webhook");
       expect(msg).toContain("not retried");
       // config failures delete the message — the remediation must NOT tell the
       // operator to redrive (there is nothing in the DLQ).
@@ -223,12 +225,15 @@ describe("SqsConsumerService", () => {
     it("Slack-alerts when a retryable failure hits the terminal attempt (about to DLQ)", async () => {
       factory.resolveByType.mockReturnValue(
         makeProcessor(
-          "email",
-          vi.fn().mockRejectedValue(new Error("SES down")),
+          "webhook",
+          vi.fn().mockRejectedValue(new Error("CaMS 500")),
         ),
       );
 
-      await service.processMessage(QUEUE_URL, sqsMessage({}, "3")); // receiveCount = maxReceiveCount
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({ processorType: "webhook" }, "3"), // receiveCount = maxReceiveCount
+      );
 
       expect(slackNotify).toHaveBeenCalledTimes(1);
       expect(slackNotify.mock.calls[0][0]).toContain("routed to the DLQ");
@@ -243,27 +248,55 @@ describe("SqsConsumerService", () => {
     it("does NOT alert on a non-final retryable attempt", async () => {
       factory.resolveByType.mockReturnValue(
         makeProcessor(
+          "webhook",
+          vi.fn().mockRejectedValue(new Error("CaMS 500")),
+        ),
+      );
+
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({ processorType: "webhook" }, "1"), // 1 < maxReceiveCount
+      );
+
+      expect(slackNotify).not.toHaveBeenCalled();
+    });
+
+    it("does NOT alert for a non-webhook processor at the terminal attempt (scoped to CaMS webhook)", async () => {
+      factory.resolveByType.mockReturnValue(
+        makeProcessor(
           "email",
           vi.fn().mockRejectedValue(new Error("SES down")),
         ),
       );
 
-      await service.processMessage(QUEUE_URL, sqsMessage({}, "1")); // 1 < maxReceiveCount
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({ processorType: "email" }, "3"), // terminal attempt, but email
+      );
 
       expect(slackNotify).not.toHaveBeenCalled();
+      // unchanged: not deleted, so SQS redrive still moves it to the DLQ
+      expect(
+        sendMock.mock.calls.filter(
+          ([cmd]) => cmd instanceof DeleteMessageCommand,
+        ),
+      ).toHaveLength(0);
     });
 
     it("still deletes a NonRetryable message even if the alert notifier throws", async () => {
       slackNotify.mockRejectedValue(new Error("slack exploded"));
       factory.resolveByType.mockReturnValue(
         makeProcessor(
-          "email",
+          "webhook",
           vi.fn().mockRejectedValue(new NonRetryableError("bad config")),
         ),
       );
       sendMock.mockResolvedValue({});
 
-      await service.processMessage(QUEUE_URL, sqsMessage());
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({ processorType: "webhook" }),
+      );
 
       expect(
         sendMock.mock.calls.filter(
