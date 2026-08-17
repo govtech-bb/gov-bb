@@ -43,7 +43,15 @@
           "ref": "components/last-name"
         },
         {
-          "ref": "components/date-of-birth"
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "validations": {
+              "required": {
+                "error": "Enter your date of birth",
+                "value": true
+              }
+            }
+          }
         },
         {
           "ref": "components/generic-radio",
