@@ -782,8 +782,39 @@
       "behaviours": []
     },
     {
+      "stepId": "other-income",
+      "title": "Other sources of income",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "hint": "Do not include the salary you have already told us about.",
+            "label": "Do you have any other sources of income?",
+            "fieldId": "has-other-income",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
       "stepId": "household-income",
-      "title": "Tell us your household income",
+      "title": "Tell us about your other income",
       "elements": [
         {
           "ref": "components/generic-text",
@@ -852,6 +883,13 @@
           "min": 1,
           "type": "repeatable",
           "addAnotherLabel": "Do you have another source of income?"
+        },
+        {
+          "type": "stepConditionalOn",
+          "value": "yes",
+          "operator": "equal",
+          "targetStepId": "other-income",
+          "targetFieldId": "has-other-income"
         }
       ]
     },
