@@ -145,14 +145,7 @@
           "ref": "components/telephone"
         },
         {
-          "ref": "components/email",
-          "overrides": {
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
-          }
+          "ref": "components/email"
         }
       ],
       "behaviours": []
