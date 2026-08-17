@@ -1054,6 +1054,9 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
+            "ui": {
+              "hideLabel": true
+            },
             "label": "How will you finance the purchase?",
             "fieldId": "financing-method",
             "options": [
