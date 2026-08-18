@@ -45,6 +45,27 @@ export const PROGRAMME_CODES_BY_FORM: Record<string, Record<string, string>> = {
     "Sir Winston Scott Polyclinic": "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
     "St. Philip Polyclinic": "TEMP_RESTAURANT_LICENCE_ST_PHILIP",
   },
+  // PROVISIONAL — these follow the temp-licence naming convention but have NOT
+  // been issued by the CMS yet. They exist so the ongoing restaurant licence
+  // routes end-to-end while it is `visibility: preview`; every one must be
+  // confirmed against a real CMS queue before the form goes public, exactly as
+  // the temp-licence codes were. Note the two irregularities above are NOT
+  // copied blindly: `Randal Phillips` keeps the one-L spelling used by the
+  // licence codes (the two-L `RANDALL` is specific to the officer-request
+  // queue), and `Frederick Miller` routes to `..._ST_PHILIP` because that
+  // catchment has no Environmental Health Department of its own — a fact about
+  // the place, not about either form.
+  "apply-for-restaurant-licence": {
+    "Branford Taitt Polyclinic": "RESTAURANT_LICENCE_BRANFORD_TAITT",
+    "David Thompson Health & Social Services Complex":
+      "RESTAURANT_LICENCE_DAVID_THOMPSON",
+    "Eunice Gibson Polyclinic": "RESTAURANT_LICENCE_EUNICE_GIBSON",
+    "Frederick Miller Polyclinic": "RESTAURANT_LICENCE_ST_PHILIP",
+    "Maurice Byer Polyclinic": "RESTAURANT_LICENCE_MAURICE_BYER",
+    "Randal Phillips Polyclinic": "RESTAURANT_LICENCE_RANDAL_PHILLIPS",
+    "Sir Winston Scott Polyclinic": "RESTAURANT_LICENCE_WINSTON_SCOTT",
+    "St. Philip Polyclinic": "RESTAURANT_LICENCE_ST_PHILIP",
+  },
   "request-an-environmental-health-officer": {
     "Branford Taitt Polyclinic": "ENV_HEALTH_OFFICER_BRANFORD_TAITT",
     "David Thompson Health & Social Services Complex":
