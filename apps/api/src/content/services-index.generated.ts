@@ -266,6 +266,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   {
     slug: "get-food-safety-checks-and-approvals",
     title: "Get food safety checks and approvals from Environmental Health",
+    category: "business-trade",
     visibility: "draft",
   },
   {
@@ -378,6 +379,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   {
     slug: "register-guest-property-environmental-health",
     title: "Register a guest property with Environmental Health",
+    category: "business-trade",
     formId: "register-guest-property-environmental-health",
     visibility: "preview",
   },
