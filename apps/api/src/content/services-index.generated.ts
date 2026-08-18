@@ -442,6 +442,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
+    slug: "restaurant-licence-application",
+    title: "Apply for a restaurant licence",
+    formId: "restaurant-licence-application",
+    visibility: "draft",
+  },
+  {
     slug: "sell-goods-services-beach-park",
     title: "Apply for a licence to sell goods or services at a beach or park",
     category: "business-trade",
