@@ -5,6 +5,7 @@ stage: alpha
 publish_date: '2026-08-18'
 visibility: preview
 form_id: register-guest-property-environmental-health
+category: business-trade
 ---
 Use this service to apply to register a property that Environmental Health treats as a lodging house or barracks.
 
