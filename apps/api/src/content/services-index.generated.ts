@@ -76,6 +76,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
+    slug: "apply-for-hotel-licence",
+    title: "Apply for a Hotel Licence",
+    category: "housing",
+    visibility: "draft",
+  },
+  {
     slug: "apply-for-multiple-birth-benefit",
     title: "Apply for the Multiple Birth Benefit",
     category: "social-empowerment",
