@@ -1,0 +1,350 @@
+{
+  "formId": "hotel-licence-application",
+  "title": "Hotel Licence Application",
+  "description": "Apply for a new Hotel Licence or renew an existing one with Environmental Health",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "your-details.email",
+        "subject": "Your Hotel Licence application has been received"
+      }
+    }
+  ],
+  "meta": {
+    "visibility": "preview"
+  },
+  "steps": [
+    {
+      "stepId": "application-type",
+      "title": "Are you applying for a new Hotel Licence or renewing one?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "application-type",
+            "label": "Are you applying for a new Hotel Licence or renewing one?",
+            "options": [
+              {
+                "label": "New licence",
+                "value": "new-licence"
+              },
+              {
+                "label": "Renew a licence",
+                "value": "renew-licence"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether you are applying for a new licence or renewing one."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "hotel-licence-number",
+            "label": "Hotel Licence number",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the Hotel Licence number."
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "operator": "equal",
+                "value": "renew-licence"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "your-details",
+      "title": "Your details",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "first-name",
+            "label": "First name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your first name."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "middle-name",
+            "label": "Middle name or names",
+            "hint": "Leave this blank if you do not have any."
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "last-name",
+            "label": "Last name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your last name."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "your-address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your address."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "your-address-line-2",
+            "label": "Address line 2",
+            "hint": "Optional."
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "your-parish",
+            "label": "Parish",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your address."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-tel",
+          "overrides": {
+            "fieldId": "contact-number",
+            "label": "Contact number",
+            "hint": "You can enter a local or international number.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter a contact number."
+              },
+              "phone": {
+                "value": true,
+                "error": "Enter a contact number."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "email",
+            "label": "Email address",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter an email address."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "your-role",
+            "label": "What is your role with the hotel?",
+            "options": [
+              {
+                "label": "Owner",
+                "value": "owner"
+              },
+              {
+                "label": "Manager",
+                "value": "manager"
+              },
+              {
+                "label": "Operator",
+                "value": "operator"
+              },
+              {
+                "label": "Attorney",
+                "value": "attorney"
+              },
+              {
+                "label": "Another role",
+                "value": "another-role"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select your role with the hotel."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "describe-your-role",
+            "label": "Describe your role",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your role."
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "your-role",
+                "operator": "equal",
+                "value": "another-role"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "hotel-details",
+      "title": "Tell us about the hotel",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "hotel-name",
+            "label": "Hotel name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the hotel name."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "hotel-address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the hotel address."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "hotel-address-line-2",
+            "label": "Address line 2",
+            "hint": "Optional."
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "hotel-parish",
+            "label": "Parish",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the hotel address."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "maximum-number-of-guests",
+            "label": "What is the maximum number of guests who can stay at the hotel at one time?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the maximum number of guests."
+              },
+              "min": {
+                "value": 1,
+                "error": "Enter the maximum number of guests."
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "options": [
+              {
+                "label": "I confirm that the information provided is true and correct.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "You must confirm the declaration to continue"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "Your Hotel Licence application has been sent to Environmental Health. Environmental Health will review your application. They may contact you if they need more information. Submitting an application does not mean that a Hotel Licence has been granted."
+        }
+      ]
+    }
+  ],
+  "createdAt": "2026-08-18T17:01:58.317Z",
+  "updatedAt": "2026-08-18T17:01:58.317Z"
+}
