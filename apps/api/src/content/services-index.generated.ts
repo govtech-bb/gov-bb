@@ -231,6 +231,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
+    slug: "food-business-licence-application",
+    title: "Apply for a food business licence",
+    formId: "food-business-licence-application",
+    visibility: "draft",
+  },
+  {
     slug: "get-a-document-notarised",
     title: "Get a document notarised",
     category: "travel-id-citizenship",
