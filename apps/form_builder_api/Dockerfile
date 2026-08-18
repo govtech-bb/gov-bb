@@ -76,6 +76,15 @@ COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
 # removing it closes the finding with no runtime impact.
 RUN rm -rf node_modules/@esbuild node_modules/esbuild
 
+# Drop jsdom (and its transitive undici) from the runtime image. `jsdom` is a
+# root devDependency used only by the vitest DOM environment, and its dependency
+# `undici` is flagged by AWS Inspector. Nothing in apps/ or packages/ imports
+# either — the lockfile lists exactly one dependent for undici, and that is
+# jsdom — and the runtime CMD is `node dist/src/main.js`, so removing them
+# closes the finding with no runtime impact. Same mechanism as the esbuild
+# removal above.
+RUN rm -rf node_modules/jsdom node_modules/undici
+
 # Workspace package symlinks so require("@govtech-bb/database") resolves.
 # Generated from whatever's actually in packages/ rather than a hand-maintained
 # list — the previous hard-coded list silently broke when `@govtech-bb/git-publish`
