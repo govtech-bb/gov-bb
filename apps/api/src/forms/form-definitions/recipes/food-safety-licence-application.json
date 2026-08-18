@@ -1,0 +1,2151 @@
+{
+  "formId": "food-safety-licence-application",
+  "title": "Get food safety checks and approvals from Environmental Health",
+  "description": "Apply for a food safety check or licence for a food or drink setup or business",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "who-is-applying.applicant-email",
+        "subject": "Your application has been received"
+      }
+    }
+  ],
+  "meta": {
+    "visibility": "preview"
+  },
+  "steps": [
+    {
+      "stepId": "who-is-applying",
+      "title": "Who is completing this form?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "who-is-applying",
+            "label": "Who is completing this form?",
+            "options": [
+              {
+                "label": "The person responsible for the food or drink setup or business",
+                "value": "responsible-person"
+              },
+              {
+                "label": "Someone completing it for them",
+                "value": "someone-else"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "applicant-first-name",
+            "label": "First name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your first name"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "who-is-applying",
+                "operator": "equal",
+                "value": "responsible-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "applicant-middle-name",
+            "label": "Middle name or names",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "who-is-applying",
+                "operator": "equal",
+                "value": "responsible-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "applicant-last-name",
+            "label": "Last name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your last name"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "who-is-applying",
+                "operator": "equal",
+                "value": "responsible-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "applicant-email",
+            "label": "Email address",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your email address"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "who-is-applying",
+                "operator": "equal",
+                "value": "responsible-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "applicant-phone",
+            "label": "Phone number",
+            "hint": "Include the country code for international numbers",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your phone number"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "who-is-applying",
+                "operator": "equal",
+                "value": "responsible-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "form-completer-first-name",
+            "label": "First name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your first name"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "who-is-applying",
+                "operator": "equal",
+                "value": "someone-else"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "form-completer-middle-name",
+            "label": "Middle name or names",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "who-is-applying",
+                "operator": "equal",
+                "value": "someone-else"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "form-completer-last-name",
+            "label": "Last name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your last name"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "who-is-applying",
+                "operator": "equal",
+                "value": "someone-else"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "form-completer-email",
+            "label": "Email address",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your email address"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "who-is-applying",
+                "operator": "equal",
+                "value": "someone-else"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "form-completer-phone",
+            "label": "Phone number",
+            "hint": "Include the country code for international numbers",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your phone number"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "who-is-applying",
+                "operator": "equal",
+                "value": "someone-else"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "responsible-person-type",
+      "title": "Who is responsible for the food or drink setup or business?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "responsible-person-type",
+            "label": "Who is responsible for the food or drink setup or business?",
+            "options": [
+              {
+                "label": "A person",
+                "value": "person"
+              },
+              {
+                "label": "A business or organisation",
+                "value": "business"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "responsible-first-name",
+            "label": "First name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter their first name"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "responsible-person-type",
+                "operator": "equal",
+                "value": "person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "responsible-middle-name",
+            "label": "Middle name or names",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "responsible-person-type",
+                "operator": "equal",
+                "value": "person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "responsible-last-name",
+            "label": "Last name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter their last name"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "responsible-person-type",
+                "operator": "equal",
+                "value": "person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "responsible-address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the address"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "responsible-person-type",
+                "operator": "equal",
+                "value": "person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "responsible-address-line-2",
+            "label": "Address line 2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "responsible-person-type",
+                "operator": "equal",
+                "value": "person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "responsible-parish",
+            "label": "Parish",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select a parish"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "responsible-person-type",
+                "operator": "equal",
+                "value": "person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "responsible-phone",
+            "label": "Phone number",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter a phone number"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "responsible-person-type",
+                "operator": "equal",
+                "value": "person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "responsible-email",
+            "label": "Email address",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter an email address"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "responsible-person-type",
+                "operator": "equal",
+                "value": "person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "business-name",
+            "label": "Business or organisation name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the business or organisation name"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "responsible-person-type",
+                "operator": "equal",
+                "value": "business"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "business-address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the address"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "responsible-person-type",
+                "operator": "equal",
+                "value": "business"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "business-address-line-2",
+            "label": "Address line 2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "responsible-person-type",
+                "operator": "equal",
+                "value": "business"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "business-parish",
+            "label": "Parish",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select a parish"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "responsible-person-type",
+                "operator": "equal",
+                "value": "business"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "business-phone",
+            "label": "Phone number",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter a phone number"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "responsible-person-type",
+                "operator": "equal",
+                "value": "business"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "business-email",
+            "label": "Email address",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter an email address"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "responsible-person-type",
+                "operator": "equal",
+                "value": "business"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "who-is-applying",
+          "targetFieldId": "who-is-applying",
+          "operator": "equal",
+          "value": "someone-else"
+        }
+      ]
+    },
+    {
+      "stepId": "temporary-setup",
+      "title": "About the temporary food or drink setup",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "operates-30-days-or-less",
+            "label": "Will this food or drink setup operate for 30 days or less?",
+            "hint": "This is about the temporary setup you are applying for, not how long the business has been running.",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              },
+              {
+                "label": "Not sure",
+                "value": "not-sure"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "temporary-location",
+            "label": "Where will the temporary food or drink setup operate?",
+            "options": [
+              {
+                "label": "At an event",
+                "value": "event"
+              },
+              {
+                "label": "At a home",
+                "value": "home"
+              },
+              {
+                "label": "At another building",
+                "value": "building"
+              },
+              {
+                "label": "From a mobile or roadside setup",
+                "value": "mobile"
+              },
+              {
+                "label": "Somewhere else",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select a location"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "operates-30-days-or-less",
+                "operator": "in",
+                "value": [
+                  "yes",
+                  "not-sure"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "temporary-location-other",
+            "label": "Where will the temporary setup operate?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter where the setup will operate"
+              }
+            },
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "temporary-location",
+                "operator": "equal",
+                "value": "other"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "fieldId": "temporary-start-date",
+            "label": "Start date",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the start date"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "temporary-location",
+                "operator": "in",
+                "value": [
+                  "home",
+                  "building",
+                  "mobile",
+                  "other",
+                  "event"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "fieldId": "temporary-end-date",
+            "label": "End date",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the end date"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "temporary-location",
+                "operator": "in",
+                "value": [
+                  "home",
+                  "building",
+                  "mobile",
+                  "other",
+                  "event"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "who-is-applying",
+          "targetFieldId": "who-is-applying",
+          "operator": "equal",
+          "value": "responsible-person"
+        }
+      ]
+    },
+    {
+      "stepId": "event-details",
+      "title": "About the event",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "event-name",
+            "label": "Event name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the event name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "fieldId": "event-start-date",
+            "label": "Start date",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the start date"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "fieldId": "event-end-date",
+            "label": "End date",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the end date"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "event-venue",
+            "label": "Venue or location",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the venue or location"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "event-address",
+            "label": "Address",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the address"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "event-parish",
+            "label": "Parish",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select a parish"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "event-check-already-sent",
+            "label": "Has a request for food safety checks already been sent for this event?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              },
+              {
+                "label": "Not sure",
+                "value": "not-sure"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "temporary-setup",
+          "targetFieldId": "temporary-location",
+          "operator": "equal",
+          "value": "event"
+        }
+      ]
+    },
+    {
+      "stepId": "temporary-food-preparation",
+      "title": "Preparing food or drink",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "temporary-will-prepare-food",
+            "label": "Will any food or drink be prepared for this temporary setup?",
+            "hint": "Preparation can include cooking, heating, mixing, cutting or putting food together.",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "temporary-who-prepares",
+            "label": "Who will prepare the food or drink?",
+            "options": [
+              {
+                "label": "The person or business running the temporary setup",
+                "value": "setup-operator"
+              },
+              {
+                "label": "A caterer or another food business",
+                "value": "caterer"
+              },
+              {
+                "label": "Both",
+                "value": "both"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "temporary-will-prepare-food",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "caterer-name",
+            "label": "Name of the caterer or food business",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the name"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "temporary-who-prepares",
+                "operator": "in",
+                "value": [
+                  "caterer",
+                  "both"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "caterer-address",
+            "label": "Address",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the address"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "temporary-who-prepares",
+                "operator": "in",
+                "value": [
+                  "caterer",
+                  "both"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "caterer-has-licence",
+            "label": "Does the food or drink business have a current Food Business Licence?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "temporary-who-prepares",
+                "operator": "in",
+                "value": [
+                  "caterer",
+                  "both"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "temporary-setup",
+          "targetFieldId": "temporary-location",
+          "operator": "in",
+          "value": [
+            "event",
+            "home",
+            "building",
+            "mobile",
+            "other"
+          ]
+        }
+      ]
+    },
+    {
+      "stepId": "ongoing-type-check",
+      "title": "About the food safety check",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "is-ongoing-business",
+            "label": "Is this an ongoing restaurant or food business?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "check-type",
+            "label": "What is the food safety check for?",
+            "options": [
+              {
+                "label": "A new restaurant or food business",
+                "value": "new"
+              },
+              {
+                "label": "A change to an existing restaurant or food business",
+                "value": "change"
+              },
+              {
+                "label": "An existing restaurant or food business",
+                "value": "existing"
+              },
+              {
+                "label": "Something else",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-ongoing-business",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "check-type-other",
+            "label": "What is the food safety check for?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe what the check is for"
+              }
+            },
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "check-type",
+                "operator": "equal",
+                "value": "other"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "temporary-setup",
+          "targetFieldId": "operates-30-days-or-less",
+          "operator": "equal",
+          "value": "no"
+        }
+      ]
+    },
+    {
+      "stepId": "ongoing-business-details",
+      "title": "About the restaurant or food business",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "ongoing-business-name",
+            "label": "Business name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the business name"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-ongoing-business",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "ongoing-address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the address"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-ongoing-business",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "ongoing-address-line-2",
+            "label": "Address line 2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-ongoing-business",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "ongoing-parish",
+            "label": "Parish",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select a parish"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-ongoing-business",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "customer-access",
+            "label": "How will customers get food or drink from the business?",
+            "hint": "Select all that apply.",
+            "options": [
+              {
+                "label": "Eat or drink at the business",
+                "value": "eat-onsite"
+              },
+              {
+                "label": "Take food or drink away",
+                "value": "takeaway"
+              },
+              {
+                "label": "Have food or drink delivered",
+                "value": "delivery"
+              },
+              {
+                "label": "Collect food or drink they ordered",
+                "value": "collection"
+              },
+              {
+                "label": "Buy packaged food or drink",
+                "value": "packaged"
+              },
+              {
+                "label": "Get food or drink through another business or organisation",
+                "value": "through-other"
+              },
+              {
+                "label": "Something else",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select at least one option"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-ongoing-business",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "customer-access-other",
+            "label": "How will customers get the food or drink?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe how customers will access the food or drink"
+              }
+            },
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "customer-access",
+                "operator": "in",
+                "value": [
+                  "other"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "ongoing-will-prepare",
+            "label": "Will any food or drink be prepared at the business?",
+            "hint": "Preparation can include cooking, heating, mixing, cutting or putting food together.",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-ongoing-business",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "customers-eat-onsite",
+            "label": "Will customers eat food at the business?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-ongoing-business",
+                "operator": "equal",
+                "value": "yes"
+              },
+              {
+                "type": "optionalIf",
+                "targetFieldId": "customer-access",
+                "operator": "in",
+                "value": [
+                  "eat-onsite"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "customers-sit-eat",
+            "label": "Will customers be able to sit and eat or drink at the business?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "customers-eat-onsite",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "ongoing-type-check",
+          "targetFieldId": "is-ongoing-business",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "stepId": "food-and-drink",
+      "title": "About the food and drink",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "food-types",
+            "label": "What types of food or drink will be prepared, sold or provided?",
+            "hint": "Select all that apply.",
+            "options": [
+              {
+                "label": "Meat or poultry",
+                "value": "meat"
+              },
+              {
+                "label": "Fish or seafood",
+                "value": "fish"
+              },
+              {
+                "label": "Eggs or dairy products",
+                "value": "eggs-dairy"
+              },
+              {
+                "label": "Fruit or vegetables",
+                "value": "vegetables"
+              },
+              {
+                "label": "Rice, pasta, bread or other starches",
+                "value": "starches"
+              },
+              {
+                "label": "Baked goods or desserts",
+                "value": "baked"
+              },
+              {
+                "label": "Packaged food or drink",
+                "value": "packaged"
+              },
+              {
+                "label": "Drinks",
+                "value": "drinks"
+              },
+              {
+                "label": "Something else",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select at least one option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "food-types-other",
+            "label": "What other types of food or drink will be prepared, sold or provided?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe the other types"
+              }
+            },
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-types",
+                "operator": "in",
+                "value": [
+                  "other"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "food-list",
+            "label": "What food or drink will be offered?",
+            "hint": "List the actual food or drink you plan to prepare, sell or provide.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe what will be offered"
+              }
+            },
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "raw-food-served",
+            "label": "Will any food be served raw or partly cooked?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-types",
+                "operator": "notEqual",
+                "value": "drinks"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "raw-food-details",
+            "label": "What food will be served raw or partly cooked?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe the raw or partly cooked food"
+              }
+            },
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "raw-food-served",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "food-preparation",
+      "title": "Where the food or drink will be prepared",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "food-prepared-elsewhere",
+            "label": "Will any food or drink be prepared somewhere else?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "prep-location",
+            "label": "Where will the food or drink be prepared?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe where it will be prepared"
+              }
+            },
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-prepared-elsewhere",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "prep-what",
+            "label": "What food or drink will be prepared there?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe what will be prepared"
+              }
+            },
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-prepared-elsewhere",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "food-cooked-elsewhere",
+            "label": "Will any food be cooked somewhere else?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-types",
+                "operator": "notEqual",
+                "value": "drinks"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "food-heated-again",
+            "label": "Will any of this food be heated again before it is served or sold?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-cooked-elsewhere",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "event-transport-method",
+            "label": "How will the food or drink be taken to the event?",
+            "hint": "Tell us how it will be packed and transported.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe how it will be transported"
+              }
+            },
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "temporary-location",
+                "operator": "equal",
+                "value": "event"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "temporary-transport-method",
+            "label": "How will the food or drink be taken to the temporary setup?",
+            "hint": "Tell us how it will be packed and transported.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe how it will be transported"
+              }
+            },
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "temporary-location",
+                "operator": "in",
+                "value": [
+                  "home",
+                  "building",
+                  "mobile",
+                  "other"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "food-temperature",
+      "title": "Keeping food and drink at the right temperature",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "food-kept-hot",
+            "label": "Will any food need to be kept hot before it is served or sold?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-types",
+                "operator": "notEqual",
+                "value": "drinks"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "hot-storage-method",
+            "label": "How will the food be kept hot?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe how it will be kept hot"
+              }
+            },
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-kept-hot",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "food-kept-cold",
+            "label": "Will any food or drink need to be kept cold before it is served or sold?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "cold-storage-method",
+            "label": "How will it be kept cold?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe how it will be kept cold"
+              }
+            },
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-kept-cold",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "water-hygiene",
+      "title": "Water, handwashing and cleaning",
+      "elements": [
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "temporary-water-source",
+            "label": "Where will the water come from?",
+            "hint": "Include water used for drinking, preparing food or drink, washing hands and cleaning.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe the water source"
+              }
+            },
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "temporary-location",
+                "operator": "in",
+                "value": [
+                  "event",
+                  "home",
+                  "building",
+                  "mobile",
+                  "other"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "ongoing-running-water",
+            "label": "Will there be running water at the business?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-ongoing-business",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "handwashing-facilities",
+            "label": "How will people handling food wash their hands?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe the handwashing facilities"
+              }
+            },
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "prep-area-cleaning",
+            "label": "How will food preparation areas and equipment be cleaned?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe how they will be cleaned"
+              }
+            },
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-types",
+                "operator": "notEqual",
+                "value": "drinks"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "utensil-washing",
+            "label": "Where will utensils and equipment be washed?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe where they will be washed"
+              }
+            },
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-types",
+                "operator": "notEqual",
+                "value": "drinks"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "facilities",
+      "title": "Facilities at the business",
+      "elements": [
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "customer-toilet-facilities",
+            "label": "What toilet and handwashing facilities will customers be able to use?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe the facilities"
+              }
+            },
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "customers-sit-eat",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "ventilation-method",
+            "label": "How will smoke, steam and cooking smells be removed?",
+            "hint": "For example, an extractor fan or hood.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe the ventilation"
+              }
+            },
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-types",
+                "operator": "notEqual",
+                "value": "drinks"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "waste",
+      "title": "How will waste be handled?",
+      "elements": [
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "waste-storage-during-day",
+            "label": "How will waste be stored during the day?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe how waste will be stored"
+              }
+            },
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "waste-storage-final",
+            "label": "Where will waste be stored before it is collected or removed?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe the storage location"
+              }
+            },
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "waste-removal-method",
+            "label": "How will waste be removed?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe how waste will be removed"
+              }
+            },
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "waste-removal-frequency",
+            "label": "How often will waste be removed?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter how often waste will be removed"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "options": [
+              {
+                "label": "I confirm that the information I have provided is correct.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "You must confirm the declaration to continue"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "We have received your submission. You will receive a confirmation email at the address you provided."
+        }
+      ]
+    }
+  ],
+  "createdAt": "2026-08-18T14:09:42.510Z",
+  "updatedAt": "2026-08-18T14:09:42.510Z"
+}
