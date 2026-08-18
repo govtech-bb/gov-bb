@@ -7,30 +7,44 @@ visibility: preview
 form_id: register-guest-property-environmental-health
 category: business-trade
 ---
-Use this service to apply to register a property that Environmental Health treats as a lodging house or barracks.
+Use this service to apply to register a property as a lodging house or barracks with Environmental Health.
 
-You do not need to know which one applies before you start.
+You do not need to know whether your property is a lodging house or barracks before you start.
+
+## Before you start
+
+The application should take about 10 minutes to complete.
+
+You may need:
+
+- your contact details
+- the property owner's details, if you are not the owner
+- the property address
+- the number of rooms
+- the maximum number of people who can stay at the property at one time
+- the size of the rooms
+- details about bathrooms and toilets
+- information about beds and bunk beds
+- information about the water supply
 
 ## What is a lodging house or barracks?
 
 **Lodging house**
 
-A place where people pay to stay for a short time and may share a room with people they do not know.
+A place where the same room can be rented to different guests at the same time.
 
 **Barracks**
 
-A place with separate rooms where people may share bathrooms, toilets, kitchens or other spaces.
+A place where guests rent separate rooms and share bathrooms or toilets with other guests.
 
-## Before you start
+## What happens after you apply
 
-The application takes about 10 minutes to complete.
+Environmental Health will review your application.
 
-You may need:
+They may contact you if they need more information.
 
-- the size of the rooms
-- details about the bathrooms and toilets
-- how many people can stay at the property
-- information about beds and bunk beds
-- information about the water supply
+They may also need to inspect the property before deciding whether it can be registered.
+
+Submitting the application does not mean the property has been registered.
 
 <a data-start-link>Start</a>
