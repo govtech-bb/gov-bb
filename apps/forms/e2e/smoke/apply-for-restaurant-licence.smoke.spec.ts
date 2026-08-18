@@ -27,6 +27,7 @@
  *                    non-public recipe 404s without one. Pass it on the command
  *                    line so the secret never lands in the repo.
  *   SMOKE_SLOWMO     ms delay per action for watching a headed run.
+ *   SMOKE_HOLD_CYA   pause a headed run on "Check your answers", before submit.
  *   FAKER_SEED       fix faker's RNG for a reproducible data set.
  *
  * Form-specific notes:
@@ -250,6 +251,9 @@ test.describe("Apply for a restaurant licence — Live Smoke", () => {
     step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
     await expect(page.getByText(data.restaurantName).first()).toBeVisible();
+    // SMOKE_HOLD_CYA=1 pauses a headed run here so the review screen can be
+    // inspected before anything is submitted (matches the sibling specs).
+    if (process.env.SMOKE_HOLD_CYA) await page.pause();
     await advance(page, step);
 
     // ─── Declaration ────────────────────────────────────────────────────────

@@ -357,9 +357,6 @@
             "hint": "PDF, JPG or PNG. You can upload more than one file.",
             "multiple": true,
             "validations": {
-              "required": {
-                "value": false
-              },
               "fileTypes": {
                 "value": ["application/pdf", "image/jpeg", "image/png"],
                 "error": "Upload a PDF, JPG or PNG"
