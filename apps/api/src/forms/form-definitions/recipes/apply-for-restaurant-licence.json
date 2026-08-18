@@ -1,0 +1,416 @@
+{
+  "formId": "apply-for-restaurant-licence",
+  "title": "Apply for a restaurant licence",
+  "description": "Apply for a licence to operate a restaurant in Barbados, under the Health Services (Restaurant) Regulations, 1969. Issued by the Environmental Health Department.",
+  "createdAt": "2026-08-18T00:00:00Z",
+  "updatedAt": "2026-08-18T00:00:00Z",
+  "contactDetails": {
+    "title": "Ministry of Health and Wellness",
+    "email": "info@health.gov.bb",
+    "telephoneNumber": "+1 (246) 536-3800"
+  },
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your restaurant licence application has been received",
+        "recipientField": "applicant-details.email"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "subject": "A new restaurant licence application has been received",
+        "recipientField": "catchment.mdaEmail"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "mapping": {
+          "programmeCode": "RESTAURANT_LICENCE",
+          "applicant": {
+            "name": [
+              "applicant-details.applicant-first-name",
+              "applicant-details.applicant-last-name"
+            ],
+            "email": "applicant-details.email",
+            "phone": "applicant-details.mobile-number"
+          },
+          "excludeSteps": ["declaration", "submission-confirmation"],
+          "groupByStep": true
+        }
+      }
+    }
+  ],
+  "catchmentRouting": {
+    "coordinatesField": "restaurant-details.restaurant-address-coordinates",
+    "parishField": "restaurant-details.restaurant-parish"
+  },
+  "steps": [
+    {
+      "stepId": "application-type",
+      "title": "Is this a new application or a renewal?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Is this a new application or a renewal?",
+            "fieldId": "application-type",
+            "ui": {
+              "hideLabel": true
+            },
+            "options": [
+              {
+                "label": "New application",
+                "value": "new"
+              },
+              {
+                "label": "Renewal",
+                "value": "renewal"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether this is a new application or a renewal"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "applicant-details",
+      "title": "Your details",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First name",
+            "fieldId": "applicant-first-name"
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "label": "Middle name (optional)",
+            "fieldId": "applicant-middle-name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last name",
+            "fieldId": "applicant-last-name"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "applicant-address-line-1"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2 (optional)",
+            "fieldId": "applicant-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "applicant-parish"
+          }
+        },
+        {
+          "ref": "components/mobile-telephone",
+          "overrides": {
+            "label": "Mobile number",
+            "fieldId": "mobile-number",
+            "hint": "We will use your mobile number to contact you. For example, (246) 249 1234."
+          }
+        },
+        {
+          "ref": "components/home-telephone",
+          "overrides": {
+            "label": "Home telephone (optional)",
+            "hint": "For example, (246) 433 1234.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/work-telephone",
+          "overrides": {
+            "label": "Work telephone (optional)",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "label": "Email address",
+            "hint": "We will use this to contact you about your application. For example, you@example.com."
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "restaurant-owner",
+      "title": "Are you the owner or operator of the restaurant?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Are you the owner or operator of the restaurant?",
+            "fieldId": "is-owner-operator",
+            "ui": {
+              "hideLabel": true
+            },
+            "hint": "This records who is responsible for the establishment. You still give your own details, which you did on the last page.",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether you are the owner or operator of the restaurant"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Owner or operator's name",
+            "fieldId": "owner-operator-name",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-owner-operator",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the owner or operator's name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-tel",
+          "overrides": {
+            "label": "Owner or operator's phone number",
+            "fieldId": "owner-operator-phone",
+            "hint": "Give a phone number or an email for the owner or operator. For example, (246) 249 1234.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-owner-operator",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the owner or operator's phone number"
+              },
+              "phone": {
+                "value": true,
+                "error": "Please enter a valid phone number"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-email",
+          "overrides": {
+            "label": "Owner or operator's email address (optional)",
+            "fieldId": "owner-operator-email",
+            "hint": "For example, owner@example.com.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-owner-operator",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "email": {
+                "value": true,
+                "error": "Enter a valid email address"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "restaurant-details",
+      "title": "About the restaurant",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Name of restaurant",
+            "fieldId": "restaurant-name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the name of the restaurant"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address-lookup",
+          "overrides": {
+            "label": "Restaurant address line 1",
+            "fieldId": "restaurant-address-line-1",
+            "geocodeTargets": {
+              "line2FieldId": "restaurant-address-line-2",
+              "parishFieldId": "restaurant-parish",
+              "coordinatesFieldId": "restaurant-address-coordinates"
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Restaurant address line 2 (optional)",
+            "fieldId": "restaurant-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Parish of the restaurant",
+            "fieldId": "restaurant-parish"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Restaurant location coordinates",
+            "fieldId": "restaurant-address-coordinates",
+            "ui": {
+              "hidden": true
+            },
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "documents",
+      "title": "Supporting documents",
+      "elements": [
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "label": "Supporting documents (optional)",
+            "fieldId": "supporting-documents",
+            "hint": "PDF, JPG or PNG. You can upload more than one file.",
+            "multiple": true,
+            "validations": {
+              "fileTypes": {
+                "value": ["application/pdf", "image/jpeg", "image/png"],
+                "error": "Upload a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
+              },
+              "maxSize": {
+                "value": 10485760,
+                "error": "Your files must come to 10 MB or less in total"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "supporting-documents-note",
+            "variant": "inset",
+            "content": "You do not have to upload anything to apply. If you already have documents about the premises, such as plans, upload them here and it may save a follow-up request."
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential. I will operate the restaurant in accordance with the Health Services (Restaurant) Regulations, 1969.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "You must confirm the declaration to continue"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "markdownContent": "A copy of your application has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your application.\n- An environmental health officer may arrange to inspect the restaurant before a licence is issued.\n- They will contact you using the details you gave.\n\nKeep your reference number for any follow-up."
+    }
+  ],
+  "meta": {
+    "visibility": "preview"
+  }
+}
