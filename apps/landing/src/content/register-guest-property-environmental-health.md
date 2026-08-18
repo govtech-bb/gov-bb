@@ -3,7 +3,7 @@ title: Register a guest property with Environmental Health
 description: Apply to register a lodging house or barracks with Environmental Health.
 stage: alpha
 publish_date: '2026-08-18'
-visibility: public
+visibility: preview
 form_id: register-guest-property-environmental-health
 ---
 Use this service to apply to register a property as a lodging house or barracks with Environmental Health.
