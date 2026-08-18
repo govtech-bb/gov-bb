@@ -257,6 +257,11 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
+    slug: "get-food-safety-checks-and-approvals",
+    title: "Get food safety checks and approvals from Environmental Health",
+    visibility: "draft",
+  },
+  {
     slug: "get-marriage-certificate",
     title: "Get a copy of a marriage certificate",
     category: "family-birth-relationships",
