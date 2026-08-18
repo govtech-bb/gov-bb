@@ -90,6 +90,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
+    slug: "apply-for-restaurant-licence",
+    title: "Apply for a restaurant licence",
+    category: "business-trade",
+    formId: "apply-for-restaurant-licence",
+    visibility: "preview",
+  },
+  {
     slug: "apply-for-secondary-school-entry-for-a-non-national-child",
     title: "Apply for secondary school entry for a non-national child",
     category: "education",
@@ -257,6 +264,11 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
+    slug: "get-food-safety-checks-and-approvals",
+    title: "Get food safety checks and approvals from Environmental Health",
+    visibility: "draft",
+  },
+  {
     slug: "get-marriage-certificate",
     title: "Get a copy of a marriage certificate",
     category: "family-birth-relationships",
@@ -361,6 +373,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     title: "Register for the Seniors' Recreational Activities Programme",
     category: "social-empowerment",
     formId: "seniors-recreational-activities-programme",
+    visibility: "preview",
+  },
+  {
+    slug: "register-guest-property-environmental-health",
+    title: "Register a guest property with Environmental Health",
+    formId: "register-guest-property-environmental-health",
     visibility: "preview",
   },
   {

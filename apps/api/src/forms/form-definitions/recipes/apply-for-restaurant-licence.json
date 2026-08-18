@@ -37,11 +37,7 @@
             "email": "applicant-details.email",
             "phone": "applicant-details.mobile-number"
           },
-          "excludeSteps": [
-            "check-your-answers",
-            "declaration",
-            "submission-confirmation"
-          ],
+          "excludeSteps": ["declaration", "submission-confirmation"],
           "groupByStep": true
         }
       }
