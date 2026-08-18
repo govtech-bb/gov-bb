@@ -29,6 +29,9 @@ jobs:
   a11y:
     name: A11y scan
     runs-on: ubuntu-latest
+    # The scan runs in ~7m; this is a backstop against a hang, not a
+    # performance budget. Without it the job inherits GitHub's 6h default.
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -41,6 +44,9 @@ jobs:
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
       - name: Install Playwright chromium
+        # Bounded so a wedged browser download fails in minutes rather than
+        # sitting on the runner until the 6h job default (#2291).
+        timeout-minutes: 10
         run: pnpm --filter @govtech-bb/forms exec playwright install --with-deps chromium
       - name: Run live a11y scan
         env:
