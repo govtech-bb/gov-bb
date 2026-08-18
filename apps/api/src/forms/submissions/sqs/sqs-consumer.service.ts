@@ -19,10 +19,17 @@ import {
   SlackNotifierService,
   mrkdwnEscape,
 } from "@/notifications/slack-notifier.service";
+import type { Processor } from "@govtech-bb/form-types";
 import { ProcessorFactory } from "../processors/processor-factory.service";
 import { NonRetryableError } from "../processors/non-retryable-error";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import type { SubmissionSqsMessage } from "./submission-sqs-message.interface";
+
+/** Operator Slack alerts are scoped to this processor type (#2168) — the CaMS
+ *  webhook dispatch, whose failure is the operator-critical path. Typed as
+ *  Processor["type"] so a rename of the processor union breaks the build here
+ *  rather than silently disabling every alert. */
+const ALERTED_PROCESSOR_TYPE: Processor["type"] = "webhook";
 
 @Injectable()
 export class SqsConsumerService
@@ -269,6 +276,11 @@ export class SqsConsumerService
    * exhausted) or dropped as a permanent config error (`config`). Non-PII only:
    * formId, reference, processor, attempt — never the submission `values`. The
    * notifier never throws, so this cannot affect the delete/redrive decision.
+   *
+   * Scoped to the CaMS webhook dispatch: a failed case hand-off is the
+   * operator-critical path. Other processors (email/spreadsheet/opencrvs/
+   * payment) still retry / dead-letter / drop exactly as before — just without
+   * a Slack alert.
    */
   private async alertTerminalFailure(
     payload: SubmissionSqsMessage,
@@ -276,6 +288,8 @@ export class SqsConsumerService
     kind: "config" | "delivery",
     err: unknown,
   ): Promise<void> {
+    if (payload.processorType !== ALERTED_PROCESSOR_TYPE) return;
+
     const reason =
       kind === "config"
         ? "permanent config error — not retried (dropped)"
