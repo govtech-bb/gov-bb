@@ -21,6 +21,10 @@ export const Title: SelectPrimitive = {
       label: "Mrs",
       value: "mrs",
     },
+    {
+      label: "Dr",
+      value: "dr",
+    },
   ],
   multiple: false,
   ui: {

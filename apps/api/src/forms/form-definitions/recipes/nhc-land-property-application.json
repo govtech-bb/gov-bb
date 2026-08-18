@@ -27,7 +27,14 @@
       "title": "Tell us about yourself",
       "elements": [
         {
-          "ref": "components/title"
+          "ref": "components/title",
+          "overrides": {
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
         },
         {
           "ref": "components/first-name"
@@ -43,7 +50,15 @@
           "ref": "components/last-name"
         },
         {
-          "ref": "components/date-of-birth"
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "validations": {
+              "required": {
+                "error": "Enter your date of birth",
+                "value": true
+              }
+            }
+          }
         },
         {
           "ref": "components/generic-radio",
@@ -145,14 +160,7 @@
           "ref": "components/telephone"
         },
         {
-          "ref": "components/email",
-          "overrides": {
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
-          }
+          "ref": "components/email"
         }
       ],
       "behaviours": []
@@ -297,7 +305,12 @@
           "ref": "components/title",
           "overrides": {
             "label": "Title",
-            "fieldId": "co-applicant-title"
+            "fieldId": "co-applicant-title",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -648,6 +661,14 @@
                 "value": "3-bedroom"
               }
             ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "empty-lot",
+                "operator": "notEqual",
+                "targetFieldId": "house-type"
+              }
+            ],
             "validations": {
               "required": {
                 "error": "Select a house type",
@@ -781,8 +802,39 @@
       "behaviours": []
     },
     {
+      "stepId": "other-income",
+      "title": "Other sources of income",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "hint": "Do not include the salary you have already told us about.",
+            "label": "Do you have any other sources of income?",
+            "fieldId": "has-other-income",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
       "stepId": "household-income",
-      "title": "Tell us your household income",
+      "title": "Tell us about your other income",
       "elements": [
         {
           "ref": "components/generic-text",
@@ -851,6 +903,13 @@
           "min": 1,
           "type": "repeatable",
           "addAnotherLabel": "Do you have another source of income?"
+        },
+        {
+          "type": "stepConditionalOn",
+          "value": "yes",
+          "operator": "equal",
+          "targetStepId": "other-income",
+          "targetFieldId": "has-other-income"
         }
       ]
     },
@@ -1007,6 +1066,9 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
+            "ui": {
+              "hideLabel": true
+            },
             "label": "How will you finance the purchase?",
             "fieldId": "financing-method",
             "options": [
@@ -1116,9 +1178,9 @@
             "fieldId": "bank-statement",
             "behaviours": [
               {
-                "type": "optionalIf",
+                "type": "fieldConditionalOn",
                 "value": "full-cash",
-                "operator": "notEqual",
+                "operator": "equal",
                 "targetStepId": "financing",
                 "targetFieldId": "financing-method"
               }
@@ -1137,9 +1199,9 @@
             "fieldId": "mortgage-certificate",
             "behaviours": [
               {
-                "type": "optionalIf",
+                "type": "fieldConditionalOn",
                 "value": "full-cash",
-                "operator": "equal",
+                "operator": "notEqual",
                 "targetStepId": "financing",
                 "targetFieldId": "financing-method"
               }
