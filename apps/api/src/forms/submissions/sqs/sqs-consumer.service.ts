@@ -19,15 +19,17 @@ import {
   SlackNotifierService,
   mrkdwnEscape,
 } from "@/notifications/slack-notifier.service";
+import type { Processor } from "@govtech-bb/form-types";
 import { ProcessorFactory } from "../processors/processor-factory.service";
 import { NonRetryableError } from "../processors/non-retryable-error";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import type { SubmissionSqsMessage } from "./submission-sqs-message.interface";
 
 /** Operator Slack alerts are scoped to this processor type (#2168) — the CaMS
- *  webhook dispatch, whose failure is the operator-critical path. Matches
- *  WebhookProcessor.type. */
-const ALERTED_PROCESSOR_TYPE = "webhook";
+ *  webhook dispatch, whose failure is the operator-critical path. Typed as
+ *  Processor["type"] so a rename of the processor union breaks the build here
+ *  rather than silently disabling every alert. */
+const ALERTED_PROCESSOR_TYPE: Processor["type"] = "webhook";
 
 @Injectable()
 export class SqsConsumerService
