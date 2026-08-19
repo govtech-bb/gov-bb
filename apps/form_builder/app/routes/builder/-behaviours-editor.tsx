@@ -624,6 +624,10 @@ export function BehavioursEditor({
             ))}
           </select>
           {available.some(isUnsupported) && (
+            // Keep in sync with fieldArray's supportedHtmlTypes
+            // (behaviour-builder.ts) — hand-written copy so it reads as plain
+            // English; only fieldArray declares supportedHtmlTypes today, so a
+            // second adopter needs its own wording here.
             <small className={styles.fieldHint}>
               Only text, number, phone, email, time and long-answer fields can
               be answered more than once.

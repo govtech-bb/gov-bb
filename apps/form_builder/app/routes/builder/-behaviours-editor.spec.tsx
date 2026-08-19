@@ -1211,3 +1211,11 @@ it("renders no miniature without currentField", () => {
   );
   expect(screen.queryByText("The applicant sees")).not.toBeInTheDocument();
 });
+
+it("miniature caps at 5 boxes and collapses the rest to an '…and N more' line", () => {
+  renderFieldArrayEditor([
+    { type: "fieldArray", min: 8, max: 10 } as unknown as Behaviour,
+  ]);
+  expect(screen.getAllByTestId("fa-miniature-box")).toHaveLength(5);
+  expect(screen.getByText("…and 3 more")).toBeInTheDocument();
+});
