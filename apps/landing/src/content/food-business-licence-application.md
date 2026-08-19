@@ -5,7 +5,7 @@ description: >-
   Environmental Health.
 stage: alpha
 publish_date: '2026-08-18'
-visibility: draft
+visibility: preview
 form_id: food-business-licence-application
 category: business-trade
 ---
