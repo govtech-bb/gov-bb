@@ -241,7 +241,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     title: "Apply for a food business licence",
     category: "business-trade",
     formId: "food-business-licence-application",
-    visibility: "draft",
+    visibility: "preview",
   },
   {
     slug: "get-a-document-notarised",
