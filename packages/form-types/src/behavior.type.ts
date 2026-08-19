@@ -134,6 +134,10 @@ export const fieldArrayBehaviourSchema = z.object({
   type: z.literal("fieldArray"),
   min: z.number(),
   max: z.number(),
+  // Optional override for the auto-generated "Add another?" button label, so a
+  // recipe can phrase it per field (e.g. "Add another middle name"). Falls
+  // back to "Add Another" when omitted.
+  addAnotherLabel: z.string().min(1).optional(),
 });
 export type FieldArrayBehaviour = z.infer<typeof fieldArrayBehaviourSchema>;
 

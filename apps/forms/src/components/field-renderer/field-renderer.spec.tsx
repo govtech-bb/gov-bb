@@ -455,6 +455,41 @@ describe("FieldRenderer", () => {
         screen.getByRole("button", { name: "Remove Address line" }),
       ).toBeInTheDocument();
     });
+
+    it("with addAnotherLabel set, the button renders that label verbatim with no 'Add Another' text", () => {
+      mockState = { value: ["first"], meta: { isValid: true, errors: [] } };
+      const { container } = renderField(
+        primitive("text", {
+          label: "Middle name",
+          behaviours: [
+            {
+              ...fieldArrayBehaviour,
+              addAnotherLabel: "Add another middle name",
+            },
+          ],
+        }),
+      );
+      const button = screen.getByRole("button", {
+        name: "Add another middle name",
+      });
+      expect(button).toBeInTheDocument();
+      expect(button.textContent).toBe("Add another middle name");
+      expect(container.querySelector(".govbb-visually-hidden")).toBeNull();
+    });
+
+    it("without addAnotherLabel, the button still renders 'Add Another' with the field label visually hidden", () => {
+      mockState = { value: ["first"], meta: { isValid: true, errors: [] } };
+      const { container } = renderField(
+        primitive("text", {
+          label: "Address line",
+          behaviours: [fieldArrayBehaviour],
+        }),
+      );
+      expect(
+        screen.getByRole("button", { name: "Add Another Address line" }),
+      ).toBeInTheDocument();
+      expect(container.querySelector(".govbb-visually-hidden")).not.toBeNull();
+    });
   });
 
   // -------------------------------------------------------------------------

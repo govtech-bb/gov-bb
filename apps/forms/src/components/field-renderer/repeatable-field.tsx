@@ -104,8 +104,12 @@ export function renderRepeatableOrSingle(
           className="govbb-btn--link"
           onClick={() => addAnotherField(values)}
         >
-          Add Another{" "}
-          <span className="govbb-visually-hidden">{field.label}</span>
+          {fieldArray.addAnotherLabel ?? (
+            <>
+              Add Another{" "}
+              <span className="govbb-visually-hidden">{field.label}</span>
+            </>
+          )}
         </button>
       ) : null}
     </>

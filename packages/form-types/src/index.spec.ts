@@ -670,6 +670,35 @@ describe("fieldArrayBehaviourSchema", () => {
         .success,
     ).toBe(false);
   });
+
+  it("accepts an optional addAnotherLabel", () => {
+    const result = fieldArrayBehaviourSchema.safeParse({
+      type: "fieldArray",
+      min: 0,
+      max: 10,
+      addAnotherLabel: "Add another middle name",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an empty addAnotherLabel", () => {
+    const result = fieldArrayBehaviourSchema.safeParse({
+      type: "fieldArray",
+      min: 0,
+      max: 10,
+      addAnotherLabel: "",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a fieldArray behaviour without addAnotherLabel", () => {
+    const result = fieldArrayBehaviourSchema.safeParse({
+      type: "fieldArray",
+      min: 0,
+      max: 10,
+    });
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("sharedFieldsBehaviourSchema", () => {
