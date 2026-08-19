@@ -57,6 +57,7 @@ import { test, expect, type Page } from "@playwright/test";
 import {
   STEP_TIMEOUT,
   advance,
+  expectLeadTimeWarningIsAdvisory,
   expectStep,
   fillDate,
   fillField,
@@ -361,6 +362,7 @@ test.describe("Temporary Restaurant Licence — Live Smoke", () => {
     );
     await field(page, step, "event-start-time", data.startTime);
     await field(page, step, "event-end-time", data.endTime);
+    await expectLeadTimeWarningIsAdvisory(page, step, data.start);
     await advance(page, step);
 
     // ─── Step 4: Food and drink (checkbox-accordion) ─────────────────────────
@@ -413,6 +415,12 @@ test.describe("Temporary Restaurant Licence — Live Smoke", () => {
 
     // ─── Step 6: Supporting documents (only medical-certs required here) ─────
     step = expectStep(page, "documents");
+    // The site plan is optional for EVERYONE now (it used to be required unless
+    // `optionalIf` organiser=no relaxed it), so it stays empty here and the step
+    // must still advance. Its label carries the "(optional)" suffix.
+    await expect(page.locator(`label[for="${step}_site-plan"]`)).toContainText(
+      "(optional)",
+    );
     await uploadOne(page, step, "medical-certs", {
       name: TEST_PNG.name,
       mimeType: TEST_PNG.mimeType,
@@ -430,6 +438,10 @@ test.describe("Temporary Restaurant Licence — Live Smoke", () => {
     // the declaration + real submit. Enable with SMOKE_HOLD_CYA=1; close the
     // window (don't resume) to end without submitting. No-op on normal/CI runs.
     if (process.env.SMOKE_HOLD_CYA) await page.pause();
+    // SMOKE_HOLD_CYA's unattended sibling: end the run here, green, having
+    // walked every step but created nothing. For verifying a form change
+    // end-to-end (locally or against a preview) without posting an application.
+    if (process.env.SMOKE_STOP_AT_CYA) return;
     await advance(page, step);
 
     // ─── Declaration ─────────────────────────────────────────────────────────

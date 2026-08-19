@@ -273,6 +273,11 @@
               "required": {
                 "value": true,
                 "error": "Enter the event start date"
+              },
+              "min": {
+                "value": 0,
+                "transform": "daysUntil",
+                "error": "The event start date cannot be in the past"
               }
             }
           }

@@ -53,6 +53,7 @@ import { test, expect, type Page } from "@playwright/test";
 import {
   STEP_TIMEOUT,
   advance,
+  expectLeadTimeWarningIsAdvisory,
   currentStep,
   expectStep,
   fillDate,
@@ -266,6 +267,7 @@ export async function fillGateApplicantAndEvent(
   await fillField(page, step, "event-end-time", data.endTime);
   await fillField(page, step, "num-patrons", data.numPatrons);
   await fillField(page, step, "num-stalls", data.numStalls);
+  await expectLeadTimeWarningIsAdvisory(page, step, data.start);
   await advance(page, step);
 }
 
@@ -314,7 +316,10 @@ test.describe("Request an Environmental Health Officer — Live Smoke", () => {
     await fillField(page, step, "waste-disposal", data.wasteDisposal);
     await advance(page, step);
 
-    // ─── Supporting documents (three required on this branch) ────────────────
+    // ─── Supporting documents (two required on this branch) ──────────────────
+    // The site plan is optional for everyone now, but it is still accepted and
+    // a real organiser would send one — so this branch keeps uploading it and
+    // the "no" branch below covers omitting it.
     step = expectStep(page, "documents");
     await uploadOne(page, step, "vendor-list", {
       name: "vendor-list.png",
@@ -388,18 +393,19 @@ test.describe("Request an Environmental Health Officer — Live Smoke", () => {
       "answering no to operating-restaurant must skip food-safety",
     ).not.toContain("food-safety");
 
-    // ─── Supporting documents (only two required on this branch) ─────────────
+    // ─── Supporting documents (only the vendor list is required here) ────────
     let step = expectStep(page, "documents");
     await uploadOne(page, step, "vendor-list", {
       name: "vendor-list.png",
       mimeType: TEST_PNG.mimeType,
       buffer: TEST_PNG.buffer,
     });
-    await uploadOne(page, step, "site-plan", {
-      name: "site-plan.png",
-      mimeType: TEST_PNG.mimeType,
-      buffer: TEST_PNG.buffer,
-    });
+    // The site plan is optional for everyone, so this branch deliberately
+    // leaves it empty — the step must still advance. Its label carries the
+    // "(optional)" suffix that tells the applicant so.
+    await expect(page.locator(`label[for="${step}_site-plan"]`)).toContainText(
+      "(optional)",
+    );
     // The medical certificate and food licence are gated on the yes branch, so
     // neither should be on the page at all here.
     await expect(
