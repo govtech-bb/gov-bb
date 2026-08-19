@@ -31,8 +31,8 @@
  *  - is-organiser is fixed to "no" (the applicant is not the organiser). This is
  *    the scenario the catchment-routing fix was verified against, and it keeps
  *    the required set minimal: only the medical certificate is a required
- *    upload (site-plan is optionalIf no, vendor-list is organiser-only), and the
- *    declaration has no organiser overtime-costs acknowledgement. The "yes"
+ *    upload (site-plan is optional for everyone, vendor-list is organiser-only),
+ *    and the declaration has no organiser overtime-costs acknowledgement. The "yes"
  *    branch (num-patrons/num-stalls, extra required uploads, overtime notice) is
  *    intentionally not exercised here.
  *  - The event address is an address-lookup (geocoder) field, so it cannot take
@@ -148,8 +148,8 @@ function buildData() {
   const dd = String(dob.getDate()).padStart(2, "0");
   const nrnDigits = `${yy}${mm}${dd}${faker.string.numeric(4)}`;
 
-  // Event start must be >= 14 days out (recipe min: daysUntil 14). Give plenty
-  // of margin; end date is the same day or a few days later.
+  // Keep the start >= 14 days out so the soft lead-time warning stays hidden
+  // (it is advisory, not blocking); end date is the same day or a few later.
   const start = new Date();
   start.setDate(start.getDate() + faker.number.int({ min: 21, max: 120 }));
   const end = new Date(start);

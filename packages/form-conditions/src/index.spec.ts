@@ -1326,9 +1326,30 @@ describe("evaluateCondition — transform daysUntil (future lead time)", () => {
     ).toBe(false);
   });
 
+  // The shape the event recipes use for their soft lead-time warning: show the
+  // callout only once the start date is inside the 14-day window. Exactly 14
+  // days out is compliant, so it must stay hidden on the boundary.
+  it("lt 14: matches a date inside the window, not one exactly 14 days out", () => {
+    expect(
+      evaluateCondition(make("lt", 14), EMPTY_VALUES, {
+        "event-date": dateDaysAhead(13) as unknown as string,
+      }),
+    ).toBe(true);
+    expect(
+      evaluateCondition(make("lt", 14), EMPTY_VALUES, {
+        "event-date": dateDaysAhead(14) as unknown as string,
+      }),
+    ).toBe(false);
+  });
+
   it("an invalid/empty date never matches (NaN)", () => {
     expect(
       evaluateCondition(make("gte", 14), EMPTY_VALUES, { "event-date": "" }),
+    ).toBe(false);
+    // Critically also for `lt`, or an untouched date field would open the
+    // warning before the applicant has entered anything.
+    expect(
+      evaluateCondition(make("lt", 14), EMPTY_VALUES, { "event-date": "" }),
     ).toBe(false);
   });
 });

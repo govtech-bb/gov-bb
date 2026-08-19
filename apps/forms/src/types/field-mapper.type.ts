@@ -42,8 +42,8 @@ export interface ClientPrimitive {
   geocodeTargets?: GeocodeTargets;
   /** Content element (`htmlType: "content"`) markdown body. */
   content?: string;
-  /** Content element presentation: "inset" | "text" | "details". */
-  variant?: "inset" | "text" | "details";
+  /** Content element presentation: "inset" | "text" | "details" | "warning". */
+  variant?: "inset" | "text" | "details" | "warning";
   /** Content element `details`-variant disclosure summary. */
   summary?: string;
 }

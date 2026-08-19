@@ -135,8 +135,8 @@ const OTHER_LABEL = "Other food";
 export function buildData() {
   if (process.env.FAKER_SEED) faker.seed(Number(process.env.FAKER_SEED));
 
-  // Event start must be >= 14 days out (recipe min: daysUntil 14). Give plenty
-  // of margin; end date is the same day or a few days later.
+  // Keep the start >= 14 days out so the soft lead-time warning stays hidden
+  // (it is advisory, not blocking); end date is the same day or a few later.
   const start = new Date();
   start.setDate(start.getDate() + faker.number.int({ min: 21, max: 120 }));
   const end = new Date(start);

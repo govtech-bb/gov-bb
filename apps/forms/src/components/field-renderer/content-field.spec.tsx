@@ -51,6 +51,29 @@ describe("renderContentElement", () => {
     ).not.toBeNull();
   });
 
+  it("renders the warning variant with a decorative glyph and a spoken prefix", () => {
+    render(
+      renderContentElement({
+        ...base,
+        variant: "warning",
+        content: "Your event starts in fewer than 14 days.",
+      }),
+    );
+    const warning = document.querySelector(".govbb-warning-text");
+    expect(warning).not.toBeNull();
+    expect(
+      warning
+        ?.querySelector(".govbb-warning-text__icon")
+        ?.getAttribute("aria-hidden"),
+    ).toBe("true");
+    expect(screen.getByText("Warning:").className).toBe(
+      "govbb-visually-hidden",
+    );
+    expect(
+      warning?.querySelector('[data-testid="react-markdown"]')?.textContent,
+    ).toBe("Your event starts in fewer than 14 days.");
+  });
+
   it("renders plain text variant", () => {
     render(
       renderContentElement({ ...base, variant: "text", content: "Plain." }),
