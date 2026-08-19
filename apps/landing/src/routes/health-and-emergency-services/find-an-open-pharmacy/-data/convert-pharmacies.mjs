@@ -225,7 +225,7 @@ const records = PHARMACIES.map((p) => {
 
   const noteParts = []
   // Keep hoursText nuance the structured model cannot express.
-  if (p.hours.length === 0 && !GENERIC_HOURS_TEXT.has(p.hoursText)) noteParts.push(`${p.hoursText}.`.replace('..', '.'))
+  if (p.hours.length === 0 && !GENERIC_HOURS_TEXT.has(p.hoursText)) noteParts.push(`${p.hoursText}.`.replace(/\.\./g, '.'))
   for (const part of p.hoursText.split('·').map((s) => s.trim())) {
     if (/bank holiday/i.test(part) && p.hours.length > 0) noteParts.push(`${part}.`)
   }
