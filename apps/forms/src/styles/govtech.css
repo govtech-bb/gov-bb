@@ -545,6 +545,35 @@
   margin-bottom: var(--spacing-m);
 }
 
+/* Warning variant: amber left rule with a filled roundel, no panel. Reserved
+ * for advisory copy the applicant can proceed past (e.g. a short lead time),
+ * so it must read as louder than the blue inset without looking like a
+ * blocking validation error. */
+.govbb-warning-text {
+  display: flex;
+  gap: var(--spacing-s);
+  align-items: flex-start;
+  padding: var(--spacing-s) var(--spacing-m);
+  margin-bottom: var(--spacing-m);
+  border-left: var(--color-yellow-00) 0.25rem solid;
+}
+
+.govbb-warning-text__icon {
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--color-yellow-00);
+  color: var(--color-black-00);
+  font-weight: 700;
+  line-height: 1.75rem;
+  text-align: center;
+}
+
+.govbb-warning-text__body > :last-child {
+  margin-bottom: 0;
+}
+
 /* ---- Applicant name (declaration step) ----------------------------------- */
 .form-page__applicant {
   display: flex;

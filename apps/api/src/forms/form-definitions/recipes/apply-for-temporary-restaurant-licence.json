@@ -3,7 +3,7 @@
   "title": "Apply for a licence to operate a temporary restaurant",
   "description": "Apply for a licence to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
   "createdAt": "2026-07-23T00:00:00Z",
-  "updatedAt": "2026-08-10T00:00:00Z",
+  "updatedAt": "2026-08-19T00:00:00Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -368,16 +368,16 @@
           "overrides": {
             "label": "Start date",
             "fieldId": "event-from",
-            "hint": "The first day the temporary restaurant will operate. You must apply at least 14 days before this date. For example, 27 8 2026.",
+            "hint": "The first day the temporary restaurant will operate. Apply at least 14 days before this date if you can. For example, 27 8 2026.",
             "validations": {
               "required": {
                 "value": true,
                 "error": "Enter the event start date"
               },
               "min": {
-                "value": 14,
+                "value": 0,
                 "transform": "daysUntil",
-                "error": "You must apply at least 14 days before the event start date"
+                "error": "The event start date cannot be in the past"
               }
             }
           }
@@ -399,6 +399,30 @@
                 "error": "The end date must be the same as or after the start date"
               }
             }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "event-lead-time-warning",
+            "variant": "warning",
+            "content": "Your event starts in fewer than 14 days. We ask for at least 14 days so an officer can be scheduled to inspect your set-up. You can still apply, but your application goes for manual review and may not be processed in time.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "event-from",
+                "transform": "daysUntil",
+                "operator": "gte",
+                "value": 0
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "event-from",
+                "transform": "daysUntil",
+                "operator": "lt",
+                "value": 14
+              }
+            ]
           }
         },
         {
@@ -884,7 +908,7 @@
     {
       "stepId": "documents",
       "title": "Supporting documents",
-      "description": "You must upload your own medical certificate. As the event organiser, you must also upload your list of vendors and a site or stall plan. A food business licence is optional.",
+      "description": "You must upload your own medical certificate. As the event organiser, you must also upload your list of vendors. A site or stall plan and a food business licence are optional.",
       "elements": [
         {
           "ref": "components/upload-document",
@@ -960,23 +984,10 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "label": "Site or stall plan",
+            "label": "Site or stall plan (optional)",
             "fieldId": "site-plan",
-            "hint": "A plan of the event site, showing stall positions, waste disposal, water supply and facilities. PDF, JPG or PNG.",
-            "behaviours": [
-              {
-                "type": "optionalIf",
-                "targetStepId": "event-organiser",
-                "targetFieldId": "is-organiser",
-                "operator": "equal",
-                "value": "no"
-              }
-            ],
+            "hint": "A plan of the event site, showing stall positions, waste disposal, water supply and facilities. Upload one if you have it. PDF, JPG or PNG.",
             "validations": {
-              "required": {
-                "value": true,
-                "error": "Upload a site or stall plan"
-              },
               "fileTypes": {
                 "value": ["application/pdf", "image/jpeg", "image/png"],
                 "error": "Upload a PDF, JPG or PNG"
