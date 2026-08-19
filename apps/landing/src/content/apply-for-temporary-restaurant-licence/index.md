@@ -9,6 +9,7 @@ visibility: preview
 featured: false
 publish_date: '2026-08-14'
 category: business-trade
+form_id: apply-for-temporary-restaurant-licence
 service_type: digital
 ---
 Use this service to apply for a licence to operate a temporary restaurant — for example, to serve food at an event.
@@ -46,7 +47,7 @@ Weddings do not need a licence. Some other private events may need one, dependin
 -   If you are organising the event, a site or stall plan
 -   If you have one, a copy of your food business licence
 
-<a data-start-link href="/business-trade/apply-for-temporary-restaurant-licence/start">Start now</a>
+<a data-start-link>Start now</a>
 
 You can also apply in person at your nearest polyclinic while we introduce this online service. Staff can email you the forms.
 
