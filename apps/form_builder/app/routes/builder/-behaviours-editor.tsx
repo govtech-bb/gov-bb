@@ -17,6 +17,11 @@ interface BehavioursEditorProps {
   // checkbox list (sharedFields.fieldIds) to the step's own fields (#792) —
   // it never seeds a step-scope Target Step.
   currentStepId?: string;
+  // The edited field's identity (field scope only). Gates behaviours that
+  // declare supportedHtmlTypes — offered disabled with a reason on other
+  // field types — and feeds the fieldArray "The applicant sees" miniature
+  // its label. (#2317)
+  currentField?: { label: string; htmlType: string };
 }
 
 const OPERATOR_OPTIONS = [
@@ -44,6 +49,49 @@ const TRANSFORM_OPTIONS = [
 ] as const;
 
 type BehaviourDescriptor = (typeof BEHAVIOUR_TYPE_DESCRIPTORS)[number];
+
+// The most boxes the fieldArray miniature draws; larger Start with values
+// collapse to a "…and N more" line so a typo can't paint hundreds of boxes.
+const MINIATURE_MAX_BOXES = 5;
+
+// In-row preview of what a fieldArray renders for the applicant: the field's
+// label, one box per "Start with", and the "Add another" link copy. It
+// demonstrates the behaviour (and how it differs from a Repeatable step)
+// instead of explaining it. Purely presentational — aria-hidden, no form
+// state. (#2317)
+function FieldArrayMiniature({
+  behaviour,
+  fieldLabel,
+}: {
+  behaviour: Record<string, unknown>;
+  fieldLabel: string;
+}) {
+  const min = typeof behaviour.min === "number" ? behaviour.min : 1;
+  const max = typeof behaviour.max === "number" ? behaviour.max : min;
+  const boxes = Math.min(Math.max(min, 1), MINIATURE_MAX_BOXES);
+  const linkText = (behaviour.addAnotherLabel as string) || "Add Another";
+  return (
+    <div className={styles.faMiniature} aria-hidden="true">
+      <div className={styles.faMiniatureCaption}>The applicant sees</div>
+      <div className={styles.faMiniatureLabel}>
+        {fieldLabel || "Field label"}
+      </div>
+      {Array.from({ length: boxes }).map((_, i) => (
+        <div
+          key={i}
+          className={styles.faMiniatureBox}
+          data-testid="fa-miniature-box"
+        />
+      ))}
+      {min > boxes && (
+        <div className={styles.faMiniatureMore}>…and {min - boxes} more</div>
+      )}
+      {min < max && (
+        <div className={styles.faMiniatureLink}>+ {linkText}</div>
+      )}
+    </div>
+  );
+}
 
 // Resolve whether a conditional's selected Target Field is a boolean field
 // (checkbox / show-hide), matched on step + resolved field id. Drives the
@@ -115,15 +163,27 @@ export function BehavioursEditor({
   stepRefs,
   onChange,
   currentStepId,
+  currentField,
 }: BehavioursEditorProps) {
   const available = BEHAVIOUR_TYPE_DESCRIPTORS.filter(
     (d) =>
       d.scopes.includes(scope) && !behaviours.some((b) => b.type === d.type),
   );
 
+  // A behaviour with supportedHtmlTypes stays visible but disabled on field
+  // types the runtime can't repeat, so authors learn the rule instead of
+  // shipping a silently-inert behaviour. (#2317)
+  function isUnsupported(d: BehaviourDescriptor) {
+    return (
+      d.supportedHtmlTypes !== undefined &&
+      currentField !== undefined &&
+      !d.supportedHtmlTypes.includes(currentField.htmlType)
+    );
+  }
+
   function handleAdd(bType: string) {
     const descriptor = BEHAVIOUR_TYPE_DESCRIPTORS.find((d) => d.type === bType);
-    if (!descriptor) return;
+    if (!descriptor || isUnsupported(descriptor)) return;
     const newBehaviour: Record<string, unknown> = { type: bType };
     for (const param of descriptor.params) {
       if (param.kind === "stepRef") {
@@ -537,6 +597,12 @@ export function BehavioursEditor({
               }
               return null;
             })}
+            {behaviour.type === "fieldArray" && currentField && (
+              <FieldArrayMiniature
+                behaviour={behaviour as Record<string, unknown>}
+                fieldLabel={currentField.label}
+              />
+            )}
           </div>
         );
       })}
@@ -550,11 +616,19 @@ export function BehavioursEditor({
           >
             <option value="">+ Add Behaviour</option>
             {available.map((d) => (
-              <option key={d.type} value={d.type}>
-                {d.label}
+              <option key={d.type} value={d.type} disabled={isUnsupported(d)}>
+                {isUnsupported(d)
+                  ? `${d.label} — needs a text-like field`
+                  : d.label}
               </option>
             ))}
           </select>
+          {available.some(isUnsupported) && (
+            <small className={styles.fieldHint}>
+              Only text, number, phone, email, time and long-answer fields can
+              be answered more than once.
+            </small>
+          )}
         </div>
       )}
     </div>
