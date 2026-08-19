@@ -6,7 +6,8 @@ description: >-
 category: business-trade
 stage: alpha
 publish_date: '2026-08-18'
-visibility: draft
+visibility: preview
+form_id: hotel-licence-application
 ---
 ## About this service
 
@@ -20,6 +21,8 @@ You may need to check:
 
 - the maximum number of guests who can stay at the hotel at one time
 - the current Hotel Licence number, if you are renewing a licence
+
+<a data-start-link>Start now</a>
 
 ## What happens after you apply
 
