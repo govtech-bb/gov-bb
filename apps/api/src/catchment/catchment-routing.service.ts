@@ -5,6 +5,7 @@ import {
   PARISH_DEFAULTS,
   POLYCLINIC_EMAILS,
   PROGRAMME_CODES_BY_FORM,
+  SERVING_CATCHMENT,
 } from "./polyclinic-routing";
 
 export interface CatchmentResolution {
@@ -18,7 +19,15 @@ export interface CatchmentResolution {
 type Ring = [number, number][];
 /** Polygon: [outerRing, ...holes]. MultiPolygon: [Polygon, ...]. */
 interface CatchmentEntry {
+  /** GeoJSON `properties.name` — the geographic catchment the polygons cover. */
   name: string;
+  /**
+   * Polyclinic whose Environmental Health Department serves this catchment —
+   * `name` itself unless `SERVING_CATCHMENT` redirects it. Everything the
+   * applicant and the Ministry see (the code, the inbox, the name on the
+   * confirmation page) comes from this, never from `name`.
+   */
+  servedBy: string;
   email: string | null;
   /** Normalised to a list of polygons, each polygon a list of rings. */
   polygons: Ring[][];
@@ -41,11 +50,14 @@ export class CatchmentRoutingService implements OnModuleInit {
 
     this.entries = geojson.features.map((f) => {
       const name = f.properties.name;
-      // Emails live in POLYCLINIC_EMAILS (not the GeoJSON). A catchment with no
-      // entry resolves to null and is reported by the boot warn below.
+      const servedBy = SERVING_CATCHMENT[name] ?? name;
+      // Emails live in POLYCLINIC_EMAILS (not the GeoJSON), keyed by the
+      // serving catchment. A catchment with no entry resolves to null and is
+      // reported by the boot warn below.
       return {
         name,
-        email: POLYCLINIC_EMAILS[name] ?? null,
+        servedBy,
+        email: POLYCLINIC_EMAILS[servedBy] ?? null,
         polygons: this.normalisePolygons(f.geometry),
       };
     });
@@ -61,21 +73,44 @@ export class CatchmentRoutingService implements OnModuleInit {
       }
     }
 
-    // Every form's programme-code map must cover every GeoJSON catchment, and
-    // every key in it must name a real GeoJSON catchment (catches a typo'd
-    // key that the old, catchment-only check could not).
+    // A redirect must point from one real catchment to another, and the target
+    // must not itself be redirected — a chain would silently stop one hop
+    // short and route to a polyclinic that no longer serves the area.
+    for (const [from, to] of Object.entries(SERVING_CATCHMENT)) {
+      if (!this.byName.has(from)) {
+        throw new Error(
+          `[catchment] SERVING_CATCHMENT has an entry for unknown catchment "${from}"`,
+        );
+      }
+      if (!this.byName.has(to)) {
+        throw new Error(
+          `[catchment] SERVING_CATCHMENT["${from}"] → unknown catchment "${to}"`,
+        );
+      }
+      if (to in SERVING_CATCHMENT) {
+        throw new Error(
+          `[catchment] SERVING_CATCHMENT["${from}"] → "${to}", which is itself redirected — chains are not followed`,
+        );
+      }
+    }
+
+    const servingNames = new Set(this.entries.map((e) => e.servedBy));
+
+    // Every form's programme-code map must cover every serving catchment, and
+    // every key in it must name one (catches both a typo'd key and a key left
+    // behind for a catchment that is now served by another polyclinic).
     for (const [formId, codesByCatchment] of Object.entries(
       PROGRAMME_CODES_BY_FORM,
     )) {
-      for (const entry of this.entries) {
-        if (!(entry.name in codesByCatchment)) {
+      for (const name of servingNames) {
+        if (!(name in codesByCatchment)) {
           throw new Error(
-            `[catchment] form "${formId}" has no programme code for catchment "${entry.name}"`,
+            `[catchment] form "${formId}" has no programme code for catchment "${name}"`,
           );
         }
       }
       for (const catchmentName of Object.keys(codesByCatchment)) {
-        if (!this.byName.has(catchmentName)) {
+        if (!servingNames.has(catchmentName)) {
           throw new Error(
             `[catchment] form "${formId}" has a programme code for unknown catchment "${catchmentName}"`,
           );
@@ -84,7 +119,9 @@ export class CatchmentRoutingService implements OnModuleInit {
     }
 
     // Ministry email gap — warn, do not fail boot.
-    const noEmail = this.entries.filter((e) => !e.email).map((e) => e.name);
+    const noEmail = [
+      ...new Set(this.entries.filter((e) => !e.email).map((e) => e.servedBy)),
+    ];
     if (noEmail.length > 0) {
       this.logger.warn(
         `[catchment] no Ministry email for: ${noEmail.join(", ")} — a coordinate hit there fails the MDA email until supplied`,
@@ -100,7 +137,8 @@ export class CatchmentRoutingService implements OnModuleInit {
     const hit = this.pointHit(input.coordinates);
     const entry = hit ?? this.parishHit(input.parish);
     if (!entry) return null;
-    const programmeCode = PROGRAMME_CODES_BY_FORM[input.formId]?.[entry.name];
+    const programmeCode =
+      PROGRAMME_CODES_BY_FORM[input.formId]?.[entry.servedBy];
     if (!programmeCode) {
       // No fallback code is invented here: returning null makes the caller's
       // resolvedCatchment undefined, so the webhook falls back to the
@@ -111,12 +149,12 @@ export class CatchmentRoutingService implements OnModuleInit {
       // rather than misrouting. This file's existing fail-loud stance, now
       // applied per form as well as per catchment.
       this.logger.error(
-        `[catchment] no programme code for form "${input.formId}" / catchment "${entry.name}"`,
+        `[catchment] no programme code for form "${input.formId}" / catchment "${entry.servedBy}"`,
       );
       return null;
     }
     return {
-      polyclinic: entry.name,
+      polyclinic: entry.servedBy,
       programmeCode,
       mdaEmail: entry.email,
     };

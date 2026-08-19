@@ -5,6 +5,7 @@ import {
   PARISH_DEFAULTS,
   POLYCLINIC_EMAILS,
   PROGRAMME_CODES_BY_FORM,
+  SERVING_CATCHMENT,
 } from "./polyclinic-routing";
 
 const LICENCE_FORM = "apply-for-temporary-restaurant-licence";
@@ -70,14 +71,17 @@ describe("CatchmentRoutingService", () => {
     ).toBeNull();
   });
 
-  it("resolves Frederick Miller's programme code and its (test-inbox) email", () => {
+  it("names St. Philip, not Frederick Miller, for a coordinate in the Frederick Miller catchment", () => {
     // Centroid of the Frederick Miller outer ring, confirmed in-polygon via a
-    // throwaway script.
+    // throwaway script. Frederick Miller has no Environmental Health
+    // Department of its own, so the whole resolution — the name the
+    // confirmation page and email show, the code, and the inbox — is
+    // St. Philip's.
     const r = svc.resolve({
       formId: LICENCE_FORM,
       coordinates: "13.1323,-59.5626",
     });
-    expect(r?.polyclinic).toBe("Frederick Miller Polyclinic");
+    expect(r?.polyclinic).toBe("St. Philip Polyclinic");
     expect(r?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_ST_PHILIP");
     expect(r?.mdaEmail).toBe("testing@govtech.bb");
   });
@@ -144,15 +148,20 @@ describe("CatchmentRoutingService", () => {
       formId: OFFICER_FORM,
       coordinates: "13.1323,-59.5626",
     });
-    expect(officer?.polyclinic).toBe("Frederick Miller Polyclinic");
+    expect(officer?.polyclinic).toBe("St. Philip Polyclinic");
     expect(officer?.programmeCode).toBe("ENV_HEALTH_OFFICER_ST_PHILIP");
 
     const licence = svc.resolve({
       formId: LICENCE_FORM,
       coordinates: "13.1323,-59.5626",
     });
-    expect(licence?.polyclinic).toBe("Frederick Miller Polyclinic");
+    expect(licence?.polyclinic).toBe("St. Philip Polyclinic");
     expect(licence?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_ST_PHILIP");
+
+    // The parish fallback for st-philip lands on the same resolution, so a
+    // geocode outage and a coordinate hit cannot name different polyclinics.
+    const byParish = svc.resolve({ formId: LICENCE_FORM, parish: "st-philip" });
+    expect(byParish).toEqual(licence);
   });
 
   it("returns null and logs an error for a formId with no programme-code map", () => {
@@ -187,6 +196,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
       },
       PARISH_DEFAULTS,
       POLYCLINIC_EMAILS,
+      SERVING_CATCHMENT,
     }));
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
@@ -206,6 +216,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
       },
       PARISH_DEFAULTS,
       POLYCLINIC_EMAILS,
+      SERVING_CATCHMENT,
     }));
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
@@ -222,12 +233,86 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
         "st-lucy": "Not A Real Polyclinic",
       },
       POLYCLINIC_EMAILS,
+      SERVING_CATCHMENT,
     }));
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
       await import("./catchment-routing.service");
     const svc = new Svc();
     expect(() => svc.onModuleInit()).toThrow(/PARISH_DEFAULTS/);
+  });
+
+  it("throws when a form keeps a programme code for a redirected catchment", async () => {
+    // Regression guard for the bug this redirect fixed: a leftover
+    // Frederick Miller key is a code nothing can reach, and its existence is
+    // what let the name and the routing drift apart.
+    vi.doMock("./polyclinic-routing", () => ({
+      PROGRAMME_CODES_BY_FORM: {
+        ...PROGRAMME_CODES_BY_FORM,
+        [LICENCE_FORM]: {
+          ...PROGRAMME_CODES_BY_FORM[LICENCE_FORM],
+          "Frederick Miller Polyclinic": "TEMP_RESTAURANT_LICENCE_ST_PHILIP",
+        },
+      },
+      PARISH_DEFAULTS,
+      POLYCLINIC_EMAILS,
+      SERVING_CATCHMENT,
+    }));
+    vi.resetModules();
+    const { CatchmentRoutingService: Svc } =
+      await import("./catchment-routing.service");
+    const svc = new Svc();
+    expect(() => svc.onModuleInit()).toThrow(/Frederick Miller Polyclinic/);
+  });
+
+  it("throws when SERVING_CATCHMENT redirects a catchment that is not in the GeoJSON", async () => {
+    vi.doMock("./polyclinic-routing", () => ({
+      PROGRAMME_CODES_BY_FORM,
+      PARISH_DEFAULTS,
+      POLYCLINIC_EMAILS,
+      SERVING_CATCHMENT: {
+        ...SERVING_CATCHMENT,
+        "Not A Real Polyclinic": "St. Philip Polyclinic",
+      },
+    }));
+    vi.resetModules();
+    const { CatchmentRoutingService: Svc } =
+      await import("./catchment-routing.service");
+    const svc = new Svc();
+    expect(() => svc.onModuleInit()).toThrow(/Not A Real Polyclinic/);
+  });
+
+  it("throws when SERVING_CATCHMENT points at a catchment that is not in the GeoJSON", async () => {
+    vi.doMock("./polyclinic-routing", () => ({
+      PROGRAMME_CODES_BY_FORM,
+      PARISH_DEFAULTS,
+      POLYCLINIC_EMAILS,
+      SERVING_CATCHMENT: {
+        "Frederick Miller Polyclinic": "Not A Real Polyclinic",
+      },
+    }));
+    vi.resetModules();
+    const { CatchmentRoutingService: Svc } =
+      await import("./catchment-routing.service");
+    const svc = new Svc();
+    expect(() => svc.onModuleInit()).toThrow(/Not A Real Polyclinic/);
+  });
+
+  it("throws when a SERVING_CATCHMENT target is itself redirected (chain)", async () => {
+    vi.doMock("./polyclinic-routing", () => ({
+      PROGRAMME_CODES_BY_FORM,
+      PARISH_DEFAULTS,
+      POLYCLINIC_EMAILS,
+      SERVING_CATCHMENT: {
+        "Frederick Miller Polyclinic": "St. Philip Polyclinic",
+        "St. Philip Polyclinic": "Randal Phillips Polyclinic",
+      },
+    }));
+    vi.resetModules();
+    const { CatchmentRoutingService: Svc } =
+      await import("./catchment-routing.service");
+    const svc = new Svc();
+    expect(() => svc.onModuleInit()).toThrow(/chains are not followed/);
   });
 
   it("warns at boot naming a catchment with no email", async () => {
@@ -237,6 +322,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
       PROGRAMME_CODES_BY_FORM,
       PARISH_DEFAULTS,
       POLYCLINIC_EMAILS: emails,
+      SERVING_CATCHMENT,
     }));
     vi.resetModules();
     const warnSpy = vi
@@ -302,6 +388,7 @@ describe("CatchmentRoutingService polygon geometry (mocked GeoJSON)", () => {
       },
       PARISH_DEFAULTS: {},
       POLYCLINIC_EMAILS: {},
+      SERVING_CATCHMENT: {},
     }));
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
@@ -329,6 +416,7 @@ describe("CatchmentRoutingService polygon geometry (mocked GeoJSON)", () => {
       },
       PARISH_DEFAULTS: {},
       POLYCLINIC_EMAILS: {},
+      SERVING_CATCHMENT: {},
     }));
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
@@ -350,6 +438,7 @@ describe("CatchmentRoutingService polygon geometry (mocked GeoJSON)", () => {
       },
       PARISH_DEFAULTS: {},
       POLYCLINIC_EMAILS: {},
+      SERVING_CATCHMENT: {},
     }));
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =

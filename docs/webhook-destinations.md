@@ -71,14 +71,18 @@ and the code depends on **which form** as well as which catchment, because one
 polyclinic catchment serves both services with distinct CMS queues. Both the
 licence form and the officer-request form have **seven** distinct queues over
 the eight catchments: Frederick Miller has no Environmental Health Department
-of its own, so both forms route it to their own St. Philip queue instead of
-giving it an eighth. The codes live in
+of its own, so `SERVING_CATCHMENT` redirects that catchment to St. Philip
+before anything is looked up — the code, the MDA inbox and the polyclinic named
+on the confirmation page and in the applicant email are all St. Philip's, and
+Frederick Miller has no key of its own anywhere in the routing data. The codes
+live in
 [`apps/api/src/catchment/polyclinic-routing.ts`](../apps/api/src/catchment/polyclinic-routing.ts)
-(`PROGRAMME_CODES_BY_FORM`, keyed by formId then catchment) and are
+(`PROGRAMME_CODES_BY_FORM`, keyed by formId then **serving** catchment) and are
 **CMS-issued** — MOH created the CMS programmes using exactly these
 `TEMP_RESTAURANT_LICENCE_*` / `ENV_HEALTH_OFFICER_*` strings, so a rename has to
-happen in the CMS first. Keys must match the GeoJSON `properties.name` values,
-for every form; a mismatch **throws at boot**, by design.
+happen in the CMS first. Keys must match the GeoJSON `properties.name` values of
+the serving catchments, for every form; a mismatch — including a leftover key
+for a redirected catchment — **throws at boot**, by design.
 
 **The `mda_contact` row is not in this form's email path.** Its MDA notification
 resolves via `catchment.mdaEmail` (the per-polyclinic Environmental Health
