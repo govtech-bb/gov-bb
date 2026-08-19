@@ -585,6 +585,34 @@ describe("FieldRenderer", () => {
   });
 
   // -------------------------------------------------------------------------
+  // fieldArray legacy-config hardening (#2317 Phase 2): configs authored
+  // before the builder seeded sane defaults can carry {min: 0, max: 0},
+  // which used to render ZERO inputs — the field vanished from the form.
+  // The renderer clamps min >= 1 and max >= min so a degenerate config
+  // degrades to one plain input instead of deleting the field.
+  // -------------------------------------------------------------------------
+  describe("fieldArray legacy {min: 0, max: 0} config", () => {
+    const degenerate = { type: "fieldArray" as const, min: 0, max: 0 };
+
+    it("renders exactly one input and no 'Add Another' link", () => {
+      mockState = { value: [""], meta: { isValid: true, errors: [] } };
+      renderField(primitive("text", { behaviours: [degenerate] }));
+      expect(screen.getAllByRole("textbox")).toHaveLength(1);
+      expect(screen.queryByText(/Add Another/i)).toBeNull();
+    });
+
+    it("min: 0 with an empty array value still renders one input", () => {
+      mockState = { value: [], meta: { isValid: true, errors: [] } };
+      renderField(
+        primitive("text", {
+          behaviours: [{ type: "fieldArray" as const, min: 0, max: 3 }],
+        }),
+      );
+      expect(screen.getAllByRole("textbox")).toHaveLength(1);
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // fieldArray behaviour (type=textarea) — #341 regression: a repeatable
   // textarea used to fall through into `case "text"` and render <input>.
   // -------------------------------------------------------------------------

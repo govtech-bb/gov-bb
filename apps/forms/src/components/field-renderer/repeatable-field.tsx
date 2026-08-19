@@ -70,8 +70,11 @@ export function renderRepeatableOrSingle(
   const values = (f.state.value as string[] | undefined) ?? [
     (field.defaultValue as string) ?? "",
   ];
-  const min = fieldArray.min;
-  const max = fieldArray.max;
+  // Clamp degenerate legacy configs (#2317): recipes authored before the
+  // builder seeded sane defaults can carry {min: 0, max: 0}, which rendered
+  // ZERO inputs — the field silently vanished. Floor at one input.
+  const min = Math.max(fieldArray.min, 1);
+  const max = Math.max(fieldArray.max, min);
 
   const fieldCount =
     values && values.length > 0 ? Math.min(values.length, max) : min;

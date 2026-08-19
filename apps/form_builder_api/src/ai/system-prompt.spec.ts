@@ -158,10 +158,23 @@ describe("AI system prompt", () => {
     expect(prompt).toContain("only meaningful alongside");
   });
 
-  it("never mentions the deliberately-excluded fieldArray behaviour", () => {
-    // fieldArray is intentionally withheld (overlaps a repeatable step and
-    // invites misuse). Pin its absence so an edit can't quietly reintroduce it.
-    expect(prompt).not.toContain("fieldArray");
+  it("documents the fieldArray behaviour with its JSON shape", () => {
+    expect(prompt).toContain('"type": "fieldArray"');
+    expect(prompt).toContain('"min"');
+    expect(prompt).toContain('"max"');
+    expect(prompt).toContain('"addAnotherLabel"');
+  });
+
+  it("restricts fieldArray to the supported field types only", () => {
+    expect(prompt).toContain("text, number, time, tel, email, textarea");
+    expect(prompt).toContain("must NOT be used on other field types");
+  });
+
+  it("gives the fieldArray vs repeatable decision rule", () => {
+    expect(prompt).toMatch(
+      /one (question|field) (is )?answered (several|multiple) times/i,
+    );
+    expect(prompt).toMatch(/group of fields (that )?repeat(s)? together/i);
   });
 
   it("directs relationship fields to components/relationship, not a text input", () => {
