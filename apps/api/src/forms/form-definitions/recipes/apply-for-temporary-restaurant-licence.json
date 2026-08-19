@@ -181,7 +181,7 @@
         {
           "ref": "components/name",
           "overrides": {
-            "label": "Organiser's name",
+            "label": "Organiser's name (optional)",
             "fieldId": "organiser-name",
             "hint": "Give a phone number or an email for the organiser.",
             "behaviours": [
@@ -194,8 +194,7 @@
             ],
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the organiser's name"
+                "value": false
               }
             }
           }
@@ -203,7 +202,7 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "label": "Organiser's phone number",
+            "label": "Organiser's phone number (optional)",
             "fieldId": "organiser-phone",
             "hint": "For example, (246) 249 1234.",
             "behaviours": [
@@ -216,8 +215,7 @@
             ],
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the organiser's phone number"
+                "value": false
               },
               "phone": {
                 "value": true,
