@@ -302,6 +302,24 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
+    slug: "health-and-emergency-services/find-an-open-pharmacy",
+    title: "Find an open pharmacy",
+    category: "health-and-emergency-services",
+    visibility: "preview",
+  },
+  {
+    slug: "health-and-emergency-services/free-or-subsidised-medication",
+    title: "Get free or subsidised medication",
+    category: "health-and-emergency-services",
+    visibility: "preview",
+  },
+  {
+    slug: "health-and-emergency-services/prescription-slip-colours",
+    title: "What prescription slip colours mean",
+    category: "health-and-emergency-services",
+    visibility: "preview",
+  },
+  {
     slug: "health-and-emergency-services/stormready",
     title: "StormReady Barbados",
     category: "health-and-emergency-services",
