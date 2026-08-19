@@ -36,6 +36,13 @@ interface MyRouterContext {
   queryClient: QueryClient
 }
 
+// Query keys + freshness for the root context values resolved in `beforeLoad`.
+// Kept module-level so the keys are defined once and can't drift.
+const ROOT_VIEW_LEVEL_QUERY_KEY = ['root', 'view-level'] as const
+const ROOT_SERVICE_STATUSES_QUERY_KEY = ['root', 'service-statuses'] as const
+/** 60s, matching the server-side cache in `service-status.ts`. */
+const ROOT_SERVICE_STATUSES_STALE_MS = 60_000
+
 // Umami analytics. The website id is a `VITE_`-prefixed var, so Vite inlines it
 // at build time from the build-container env (`import.meta.env`) — no runtime
 // env needed, which is what makes it work on Amplify (the SSR compute never
@@ -51,17 +58,57 @@ const UMAMI_SRC =
   'https://cloud.umami.is/script.js'
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
-  // Resolve the viewer's content level and the runtime service statuses once,
-  // server-side, and expose them on the router context so every child
-  // loader/component can gate on them. Runs on the initial SSR load; the
-  // resolved values ride the dehydrated context across subsequent client
-  // navigations, so there's no per-navigation server round-trip. `serviceStatuses`
-  // is a plain `[slug, status]` array (seroval-serialisable); consumers derive
-  // the visibility overlay / form-disabled set from it (see `service-status.ts`).
-  beforeLoad: async () => {
-    const { level, redirectTo } = await resolveViewLevel()
-    if (redirectTo) throw redirect({ href: redirectTo })
-    const serviceStatuses = await getServiceStatuses()
+  // Resolve the viewer's content level and the runtime service statuses and
+  // expose them on the router context so every child loader/component can gate
+  // on them. `serviceStatuses` is a plain `[slug, status]` array
+  // (seroval-serialisable); consumers derive the visibility overlay /
+  // form-disabled set from it (see `service-status.ts`).
+  //
+  // Both values come from a `createServerFn`. The router re-runs the root
+  // match's `beforeLoad` on every navigation, so calling them directly each
+  // time costs a per-navigation server round-trip (#2307). Instead we resolve
+  // them through the router's TanStack Query client: `ensureQueryData` fetches
+  // once, the SSR result is dehydrated into the document and hydrated on the
+  // client (`setupRouterSsrQueryIntegration` in router.tsx), and subsequent
+  // navigations read the cached value with no round-trip — including the first
+  // client navigation, which reads the hydrated value rather than refetching.
+  //
+  // Isolation: the QueryClient is created per `getRouter()` call — one per
+  // request on the server, one per session on the client — so a viewer's
+  // `preview`/`draft` grant is never shared across requests even with
+  // `staleTime: Infinity`.
+  //
+  // A `?preview=`/`?draft=` token bypasses the cache entirely: the grant is
+  // changing, so it must resolve fresh and run its cookie + redirect
+  // side-effects, and must never be cached under the shared query key.
+  beforeLoad: async ({ context, location }) => {
+    const search = location.search as Record<string, unknown>
+    if (search.preview !== undefined || search.draft !== undefined) {
+      const { level, redirectTo } = await resolveViewLevel()
+      if (redirectTo) throw redirect({ href: redirectTo })
+      const serviceStatuses = await getServiceStatuses()
+      return { level, serviceStatuses }
+    }
+
+    const { queryClient } = context
+    const [level, serviceStatuses] = await Promise.all([
+      // The grant only changes via a token (handled above, with a full
+      // redirect), so it is stable for the life of the document.
+      queryClient.ensureQueryData({
+        queryKey: ROOT_VIEW_LEVEL_QUERY_KEY,
+        queryFn: async () => (await resolveViewLevel()).level,
+        staleTime: Infinity,
+        gcTime: Infinity,
+      }),
+      // Mirrors the 60s server-side cache in service-status.ts: an already-open
+      // tab picks up an admin toggle within 60s, or on reload.
+      queryClient.ensureQueryData({
+        queryKey: ROOT_SERVICE_STATUSES_QUERY_KEY,
+        queryFn: getServiceStatuses,
+        staleTime: ROOT_SERVICE_STATUSES_STALE_MS,
+        gcTime: ROOT_SERVICE_STATUSES_STALE_MS,
+      }),
+    ])
     return { level, serviceStatuses }
   },
   head: () => ({
