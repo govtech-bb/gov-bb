@@ -385,7 +385,12 @@ describe("getVisibleFields", () => {
     expect(getVisibleFields(step, formApi)).toHaveLength(1);
   });
 
-  it("treats multiple fieldConditionalOn behaviours as OR — visible when any one passes", () => {
+  // AND, not OR. This used to return on the first matching condition, which
+  // disagreed with `applyConditions` in @govtech-bb/form-conditions (`.every()`)
+  // — the evaluator the API runs — so the same contract resolved one way in the
+  // browser and another on the server. AND is also what the Form Builder system
+  // prompt documents: stacking two conditions on one field expresses a range.
+  it("treats multiple fieldConditionalOn behaviours as AND — visible only when every one passes", () => {
     const step = makeStep("step1");
     step.fields = [
       makeField("step1", "details", {
@@ -395,13 +400,20 @@ describe("getVisibleFields", () => {
         ],
       }),
     ];
-    // Second condition passes, first fails → visible.
+    // Both pass → visible.
+    expect(
+      getVisibleFields(
+        step,
+        makeFormApi({ step1_hasJob: "yes", step1_hadJobBefore: "yes" }),
+      ),
+    ).toHaveLength(1);
+    // Only one passes → hidden (this is the case that flipped).
     expect(
       getVisibleFields(
         step,
         makeFormApi({ step1_hasJob: "no", step1_hadJobBefore: "yes" }),
       ),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
     // Neither passes → hidden.
     expect(
       getVisibleFields(
@@ -409,6 +421,26 @@ describe("getVisibleFields", () => {
         makeFormApi({ step1_hasJob: "no", step1_hadJobBefore: "no" }),
       ),
     ).toHaveLength(0);
+  });
+
+  // The shape the event forms use: a half-open window expressed as two bounds
+  // on one field. Under the old OR this matched everything OUTSIDE the window.
+  it("ANDs a stacked numeric range into the window between the bounds", () => {
+    const step = makeStep("step1");
+    step.fields = [
+      makeField("step1", "lead-time-warning", {
+        behaviours: [
+          conditionalOn({ targetFieldId: "days", operator: "gte", value: 0 }),
+          conditionalOn({ targetFieldId: "days", operator: "lt", value: 14 }),
+        ],
+      }),
+    ];
+    const visibleAt = (days: number) =>
+      getVisibleFields(step, makeFormApi({ step1_days: String(days) })).length;
+    expect(visibleAt(0)).toBe(1);
+    expect(visibleAt(13)).toBe(1);
+    expect(visibleAt(14)).toBe(0);
+    expect(visibleAt(-1)).toBe(0);
   });
 
   it("ignores non-conditional behaviours (e.g. fieldArray)", () => {

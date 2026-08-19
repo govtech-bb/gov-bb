@@ -1342,6 +1342,23 @@ describe("evaluateCondition — transform daysUntil (future lead time)", () => {
     ).toBe(false);
   });
 
+  // The warning window is the AND of `gte 0` and `lt 14` (stacked conditions
+  // combine with implicit AND). A past date must fall OUTSIDE it: it already
+  // gets a blocking "cannot be in the past" error, and drawing the advisory
+  // callout next to it would give the applicant two instructions at once.
+  it("gte 0 + lt 14: matches today and inside the window, not the past", () => {
+    const inWindow = (days: number) =>
+      [make("gte", 0), make("lt", 14)].every((c) =>
+        evaluateCondition(c, EMPTY_VALUES, {
+          "event-date": dateDaysAhead(days) as unknown as string,
+        }),
+      );
+    expect(inWindow(0), "today is short notice but valid").toBe(true);
+    expect(inWindow(13)).toBe(true);
+    expect(inWindow(14), "compliant lead time").toBe(false);
+    expect(inWindow(-1), "yesterday is an error, not a warning").toBe(false);
+  });
+
   it("an invalid/empty date never matches (NaN)", () => {
     expect(
       evaluateCondition(make("gte", 14), EMPTY_VALUES, { "event-date": "" }),

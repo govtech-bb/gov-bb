@@ -414,6 +414,13 @@
                 "type": "fieldConditionalOn",
                 "targetFieldId": "event-from",
                 "transform": "daysUntil",
+                "operator": "gte",
+                "value": 0
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "event-from",
+                "transform": "daysUntil",
                 "operator": "lt",
                 "value": 14
               }

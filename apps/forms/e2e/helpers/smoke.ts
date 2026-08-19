@@ -78,10 +78,14 @@ export async function goBack(page: Page, fromStep: string): Promise<void> {
 
 /**
  * Assert the event start date's three rules, which are easy to confuse:
- *   1. inside 14 days  → soft warning shows, and the step STILL ADVANCES
+ *   1. today → 13 days out → soft warning shows, and the step STILL ADVANCES
  *      (this replaced a hard `min: daysUntil 14` that refused the whole form),
- *   2. in the past     → hard error, the step does NOT advance,
- *   3. 14+ days out    → the warning clears.
+ *   2. in the past        → hard error ONLY, and the step does not advance,
+ *   3. 14+ days out       → the warning clears.
+ *
+ * Rule 2 is why the warning carries a `gte 0` bound as well as `lt 14`: a past
+ * date is also "fewer than 14 days", so without the floor it would draw the
+ * advisory callout alongside the blocking error and muddle which one to act on.
  *
  * Call this with every other field on the step already filled — the advance
  * would otherwise fail on an unrelated required field and read as a false pass
@@ -132,6 +136,22 @@ export async function expectLeadTimeWarningIsAdvisory(
     { timeout: STEP_TIMEOUT },
   );
   expectStep(page, stepId, { exact: true });
+  // The error stands alone — a past date gets one instruction, not two.
+  await expect(warning).toBeHidden();
+
+  // Today is the boundary the floor allows: valid, but still short notice, so
+  // the warning is back and nothing blocks.
+  const today = new Date();
+  await fillDate(
+    page,
+    stepId,
+    "event-from",
+    today.getDate(),
+    today.getMonth() + 1,
+    today.getFullYear(),
+  );
+  await expect(warning).toBeVisible({ timeout: STEP_TIMEOUT });
+  await expect(page.locator(".govbb-error-summary")).toBeHidden();
 
   await fillDate(
     page,
