@@ -7,6 +7,7 @@ stage: alpha
 publish_date: '2026-08-18'
 visibility: draft
 form_id: food-business-licence-application
+category: business-trade
 ---
 Use this service to apply for or renew a food business licence from Environmental Health.
 

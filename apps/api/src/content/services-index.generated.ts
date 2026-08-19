@@ -78,7 +78,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   {
     slug: "apply-for-hotel-licence",
     title: "Apply for a Hotel Licence",
-    category: "housing",
+    category: "business-trade",
     visibility: "draft",
   },
   {
@@ -239,6 +239,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   {
     slug: "food-business-licence-application",
     title: "Apply for a food business licence",
+    category: "business-trade",
     formId: "food-business-licence-application",
     visibility: "draft",
   },
