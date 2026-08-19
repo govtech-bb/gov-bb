@@ -1,4 +1,4 @@
-import { Link, useLocation } from '@tanstack/react-router'
+import { useLocation } from '@tanstack/react-router'
 import { linkVariants } from '@govtech-bb/react'
 import {
   getCategoryTitle,
@@ -40,15 +40,15 @@ export function Breadcrumbs({
     <nav aria-label="Breadcrumb" className="flex items-center">
       <ol className="flex flex-wrap items-center gap-y-1 [&>li:not(:first-child):not(:last-child)]:hidden [&>li:not(:first-child):not(:last-child)]:md:flex">
         <li className="flex items-center">
-          <Link
-            to="/"
+          <a
+            href="/"
             className={linkVariants()}
             data-umami-event="breadcrumb"
             data-umami-event-to="/"
             data-umami-event-depth={0}
           >
             Home
-          </Link>
+          </a>
         </li>
         {crumbs.map((segment, index) => {
           const href = `/${segments.slice(0, index + 1).join('/')}`
