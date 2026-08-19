@@ -3,7 +3,7 @@ title: Apply for a Hotel Licence
 description: >-
   Apply for a new hotel licence or renew an existing licence with Environmental
   Health.
-category: housing
+category: business-trade
 stage: alpha
 publish_date: '2026-08-18'
 visibility: draft
