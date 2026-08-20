@@ -33,23 +33,21 @@ You do not have to upload the layout with your application. You can send it to E
 
 ### Renewing your licence
 
-Your licence lasts for one year. It expires on the anniversary of the date you registered the business, not on 31 December. Apply to renew it at least 30 days before it expires.
-
-You only need a new layout if changes to the business affect the layout.
+Your licence lasts for one year. It expires one year after licence issuance. This expiration date is also included on your licence for your reference. Apply to renew it at least 30 days before it expires.
 
 ## What you will need
 
 You may need to provide:
 
-- your current Food Business Licence number, if you are renewing
-- the Barbados National Identification (ID) number for individual owners
-- a vehicle registration number, if the business uses a vehicle
-- a document listing your staff, giving each person's name and address
-- details about other places where food or drink is prepared
-- a layout drawn to scale, or your Town and Country Planning application number
-- medical certificates for your staff, if you want to upload them now
+-   your current Food Business Licence number, if you are renewing
+-   the Barbados National Identification (ID) number for individual owners
+-   a vehicle registration number, if the business uses a vehicle
+-   a document listing your staff, giving each person's name
+-   details about other places where food or drink is prepared
+-   a layout drawn to scale, or your Planning and Development Department application number for your submitted layout.
+-   medical certificates for your staff, which can be uploaded with your application or provided at inspection.
 
-Everyone who handles food needs a valid medical certificate from a registered doctor. This includes staff who only sell, serve, store, pack or deliver food, not just the people who cook.
+Everyone who handles food needs a valid medical certificate from a registered doctor. This includes all staff that work within the food business.
 
 Medical certificates expire on 31 December each year, whatever date they were issued. Your staff must renew them in January.
 
