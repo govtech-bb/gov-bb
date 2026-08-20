@@ -97,13 +97,6 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
-    slug: "apply-for-restaurant-licence",
-    title: "Apply for a restaurant licence",
-    category: "business-trade",
-    formId: "apply-for-restaurant-licence",
-    visibility: "preview",
-  },
-  {
     slug: "apply-for-secondary-school-entry-for-a-non-national-child",
     title: "Apply for secondary school entry for a non-national child",
     category: "education",
@@ -145,6 +138,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     category: "housing",
     formId: "nhc-land-property-application",
     visibility: "preview",
+  },
+  {
+    slug: "apply-to-environmental-health-for-a-restaurant-licence",
+    title: "Apply for a restaurant licence",
+    category: "business-trade",
+    formId: "apply-to-environmental-health-for-a-restaurant-licence",
+    visibility: "draft",
   },
   {
     slug: "apply-to-home-school-your-child",
