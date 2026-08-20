@@ -4,6 +4,13 @@ import type { ServiceIndexEntry } from "./service-index.type";
 
 export const SERVICES_INDEX: ServiceIndexEntry[] = [
   {
+    slug: "apply-environmental-health-food-business-license",
+    title: "Apply for or renew a food business licence",
+    category: "business-trade",
+    formId: "food-business-licence-application",
+    visibility: "preview",
+  },
+  {
     slug: "apply-financial-assistance",
     title: "Apply for financial assistance",
     category: "money-financial-support",
