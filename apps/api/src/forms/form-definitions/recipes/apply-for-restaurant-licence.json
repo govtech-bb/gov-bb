@@ -3,7 +3,7 @@
   "title": "Apply to Environmental Health for a restaurant licence",
   "description": "Apply for or renew a restaurant licence",
   "createdAt": "2026-08-18T19:36:35.003Z",
-  "updatedAt": "2026-08-20T19:39:51.527Z",
+  "updatedAt": "2026-08-20T19:50:47.920Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -585,6 +585,64 @@
           }
         },
         {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "same-hours-every-day",
+            "label": "Are the opening hours the same on every day you are open?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "everyday-hours",
+            "label": "Opening hours",
+            "hint": "These hours apply to every day the restaurant is open. Use the 24-hour clock, for example 09:00 - 17:00.",
+            "ui": {
+              "width": "short"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the hours the restaurant is open"
+              },
+              "pattern": {
+                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$",
+                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "same-hours-every-day",
+                "operator": "equal",
+                "value": "yes"
+              },
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 3,
+                "addAnotherLabel": "Add another set of hours"
+              }
+            ]
+          }
+        },
+        {
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "monday-hours",
@@ -611,6 +669,12 @@
                 "value": [
                   "monday"
                 ]
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "same-hours-every-day",
+                "operator": "equal",
+                "value": "no"
               },
               {
                 "type": "fieldArray",
@@ -650,6 +714,12 @@
                 ]
               },
               {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "same-hours-every-day",
+                "operator": "equal",
+                "value": "no"
+              },
+              {
                 "type": "fieldArray",
                 "min": 1,
                 "max": 3,
@@ -685,6 +755,12 @@
                 "value": [
                   "wednesday"
                 ]
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "same-hours-every-day",
+                "operator": "equal",
+                "value": "no"
               },
               {
                 "type": "fieldArray",
@@ -724,6 +800,12 @@
                 ]
               },
               {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "same-hours-every-day",
+                "operator": "equal",
+                "value": "no"
+              },
+              {
                 "type": "fieldArray",
                 "min": 1,
                 "max": 3,
@@ -759,6 +841,12 @@
                 "value": [
                   "friday"
                 ]
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "same-hours-every-day",
+                "operator": "equal",
+                "value": "no"
               },
               {
                 "type": "fieldArray",
@@ -798,6 +886,12 @@
                 ]
               },
               {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "same-hours-every-day",
+                "operator": "equal",
+                "value": "no"
+              },
+              {
                 "type": "fieldArray",
                 "min": 1,
                 "max": 3,
@@ -833,6 +927,12 @@
                 "value": [
                   "sunday"
                 ]
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "same-hours-every-day",
+                "operator": "equal",
+                "value": "no"
               },
               {
                 "type": "fieldArray",

@@ -55,11 +55,15 @@ const DAYS = [
 ] as const;
 
 it.each(DAYS)(
-  "shows %s's hours only when that day is selected, and lets them repeat",
+  "shows %s's hours only when that day is selected and the hours differ, and lets them repeat",
   async (day) => {
     const fields = await hydratedFields("opening-hours");
     const field = fields.find((f) => f.fieldId === `${day}-hours`);
     expect(field, `${day}-hours is missing`).toBeDefined();
+    // The two conditions AND together, so a per-day field appears only when
+    // that day is ticked AND the applicant said the hours are not the same
+    // every day. Were they OR'd, every ticked day would show its own field
+    // alongside the shared one and the applicant would answer twice.
     expect(field!.behaviours).toEqual([
       expect.objectContaining({
         type: "fieldConditionalOn",
@@ -67,10 +71,33 @@ it.each(DAYS)(
         operator: "in",
         value: [day],
       }),
+      expect.objectContaining({
+        type: "fieldConditionalOn",
+        targetFieldId: "same-hours-every-day",
+        operator: "equal",
+        value: "no",
+      }),
       expect.objectContaining({ type: "fieldArray", min: 1, max: 3 }),
     ]);
   },
 );
+
+// The shared field is the other half of that gate: most restaurants keep one
+// set of hours, so they answer once here instead of once per open day.
+it("shows the shared hours only when the hours are the same every day", async () => {
+  const fields = await hydratedFields("opening-hours");
+  const field = fields.find((f) => f.fieldId === "everyday-hours");
+  expect(field, "everyday-hours is missing").toBeDefined();
+  expect(field!.behaviours).toEqual([
+    expect.objectContaining({
+      type: "fieldConditionalOn",
+      targetFieldId: "same-hours-every-day",
+      operator: "equal",
+      value: "yes",
+    }),
+    expect.objectContaining({ type: "fieldArray", min: 1, max: 3 }),
+  ]);
+});
 
 // The hours are free text, so "09:00 - 17:00" is only as good as the pattern
 // rule — and it has to hold for EVERY entry the applicant adds, not just the
@@ -89,6 +116,19 @@ it.each([
 
   const errors = validateField(monday as unknown as Primitive, entries, {});
   expect(errors, errors.join("; ")).toHaveLength(valid ? 0 : 1);
+});
+
+// The shared field is a second copy of that rule. The table above proves what
+// the rule accepts; this proves both fields are running the same one, so an
+// applicant is not held to a different standard depending on which branch of
+// the gate they took.
+it("holds the shared hours to the same format rule as a per-day one", async () => {
+  const fields = await hydratedFields("opening-hours");
+  const patternOf = (fieldId: string) =>
+    fields.find((f) => f.fieldId === fieldId)?.validations?.pattern?.value;
+
+  expect(patternOf("everyday-hours")).toBeDefined();
+  expect(patternOf("everyday-hours")).toBe(patternOf("monday-hours"));
 });
 
 // Each entry: the step holding the field, the gated field, and the answer that
