@@ -3,7 +3,7 @@
   "title": "Apply to Environmental Health for a restaurant licence",
   "description": "Apply for or renew a restaurant licence",
   "createdAt": "2026-08-18T19:36:35.003Z",
-  "updatedAt": "2026-08-18T19:36:35.003Z",
+  "updatedAt": "2026-08-20T17:09:32.283Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -428,15 +428,16 @@
         {
           "ref": "components/generic-date",
           "overrides": {
-            "fieldId": "restaurant-start-date",
-            "label": "What date did the restaurant start?"
-          }
-        },
-        {
-          "ref": "components/generic-date",
-          "overrides": {
             "fieldId": "restaurant-expected-start-date",
-            "label": "What date do you expect the restaurant to start?"
+            "label": "What date do you expect the restaurant to start?",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "restaurant-already-open",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
           }
         },
         {
@@ -505,10 +506,10 @@
           }
         },
         {
-          "ref": "components/generic-radio",
+          "ref": "components/generic-select",
           "overrides": {
             "fieldId": "property-use",
-            "label": "Is it:",
+            "label": "Is the property owned, rented, or something else?",
             "options": [
               {
                 "label": "Owned",
@@ -539,13 +540,21 @@
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "property-use-other",
-            "label": "Tell us how the property is used",
+            "label": "Tell us what the arrangement is",
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter how the property is used"
+                "error": "Tell us what the arrangement is"
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "property-use",
+                "operator": "equal",
+                "value": "something-else"
+              }
+            ]
           }
         }
       ],
@@ -553,13 +562,13 @@
     },
     {
       "stepId": "opening-hours",
-      "title": "Opening hours and customers",
+      "title": "Opening hours",
       "elements": [
         {
           "ref": "components/generic-checkbox",
           "overrides": {
             "fieldId": "opening-days",
-            "label": "Day or days",
+            "label": "Which days is the restaurant open?",
             "options": [
               {
                 "label": "Monday",
@@ -601,196 +610,260 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "opening-time",
-            "label": "Opening time",
+            "fieldId": "monday-hours",
+            "label": "Monday opening hours",
+            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
             "ui": {
               "width": "short"
             },
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter opening time"
+                "error": "Enter the hours the restaurant is open on Monday"
+              },
+              "pattern": {
+                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$",
+                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00"
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "opening-days",
+                "operator": "in",
+                "value": [
+                  "monday"
+                ]
+              },
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 3,
+                "addAnotherLabel": "Add another set of hours for Monday"
+              }
+            ]
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "closing-time",
-            "label": "Closing time",
+            "fieldId": "tuesday-hours",
+            "label": "Tuesday opening hours",
+            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
             "ui": {
               "width": "short"
             },
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter closing time"
+                "error": "Enter the hours the restaurant is open on Tuesday"
+              },
+              "pattern": {
+                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$",
+                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00"
               }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "customers-eat-drink",
-            "label": "Will customers eat or drink at the restaurant?",
-            "options": [
+            },
+            "behaviours": [
               {
-                "label": "Yes",
-                "value": "yes"
+                "type": "fieldConditionalOn",
+                "targetFieldId": "opening-days",
+                "operator": "in",
+                "value": [
+                  "tuesday"
+                ]
               },
               {
-                "label": "No",
-                "value": "no"
+                "type": "fieldArray",
+                "min": 1,
+                "max": 3,
+                "addAnotherLabel": "Add another set of hours for Tuesday"
               }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select an option"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "eating-area-location",
-            "label": "Where will customers eat or drink?",
-            "options": [
-              {
-                "label": "Indoors",
-                "value": "indoors"
-              },
-              {
-                "label": "Outdoors",
-                "value": "outdoors"
-              },
-              {
-                "label": "Indoors and outdoors",
-                "value": "indoors-outdoors"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select an option"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-number",
-          "overrides": {
-            "fieldId": "customer-capacity",
-            "label": "About how many customers can the area hold?",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Enter customer capacity"
-              }
-            }
-          }
-        }
-      ],
-      "behaviours": [
-        {
-          "type": "repeatable",
-          "min": 1,
-          "max": 10,
-          "addAnotherLabel": "Do you need to add another set of opening hours?",
-          "instanceLabel": "Opening hours"
-        }
-      ]
-    },
-    {
-      "stepId": "food-drink",
-      "title": "Food and drink",
-      "elements": [
-        {
-          "ref": "components/generic-checkbox",
-          "overrides": {
-            "fieldId": "food-drink-types",
-            "label": "What types of food and drink will the restaurant sell?",
-            "options": [
-              {
-                "label": "Meat or poultry",
-                "value": "meat"
-              },
-              {
-                "label": "Fish or seafood",
-                "value": "fish"
-              },
-              {
-                "label": "Eggs or dairy products",
-                "value": "eggs"
-              },
-              {
-                "label": "Rice, pasta, grains or other cooked starches",
-                "value": "starches"
-              },
-              {
-                "label": "Fruit or vegetables",
-                "value": "fruit-veg"
-              },
-              {
-                "label": "Baked goods or desserts",
-                "value": "baked"
-              },
-              {
-                "label": "Ready-to-eat or prepared foods",
-                "value": "ready-eat"
-              },
-              {
-                "label": "Packaged food",
-                "value": "packaged"
-              },
-              {
-                "label": "Non-alcoholic drinks",
-                "value": "non-alcoholic"
-              },
-              {
-                "label": "Alcoholic drinks",
-                "value": "alcoholic"
-              },
-              {
-                "label": "Something else",
-                "value": "something-else"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select at least one type"
-              }
-            }
+            ]
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "food-drink-type-other",
-            "label": "Enter another type of food or drink",
+            "fieldId": "wednesday-hours",
+            "label": "Wednesday opening hours",
+            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
+            "ui": {
+              "width": "short"
+            },
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter the food or drink type"
+                "error": "Enter the hours the restaurant is open on Wednesday"
+              },
+              "pattern": {
+                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$",
+                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00"
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "opening-days",
+                "operator": "in",
+                "value": [
+                  "wednesday"
+                ]
+              },
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 3,
+                "addAnotherLabel": "Add another set of hours for Wednesday"
+              }
+            ]
           }
         },
         {
-          "ref": "components/additional-details",
+          "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "food-drink-examples",
-            "label": "What food and drink will the restaurant sell?",
+            "fieldId": "thursday-hours",
+            "label": "Thursday opening hours",
+            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
+            "ui": {
+              "width": "short"
+            },
             "validations": {
               "required": {
                 "value": true,
-                "error": "Provide details of food and drink"
+                "error": "Enter the hours the restaurant is open on Thursday"
+              },
+              "pattern": {
+                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$",
+                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00"
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "opening-days",
+                "operator": "in",
+                "value": [
+                  "thursday"
+                ]
+              },
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 3,
+                "addAnotherLabel": "Add another set of hours for Thursday"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "friday-hours",
+            "label": "Friday opening hours",
+            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
+            "ui": {
+              "width": "short"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the hours the restaurant is open on Friday"
+              },
+              "pattern": {
+                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$",
+                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "opening-days",
+                "operator": "in",
+                "value": [
+                  "friday"
+                ]
+              },
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 3,
+                "addAnotherLabel": "Add another set of hours for Friday"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "saturday-hours",
+            "label": "Saturday opening hours",
+            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
+            "ui": {
+              "width": "short"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the hours the restaurant is open on Saturday"
+              },
+              "pattern": {
+                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$",
+                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "opening-days",
+                "operator": "in",
+                "value": [
+                  "saturday"
+                ]
+              },
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 3,
+                "addAnotherLabel": "Add another set of hours for Saturday"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "sunday-hours",
+            "label": "Sunday opening hours",
+            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
+            "ui": {
+              "width": "short"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the hours the restaurant is open on Sunday"
+              },
+              "pattern": {
+                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$",
+                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "opening-days",
+                "operator": "in",
+                "value": [
+                  "sunday"
+                ]
+              },
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 3,
+                "addAnotherLabel": "Add another set of hours for Sunday"
+              }
+            ]
           }
         }
       ],
@@ -841,7 +914,18 @@
                 "value": true,
                 "error": "Enter business or place name"
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-prep-location",
+                "operator": "in",
+                "value": [
+                  "commercial-kitchen",
+                  "another-location"
+                ]
+              }
+            ]
           }
         },
         {
@@ -854,155 +938,36 @@
                 "value": true,
                 "error": "Enter address line 1"
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-prep-location",
+                "operator": "in",
+                "value": [
+                  "commercial-kitchen",
+                  "another-location"
+                ]
+              }
+            ]
           }
         },
         {
           "ref": "components/address",
           "overrides": {
             "fieldId": "other-prep-location-address-2",
-            "label": "Address line 2"
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "food-transport",
-            "label": "How will the food or drink be taken to the restaurant?",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Explain transport method"
-              }
-            }
-          }
-        }
-      ],
-      "behaviours": []
-    },
-    {
-      "stepId": "food-preparation-details",
-      "title": "Preparing and keeping food",
-      "elements": [
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "raw-or-undercooked",
-            "label": "Will any meat, poultry, fish, seafood or eggs be served raw or not fully cooked?",
-            "options": [
+            "label": "Address line 2",
+            "behaviours": [
               {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-prep-location",
+                "operator": "in",
+                "value": [
+                  "commercial-kitchen",
+                  "another-location"
+                ]
               }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select an option"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "raw-or-undercooked-details",
-            "label": "What will be served raw or not fully cooked?",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Describe what will be served raw"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "food-cooked-advance",
-            "label": "Will any food be cooked in advance?",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select an option"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "food-cooling-storage",
-            "label": "How will the food be cooled and stored?",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Explain cooling and storage"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "cooked-food-reheated",
-            "label": "Will any cooked food be reheated before it is served?",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select an option"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "hot-food-kept-hot",
-            "label": "How will hot food be kept hot before it is served?",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Explain how hot food will be kept hot"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "cold-storage",
-            "label": "How will food and drink be kept cold?",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Explain cold storage methods"
-              }
-            }
+            ]
           }
         }
       ],
@@ -1010,106 +975,17 @@
     },
     {
       "stepId": "people-hygiene",
-      "title": "People and hygiene",
+      "title": "Staff",
       "elements": [
         {
           "ref": "components/generic-number",
           "overrides": {
-            "fieldId": "food-handlers-count",
-            "label": "About how many people will prepare or handle food or drink?",
+            "fieldId": "male-staff-count",
+            "label": "How many male staff will prepare or handle food or drink?",
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter number of food handlers"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-checkbox",
-          "overrides": {
-            "fieldId": "water-source",
-            "label": "Where will the restaurant get its water?",
-            "options": [
-              {
-                "label": "Public water supply",
-                "value": "public-supply"
-              },
-              {
-                "label": "Stored water",
-                "value": "stored"
-              },
-              {
-                "label": "Another source",
-                "value": "another-source"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select at least one water source"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "water-source-other",
-            "label": "Tell us where the water will come from",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Enter water source details"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "hand-washing-location",
-            "label": "Tell us where people can wash their hands",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Describe hand washing location"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "washing-area-exists",
-            "label": "Is there a set area for washing dishes and cooking tools?",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select an option"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "washing-area-location",
-            "label": "Where is the washing area?",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Describe washing area location"
+                "error": "Enter the number of male staff"
               }
             }
           }
@@ -1117,158 +993,12 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "fieldId": "staff-toilets",
-            "label": "Staff toilets",
+            "fieldId": "female-staff-count",
+            "label": "How many female staff will prepare or handle food or drink?",
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter number of staff toilets"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-number",
-          "overrides": {
-            "fieldId": "customer-toilets",
-            "label": "Customer toilets",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Enter number of customer toilets"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-number",
-          "overrides": {
-            "fieldId": "shared-toilets",
-            "label": "Toilets used by both staff and customers"
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "pest-control",
-            "label": "How will the restaurant prevent or deal with pests?",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Explain pest control methods"
-              }
-            }
-          }
-        }
-      ],
-      "behaviours": []
-    },
-    {
-      "stepId": "rubbish-waste",
-      "title": "Rubbish and food waste",
-      "elements": [
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "rubbish-storage",
-            "label": "Where will rubbish and food waste be kept?",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Describe rubbish storage location"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "rubbish-stored-elsewhere",
-            "label": "Will rubbish or food waste be kept somewhere else before it is collected?",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select an option"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "rubbish-stored-elsewhere-location",
-            "label": "Where will it be kept?",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Describe where rubbish will be kept"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "rubbish-removal-method",
-            "label": "How will rubbish and food waste be taken away?",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Explain rubbish removal method"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "rubbish-removal-frequency",
-            "label": "How often will rubbish and food waste be taken away?",
-            "options": [
-              {
-                "label": "Every day",
-                "value": "daily"
-              },
-              {
-                "label": "Several times a week",
-                "value": "several-times"
-              },
-              {
-                "label": "Once a week",
-                "value": "weekly"
-              },
-              {
-                "label": "Another schedule",
-                "value": "another-schedule"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select a frequency"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "rubbish-removal-schedule-other",
-            "label": "Tell us how often it will be taken away",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Enter removal frequency"
+                "error": "Enter the number of female staff"
               }
             }
           }
