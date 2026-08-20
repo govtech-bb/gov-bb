@@ -3,7 +3,7 @@
   "title": "Apply to Environmental Health for a restaurant licence",
   "description": "Apply for or renew a restaurant licence",
   "createdAt": "2026-08-18T19:36:35.003Z",
-  "updatedAt": "2026-08-20T17:09:32.283Z",
+  "updatedAt": "2026-08-20T19:39:51.527Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -132,7 +132,12 @@
           "ref": "components/address",
           "overrides": {
             "fieldId": "your-address-line-2",
-            "label": "Address line 2"
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -237,7 +242,12 @@
           "ref": "components/address",
           "overrides": {
             "fieldId": "applicant-address-line-2",
-            "label": "Address line 2"
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -275,7 +285,7 @@
       "title": "About the application",
       "elements": [
         {
-          "ref": "components/generic-radio",
+          "ref": "components/generic-select",
           "overrides": {
             "fieldId": "relationship-to-restaurant",
             "label": "What is your relationship to the restaurant?",
@@ -323,7 +333,15 @@
                 "value": true,
                 "error": "Enter your relationship"
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "relationship-to-restaurant",
+                "operator": "equal",
+                "value": "something-else"
+              }
+            ]
           }
         },
         {
@@ -346,39 +364,6 @@
                 "value": true,
                 "error": "Select an option"
               }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "has-licence-number",
-            "label": "Do you have your restaurant licence or reference number?",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select an option"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "licence-number",
-            "label": "Licence or reference number",
-            "ui": {
-              "width": "short"
             }
           }
         }
@@ -462,18 +447,10 @@
           "ref": "components/address",
           "overrides": {
             "fieldId": "restaurant-address-line-2",
-            "label": "Address line 2"
-          }
-        },
-        {
-          "ref": "components/town",
-          "overrides": {
-            "fieldId": "restaurant-town",
-            "label": "Town or district",
+            "label": "Address line 2",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter town or district"
+                "value": false
               }
             }
           }
@@ -957,6 +934,11 @@
           "overrides": {
             "fieldId": "other-prep-location-address-2",
             "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",

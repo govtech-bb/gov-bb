@@ -95,6 +95,15 @@ it.each([
 // reveals it.
 const GATED_FIELDS: [string, string, Record<string, unknown>][] = [
   [
+    "about-application",
+    "relationship-other",
+    {
+      targetFieldId: "relationship-to-restaurant",
+      operator: "equal",
+      value: "something-else",
+    },
+  ],
+  [
     "about-restaurant",
     "restaurant-expected-start-date",
     {
@@ -140,3 +149,19 @@ it.each(GATED_FIELDS)(
     ]);
   },
 );
+
+// `components/address` ships `required: true`, so a second address line is
+// mandatory unless the recipe overrides it — and the override only counts once
+// hydration has merged it over the registry default. Reading the recipe file
+// alone would miss a merge that dropped it.
+it.each([
+  ["about-you", "your-address-line-2"],
+  ["applicant-details", "applicant-address-line-2"],
+  ["about-restaurant", "restaurant-address-line-2"],
+  ["food-preparation", "other-prep-location-address-2"],
+])("serves %s.%s as optional", async (stepId, fieldId) => {
+  const fields = await hydratedFields(stepId);
+  const field = fields.find((f) => f.fieldId === fieldId);
+  expect(field, `${fieldId} is missing from ${stepId}`).toBeDefined();
+  expect(field!.validations?.required?.value).toBe(false);
+});
