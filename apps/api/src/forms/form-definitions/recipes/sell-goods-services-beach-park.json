@@ -336,7 +336,7 @@
           "ref": "components/postcode",
           "overrides": {
             "fieldId": "applicant-postcode",
-            "hint": "For example, BB17004 (optional)"
+            "hint": "For example, BB17004"
           }
         }
       ],
@@ -723,7 +723,7 @@
           "ref": "components/postcode",
           "overrides": {
             "fieldId": "prof-ref-postcode",
-            "hint": "For example, BB17004 (optional)"
+            "hint": "For example, BB17004"
           }
         }
       ],
@@ -894,7 +894,7 @@
           "ref": "components/postcode",
           "overrides": {
             "fieldId": "pers-ref-postcode",
-            "hint": "For example, BB17004 (optional)"
+            "hint": "For example, BB17004"
           }
         }
       ],

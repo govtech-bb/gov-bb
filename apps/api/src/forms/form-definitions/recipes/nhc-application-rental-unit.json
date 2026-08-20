@@ -24,9 +24,7 @@
         },
         {
           "ref": "components/middle-name",
-          "overrides": {
-            "hint": "Optional"
-          }
+          "overrides": {}
         },
         {
           "ref": "components/last-name"
@@ -131,7 +129,6 @@
         {
           "ref": "components/address",
           "overrides": {
-            "hint": "Optional",
             "label": "Address line 2",
             "fieldId": "applicant-address-line-2",
             "validations": {
@@ -150,7 +147,6 @@
             "ui": {
               "width": "short"
             },
-            "hint": "Optional",
             "label": "Postcode",
             "fieldId": "applicant-postcode"
           }
@@ -164,7 +160,6 @@
         {
           "ref": "components/email",
           "overrides": {
-            "hint": "Optional",
             "label": "Email",
             "fieldId": "applicant-email",
             "validations": {
@@ -341,7 +336,6 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Optional",
             "label": "Middle name",
             "fieldId": "co-applicant-middle-name"
           }
@@ -440,7 +434,6 @@
         {
           "ref": "components/address",
           "overrides": {
-            "hint": "Optional",
             "label": "Address line 2",
             "fieldId": "co-applicant-address-line-2",
             "validations": {
@@ -462,7 +455,6 @@
             "ui": {
               "width": "short"
             },
-            "hint": "Optional",
             "label": "Postcode",
             "fieldId": "co-applicant-postcode"
           }
@@ -476,7 +468,6 @@
         {
           "ref": "components/email",
           "overrides": {
-            "hint": "Optional",
             "label": "Email",
             "fieldId": "co-applicant-email",
             "validations": {
@@ -663,7 +654,6 @@
         {
           "ref": "components/address",
           "overrides": {
-            "hint": "Optional",
             "label": "Address of land or property line 2",
             "fieldId": "land-property-address-line-2",
             "validations": {
@@ -788,7 +778,6 @@
         {
           "ref": "components/address",
           "overrides": {
-            "hint": "Optional",
             "label": "Address of previous NHC unit line 2",
             "fieldId": "previous-nhc-unit-address2",
             "validations": {
@@ -850,7 +839,6 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Optional",
             "fieldId": "rental-occupant-middle-name"
           }
         },

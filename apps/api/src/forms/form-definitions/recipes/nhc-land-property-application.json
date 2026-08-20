@@ -42,7 +42,6 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Optional",
             "isHidden": false
           }
         },
@@ -137,7 +136,6 @@
         {
           "ref": "components/address",
           "overrides": {
-            "hint": "Optional",
             "label": "Address line 2",
             "fieldId": "address-line-2",
             "validations": {
@@ -323,7 +321,6 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Optional",
             "label": "Middle name",
             "fieldId": "co-applicant-middle-name"
           }
@@ -439,7 +436,6 @@
         {
           "ref": "components/address",
           "overrides": {
-            "hint": "Optional",
             "label": "Address line 2",
             "fieldId": "co-applicant-address-line-2",
             "validations": {
