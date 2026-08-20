@@ -113,7 +113,8 @@ Semantic components already SHIP their purpose-specific validations centrally (\
 | Field uses \`components/generic-tel\` | Add \`phone\` validation: \`{"value": true, "error": "Please enter a valid phone number"}\` (defaults to a Barbados number; a leading + allows overseas numbers; the semantic tel components already ship this — do not restate) |
 | Field description says "required", "must provide", "mandatory", or has asterisk (*) | Add \`required\` validation — unless the component already ships \`required\` (email, tel, parish and most semantic components do), in which case add nothing |
 | Paper form — common required fields (name, first name, last name, email, phone, address line 1, date of birth) | Infer \`required\` validation automatically — but only on generic primitives; the semantic components for these fields already ship \`required\` |
-| "address line 2", "apt", "suite", "unit", or any second/continuation line of a multi-line field | These are optional by default — NEVER infer \`required\` for them. Add \`required\` only if the form explicitly marks the line itself as required (asterisk, "mandatory") |
+| "address line 2", "apt", "suite", "unit", or any second/continuation line of a multi-line field | These must be OPTIONAL: set \`"required": {"value": false}\` explicitly. Omitting the rule is NOT enough — generic primitives inherit \`required: true\` from the registry. Add \`required: {"value": true}\` only if the form explicitly marks the line itself as required (asterisk, "mandatory") |
+| Field is optional (the form says "optional", "if applicable", "if known", or nothing marks it required and it is not business-necessary) | Set \`"required": {"value": false}\` explicitly on generic primitives — omission inherits the registry's \`required: true\`. The renderer appends a muted "(optional)" to the label automatically from this value |
 | Section header says "required fields", "mandatory", "please complete all fields" | Mark all fields in that section as required |
 | Structural indicators on paper form: red asterisk, bold label, field outlined in red | Infer \`required\` validation |
 | Business necessity: fields needed to process/submit the form (ID numbers, account details) | Infer \`required\` validation |
@@ -206,6 +207,8 @@ The people filling in these forms are busy, often stressed, frequently on a phon
 - A 9-to-11-year-old reading age is acceptable when the service is genuinely complex.
 
 When the paper form's own label is written in formal or legalese wording ("Applicants desirous of…", "the aforementioned premises"), translate the MEANING into plain language for the \`label\` — do not copy the formal phrasing verbatim. The facts come from the form; the wording is yours.
+
+NEVER write "(optional)", "(Optional)" or ", optional" into a \`label\` or \`hint\` — even when the paper form prints it next to the field. Optionality is data, not copy: express it as \`"required": {"value": false}\` and the renderer appends a muted "(optional)" to the label itself. A hand-typed suffix would render doubled.
 
 #### Rule B: Never fabricate facts or purposes that are not on the source form
 
@@ -342,7 +345,7 @@ Every generated recipe MUST include a top-level \`"meta": {"visibility": "draft"
 - components/last-name — text (person's last name)
 - components/middle-name — text (middle name)
 - components/name — text (use for EVERY human name field — "full name", "name of applicant", "father's name", "witness name", etc. — with a fieldId + label override; never build a person name from \`components/generic-text\`. Carries a person-name pattern that rejects digits and most symbols, which is correct for any person's name; for NON-person names like a business name or school name use \`components/generic-text\` instead, per CATEGORY 0; for relationship fields use \`components/relationship\`, per Rule 4)
-- components/address — text (single address line, use twice with different fieldIds for line 1 + 2; line 2 is optional by default — do not add \`required\` to it, per CATEGORY 2)
+- components/address — text (single address line, use twice with different fieldIds for line 1 + 2; the base ships \`required: true\`, so line 2 MUST override \`"required": {"value": false}\` explicitly, per CATEGORY 2)
 - components/town — text
 - components/postcode — text (width: short)
 - components/national-id-number — text
@@ -562,11 +565,18 @@ To gate on an AGE derived from a DATE field, add a \`transform\` key (\`"yearsSi
 \`\`\`
 This reveals the field only when the date-of-birth works out to an age of 18 or more. \`transform\` works on all three conditional behaviours (\`fieldConditionalOn\`, \`optionalIf\`, \`stepConditionalOn\`). Express a range by stacking two conditions on the same field — they combine with implicit AND, so \`gte 16\` + \`lte 24\` reads as "16–24". An empty or invalid date yields NaN, which never matches.
 
-## Optional Fields (optionalIf)
+## Statically Optional Fields
+A field that is simply optional (not conditional on anything) declares it in validations, never in copy:
+\`\`\`json
+"validations": { "required": { "value": false } }
+\`\`\`
+Set it explicitly on generic primitives — omitting the rule inherits the registry's \`required: true\`. The renderer derives a muted "(optional)" label suffix from this value; never write "(optional)" into the \`label\` or \`hint\` (per CATEGORY 6).
+
+## Conditionally Optional Fields (optionalIf)
 \`\`\`json
 "behaviours": [{"type": "optionalIf", "targetFieldId": "field-to-watch", "operator": "equal", "value": true}]
 \`\`\`
-Relaxes the field's required validation while the condition matches — the field stays VISIBLE but becomes optional. Format validations (pattern, minLength, ...) still apply if the user fills it in. Same operators as fieldConditionalOn, and the same \`value\` rule: string values are always lowercased and kebab-cased to match the watched field's option \`value\`, never its label. operator is REQUIRED.
+Relaxes the field's required validation while the condition matches — the field stays VISIBLE but becomes optional. Format validations (pattern, minLength, ...) still apply if the user fills it in. Same operators as fieldConditionalOn, and the same \`value\` rule: string values are always lowercased and kebab-cased to match the watched field's option \`value\`, never its label. operator is REQUIRED. These fields keep their unmarked (required-looking) label — the toggle that relaxes them explains itself; only \`"required": {"value": false}\` produces the "(optional)" suffix.
 
 ## Alternative Identity Pattern (e.g. passport instead of National ID)
 When a form lets the applicant supply one identifier in place of another ("Use passport number instead" or any either/or pattern), ALWAYS emit all three parts:

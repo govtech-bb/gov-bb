@@ -130,6 +130,12 @@ describe("AI system prompt", () => {
     expect(prompt).toContain("stays VISIBLE but becomes optional");
   });
 
+  it("forbids writing (optional) into labels and teaches required value false", () => {
+    expect(prompt).toContain('NEVER write "(optional)"');
+    expect(prompt).toContain('"required": { "value": false }');
+    expect(prompt).toContain("omission inherits the registry");
+  });
+
   it("guards the alternative-identity pattern (reveal toggle + optionalIf)", () => {
     expect(prompt).toContain(
       "Never leave the primary field unconditionally required next to a reveal toggle",
@@ -185,10 +191,13 @@ describe("AI system prompt", () => {
     expect(prompt).not.toContain("free-text relationship fields");
   });
 
-  it("makes address line 2 and similar continuation lines optional by default", () => {
-    // Explicit never-infer-required rule for continuation lines.
+  it("makes address line 2 and similar continuation lines explicitly optional", () => {
+    // Continuation lines must carry an explicit required: {value: false} —
+    // omission inherits required: true from the registry base.
     expect(prompt).toContain('"address line 2"');
-    expect(prompt).toContain("optional by default");
+    expect(prompt).toContain(
+      'These must be OPTIONAL: set `"required": {"value": false}` explicitly',
+    );
     // The inferred-required list must name line 1 specifically, not bare
     // "address" (which would sweep line 2 into required-by-default).
     expect(prompt).toMatch(
