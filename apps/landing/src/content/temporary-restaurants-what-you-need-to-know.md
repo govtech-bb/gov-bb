@@ -26,8 +26,6 @@ In law, food is “any substance, whether processed, semi-processed or raw, whic
 
 You need a licence if you will serve or offer for sale, any food or drink, wether carried on for profit or not. This also includes **bars, snacks** and **confectioneries**, **free samples or product promotions**.
 
-<br />
-
 [Apply for a licence](https://landing.sandbox.alpha.gov.bb/business-trade/apply-for-temporary-restaurant-licence)
 
 ## Who needs to apply
@@ -43,7 +41,7 @@ Apply at least **14 days** before the event.
 -   Everyone handling food must have a valid medical certificate, and have it during the event.
 -   Your licence will be issued at the event by the Environmental Health Officer, at the completion and successful compliance to the EHD standards.
 -   All licences should be kept it at your stall.
--   Temporary permits may be granted by the EHD based on a risk based assessment. 
+-   Temporary permits may be granted by the EHD based on a risk based assessment.
 
 ## Paying for environmental health officers
 
@@ -57,7 +55,7 @@ There is no application fee. If you are organising the event, you must pay any o
 
 [Request an environmental health officer](https://landing.sandbox.alpha.gov.bb/business-trade/request-an-environmental-health-officer)
 
-## What counts as a mass event 
+## What counts as a mass event
 
 A mass event or mass gathering is generally defined as a large-scale public assembly that includes but not limited to; a festival, concert, sporting match, a fair, fete, wedding, breakfast party or a jouvert —where a high concentration of people strains health and sanitation resources, triggering special response from the Environmental Health Department, issuing of temporary restaurant licenses and strict food safety protocols.
 
