@@ -9,6 +9,35 @@
         "recipientField": "your-details.email",
         "subject": "Your Hotel Licence application has been received"
       }
+    },
+    {
+      "type": "email",
+      "config": {
+        "subject": "A new Hotel Licence application has been received",
+        "recipientField": "catchment.mdaEmail"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "mapping": {
+          "programmeCode": "HOTEL_LICENCE",
+          "applicant": {
+            "name": [
+              "your-details.first-name",
+              "your-details.last-name"
+            ],
+            "email": "your-details.email",
+            "phone": "your-details.contact-number"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        }
+      }
     }
   ],
   "meta": {
@@ -59,6 +88,110 @@
                 "targetFieldId": "application-type",
                 "operator": "equal",
                 "value": "renew-licence"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "hotel-operator",
+      "title": "The hotel operator",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "is-operator",
+            "label": "Are you the operator of the hotel?",
+            "hint": "The operator is the person or company that runs the hotel from day to day.",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether you are the operator of the hotel."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "operator-name",
+            "label": "Operator's name",
+            "hint": "This can be a person or a company.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the operator's name."
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-operator",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-tel",
+          "overrides": {
+            "fieldId": "operator-contact-number",
+            "label": "Operator's contact number",
+            "hint": "You can enter a local or international number.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter a contact number for the operator."
+              },
+              "phone": {
+                "value": true,
+                "error": "Enter a contact number for the operator."
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-operator",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-email",
+          "overrides": {
+            "fieldId": "operator-email",
+            "label": "Operator's email address",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter an email address for the operator."
+              },
+              "email": {
+                "value": true,
+                "error": "Enter a valid email address."
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-operator",
+                "operator": "equal",
+                "value": "no"
               }
             ]
           }
@@ -122,7 +255,12 @@
           "overrides": {
             "fieldId": "your-address-line-2",
             "label": "Address line 2",
-            "hint": "Optional."
+            "hint": "Optional.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -246,7 +384,7 @@
           }
         },
         {
-          "ref": "components/address",
+          "ref": "components/address-lookup",
           "overrides": {
             "fieldId": "hotel-address-line-1",
             "label": "Address line 1",
@@ -255,6 +393,11 @@
                 "value": true,
                 "error": "Enter the hotel address."
               }
+            },
+            "geocodeTargets": {
+              "line2FieldId": "hotel-address-line-2",
+              "parishFieldId": "hotel-parish",
+              "coordinatesFieldId": "hotel-address-coordinates"
             }
           }
         },
@@ -280,6 +423,21 @@
           }
         },
         {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "hotel-address-coordinates",
+            "label": "Hotel location coordinates",
+            "ui": {
+              "hidden": true
+            },
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
           "ref": "components/generic-number",
           "overrides": {
             "fieldId": "maximum-number-of-guests",
@@ -298,6 +456,326 @@
         }
       ],
       "behaviours": []
+    },
+    {
+      "stepId": "floor-details",
+      "title": "Tell us about each floor of the hotel",
+      "description": "Give the details for one floor at a time. You can add another floor after this one.",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "floor-name",
+            "label": "Floor",
+            "hint": "For example, ground, 1 or 2.",
+            "ui": {
+              "width": "short"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter which floor this is."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "floor-number-of-rooms",
+            "label": "Number of bedrooms on this floor",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of bedrooms on this floor."
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "floor-number-of-occupants",
+            "label": "Number of occupants on this floor",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of occupants on this floor."
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "floor-number-of-water-closets",
+            "label": "Number of water closets on this floor",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of water closets on this floor."
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "floor-rooms-with-water-closets",
+            "label": "Number of rooms with water closets on this floor",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of rooms with water closets on this floor."
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "floor-number-of-baths",
+            "label": "Number of baths on this floor",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of baths on this floor."
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "floor-rooms-with-baths",
+            "label": "Number of rooms with baths on this floor",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of rooms with baths on this floor."
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "floor-number-of-basins",
+            "label": "Number of basins on this floor",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of basins on this floor."
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "floor-rooms-with-basins",
+            "label": "Number of rooms with basins on this floor",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of rooms with basins on this floor."
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more."
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 10,
+          "addAnotherLabel": "Do you need to add another floor?",
+          "instanceLabel": "Floor"
+        }
+      ]
+    },
+    {
+      "stepId": "staff-details",
+      "title": "Staff details",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "staff-number-of-males",
+            "label": "Number of male staff",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of male staff."
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "staff-number-of-females",
+            "label": "Number of female staff",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of female staff."
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "staff-changing-rooms",
+            "label": "Number of changing rooms for staff",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of changing rooms for staff."
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "staff-lockers",
+            "label": "Number of lockers for staff",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of lockers for staff."
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "staff-hand-wash-basins",
+            "label": "Number of hand wash basins for staff",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of hand wash basins for staff."
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "staff-water-closets",
+            "label": "Number of water closets for staff",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the number of water closets for staff."
+              },
+              "min": {
+                "value": 0,
+                "error": "Enter 0 or more."
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "documents",
+      "title": "Supporting documents",
+      "description": "You must upload a site plan with a new Hotel Licence application.",
+      "elements": [
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "site-plan",
+            "label": "Site plan",
+            "hint": "A plan of the hotel site showing the buildings, the water supply, waste disposal and staff facilities. PDF, JPG or PNG.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload a site plan."
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "Upload a PDF, JPG or PNG."
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller."
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "application-type",
+          "targetFieldId": "application-type",
+          "operator": "equal",
+          "value": "new-licence"
+        }
+      ]
     },
     {
       "stepId": "check-your-answers",
@@ -337,14 +815,13 @@
       "title": "Application submitted",
       "elements": [],
       "behaviours": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "Your Hotel Licence application has been sent to Environmental Health. Environmental Health will review your application. They may contact you if they need more information. Submitting an application does not mean that a Hotel Licence has been granted."
-        }
-      ]
+      "markdownContent": "A copy of your application has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your application.\n- They may contact you if they need more information.\n- Submitting an application does not mean that a Hotel Licence has been granted.\n\nKeep your reference number for any follow-up."
     }
   ],
   "createdAt": "2026-08-18T17:01:58.317Z",
-  "updatedAt": "2026-08-18T17:01:58.317Z"
+  "updatedAt": "2026-08-19T00:00:00.000Z",
+  "catchmentRouting": {
+    "coordinatesField": "hotel-details.hotel-address-coordinates",
+    "parishField": "hotel-details.hotel-parish"
+  }
 }

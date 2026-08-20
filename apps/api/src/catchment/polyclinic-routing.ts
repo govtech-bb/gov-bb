@@ -90,6 +90,20 @@ export const PROGRAMME_CODES_BY_FORM: Record<string, Record<string, string>> = {
     "Sir Winston Scott Polyclinic": "ENV_HEALTH_OFFICER_WINSTON_SCOTT",
     "St. Philip Polyclinic": "ENV_HEALTH_OFFICER_ST_PHILIP",
   },
+  // PROVISIONAL — same status as `apply-for-restaurant-licence` above: these
+  // follow the licence naming convention but have NOT been issued by the CMS,
+  // and must be confirmed against real CMS queues before the form leaves
+  // `visibility: preview`. `Randal Phillips` keeps the one-L licence spelling.
+  "hotel-licence-application": {
+    "Branford Taitt Polyclinic": "HOTEL_LICENCE_BRANFORD_TAITT",
+    "David Thompson Health & Social Services Complex":
+      "HOTEL_LICENCE_DAVID_THOMPSON",
+    "Eunice Gibson Polyclinic": "HOTEL_LICENCE_EUNICE_GIBSON",
+    "Maurice Byer Polyclinic": "HOTEL_LICENCE_MAURICE_BYER",
+    "Randal Phillips Polyclinic": "HOTEL_LICENCE_RANDAL_PHILLIPS",
+    "Sir Winston Scott Polyclinic": "HOTEL_LICENCE_WINSTON_SCOTT",
+    "St. Philip Polyclinic": "HOTEL_LICENCE_ST_PHILIP",
+  },
 };
 
 /**
