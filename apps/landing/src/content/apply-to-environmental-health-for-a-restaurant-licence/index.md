@@ -43,7 +43,7 @@ You may need to provide:
 -   a layout (if applicable)
 -   medical certificates
 
-All staff within the restaurant need a valid medical certificate. Medical certificates expire on 31 December each year, and should be renewed by the first working day in January each year.
+All staff within the restaurant need a valid medical certificate from a registered doctor. Medical certificates expire on 31 December each year, and should be renewed by the first working day in January each year.
 
 You can upload the certificates with your application or provide them at the inspection.
 
