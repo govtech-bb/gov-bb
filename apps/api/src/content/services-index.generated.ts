@@ -7,7 +7,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     slug: "apply-environmental-health-food-business-license",
     title: "Apply for or renew a food business licence",
     category: "business-trade",
-    formId: "food-business-licence-application",
+    formId: "apply-for-food-business-licence",
     visibility: "preview",
   },
   {
@@ -150,7 +150,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     slug: "apply-to-environmental-health-for-a-restaurant-licence",
     title: "Apply for a restaurant licence",
     category: "business-trade",
-    formId: "restaurant-licence-application",
+    formId: "apply-for-restaurant-licence",
     visibility: "preview",
   },
   {
@@ -244,13 +244,6 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     category: "education",
     formId: "bssee-form-b-defer-examination",
     visibility: "draft",
-  },
-  {
-    slug: "food-business-licence-application",
-    title: "Apply for a food business licence",
-    category: "business-trade",
-    formId: "food-business-licence-application",
-    visibility: "preview",
   },
   {
     slug: "get-a-document-notarised",
@@ -479,12 +472,6 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     slug: "request-special-arrangements-for-the-bssee",
     title: "Request special arrangements for the BSSEE",
     category: "education",
-    visibility: "draft",
-  },
-  {
-    slug: "restaurant-licence-application",
-    title: "Apply for a restaurant licence",
-    formId: "restaurant-licence-application",
     visibility: "draft",
   },
   {

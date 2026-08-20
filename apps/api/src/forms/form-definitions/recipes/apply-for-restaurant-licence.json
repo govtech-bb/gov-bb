@@ -1,9 +1,9 @@
 {
   "formId": "apply-for-restaurant-licence",
-  "title": "Apply for a restaurant licence",
-  "description": "Apply for a licence to operate a restaurant in Barbados, under the Health Services (Restaurant) Regulations, 1969. Issued by the Environmental Health Department.",
-  "createdAt": "2026-08-18T00:00:00Z",
-  "updatedAt": "2026-08-18T00:00:00Z",
+  "title": "Apply to Environmental Health for a restaurant licence",
+  "description": "Apply for or renew a restaurant licence",
+  "createdAt": "2026-08-18T19:36:35.003Z",
+  "updatedAt": "2026-08-18T19:36:35.003Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -13,8 +13,8 @@
     {
       "type": "email",
       "config": {
-        "subject": "Your restaurant licence application has been received",
-        "recipientField": "applicant-details.email"
+        "recipientField": "about-you.your-email",
+        "subject": "Your restaurant licence application has been received"
       }
     },
     {
@@ -31,159 +31,329 @@
           "programmeCode": "RESTAURANT_LICENCE",
           "applicant": {
             "name": [
-              "applicant-details.applicant-first-name",
-              "applicant-details.applicant-last-name"
+              "about-you.your-first-name",
+              "about-you.your-last-name"
             ],
-            "email": "applicant-details.email",
-            "phone": "applicant-details.mobile-number"
+            "email": "about-you.your-email",
+            "phone": "about-you.your-telephone"
           },
-          "excludeSteps": ["declaration", "submission-confirmation"],
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
           "groupByStep": true
         }
       }
     }
   ],
   "catchmentRouting": {
-    "coordinatesField": "restaurant-details.restaurant-address-coordinates",
-    "parishField": "restaurant-details.restaurant-parish"
+    "coordinatesField": "about-restaurant.restaurant-address-coordinates",
+    "parishField": "about-restaurant.restaurant-parish"
   },
   "steps": [
     {
-      "stepId": "application-type",
-      "title": "Is this a new application or a renewal?",
+      "stepId": "about-you",
+      "title": "About you",
       "elements": [
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Is this a new application or a renewal?",
-            "fieldId": "application-type",
-            "ui": {
-              "hideLabel": true
-            },
+            "fieldId": "completing-for",
+            "label": "Are you completing this application for yourself or someone else?",
             "options": [
               {
-                "label": "New application",
-                "value": "new"
+                "label": "Myself",
+                "value": "myself"
               },
               {
-                "label": "Renewal",
+                "label": "Someone else or a business or organisation",
+                "value": "someone-else"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "your-first-name",
+            "label": "First name"
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "your-middle-name",
+            "label": "Middle name(s)"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "your-last-name",
+            "label": "Last name"
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "your-telephone",
+            "label": "Telephone number"
+          }
+        },
+        {
+          "ref": "components/contact-telephone",
+          "overrides": {
+            "fieldId": "your-second-telephone",
+            "label": "Second telephone number"
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "your-email",
+            "label": "Email address"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "your-address-line-1",
+            "label": "Address line 1"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "your-address-line-2",
+            "label": "Address line 2"
+          }
+        },
+        {
+          "ref": "components/town",
+          "overrides": {
+            "fieldId": "your-town",
+            "label": "Town or district"
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "your-parish"
+          }
+        },
+        {
+          "ref": "components/country",
+          "overrides": {
+            "fieldId": "your-country"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "applicant-details",
+      "title": "Applicant details",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "applicant-type",
+            "label": "Who is applying for the restaurant licence?",
+            "options": [
+              {
+                "label": "An individual",
+                "value": "individual"
+              },
+              {
+                "label": "A business or organisation",
+                "value": "business"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "applicant-first-name",
+            "label": "First name"
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "applicant-middle-name",
+            "label": "Middle name(s)"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "applicant-last-name",
+            "label": "Last name"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "business-name",
+            "label": "Business or organisation name"
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "applicant-telephone",
+            "label": "Telephone number"
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "applicant-email",
+            "label": "Email address"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "applicant-address-line-1",
+            "label": "Address line 1"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "applicant-address-line-2",
+            "label": "Address line 2"
+          }
+        },
+        {
+          "ref": "components/town",
+          "overrides": {
+            "fieldId": "applicant-town",
+            "label": "Town or district"
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "applicant-parish"
+          }
+        },
+        {
+          "ref": "components/country",
+          "overrides": {
+            "fieldId": "applicant-country"
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "about-you",
+          "targetFieldId": "completing-for",
+          "operator": "equal",
+          "value": "someone-else"
+        }
+      ]
+    },
+    {
+      "stepId": "about-application",
+      "title": "About the application",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "relationship-to-restaurant",
+            "label": "What is your relationship to the restaurant?",
+            "options": [
+              {
+                "label": "Owner",
+                "value": "owner"
+              },
+              {
+                "label": "Co-owner or partner",
+                "value": "co-owner"
+              },
+              {
+                "label": "Director or company officer",
+                "value": "director"
+              },
+              {
+                "label": "Manager or operator",
+                "value": "manager"
+              },
+              {
+                "label": "Authorised representative",
+                "value": "representative"
+              },
+              {
+                "label": "Something else",
+                "value": "something-else"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "relationship-other",
+            "label": "Tell us your relationship to the restaurant",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your relationship"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "application-type",
+            "label": "What are you applying to do?",
+            "options": [
+              {
+                "label": "Apply for a restaurant licence for the first time",
+                "value": "first-time"
+              },
+              {
+                "label": "Renew a restaurant licence",
                 "value": "renewal"
               }
             ],
             "validations": {
               "required": {
                 "value": true,
-                "error": "Select whether this is a new application or a renewal"
-              }
-            }
-          }
-        }
-      ]
-    },
-    {
-      "stepId": "applicant-details",
-      "title": "Your details",
-      "elements": [
-        {
-          "ref": "components/first-name",
-          "overrides": {
-            "label": "First name",
-            "fieldId": "applicant-first-name"
-          }
-        },
-        {
-          "ref": "components/middle-name",
-          "overrides": {
-            "label": "Middle name (optional)",
-            "fieldId": "applicant-middle-name"
-          }
-        },
-        {
-          "ref": "components/last-name",
-          "overrides": {
-            "label": "Last name",
-            "fieldId": "applicant-last-name"
-          }
-        },
-        {
-          "ref": "components/address",
-          "overrides": {
-            "label": "Address line 1",
-            "fieldId": "applicant-address-line-1"
-          }
-        },
-        {
-          "ref": "components/address",
-          "overrides": {
-            "label": "Address line 2 (optional)",
-            "fieldId": "applicant-address-line-2",
-            "validations": {
-              "required": {
-                "value": false
+                "error": "Select an option"
               }
             }
           }
         },
-        {
-          "ref": "components/parish",
-          "overrides": {
-            "label": "Parish",
-            "fieldId": "applicant-parish"
-          }
-        },
-        {
-          "ref": "components/mobile-telephone",
-          "overrides": {
-            "label": "Mobile number",
-            "fieldId": "mobile-number",
-            "hint": "We will use your mobile number to contact you. For example, (246) 249 1234."
-          }
-        },
-        {
-          "ref": "components/home-telephone",
-          "overrides": {
-            "label": "Home telephone (optional)",
-            "hint": "For example, (246) 433 1234.",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/work-telephone",
-          "overrides": {
-            "label": "Work telephone (optional)",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/email",
-          "overrides": {
-            "label": "Email address",
-            "hint": "We will use this to contact you about your application. For example, you@example.com."
-          }
-        }
-      ]
-    },
-    {
-      "stepId": "restaurant-owner",
-      "title": "Are you the owner or operator of the restaurant?",
-      "elements": [
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Are you the owner or operator of the restaurant?",
-            "fieldId": "is-owner-operator",
-            "ui": {
-              "hideLabel": true
-            },
-            "hint": "This records who is responsible for the establishment. You still give your own details, which you did on the last page.",
+            "fieldId": "has-licence-number",
+            "label": "Do you have your restaurant licence or reference number?",
             "options": [
               {
                 "label": "Yes",
@@ -197,107 +367,89 @@
             "validations": {
               "required": {
                 "value": true,
-                "error": "Select whether you are the owner or operator of the restaurant"
+                "error": "Select an option"
               }
             }
           }
         },
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
-            "label": "Owner or operator's name",
-            "fieldId": "owner-operator-name",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "is-owner-operator",
-                "operator": "equal",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Enter the owner or operator's name"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-tel",
-          "overrides": {
-            "label": "Owner or operator's phone number",
-            "fieldId": "owner-operator-phone",
-            "hint": "Give a phone number or an email for the owner or operator. For example, (246) 249 1234.",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "is-owner-operator",
-                "operator": "equal",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Enter the owner or operator's phone number"
-              },
-              "phone": {
-                "value": true,
-                "error": "Please enter a valid phone number"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-email",
-          "overrides": {
-            "label": "Owner or operator's email address (optional)",
-            "fieldId": "owner-operator-email",
-            "hint": "For example, owner@example.com.",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "is-owner-operator",
-                "operator": "equal",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": false
-              },
-              "email": {
-                "value": true,
-                "error": "Enter a valid email address"
-              }
+            "fieldId": "licence-number",
+            "label": "Licence or reference number",
+            "ui": {
+              "width": "short"
             }
           }
         }
-      ]
+      ],
+      "behaviours": []
     },
     {
-      "stepId": "restaurant-details",
+      "stepId": "about-restaurant",
       "title": "About the restaurant",
       "elements": [
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Name of restaurant",
             "fieldId": "restaurant-name",
+            "label": "What is the restaurant name?",
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter the name of the restaurant"
+                "error": "Enter the restaurant name"
               }
             }
           }
         },
         {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "restaurant-already-open",
+            "label": "Is the restaurant already open?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "fieldId": "restaurant-start-date",
+            "label": "What date did the restaurant start?"
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "fieldId": "restaurant-expected-start-date",
+            "label": "What date do you expect the restaurant to start?"
+          }
+        },
+        {
           "ref": "components/address-lookup",
           "overrides": {
-            "label": "Restaurant address line 1",
             "fieldId": "restaurant-address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter address line 1"
+              }
+            },
             "geocodeTargets": {
               "line2FieldId": "restaurant-address-line-2",
               "parishFieldId": "restaurant-parish",
@@ -308,11 +460,19 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Restaurant address line 2 (optional)",
             "fieldId": "restaurant-address-line-2",
+            "label": "Address line 2"
+          }
+        },
+        {
+          "ref": "components/town",
+          "overrides": {
+            "fieldId": "restaurant-town",
+            "label": "Town or district",
             "validations": {
               "required": {
-                "value": false
+                "value": true,
+                "error": "Enter town or district"
               }
             }
           }
@@ -320,15 +480,20 @@
         {
           "ref": "components/parish",
           "overrides": {
-            "label": "Parish of the restaurant",
-            "fieldId": "restaurant-parish"
+            "fieldId": "restaurant-parish",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select a parish"
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Restaurant location coordinates",
             "fieldId": "restaurant-address-coordinates",
+            "label": "Restaurant location coordinates",
             "ui": {
               "hidden": true
             },
@@ -338,45 +503,785 @@
               }
             }
           }
-        }
-      ]
-    },
-    {
-      "stepId": "documents",
-      "title": "Supporting documents",
-      "elements": [
+        },
         {
-          "ref": "components/upload-document",
+          "ref": "components/generic-radio",
           "overrides": {
-            "label": "Supporting documents (optional)",
-            "fieldId": "supporting-documents",
-            "hint": "PDF, JPG or PNG. You can upload more than one file.",
-            "multiple": true,
+            "fieldId": "property-use",
+            "label": "Is it:",
+            "options": [
+              {
+                "label": "Owned",
+                "value": "owned"
+              },
+              {
+                "label": "Rented or leased",
+                "value": "rented"
+              },
+              {
+                "label": "Used with permission",
+                "value": "permission"
+              },
+              {
+                "label": "Something else",
+                "value": "something-else"
+              }
+            ],
             "validations": {
-              "fileTypes": {
-                "value": ["application/pdf", "image/jpeg", "image/png"],
-                "error": "Upload a PDF, JPG or PNG"
-              },
-              "itemMaxSize": {
-                "value": 5242880,
-                "error": "Each file must be 5 MB or smaller"
-              },
-              "maxSize": {
-                "value": 10485760,
-                "error": "Your files must come to 10 MB or less in total"
+              "required": {
+                "value": true,
+                "error": "Select an option"
               }
             }
           }
         },
         {
-          "ref": "components/content",
+          "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "supporting-documents-note",
-            "variant": "inset",
-            "content": "You do not have to upload anything to apply. If you already have documents about the premises, such as plans, upload them here and it may save a follow-up request."
+            "fieldId": "property-use-other",
+            "label": "Tell us how the property is used",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter how the property is used"
+              }
+            }
           }
         }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "opening-hours",
+      "title": "Opening hours and customers",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "opening-days",
+            "label": "Day or days",
+            "options": [
+              {
+                "label": "Monday",
+                "value": "monday"
+              },
+              {
+                "label": "Tuesday",
+                "value": "tuesday"
+              },
+              {
+                "label": "Wednesday",
+                "value": "wednesday"
+              },
+              {
+                "label": "Thursday",
+                "value": "thursday"
+              },
+              {
+                "label": "Friday",
+                "value": "friday"
+              },
+              {
+                "label": "Saturday",
+                "value": "saturday"
+              },
+              {
+                "label": "Sunday",
+                "value": "sunday"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select at least one day"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "opening-time",
+            "label": "Opening time",
+            "ui": {
+              "width": "short"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter opening time"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "closing-time",
+            "label": "Closing time",
+            "ui": {
+              "width": "short"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter closing time"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "customers-eat-drink",
+            "label": "Will customers eat or drink at the restaurant?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "eating-area-location",
+            "label": "Where will customers eat or drink?",
+            "options": [
+              {
+                "label": "Indoors",
+                "value": "indoors"
+              },
+              {
+                "label": "Outdoors",
+                "value": "outdoors"
+              },
+              {
+                "label": "Indoors and outdoors",
+                "value": "indoors-outdoors"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "customer-capacity",
+            "label": "About how many customers can the area hold?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter customer capacity"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 10,
+          "addAnotherLabel": "Do you need to add another set of opening hours?",
+          "instanceLabel": "Opening hours"
+        }
       ]
+    },
+    {
+      "stepId": "food-drink",
+      "title": "Food and drink",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "food-drink-types",
+            "label": "What types of food and drink will the restaurant sell?",
+            "options": [
+              {
+                "label": "Meat or poultry",
+                "value": "meat"
+              },
+              {
+                "label": "Fish or seafood",
+                "value": "fish"
+              },
+              {
+                "label": "Eggs or dairy products",
+                "value": "eggs"
+              },
+              {
+                "label": "Rice, pasta, grains or other cooked starches",
+                "value": "starches"
+              },
+              {
+                "label": "Fruit or vegetables",
+                "value": "fruit-veg"
+              },
+              {
+                "label": "Baked goods or desserts",
+                "value": "baked"
+              },
+              {
+                "label": "Ready-to-eat or prepared foods",
+                "value": "ready-eat"
+              },
+              {
+                "label": "Packaged food",
+                "value": "packaged"
+              },
+              {
+                "label": "Non-alcoholic drinks",
+                "value": "non-alcoholic"
+              },
+              {
+                "label": "Alcoholic drinks",
+                "value": "alcoholic"
+              },
+              {
+                "label": "Something else",
+                "value": "something-else"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select at least one type"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "food-drink-type-other",
+            "label": "Enter another type of food or drink",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the food or drink type"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "food-drink-examples",
+            "label": "What food and drink will the restaurant sell?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Provide details of food and drink"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "food-preparation",
+      "title": "Where food is prepared",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "food-prep-location",
+            "label": "Where will the food or drink be prepared?",
+            "options": [
+              {
+                "label": "At the restaurant",
+                "value": "at-restaurant"
+              },
+              {
+                "label": "At another food business or commercial kitchen",
+                "value": "commercial-kitchen"
+              },
+              {
+                "label": "At another location",
+                "value": "another-location"
+              },
+              {
+                "label": "No food or drink will be prepared",
+                "value": "no-prep"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select at least one option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "other-prep-location-business",
+            "label": "Name of business or place",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter business or place name"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "other-prep-location-address-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter address line 1"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "other-prep-location-address-2",
+            "label": "Address line 2"
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "food-transport",
+            "label": "How will the food or drink be taken to the restaurant?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Explain transport method"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "food-preparation-details",
+      "title": "Preparing and keeping food",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "raw-or-undercooked",
+            "label": "Will any meat, poultry, fish, seafood or eggs be served raw or not fully cooked?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "raw-or-undercooked-details",
+            "label": "What will be served raw or not fully cooked?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe what will be served raw"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "food-cooked-advance",
+            "label": "Will any food be cooked in advance?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "food-cooling-storage",
+            "label": "How will the food be cooled and stored?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Explain cooling and storage"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "cooked-food-reheated",
+            "label": "Will any cooked food be reheated before it is served?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "hot-food-kept-hot",
+            "label": "How will hot food be kept hot before it is served?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Explain how hot food will be kept hot"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "cold-storage",
+            "label": "How will food and drink be kept cold?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Explain cold storage methods"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "people-hygiene",
+      "title": "People and hygiene",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "food-handlers-count",
+            "label": "About how many people will prepare or handle food or drink?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter number of food handlers"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "water-source",
+            "label": "Where will the restaurant get its water?",
+            "options": [
+              {
+                "label": "Public water supply",
+                "value": "public-supply"
+              },
+              {
+                "label": "Stored water",
+                "value": "stored"
+              },
+              {
+                "label": "Another source",
+                "value": "another-source"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select at least one water source"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "water-source-other",
+            "label": "Tell us where the water will come from",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter water source details"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "hand-washing-location",
+            "label": "Tell us where people can wash their hands",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe hand washing location"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "washing-area-exists",
+            "label": "Is there a set area for washing dishes and cooking tools?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "washing-area-location",
+            "label": "Where is the washing area?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe washing area location"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "staff-toilets",
+            "label": "Staff toilets",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter number of staff toilets"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "customer-toilets",
+            "label": "Customer toilets",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter number of customer toilets"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "shared-toilets",
+            "label": "Toilets used by both staff and customers"
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "pest-control",
+            "label": "How will the restaurant prevent or deal with pests?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Explain pest control methods"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "rubbish-waste",
+      "title": "Rubbish and food waste",
+      "elements": [
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "rubbish-storage",
+            "label": "Where will rubbish and food waste be kept?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe rubbish storage location"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "rubbish-stored-elsewhere",
+            "label": "Will rubbish or food waste be kept somewhere else before it is collected?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "rubbish-stored-elsewhere-location",
+            "label": "Where will it be kept?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe where rubbish will be kept"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/additional-details",
+          "overrides": {
+            "fieldId": "rubbish-removal-method",
+            "label": "How will rubbish and food waste be taken away?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Explain rubbish removal method"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "rubbish-removal-frequency",
+            "label": "How often will rubbish and food waste be taken away?",
+            "options": [
+              {
+                "label": "Every day",
+                "value": "daily"
+              },
+              {
+                "label": "Several times a week",
+                "value": "several-times"
+              },
+              {
+                "label": "Once a week",
+                "value": "weekly"
+              },
+              {
+                "label": "Another schedule",
+                "value": "another-schedule"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select a frequency"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "rubbish-removal-schedule-other",
+            "label": "Tell us how often it will be taken away",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter removal frequency"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
     },
     {
       "stepId": "declaration",
@@ -385,29 +1290,36 @@
         {
           "ref": "components/confirmation",
           "overrides": {
-            "label": "Declaration",
             "fieldId": "declaration-confirmed",
+            "label": "Declaration",
             "options": [
               {
-                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential. I will operate the restaurant in accordance with the Health Services (Restaurant) Regulations, 1969.",
+                "label": "I confirm that the information in this application is true and correct to the best of my knowledge.",
                 "value": "confirmed"
               }
             ],
             "validations": {
               "required": {
                 "value": true,
-                "error": "You must confirm the declaration to continue"
+                "error": "You must confirm the declaration to continue."
               }
             }
           }
         }
-      ]
+      ],
+      "behaviours": []
     },
     {
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "elements": [],
-      "markdownContent": "A copy of your application has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your application.\n- An environmental health officer may arrange to inspect the restaurant before a licence is issued.\n- They will contact you using the details you gave.\n\nKeep your reference number for any follow-up."
+      "behaviours": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "Environmental Health will review your application. They may contact you if they need more information or need to arrange an inspection. They will contact you with the result. If your application is approved, they will tell you what to do next to get your licence."
+        }
+      ]
     }
   ],
   "meta": {
