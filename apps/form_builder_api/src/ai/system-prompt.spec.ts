@@ -183,6 +183,19 @@ describe("AI system prompt", () => {
     expect(prompt).toMatch(/group of fields (that )?repeat(s)? together/i);
   });
 
+  it("teaches the same-for-every-item gate instead of N fields to fill one by one", () => {
+    expect(prompt).toContain("Ask One Question Once, Not Once Per Item");
+    // The three parts of the pattern: the gate, the shared field on "yes", and
+    // the per-item fields keeping their own condition plus a second on "no".
+    expect(prompt).toContain('gate being `"yes"`');
+    expect(prompt).toContain('gate being `"no"`');
+    // The pattern only works because stacked conditions AND together — without
+    // that, a per-item field would show alongside the shared one.
+    expect(prompt).toMatch(/combine with AND/i);
+    // ...and it must stay opt-in: a gate is wrong when answers differ per item.
+    expect(prompt).toMatch(/answers normally differ per item/i);
+  });
+
   it("directs relationship fields to components/relationship, not a text input", () => {
     expect(prompt).toContain("Relationship fields use components/relationship");
     // The component reference must surface it as a select with baked-in options.
