@@ -3,8 +3,9 @@ title: Apply for or renew a food business licence
 description: Apply for or renew a food business licence from Environmental Health.
 stage: alpha
 publish_date: '2026-08-19'
-visibility: draft
-form_id: apply-environmental-health-food-business-license
+visibility: preview
+form_id: food-business-licence-application
+category: business-trade
 ---
 Use this service to apply for or renew a Food Business Licence from Environmental Health.
 
