@@ -14,7 +14,7 @@ import {
 const LICENCE_FORM = "apply-for-temporary-restaurant-licence";
 const LICENCE_CODE = "TEMP_RESTAURANT_LICENCE";
 const OFFICER_FORM = "request-an-environmental-health-officer";
-const OFFICER_CODE = "ENV_HEALTH_OFFICER_REQUEST";
+const OFFICER_CODE = "ENV_HEALTH_OFFICER";
 
 describe("CatchmentRoutingService", () => {
   let svc: CatchmentRoutingService;

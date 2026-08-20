@@ -53,15 +53,12 @@ export const CATCHMENT_SUFFIX: Record<string, string> = {
  * formId then serving catchment. Every entry is a fact about a real CMS queue,
  * not a preference — the CMS names its queues, we record them.
  *
- * `request-an-environmental-health-officer` is the whole map today: its webhook
- * `mapping.programmeCode` is `ENV_HEALTH_OFFICER_REQUEST` (the code the CMS
- * expects when no catchment resolves) while its per-catchment queues drop the
- * `_REQUEST` and read `ENV_HEALTH_OFFICER_*`. Two different code families for
- * one service, so none of its seven compose. Note also that its Randal Phillips
- * queue spells the place with two Ls — `ENV_HEALTH_OFFICER_RANDALL_PHILLIPS` —
- * unlike the GeoJSON catchment and every licence code, which use one. Confirmed
- * by the service owner (2026-08-10): deliberate, not a typo. Do not "fix" it,
- * and do not copy the two-L spelling into another form's codes.
+ * The one entry today: `request-an-environmental-health-officer`'s Randal
+ * Phillips queue spells the place with two Ls —
+ * `ENV_HEALTH_OFFICER_RANDALL_PHILLIPS` — unlike the GeoJSON catchment and
+ * every licence code, which use one. Confirmed by the service owner
+ * (2026-08-10): deliberate, not a typo. Do not "fix" it to one L, and do not
+ * copy the two-L spelling into another form's codes.
  *
  * `CatchmentRoutingService.onModuleInit` throws at boot if an inner key is not
  * a serving catchment, so a stale override cannot linger after a CMS rename.
@@ -71,14 +68,7 @@ export const PROGRAMME_CODE_OVERRIDES: Record<
   Record<string, string>
 > = {
   "request-an-environmental-health-officer": {
-    "Branford Taitt Polyclinic": "ENV_HEALTH_OFFICER_BRANFORD_TAITT",
-    "David Thompson Health & Social Services Complex":
-      "ENV_HEALTH_OFFICER_DAVID_THOMPSON",
-    "Eunice Gibson Polyclinic": "ENV_HEALTH_OFFICER_EUNICE_GIBSON",
-    "Maurice Byer Polyclinic": "ENV_HEALTH_OFFICER_MAURICE_BYER",
     "Randal Phillips Polyclinic": "ENV_HEALTH_OFFICER_RANDALL_PHILLIPS",
-    "Sir Winston Scott Polyclinic": "ENV_HEALTH_OFFICER_WINSTON_SCOTT",
-    "St. Philip Polyclinic": "ENV_HEALTH_OFFICER_ST_PHILIP",
   },
 };
 
