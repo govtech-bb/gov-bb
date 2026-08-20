@@ -2,9 +2,10 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import {
+  CATCHMENT_SUFFIX,
   PARISH_DEFAULTS,
   POLYCLINIC_EMAILS,
-  PROGRAMME_CODES_BY_FORM,
+  PROGRAMME_CODE_OVERRIDES,
   SERVING_CATCHMENT,
 } from "./polyclinic-routing";
 
@@ -96,23 +97,37 @@ export class CatchmentRoutingService implements OnModuleInit {
 
     const servingNames = new Set(this.entries.map((e) => e.servedBy));
 
-    // Every form's programme-code map must cover every serving catchment, and
-    // every key in it must name one (catches both a typo'd key and a key left
+    // Programme codes are composed from the recipe's own programmeCode plus a
+    // per-catchment suffix, so the suffix table must cover every serving
+    // catchment and name nothing else (catches both a typo'd key and a key left
     // behind for a catchment that is now served by another polyclinic).
-    for (const [formId, codesByCatchment] of Object.entries(
-      PROGRAMME_CODES_BY_FORM,
-    )) {
-      for (const name of servingNames) {
-        if (!(name in codesByCatchment)) {
-          throw new Error(
-            `[catchment] form "${formId}" has no programme code for catchment "${name}"`,
-          );
-        }
+    for (const name of servingNames) {
+      if (!(name in CATCHMENT_SUFFIX)) {
+        throw new Error(
+          `[catchment] CATCHMENT_SUFFIX has no suffix for catchment "${name}"`,
+        );
       }
-      for (const catchmentName of Object.keys(codesByCatchment)) {
-        if (!servingNames.has(catchmentName)) {
+    }
+    for (const name of Object.keys(CATCHMENT_SUFFIX)) {
+      if (!servingNames.has(name)) {
+        throw new Error(
+          `[catchment] CATCHMENT_SUFFIX has a suffix for unknown catchment "${name}"`,
+        );
+      }
+    }
+
+    // An override records an off-convention CMS queue. One naming a catchment
+    // that is no longer served would silently stop applying, so fail loud —
+    // a stale override must be deleted, not left to rot. (That its formId names
+    // a real catchment-routed recipe is asserted in the spec, which can read
+    // the recipes directory; this service deliberately knows nothing of them.)
+    for (const [formId, byCatchment] of Object.entries(
+      PROGRAMME_CODE_OVERRIDES,
+    )) {
+      for (const name of Object.keys(byCatchment)) {
+        if (!servingNames.has(name)) {
           throw new Error(
-            `[catchment] form "${formId}" has a programme code for unknown catchment "${catchmentName}"`,
+            `[catchment] PROGRAMME_CODE_OVERRIDES["${formId}"] has a code for unknown catchment "${name}"`,
           );
         }
       }
@@ -131,14 +146,24 @@ export class CatchmentRoutingService implements OnModuleInit {
 
   resolve(input: {
     formId: string;
+    /**
+     * The recipe's own webhook `mapping.programmeCode`, which the per-catchment
+     * code is composed from. Undefined when the recipe declares
+     * `catchmentRouting` but no mapped webhook — the recipe loader rejects that
+     * at boot, so this is the belt to that braces.
+     */
+    programmeCode?: string;
     coordinates?: string;
     parish?: string;
   }): CatchmentResolution | null {
     const hit = this.pointHit(input.coordinates);
     const entry = hit ?? this.parishHit(input.parish);
     if (!entry) return null;
-    const programmeCode =
-      PROGRAMME_CODES_BY_FORM[input.formId]?.[entry.servedBy];
+    const programmeCode = this.programmeCodeFor(
+      input.formId,
+      input.programmeCode,
+      entry.servedBy,
+    );
     if (!programmeCode) {
       // No fallback code is invented here: returning null makes the caller's
       // resolvedCatchment undefined, so the webhook falls back to the
@@ -146,8 +171,12 @@ export class CatchmentRoutingService implements OnModuleInit {
       // loudly — resolveCatchmentRecipient finds no recipient, the !recipient
       // guard throws NonRetryableError, and sqs-consumer.service.ts logs it
       // and deletes the message rather than letting it churn into the DLQ —
-      // rather than misrouting. This file's existing fail-loud stance, now
-      // applied per form as well as per catchment.
+      // rather than misrouting. This file's existing fail-loud stance.
+      //
+      // Composition means this now fires only when the recipe carries no
+      // mapped webhook, or the catchment has no suffix — both of which boot
+      // validation already refuses to start with. It is unreachable in
+      // practice and kept as the guard that makes that true.
       this.logger.error(
         `[catchment] no programme code for form "${input.formId}" / catchment "${entry.servedBy}"`,
       );
@@ -158,6 +187,25 @@ export class CatchmentRoutingService implements OnModuleInit {
       programmeCode,
       mdaEmail: entry.email,
     };
+  }
+
+  /**
+   * The CMS programme code for one form in one serving catchment: the override
+   * if the CMS issued an off-convention code, otherwise the recipe's own
+   * `mapping.programmeCode` plus the catchment suffix. Composing is what makes
+   * a new catchment-routed form cost nothing in `polyclinic-routing.ts` — the
+   * recipe already carries its programme code, and the suffixes are shared.
+   */
+  private programmeCodeFor(
+    formId: string,
+    programmeCode: string | undefined,
+    servingCatchment: string,
+  ): string | null {
+    const override = PROGRAMME_CODE_OVERRIDES[formId]?.[servingCatchment];
+    if (override) return override;
+    const suffix = CATCHMENT_SUFFIX[servingCatchment];
+    if (!programmeCode || !suffix) return null;
+    return `${programmeCode}_${suffix}`;
   }
 
   private parishHit(parish?: string): CatchmentEntry | undefined {

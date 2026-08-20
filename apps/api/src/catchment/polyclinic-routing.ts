@@ -29,80 +29,56 @@ export const SERVING_CATCHMENT: Record<string, string> = {
 };
 
 /**
- * CMS programme codes, keyed by **formId then serving catchment**, not by
- * catchment alone: one polyclinic catchment serves several services, and each
- * service has its own CMS queue, so the same catchment needs a different code
- * per form. The inner keys are **serving** catchment names (see
- * `SERVING_CATCHMENT`) — a catchment served by another polyclinic has no key
- * of its own, so each form has seven keys over the eight GeoJSON catchments,
- * not eight. Keys must stay in lockstep with the GeoJSON `properties.name`
- * values — `CatchmentRoutingService.onModuleInit` throws at boot if either the
- * formId or a catchment name drifts.
- *
- * `apply-for-temporary-restaurant-licence` codes are CMS-issued and must not
- * change here without a corresponding CMS rename.
- *
- * `request-an-environmental-health-officer` has one code that looks like a
- * mistake and is not (confirmed by the service owner, 2026-08-10):
- * `Randal Phillips Polyclinic` (one L, matching the GeoJSON and the licence
- * catchment name) has the CMS code `ENV_HEALTH_OFFICER_RANDALL_PHILLIPS` (two
- * Ls). The CMS queue name and the catchment name simply spell the place
- * differently — do not "fix" the code to one L, and do not derive either
- * form's codes from the other by swapping a prefix.
+ * Catchment → the suffix the CMS appends to a programme code. Not derivable
+ * from the name — `Sir Winston Scott Polyclinic` → `WINSTON_SCOTT`, and the
+ * Complex → `DAVID_THOMPSON` — so it stays a table. Keys are **serving**
+ * catchment names (see `SERVING_CATCHMENT`): a catchment served by another
+ * polyclinic has no key of its own, so there are seven keys over the eight
+ * GeoJSON catchments, not eight. Keys must stay in lockstep with the GeoJSON
+ * `properties.name` values — `CatchmentRoutingService.onModuleInit` throws at
+ * boot if either side drifts.
  */
-export const PROGRAMME_CODES_BY_FORM: Record<string, Record<string, string>> = {
-  "apply-for-temporary-restaurant-licence": {
-    "Branford Taitt Polyclinic": "TEMP_RESTAURANT_LICENCE_BRANFORD_TAITT",
-    "David Thompson Health & Social Services Complex":
-      "TEMP_RESTAURANT_LICENCE_DAVID_THOMPSON",
-    "Eunice Gibson Polyclinic": "TEMP_RESTAURANT_LICENCE_EUNICE_GIBSON",
-    "Maurice Byer Polyclinic": "TEMP_RESTAURANT_LICENCE_MAURICE_BYER",
-    "Randal Phillips Polyclinic": "TEMP_RESTAURANT_LICENCE_RANDAL_PHILLIPS",
-    "Sir Winston Scott Polyclinic": "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
-    "St. Philip Polyclinic": "TEMP_RESTAURANT_LICENCE_ST_PHILIP",
-  },
-  // PROVISIONAL — these follow the temp-licence naming convention but have NOT
-  // been issued by the CMS yet. They exist so the ongoing restaurant licence
-  // routes end-to-end while it is `visibility: preview`; every one must be
-  // confirmed against a real CMS queue before the form goes public, exactly as
-  // the temp-licence codes were. Note the irregularity above is NOT copied
-  // blindly: `Randal Phillips` keeps the one-L spelling used by the licence
-  // codes (the two-L `RANDALL` is specific to the officer-request queue).
-  "apply-for-restaurant-licence": {
-    "Branford Taitt Polyclinic": "RESTAURANT_LICENCE_BRANFORD_TAITT",
-    "David Thompson Health & Social Services Complex":
-      "RESTAURANT_LICENCE_DAVID_THOMPSON",
-    "Eunice Gibson Polyclinic": "RESTAURANT_LICENCE_EUNICE_GIBSON",
-    "Maurice Byer Polyclinic": "RESTAURANT_LICENCE_MAURICE_BYER",
-    "Randal Phillips Polyclinic": "RESTAURANT_LICENCE_RANDAL_PHILLIPS",
-    "Sir Winston Scott Polyclinic": "RESTAURANT_LICENCE_WINSTON_SCOTT",
-    "St. Philip Polyclinic": "RESTAURANT_LICENCE_ST_PHILIP",
-  },
+export const CATCHMENT_SUFFIX: Record<string, string> = {
+  "Branford Taitt Polyclinic": "BRANFORD_TAITT",
+  "David Thompson Health & Social Services Complex": "DAVID_THOMPSON",
+  "Eunice Gibson Polyclinic": "EUNICE_GIBSON",
+  "Maurice Byer Polyclinic": "MAURICE_BYER",
+  "Randal Phillips Polyclinic": "RANDAL_PHILLIPS",
+  "Sir Winston Scott Polyclinic": "WINSTON_SCOTT",
+  "St. Philip Polyclinic": "ST_PHILIP",
+};
+
+/**
+ * CMS queues whose codes do **not** follow `<programmeCode>_<suffix>`, keyed by
+ * formId then serving catchment. Every entry is a fact about a real CMS queue,
+ * not a preference — the CMS names its queues, we record them.
+ *
+ * `request-an-environmental-health-officer` is the whole map today: its webhook
+ * `mapping.programmeCode` is `ENV_HEALTH_OFFICER_REQUEST` (the code the CMS
+ * expects when no catchment resolves) while its per-catchment queues drop the
+ * `_REQUEST` and read `ENV_HEALTH_OFFICER_*`. Two different code families for
+ * one service, so none of its seven compose. Note also that its Randal Phillips
+ * queue spells the place with two Ls — `ENV_HEALTH_OFFICER_RANDALL_PHILLIPS` —
+ * unlike the GeoJSON catchment and every licence code, which use one. Confirmed
+ * by the service owner (2026-08-10): deliberate, not a typo. Do not "fix" it,
+ * and do not copy the two-L spelling into another form's codes.
+ *
+ * `CatchmentRoutingService.onModuleInit` throws at boot if an inner key is not
+ * a serving catchment, so a stale override cannot linger after a CMS rename.
+ */
+export const PROGRAMME_CODE_OVERRIDES: Record<
+  string,
+  Record<string, string>
+> = {
   "request-an-environmental-health-officer": {
     "Branford Taitt Polyclinic": "ENV_HEALTH_OFFICER_BRANFORD_TAITT",
     "David Thompson Health & Social Services Complex":
       "ENV_HEALTH_OFFICER_DAVID_THOMPSON",
     "Eunice Gibson Polyclinic": "ENV_HEALTH_OFFICER_EUNICE_GIBSON",
     "Maurice Byer Polyclinic": "ENV_HEALTH_OFFICER_MAURICE_BYER",
-    // Two Ls, unlike the catchment name and the licence code — see the note
-    // above. Deliberate, not a typo.
     "Randal Phillips Polyclinic": "ENV_HEALTH_OFFICER_RANDALL_PHILLIPS",
     "Sir Winston Scott Polyclinic": "ENV_HEALTH_OFFICER_WINSTON_SCOTT",
     "St. Philip Polyclinic": "ENV_HEALTH_OFFICER_ST_PHILIP",
-  },
-  // PROVISIONAL — same status as `apply-for-restaurant-licence` above: these
-  // follow the licence naming convention but have NOT been issued by the CMS,
-  // and must be confirmed against real CMS queues before the form leaves
-  // `visibility: preview`. `Randal Phillips` keeps the one-L licence spelling.
-  "hotel-licence-application": {
-    "Branford Taitt Polyclinic": "HOTEL_LICENCE_BRANFORD_TAITT",
-    "David Thompson Health & Social Services Complex":
-      "HOTEL_LICENCE_DAVID_THOMPSON",
-    "Eunice Gibson Polyclinic": "HOTEL_LICENCE_EUNICE_GIBSON",
-    "Maurice Byer Polyclinic": "HOTEL_LICENCE_MAURICE_BYER",
-    "Randal Phillips Polyclinic": "HOTEL_LICENCE_RANDAL_PHILLIPS",
-    "Sir Winston Scott Polyclinic": "HOTEL_LICENCE_WINSTON_SCOTT",
-    "St. Philip Polyclinic": "HOTEL_LICENCE_ST_PHILIP",
   },
 };
 

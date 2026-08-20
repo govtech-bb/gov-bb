@@ -855,6 +855,74 @@ describe("SubmissionsService", () => {
       );
     });
 
+    // #2329: the per-polyclinic CMS code is composed from the recipe's own
+    // webhook mapping.programmeCode, so the resolver has to be handed it.
+    it("passes the recipe's webhook programmeCode to the catchment resolver", async () => {
+      const catchmentRouting = makeCatchmentRouting();
+      const { pipeline, service } = makeMocks({ catchmentRouting });
+      pipeline.run = vi.fn().mockResolvedValue({
+        draft: null,
+        contract: {
+          processors: [
+            {
+              type: "webhook",
+              config: { mapping: { programmeCode: "TEMP_RESTAURANT_LICENCE" } },
+            },
+          ],
+          catchmentRouting: {
+            coordinatesField: "event-details.event-address-coordinates",
+            parishField: "event-details.event-parish",
+          },
+        },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {
+          "event-details": { "event-parish": "st-philip" },
+        },
+      });
+
+      await service.submit(BASE_DTO);
+
+      expect(catchmentRouting.resolve as Mock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          programmeCode: "TEMP_RESTAURANT_LICENCE",
+          parish: "st-philip",
+        }),
+      );
+    });
+
+    // The programme code is the form's identity, not a side effect of which
+    // processors fire — a smoke submission drops every processor, so reading
+    // it from the dropped list would silently un-route the form.
+    it("reads the programmeCode from the contract even for a smoke submission", async () => {
+      const catchmentRouting = makeCatchmentRouting();
+      const { pipeline, service } = makeMocks({ catchmentRouting });
+      pipeline.run = vi.fn().mockResolvedValue({
+        draft: null,
+        contract: {
+          processors: [
+            {
+              type: "webhook",
+              config: { mapping: { programmeCode: "TEMP_RESTAURANT_LICENCE" } },
+            },
+          ],
+          catchmentRouting: {
+            coordinatesField: "event-details.event-address-coordinates",
+            parishField: "event-details.event-parish",
+          },
+        },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {
+          "event-details": { "event-parish": "st-philip" },
+        },
+      });
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: true });
+
+      expect(catchmentRouting.resolve as Mock).toHaveBeenCalledWith(
+        expect.objectContaining({ programmeCode: "TEMP_RESTAURANT_LICENCE" }),
+      );
+    });
+
     it("leaves resolvedCatchment undefined when the contract has no catchmentRouting block", async () => {
       const { service, eventEmitter } = makeMocks();
 
