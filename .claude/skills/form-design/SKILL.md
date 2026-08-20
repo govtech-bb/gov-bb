@@ -17,11 +17,11 @@ Do not skip the read because the change "is just one field." The most common una
 
 Three adaptations to the system prompt's rules in this context:
 
-| System prompt says | In this skill |
-|---|---|
-| Output recipe in a ```json chat block / SQL wrapper | Write a `.json` recipe file in the repo; the SQL section does not apply |
-| Single-shot, never ask questions | Conversational — ask the designer when genuinely ambiguous; still apply guardrails deterministically where they answer the question |
-| Create-only (PDF → recipe) | Editing existing forms is in scope (see versioning below) |
+| System prompt says                                  | In this skill                                                                                                                       |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Output recipe in a ```json chat block / SQL wrapper | Write a `.json` recipe file in the repo; the SQL section does not apply                                                             |
+| Single-shot, never ask questions                    | Conversational — ask the designer when genuinely ambiguous; still apply guardrails deterministically where they answer the question |
+| Create-only (PDF → recipe)                          | Editing existing forms is in scope (see versioning below)                                                                           |
 
 ## Step 2 — File layout and versioning
 
@@ -32,10 +32,11 @@ Recipes live at `apps/api/src/forms/form-definitions/recipes/<formId>/<version>.
 - Update `version` and `updatedAt` in the copy; preserve `createdAt`.
 
 Invariants (enforced at API boot — a violation aborts deploys):
+
 - `formId` inside the JSON must equal the directory name.
 - The filename (minus `.json`) must equal the `version` field.
 
-Optional fields: simply omit the `required` validation. Do not write `"required": {"value": false}`.
+Optional fields: set `"required": {"value": false}` explicitly. Omitting the rule does NOT make a field optional — generic primitives (and many named components, e.g. `components/address`) inherit `required: true` from the registry, so omission silently ships a mandatory field. The renderer derives a muted "(optional)" label suffix from `value: false`; never write "(optional)" into `label` or `hint` text — it would render doubled.
 
 ## Step 3 — Verify
 
@@ -49,11 +50,11 @@ This schema-validates every recipe and checks the directory/filename invariants.
 
 ## Common mistakes
 
-| Mistake | Fix |
-|---|---|
-| Editing `1.2.0.json` in place | Copy to `1.3.0.json`, bump `version` field to match |
-| Bumping patch (`1.2.0` → `1.2.1`) or major | Minor only, unless the designer says otherwise |
-| Radio with 3+ options | Select for 3+; radio only for exactly 2 (Rule 8) |
-| Repurposing a semantic component (e.g. `date-of-birth` for an expiry date) | Use the generic primitive with fieldId + label override (CATEGORY 0) |
-| `fieldConditionalOn`/`optionalIf` value set to a display label | Values are always lowercased + kebab-cased option values (`"christ-church"`, never `"Christ Church"`) |
-| Rediscovering conventions from loader source code | Everything you need is in the system prompt + this skill |
+| Mistake                                                                    | Fix                                                                                                   |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Editing `1.2.0.json` in place                                              | Copy to `1.3.0.json`, bump `version` field to match                                                   |
+| Bumping patch (`1.2.0` → `1.2.1`) or major                                 | Minor only, unless the designer says otherwise                                                        |
+| Radio with 3+ options                                                      | Select for 3+; radio only for exactly 2 (Rule 8)                                                      |
+| Repurposing a semantic component (e.g. `date-of-birth` for an expiry date) | Use the generic primitive with fieldId + label override (CATEGORY 0)                                  |
+| `fieldConditionalOn`/`optionalIf` value set to a display label             | Values are always lowercased + kebab-cased option values (`"christ-church"`, never `"Christ Church"`) |
+| Rediscovering conventions from loader source code                          | Everything you need is in the system prompt + this skill                                              |
