@@ -24,6 +24,7 @@ const RECIPE_PATH = path.resolve(
 
 type HydratedField = {
   fieldId: string;
+  htmlType?: string;
   behaviours?: Record<string, unknown>[];
   validations?: Record<string, { value?: unknown; error?: string }>;
 };
@@ -189,6 +190,17 @@ it.each(GATED_FIELDS)(
     ]);
   },
 );
+
+// Six options on a radio is a Rule 8 violation, and the two controls are
+// nothing alike to use — six stacked radios versus one dropdown. The ref is the
+// only thing that decides which renders, so pin the served type rather than the
+// ref spelling.
+it("serves the relationship question as a dropdown, not six radios", async () => {
+  const fields = await hydratedFields("about-application");
+  const field = fields.find((f) => f.fieldId === "relationship-to-restaurant");
+  expect(field, "relationship-to-restaurant is missing").toBeDefined();
+  expect(field!.htmlType).toBe("select");
+});
 
 // `components/address` ships `required: true`, so a second address line is
 // mandatory unless the recipe overrides it — and the override only counts once
