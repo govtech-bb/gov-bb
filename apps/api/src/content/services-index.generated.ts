@@ -147,6 +147,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
+    slug: "apply-to-environmental-health-for-a-restaurant-licence",
+    title: "Apply for a restaurant licence",
+    category: "business-trade",
+    formId: "apply-to-environmental-health-for-a-restaurant-licence",
+    visibility: "draft",
+  },
+  {
     slug: "apply-to-home-school-your-child",
     title: "Apply to home-school your child",
     category: "education",
