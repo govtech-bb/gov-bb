@@ -28,6 +28,8 @@
       "type": "webhook",
       "config": {
         "mapping": {
+          "mdaCode": "MOH",
+          "programmeShortCode": "EHO",
           "programmeCode": "ENV_HEALTH_OFFICER_REQUEST",
           "applicant": {
             "name": [
