@@ -1085,47 +1085,60 @@
         {
           "ref": "components/content",
           "overrides": {
-            "fieldId": "staff-numbers-note",
+            "fieldId": "staff-documents-note",
             "variant": "text",
-            "content": "We ask for these numbers because they set the restroom facilities the food business needs."
+            "content": "Everyone who handles food needs a valid medical certificate. This includes staff who only sell, serve, store, pack or deliver food, not just the people who cook."
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/upload-document",
           "overrides": {
-            "fieldId": "number-of-male-staff",
-            "label": "How many men will work at the food business?",
-            "ui": {
-              "width": "short"
-            },
+            "fieldId": "staff-list-upload",
+            "label": "Upload a list of your staff",
+            "hint": "The list must give each person's name and address. PDF, JPG or PNG, up to 5MB.",
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter how many men will work at the food business."
+                "error": "Upload a list of your staff."
               },
-              "min": {
-                "value": 0,
-                "error": "Enter a number of 0 or more."
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "The staff list must be a PDF, JPG or PNG."
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "The staff list must be smaller than 5MB."
               }
             }
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/upload-document",
           "overrides": {
-            "fieldId": "number-of-female-staff",
-            "label": "How many women will work at the food business?",
-            "ui": {
-              "width": "short"
-            },
+            "fieldId": "medical-certificates-upload",
+            "label": "Upload medical certificates for your staff",
+            "hint": "You can upload more than one file. PDF, JPG or PNG, up to 5MB each. If you do not have them now, you can bring them to the inspection.",
+            "multiple": true,
             "validations": {
-              "required": {
-                "value": true,
-                "error": "Enter how many women will work at the food business."
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "Each medical certificate must be a PDF, JPG or PNG."
               },
-              "min": {
-                "value": 0,
-                "error": "Enter a number of 0 or more."
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each medical certificate must be smaller than 5MB."
+              },
+              "maxSize": {
+                "value": 20971520,
+                "error": "The medical certificates must be smaller than 20MB in total."
               }
             }
           }
