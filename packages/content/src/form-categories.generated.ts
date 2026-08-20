@@ -2,8 +2,11 @@
 // Regenerate with `pnpm generate:form-categories` when landing content changes.
 export const FORM_CATEGORIES: Record<string, string> = {
   "apply-for-conductor-licence": "work-employment",
+  "apply-for-food-business-licence": "business-trade",
   "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026":
     "education",
+  "apply-for-restaurant-licence": "business-trade",
+  "apply-for-temporary-restaurant-licence": "business-trade",
   "barbados-secondary-entrance-exam-choice": "education",
   "bssee-form-a-pupil-under-11-request": "education",
   "bssee-form-b-defer-examination": "education",
@@ -19,6 +22,7 @@ export const FORM_CATEGORIES: Record<string, string> = {
   "get-marriage-certificate": "family-birth-relationships",
   "home-care-programme-services": "social-empowerment",
   "homeschooling-application-2024": "education",
+  "hotel-licence-application": "business-trade",
   "jobstart-plus-programme": "work-employment",
   "mission-barbados": "youth-and-community",
   "mohlm-application-use-state-land": "housing",
@@ -35,8 +39,10 @@ export const FORM_CATEGORIES: Record<string, string> = {
   "post-office-redirection-individual": "travel-id-citizenship",
   "project-protege-mentor": "work-employment",
   "referral-student-support-services": "education",
+  "register-guest-property-environmental-health": "business-trade",
   "request-a-presidential-visit-for-a-centenarian":
     "family-birth-relationships",
+  "request-an-environmental-health-officer": "business-trade",
   "request-assistance-transportation-disabilities": "social-empowerment",
   "school-uniform-grant-barbados": "education",
   "sell-goods-services-beach-park": "business-trade",

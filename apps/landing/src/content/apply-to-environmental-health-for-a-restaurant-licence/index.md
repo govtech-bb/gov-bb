@@ -5,7 +5,7 @@ category: business-trade
 stage: alpha
 publish_date: '2026-08-19'
 visibility: preview
-form_id: restaurant-licence-application
+form_id: apply-for-restaurant-licence
 ---
 Use this service to apply for or renew a restaurant licence from Environmental Health.
 

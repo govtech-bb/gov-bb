@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // The root beforeLoad resolves the viewer level + service statuses through the
 // router's QueryClient. Mock the two server functions so we can assert how
@@ -21,10 +21,18 @@ type BeforeLoad = (arg: {
   location: { search: Record<string, unknown> }
 }) => Promise<{ level: string; serviceStatuses: unknown[] }>
 
-async function getBeforeLoad(): Promise<BeforeLoad> {
+// Resolved once in beforeAll, not per test. Importing `__root` pulls the whole
+// route + content graph through Vite's transform, which on a loaded CI runner
+// takes longer than the 5s default `testTimeout` — and a test that times out
+// mid-flight lands its `resolveViewLevel` call after the next test's
+// `clearAllMocks`, so the cold import failed this file's first two tests
+// together. The hook gets its own generous timeout and every test then sees a
+// warm module.
+let beforeLoad: BeforeLoad
+beforeAll(async () => {
   const { Route } = await import('./__root')
-  return Route.options.beforeLoad as unknown as BeforeLoad
-}
+  beforeLoad = Route.options.beforeLoad as unknown as BeforeLoad
+}, 60_000)
 
 const freshClient = () =>
   new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -35,7 +43,6 @@ beforeEach(() => {
 
 describe('root beforeLoad context resolution', () => {
   it('resolves the level and service statuses on first navigation', async () => {
-    const beforeLoad = await getBeforeLoad()
     const result = await beforeLoad({
       context: { queryClient: freshClient() },
       location: { search: {} },
@@ -46,7 +53,6 @@ describe('root beforeLoad context resolution', () => {
   })
 
   it('serves later navigations from the query cache — no repeat server calls', async () => {
-    const beforeLoad = await getBeforeLoad()
     const queryClient = freshClient()
     const arg = { context: { queryClient }, location: { search: {} } }
 
@@ -63,7 +69,6 @@ describe('root beforeLoad context resolution', () => {
     // A finite staleTime is what forces a re-resolve once the 4h grant cookie
     // has expired, so an expired preview/draft grant can't linger in a long-open
     // tab. Assert the value directly — a regression to `Infinity` fails here.
-    const beforeLoad = await getBeforeLoad()
     const queryClient = freshClient()
     const spy = vi.spyOn(queryClient, 'ensureQueryData')
 
@@ -81,7 +86,6 @@ describe('root beforeLoad context resolution', () => {
   })
 
   it('bypasses the cache when a preview/draft token is present', async () => {
-    const beforeLoad = await getBeforeLoad()
     const queryClient = freshClient()
 
     // Warm the cache with an ordinary navigation.
@@ -102,7 +106,6 @@ describe('root beforeLoad context resolution', () => {
       level: 'preview',
       redirectTo: '/business-trade',
     } as { level: 'preview'; redirectTo: string })
-    const beforeLoad = await getBeforeLoad()
 
     const thrown = await beforeLoad({
       context: { queryClient: freshClient() },
