@@ -49,7 +49,7 @@ You may need to provide:
 
 Everyone who handles food needs a valid medical certificate from a registered doctor. This includes all staff that work within the food business.
 
-Medical certificates expire on 31 December each year, whatever date they were issued. Your staff must renew them in January.
+Medical certificates expire on 31 December each year. Your staff must renew them in January.
 
 You can upload the certificates now, as one file or several, or bring them to the inspection.
 
@@ -59,13 +59,15 @@ Allow about 15 minutes to complete the form.
 
 ## What happens after you apply
 
-Environmental Health will review your application and assign an officer to it.
+Environmental Health will review your application and an officer will be assigned to your case.
 
-An officer must inspect the food business before Environmental Health can issue a licence. They may need to inspect it more than once. If you are renewing, the officer may visit the site without contacting you first.
+They must inspect the restaurant before they can issue a licence. More than one visit may be required before the issuing of a licence.
 
-If the inspection finds that the business does not meet the Health Services (Food Hygiene) Regulations, 1969, Environmental Health will tell you what you must put right and the date by which you must do it. You must meet those requirements before a licence can be issued.
+If there are any contraventions of the Health Services (Food Hygiene) Regulations, you will be given instructions to rectify them within a specified time period. Until the contraventions are rectified, you will be unable to get your application approved. Failure to comply may result in receiving recommendations to cancel the licence, close the establishment, or be subject to prosecution.
 
-If your application is approved, your licence may be mailed to you or you may collect it.
+If your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.
+
+Once you receive your licence, it must be displayed in the establishment.
 
 ## Start the service
 
