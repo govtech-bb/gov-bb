@@ -39,16 +39,16 @@ This file is the complete reference for an AI assistant to convert physical/pape
 }
 ```
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| formId | string | YES | kebab-case, must match the `form_id` column value |
-| title | string | YES | Human-readable title shown to users |
-| description | string | no | Optional description |
-| version | string | YES | Semver (always "1.0.0" for new forms) |
-| createdAt | string | YES | ISO 8601 datetime |
-| updatedAt | string | YES | ISO 8601 datetime |
-| steps | array | YES | Array of step objects (minimum 1) |
-| processors | array | YES | Always empty array `[]` for now |
+| Field       | Type   | Required | Notes                                             |
+| ----------- | ------ | -------- | ------------------------------------------------- |
+| formId      | string | YES      | kebab-case, must match the `form_id` column value |
+| title       | string | YES      | Human-readable title shown to users               |
+| description | string | no       | Optional description                              |
+| version     | string | YES      | Semver (always "1.0.0" for new forms)             |
+| createdAt   | string | YES      | ISO 8601 datetime                                 |
+| updatedAt   | string | YES      | ISO 8601 datetime                                 |
+| steps       | array  | YES      | Array of step objects (minimum 1)                 |
+| processors  | array  | YES      | Always empty array `[]` for now                   |
 
 ---
 
@@ -66,13 +66,13 @@ This file is the complete reference for an AI assistant to convert physical/pape
 }
 ```
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| stepId | string | YES | kebab-case, unique within the form |
-| title | string | YES | Shown as the step heading |
-| description | string | no | Optional helper text below heading |
-| behaviours | array | no | Step-level behaviours (repeatable, stepConditionalOn) |
-| elements | array | YES | Array of element objects (minimum 1) |
+| Field       | Type   | Required | Notes                                                 |
+| ----------- | ------ | -------- | ----------------------------------------------------- |
+| stepId      | string | YES      | kebab-case, unique within the form                    |
+| title       | string | YES      | Shown as the step heading                             |
+| description | string | no       | Optional helper text below heading                    |
+| behaviours  | array  | no       | Step-level behaviours (repeatable, stepConditionalOn) |
+| elements    | array  | YES      | Array of element objects (minimum 1)                  |
 
 ---
 
@@ -91,9 +91,7 @@ Each element references a registry component and applies overrides:
     "validations": {
       "required": { "value": true, "error": "This field is required" }
     },
-    "options": [
-      { "label": "Display Text", "value": "kebab-case-value" }
-    ],
+    "options": [{ "label": "Display Text", "value": "kebab-case-value" }],
     "ui": { "width": "short" },
     "isHidden": false,
     "isDisabled": false,
@@ -102,20 +100,20 @@ Each element references a registry component and applies overrides:
 }
 ```
 
-| Override Field | Type | Notes |
-|---------------|------|-------|
-| fieldId | string | **CRITICAL** — must be unique across the entire form |
-| label | string | Display label for the field |
-| hint | string | Helper text shown below the label |
-| placeholder | string | Placeholder inside the input |
-| validations | object | Validation rules (see Validation Schema section) |
-| options | array | For select/radio components — array of {label, value} |
-| ui | object | Layout hints: `{"width": "short\|medium\|long"}` |
-| isHidden | boolean | Hide the field (default false). **NEVER combine with `required` validation — see warning below** |
-| isDisabled | boolean | Disable the field (default false) |
-| behaviours | array | Conditional logic (fieldConditionalOn) |
-| defaultValue | string | Pre-filled value |
-| multiple | boolean | For file/select multi-select |
+| Override Field | Type    | Notes                                                                                            |
+| -------------- | ------- | ------------------------------------------------------------------------------------------------ |
+| fieldId        | string  | **CRITICAL** — must be unique across the entire form                                             |
+| label          | string  | Display label for the field                                                                      |
+| hint           | string  | Helper text shown below the label                                                                |
+| placeholder    | string  | Placeholder inside the input                                                                     |
+| validations    | object  | Validation rules (see Validation Schema section)                                                 |
+| options        | array   | For select/radio components — array of {label, value}                                            |
+| ui             | object  | Layout hints: `{"width": "short\|medium\|long"}`                                                 |
+| isHidden       | boolean | Hide the field (default false). **NEVER combine with `required` validation — see warning below** |
+| isDisabled     | boolean | Disable the field (default false)                                                                |
+| behaviours     | array   | Conditional logic (fieldConditionalOn)                                                           |
+| defaultValue   | string  | Pre-filled value                                                                                 |
+| multiple       | boolean | For file/select multi-select                                                                     |
 
 > **WARNING: Hidden fields MUST NOT have `required` validation.** If a field has `"isHidden": true` and also `"validations": {"required": {"value": true, ...}}`, the form becomes impossible to submit — the user cannot see or fill in the field, but validation blocks submission. If a hidden field needs a value, use `defaultValue` instead.
 
@@ -125,67 +123,67 @@ Each element references a registry component and applies overrides:
 
 ### Text Input Components
 
-| Ref Key | HTML Type | When to Use |
-|---------|-----------|-------------|
-| `components/first-name` | text | Person's first/given name |
-| `components/last-name` | text | Person's last/family name |
-| `components/middle-name` | text | Middle name(s) |
-| `components/name` | text | **Generic text field** — use for any free-text input (premises name, school name, relationship description, business name, etc.) |
-| `components/address` | text | Single address line (use twice with different fieldIds for line 1 + line 2) |
-| `components/town` | text | Town/city name |
-| `components/postcode` | text | Postcode/zip (default width: short) |
-| `components/national-id-number` | text | National ID number |
-| `components/national-insurance-number` | text | NIS number |
-| `components/passport-number` | text | Passport number |
-| `components/tamis-number` | text | TAMIS number |
-| `components/account-name` | text | Bank account holder name |
-| `components/account-number` | text | Bank account number |
-| `components/relationship` | text | Relationship description |
+| Ref Key                                | HTML Type | When to Use                                                                                                                      |
+| -------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `components/first-name`                | text      | Person's first/given name                                                                                                        |
+| `components/last-name`                 | text      | Person's last/family name                                                                                                        |
+| `components/middle-name`               | text      | Middle name(s)                                                                                                                   |
+| `components/name`                      | text      | **Generic text field** — use for any free-text input (premises name, school name, relationship description, business name, etc.) |
+| `components/address`                   | text      | Single address line (use twice with different fieldIds for line 1 + line 2)                                                      |
+| `components/town`                      | text      | Town/city name                                                                                                                   |
+| `components/postcode`                  | text      | Postcode/zip (default width: short)                                                                                              |
+| `components/national-id-number`        | text      | National ID number                                                                                                               |
+| `components/national-insurance-number` | text      | NIS number                                                                                                                       |
+| `components/passport-number`           | text      | Passport number                                                                                                                  |
+| `components/tamis-number`              | text      | TAMIS number                                                                                                                     |
+| `components/account-name`              | text      | Bank account holder name                                                                                                         |
+| `components/account-number`            | text      | Bank account number                                                                                                              |
+| `components/relationship`              | text      | Relationship description                                                                                                         |
 
 ### Contact Components
 
-| Ref Key | HTML Type | When to Use |
-|---------|-----------|-------------|
-| `components/email` | email | Email address |
-| `components/telephone` | tel | Generic phone number |
-| `components/contact-number` | tel | Contact number |
-| `components/mobile-telephone` | tel | Mobile phone specifically |
-| `components/home-telephone` | tel | Home phone specifically |
-| `components/work-telephone` | tel | Work phone specifically |
-| `components/fax-number` | tel | Fax number |
+| Ref Key                       | HTML Type | When to Use               |
+| ----------------------------- | --------- | ------------------------- |
+| `components/email`            | email     | Email address             |
+| `components/telephone`        | tel       | Generic phone number      |
+| `components/contact-number`   | tel       | Contact number            |
+| `components/mobile-telephone` | tel       | Mobile phone specifically |
+| `components/home-telephone`   | tel       | Home phone specifically   |
+| `components/work-telephone`   | tel       | Work phone specifically   |
+| `components/fax-number`       | tel       | Fax number                |
 
 ### Select/Dropdown Components
 
-| Ref Key | HTML Type | Options Status | When to Use |
-|---------|-----------|----------------|-------------|
-| `components/title` | select | HAS options (Mr/Ms/Mrs) | Person's title/salutation |
-| `components/parish` | select | **EMPTY — MUST override** | Barbados parish dropdown |
-| `components/nationality` | select | **EMPTY — MUST override** | Nationality dropdown |
-| `components/country` | select | **EMPTY — MUST override** | Country dropdown |
-| `components/account-type` | select | HAS options | Bank account type |
-| `components/bank` | select | HAS options | Bank name |
+| Ref Key                   | HTML Type | Options Status            | When to Use               |
+| ------------------------- | --------- | ------------------------- | ------------------------- |
+| `components/title`        | select    | HAS options (Mr/Ms/Mrs)   | Person's title/salutation |
+| `components/parish`       | select    | **EMPTY — MUST override** | Barbados parish dropdown  |
+| `components/nationality`  | select    | **EMPTY — MUST override** | Nationality dropdown      |
+| `components/country`      | select    | **EMPTY — MUST override** | Country dropdown          |
+| `components/account-type` | select    | HAS options               | Bank account type         |
+| `components/bank`         | select    | HAS options               | Bank name                 |
 
 ### Radio/Choice Components
 
-| Ref Key | HTML Type | Options Status | When to Use |
-|---------|-----------|----------------|-------------|
-| `components/sex` | radio | HAS options (Male/Female) | Biological sex |
-| `components/generic/radio` | radio | **EMPTY — MUST override** | Any yes/no or multiple choice question (custom DB component) |
+| Ref Key                    | HTML Type | Options Status            | When to Use                                                  |
+| -------------------------- | --------- | ------------------------- | ------------------------------------------------------------ |
+| `components/sex`           | radio     | HAS options (Male/Female) | Biological sex                                               |
+| `components/generic/radio` | radio     | **EMPTY — MUST override** | Any yes/no or multiple choice question (custom DB component) |
 
 ### Date Components
 
-| Ref Key | HTML Type | When to Use |
-|---------|-----------|-------------|
-| `components/date-of-birth` | date | Any date field — override fieldId + label for non-DOB dates |
+| Ref Key                    | HTML Type | When to Use                                                 |
+| -------------------------- | --------- | ----------------------------------------------------------- |
+| `components/date-of-birth` | date      | Any date field — override fieldId + label for non-DOB dates |
 
 ### Other Components
 
-| Ref Key | HTML Type | When to Use |
-|---------|-----------|-------------|
-| `components/confirmation` | checkbox | Declaration/confirmation checkbox |
-| `components/upload-document` | file | File upload |
-| `components/additional-details` | textarea | Any multi-line text input |
-| `components/generic/number` | number | Any numeric input (custom DB component) |
+| Ref Key                         | HTML Type | When to Use                             |
+| ------------------------------- | --------- | --------------------------------------- |
+| `components/confirmation`       | checkbox  | Declaration/confirmation checkbox       |
+| `components/upload-document`    | file      | File upload                             |
+| `components/additional-details` | textarea  | Any multi-line text input               |
+| `components/generic/number`     | number    | Any numeric input (custom DB component) |
 
 ---
 
@@ -284,15 +282,15 @@ Validations are an object where each key is a validation type:
 
 ### Available Validation Types
 
-| Validation | Value Type | Use For |
-|-----------|-----------|---------|
-| required | boolean (true) | Any mandatory field |
-| minLength | number | Minimum character count |
-| maxLength | number | Maximum character count |
-| email | boolean (true) | Email format validation |
-| pastOrToday | boolean (true) | Date must not be in the future |
-| futureOrToday | boolean (true) | Date must not be in the past |
-| pattern | string (regex) | Custom regex validation |
+| Validation    | Value Type     | Use For                                                                                                              |
+| ------------- | -------------- | -------------------------------------------------------------------------------------------------------------------- |
+| required      | boolean        | `true` for a mandatory field; an explicit `false` marks it optional (the renderer appends "(optional)" to the label) |
+| minLength     | number         | Minimum character count                                                                                              |
+| maxLength     | number         | Maximum character count                                                                                              |
+| email         | boolean (true) | Email format validation                                                                                              |
+| pastOrToday   | boolean (true) | Date must not be in the future                                                                                       |
+| futureOrToday | boolean (true) | Date must not be in the past                                                                                         |
+| pattern       | string (regex) | Custom regex validation                                                                                              |
 
 ### Standard Validation Patterns
 
@@ -309,8 +307,12 @@ Validations are an object where each key is a validation type:
 // National ID (min length)
 "validations": {"required": {"value": true, "error": "National ID is required"}, "minLength": {"value": 6, "error": "National ID must be at least 6 characters"}}
 
-// Optional field (no validations needed)
-"validations": {}
+// Optional field — set required: false EXPLICITLY. Omitting the rule (or an
+// empty validations object) inherits the registry's required: true on generic
+// primitives and many named components, silently shipping a mandatory field.
+// The renderer appends a muted "(optional)" to the label from this value —
+// never write "(optional)" into the label text itself.
+"validations": {"required": {"value": false}}
 ```
 
 ---
@@ -334,7 +336,7 @@ Show/hide a field based on another field's value. Add `behaviours` to the elemen
       }
     ],
     "validations": {
-      "required": {"value": true, "error": "Passport number is required"}
+      "required": { "value": true, "error": "Passport number is required" }
     }
   }
 }
@@ -353,12 +355,12 @@ Show/hide a field based on another field's value. Add `behaviours` to the elemen
 
 ### Available Operators
 
-| Operator | Behaviour |
-|----------|-----------|
-| `"equal"` | Show field when target equals value |
-| `"notEqual"` | Show field when target does NOT equal value |
-| `"in"` | Show field when target value is in an array of values |
-| `"exists"` | Show field when target has any value (not empty) |
+| Operator     | Behaviour                                             |
+| ------------ | ----------------------------------------------------- |
+| `"equal"`    | Show field when target equals value                   |
+| `"notEqual"` | Show field when target does NOT equal value           |
+| `"in"`       | Show field when target value is in an array of values |
+| `"exists"`   | Show field when target has any value (not empty)      |
 
 ### Important Notes
 
@@ -494,17 +496,137 @@ Most government forms start with personal information:
   "stepId": "applicant-details",
   "title": "Your details",
   "elements": [
-    {"ref": "components/title", "overrides": {"fieldId": "applicant-title", "label": "Title", "validations": {"required": {"value": true, "error": "Title is required"}}}},
-    {"ref": "components/first-name", "overrides": {"fieldId": "applicant-first-name", "label": "First Name", "validations": {"required": {"value": true, "error": "First name is required"}, "minLength": {"value": 2, "error": "Must be at least 2 characters"}}}},
-    {"ref": "components/middle-name", "overrides": {"fieldId": "applicant-middle-name", "label": "Middle Name"}},
-    {"ref": "components/last-name", "overrides": {"fieldId": "applicant-last-name", "label": "Last Name", "validations": {"required": {"value": true, "error": "Last name is required"}, "minLength": {"value": 2, "error": "Must be at least 2 characters"}}}},
-    {"ref": "components/date-of-birth", "overrides": {"fieldId": "applicant-date-of-birth", "label": "Date of Birth", "validations": {"required": {"value": true, "error": "Date of birth is required"}, "pastOrToday": {"value": true, "error": "Date of birth must be today or earlier"}}}},
-    {"ref": "components/sex", "overrides": {"fieldId": "applicant-sex", "label": "Sex", "validations": {"required": {"value": true, "error": "Sex is required"}}}},
-    {"ref": "components/national-id-number", "overrides": {"fieldId": "applicant-national-id", "label": "National ID Number", "validations": {"minLength": {"value": 6, "error": "National ID must be at least 6 characters"}}}},
-    {"ref": "components/generic/radio", "overrides": {"fieldId": "use-passport-instead", "label": "Do you not have a National ID number?", "hint": "If you do not have a National ID, you can use your passport number instead.", "options": [{"label": "Yes, use passport instead", "value": "yes"}, {"label": "No, I provided my National ID above", "value": "no"}]}},
-    {"ref": "components/passport-number", "overrides": {"fieldId": "applicant-passport-number", "label": "Passport Number", "behaviours": [{"type": "fieldConditionalOn", "targetFieldId": "use-passport-instead", "operator": "equal", "value": "yes"}], "validations": {"required": {"value": true, "error": "Passport number is required"}, "minLength": {"value": 6, "error": "Passport number must be at least 6 characters"}}}},
-    {"ref": "components/email", "overrides": {"fieldId": "applicant-email", "label": "Email Address", "validations": {"required": {"value": true, "error": "Email is required"}, "email": {"value": true, "error": "Enter a valid email address"}}}},
-    {"ref": "components/telephone", "overrides": {"fieldId": "applicant-telephone", "label": "Telephone Number", "validations": {"required": {"value": true, "error": "Telephone number is required"}}}}
+    {
+      "ref": "components/title",
+      "overrides": {
+        "fieldId": "applicant-title",
+        "label": "Title",
+        "validations": {
+          "required": { "value": true, "error": "Title is required" }
+        }
+      }
+    },
+    {
+      "ref": "components/first-name",
+      "overrides": {
+        "fieldId": "applicant-first-name",
+        "label": "First Name",
+        "validations": {
+          "required": { "value": true, "error": "First name is required" },
+          "minLength": { "value": 2, "error": "Must be at least 2 characters" }
+        }
+      }
+    },
+    {
+      "ref": "components/middle-name",
+      "overrides": {
+        "fieldId": "applicant-middle-name",
+        "label": "Middle Name"
+      }
+    },
+    {
+      "ref": "components/last-name",
+      "overrides": {
+        "fieldId": "applicant-last-name",
+        "label": "Last Name",
+        "validations": {
+          "required": { "value": true, "error": "Last name is required" },
+          "minLength": { "value": 2, "error": "Must be at least 2 characters" }
+        }
+      }
+    },
+    {
+      "ref": "components/date-of-birth",
+      "overrides": {
+        "fieldId": "applicant-date-of-birth",
+        "label": "Date of Birth",
+        "validations": {
+          "required": { "value": true, "error": "Date of birth is required" },
+          "pastOrToday": {
+            "value": true,
+            "error": "Date of birth must be today or earlier"
+          }
+        }
+      }
+    },
+    {
+      "ref": "components/sex",
+      "overrides": {
+        "fieldId": "applicant-sex",
+        "label": "Sex",
+        "validations": {
+          "required": { "value": true, "error": "Sex is required" }
+        }
+      }
+    },
+    {
+      "ref": "components/national-id-number",
+      "overrides": {
+        "fieldId": "applicant-national-id",
+        "label": "National ID Number",
+        "validations": {
+          "minLength": {
+            "value": 6,
+            "error": "National ID must be at least 6 characters"
+          }
+        }
+      }
+    },
+    {
+      "ref": "components/generic/radio",
+      "overrides": {
+        "fieldId": "use-passport-instead",
+        "label": "Do you not have a National ID number?",
+        "hint": "If you do not have a National ID, you can use your passport number instead.",
+        "options": [
+          { "label": "Yes, use passport instead", "value": "yes" },
+          { "label": "No, I provided my National ID above", "value": "no" }
+        ]
+      }
+    },
+    {
+      "ref": "components/passport-number",
+      "overrides": {
+        "fieldId": "applicant-passport-number",
+        "label": "Passport Number",
+        "behaviours": [
+          {
+            "type": "fieldConditionalOn",
+            "targetFieldId": "use-passport-instead",
+            "operator": "equal",
+            "value": "yes"
+          }
+        ],
+        "validations": {
+          "required": { "value": true, "error": "Passport number is required" },
+          "minLength": {
+            "value": 6,
+            "error": "Passport number must be at least 6 characters"
+          }
+        }
+      }
+    },
+    {
+      "ref": "components/email",
+      "overrides": {
+        "fieldId": "applicant-email",
+        "label": "Email Address",
+        "validations": {
+          "required": { "value": true, "error": "Email is required" },
+          "email": { "value": true, "error": "Enter a valid email address" }
+        }
+      }
+    },
+    {
+      "ref": "components/telephone",
+      "overrides": {
+        "fieldId": "applicant-telephone",
+        "label": "Telephone Number",
+        "validations": {
+          "required": { "value": true, "error": "Telephone number is required" }
+        }
+      }
+    }
   ]
 }
 ```
@@ -516,12 +638,72 @@ Most government forms start with personal information:
   "stepId": "contact-details",
   "title": "Contact details",
   "elements": [
-    {"ref": "components/address", "overrides": {"fieldId": "address-line-1", "label": "Address Line 1", "validations": {"required": {"value": true, "error": "Address is required"}}}},
-    {"ref": "components/address", "overrides": {"fieldId": "address-line-2", "label": "Address Line 2"}},
-    {"ref": "components/parish", "overrides": {"fieldId": "applicant-parish", "label": "Parish", "validations": {"required": {"value": true, "error": "Parish is required"}}, "options": [{"label": "Christ Church", "value": "christ-church"}, {"label": "St. Andrew", "value": "st-andrew"}, {"label": "St. George", "value": "st-george"}, {"label": "St. James", "value": "st-james"}, {"label": "St. John", "value": "st-john"}, {"label": "St. Joseph", "value": "st-joseph"}, {"label": "St. Lucy", "value": "st-lucy"}, {"label": "St. Michael", "value": "st-michael"}, {"label": "St. Peter", "value": "st-peter"}, {"label": "St. Philip", "value": "st-philip"}, {"label": "St. Thomas", "value": "st-thomas"}]}},
-    {"ref": "components/postcode", "overrides": {"fieldId": "applicant-postcode", "label": "Postcode", "ui": {"width": "short"}}},
-    {"ref": "components/email", "overrides": {"fieldId": "contact-email", "label": "Email Address", "validations": {"required": {"value": true, "error": "Email is required"}, "email": {"value": true, "error": "Enter a valid email address"}}}},
-    {"ref": "components/telephone", "overrides": {"fieldId": "contact-telephone", "label": "Telephone Number", "validations": {"required": {"value": true, "error": "Telephone number is required"}}}}
+    {
+      "ref": "components/address",
+      "overrides": {
+        "fieldId": "address-line-1",
+        "label": "Address Line 1",
+        "validations": {
+          "required": { "value": true, "error": "Address is required" }
+        }
+      }
+    },
+    {
+      "ref": "components/address",
+      "overrides": { "fieldId": "address-line-2", "label": "Address Line 2" }
+    },
+    {
+      "ref": "components/parish",
+      "overrides": {
+        "fieldId": "applicant-parish",
+        "label": "Parish",
+        "validations": {
+          "required": { "value": true, "error": "Parish is required" }
+        },
+        "options": [
+          { "label": "Christ Church", "value": "christ-church" },
+          { "label": "St. Andrew", "value": "st-andrew" },
+          { "label": "St. George", "value": "st-george" },
+          { "label": "St. James", "value": "st-james" },
+          { "label": "St. John", "value": "st-john" },
+          { "label": "St. Joseph", "value": "st-joseph" },
+          { "label": "St. Lucy", "value": "st-lucy" },
+          { "label": "St. Michael", "value": "st-michael" },
+          { "label": "St. Peter", "value": "st-peter" },
+          { "label": "St. Philip", "value": "st-philip" },
+          { "label": "St. Thomas", "value": "st-thomas" }
+        ]
+      }
+    },
+    {
+      "ref": "components/postcode",
+      "overrides": {
+        "fieldId": "applicant-postcode",
+        "label": "Postcode",
+        "ui": { "width": "short" }
+      }
+    },
+    {
+      "ref": "components/email",
+      "overrides": {
+        "fieldId": "contact-email",
+        "label": "Email Address",
+        "validations": {
+          "required": { "value": true, "error": "Email is required" },
+          "email": { "value": true, "error": "Enter a valid email address" }
+        }
+      }
+    },
+    {
+      "ref": "components/telephone",
+      "overrides": {
+        "fieldId": "contact-telephone",
+        "label": "Telephone Number",
+        "validations": {
+          "required": { "value": true, "error": "Telephone number is required" }
+        }
+      }
+    }
   ]
 }
 ```
@@ -533,14 +715,93 @@ Most government forms start with personal information:
   "stepId": "emergency-contact",
   "title": "Emergency contact",
   "elements": [
-    {"ref": "components/first-name", "overrides": {"fieldId": "emergency-first-name", "label": "First Name", "validations": {"required": {"value": true, "error": "First name is required"}}}},
-    {"ref": "components/last-name", "overrides": {"fieldId": "emergency-last-name", "label": "Last Name", "validations": {"required": {"value": true, "error": "Last name is required"}}}},
-    {"ref": "components/name", "overrides": {"fieldId": "emergency-relationship", "label": "Relationship to you", "validations": {"required": {"value": true, "error": "Relationship is required"}}}},
-    {"ref": "components/address", "overrides": {"fieldId": "emergency-address-line-1", "label": "Address Line 1", "validations": {"required": {"value": true, "error": "Address is required"}}}},
-    {"ref": "components/address", "overrides": {"fieldId": "emergency-address-line-2", "label": "Address Line 2"}},
-    {"ref": "components/parish", "overrides": {"fieldId": "emergency-parish", "label": "Parish", "options": [{"label": "Christ Church", "value": "christ-church"}, {"label": "St. Andrew", "value": "st-andrew"}, {"label": "St. George", "value": "st-george"}, {"label": "St. James", "value": "st-james"}, {"label": "St. John", "value": "st-john"}, {"label": "St. Joseph", "value": "st-joseph"}, {"label": "St. Lucy", "value": "st-lucy"}, {"label": "St. Michael", "value": "st-michael"}, {"label": "St. Peter", "value": "st-peter"}, {"label": "St. Philip", "value": "st-philip"}, {"label": "St. Thomas", "value": "st-thomas"}]}},
-    {"ref": "components/email", "overrides": {"fieldId": "emergency-email", "label": "Email Address", "validations": {"email": {"value": true, "error": "Enter a valid email address"}}}},
-    {"ref": "components/telephone", "overrides": {"fieldId": "emergency-telephone", "label": "Telephone Number", "validations": {"required": {"value": true, "error": "Telephone number is required"}}}}
+    {
+      "ref": "components/first-name",
+      "overrides": {
+        "fieldId": "emergency-first-name",
+        "label": "First Name",
+        "validations": {
+          "required": { "value": true, "error": "First name is required" }
+        }
+      }
+    },
+    {
+      "ref": "components/last-name",
+      "overrides": {
+        "fieldId": "emergency-last-name",
+        "label": "Last Name",
+        "validations": {
+          "required": { "value": true, "error": "Last name is required" }
+        }
+      }
+    },
+    {
+      "ref": "components/name",
+      "overrides": {
+        "fieldId": "emergency-relationship",
+        "label": "Relationship to you",
+        "validations": {
+          "required": { "value": true, "error": "Relationship is required" }
+        }
+      }
+    },
+    {
+      "ref": "components/address",
+      "overrides": {
+        "fieldId": "emergency-address-line-1",
+        "label": "Address Line 1",
+        "validations": {
+          "required": { "value": true, "error": "Address is required" }
+        }
+      }
+    },
+    {
+      "ref": "components/address",
+      "overrides": {
+        "fieldId": "emergency-address-line-2",
+        "label": "Address Line 2"
+      }
+    },
+    {
+      "ref": "components/parish",
+      "overrides": {
+        "fieldId": "emergency-parish",
+        "label": "Parish",
+        "options": [
+          { "label": "Christ Church", "value": "christ-church" },
+          { "label": "St. Andrew", "value": "st-andrew" },
+          { "label": "St. George", "value": "st-george" },
+          { "label": "St. James", "value": "st-james" },
+          { "label": "St. John", "value": "st-john" },
+          { "label": "St. Joseph", "value": "st-joseph" },
+          { "label": "St. Lucy", "value": "st-lucy" },
+          { "label": "St. Michael", "value": "st-michael" },
+          { "label": "St. Peter", "value": "st-peter" },
+          { "label": "St. Philip", "value": "st-philip" },
+          { "label": "St. Thomas", "value": "st-thomas" }
+        ]
+      }
+    },
+    {
+      "ref": "components/email",
+      "overrides": {
+        "fieldId": "emergency-email",
+        "label": "Email Address",
+        "validations": {
+          "email": { "value": true, "error": "Enter a valid email address" }
+        }
+      }
+    },
+    {
+      "ref": "components/telephone",
+      "overrides": {
+        "fieldId": "emergency-telephone",
+        "label": "Telephone Number",
+        "validations": {
+          "required": { "value": true, "error": "Telephone number is required" }
+        }
+      }
+    }
   ]
 }
 ```
@@ -552,7 +813,25 @@ Most government forms start with personal information:
   "stepId": "declaration",
   "title": "Declaration",
   "elements": [
-    {"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue"}}}}
+    {
+      "ref": "components/confirmation",
+      "overrides": {
+        "fieldId": "declaration-confirmed",
+        "label": "Declaration",
+        "options": [
+          {
+            "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+            "value": "confirmed"
+          }
+        ],
+        "validations": {
+          "required": {
+            "value": true,
+            "error": "You must confirm the declaration to continue"
+          }
+        }
+      }
+    }
   ]
 }
 ```
@@ -578,6 +857,7 @@ Every form MUST include this as the **last step** in the `steps` array. The fron
 ```
 
 **Rules:**
+
 - `stepId` MUST be exactly `"submission-confirmation"` — the renderer checks this literal string
 - `elements` MUST be an empty array `[]` — the renderer uses a dedicated component, not field rendering
 - `nextSteps` is optional but recommended — array of `{title, content?, items?}` shown after the success message
@@ -591,11 +871,57 @@ Every form MUST include this as the **last step** in the `steps` array. The fron
   "stepId": "referee-details",
   "title": "Referee details",
   "elements": [
-    {"ref": "components/first-name", "overrides": {"fieldId": "referee-first-name", "label": "Referee First Name", "validations": {"required": {"value": true, "error": "First name is required"}}}},
-    {"ref": "components/last-name", "overrides": {"fieldId": "referee-last-name", "label": "Referee Last Name", "validations": {"required": {"value": true, "error": "Last name is required"}}}},
-    {"ref": "components/name", "overrides": {"fieldId": "referee-relationship", "label": "Relationship to you", "validations": {"required": {"value": true, "error": "Relationship is required"}}}},
-    {"ref": "components/email", "overrides": {"fieldId": "referee-email", "label": "Referee Email", "validations": {"required": {"value": true, "error": "Email is required"}, "email": {"value": true, "error": "Enter a valid email address"}}}},
-    {"ref": "components/telephone", "overrides": {"fieldId": "referee-telephone", "label": "Referee Telephone", "validations": {"required": {"value": true, "error": "Telephone number is required"}}}}
+    {
+      "ref": "components/first-name",
+      "overrides": {
+        "fieldId": "referee-first-name",
+        "label": "Referee First Name",
+        "validations": {
+          "required": { "value": true, "error": "First name is required" }
+        }
+      }
+    },
+    {
+      "ref": "components/last-name",
+      "overrides": {
+        "fieldId": "referee-last-name",
+        "label": "Referee Last Name",
+        "validations": {
+          "required": { "value": true, "error": "Last name is required" }
+        }
+      }
+    },
+    {
+      "ref": "components/name",
+      "overrides": {
+        "fieldId": "referee-relationship",
+        "label": "Relationship to you",
+        "validations": {
+          "required": { "value": true, "error": "Relationship is required" }
+        }
+      }
+    },
+    {
+      "ref": "components/email",
+      "overrides": {
+        "fieldId": "referee-email",
+        "label": "Referee Email",
+        "validations": {
+          "required": { "value": true, "error": "Email is required" },
+          "email": { "value": true, "error": "Enter a valid email address" }
+        }
+      }
+    },
+    {
+      "ref": "components/telephone",
+      "overrides": {
+        "fieldId": "referee-telephone",
+        "label": "Referee Telephone",
+        "validations": {
+          "required": { "value": true, "error": "Telephone number is required" }
+        }
+      }
+    }
   ]
 }
 ```
@@ -607,8 +933,28 @@ Every form MUST include this as the **last step** in the `steps` array. The fron
   "stepId": "supporting-documents",
   "title": "Supporting documents",
   "elements": [
-    {"ref": "components/upload-document", "overrides": {"fieldId": "id-document-upload", "label": "Upload a copy of your National ID or Passport", "hint": "Accepted formats: PDF, JPG, PNG. Maximum file size: 5MB.", "validations": {"required": {"value": true, "error": "Please upload your ID document"}}}},
-    {"ref": "components/upload-document", "overrides": {"fieldId": "proof-of-address-upload", "label": "Upload proof of address", "hint": "A utility bill or bank statement dated within the last 3 months."}}
+    {
+      "ref": "components/upload-document",
+      "overrides": {
+        "fieldId": "id-document-upload",
+        "label": "Upload a copy of your National ID or Passport",
+        "hint": "Accepted formats: PDF, JPG, PNG. Maximum file size: 5MB.",
+        "validations": {
+          "required": {
+            "value": true,
+            "error": "Please upload your ID document"
+          }
+        }
+      }
+    },
+    {
+      "ref": "components/upload-document",
+      "overrides": {
+        "fieldId": "proof-of-address-upload",
+        "label": "Upload proof of address",
+        "hint": "A utility bill or bank statement dated within the last 3 months."
+      }
+    }
   ]
 }
 ```
@@ -680,48 +1026,51 @@ VALUES (
 
 When reading a physical form (PDF/image/description), map each field to a component:
 
-| Physical Form Element | Component to Use | Notes |
-|----------------------|------------------|-------|
-| Text box (short, single line) | `components/name` | Override label to match the field |
-| Text box labelled "First Name" | `components/first-name` | Use specific component when available |
-| Text box labelled "Last Name" / "Surname" | `components/last-name` | |
-| Text box labelled "Middle Name" | `components/middle-name` | |
-| Email field | `components/email` | |
-| Phone/telephone field | `components/telephone` | |
-| Address lines | `components/address` (×2) | Use different fieldIds for line 1 + 2 |
-| Postcode/ZIP | `components/postcode` | |
-| Parish dropdown | `components/parish` | MUST provide options |
-| Country dropdown | `components/country` | MUST provide options |
-| Nationality dropdown | `components/nationality` | MUST provide options |
-| Date field (any) | `components/date-of-birth` | Override fieldId + label |
-| National ID / ID Number | `components/national-id-number` | |
-| NIS Number | `components/national-insurance-number` | |
-| Passport Number | `components/passport-number` | |
-| Radio buttons (2-5 options) | `components/generic/radio` | MUST provide options |
-| Yes/No question | `components/generic/radio` | Options: yes/no |
-| Dropdown (few options) | `components/generic/radio` | Radio is preferred for ≤5 options |
-| Checkbox (single, declaration) | `components/confirmation` | |
-| Large text area / comments | `components/additional-details` | |
-| File upload / attach document | `components/upload-document` | |
-| Number input (age, quantity) | `components/generic/number` | |
-| Male/Female selection | `components/sex` | Has built-in options |
-| Mr/Mrs/Ms selection | `components/title` | Has built-in options |
+| Physical Form Element                     | Component to Use                       | Notes                                 |
+| ----------------------------------------- | -------------------------------------- | ------------------------------------- |
+| Text box (short, single line)             | `components/name`                      | Override label to match the field     |
+| Text box labelled "First Name"            | `components/first-name`                | Use specific component when available |
+| Text box labelled "Last Name" / "Surname" | `components/last-name`                 |                                       |
+| Text box labelled "Middle Name"           | `components/middle-name`               |                                       |
+| Email field                               | `components/email`                     |                                       |
+| Phone/telephone field                     | `components/telephone`                 |                                       |
+| Address lines                             | `components/address` (×2)              | Use different fieldIds for line 1 + 2 |
+| Postcode/ZIP                              | `components/postcode`                  |                                       |
+| Parish dropdown                           | `components/parish`                    | MUST provide options                  |
+| Country dropdown                          | `components/country`                   | MUST provide options                  |
+| Nationality dropdown                      | `components/nationality`               | MUST provide options                  |
+| Date field (any)                          | `components/date-of-birth`             | Override fieldId + label              |
+| National ID / ID Number                   | `components/national-id-number`        |                                       |
+| NIS Number                                | `components/national-insurance-number` |                                       |
+| Passport Number                           | `components/passport-number`           |                                       |
+| Radio buttons (2-5 options)               | `components/generic/radio`             | MUST provide options                  |
+| Yes/No question                           | `components/generic/radio`             | Options: yes/no                       |
+| Dropdown (few options)                    | `components/generic/radio`             | Radio is preferred for ≤5 options     |
+| Checkbox (single, declaration)            | `components/confirmation`              |                                       |
+| Large text area / comments                | `components/additional-details`        |                                       |
+| File upload / attach document             | `components/upload-document`           |                                       |
+| Number input (age, quantity)              | `components/generic/number`            |                                       |
+| Male/Female selection                     | `components/sex`                       | Has built-in options                  |
+| Mr/Mrs/Ms selection                       | `components/title`                     | Has built-in options                  |
 
 ---
 
 ## Naming Conventions
 
 ### formId (also used as `form_id` column)
+
 - kebab-case
 - Descriptive verb-noun pattern
 - Examples: `apply-for-conductor-licence`, `request-fire-inspection`, `register-birth`
 
 ### stepId
+
 - kebab-case
 - Short, descriptive
 - Examples: `applicant-details`, `contact-details`, `declaration`, `supporting-documents`
 
 ### fieldId
+
 - kebab-case
 - Prefixed by context when the same component is reused across steps
 - Pattern: `{context}-{field-name}`
@@ -732,6 +1081,7 @@ When reading a physical form (PDF/image/description), map each field to a compon
   - `applicant-parish`, `emergency-parish`
 
 ### Option values
+
 - kebab-case
 - Examples: `christ-church`, `yes`, `no`, `male`, `female`
 
@@ -742,6 +1092,7 @@ When reading a physical form (PDF/image/description), map each field to a compon
 Converting a fictional "Apply for Market Stall Licence" form:
 
 **Physical form fields:**
+
 - Applicant name, DOB, National ID
 - Business name
 - Type of goods (food / crafts / clothing)
@@ -810,26 +1161,31 @@ VALUES (
 ## UX & Data Guardrails
 
 ### Radio vs Select (Dropdown)
+
 - Use `components/generic/radio` ONLY for exactly 2 options (Yes/No, Male/Female)
 - Use `components/parish` pattern (select with options override) for 3 or more options
 - Never use radio for gender (3+ options), employment status, qualifications, or any list with more than 2 items
 
 ### Age Fields
+
 - Always use `components/generic/number` for age — a simple number input
 - Never list ages as radio options or dropdown items
 
 ### Step Size
+
 - Keep steps to 8-10 fields maximum
 - If a step has more than 10 fields, split it into two steps with clear groupings
 - Long steps are overwhelming on mobile devices
 
 ### Email Processor Configuration
+
 - `recipientField` must use `"stepId.fieldId"` format
 - Both the stepId AND fieldId must exactly match what's in the recipe
 - Example: step `"stepId": "contact-details"` + element `"fieldId": "applicant-email"` → `"recipientField": "contact-details.applicant-email"`
 - Every form must include an email processor (no empty `processors: []`)
 
 #### Reserved `contactDetails.` prefix (MDA notification email)
+
 - A `recipientField` beginning with `contactDetails.` is **reserved**: it
   resolves against the form's service-contract `contactDetails` object, **not**
   against submitted answer values.
@@ -844,13 +1200,14 @@ VALUES (
   confirmation) still send.
 
 #### Reserved `config.` prefix (per-environment MDA recipient)
+
 - A `recipientField` beginning with `config.` is **reserved**: it resolves the
   recipient from the **database** (`form_config` → `mda_contact.mda_email`),
   per environment, **not** from the recipe or submitted values.
 - Use `"recipientField": "config.mdaEmail"` so the production MDA notification
   address lives in the production DB (and can be rotated without a code change)
   instead of being hardcoded in the committed recipe.
-- **Sandbox/test never emails a real MDA.** On a *resolved miss* — no
+- **Sandbox/test never emails a real MDA.** On a _resolved miss_ — no
   `form_config` row (sandbox has none, or a freshly-migrated recipe has no row
   yet), no/deleted contact, or a blank address — the send degrades to the
   default test inbox (`SES_DEFAULT_RECIPIENT`, default `testing@govtech.bb`)
@@ -864,16 +1221,19 @@ VALUES (
   inbox.
 
 #### Optional per-instance `label`
+
 - An email config may carry an optional `label` (e.g. `"Applicant Email"`,
   `"MDA Email"`) to distinguish multiple email processors on the same form. It
   is metadata only — ignored for delivery.
 
 ### Contact Information Requirement
+
 - Every form must have at least one step with an email field AND a telephone field
 - The email field is required for the email processor
 - The telephone field is required for MDA follow-up
 
 ### Never Include `addAnother` in Recipes
+
 - The `addAnother` field is automatically injected by the frontend renderer on repeatable steps
 - Do NOT include it in recipe elements — the backend rejects it as an unknown field
 
@@ -907,13 +1267,13 @@ Before finalizing the SQL, verify:
 
 ## Troubleshooting
 
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| 500 error on form load | Duplicate fieldId | Ensure every element has a unique fieldId |
-| 500 error on form load | Invalid component ref | Check ref key against the component reference table |
-| Empty dropdown | Select component with no options override | Add options array to the overrides |
-| Field not showing/hiding | Missing operator in behaviour | Add `"operator": "equal"` (or appropriate operator) |
-| Field not showing/hiding | Wrong targetFieldId | Must match the exact fieldId of the watched field |
-| Step not showing/hiding | Missing targetStepId | Step conditionals require both targetFieldId AND targetStepId |
-| Parse error on save | Invalid JSON | Validate JSON (check for trailing commas, unescaped quotes) |
-| SQL error | Unescaped single quotes in JSON | Use dollar-quoting (`$recipe$...$recipe$`) |
+| Symptom                  | Cause                                     | Fix                                                           |
+| ------------------------ | ----------------------------------------- | ------------------------------------------------------------- |
+| 500 error on form load   | Duplicate fieldId                         | Ensure every element has a unique fieldId                     |
+| 500 error on form load   | Invalid component ref                     | Check ref key against the component reference table           |
+| Empty dropdown           | Select component with no options override | Add options array to the overrides                            |
+| Field not showing/hiding | Missing operator in behaviour             | Add `"operator": "equal"` (or appropriate operator)           |
+| Field not showing/hiding | Wrong targetFieldId                       | Must match the exact fieldId of the watched field             |
+| Step not showing/hiding  | Missing targetStepId                      | Step conditionals require both targetFieldId AND targetStepId |
+| Parse error on save      | Invalid JSON                              | Validate JSON (check for trailing commas, unescaped quotes)   |
+| SQL error                | Unescaped single quotes in JSON           | Use dollar-quoting (`$recipe$...$recipe$`)                    |

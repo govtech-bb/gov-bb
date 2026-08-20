@@ -24,9 +24,7 @@
         },
         {
           "ref": "components/middle-name",
-          "overrides": {
-            "hint": "Optional"
-          }
+          "overrides": {}
         },
         {
           "ref": "components/last-name"
@@ -131,7 +129,6 @@
           "overrides": {
             "fieldId": "address-line-2",
             "label": "Address line 2",
-            "hint": "Optional",
             "validations": {
               "required": {
                 "value": false
@@ -232,7 +229,6 @@
                 "value": "no"
               }
             ],
-            "hint": "Optional",
             "validations": {
               "required": {
                 "value": false

@@ -275,7 +275,7 @@
         {
           "ref": "components/name",
           "overrides": {
-            "hint": "Optional — please enter your religion if you wish to share.",
+            "hint": "Please enter your religion if you wish to share.",
             "label": "Religion",
             "fieldId": "applicant-religion"
           }

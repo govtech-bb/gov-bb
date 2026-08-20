@@ -245,7 +245,7 @@
           "ref": "components/postcode",
           "overrides": {
             "fieldId": "contact-postcode",
-            "hint": "For example, BB17004 (optional)"
+            "hint": "For example, BB17004"
           }
         },
         {

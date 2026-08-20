@@ -333,7 +333,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "organisation-2",
-            "label": "Organisation 2 (optional)",
+            "label": "Organisation 2",
             "validations": {
               "required": {
                 "value": false
@@ -353,7 +353,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "organisation-3",
-            "label": "Organisation 3 (optional)",
+            "label": "Organisation 3",
             "validations": {
               "required": {
                 "value": false

@@ -27,7 +27,12 @@ const mockCheckConditionalOn = checkConditionalOn as MockedFunction<
 // ---------------------------------------------------------------------------
 // Mutable field-api state — reassign mockState between tests
 // ---------------------------------------------------------------------------
-let mockState: { value: unknown; meta: { isValid: boolean; errors: any[] } } = {
+interface MockFieldState {
+  value: unknown;
+  meta: { isValid: boolean; errors: any[] };
+}
+
+let mockState: MockFieldState = {
   value: undefined,
   meta: { isValid: true, errors: [] },
 };
@@ -1309,13 +1314,101 @@ describe("FieldRenderer", () => {
   });
 
   // -------------------------------------------------------------------------
+  // "(optional)" label suffix — derived from the resolved required rule, using
+  // the validator's definition of required (a bare rule counts as required).
+  // Required fields carry no mark. optionalIf fields are statically required,
+  // so they never carry it and the label never rewrites itself mid-form.
+  // -------------------------------------------------------------------------
+  describe("optional label suffix", () => {
+    it("required: {value: false} → muted (optional) inside the label", () => {
+      const { container } = renderField(
+        primitive("text", { validations: { required: { value: false } } }),
+      );
+      const suffix = container.querySelector("label .govbb-label__optional");
+      expect(suffix?.textContent).toBe("(optional)");
+    });
+
+    it("no required rule at all → optional, suffix shown", () => {
+      const { container } = renderField(primitive("text"));
+      expect(container.querySelector(".govbb-label__optional")).toBeTruthy();
+    });
+
+    it("required: {value: true} → no suffix", () => {
+      const { container } = renderField(
+        primitive("text", { validations: { required: { value: true } } }),
+      );
+      expect(container.querySelector(".govbb-label__optional")).toBeNull();
+    });
+
+    it("bare required rule (no value key) → required, no suffix", () => {
+      const { container } = renderField(
+        primitive("text", {
+          validations: { required: { error: "Needed" } },
+        }),
+      );
+      expect(container.querySelector(".govbb-label__optional")).toBeNull();
+    });
+
+    it("radio → suffix renders inside the legend", () => {
+      const { container } = renderField(
+        primitive("radio", {
+          options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" },
+          ],
+          validations: { required: { value: false } },
+        }),
+      );
+      const suffix = container.querySelector(
+        ".govbb-fieldset__legend .govbb-label__optional",
+      );
+      expect(suffix?.textContent).toBe("(optional)");
+    });
+
+    it("option labels never carry the suffix, only the field legend", () => {
+      const { container } = renderField(
+        primitive("radio", {
+          options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" },
+          ],
+          validations: { required: { value: false } },
+        }),
+      );
+      expect(container.querySelectorAll(".govbb-label__optional")).toHaveLength(
+        1,
+      );
+    });
+
+    it("ui.hideLabel → suffix stays inside the visually-hidden label", () => {
+      const { container } = renderField(
+        primitive("text", {
+          ui: { hideLabel: true },
+          validations: { required: { value: false } },
+        }),
+      );
+      const label = container.querySelector(".govbb-label");
+      expect(label).toHaveClass("govbb-visually-hidden");
+      expect(label?.querySelector(".govbb-label__optional")).toBeTruthy();
+      // Nothing visible leaks outside the hidden label.
+      expect(container.querySelectorAll(".govbb-label__optional")).toHaveLength(
+        1,
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // ui.hideLabel — visually hides the label/legend while keeping it in the DOM
   // so the accessible name (htmlFor / <legend> grouping) is preserved.
   // -------------------------------------------------------------------------
   describe("ui.hideLabel", () => {
     it("text → label is present and carries govbb-visually-hidden when set", () => {
       const { container } = renderField(
-        primitive("text", { label: "Email address", ui: { hideLabel: true } }),
+        primitive("text", {
+          label: "Email address",
+          ui: { hideLabel: true },
+          validations: { required: { value: true } },
+        }),
       );
       const label = container.querySelector(".govbb-label");
       expect(label).toBeTruthy();
@@ -1339,6 +1432,7 @@ describe("FieldRenderer", () => {
             { value: "no", label: "No" },
           ],
           ui: { hideLabel: true },
+          validations: { required: { value: true } },
         }),
       );
       const legend = container.querySelector(".govbb-fieldset__legend");
