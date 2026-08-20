@@ -4,7 +4,6 @@ import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import {
   CATCHMENT_SUFFIX,
   PARISH_DEFAULTS,
-  POLYCLINIC_EMAILS,
   PROGRAMME_CODE_OVERRIDES,
   SERVING_CATCHMENT,
 } from "./polyclinic-routing";
@@ -12,8 +11,6 @@ import {
 export interface CatchmentResolution {
   polyclinic: string;
   programmeCode: string;
-  /** Null when the Ministry email for this catchment is not yet known. */
-  mdaEmail: string | null;
 }
 
 /** GeoJSON ring: an array of [lng, lat] pairs. */
@@ -29,7 +26,6 @@ interface CatchmentEntry {
    * confirmation page) comes from this, never from `name`.
    */
   servedBy: string;
-  email: string | null;
   /** Normalised to a list of polygons, each polygon a list of rings. */
   polygons: Ring[][];
 }
@@ -52,13 +48,9 @@ export class CatchmentRoutingService implements OnModuleInit {
     this.entries = geojson.features.map((f) => {
       const name = f.properties.name;
       const servedBy = SERVING_CATCHMENT[name] ?? name;
-      // Emails live in POLYCLINIC_EMAILS (not the GeoJSON), keyed by the
-      // serving catchment. A catchment with no entry resolves to null and is
-      // reported by the boot warn below.
       return {
         name,
         servedBy,
-        email: POLYCLINIC_EMAILS[servedBy] ?? null,
         polygons: this.normalisePolygons(f.geometry),
       };
     });
@@ -132,16 +124,6 @@ export class CatchmentRoutingService implements OnModuleInit {
         }
       }
     }
-
-    // Ministry email gap — warn, do not fail boot.
-    const noEmail = [
-      ...new Set(this.entries.filter((e) => !e.email).map((e) => e.servedBy)),
-    ];
-    if (noEmail.length > 0) {
-      this.logger.warn(
-        `[catchment] no Ministry email for: ${noEmail.join(", ")} — a coordinate hit there fails the MDA email until supplied`,
-      );
-    }
   }
 
   resolve(input: {
@@ -185,7 +167,6 @@ export class CatchmentRoutingService implements OnModuleInit {
     return {
       polyclinic: entry.servedBy,
       programmeCode,
-      mdaEmail: entry.email,
     };
   }
 

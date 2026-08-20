@@ -6,7 +6,6 @@ import { CatchmentRoutingService } from "./catchment-routing.service";
 import {
   CATCHMENT_SUFFIX,
   PARISH_DEFAULTS,
-  POLYCLINIC_EMAILS,
   PROGRAMME_CODE_OVERRIDES,
   SERVING_CATCHMENT,
 } from "./polyclinic-routing";
@@ -33,7 +32,6 @@ describe("CatchmentRoutingService", () => {
     });
     expect(r?.polyclinic).toBe("Sir Winston Scott Polyclinic");
     expect(r?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT");
-    expect(r?.mdaEmail).toBe("testing@govtech.bb");
   });
 
   it("resolves a coordinate inside the MultiPolygon (Maurice Byer) catchment", () => {
@@ -103,7 +101,6 @@ describe("CatchmentRoutingService", () => {
     });
     expect(r?.polyclinic).toBe("St. Philip Polyclinic");
     expect(r?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_ST_PHILIP");
-    expect(r?.mdaEmail).toBe("testing@govtech.bb");
   });
 
   it("falls back to parish when the coordinate string is malformed (wrong part count)", () => {
@@ -133,17 +130,6 @@ describe("CatchmentRoutingService", () => {
       parish: "st-thomas",
     });
     expect(r?.polyclinic).toBe("Eunice Gibson Polyclinic");
-  });
-
-  it("does not warn at boot when every catchment has an email", () => {
-    const warnSpy = vi
-      .spyOn(Logger.prototype, "warn")
-      .mockImplementation(() => undefined);
-    new CatchmentRoutingService().onModuleInit();
-    expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("no Ministry email"),
-    );
-    warnSpy.mockRestore();
   });
 
   it("resolves the officer-request formId to its matching ENV_HEALTH_OFFICER_* code for the same coordinate (regression: licence routing unchanged, per-form codes differ)", () => {
@@ -372,7 +358,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
       CATCHMENT_SUFFIX: rest,
       PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS,
-      POLYCLINIC_EMAILS,
       SERVING_CATCHMENT,
     }));
     vi.resetModules();
@@ -390,7 +375,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
       },
       PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS,
-      POLYCLINIC_EMAILS,
       SERVING_CATCHMENT,
     }));
     vi.resetModules();
@@ -411,7 +395,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
       },
       PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS,
-      POLYCLINIC_EMAILS,
       SERVING_CATCHMENT,
     }));
     vi.resetModules();
@@ -431,7 +414,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
         },
       },
       PARISH_DEFAULTS,
-      POLYCLINIC_EMAILS,
       SERVING_CATCHMENT,
     }));
     vi.resetModules();
@@ -449,7 +431,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
         ...PARISH_DEFAULTS,
         "st-lucy": "Not A Real Polyclinic",
       },
-      POLYCLINIC_EMAILS,
       SERVING_CATCHMENT,
     }));
     vi.resetModules();
@@ -464,7 +445,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
       CATCHMENT_SUFFIX,
       PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS,
-      POLYCLINIC_EMAILS,
       SERVING_CATCHMENT: {
         ...SERVING_CATCHMENT,
         "Not A Real Polyclinic": "St. Philip Polyclinic",
@@ -482,7 +462,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
       CATCHMENT_SUFFIX,
       PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS,
-      POLYCLINIC_EMAILS,
       SERVING_CATCHMENT: {
         "Frederick Miller Polyclinic": "Not A Real Polyclinic",
       },
@@ -499,7 +478,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
       CATCHMENT_SUFFIX,
       PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS,
-      POLYCLINIC_EMAILS,
       SERVING_CATCHMENT: {
         "Frederick Miller Polyclinic": "St. Philip Polyclinic",
         "St. Philip Polyclinic": "Randal Phillips Polyclinic",
@@ -510,29 +488,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
       await import("./catchment-routing.service");
     const svc = new Svc();
     expect(() => svc.onModuleInit()).toThrow(/chains are not followed/);
-  });
-
-  it("warns at boot naming a catchment with no email", async () => {
-    const { "Sir Winston Scott Polyclinic": _omit, ...emails } =
-      POLYCLINIC_EMAILS;
-    vi.doMock("./polyclinic-routing", () => ({
-      CATCHMENT_SUFFIX,
-      PROGRAMME_CODE_OVERRIDES,
-      PARISH_DEFAULTS,
-      POLYCLINIC_EMAILS: emails,
-      SERVING_CATCHMENT,
-    }));
-    vi.resetModules();
-    const warnSpy = vi
-      .spyOn(Logger.prototype, "warn")
-      .mockImplementation(() => undefined);
-    const { CatchmentRoutingService: Svc } =
-      await import("./catchment-routing.service");
-    new Svc().onModuleInit();
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Sir Winston Scott Polyclinic"),
-    );
-    warnSpy.mockRestore();
   });
 });
 
@@ -580,7 +535,6 @@ describe("CatchmentRoutingService polygon geometry (mocked GeoJSON)", () => {
       CATCHMENT_SUFFIX: { [catchment]: suffix },
       PROGRAMME_CODE_OVERRIDES: {},
       PARISH_DEFAULTS: {},
-      POLYCLINIC_EMAILS: {},
       SERVING_CATCHMENT: {},
     }));
     vi.resetModules();
