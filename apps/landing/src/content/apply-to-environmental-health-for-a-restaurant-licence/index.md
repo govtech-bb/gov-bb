@@ -11,9 +11,13 @@ Use this service to apply for or renew a restaurant licence from Environmental H
 
 ## Before you start
 
-You may need a restaurant licence if you prepare or sell food at a business where customers can sit and eat.
+You need a restaurant licence to run any premises where food or drink is sold for people to eat or drink there. You also need one to run a catering business that sells food or drink to be eaten somewhere else. Offering or displaying food or drink for sale counts as selling it. Stalls do not need a restaurant licence. A stall includes any stand, marquee, tent or mobile canteen.
 
-Food businesses, caterers and bakers have separate applications. If you start this application and Environmental Health finds you need one of those instead, they will move you to the right process.
+In law, a restaurant is “premises where any food or drink whatever is sold to any person for consumption on the premises” or “a catering establishment where food or drink is sold for consumption elsewhere than on the premises”, but “does not include a stall” (Health Services (Restaurants) Regulations, 1969).
+
+You must apply for your licence by the first business day in January.
+
+Food businesses and bakers have separate applications. If you start this application and Environmental Health finds you need one of those instead, they will move you to the right process.
 
 ### New restaurants
 
@@ -21,9 +25,11 @@ If this is a new restaurant, you should have applied to the Planning and Develop
 
 You will also need a layout drawn to scale, showing the size of the different areas and where they are. You can upload the layout with your application or provide it separately to Environmental Health.
 
+If you do not have the floor plan, you can give your application number from the Planning and Development Department instead.
+
 ### Renewing your licence
 
-If you are renewing, you only need a new layout if changes to the restaurant affect the layout.
+If you are renewing, you only need a new layout if you have made structural changes to the restaurant.
 
 Your licence expires on 31 December each year. You need to renew it each year.
 
@@ -33,12 +39,11 @@ You may need to provide:
 
 - your current restaurant licence number (if renewing)
 - the Barbados National Identification (ID) number for individual owners
-- the business registration number for any company owners
 - details about other places where food or drink is prepared
 - a layout (if applicable)
-- medical certificates (optional — you can upload them now or provide them at the inspection)
+- medical certificates
 
-All staff who handle food or serve customers need a valid medical certificate. Medical certificates expire on 31 December each year.
+All staff who handle food or serve customers need a valid medical certificate. Medical certificates expire on 31 December each year. You can upload the certificates with your application or provide them at the inspection.
 
 ## How long it takes
 
@@ -50,9 +55,9 @@ Environmental Health will review your application and contact you to arrange an 
 
 They must inspect the restaurant before they can issue a licence. They may need to inspect more than once.
 
-If the inspection finds a problem, Environmental Health will tell you what needs to be fixed and how long you have to fix it.
+If the inspection finds a problem, Environmental Health will tell you what to fix and how long you have to fix it. You must make the corrections within the time you are given. Environmental Health cannot issue your licence until the problems are fixed.
 
-If your application is approved, Environmental Health will tell you what happens next. Your licence may be mailed to you or collected.
+If your application is approved, Environmental Health will either mail your licence to you or ask you to collect it.
 
 ## Start the service
 
