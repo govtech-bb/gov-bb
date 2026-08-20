@@ -178,3 +178,40 @@ it("drops the steps Environmental Health covers at inspection", async () => {
   expect(stepIds).not.toContain("cooking-and-keeping-food");
   expect(stepIds).not.toContain("rubbish-and-food-waste");
 });
+
+it("lets several medical certificates be uploaded at once, and does not demand them", async () => {
+  const certs = await field(
+    "people-working-at-the-food-business",
+    "medical-certificates-upload",
+  );
+
+  // A dropped `multiple` degrades silently: the field still renders and still
+  // accepts a file, so the applicant uploads one certificate for a whole staff
+  // and nothing anywhere reports the other files were never askable for.
+  expect(
+    certs,
+    "medical-certificates-upload lost `multiple` — only one certificate can be attached",
+  ).toMatchObject({ multiple: true });
+
+  // The start page tells applicants they may bring certificates to the
+  // inspection instead, so requiring them here would contradict it.
+  expect(certs.validations).not.toHaveProperty("required");
+});
+
+it("requires the staff list as a document, not a headcount", async () => {
+  const list = await field(
+    "people-working-at-the-food-business",
+    "staff-list-upload",
+  );
+  expect(list.validations).toMatchObject({ required: { value: true } });
+
+  // The sex-split headcounts these replaced asked for something reg. 10(1)
+  // leaves to the Medical Officer of Health at inspection (ADR 0068).
+  const steps = await hydratedSteps();
+  const people = steps.find(
+    (s) => s.stepId === "people-working-at-the-food-business",
+  );
+  const fieldIds = people!.elements.map((e) => e.fieldId);
+  expect(fieldIds).not.toContain("number-of-male-staff");
+  expect(fieldIds).not.toContain("number-of-female-staff");
+});
