@@ -9,7 +9,7 @@ import { Footer, textVariants } from '@govtech-bb/react'
 import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
 import { trackEvent } from '../lib/analytics'
-import { resolveViewLevel } from '../lib/preview'
+import { COOKIE_MAX_AGE_SECONDS, resolveViewLevel } from '../lib/preview'
 import { getServiceStatuses } from '../lib/service-status'
 import { SITE_URL } from '../lib/site-url'
 import { buildOrganizationLd, buildWebSiteLd } from '../lib/structured-data'
@@ -42,6 +42,11 @@ const ROOT_VIEW_LEVEL_QUERY_KEY = ['root', 'view-level'] as const
 const ROOT_SERVICE_STATUSES_QUERY_KEY = ['root', 'service-statuses'] as const
 /** 60s, matching the server-side cache in `service-status.ts`. */
 const ROOT_SERVICE_STATUSES_STALE_MS = 60_000
+// Cap the view-level cache at the grant cookie's own lifetime (derived from
+// preview.ts, not hardcoded, so the two can't drift). Without a cap, a reviewer
+// who leaves a tab open past the 4h cookie expiry would keep seeing
+// preview/draft content client-side after the grant has lapsed server-side.
+const ROOT_VIEW_LEVEL_STALE_MS = COOKIE_MAX_AGE_SECONDS * 1000
 
 // Umami analytics. The website id is a `VITE_`-prefixed var, so Vite inlines it
 // at build time from the build-container env (`import.meta.env`) — no runtime
@@ -75,8 +80,9 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   //
   // Isolation: the QueryClient is created per `getRouter()` call — one per
   // request on the server, one per session on the client — so a viewer's
-  // `preview`/`draft` grant is never shared across requests even with
-  // `staleTime: Infinity`.
+  // `preview`/`draft` grant is never shared across requests. The view-level
+  // cache is capped at the grant cookie's lifetime (see below) rather than held
+  // forever, so an expired grant can't linger in a long-open tab.
   //
   // A `?preview=`/`?draft=` token bypasses the cache entirely: the grant is
   // changing, so it must resolve fresh and run its cookie + redirect
@@ -93,12 +99,14 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     const { queryClient } = context
     const [level, serviceStatuses] = await Promise.all([
       // The grant only changes via a token (handled above, with a full
-      // redirect), so it is stable for the life of the document.
+      // redirect), so within a document it's effectively fixed — but it's capped
+      // at the cookie's lifetime so an expired grant can't linger in a tab left
+      // open past 4h.
       queryClient.ensureQueryData({
         queryKey: ROOT_VIEW_LEVEL_QUERY_KEY,
         queryFn: async () => (await resolveViewLevel()).level,
-        staleTime: Infinity,
-        gcTime: Infinity,
+        staleTime: ROOT_VIEW_LEVEL_STALE_MS,
+        gcTime: ROOT_VIEW_LEVEL_STALE_MS,
       }),
       // Mirrors the 60s server-side cache in service-status.ts: an already-open
       // tab picks up an admin toggle within 60s, or on reload.

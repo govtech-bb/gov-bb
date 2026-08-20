@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // often they are actually invoked across navigations.
 const previewMocks = vi.hoisted(() => ({
   resolveViewLevel: vi.fn(async () => ({ level: 'public' as const })),
+  // Real value from preview.ts — __root imports it to cap the view-level cache.
+  COOKIE_MAX_AGE_SECONDS: 4 * 60 * 60,
 }))
 vi.mock('../lib/preview', () => previewMocks)
 
@@ -55,6 +57,27 @@ describe('root beforeLoad context resolution', () => {
     // This is the fix for #2307: three navigations, one resolution each.
     expect(previewMocks.resolveViewLevel).toHaveBeenCalledTimes(1)
     expect(statusMocks.getServiceStatuses).toHaveBeenCalledTimes(1)
+  })
+
+  it('caps the view-level cache at the grant cookie lifetime, not Infinity', async () => {
+    // A finite staleTime is what forces a re-resolve once the 4h grant cookie
+    // has expired, so an expired preview/draft grant can't linger in a long-open
+    // tab. Assert the value directly — a regression to `Infinity` fails here.
+    const beforeLoad = await getBeforeLoad()
+    const queryClient = freshClient()
+    const spy = vi.spyOn(queryClient, 'ensureQueryData')
+
+    await beforeLoad({ context: { queryClient }, location: { search: {} } })
+
+    const viewLevelCall = spy.mock.calls.find(
+      ([opts]) =>
+        JSON.stringify((opts as { queryKey: unknown }).queryKey) ===
+        JSON.stringify(['root', 'view-level']),
+    )
+    const staleTime = (viewLevelCall?.[0] as { staleTime?: number } | undefined)
+      ?.staleTime
+    expect(staleTime).toBe(4 * 60 * 60 * 1000)
+    expect(staleTime).not.toBe(Infinity)
   })
 
   it('bypasses the cache when a preview/draft token is present', async () => {
