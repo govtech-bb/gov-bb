@@ -19,6 +19,7 @@ import { PaymentProcessor } from "./processors/payment/payment.processor";
 import { FormDefinitionsModule } from "../form-definitions/form-definitions.module";
 import { FormConfigModule } from "../form-config/form-config.module";
 import { WebhookDestinationsModule } from "../webhook-destinations/webhook-destinations.module";
+import { ReferencePrefixAuditService } from "./reference-prefix-audit.service";
 import { FormDraftsModule } from "../form-drafts/form-drafts.module";
 import { PaymentsModule } from "@/payments/payments.module";
 import { FilesModule } from "@/files/files.module";
@@ -53,6 +54,7 @@ import { NotificationsModule } from "@/notifications/notifications.module";
   controllers: [SubmissionsController],
   providers: [
     SubmissionsService,
+    ReferencePrefixAuditService,
     FormSubmissionRepository,
     NotificationLogRepository,
     SubmissionPipelineService,

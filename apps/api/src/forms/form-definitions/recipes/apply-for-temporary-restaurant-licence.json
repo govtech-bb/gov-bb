@@ -28,6 +28,8 @@
       "type": "webhook",
       "config": {
         "mapping": {
+          "mdaCode": "MOH",
+          "programmeShortCode": "TRL",
           "programmeCode": "TEMP_RESTAURANT_LICENCE",
           "applicant": {
             "name": [

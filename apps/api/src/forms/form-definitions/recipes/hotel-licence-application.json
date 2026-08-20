@@ -21,6 +21,8 @@
       "type": "webhook",
       "config": {
         "mapping": {
+          "mdaCode": "MOH",
+          "programmeShortCode": "HTL",
           "programmeCode": "HOTEL_LICENCE",
           "applicant": {
             "name": [

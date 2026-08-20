@@ -12,7 +12,10 @@ import { CatchmentRoutingService } from "@/catchment/catchment-routing.service";
 import { FormSubmissionRepository } from "./form-submission.repository";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { ProcessorFactory } from "./processors/processor-factory.service";
-import { generateReferenceCode } from "./reference-code";
+import {
+  generateReferenceCode,
+  referencePrefixFromProcessors,
+} from "./reference-code";
 import { readPath } from "./processors/webhook-mapping";
 import type {
   SubmitDto,
@@ -111,6 +114,11 @@ export class SubmissionsService {
       : split.gating;
     const hasGating = gatingProcessors.length > 0;
 
+    // The MDA-PROG prefix is declared on the recipe (#2318), so it costs no DB
+    // read and is identical in every environment. Resolved once, outside the
+    // mint retry loop.
+    const referencePrefix = referencePrefixFromProcessors(rawProcessors);
+
     const saved = await this.saveWithUniqueReference(
       dto.formId,
       idempotencyKey,
@@ -125,6 +133,7 @@ export class SubmissionsService {
           : FormSubmissionStatus.SUBMITTED,
         ...(hasGating ? {} : { submittedAt: new Date() }),
       },
+      referencePrefix,
     );
 
     // Coordinate-based catchment routing: when the recipe declares which fields
@@ -220,10 +229,13 @@ export class SubmissionsService {
     formId: string,
     idempotencyKey: string,
     entityData: DeepPartial<FormSubmissionEntity>,
+    referencePrefix?: string,
   ): Promise<FormSubmissionEntity> {
     const MAX_ATTEMPTS = 5;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      const referenceCode = generateReferenceCode(formId);
+      const referenceCode = generateReferenceCode(formId, {
+        prefix: referencePrefix,
+      });
       try {
         return await this.submissionRepo.tx(async (repo) => {
           const doubleCheck = await repo.findOne({

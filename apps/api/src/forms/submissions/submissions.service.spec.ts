@@ -867,3 +867,45 @@ describe("SubmissionsService", () => {
     });
   });
 });
+
+describe("reference-code prefix from the recipe (#2318)", () => {
+  const mappedWebhook = (mapping: Record<string, unknown>) => ({
+    type: "webhook",
+    config: {
+      mapping: {
+        programmeCode: "TEMP_RESTAURANT_LICENCE",
+        applicant: { name: "a.name", email: "a.email", phone: "a.phone" },
+        ...mapping,
+      },
+    },
+  });
+
+  const mintedReference = (txRepo: { create: ReturnType<typeof vi.fn> }) =>
+    (txRepo.create.mock.calls[0]![0] as { referenceCode: string })
+      .referenceCode;
+
+  it("mints MDA-PROG-YYMM-TAIL when the recipe declares both segments", async () => {
+    const { service, txRepo } = makeMocks({
+      processors: [
+        mappedWebhook({ mdaCode: "MOH", programmeShortCode: "TRL" }),
+      ],
+    });
+
+    await service.submit(BASE_DTO);
+
+    expect(mintedReference(txRepo)).toMatch(
+      /^MOH-TRL-\d{4}-[0-9A-HJKMNP-TV-Z]{7}$/,
+    );
+  });
+
+  it("falls back to the formId prefix when the recipe declares neither", async () => {
+    const { service, txRepo } = makeMocks({
+      processors: [mappedWebhook({})],
+    });
+
+    await service.submit(BASE_DTO);
+
+    // formId "test-form" → TF
+    expect(mintedReference(txRepo)).toMatch(/^TF-\d{4}-[0-9A-HJKMNP-TV-Z]{7}$/);
+  });
+});
