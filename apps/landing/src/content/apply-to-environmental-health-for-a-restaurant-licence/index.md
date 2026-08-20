@@ -59,9 +59,9 @@ They must inspect the restaurant before they can issue a licence. More than one 
 
 If there are any contraventions of the health services restaurant regulations, you will be given instructions to rectify them within a specified time period. Until the contraventions are rectified, you will be unable to get your application approved. Failure to comply may result in receiving recommendations to cancel the licence, close the establishment, or be subject to prosecution.
 
-If your application is approved, you will receive a confirmation email and the Environmental Health Offifce will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.
+If your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.
 
-Once you receive your licence, you must display the licence in the establishment.
+Once you receive your licence, it must be displayed in the establishment.
 
 ## Start the service
 
