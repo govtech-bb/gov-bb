@@ -46,7 +46,12 @@ export const optionGroupSchema = z.object({
 });
 export type OptionGroup = z.infer<typeof optionGroupSchema>;
 
-export const contentVariantSchema = z.enum(["inset", "text", "details"]);
+export const contentVariantSchema = z.enum([
+  "inset",
+  "text",
+  "details",
+  "warning",
+]);
 export type ContentVariant = z.infer<typeof contentVariantSchema>;
 
 export const primitiveUISchema = z.object({
@@ -207,9 +212,9 @@ export type AddressLookupPrimitive = z.infer<
 >;
 
 // A non-field static content block: renders markdown guidance (inset callout,
-// plain paragraph, or a collapsible details disclosure). Carries no submitted
-// value — the renderer draws it outside the form-field wrapper, so it is never
-// validated, summarised, or submitted.
+// plain paragraph, amber warning, or a collapsible details disclosure). Carries
+// no submitted value — the renderer draws it outside the form-field wrapper, so
+// it is never validated, summarised, or submitted.
 export const contentPrimitiveSchema = basePrimitiveSchema.extend({
   htmlType: z.literal("content"),
   content: z.string(),

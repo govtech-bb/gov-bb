@@ -1326,9 +1326,47 @@ describe("evaluateCondition — transform daysUntil (future lead time)", () => {
     ).toBe(false);
   });
 
+  // The shape the event recipes use for their soft lead-time warning: show the
+  // callout only once the start date is inside the 14-day window. Exactly 14
+  // days out is compliant, so it must stay hidden on the boundary.
+  it("lt 14: matches a date inside the window, not one exactly 14 days out", () => {
+    expect(
+      evaluateCondition(make("lt", 14), EMPTY_VALUES, {
+        "event-date": dateDaysAhead(13) as unknown as string,
+      }),
+    ).toBe(true);
+    expect(
+      evaluateCondition(make("lt", 14), EMPTY_VALUES, {
+        "event-date": dateDaysAhead(14) as unknown as string,
+      }),
+    ).toBe(false);
+  });
+
+  // The warning window is the AND of `gte 0` and `lt 14` (stacked conditions
+  // combine with implicit AND). A past date must fall OUTSIDE it: it already
+  // gets a blocking "cannot be in the past" error, and drawing the advisory
+  // callout next to it would give the applicant two instructions at once.
+  it("gte 0 + lt 14: matches today and inside the window, not the past", () => {
+    const inWindow = (days: number) =>
+      [make("gte", 0), make("lt", 14)].every((c) =>
+        evaluateCondition(c, EMPTY_VALUES, {
+          "event-date": dateDaysAhead(days) as unknown as string,
+        }),
+      );
+    expect(inWindow(0), "today is short notice but valid").toBe(true);
+    expect(inWindow(13)).toBe(true);
+    expect(inWindow(14), "compliant lead time").toBe(false);
+    expect(inWindow(-1), "yesterday is an error, not a warning").toBe(false);
+  });
+
   it("an invalid/empty date never matches (NaN)", () => {
     expect(
       evaluateCondition(make("gte", 14), EMPTY_VALUES, { "event-date": "" }),
+    ).toBe(false);
+    // Critically also for `lt`, or an untouched date field would open the
+    // warning before the applicant has entered anything.
+    expect(
+      evaluateCondition(make("lt", 14), EMPTY_VALUES, { "event-date": "" }),
     ).toBe(false);
   });
 });

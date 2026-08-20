@@ -636,6 +636,18 @@ When some fields on a repeatable step should be answered ONCE for all instances 
 "behaviours": [{"type": "repeatable", "min": 1, "max": 5}, {"type": "sharedFields", "fieldIds": ["licence-type"]}]
 \`\`\`
 
+## Repeated Single Answers On One Field (fieldArray)
+Lets a SINGLE field be answered several times within its own step — e.g. listing several middle names, or several previous addresses given one at a time. It is FIELD-level: it lives in a \`behaviours\` array inside the element's \`overrides\`, alongside the field's other overrides:
+\`\`\`json
+{"ref": "components/generic-text", "overrides": {"fieldId": "middle-name", "label": "Middle name", "behaviours": [{"type": "fieldArray", "min": 1, "max": 3, "addAnotherLabel": "Do you have another middle name?"}]}}
+\`\`\`
+- \`min\` is how many inputs render initially (min 1) — it is a render floor, NOT a validation rule; it does not make any instance required.
+- \`max\` caps how many answers the applicant can add.
+- \`addAnotherLabel\` (optional) overrides the auto-generated "Add Another" link text. OMIT the key entirely rather than sending an empty string \`""\`.
+- \`fieldArray\` is ONLY valid on these field types: text, number, time, tel, email, textarea — it must NOT be used on other field types (select, radio, checkbox, file, date, confirmation, etc.).
+
+**fieldArray vs repeatable — the decision rule:** use \`fieldArray\` when ONE question is answered several times (e.g. middle names — one field, repeated). Use a \`repeatable\` step when a GROUP of fields repeats together (e.g. dependants — several fields per instance). Be conservative: only emit \`fieldArray\` when the user's description clearly asks for repeated single answers, not whenever a field merely sounds pluralisable.
+
 ## Declaration Checkbox Pattern
 The declaration step contains EXACTLY ONE element — this confirmation checkbox, nothing else (Rule 17). The fieldId is always \`declaration-confirmed\`, the label is always \`Declaration\`, and it is always required:
 \`\`\`json

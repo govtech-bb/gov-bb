@@ -31,8 +31,8 @@
  *  - is-organiser is fixed to "no" (the applicant is not the organiser). This is
  *    the scenario the catchment-routing fix was verified against, and it keeps
  *    the required set minimal: only the medical certificate is a required
- *    upload (site-plan is optionalIf no, vendor-list is organiser-only), and the
- *    declaration has no organiser overtime-costs acknowledgement. The "yes"
+ *    upload (site-plan is optional for everyone, vendor-list is organiser-only),
+ *    and the declaration has no organiser overtime-costs acknowledgement. The "yes"
  *    branch (num-patrons/num-stalls, extra required uploads, overtime notice) is
  *    intentionally not exercised here.
  *  - The event address is an address-lookup (geocoder) field, so it cannot take
@@ -57,6 +57,7 @@ import { test, expect, type Page } from "@playwright/test";
 import {
   STEP_TIMEOUT,
   advance,
+  expectLeadTimeWarningIsAdvisory,
   expectStep,
   fillDate,
   fillField,
@@ -148,8 +149,8 @@ function buildData() {
   const dd = String(dob.getDate()).padStart(2, "0");
   const nrnDigits = `${yy}${mm}${dd}${faker.string.numeric(4)}`;
 
-  // Event start must be >= 14 days out (recipe min: daysUntil 14). Give plenty
-  // of margin; end date is the same day or a few days later.
+  // Keep the start >= 14 days out so the soft lead-time warning stays hidden
+  // (it is advisory, not blocking); end date is the same day or a few later.
   const start = new Date();
   start.setDate(start.getDate() + faker.number.int({ min: 21, max: 120 }));
   const end = new Date(start);
@@ -361,6 +362,7 @@ test.describe("Temporary Restaurant Licence — Live Smoke", () => {
     );
     await field(page, step, "event-start-time", data.startTime);
     await field(page, step, "event-end-time", data.endTime);
+    await expectLeadTimeWarningIsAdvisory(page, step, data.start);
     await advance(page, step);
 
     // ─── Step 4: Food and drink (checkbox-accordion) ─────────────────────────
@@ -413,6 +415,12 @@ test.describe("Temporary Restaurant Licence — Live Smoke", () => {
 
     // ─── Step 6: Supporting documents (only medical-certs required here) ─────
     step = expectStep(page, "documents");
+    // The site plan is optional for EVERYONE now (it used to be required unless
+    // `optionalIf` organiser=no relaxed it), so it stays empty here and the step
+    // must still advance. Its label carries the "(optional)" suffix.
+    await expect(page.locator(`label[for="${step}_site-plan"]`)).toContainText(
+      "(optional)",
+    );
     await uploadOne(page, step, "medical-certs", {
       name: TEST_PNG.name,
       mimeType: TEST_PNG.mimeType,
@@ -430,6 +438,10 @@ test.describe("Temporary Restaurant Licence — Live Smoke", () => {
     // the declaration + real submit. Enable with SMOKE_HOLD_CYA=1; close the
     // window (don't resume) to end without submitting. No-op on normal/CI runs.
     if (process.env.SMOKE_HOLD_CYA) await page.pause();
+    // SMOKE_HOLD_CYA's unattended sibling: end the run here, green, having
+    // walked every step but created nothing. For verifying a form change
+    // end-to-end (locally or against a preview) without posting an application.
+    if (process.env.SMOKE_STOP_AT_CYA) return;
     await advance(page, step);
 
     // ─── Declaration ─────────────────────────────────────────────────────────

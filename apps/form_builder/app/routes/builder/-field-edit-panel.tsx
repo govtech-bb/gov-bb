@@ -56,6 +56,10 @@ interface OverrideFormProps {
   // Validations declared on the base primitive — surfaced by the validation
   // editor as inherited, overridable rows (#618).
   baseValidations?: ValidationRule;
+  // Label declared on the base primitive — with the label override, it feeds
+  // the behaviours editor's fieldArray miniature the applicant-visible label
+  // (#2317).
+  defaultLabel?: string;
   // `ui` hints declared on the base primitive — the per-key fallback the ui
   // editor collapses to, so a registry default (e.g. National ID's
   // `width: "short"`) is shown truthfully and overriding it persists (#789).
@@ -435,6 +439,7 @@ function OverrideForm({
   defaultRequired = false,
   baseValidations,
   baseUi,
+  defaultLabel,
 }: OverrideFormProps) {
   const fieldIdDuplicate =
     checkDuplicateFieldId?.(overrides.fieldId ?? "") ?? false;
@@ -487,6 +492,10 @@ function OverrideForm({
         fieldRefs={fieldRefs}
         stepRefs={stepRefs}
         currentStepId={currentStepId}
+        currentField={{
+          label: overrides.label || defaultLabel || "",
+          htmlType,
+        }}
         onChange={(behaviours) =>
           patch({ behaviours: behaviours.length > 0 ? behaviours : undefined })
         }
@@ -641,6 +650,7 @@ export function FieldEditPanel({
                     defaultRequired={isRequiredRule(element.validations?.required)}
                     baseValidations={element.validations}
                     baseUi={element.ui}
+                    defaultLabel={element.label}
                   />
                 </div>
               );
@@ -693,6 +703,9 @@ export function FieldEditPanel({
               item && "primitive" in item ? item.primitive.validations : undefined
             }
             baseUi={item && "primitive" in item ? item.primitive.ui : undefined}
+            defaultLabel={
+              item && "primitive" in item ? item.primitive.label : undefined
+            }
             />
           </>
         )}

@@ -68,6 +68,102 @@ export async function advance(page: Page, fromStep: string): Promise<void> {
   });
 }
 
+/** Click "Previous" and wait until `?step=` changes away from `fromStep`. */
+export async function goBack(page: Page, fromStep: string): Promise<void> {
+  await page.getByRole("button", { name: /^Previous$/ }).click();
+  await page.waitForURL((url) => url.searchParams.get("step") !== fromStep, {
+    timeout: STEP_TIMEOUT,
+  });
+}
+
+/**
+ * Assert the event start date's three rules, which are easy to confuse:
+ *   1. today → 13 days out → soft warning shows, and the step STILL ADVANCES
+ *      (this replaced a hard `min: daysUntil 14` that refused the whole form),
+ *   2. in the past        → hard error ONLY, and the step does not advance,
+ *   3. 14+ days out       → the warning clears.
+ *
+ * Rule 2 is why the warning carries a `gte 0` bound as well as `lt 14`: a past
+ * date is also "fewer than 14 days", so without the floor it would draw the
+ * advisory callout alongside the blocking error and muddle which one to act on.
+ *
+ * Call this with every other field on the step already filled — the advance
+ * would otherwise fail on an unrelated required field and read as a false pass
+ * of the old blocking behaviour. Leaves the field on `compliantStart`, so the
+ * run submits the same data it would have without this check.
+ */
+export async function expectLeadTimeWarningIsAdvisory(
+  page: Page,
+  stepId: string,
+  compliantStart: Date,
+): Promise<void> {
+  const soon = new Date();
+  soon.setDate(soon.getDate() + 4);
+  await fillDate(
+    page,
+    stepId,
+    "event-from",
+    soon.getDate(),
+    soon.getMonth() + 1,
+    soon.getFullYear(),
+  );
+
+  const warning = page.locator(".govbb-warning-text");
+  await expect(warning).toContainText("fewer than 14 days", {
+    timeout: STEP_TIMEOUT,
+  });
+
+  // The regression this guards: a short-notice event used to be refused here.
+  await advance(page, stepId);
+  await goBack(page, currentStep(page));
+  expectStep(page, stepId, { exact: true });
+
+  // The floor that DID survive: yesterday is still refused outright, so the
+  // soft warning cannot be mistaken for "any date goes".
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  await fillDate(
+    page,
+    stepId,
+    "event-from",
+    yesterday.getDate(),
+    yesterday.getMonth() + 1,
+    yesterday.getFullYear(),
+  );
+  await page.getByRole("button", { name: /^Continue$/ }).click();
+  await expect(page.locator(".govbb-error-summary")).toContainText(
+    "cannot be in the past",
+    { timeout: STEP_TIMEOUT },
+  );
+  expectStep(page, stepId, { exact: true });
+  // The error stands alone — a past date gets one instruction, not two.
+  await expect(warning).toBeHidden();
+
+  // Today is the boundary the floor allows: valid, but still short notice, so
+  // the warning is back and nothing blocks.
+  const today = new Date();
+  await fillDate(
+    page,
+    stepId,
+    "event-from",
+    today.getDate(),
+    today.getMonth() + 1,
+    today.getFullYear(),
+  );
+  await expect(warning).toBeVisible({ timeout: STEP_TIMEOUT });
+  await expect(page.locator(".govbb-error-summary")).toBeHidden();
+
+  await fillDate(
+    page,
+    stepId,
+    "event-from",
+    compliantStart.getDate(),
+    compliantStart.getMonth() + 1,
+    compliantStart.getFullYear(),
+  );
+  await expect(warning).toBeHidden({ timeout: STEP_TIMEOUT });
+}
+
 /** Fill a text/textarea input addressed as `${stepId}_${suffix}`. */
 export async function fillField(
   page: Page,
