@@ -1040,6 +1040,18 @@
               "required": {
                 "error": "Upload the landlord or agent permission letter",
                 "value": true
+              },
+              "fileTypes": {
+                "error": "Upload a PDF, JPG or PNG",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "Each file must be 5 MB or smaller",
+                "value": 5242880
               }
             }
           }
@@ -1184,6 +1196,18 @@
             "validations": {
               "required": {
                 "value": true
+              },
+              "fileTypes": {
+                "error": "Upload a PDF, JPG or PNG",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "Each file must be 5 MB or smaller",
+                "value": 5242880
               }
             }
           }
@@ -1205,6 +1229,18 @@
             "validations": {
               "required": {
                 "value": true
+              },
+              "fileTypes": {
+                "error": "Upload a PDF, JPG or PNG",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "Each file must be 5 MB or smaller",
+                "value": 5242880
               }
             }
           }
