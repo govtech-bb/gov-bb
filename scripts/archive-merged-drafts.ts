@@ -178,7 +178,7 @@ async function main(): Promise<void> {
 
 // Only run main() when executed directly, not when imported by tests.
 // Root package.json has no `"type": "module"`, so this file runs as CJS
-// under both ts-jest and tsx — `require.main === module` works.
+// under tsx (and vitest) — `require.main === module` works.
 if (require.main === module) {
   main().catch((err) => {
     console.error(err);

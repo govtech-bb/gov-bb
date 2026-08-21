@@ -9,6 +9,12 @@
         "command": "vitest run",
         "cwd": "scripts"
       }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["scripts/**/*.ts"]
+      }
     }
   },
   "tags": []
