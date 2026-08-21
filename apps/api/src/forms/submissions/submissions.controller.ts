@@ -97,6 +97,13 @@ export class SubmissionsController {
       ...(resolvedPolyclinic && { resolvedPolyclinic }),
     };
 
+    // `statusCode` is the outcome the service computed (201 new / 200 replay /
+    // 202 processing). It becomes the HTTP status via the global
+    // ResponseInterceptor, which runs res.status(body.statusCode) after this
+    // returns. Keep passing it through here — that's what drives the wire
+    // status. An @HttpCode on this handler would be dead code: the interceptor
+    // runs later and overrides it. Guarded by
+    // submissions.controller.http.spec.ts (#2365).
     return ApiResponse.success(data, {
       message,
       statusCode,
