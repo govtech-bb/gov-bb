@@ -41,6 +41,21 @@ describe("webhook-mapping", () => {
       expect(readPath(VALUES, "no-such-step.field")).toBeNull();
       expect(readPath({ rep: [{ a: "1" }] } as never, "rep.a")).toBeNull();
     });
+
+    // A fieldArray answer is a string array (#2317). An applicant path is also
+    // dropped from form_data, so returning null here would lose the answer
+    // outright — the food business licence's "add another telephone number"
+    // field is exactly that shape.
+    it("joins a fieldArray answer, null when every entry is blank", () => {
+      const values = {
+        "about-you": { "your-telephone": ["421-1234", "  ", "230-9876"] },
+        blank: { "your-telephone": ["", "  "] },
+      } as unknown as SubmissionValues;
+      expect(readPath(values, "about-you.your-telephone")).toBe(
+        "421-1234, 230-9876",
+      );
+      expect(readPath(values, "blank.your-telephone")).toBeNull();
+    });
   });
 
   describe("buildMappedCasePayload — variants", () => {

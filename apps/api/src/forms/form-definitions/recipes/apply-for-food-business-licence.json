@@ -9,8 +9,43 @@
         "recipientField": "about-you.your-email",
         "subject": "Your Food Business Licence application has been received"
       }
+    },
+    {
+      "type": "email",
+      "config": {
+        "subject": "A new Food Business Licence application has been received",
+        "recipientField": "catchment.mdaEmail"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "mapping": {
+          "mdaCode": "MOH",
+          "programmeShortCode": "FBL",
+          "programmeCode": "FOOD_BUSINESS_LICENCE",
+          "applicant": {
+            "name": [
+              "about-you.your-first-name",
+              "about-you.your-last-name"
+            ],
+            "email": "about-you.your-email",
+            "phone": "about-you.your-telephone"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        }
+      }
     }
   ],
+  "catchmentRouting": {
+    "coordinatesField": "about-the-food-business.business-location-address-coordinates",
+    "parishField": "about-the-food-business.business-location-parish"
+  },
   "meta": {
     "visibility": "preview"
   },
@@ -844,7 +879,7 @@
           }
         },
         {
-          "ref": "components/address",
+          "ref": "components/address-lookup",
           "overrides": {
             "fieldId": "business-location-address-line-1",
             "label": "Address line 1",
@@ -853,6 +888,11 @@
                 "value": true,
                 "error": "Enter the address where the food business will operate."
               }
+            },
+            "geocodeTargets": {
+              "line2FieldId": "business-location-address-line-2",
+              "parishFieldId": "business-location-parish",
+              "coordinatesFieldId": "business-location-address-coordinates"
             }
           }
         },
@@ -885,6 +925,21 @@
               "required": {
                 "value": true,
                 "error": "Select the parish."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "business-location-address-coordinates",
+            "label": "Food business location coordinates",
+            "ui": {
+              "hidden": true
+            },
+            "validations": {
+              "required": {
+                "value": false
               }
             }
           }
@@ -1322,5 +1377,5 @@
     }
   ],
   "createdAt": "2026-08-18T20:19:05.878Z",
-  "updatedAt": "2026-08-20T00:00:00.000Z"
+  "updatedAt": "2026-08-20T21:30:00.000Z"
 }
