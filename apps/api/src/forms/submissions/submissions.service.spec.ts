@@ -11,6 +11,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { ProcessorFactory } from "./processors/processor-factory.service";
 import type { ISubmissionProcessor } from "./processors/submission-processor.interface";
 import type { SubmitDto } from "./submissions.types";
+import { makeSubmissionEntity as makeEntity } from "./__fixtures__/form-submission";
 import type { ExpressionsService } from "@/expressions/expressions.service";
 import type { CatchmentRoutingService } from "@/catchment/catchment-routing.service";
 
@@ -36,25 +37,6 @@ function makeCatchmentRouting(
     null,
 ): CatchmentRoutingService {
   return { resolve: vi.fn(impl) } as unknown as CatchmentRoutingService;
-}
-
-function makeEntity(
-  overrides: Partial<FormSubmissionEntity> = {},
-): FormSubmissionEntity {
-  return {
-    id: "uuid-sub-1",
-    idempotencyKey: "key-abc",
-    referenceCode: "TF-2606-ABCDEFG",
-    formId: "test-form",
-    formVersion: "1.0.0",
-    status: FormSubmissionStatus.SUBMITTED,
-    values: { "step-1": { field1: "value1" } },
-    meta: null,
-    submittedAt: new Date("2026-04-01T00:00:00Z"),
-    createdAt: new Date("2026-04-01T00:00:00Z"),
-    updatedAt: new Date("2026-04-01T00:00:00Z"),
-    ...overrides,
-  } as FormSubmissionEntity;
 }
 
 const AUDIT_TRAIL = {

@@ -6,10 +6,8 @@ import { SubmissionsController } from "./submissions.controller";
 import { SubmissionsService } from "./submissions.service";
 import { SubmissionPayloadSizePipe } from "./submission-payload-size.pipe";
 import { ResponseInterceptor } from "@/common/response.interceptor";
-import {
-  FormSubmissionStatus,
-  type FormSubmissionEntity,
-} from "@/database/entities/form-submission.entity";
+import { FormSubmissionStatus } from "@/database/entities/form-submission.entity";
+import { makeSubmissionEntity as makeEntity } from "./__fixtures__/form-submission";
 import type { SubmitResult } from "./submissions.types";
 
 /**
@@ -26,24 +24,6 @@ import type { SubmitResult } from "./submissions.types";
  * Deliberately a minimal module (mocked service + config, no AppModule/DB) so it
  * runs in CI, unlike file-upload.integration.spec.ts which needs a live Postgres.
  */
-
-function makeEntity(
-  overrides: Partial<FormSubmissionEntity> = {},
-): FormSubmissionEntity {
-  return {
-    id: "uuid-sub-1",
-    idempotencyKey: "key-abc",
-    formId: "test-form",
-    formVersion: "1.0.0",
-    status: FormSubmissionStatus.SUBMITTED,
-    values: { "step-1": { field1: "value1" } },
-    meta: null,
-    submittedAt: new Date("2026-04-01T00:00:00Z"),
-    createdAt: new Date("2026-04-01T00:00:00Z"),
-    updatedAt: new Date("2026-04-01T00:00:00Z"),
-    ...overrides,
-  } as FormSubmissionEntity;
-}
 
 const validBody = {
   formId: "test-form",
@@ -71,6 +51,10 @@ describe("POST /submissions — wire HTTP status", () => {
     // statusCode to the wire (main.ts registers it the same way).
     app.useGlobalInterceptors(new ResponseInterceptor());
     await app.init();
+  });
+
+  beforeEach(() => {
+    submit.mockReset();
   });
 
   afterAll(async () => {
