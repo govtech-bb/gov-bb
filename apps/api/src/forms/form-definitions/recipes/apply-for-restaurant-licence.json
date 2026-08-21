@@ -3,7 +3,7 @@
   "title": "Apply to Environmental Health for a restaurant licence",
   "description": "Apply for or renew a restaurant licence",
   "createdAt": "2026-08-18T19:36:35.003Z",
-  "updatedAt": "2026-08-20T19:50:47.920Z",
+  "updatedAt": "2026-08-20T21:15:00.000Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -28,6 +28,8 @@
       "type": "webhook",
       "config": {
         "mapping": {
+          "mdaCode": "MOH",
+          "programmeShortCode": "RSL",
           "programmeCode": "RESTAURANT_LICENCE",
           "applicant": {
             "name": [
