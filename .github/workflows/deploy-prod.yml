@@ -110,6 +110,17 @@ jobs:
             echo "   For a deliberate rollback/hotfix from another ref, set allow_non_staging=true."
             exit 1
           fi
+      # MUST run before the fast-forward below — once the ref moves, the SHA
+      # prod was serving is gone and `setup` has no affected base to diff from.
+      - name: Capture prod's current SHA
+        id: previous
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          sha=$(gh api "repos/${{ github.repository }}/git/refs/heads/prod" --jq '.object.sha')
+          echo "prod is currently at $sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
       - name: Fast-forward prod → ${{ github.sha }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -692,11 +703,15 @@ jobs:
     name: Tag + release notes
     needs:
       - advance-prod
+      - setup
       - deploy-api
       - amplify-forms
       - amplify-landing
       - amplify-feature-flagging
-    if: always() && needs.advance-prod.result == 'success'
+    # always() so a SKIPPED deploy job (the normal affected-detection outcome)
+    # still cuts the release — but `setup` must have succeeded, or there was no
+    # deploy at all and a tag would claim a release that never shipped.
+    if: always() && needs.advance-prod.result == 'success' && needs.setup.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       # Job-scoped write to create the tag + release; the deploy jobs stay
