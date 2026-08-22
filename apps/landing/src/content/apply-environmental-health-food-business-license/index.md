@@ -42,7 +42,8 @@ You may need to provide:
 -   a vehicle registration number, if the business uses a vehicle
 -   a document listing your staff, giving each person's name
 -   details about other places where food or drink is prepared
--   a floor plan layout drawn to scale, or your Planning and Development Department application number for your submitted layout.
+-   a floor plan layout drawn to scale
+-   your Planning and Development Department application number for your submitted building plan.
 -   medical certificates for your staff, which can be uploaded with your application or provided at inspection.
 
 Everyone who handles food needs a valid medical certificate from a registered doctor. This includes all staff that work within the food business.
