@@ -3,7 +3,7 @@ title: Apply for a hairdresser licence
 description: >-
   Apply to Environmental Health for a hairdresser licence to work as a
   hairdresser in Barbados.
-category: pensions-and-gratuities
+category: business-trade
 stage: alpha
 publish_date: '2026-08-19'
 visibility: draft
