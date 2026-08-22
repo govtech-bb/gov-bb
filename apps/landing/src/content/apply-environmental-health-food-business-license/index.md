@@ -27,9 +27,7 @@ Restaurants, caterers and bakers have their own applications. If you start this 
 
 You must send your plans to the Planning and Development Department, which was previously called Town and Country Planning. This is separate from your Food Business Licence, but you still need to do it.
 
-You will also need a layout drawn to scale, showing the size of the different areas and where they are. This applies whether you run the business from a building, a truck or a cart.
-
-You do not have to upload the layout with your application. You can send it to Environmental Health separately, or give your Town and Country Planning application number instead.
+You will also need to submit a floor plan layout drawn to scale with your application, showing the size of the different areas and where they are. This applies whether you run the business from a building, a truck or a cart.
 
 ### Renewing your licence
 
