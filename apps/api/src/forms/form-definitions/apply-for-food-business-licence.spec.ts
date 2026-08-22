@@ -215,3 +215,74 @@ it("requires the staff list as a document, not a headcount", async () => {
   expect(fieldIds).not.toContain("number-of-male-staff");
   expect(fieldIds).not.toContain("number-of-female-staff");
 });
+
+// The catchment half of the recipe. A wrong path here is the worst kind of
+// silent failure: geometry never resolves, so `catchment.mdaEmail` finds no
+// recipient and the polyclinic that has to inspect the premises is never told —
+// once per submission, at runtime, with nothing red anywhere. Assert the paths
+// name fields the recipe actually has.
+describe("Environmental Health routing", () => {
+  async function recipe(): Promise<{
+    processors: { type: string; config: Record<string, never> }[];
+    catchmentRouting: { coordinatesField: string; parishField: string };
+  }> {
+    return JSON.parse(await fs.readFile(RECIPE_PATH, "utf8"));
+  }
+
+  it("routes both the case and the notification to the serving polyclinic", async () => {
+    const { processors } = await recipe();
+
+    const webhook = processors.find((p) => p.type === "webhook");
+    expect(webhook?.config).toMatchObject({
+      mapping: {
+        // MOH-FBL-2608-… — the prefix is minted from these two, and a
+        // reference is immutable once issued.
+        mdaCode: "MOH",
+        programmeShortCode: "FBL",
+        programmeCode: "FOOD_BUSINESS_LICENCE",
+      },
+    });
+
+    const recipients = processors
+      .filter((p) => p.type === "email")
+      .map((p) => (p.config as { recipientField?: string }).recipientField);
+    expect(recipients).toContain("about-you.your-email");
+    expect(recipients).toContain("catchment.mdaEmail");
+  });
+
+  it("points catchmentRouting at fields the recipe actually has", async () => {
+    const { catchmentRouting } = await recipe();
+    const steps = await hydratedSteps();
+
+    for (const path of [
+      catchmentRouting.coordinatesField,
+      catchmentRouting.parishField,
+    ]) {
+      const [stepId, fieldId] = path.split(".");
+      const step = steps.find((s) => s.stepId === stepId);
+      expect(
+        step,
+        `catchmentRouting names missing step "${stepId}"`,
+      ).toBeDefined();
+      expect(
+        step!.elements.map((e) => e.fieldId),
+        `catchmentRouting names missing field "${path}"`,
+      ).toContain(fieldId);
+    }
+  });
+
+  // The coordinate only ever gets written by the address lookup, so the
+  // geocode target and the hidden field have to stay in step.
+  it("writes the coordinate the routing reads from the address lookup", async () => {
+    const { catchmentRouting } = await recipe();
+    const lookup = await field(
+      "about-the-food-business",
+      "business-location-address-line-1",
+    );
+
+    expect(
+      (lookup as { geocodeTargets?: { coordinatesFieldId?: string } })
+        .geocodeTargets?.coordinatesFieldId,
+    ).toBe(catchmentRouting.coordinatesField.split(".")[1]);
+  });
+});

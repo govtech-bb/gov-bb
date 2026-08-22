@@ -22,6 +22,18 @@ function asString(value: unknown): string | null {
     const trimmed = value.trim();
     return trimmed.length > 0 ? trimmed : null;
   }
+  // fieldArray answers are string arrays (#2317): join the non-blank entries
+  // comma-space separated, the same shape the review screen renders. Returning
+  // null here instead would lose the answer entirely — an applicant path is
+  // also dropped from `form_data`, so a phone field that allows "add another"
+  // would reach the case system nowhere.
+  if (Array.isArray(value)) {
+    const entries = value
+      .filter((v): v is string => typeof v === "string")
+      .map((v) => v.trim())
+      .filter((v) => v.length > 0);
+    return entries.length > 0 ? entries.join(", ") : null;
+  }
   return null;
 }
 

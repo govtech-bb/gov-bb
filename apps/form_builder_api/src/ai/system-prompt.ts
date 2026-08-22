@@ -658,6 +658,18 @@ Lets a SINGLE field be answered several times within its own step — e.g. listi
 
 **fieldArray vs repeatable — the decision rule:** use \`fieldArray\` when ONE question is answered several times (e.g. middle names — one field, repeated). Use a \`repeatable\` step when a GROUP of fields repeats together (e.g. dependants — several fields per instance). Be conservative: only emit \`fieldArray\` when the user's description clearly asks for repeated single answers, not whenever a field merely sounds pluralisable.
 
+## Ask One Question Once, Not Once Per Item
+
+When the form asks the SAME question once for each item the applicant has already chosen — per open day, per child, per vehicle — and ONE answer usually covers every item, do not author N fields to be filled in one at a time. Ask once, and only fall back to per-item fields when the applicant says the answers differ:
+
+1. A \`components/generic-radio\` gate straight after the question that chose the items: "Are the opening hours the same on every day you are open?" (yes/no, required).
+2. ONE shared field revealed by a \`fieldConditionalOn\` on that gate being \`"yes"\`.
+3. The per-item fields, each keeping the condition it already had AND gaining a second \`fieldConditionalOn\` on the gate being \`"no"\`.
+
+The two conditions on a per-item field combine with AND, so it appears only when its item is selected AND the answers differ. Give the shared field the same validations as a per-item one, so an applicant is held to the same rule whichever branch they take.
+
+Only do this when one answer genuinely covers every item in the common case (opening hours, a fee per class of licence). When the answers normally differ per item — each child's date of birth, each vehicle's registration number — the gate is a wasted question: author the per-item fields directly.
+
 ## Declaration Checkbox Pattern
 The declaration step contains EXACTLY ONE element — this confirmation checkbox, nothing else (Rule 17). The fieldId is always \`declaration-confirmed\`, the label is always \`Declaration\`, and it is always required:
 \`\`\`json
