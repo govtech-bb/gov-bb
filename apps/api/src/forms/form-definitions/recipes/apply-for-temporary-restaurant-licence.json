@@ -68,7 +68,7 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "label": "Middle name (optional)",
+            "label": "Middle name",
             "fieldId": "applicant-middle-name"
           }
         },
@@ -96,7 +96,7 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 2 (optional)",
+            "label": "Address line 2",
             "fieldId": "applicant-address-line-2",
             "validations": {
               "required": {
@@ -123,7 +123,7 @@
         {
           "ref": "components/home-telephone",
           "overrides": {
-            "label": "Home telephone (optional)",
+            "label": "Home telephone",
             "hint": "For example, (246) 433 1234.",
             "validations": {
               "required": {
@@ -135,7 +135,7 @@
         {
           "ref": "components/work-telephone",
           "overrides": {
-            "label": "Work telephone (optional)",
+            "label": "Work telephone",
             "validations": {
               "required": {
                 "value": false
@@ -183,7 +183,7 @@
         {
           "ref": "components/name",
           "overrides": {
-            "label": "Organiser's name (optional)",
+            "label": "Organiser's name",
             "fieldId": "organiser-name",
             "hint": "Give a phone number or an email for the organiser.",
             "behaviours": [
@@ -204,7 +204,7 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "label": "Organiser's phone number (optional)",
+            "label": "Organiser's phone number",
             "fieldId": "organiser-phone",
             "hint": "For example, (246) 249 1234.",
             "behaviours": [
@@ -229,7 +229,7 @@
         {
           "ref": "components/generic-email",
           "overrides": {
-            "label": "Organiser's email address (optional)",
+            "label": "Organiser's email address",
             "fieldId": "organiser-email",
             "hint": "For example, organiser@example.com.",
             "behaviours": [
@@ -334,7 +334,7 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Event address line 2 (optional)",
+            "label": "Event address line 2",
             "fieldId": "event-address-line-2",
             "validations": {
               "required": {
@@ -781,7 +781,7 @@
         {
           "ref": "components/generic-email",
           "overrides": {
-            "label": "Their email address (optional)",
+            "label": "Their email address",
             "fieldId": "caterer-email",
             "hint": "For example, cook@example.com.",
             "behaviours": [
@@ -986,7 +986,7 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "label": "Site or stall plan (optional)",
+            "label": "Site or stall plan",
             "fieldId": "site-plan",
             "hint": "A plan of the event site, showing stall positions, waste disposal, water supply and facilities. Upload one if you have it. PDF, JPG or PNG.",
             "validations": {
@@ -1000,7 +1000,7 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "label": "Food business licence (optional)",
+            "label": "Food business licence",
             "fieldId": "food-licence",
             "hint": "A copy of your valid food business licence, if you have one. PDF, JPG or PNG.",
             "validations": {

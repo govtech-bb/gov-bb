@@ -130,6 +130,12 @@ describe("AI system prompt", () => {
     expect(prompt).toContain("stays VISIBLE but becomes optional");
   });
 
+  it("forbids writing (optional) into labels and teaches required value false", () => {
+    expect(prompt).toContain('NEVER write "(optional)"');
+    expect(prompt).toContain('"required": { "value": false }');
+    expect(prompt).toContain("omission inherits the registry");
+  });
+
   it("guards the alternative-identity pattern (reveal toggle + optionalIf)", () => {
     expect(prompt).toContain(
       "Never leave the primary field unconditionally required next to a reveal toggle",
@@ -177,6 +183,19 @@ describe("AI system prompt", () => {
     expect(prompt).toMatch(/group of fields (that )?repeat(s)? together/i);
   });
 
+  it("teaches the same-for-every-item gate instead of N fields to fill one by one", () => {
+    expect(prompt).toContain("Ask One Question Once, Not Once Per Item");
+    // The three parts of the pattern: the gate, the shared field on "yes", and
+    // the per-item fields keeping their own condition plus a second on "no".
+    expect(prompt).toContain('gate being `"yes"`');
+    expect(prompt).toContain('gate being `"no"`');
+    // The pattern only works because stacked conditions AND together — without
+    // that, a per-item field would show alongside the shared one.
+    expect(prompt).toMatch(/combine with AND/i);
+    // ...and it must stay opt-in: a gate is wrong when answers differ per item.
+    expect(prompt).toMatch(/answers normally differ per item/i);
+  });
+
   it("directs relationship fields to components/relationship, not a text input", () => {
     expect(prompt).toContain("Relationship fields use components/relationship");
     // The component reference must surface it as a select with baked-in options.
@@ -185,10 +204,13 @@ describe("AI system prompt", () => {
     expect(prompt).not.toContain("free-text relationship fields");
   });
 
-  it("makes address line 2 and similar continuation lines optional by default", () => {
-    // Explicit never-infer-required rule for continuation lines.
+  it("makes address line 2 and similar continuation lines explicitly optional", () => {
+    // Continuation lines must carry an explicit required: {value: false} —
+    // omission inherits required: true from the registry base.
     expect(prompt).toContain('"address line 2"');
-    expect(prompt).toContain("optional by default");
+    expect(prompt).toContain(
+      'These must be OPTIONAL: set `"required": {"value": false}` explicitly',
+    );
     // The inferred-required list must name line 1 specifically, not bare
     // "address" (which would sweep line 2 into required-by-default).
     expect(prompt).toMatch(

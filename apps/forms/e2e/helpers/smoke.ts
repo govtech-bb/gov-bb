@@ -328,10 +328,15 @@ export async function submitAndConfirm(
       // When the API returns a referenceCode, it should match the canonical
       // shape (#1468): <PREFIX>-<YYMM>-<7 Crockford-Base32 chars>. Crockford
       // omits I, L, O, U so the code survives being read aloud and retyped.
+      //
+      // The prefix is one segment when it is derived from the formId initials
+      // (RAEHO), and TWO when the recipe declares an MDA prefix (#2331:
+      // `mdaCode`-`programmeShortCode`, e.g. MOH-EHO). Both are canonical —
+      // a single-segment-only pattern rejects every MDA-migrated form.
       expect(
         referenceCode,
         "referenceCode should match the expected pattern",
-      ).toMatch(/^[A-Z]+-\d{4}-[0-9A-HJKMNP-TV-Z]{7}$/);
+      ).toMatch(/^[A-Z]+(-[A-Z]+)?-\d{4}-[0-9A-HJKMNP-TV-Z]{7}$/);
     }
     await expect(page.getByText(String(renderedReference))).toBeVisible();
   }

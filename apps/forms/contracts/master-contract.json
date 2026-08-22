@@ -83,7 +83,7 @@
         },
         {
           "fieldId": "middle-name",
-          "label": "Middle Name (Optional)",
+          "label": "Middle Name",
           "htmlType": "text",
           "placeholder": "Enter your middle name",
           "validations": {
@@ -228,7 +228,7 @@
         },
         {
           "fieldId": "national-id",
-          "label": "National ID Number (Optional)",
+          "label": "National ID Number",
           "htmlType": "text",
           "placeholder": "Enter your national ID",
           "hint": "Required only for BB nationals",
@@ -257,7 +257,7 @@
         },
         {
           "fieldId": "nino",
-          "label": "National Insurance Number (Optional)",
+          "label": "National Insurance Number",
           "htmlType": "text",
           "placeholder": "e.g. AB 12 34 56 C",
           "hint": "Format: 2 letters, 6 digits, 1 letter",
@@ -344,7 +344,7 @@
         },
         {
           "fieldId": "work-telephone",
-          "label": "Work Telephone (Optional)",
+          "label": "Work Telephone",
           "htmlType": "tel",
           "placeholder": "Enter work phone number",
           "validations": {
@@ -446,7 +446,7 @@
         },
         {
           "fieldId": "additional-notes",
-          "label": "Additional Contact Notes (Optional)",
+          "label": "Additional Contact Notes",
           "htmlType": "textarea",
           "placeholder": "Any additional contact information or special requirements...",
           "validations": {
@@ -515,7 +515,7 @@
         },
         {
           "fieldId": "county",
-          "label": "County / Parish (Optional)",
+          "label": "County / Parish",
           "htmlType": "text",
           "placeholder": "Enter parish"
         },

@@ -140,7 +140,6 @@
         {
           "ref": "components/address",
           "overrides": {
-            "hint": "Optional",
             "label": "Address line 2",
             "fieldId": "address-line-2",
             "validations": {
@@ -162,7 +161,6 @@
         {
           "ref": "components/email",
           "overrides": {
-            "hint": "Optional",
             "validations": {
               "required": {
                 "value": false
@@ -384,7 +382,6 @@
         {
           "ref": "components/email",
           "overrides": {
-            "hint": "Optional",
             "fieldId": "some-email",
             "validations": {
               "required": {
@@ -444,7 +441,6 @@
         {
           "ref": "components/email",
           "overrides": {
-            "hint": "Optional",
             "fieldId": "emer-email",
             "validations": {
               "required": {

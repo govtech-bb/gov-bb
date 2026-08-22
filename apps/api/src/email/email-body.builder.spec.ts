@@ -311,7 +311,6 @@ describe("EmailBodyBuilder", () => {
           resolvedCatchment: {
             polyclinic: "Maurice Byer Polyclinic",
             programmeCode: "TEMP_RESTAURANT_LICENCE_MAURICE_BYER",
-            mdaEmail: null,
           },
         }),
       );

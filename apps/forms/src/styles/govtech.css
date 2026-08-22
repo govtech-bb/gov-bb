@@ -65,6 +65,15 @@
   outline: 0;
 }
 
+/* The muted "(optional)" suffix inside field labels and legends. Required
+ * fields carry no mark. Mirrors the design system's .govbb-label__optional,
+ * which the published @govtech-bb/styles doesn't ship yet — drop this rule
+ * when the app moves to a styles release that includes it. */
+.govbb-label__optional {
+  font-weight: 400;
+  color: var(--color-mid-grey-00);
+}
+
 /* The skip-to-content link (#341) is meant to stay hidden until focused, but
  * @govtech-bb/styles ships an inverted `.govbb-visually-hidden-focusable`
  * rule: it applies the *visible* styles in the `:not(:focus)` state and never
