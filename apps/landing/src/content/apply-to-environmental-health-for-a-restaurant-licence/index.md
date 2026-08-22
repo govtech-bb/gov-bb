@@ -3,7 +3,7 @@ title: Apply for a restaurant licence
 description: Apply for or renew a restaurant licence from Environmental Health.
 category: business-trade
 stage: alpha
-publish_date: '2026-08-20'
+publish_date: '2026-08-22'
 visibility: preview
 form_id: apply-for-restaurant-licence
 ---
@@ -23,9 +23,7 @@ Food businesses and bakers have separate applications. If you start this applica
 
 If this is a new restaurant, you should have applied to the Planning and Development Department for approval of your restaurant plans (this department was previously called Town and Country Planning).
 
-You will also need a layout drawn to scale, showing the size of the different areas and where they are. You can upload the layout with your application or provide it separately to Environmental Health.
-
-If you do not have the floor plan, you can give your application number from the Planning and Development Department instead.
+You will need to submit a floor plan layout drawn to scale with your application, showing the size of the different areas and where they are.
 
 ### Renewing your licence
 
@@ -39,9 +37,10 @@ You may need to provide:
 
 -   your current restaurant licence number (if renewing)
 -   the Barbados National Identification (ID) number for individual owners
+-   a document listing your staff, giving each person's name (staff list)
 -   details about other places where food or drink is prepared
--   a layout (if applicable)
--   medical certificates
+-   a floor plan layout (if applicable)
+-   medical certificates for your staff, which can be uploaded with your application or provided at inspection.
 
 All staff within the restaurant need a valid medical certificate from a registered doctor. Medical certificates expire on 31 December each year, and should be renewed by the first working day in January each year.
 
