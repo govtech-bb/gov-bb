@@ -74,7 +74,7 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 2 (optional)",
+            "label": "Address line 2",
             "fieldId": "home-address-2",
             "validations": {
               "required": {
@@ -188,7 +188,7 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Visit address line 2 (optional)",
+            "label": "Visit address line 2",
             "fieldId": "visit-address-2",
             "validations": {
               "required": {
@@ -314,7 +314,7 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 2 (optional)",
+            "label": "Address line 2",
             "fieldId": "contact-address-2",
             "validations": {
               "required": {

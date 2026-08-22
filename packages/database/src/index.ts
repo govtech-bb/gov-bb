@@ -10,6 +10,7 @@ import { PaymentTransactionEntity } from "./entities/payment-transaction.entity"
 import { CustomComponent } from "./entities/custom-component.entity";
 import { MdaContactEntity } from "./entities/mda-contact.entity";
 import { FormConfigEntity } from "./entities/form-config.entity";
+import { CatchmentContactEntity } from "./entities/catchment-contact.entity";
 import { FormDisabledOverrideEntity } from "./entities/form-disabled-override.entity";
 import { FormEditingSessionEntity } from "./entities/form-editing-session.entity";
 import { ServiceStatusEntity } from "./entities/service-status.entity";
@@ -37,6 +38,7 @@ import { RenameServiceStatusFormIdToSlug1783440984875 } from "./migrations/17834
 import { CreateNotificationLog1783458705143 } from "./migrations/1783458705143-CreateNotificationLog";
 import { SeedServiceStatus1783520007424 } from "./migrations/1783520007424-SeedServiceStatus";
 import { AddMinistryKeyToMdaContact1784000000000 } from "./migrations/1784000000000-AddMinistryKeyToMdaContact";
+import { CreateCatchmentContact1785500000000 } from "./migrations/1785500000000-CreateCatchmentContact";
 
 export const entities = [
   FormComponentEntity,
@@ -48,6 +50,7 @@ export const entities = [
   CustomComponent,
   MdaContactEntity,
   FormConfigEntity,
+  CatchmentContactEntity,
   FormDisabledOverrideEntity,
   FormEditingSessionEntity,
   ServiceStatusEntity,
@@ -76,6 +79,7 @@ export const migrations = [
   CreateNotificationLog1783458705143,
   SeedServiceStatus1783520007424,
   AddMinistryKeyToMdaContact1784000000000,
+  CreateCatchmentContact1785500000000,
 ];
 
 /**

@@ -1,5 +1,5 @@
 ---
-title: Find an open pharmacy
+title: Find Barbados Drug Service prescription medication
 description: >-
   Find a pharmacy that's open now anywhere in Barbados. You can also find
   pharmacies offering free or subsidised medication through the Barbados Drug
@@ -7,7 +7,7 @@ description: >-
 stage: alpha
 visibility: preview
 featured: false
-publish_date: '2026-08-18'
+publish_date: '2026-08-21'
 category: health-and-emergency-services
 service_type: digital
 ---

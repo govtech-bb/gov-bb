@@ -1,6 +1,7 @@
 import React from "react";
 import { FileUploadProps, UploadedFile } from "@forms/types";
 import ErrorMessage from "./error-message";
+import { optionalSuffix } from "./field-renderer/optional-suffix";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
 import { uploadFile, FileUploadError } from "../lib/api/files";
@@ -158,6 +159,7 @@ export default function FileUpload({
         <div className="govbb-file-upload__info">
           <span className="govbb-file-upload__title">
             {field.label ?? "Upload a file"}
+            {optionalSuffix(field)}
           </span>
           <span className="govbb-file-upload__subtitle">
             {field.hint?.trim()

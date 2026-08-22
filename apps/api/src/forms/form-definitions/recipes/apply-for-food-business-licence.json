@@ -1,5 +1,5 @@
 {
-  "formId": "food-business-licence-application",
+  "formId": "apply-for-food-business-licence",
   "title": "Apply to Environmental Health for a food business licence",
   "description": "Apply for a food business licence in Barbados",
   "processors": [
@@ -9,8 +9,43 @@
         "recipientField": "about-you.your-email",
         "subject": "Your Food Business Licence application has been received"
       }
+    },
+    {
+      "type": "email",
+      "config": {
+        "subject": "A new Food Business Licence application has been received",
+        "recipientField": "catchment.mdaEmail"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "mapping": {
+          "mdaCode": "MOH",
+          "programmeShortCode": "FBL",
+          "programmeCode": "FOOD_BUSINESS_LICENCE",
+          "applicant": {
+            "name": [
+              "about-you.your-first-name",
+              "about-you.your-last-name"
+            ],
+            "email": "about-you.your-email",
+            "phone": "about-you.your-telephone"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        }
+      }
     }
   ],
+  "catchmentRouting": {
+    "coordinatesField": "about-the-food-business.business-location-address-coordinates",
+    "parishField": "about-the-food-business.business-location-parish"
+  },
   "meta": {
     "visibility": "preview"
   },
@@ -81,20 +116,21 @@
           "overrides": {
             "fieldId": "your-telephone",
             "label": "Telephone number",
-            "hint": "You can enter a Barbados or international number.",
+            "hint": "You can enter a Barbados or international number. Add another number if more than one owner should be contactable.",
             "validations": {
               "required": {
                 "value": true,
                 "error": "Enter a telephone number."
               }
-            }
-          }
-        },
-        {
-          "ref": "components/contact-telephone",
-          "overrides": {
-            "fieldId": "your-second-telephone",
-            "label": "Second telephone number"
+            },
+            "behaviours": [
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 4,
+                "addAnotherLabel": "Add another telephone number"
+              }
+            ]
           }
         },
         {
@@ -108,6 +144,14 @@
                 "error": "Enter an email address."
               }
             }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "your-address-note",
+            "variant": "text",
+            "content": "This is your own address. We will use it for any post about this application. You will give the food business address later."
           }
         },
         {
@@ -704,6 +748,54 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
+            "fieldId": "premises-type",
+            "label": "Where will the food business operate from?",
+            "options": [
+              {
+                "label": "A fixed building or property",
+                "value": "fixed-property"
+              },
+              {
+                "label": "A mobile van or trailer",
+                "value": "mobile-van"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select where the food business will operate from."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "vehicle-registration-number",
+            "label": "Vehicle registration number",
+            "hint": "The registration number of the van or trailer.",
+            "ui": {
+              "width": "short"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the vehicle registration number."
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "premises-type",
+                "operator": "equal",
+                "value": "mobile-van"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
             "fieldId": "business-already-open",
             "label": "Is the food business already open?",
             "options": [
@@ -779,7 +871,15 @@
           }
         },
         {
-          "ref": "components/address",
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "business-location-address-note",
+            "variant": "text",
+            "content": "The address of the food business itself — not your own postal address."
+          }
+        },
+        {
+          "ref": "components/address-lookup",
           "overrides": {
             "fieldId": "business-location-address-line-1",
             "label": "Address line 1",
@@ -788,6 +888,11 @@
                 "value": true,
                 "error": "Enter the address where the food business will operate."
               }
+            },
+            "geocodeTargets": {
+              "line2FieldId": "business-location-address-line-2",
+              "parishFieldId": "business-location-parish",
+              "coordinatesFieldId": "business-location-address-coordinates"
             }
           }
         },
@@ -823,103 +928,18 @@
               }
             }
           }
-        }
-      ],
-      "behaviours": []
-    },
-    {
-      "stepId": "food-and-drink",
-      "title": "Food and drink",
-      "elements": [
-        {
-          "ref": "components/generic-checkbox",
-          "overrides": {
-            "fieldId": "food-types",
-            "label": "What types of food and drink will the food business sell, provide or prepare?",
-            "options": [
-              {
-                "label": "Meat or poultry",
-                "value": "meat-or-poultry"
-              },
-              {
-                "label": "Fish or seafood",
-                "value": "fish-or-seafood"
-              },
-              {
-                "label": "Eggs or dairy products",
-                "value": "eggs-or-dairy"
-              },
-              {
-                "label": "Rice, pasta, grains or other cooked starches",
-                "value": "rice-pasta-grains"
-              },
-              {
-                "label": "Fruit or vegetables",
-                "value": "fruit-or-vegetables"
-              },
-              {
-                "label": "Baked goods or desserts",
-                "value": "baked-goods"
-              },
-              {
-                "label": "Ready-to-eat or prepared foods",
-                "value": "ready-to-eat"
-              },
-              {
-                "label": "Packaged food",
-                "value": "packaged-food"
-              },
-              {
-                "label": "Non-alcoholic drinks",
-                "value": "non-alcoholic-drinks"
-              },
-              {
-                "label": "Alcoholic drinks",
-                "value": "alcoholic-drinks"
-              },
-              {
-                "label": "Something else",
-                "value": "something-else"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select at least one type of food or drink."
-              }
-            }
-          }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "other-food-type",
-            "label": "Enter another type of food or drink",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "food-types",
-                "operator": "in",
-                "value": [
-                  "something-else"
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "food-examples",
-            "label": "What food and drink will the food business sell, provide or prepare?",
-            "hint": "Give examples of the main dishes, products or drinks. You do not need to list every ingredient. For example: bread, cakes, packaged snacks, sandwiches, cooked meals or soft drinks.",
+            "fieldId": "business-location-address-coordinates",
+            "label": "Food business location coordinates",
             "ui": {
-              "width": "long"
+              "hidden": true
             },
             "validations": {
               "required": {
-                "value": true,
-                "error": "Describe the food and drink the business will sell, provide or prepare."
+                "value": false
               }
             }
           }
@@ -959,6 +979,7 @@
           "overrides": {
             "fieldId": "preparation-location",
             "label": "Where will the food or drink be prepared?",
+            "hint": "Select all that apply.",
             "options": [
               {
                 "label": "At the food business",
@@ -990,16 +1011,11 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/content",
           "overrides": {
-            "fieldId": "other-prep-business-name",
-            "label": "Name of business or place",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Enter the name of the business or place."
-              }
-            },
+            "fieldId": "supplier-licence-warning",
+            "variant": "warning",
+            "content": "It is your responsibility to make sure your suppliers have a valid food licence.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -1011,6 +1027,26 @@
                 ]
               }
             ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "other-preparation-locations",
+      "title": "Where else food and drink is prepared",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "other-prep-business-name",
+            "label": "Name of business or place",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the name of the business or place."
+              }
+            }
           }
         },
         {
@@ -1023,36 +1059,14 @@
                 "value": true,
                 "error": "Enter the address."
               }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "preparation-location",
-                "operator": "in",
-                "value": [
-                  "at-another-food-business",
-                  "at-another-location"
-                ]
-              }
-            ]
+            }
           }
         },
         {
           "ref": "components/address",
           "overrides": {
             "fieldId": "other-prep-address-line-2",
-            "label": "Address line 2",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "preparation-location",
-                "operator": "in",
-                "value": [
-                  "at-another-food-business",
-                  "at-another-location"
-                ]
-              }
-            ]
+            "label": "Address line 2"
           }
         },
         {
@@ -1065,18 +1079,7 @@
                 "value": true,
                 "error": "Enter the town or district."
               }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "preparation-location",
-                "operator": "in",
-                "value": [
-                  "at-another-food-business",
-                  "at-another-location"
-                ]
-              }
-            ]
+            }
           }
         },
         {
@@ -1089,18 +1092,7 @@
                 "value": true,
                 "error": "Select the parish."
               }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "preparation-location",
-                "operator": "in",
-                "value": [
-                  "at-another-food-business",
-                  "at-another-location"
-                ]
-              }
-            ]
+            }
           }
         },
         {
@@ -1117,40 +1109,91 @@
                 "value": true,
                 "error": "Describe how the food or drink will be taken to the food business."
               }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "preparation-location",
-                "operator": "in",
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 5,
+          "addAnotherLabel": "Do you need to add another place where food or drink is prepared?",
+          "instanceLabel": "Place"
+        },
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "where-food-is-prepared",
+          "targetFieldId": "preparation-location",
+          "operator": "in",
+          "value": [
+            "at-another-food-business",
+            "at-another-location"
+          ]
+        }
+      ]
+    },
+    {
+      "stepId": "people-working-at-the-food-business",
+      "title": "People working at the food business",
+      "elements": [
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "staff-documents-note",
+            "variant": "text",
+            "content": "Everyone who handles food needs a valid medical certificate. This includes staff who only sell, serve, store, pack or deliver food, not just the people who cook."
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "staff-list-upload",
+            "label": "Upload a list of your staff",
+            "hint": "The list must give each person's name and address. PDF, JPG or PNG, up to 5MB.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload a list of your staff."
+              },
+              "fileTypes": {
                 "value": [
-                  "at-another-food-business",
-                  "at-another-location"
-                ]
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "The staff list must be a PDF, JPG or PNG."
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "The staff list must be smaller than 5MB."
               }
-            ]
+            }
           }
         },
         {
-          "ref": "components/generic-radio",
+          "ref": "components/upload-document",
           "overrides": {
-            "fieldId": "food-handling-at-business",
-            "label": "Will food or drink be handled at the food business?",
-            "hint": "This includes opening, portioning or serving food or drink. Do not include selling sealed packages.",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
+            "fieldId": "medical-certificates-upload",
+            "label": "Upload medical certificates for your staff",
+            "hint": "You can upload more than one file. PDF, JPG or PNG, up to 5MB each. If you do not have them now, you can bring them to the inspection.",
+            "multiple": true,
             "validations": {
-              "required": {
-                "value": true,
-                "error": "Select whether food or drink will be handled at the food business."
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "Each medical certificate must be a PDF, JPG or PNG."
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each medical certificate must be smaller than 5MB."
+              },
+              "maxSize": {
+                "value": 20971520,
+                "error": "The medical certificates must be smaller than 20MB in total."
               }
             }
           }
@@ -1159,577 +1202,71 @@
       "behaviours": []
     },
     {
-      "stepId": "cooking-and-keeping-food",
-      "title": "Cooking and keeping food",
+      "stepId": "floor-plan",
+      "title": "Floor plan",
       "elements": [
         {
-          "ref": "components/generic-radio",
+          "ref": "components/upload-document",
           "overrides": {
-            "fieldId": "will-cook-food",
-            "label": "Will the food business cook any food?",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
+            "fieldId": "floor-plan-upload",
+            "label": "Upload a floor plan of the food business",
+            "hint": "A drawing of the layout. PDF, JPG or PNG, up to 5MB.",
             "validations": {
               "required": {
                 "value": true,
-                "error": "Select whether the food business will cook any food."
+                "error": "Upload a floor plan."
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "The floor plan must be a PDF, JPG or PNG."
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "The floor plan must be smaller than 5MB."
               }
             },
             "behaviours": [
               {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "will-prepare-food",
+                "type": "optionalIf",
+                "targetFieldId": "no-floor-plan-toggle",
                 "operator": "equal",
-                "value": "yes"
+                "value": true
               }
             ]
           }
         },
         {
-          "ref": "components/generic-radio",
+          "ref": "components/show-hide",
           "overrides": {
-            "fieldId": "cook-in-advance",
-            "label": "Will any food be cooked in advance?",
-            "hint": "This means before the day or time it will be sold or provided.",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select whether any food will be cooked in advance."
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "will-cook-food",
-                "operator": "equal",
-                "value": "yes"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "food-cooling-storage",
-            "label": "How will the food be cooled and stored?",
-            "hint": "For example, cooled before going into a fridge, freezer or other cold storage.",
-            "ui": {
-              "width": "long"
-            },
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Describe how the food will be cooled and stored."
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "cook-in-advance",
-                "operator": "equal",
-                "value": "yes"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "cooked-food-reheated",
-            "label": "Will any cooked food be reheated before it is sold or provided?",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select whether any cooked food will be reheated."
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "cook-in-advance",
-                "operator": "equal",
-                "value": "yes"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "raw-or-undercooked",
-            "label": "Will the business prepare any meat, poultry, fish, seafood or eggs to be eaten raw or not fully cooked?",
-            "hint": "Poultry includes chicken, turkey and other birds.",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select whether the business will prepare raw or not fully cooked foods."
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "will-prepare-food",
-                "operator": "equal",
-                "value": "yes"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "raw-food-examples",
-            "label": "What will be eaten raw or not fully cooked?",
-            "hint": "For example, raw fish, runny eggs or rare meat.",
-            "ui": {
-              "width": "long"
-            },
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Describe what will be eaten raw or not fully cooked."
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "raw-or-undercooked",
-                "operator": "equal",
-                "value": "yes"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "keep-food-hot",
-            "label": "Will the food business need to keep hot food hot before it is sold or provided?",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select whether the business will keep food hot."
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "hot-food-method",
-            "label": "How will the hot food be kept hot?",
-            "hint": "For example, in a food warmer or other equipment used to keep food hot.",
-            "ui": {
-              "width": "long"
-            },
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Describe how the hot food will be kept hot."
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "keep-food-hot",
-                "operator": "equal",
-                "value": "yes"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "keep-food-cold",
-            "label": "Will the food business keep any food or drink cold?",
-            "hint": "This includes food or drink kept in a fridge, freezer or chilled display.",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select whether the business will keep food or drink cold."
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "cold-storage-method",
-            "label": "How will the food or drink be kept cold?",
-            "hint": "For example, in a fridge, freezer or chilled display unit.",
-            "ui": {
-              "width": "long"
-            },
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Describe how the food or drink will be kept cold."
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "keep-food-cold",
-                "operator": "equal",
-                "value": "yes"
-              }
-            ]
-          }
-        }
-      ],
-      "behaviours": []
-    },
-    {
-      "stepId": "preparing-food-at-business",
-      "title": "Preparing food at the business",
-      "elements": [
-        {
-          "ref": "components/generic-number",
-          "overrides": {
-            "fieldId": "number-preparing-food",
-            "label": "About how many people will prepare or handle food or drink?",
-            "hint": "Give your best estimate if you do not know the exact number yet.",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Enter how many people will prepare or handle food or drink."
-              },
-              "min": {
-                "value": 0,
-                "error": "Enter a number of 0 or more."
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-checkbox",
-          "overrides": {
-            "fieldId": "water-source",
-            "label": "Where will the food business get its water?",
-            "options": [
-              {
-                "label": "Public water supply",
-                "value": "public-water"
-              },
-              {
-                "label": "Stored water",
-                "value": "stored-water"
-              },
-              {
-                "label": "Another source",
-                "value": "another-source"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select at least one water source."
-              }
-            }
+            "fieldId": "no-floor-plan-toggle",
+            "label": "I do not have a floor plan",
+            "hint": "If you do not have a floor plan, you can give your Town and Country Planning application number instead."
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "other-water-source",
-            "label": "Tell us where the water will come from",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "water-source",
-                "operator": "in",
-                "value": [
-                  "another-source"
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "hand-washing-area",
-            "label": "Tell us where people can wash their hands",
-            "hint": "Include what they can use for washing their hands.",
+            "fieldId": "planning-application-number",
+            "label": "Town and Country Planning application number",
             "ui": {
-              "width": "long"
+              "width": "short"
             },
             "validations": {
               "required": {
                 "value": true,
-                "error": "Tell us where people can wash their hands."
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "reusable-equipment",
-            "label": "Will the business use reusable dishes, cooking tools or food-preparation equipment?",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select whether the business will use reusable equipment."
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "washing-area",
-            "label": "Is there a set area for washing them?",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select whether there is a set washing area."
+                "error": "Enter your Town and Country Planning application number."
               }
             },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "reusable-equipment",
+                "targetFieldId": "no-floor-plan-toggle",
                 "operator": "equal",
-                "value": "yes"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "washing-area-location",
-            "label": "Where is the washing area?",
-            "hint": "For example, in the kitchen or another area used to prepare food.",
-            "ui": {
-              "width": "long"
-            },
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Tell us where the washing area is."
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "washing-area",
-                "operator": "equal",
-                "value": "yes"
-              }
-            ]
-          }
-        }
-      ],
-      "behaviours": []
-    },
-    {
-      "stepId": "rubbish-and-food-waste",
-      "title": "Rubbish and food waste",
-      "elements": [
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "rubbish-storage",
-            "label": "Where will rubbish and food waste be kept?",
-            "hint": "For example, in bins inside or outside the food business.",
-            "ui": {
-              "width": "long"
-            },
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Tell us where rubbish and food waste will be kept."
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "rubbish-storage-elsewhere",
-            "label": "Will rubbish or food waste be kept somewhere else before it is collected?",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select whether rubbish will be kept somewhere else."
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "rubbish-other-location",
-            "label": "Where will it be kept?",
-            "ui": {
-              "width": "long"
-            },
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Tell us where rubbish will be kept."
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "rubbish-storage-elsewhere",
-                "operator": "equal",
-                "value": "yes"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/additional-details",
-          "overrides": {
-            "fieldId": "rubbish-removal-method",
-            "label": "How will rubbish and food waste be taken away?",
-            "hint": "For example, by a waste collection service or by the food business.",
-            "ui": {
-              "width": "long"
-            },
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Tell us how rubbish and food waste will be taken away."
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "rubbish-frequency",
-            "label": "How often will rubbish and food waste be taken away?",
-            "options": [
-              {
-                "label": "Every day",
-                "value": "every-day"
-              },
-              {
-                "label": "Several times a week",
-                "value": "several-times-week"
-              },
-              {
-                "label": "Once a week",
-                "value": "once-a-week"
-              },
-              {
-                "label": "Another schedule",
-                "value": "another-schedule"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select how often rubbish will be taken away."
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "rubbish-other-frequency",
-            "label": "Tell us how often it will be taken away",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "rubbish-frequency",
-                "operator": "equal",
-                "value": "another-schedule"
+                "value": true
               }
             ]
           }
@@ -1840,5 +1377,5 @@
     }
   ],
   "createdAt": "2026-08-18T20:19:05.878Z",
-  "updatedAt": "2026-08-18T20:19:05.878Z"
+  "updatedAt": "2026-08-20T21:30:00.000Z"
 }

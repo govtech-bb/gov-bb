@@ -13,6 +13,7 @@ export function renderTextareaField(ctx: FieldRenderContext): JSX.Element {
     errorId,
     errorMessage,
     labelClass,
+    labelSuffix,
   } = ctx;
 
   // `withRequired` mirrors the text path: the repeating-array variant
@@ -45,6 +46,7 @@ export function renderTextareaField(ctx: FieldRenderContext): JSX.Element {
     <div className="govbb-form-group" data-field-width={field.ui?.width}>
       <label className={labelClass("govbb-label")} htmlFor={field.id}>
         {field.label}
+        {labelSuffix}
       </label>
       {field.hint && (
         <p className="govbb-hint" id={hintId}>

@@ -35,6 +35,7 @@ export function AddressLookupField({
     errorId,
     errorMessage,
     labelClass,
+    labelSuffix,
     commitChange,
   } = ctx;
 
@@ -152,6 +153,7 @@ export function AddressLookupField({
     <div className="govbb-form-group" data-field-width={field.ui?.width}>
       <label className={labelClass("govbb-label")} htmlFor={field.id}>
         {field.label}
+        {labelSuffix}
       </label>
       {field.hint && (
         <p className="govbb-hint" id={hintId}>
