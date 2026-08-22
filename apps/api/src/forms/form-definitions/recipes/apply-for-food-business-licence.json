@@ -59,6 +59,12 @@
           "overrides": {
             "fieldId": "completing-for",
             "label": "Are you completing this application for yourself or someone else?",
+            "validations": {
+              "required": {
+                "error": "Select who you are completing the application for.",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Myself",
@@ -68,13 +74,7 @@
                 "label": "Someone else or a business or organisation",
                 "value": "someone-else"
               }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select who you are completing the application for."
-              }
-            }
+            ]
           }
         },
         {
@@ -84,8 +84,8 @@
             "label": "First name",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter your first name."
+                "error": "Enter your first name.",
+                "value": true
               }
             }
           }
@@ -105,8 +105,8 @@
             "label": "Last name",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter your last name."
+                "error": "Enter your last name.",
+                "value": true
               }
             }
           }
@@ -119,8 +119,8 @@
             "hint": "You can enter a Barbados or international number. Add another number if more than one owner should be contactable.",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter a telephone number."
+                "error": "Enter a telephone number.",
+                "value": true
               }
             },
             "behaviours": [
@@ -140,8 +140,8 @@
             "label": "Email address",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter an email address."
+                "error": "Enter an email address.",
+                "value": true
               }
             }
           }
@@ -150,8 +150,8 @@
           "ref": "components/content",
           "overrides": {
             "fieldId": "your-address-note",
-            "variant": "text",
-            "content": "This is your own address. We will use it for any post about this application. You will give the food business address later."
+            "content": "This is your own address. We will use it for any post about this application. You will give the food business address later.",
+            "variant": "text"
           }
         },
         {
@@ -161,8 +161,8 @@
             "label": "Address line 1",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter your address."
+                "error": "Enter your address.",
+                "value": true
               }
             }
           }
@@ -181,8 +181,8 @@
             "label": "Town or district",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter your town or district."
+                "error": "Enter your town or district.",
+                "value": true
               }
             }
           }
@@ -194,8 +194,8 @@
             "label": "Parish",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Select your parish."
+                "error": "Select your parish.",
+                "value": true
               }
             }
           }
@@ -227,6 +227,12 @@
           "overrides": {
             "fieldId": "relationship-to-business",
             "label": "What is your relationship to the food business?",
+            "validations": {
+              "required": {
+                "error": "Select your relationship to the food business.",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Owner",
@@ -252,13 +258,7 @@
                 "label": "Something else",
                 "value": "something-else"
               }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select your relationship to the food business."
-              }
-            }
+            ]
           }
         },
         {
@@ -281,20 +281,10 @@
           "overrides": {
             "fieldId": "applicant-type",
             "label": "Who is applying for the food business licence?",
-            "options": [
-              {
-                "label": "An individual",
-                "value": "individual"
-              },
-              {
-                "label": "A business or organisation",
-                "value": "business-or-organisation"
-              }
-            ],
             "validations": {
               "required": {
-                "value": true,
-                "error": "Select who is applying for the food business licence."
+                "error": "Select who is applying for the food business licence.",
+                "value": true
               }
             },
             "behaviours": [
@@ -303,6 +293,16 @@
                 "targetFieldId": "completing-for",
                 "operator": "equal",
                 "value": "someone-else"
+              }
+            ],
+            "options": [
+              {
+                "label": "An individual",
+                "value": "individual"
+              },
+              {
+                "label": "A business or organisation",
+                "value": "business-or-organisation"
               }
             ]
           }
@@ -314,8 +314,8 @@
             "label": "First name",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the applicant's first name."
+                "error": "Enter the applicant's first name.",
+                "value": true
               }
             },
             "behaviours": [
@@ -351,8 +351,8 @@
             "label": "Last name",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the applicant's last name."
+                "error": "Enter the applicant's last name.",
+                "value": true
               }
             },
             "behaviours": [
@@ -372,8 +372,8 @@
             "label": "Telephone number",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the applicant's telephone number."
+                "error": "Enter the applicant's telephone number.",
+                "value": true
               }
             },
             "behaviours": [
@@ -393,8 +393,8 @@
             "label": "Email address",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the applicant's email address."
+                "error": "Enter the applicant's email address.",
+                "value": true
               }
             },
             "behaviours": [
@@ -414,8 +414,8 @@
             "label": "Address line 1",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the applicant's address."
+                "error": "Enter the applicant's address.",
+                "value": true
               }
             },
             "behaviours": [
@@ -450,8 +450,8 @@
             "label": "Town or district",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the applicant's town or district."
+                "error": "Enter the applicant's town or district.",
+                "value": true
               }
             },
             "behaviours": [
@@ -471,8 +471,8 @@
             "label": "Parish",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Select the applicant's parish."
+                "error": "Select the applicant's parish.",
+                "value": true
               }
             },
             "behaviours": [
@@ -507,8 +507,8 @@
             "label": "Business or organisation name",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the business or organisation name."
+                "error": "Enter the business or organisation name.",
+                "value": true
               }
             },
             "behaviours": [
@@ -528,8 +528,8 @@
             "label": "Address line 1",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the business address."
+                "error": "Enter the business address.",
+                "value": true
               }
             },
             "behaviours": [
@@ -564,8 +564,8 @@
             "label": "Town or district",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the business town or district."
+                "error": "Enter the business town or district.",
+                "value": true
               }
             },
             "behaviours": [
@@ -585,8 +585,8 @@
             "label": "Parish",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Select the business parish."
+                "error": "Select the business parish.",
+                "value": true
               }
             },
             "behaviours": [
@@ -606,8 +606,8 @@
             "label": "Telephone number",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the business telephone number."
+                "error": "Enter the business telephone number.",
+                "value": true
               }
             },
             "behaviours": [
@@ -627,8 +627,8 @@
             "label": "Email address",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the business email address."
+                "error": "Enter the business email address.",
+                "value": true
               }
             },
             "behaviours": [
@@ -646,6 +646,12 @@
           "overrides": {
             "fieldId": "application-type",
             "label": "What are you applying to do?",
+            "validations": {
+              "required": {
+                "error": "Select what you are applying to do.",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Apply for a food business licence for the first time",
@@ -655,13 +661,7 @@
                 "label": "Renew a food business licence",
                 "value": "renewal"
               }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select what you are applying to do."
-              }
-            }
+            ]
           }
         },
         {
@@ -669,20 +669,10 @@
           "overrides": {
             "fieldId": "have-licence-number",
             "label": "Do you have your food business licence or reference number?",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
             "validations": {
               "required": {
-                "value": true,
-                "error": "Select whether you have your licence or reference number."
+                "error": "Select whether you have your licence or reference number.",
+                "value": true
               }
             },
             "behaviours": [
@@ -691,6 +681,16 @@
                 "targetFieldId": "application-type",
                 "operator": "equal",
                 "value": "renewal"
+              }
+            ],
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
               }
             ]
           }
@@ -725,8 +725,8 @@
             "label": "What type of food business is this?",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the type of food business."
+                "error": "Enter the type of food business.",
+                "value": true
               }
             }
           }
@@ -739,8 +739,8 @@
             "hint": "Enter the name the food business uses or will use.",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the food business name."
+                "error": "Enter the food business name.",
+                "value": true
               }
             }
           }
@@ -750,6 +750,12 @@
           "overrides": {
             "fieldId": "premises-type",
             "label": "Where will the food business operate from?",
+            "validations": {
+              "required": {
+                "error": "Select where the food business will operate from.",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "A fixed building or property",
@@ -758,14 +764,12 @@
               {
                 "label": "A mobile van or trailer",
                 "value": "mobile-van"
+              },
+              {
+                "label": "A stall or cart",
+                "value": "stall-cart"
               }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select where the food business will operate from."
-              }
-            }
+            ]
           }
         },
         {
@@ -774,13 +778,10 @@
             "fieldId": "vehicle-registration-number",
             "label": "Vehicle registration number",
             "hint": "The registration number of the van or trailer.",
-            "ui": {
-              "width": "short"
-            },
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the vehicle registration number."
+                "error": "Enter the vehicle registration number.",
+                "value": true
               }
             },
             "behaviours": [
@@ -790,7 +791,10 @@
                 "operator": "equal",
                 "value": "mobile-van"
               }
-            ]
+            ],
+            "ui": {
+              "width": "short"
+            }
           }
         },
         {
@@ -798,20 +802,10 @@
           "overrides": {
             "fieldId": "business-already-open",
             "label": "Is the food business already open?",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
             "validations": {
               "required": {
-                "value": true,
-                "error": "Select whether the food business is already open."
+                "error": "Select whether the food business is already open.",
+                "value": true
               }
             },
             "behaviours": [
@@ -820,6 +814,16 @@
                 "targetFieldId": "application-type",
                 "operator": "equal",
                 "value": "first-time"
+              }
+            ],
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
               }
             ]
           }
@@ -831,12 +835,12 @@
             "label": "What date did the food business start?",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the date the food business started."
+                "error": "Enter the date the food business started.",
+                "value": true
               },
               "pastOrToday": {
-                "value": true,
-                "error": "The start date cannot be in the future."
+                "error": "The start date cannot be in the future.",
+                "value": true
               }
             },
             "behaviours": [
@@ -856,8 +860,8 @@
             "label": "What date do you expect the food business to start?",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the expected start date."
+                "error": "Enter the expected start date.",
+                "value": true
               }
             },
             "behaviours": [
@@ -874,8 +878,8 @@
           "ref": "components/content",
           "overrides": {
             "fieldId": "business-location-address-note",
-            "variant": "text",
-            "content": "The address of the food business itself — not your own postal address."
+            "content": "The address of the food business itself — not your own postal address.",
+            "variant": "text"
           }
         },
         {
@@ -885,8 +889,8 @@
             "label": "Address line 1",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the address where the food business will operate."
+                "error": "Enter the address where the food business will operate.",
+                "value": true
               }
             },
             "geocodeTargets": {
@@ -910,8 +914,8 @@
             "label": "Town or district",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the town or district."
+                "error": "Enter the town or district.",
+                "value": true
               }
             }
           }
@@ -923,8 +927,8 @@
             "label": "Parish",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Select the parish."
+                "error": "Select the parish.",
+                "value": true
               }
             }
           }
@@ -956,6 +960,12 @@
           "overrides": {
             "fieldId": "will-prepare-food",
             "label": "Will the food business prepare any food or drink?",
+            "validations": {
+              "required": {
+                "error": "Select whether the food business will prepare any food or drink.",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Yes",
@@ -965,13 +975,7 @@
                 "label": "No",
                 "value": "no"
               }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select whether the food business will prepare any food or drink."
-              }
-            }
+            ]
           }
         },
         {
@@ -980,6 +984,20 @@
             "fieldId": "preparation-location",
             "label": "Where will the food or drink be prepared?",
             "hint": "Select all that apply.",
+            "validations": {
+              "required": {
+                "error": "Select where the food or drink will be prepared.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "will-prepare-food",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
             "options": [
               {
                 "label": "At the food business",
@@ -993,20 +1011,6 @@
                 "label": "At another location",
                 "value": "at-another-location"
               }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select where the food or drink will be prepared."
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "will-prepare-food",
-                "operator": "equal",
-                "value": "yes"
-              }
             ]
           }
         },
@@ -1014,8 +1018,6 @@
           "ref": "components/content",
           "overrides": {
             "fieldId": "supplier-licence-warning",
-            "variant": "warning",
-            "content": "It is your responsibility to make sure your suppliers have a valid food licence.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -1026,7 +1028,9 @@
                   "at-another-location"
                 ]
               }
-            ]
+            ],
+            "content": "It is your responsibility to make sure your suppliers have a valid food licence.",
+            "variant": "warning"
           }
         }
       ],
@@ -1043,8 +1047,8 @@
             "label": "Name of business or place",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the name of the business or place."
+                "error": "Enter the name of the business or place.",
+                "value": true
               }
             }
           }
@@ -1056,8 +1060,8 @@
             "label": "Address line 1",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the address."
+                "error": "Enter the address.",
+                "value": true
               }
             }
           }
@@ -1076,8 +1080,8 @@
             "label": "Town or district",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the town or district."
+                "error": "Enter the town or district.",
+                "value": true
               }
             }
           }
@@ -1089,8 +1093,8 @@
             "label": "Parish",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Select the parish."
+                "error": "Select the parish.",
+                "value": true
               }
             }
           }
@@ -1101,14 +1105,14 @@
             "fieldId": "food-transport-method",
             "label": "How will the food or drink be taken to the food business?",
             "hint": "For example, in covered containers, coolers or insulated food boxes.",
-            "ui": {
-              "width": "long"
-            },
             "validations": {
               "required": {
-                "value": true,
-                "error": "Describe how the food or drink will be taken to the food business."
+                "error": "Describe how the food or drink will be taken to the food business.",
+                "value": true
               }
+            },
+            "ui": {
+              "width": "long"
             }
           }
         }
@@ -1141,8 +1145,8 @@
           "ref": "components/content",
           "overrides": {
             "fieldId": "staff-documents-note",
-            "variant": "text",
-            "content": "Everyone who handles food needs a valid medical certificate. This includes staff who only sell, serve, store, pack or deliver food, not just the people who cook."
+            "content": "Everyone who handles food needs a valid medical certificate. This includes staff who only sell, serve, store, pack or deliver food, not just the people who cook.",
+            "variant": "text"
           }
         },
         {
@@ -1153,20 +1157,20 @@
             "hint": "The list must give each person's name and address. PDF, JPG or PNG, up to 5MB.",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Upload a list of your staff."
+                "error": "Upload a list of your staff.",
+                "value": true
               },
               "fileTypes": {
+                "error": "The staff list must be a PDF, JPG or PNG.",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
                   "image/png"
-                ],
-                "error": "The staff list must be a PDF, JPG or PNG."
+                ]
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "The staff list must be smaller than 5MB."
+                "error": "The staff list must be smaller than 5MB.",
+                "value": 5242880
               }
             }
           }
@@ -1177,25 +1181,25 @@
             "fieldId": "medical-certificates-upload",
             "label": "Upload medical certificates for your staff",
             "hint": "You can upload more than one file. PDF, JPG or PNG, up to 5MB each. If you do not have them now, you can bring them to the inspection.",
-            "multiple": true,
             "validations": {
               "fileTypes": {
+                "error": "Each medical certificate must be a PDF, JPG or PNG.",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
                   "image/png"
-                ],
-                "error": "Each medical certificate must be a PDF, JPG or PNG."
+                ]
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "Each medical certificate must be smaller than 5MB."
+                "error": "Each medical certificate must be smaller than 5MB.",
+                "value": 5242880
               },
               "maxSize": {
-                "value": 20971520,
-                "error": "The medical certificates must be smaller than 20MB in total."
+                "error": "The medical certificates must be smaller than 20MB in total.",
+                "value": 20971520
               }
-            }
+            },
+            "multiple": true
           }
         }
       ],
@@ -1213,20 +1217,20 @@
             "hint": "A drawing of the layout. PDF, JPG or PNG, up to 5MB.",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Upload a floor plan."
+                "error": "Upload a floor plan.",
+                "value": true
               },
               "fileTypes": {
+                "error": "The floor plan must be a PDF, JPG or PNG.",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
                   "image/png"
-                ],
-                "error": "The floor plan must be a PDF, JPG or PNG."
+                ]
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "The floor plan must be smaller than 5MB."
+                "error": "The floor plan must be smaller than 5MB.",
+                "value": 5242880
               }
             },
             "behaviours": [
@@ -1252,13 +1256,10 @@
           "overrides": {
             "fieldId": "planning-application-number",
             "label": "Town and Country Planning application number",
-            "ui": {
-              "width": "short"
-            },
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter your Town and Country Planning application number."
+                "error": "Enter your Town and Country Planning application number.",
+                "value": true
               }
             },
             "behaviours": [
@@ -1268,62 +1269,9 @@
                 "operator": "equal",
                 "value": true
               }
-            ]
-          }
-        }
-      ],
-      "behaviours": []
-    },
-    {
-      "stepId": "confirmation",
-      "title": "Confirm and submit",
-      "elements": [
-        {
-          "ref": "components/name",
-          "overrides": {
-            "fieldId": "confirmation-full-name",
-            "label": "Full name",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Enter your full name."
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-date",
-          "overrides": {
-            "fieldId": "confirmation-date",
-            "label": "Date",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Enter the date."
-              },
-              "pastOrToday": {
-                "value": true,
-                "error": "The date cannot be in the future."
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/confirmation",
-          "overrides": {
-            "fieldId": "confirm-truthfulness",
-            "label": "Confirmation",
-            "options": [
-              {
-                "label": "I confirm that the information in this application is true and correct to the best of my knowledge.",
-                "value": "confirmed"
-              }
             ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "You must confirm that the information is true and correct."
-              }
+            "ui": {
+              "width": "short"
             }
           }
         }
@@ -1346,18 +1294,18 @@
           "overrides": {
             "fieldId": "declaration-confirmed",
             "label": "Declaration",
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "I confirm that I am authorised to submit this application and that the information provided is true and correct.",
                 "value": "confirmed"
               }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "You must confirm the declaration to continue"
-              }
-            }
+            ]
           }
         }
       ],

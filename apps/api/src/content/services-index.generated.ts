@@ -298,6 +298,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
+    slug: "hairdresser-licence-application",
+    title: "Apply for a hairdresser licence",
+    category: "business-trade",
+    formId: "hairdresser-licence-application",
+    visibility: "draft",
+  },
+  {
     slug: "health-and-emergency-services/find-an-emergency-shelter",
     title: "Find an emergency shelter",
     category: "health-and-emergency-services",
@@ -417,6 +424,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
+    slug: "register-hair-beauty-business",
+    title:
+      "Register or renew a hairdressing or beauty business with Environmental Health",
+    formId: "register-hair-beauty-business",
+    visibility: "public",
+  },
+  {
     slug: "register-personal-care-business",
     title: "Register a personal care business with Environmental Health",
     formId: "register-personal-care-business",
@@ -485,6 +499,11 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     title: "Apply for a licence to sell goods or services at a beach or park",
     category: "business-trade",
     formId: "sell-goods-services-beach-park",
+    visibility: "public",
+  },
+  {
+    slug: "swimming-wading-pool-permit",
+    title: "Apply for a swimming or wading pool permit",
     visibility: "public",
   },
   {
