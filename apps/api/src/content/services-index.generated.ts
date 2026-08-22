@@ -482,6 +482,11 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
+    slug: "swimming-wading-pool-permit",
+    title: "Apply for a swimming or wading pool permit",
+    visibility: "public",
+  },
+  {
     slug: "temporary-restaurants-what-you-need-to-know",
     title: "Temporary restaurants: what you need to know",
     category: "business-trade",
