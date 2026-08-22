@@ -431,6 +431,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
+    slug: "register-personal-care-business",
+    title: "Register a personal care business with Environmental Health",
+    formId: "register-personal-care-business",
+    visibility: "draft",
+  },
+  {
     slug: "register-summer-camp",
     title: "Register for a summer camp",
     category: "work-employment",
