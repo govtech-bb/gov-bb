@@ -298,6 +298,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
+    slug: "hairdresser-licence-application",
+    title: "Apply for a hairdresser licence",
+    category: "pensions-and-gratuities",
+    formId: "hairdresser-licence-application",
+    visibility: "draft",
+  },
+  {
     slug: "health-and-emergency-services/find-an-emergency-shelter",
     title: "Find an emergency shelter",
     category: "health-and-emergency-services",
@@ -305,7 +312,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "health-and-emergency-services/find-an-open-pharmacy",
-    title: "Find an open pharmacy",
+    title: "Find Barbados Drug Service prescription medication",
     category: "health-and-emergency-services",
     visibility: "preview",
   },
