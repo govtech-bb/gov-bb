@@ -789,8 +789,7 @@
                 "type": "fieldConditionalOn",
                 "targetFieldId": "premises-type",
                 "operator": "equal",
-                "value": "mobile-van",
-                "targetStepId": "about-the-food-business"
+                "value": "mobile-van"
               }
             ],
             "ui": {
