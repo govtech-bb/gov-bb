@@ -40,9 +40,9 @@ You may need to provide:
 -   your current Food Business Licence number, if you are renewing
 -   the Barbados National Identification (ID) number for individual owners
 -   a vehicle registration number, if the business uses a vehicle
--   a document listing your staff, giving each person's name
+-   a document listing your staff, giving each person's name (staff list)
 -   details about other places where food or drink is prepared
--   a floor plan layout drawn to scale
+-   a floor plan layout drawn to scale (if applicable)
 -   your Planning and Development Department application number for your submitted building plan.
 -   medical certificates for your staff, which can be uploaded with your application or provided at inspection.
 
