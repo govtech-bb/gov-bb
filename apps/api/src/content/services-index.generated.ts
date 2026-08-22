@@ -305,7 +305,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "health-and-emergency-services/find-an-open-pharmacy",
-    title: "Find an open pharmacy",
+    title: "Find Barbados Drug Service prescription medication",
     category: "health-and-emergency-services",
     visibility: "preview",
   },
@@ -415,6 +415,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     category: "business-trade",
     formId: "register-guest-property-environmental-health",
     visibility: "preview",
+  },
+  {
+    slug: "register-personal-care-business",
+    title: "Register a personal care business with Environmental Health",
+    formId: "register-personal-care-business",
+    visibility: "draft",
   },
   {
     slug: "register-summer-camp",
