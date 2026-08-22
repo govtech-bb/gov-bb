@@ -298,6 +298,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
+    slug: "hairdresser-licence-application",
+    title: "Apply for a hairdresser licence",
+    category: "business-trade",
+    formId: "hairdresser-licence-application",
+    visibility: "draft",
+  },
+  {
     slug: "health-and-emergency-services/find-an-emergency-shelter",
     title: "Find an emergency shelter",
     category: "health-and-emergency-services",
