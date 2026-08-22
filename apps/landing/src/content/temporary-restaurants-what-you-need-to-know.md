@@ -7,7 +7,7 @@ description: >-
 stage: alpha
 visibility: public
 service_type: information
-publish_date: '2026-08-20'
+publish_date: '2026-08-21'
 category: business-trade
 ---
 This page explains the rules for temporary restaurants — who needs a licence, what it costs and what to have ready. It covers [applying for a temporary restaurant licence](https://landing.sandbox.alpha.gov.bb/business-trade/apply-for-temporary-restaurant-licence) and [requesting an environmental health officer](https://landing.sandbox.alpha.gov.bb/business-trade/request-an-environmental-health-officer).
@@ -125,4 +125,4 @@ You do not need to choose a polyclinic. When you apply, your application will be
 
 -   Telephone: [1 (246) 536-3800](tel:+12465363800)
 -   Email: [info@health.gov.bb](mailto:info@health.gov.bb)
--   Frank Walcott Building, Culloden Road, St. Michael
+-   Frank Walcott Building, National Insurance Building, Culloden Road, St Michael

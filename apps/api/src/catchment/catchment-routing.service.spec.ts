@@ -269,6 +269,16 @@ describe("programme codes are unchanged by composition (golden)", () => {
       "Sir Winston Scott Polyclinic": "ENV_HEALTH_OFFICER_WINSTON_SCOTT",
       "St. Philip Polyclinic": "ENV_HEALTH_OFFICER_ST_PHILIP",
     },
+    "apply-for-food-business-licence": {
+      "Branford Taitt Polyclinic": "FOOD_BUSINESS_LICENCE_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "FOOD_BUSINESS_LICENCE_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "FOOD_BUSINESS_LICENCE_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "FOOD_BUSINESS_LICENCE_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "FOOD_BUSINESS_LICENCE_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "FOOD_BUSINESS_LICENCE_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "FOOD_BUSINESS_LICENCE_ST_PHILIP",
+    },
     "hotel-licence-application": {
       "Branford Taitt Polyclinic": "HOTEL_LICENCE_BRANFORD_TAITT",
       "David Thompson Health & Social Services Complex":

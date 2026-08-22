@@ -24,6 +24,7 @@ const RECIPE_PATH = path.resolve(
 
 type HydratedField = {
   fieldId: string;
+  htmlType?: string;
   behaviours?: Record<string, unknown>[];
   validations?: Record<string, { value?: unknown; error?: string }>;
 };
@@ -55,11 +56,15 @@ const DAYS = [
 ] as const;
 
 it.each(DAYS)(
-  "shows %s's hours only when that day is selected, and lets them repeat",
+  "shows %s's hours only when that day is selected and the hours differ, and lets them repeat",
   async (day) => {
     const fields = await hydratedFields("opening-hours");
     const field = fields.find((f) => f.fieldId === `${day}-hours`);
     expect(field, `${day}-hours is missing`).toBeDefined();
+    // The two conditions AND together, so a per-day field appears only when
+    // that day is ticked AND the applicant said the hours are not the same
+    // every day. Were they OR'd, every ticked day would show its own field
+    // alongside the shared one and the applicant would answer twice.
     expect(field!.behaviours).toEqual([
       expect.objectContaining({
         type: "fieldConditionalOn",
@@ -67,10 +72,33 @@ it.each(DAYS)(
         operator: "in",
         value: [day],
       }),
+      expect.objectContaining({
+        type: "fieldConditionalOn",
+        targetFieldId: "same-hours-every-day",
+        operator: "equal",
+        value: "no",
+      }),
       expect.objectContaining({ type: "fieldArray", min: 1, max: 3 }),
     ]);
   },
 );
+
+// The shared field is the other half of that gate: most restaurants keep one
+// set of hours, so they answer once here instead of once per open day.
+it("shows the shared hours only when the hours are the same every day", async () => {
+  const fields = await hydratedFields("opening-hours");
+  const field = fields.find((f) => f.fieldId === "everyday-hours");
+  expect(field, "everyday-hours is missing").toBeDefined();
+  expect(field!.behaviours).toEqual([
+    expect.objectContaining({
+      type: "fieldConditionalOn",
+      targetFieldId: "same-hours-every-day",
+      operator: "equal",
+      value: "yes",
+    }),
+    expect.objectContaining({ type: "fieldArray", min: 1, max: 3 }),
+  ]);
+});
 
 // The hours are free text, so "09:00 - 17:00" is only as good as the pattern
 // rule — and it has to hold for EVERY entry the applicant adds, not just the
@@ -91,9 +119,31 @@ it.each([
   expect(errors, errors.join("; ")).toHaveLength(valid ? 0 : 1);
 });
 
+// The shared field is a second copy of that rule. The table above proves what
+// the rule accepts; this proves both fields are running the same one, so an
+// applicant is not held to a different standard depending on which branch of
+// the gate they took.
+it("holds the shared hours to the same format rule as a per-day one", async () => {
+  const fields = await hydratedFields("opening-hours");
+  const patternOf = (fieldId: string) =>
+    fields.find((f) => f.fieldId === fieldId)?.validations?.pattern?.value;
+
+  expect(patternOf("everyday-hours")).toBeDefined();
+  expect(patternOf("everyday-hours")).toBe(patternOf("monday-hours"));
+});
+
 // Each entry: the step holding the field, the gated field, and the answer that
 // reveals it.
 const GATED_FIELDS: [string, string, Record<string, unknown>][] = [
+  [
+    "about-application",
+    "relationship-other",
+    {
+      targetFieldId: "relationship-to-restaurant",
+      operator: "equal",
+      value: "something-else",
+    },
+  ],
   [
     "about-restaurant",
     "restaurant-expected-start-date",
@@ -140,3 +190,30 @@ it.each(GATED_FIELDS)(
     ]);
   },
 );
+
+// Six options on a radio is a Rule 8 violation, and the two controls are
+// nothing alike to use — six stacked radios versus one dropdown. The ref is the
+// only thing that decides which renders, so pin the served type rather than the
+// ref spelling.
+it("serves the relationship question as a dropdown, not six radios", async () => {
+  const fields = await hydratedFields("about-application");
+  const field = fields.find((f) => f.fieldId === "relationship-to-restaurant");
+  expect(field, "relationship-to-restaurant is missing").toBeDefined();
+  expect(field!.htmlType).toBe("select");
+});
+
+// `components/address` ships `required: true`, so a second address line is
+// mandatory unless the recipe overrides it — and the override only counts once
+// hydration has merged it over the registry default. Reading the recipe file
+// alone would miss a merge that dropped it.
+it.each([
+  ["about-you", "your-address-line-2"],
+  ["applicant-details", "applicant-address-line-2"],
+  ["about-restaurant", "restaurant-address-line-2"],
+  ["food-preparation", "other-prep-location-address-2"],
+])("serves %s.%s as optional", async (stepId, fieldId) => {
+  const fields = await hydratedFields(stepId);
+  const field = fields.find((f) => f.fieldId === fieldId);
+  expect(field, `${fieldId} is missing from ${stepId}`).toBeDefined();
+  expect(field!.validations?.required?.value).toBe(false);
+});
