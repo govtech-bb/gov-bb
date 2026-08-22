@@ -305,7 +305,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "health-and-emergency-services/find-an-open-pharmacy",
-    title: "Find an open pharmacy",
+    title: "Find Barbados Drug Service prescription medication",
     category: "health-and-emergency-services",
     visibility: "preview",
   },
@@ -479,6 +479,11 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     title: "Apply for a licence to sell goods or services at a beach or park",
     category: "business-trade",
     formId: "sell-goods-services-beach-park",
+    visibility: "public",
+  },
+  {
+    slug: "swimming-wading-pool-permit",
+    title: "Apply for a swimming or wading pool permit",
     visibility: "public",
   },
   {
