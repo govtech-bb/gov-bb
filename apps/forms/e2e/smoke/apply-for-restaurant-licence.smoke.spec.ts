@@ -1,6 +1,12 @@
 /**
  * apply-for-restaurant-licence.smoke.spec.ts
  *
+ * STALE — do not run until rewritten. `apply-for-restaurant-licence` now serves
+ * the 13-step Environmental Health recipe; the steps and field ids this spec
+ * drives (`applicant-details.*`, `restaurant-details.*`, `is-owner-operator`)
+ * belong to the 7-step recipe it replaced. No workflow runs this file, so
+ * nothing in CI depends on it.
+ *
  * Live, on-demand smoke test for the Apply for a restaurant licence service
  * (formId `apply-for-restaurant-licence`) — the ongoing licence, as opposed to
  * the 30-day `apply-for-temporary-restaurant-licence`.

@@ -155,8 +155,7 @@
           "ref": "components/address",
           "overrides": {
             "fieldId": "owner-address-line-2",
-            "label": "Address line 2",
-            "hint": "Optional."
+            "label": "Address line 2"
           }
         },
         {
@@ -203,8 +202,7 @@
           "ref": "components/address",
           "overrides": {
             "fieldId": "property-address-line-2",
-            "label": "Address line 2",
-            "hint": "Optional."
+            "label": "Address line 2"
           }
         },
         {

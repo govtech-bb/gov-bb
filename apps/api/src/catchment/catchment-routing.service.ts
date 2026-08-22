@@ -2,24 +2,30 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import {
+  CATCHMENT_SUFFIX,
   PARISH_DEFAULTS,
-  POLYCLINIC_EMAILS,
-  PROGRAMME_CODES_BY_FORM,
+  PROGRAMME_CODE_OVERRIDES,
+  SERVING_CATCHMENT,
 } from "./polyclinic-routing";
 
 export interface CatchmentResolution {
   polyclinic: string;
   programmeCode: string;
-  /** Null when the Ministry email for this catchment is not yet known. */
-  mdaEmail: string | null;
 }
 
 /** GeoJSON ring: an array of [lng, lat] pairs. */
 type Ring = [number, number][];
 /** Polygon: [outerRing, ...holes]. MultiPolygon: [Polygon, ...]. */
 interface CatchmentEntry {
+  /** GeoJSON `properties.name` — the geographic catchment the polygons cover. */
   name: string;
-  email: string | null;
+  /**
+   * Polyclinic whose Environmental Health Department serves this catchment —
+   * `name` itself unless `SERVING_CATCHMENT` redirects it. Everything the
+   * applicant and the Ministry see (the code, the inbox, the name on the
+   * confirmation page) comes from this, never from `name`.
+   */
+  servedBy: string;
   /** Normalised to a list of polygons, each polygon a list of rings. */
   polygons: Ring[][];
 }
@@ -41,11 +47,10 @@ export class CatchmentRoutingService implements OnModuleInit {
 
     this.entries = geojson.features.map((f) => {
       const name = f.properties.name;
-      // Emails live in POLYCLINIC_EMAILS (not the GeoJSON). A catchment with no
-      // entry resolves to null and is reported by the boot warn below.
+      const servedBy = SERVING_CATCHMENT[name] ?? name;
       return {
         name,
-        email: POLYCLINIC_EMAILS[name] ?? null,
+        servedBy,
         polygons: this.normalisePolygons(f.geometry),
       };
     });
@@ -61,46 +66,86 @@ export class CatchmentRoutingService implements OnModuleInit {
       }
     }
 
-    // Every form's programme-code map must cover every GeoJSON catchment, and
-    // every key in it must name a real GeoJSON catchment (catches a typo'd
-    // key that the old, catchment-only check could not).
-    for (const [formId, codesByCatchment] of Object.entries(
-      PROGRAMME_CODES_BY_FORM,
-    )) {
-      for (const entry of this.entries) {
-        if (!(entry.name in codesByCatchment)) {
-          throw new Error(
-            `[catchment] form "${formId}" has no programme code for catchment "${entry.name}"`,
-          );
-        }
+    // A redirect must point from one real catchment to another, and the target
+    // must not itself be redirected — a chain would silently stop one hop
+    // short and route to a polyclinic that no longer serves the area.
+    for (const [from, to] of Object.entries(SERVING_CATCHMENT)) {
+      if (!this.byName.has(from)) {
+        throw new Error(
+          `[catchment] SERVING_CATCHMENT has an entry for unknown catchment "${from}"`,
+        );
       }
-      for (const catchmentName of Object.keys(codesByCatchment)) {
-        if (!this.byName.has(catchmentName)) {
-          throw new Error(
-            `[catchment] form "${formId}" has a programme code for unknown catchment "${catchmentName}"`,
-          );
-        }
+      if (!this.byName.has(to)) {
+        throw new Error(
+          `[catchment] SERVING_CATCHMENT["${from}"] → unknown catchment "${to}"`,
+        );
+      }
+      if (to in SERVING_CATCHMENT) {
+        throw new Error(
+          `[catchment] SERVING_CATCHMENT["${from}"] → "${to}", which is itself redirected — chains are not followed`,
+        );
       }
     }
 
-    // Ministry email gap — warn, do not fail boot.
-    const noEmail = this.entries.filter((e) => !e.email).map((e) => e.name);
-    if (noEmail.length > 0) {
-      this.logger.warn(
-        `[catchment] no Ministry email for: ${noEmail.join(", ")} — a coordinate hit there fails the MDA email until supplied`,
-      );
+    const servingNames = new Set(this.entries.map((e) => e.servedBy));
+
+    // Programme codes are composed from the recipe's own programmeCode plus a
+    // per-catchment suffix, so the suffix table must cover every serving
+    // catchment and name nothing else (catches both a typo'd key and a key left
+    // behind for a catchment that is now served by another polyclinic).
+    for (const name of servingNames) {
+      if (!(name in CATCHMENT_SUFFIX)) {
+        throw new Error(
+          `[catchment] CATCHMENT_SUFFIX has no suffix for catchment "${name}"`,
+        );
+      }
+    }
+    for (const name of Object.keys(CATCHMENT_SUFFIX)) {
+      if (!servingNames.has(name)) {
+        throw new Error(
+          `[catchment] CATCHMENT_SUFFIX has a suffix for unknown catchment "${name}"`,
+        );
+      }
+    }
+
+    // An override records an off-convention CMS queue. One naming a catchment
+    // that is no longer served would silently stop applying, so fail loud —
+    // a stale override must be deleted, not left to rot. (That its formId names
+    // a real catchment-routed recipe is asserted in the spec, which can read
+    // the recipes directory; this service deliberately knows nothing of them.)
+    for (const [formId, byCatchment] of Object.entries(
+      PROGRAMME_CODE_OVERRIDES,
+    )) {
+      for (const name of Object.keys(byCatchment)) {
+        if (!servingNames.has(name)) {
+          throw new Error(
+            `[catchment] PROGRAMME_CODE_OVERRIDES["${formId}"] has a code for unknown catchment "${name}"`,
+          );
+        }
+      }
     }
   }
 
   resolve(input: {
     formId: string;
+    /**
+     * The recipe's own webhook `mapping.programmeCode`, which the per-catchment
+     * code is composed from. Undefined when the recipe declares
+     * `catchmentRouting` but no mapped webhook — the recipe loader rejects that
+     * at boot, so this is the belt to that braces.
+     */
+    programmeCode?: string;
     coordinates?: string;
     parish?: string;
   }): CatchmentResolution | null {
     const hit = this.pointHit(input.coordinates);
     const entry = hit ?? this.parishHit(input.parish);
     if (!entry) return null;
-    const programmeCode = PROGRAMME_CODES_BY_FORM[input.formId]?.[entry.name];
+    const programmeCode = this.programmeCodeFor(
+      input.formId,
+      input.programmeCode,
+      entry.servedBy,
+    );
     if (!programmeCode) {
       // No fallback code is invented here: returning null makes the caller's
       // resolvedCatchment undefined, so the webhook falls back to the
@@ -108,18 +153,40 @@ export class CatchmentRoutingService implements OnModuleInit {
       // loudly — resolveCatchmentRecipient finds no recipient, the !recipient
       // guard throws NonRetryableError, and sqs-consumer.service.ts logs it
       // and deletes the message rather than letting it churn into the DLQ —
-      // rather than misrouting. This file's existing fail-loud stance, now
-      // applied per form as well as per catchment.
+      // rather than misrouting. This file's existing fail-loud stance.
+      //
+      // Composition means this now fires only when the recipe carries no
+      // mapped webhook, or the catchment has no suffix — both of which boot
+      // validation already refuses to start with. It is unreachable in
+      // practice and kept as the guard that makes that true.
       this.logger.error(
-        `[catchment] no programme code for form "${input.formId}" / catchment "${entry.name}"`,
+        `[catchment] no programme code for form "${input.formId}" / catchment "${entry.servedBy}"`,
       );
       return null;
     }
     return {
-      polyclinic: entry.name,
+      polyclinic: entry.servedBy,
       programmeCode,
-      mdaEmail: entry.email,
     };
+  }
+
+  /**
+   * The CMS programme code for one form in one serving catchment: the override
+   * if the CMS issued an off-convention code, otherwise the recipe's own
+   * `mapping.programmeCode` plus the catchment suffix. Composing is what makes
+   * a new catchment-routed form cost nothing in `polyclinic-routing.ts` — the
+   * recipe already carries its programme code, and the suffixes are shared.
+   */
+  private programmeCodeFor(
+    formId: string,
+    programmeCode: string | undefined,
+    servingCatchment: string,
+  ): string | null {
+    const override = PROGRAMME_CODE_OVERRIDES[formId]?.[servingCatchment];
+    if (override) return override;
+    const suffix = CATCHMENT_SUFFIX[servingCatchment];
+    if (!programmeCode || !suffix) return null;
+    return `${programmeCode}_${suffix}`;
   }
 
   private parishHit(parish?: string): CatchmentEntry | undefined {

@@ -18,6 +18,7 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
     errorId,
     errorMessage,
     labelClass,
+    labelSuffix,
     commitChange,
     insetFieldsByOption,
     formId,
@@ -32,6 +33,7 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
       <fieldset className="govbb-fieldset" id={field.id}>
         <legend className={labelClass("govbb-fieldset__legend")}>
           {field.label}
+          {labelSuffix}
         </legend>
         {field.hint && (
           <p className="govbb-hint" id={hintId}>
@@ -89,6 +91,7 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
     <fieldset className="govbb-fieldset" id={field.id}>
       <legend className={labelClass("govbb-fieldset__legend")}>
         {field.label}
+        {labelSuffix}
       </legend>
       {field.hint && (
         <p className="govbb-hint" id={hintId}>

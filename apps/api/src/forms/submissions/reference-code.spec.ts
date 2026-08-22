@@ -1,4 +1,8 @@
-import { generateReferenceCode } from "./reference-code";
+import {
+  canonicalizeReferenceCode,
+  generateReferenceCode,
+  referencePrefixFromProcessors,
+} from "./reference-code";
 
 describe("generateReferenceCode", () => {
   it("derives an uppercase first-letter-of-each-segment prefix from the formId", () => {
@@ -59,5 +63,82 @@ describe("generateReferenceCode", () => {
       codes.add(generateReferenceCode("byac", { prefix: "BYAC" }));
     }
     expect(codes.size).toBe(N);
+  });
+});
+
+describe("canonicalizeReferenceCode", () => {
+  it("applies the Crockford decode rules: O→0, I→1, L→1", () => {
+    expect(canonicalizeReferenceCode("MOH-TRL-2608-47E4AD6")).toBe(
+      "M0H-TR1-2608-47E4AD6",
+    );
+    expect(canonicalizeReferenceCode("RAEHO-2608-1CHHHVK")).toBe(
+      "RAEH0-2608-1CHHHVK",
+    );
+  });
+
+  it("uppercases, so a lowercased code still matches", () => {
+    expect(canonicalizeReferenceCode("moh-trl-2608-47e4ad6")).toBe(
+      canonicalizeReferenceCode("MOH-TRL-2608-47E4AD6"),
+    );
+  });
+
+  it("resolves the letter/digit ambiguity a reader cannot see", () => {
+    // A clerk reading RAEHO off a printed confirmation types a zero.
+    expect(canonicalizeReferenceCode("RAEH0-2608-1CHHHVK")).toBe(
+      canonicalizeReferenceCode("RAEHO-2608-1CHHHVK"),
+    );
+  });
+
+  it("leaves a generated code's tail and date untouched", () => {
+    // The tail alphabet excludes I/L/O/U and YYMM is digits, so canonicalising
+    // a generated code can only ever change its prefix.
+    const code = generateReferenceCode("x", {
+      prefix: "MYS",
+      now: new Date("2026-06-15T00:00:00.000Z"),
+    });
+    const [, ...rest] = code.split("-");
+    const [, ...canonicalRest] = canonicalizeReferenceCode(code).split("-");
+    expect(canonicalRest).toEqual(rest);
+  });
+});
+
+describe("referencePrefixFromProcessors", () => {
+  const webhook = (mapping: Record<string, unknown>) => [
+    { type: "webhook", config: { mapping } },
+  ];
+
+  it("composes MDA-PROG from the webhook mapping", () => {
+    expect(
+      referencePrefixFromProcessors(
+        webhook({ mdaCode: "MOH", programmeShortCode: "TRL" }),
+      ),
+    ).toBe("MOH-TRL");
+  });
+
+  it("returns undefined when the form declares neither segment", () => {
+    expect(referencePrefixFromProcessors(webhook({}))).toBeUndefined();
+    expect(referencePrefixFromProcessors([])).toBeUndefined();
+  });
+
+  it("returns undefined when only one segment is declared", () => {
+    // A half-migrated recipe falls back to the formId prefix rather than
+    // minting a third shape of code.
+    expect(
+      referencePrefixFromProcessors(webhook({ mdaCode: "MOH" })),
+    ).toBeUndefined();
+    expect(
+      referencePrefixFromProcessors(webhook({ programmeShortCode: "TRL" })),
+    ).toBeUndefined();
+  });
+
+  it("ignores processors that are not webhooks", () => {
+    expect(
+      referencePrefixFromProcessors([
+        {
+          type: "email",
+          config: { mdaCode: "MOH", programmeShortCode: "TRL" },
+        },
+      ]),
+    ).toBeUndefined();
   });
 });

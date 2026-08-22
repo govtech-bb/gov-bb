@@ -111,8 +111,16 @@ function AccordionCategory({
 export function renderCheckboxAccordionField(
   ctx: FieldRenderContext,
 ): JSX.Element {
-  const { field, f, hintId, errorId, errorMessage, labelClass, commitChange } =
-    ctx;
+  const {
+    field,
+    f,
+    hintId,
+    errorId,
+    errorMessage,
+    labelClass,
+    labelSuffix,
+    commitChange,
+  } = ctx;
 
   const selected: string[] = (f.state.value as string[] | undefined) ?? [];
 
@@ -127,6 +135,7 @@ export function renderCheckboxAccordionField(
     <fieldset className="govbb-fieldset" id={field.id}>
       <legend className={labelClass("govbb-fieldset__legend")}>
         {field.label}
+        {labelSuffix}
       </legend>
       {field.hint && (
         <p className="govbb-hint" id={hintId}>

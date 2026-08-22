@@ -12,8 +12,14 @@ import { CatchmentRoutingService } from "@/catchment/catchment-routing.service";
 import { FormSubmissionRepository } from "./form-submission.repository";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { ProcessorFactory } from "./processors/processor-factory.service";
-import { generateReferenceCode } from "./reference-code";
-import { readPath } from "./processors/webhook-mapping";
+import {
+  generateReferenceCode,
+  referencePrefixFromProcessors,
+} from "./reference-code";
+import {
+  programmeCodeFromProcessors,
+  readPath,
+} from "./processors/webhook-mapping";
 import type {
   SubmitDto,
   SubmitResult,
@@ -111,6 +117,11 @@ export class SubmissionsService {
       : split.gating;
     const hasGating = gatingProcessors.length > 0;
 
+    // The MDA-PROG prefix is declared on the recipe (#2318), so it costs no DB
+    // read and is identical in every environment. Resolved once, outside the
+    // mint retry loop.
+    const referencePrefix = referencePrefixFromProcessors(rawProcessors);
+
     const saved = await this.saveWithUniqueReference(
       dto.formId,
       idempotencyKey,
@@ -125,6 +136,7 @@ export class SubmissionsService {
           : FormSubmissionStatus.SUBMITTED,
         ...(hasGating ? {} : { submittedAt: new Date() }),
       },
+      referencePrefix,
     );
 
     // Coordinate-based catchment routing: when the recipe declares which fields
@@ -135,6 +147,11 @@ export class SubmissionsService {
     const resolvedCatchment = routing
       ? (this.catchmentRouting.resolve({
           formId: dto.formId,
+          // The recipe's own programme code, which the per-catchment code is
+          // composed from. Read from `contract.processors`, not the
+          // smoke-emptied `rawProcessors` — the code is the form's identity,
+          // not a side effect of which processors happen to fire.
+          programmeCode: programmeCodeFromProcessors(contract.processors ?? []),
           coordinates:
             readPath(normalizedValues, routing.coordinatesField) ?? undefined,
           parish: readPath(normalizedValues, routing.parishField) ?? undefined,
@@ -220,10 +237,13 @@ export class SubmissionsService {
     formId: string,
     idempotencyKey: string,
     entityData: DeepPartial<FormSubmissionEntity>,
+    referencePrefix?: string,
   ): Promise<FormSubmissionEntity> {
     const MAX_ATTEMPTS = 5;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      const referenceCode = generateReferenceCode(formId);
+      const referenceCode = generateReferenceCode(formId, {
+        prefix: referencePrefix,
+      });
       try {
         return await this.submissionRepo.tx(async (repo) => {
           const doubleCheck = await repo.findOne({

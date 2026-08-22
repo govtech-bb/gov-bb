@@ -57,7 +57,6 @@
         {
           "ref": "components/address",
           "overrides": {
-            "hint": "Optional",
             "label": "Address line 2",
             "fieldId": "address-line-2",
             "validations": {
@@ -72,9 +71,7 @@
         },
         {
           "ref": "components/postcode",
-          "overrides": {
-            "hint": "Optional"
-          }
+          "overrides": {}
         },
         {
           "ref": "components/email",
@@ -197,7 +194,6 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "hint": "Optional",
             "label": "Nursery or school attending",
             "fieldId": "child-school",
             "validations": {

@@ -11,6 +11,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { ProcessorFactory } from "./processors/processor-factory.service";
 import type { ISubmissionProcessor } from "./processors/submission-processor.interface";
 import type { SubmitDto } from "./submissions.types";
+import { makeSubmissionEntity as makeEntity } from "./__fixtures__/form-submission";
 import type { ExpressionsService } from "@/expressions/expressions.service";
 import type { CatchmentRoutingService } from "@/catchment/catchment-routing.service";
 
@@ -36,25 +37,6 @@ function makeCatchmentRouting(
     null,
 ): CatchmentRoutingService {
   return { resolve: vi.fn(impl) } as unknown as CatchmentRoutingService;
-}
-
-function makeEntity(
-  overrides: Partial<FormSubmissionEntity> = {},
-): FormSubmissionEntity {
-  return {
-    id: "uuid-sub-1",
-    idempotencyKey: "key-abc",
-    referenceCode: "TF-2606-ABCDEFG",
-    formId: "test-form",
-    formVersion: "1.0.0",
-    status: FormSubmissionStatus.SUBMITTED,
-    values: { "step-1": { field1: "value1" } },
-    meta: null,
-    submittedAt: new Date("2026-04-01T00:00:00Z"),
-    createdAt: new Date("2026-04-01T00:00:00Z"),
-    updatedAt: new Date("2026-04-01T00:00:00Z"),
-    ...overrides,
-  } as FormSubmissionEntity;
 }
 
 const AUDIT_TRAIL = {
@@ -855,6 +837,74 @@ describe("SubmissionsService", () => {
       );
     });
 
+    // #2329: the per-polyclinic CMS code is composed from the recipe's own
+    // webhook mapping.programmeCode, so the resolver has to be handed it.
+    it("passes the recipe's webhook programmeCode to the catchment resolver", async () => {
+      const catchmentRouting = makeCatchmentRouting();
+      const { pipeline, service } = makeMocks({ catchmentRouting });
+      pipeline.run = vi.fn().mockResolvedValue({
+        draft: null,
+        contract: {
+          processors: [
+            {
+              type: "webhook",
+              config: { mapping: { programmeCode: "TEMP_RESTAURANT_LICENCE" } },
+            },
+          ],
+          catchmentRouting: {
+            coordinatesField: "event-details.event-address-coordinates",
+            parishField: "event-details.event-parish",
+          },
+        },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {
+          "event-details": { "event-parish": "st-philip" },
+        },
+      });
+
+      await service.submit(BASE_DTO);
+
+      expect(catchmentRouting.resolve as Mock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          programmeCode: "TEMP_RESTAURANT_LICENCE",
+          parish: "st-philip",
+        }),
+      );
+    });
+
+    // The programme code is the form's identity, not a side effect of which
+    // processors fire — a smoke submission drops every processor, so reading
+    // it from the dropped list would silently un-route the form.
+    it("reads the programmeCode from the contract even for a smoke submission", async () => {
+      const catchmentRouting = makeCatchmentRouting();
+      const { pipeline, service } = makeMocks({ catchmentRouting });
+      pipeline.run = vi.fn().mockResolvedValue({
+        draft: null,
+        contract: {
+          processors: [
+            {
+              type: "webhook",
+              config: { mapping: { programmeCode: "TEMP_RESTAURANT_LICENCE" } },
+            },
+          ],
+          catchmentRouting: {
+            coordinatesField: "event-details.event-address-coordinates",
+            parishField: "event-details.event-parish",
+          },
+        },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {
+          "event-details": { "event-parish": "st-philip" },
+        },
+      });
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: true });
+
+      expect(catchmentRouting.resolve as Mock).toHaveBeenCalledWith(
+        expect.objectContaining({ programmeCode: "TEMP_RESTAURANT_LICENCE" }),
+      );
+    });
+
     it("leaves resolvedCatchment undefined when the contract has no catchmentRouting block", async () => {
       const { service, eventEmitter } = makeMocks();
 
@@ -865,5 +915,47 @@ describe("SubmissionsService", () => {
         expect.objectContaining({ resolvedCatchment: undefined }),
       );
     });
+  });
+});
+
+describe("reference-code prefix from the recipe (#2318)", () => {
+  const mappedWebhook = (mapping: Record<string, unknown>) => ({
+    type: "webhook",
+    config: {
+      mapping: {
+        programmeCode: "TEMP_RESTAURANT_LICENCE",
+        applicant: { name: "a.name", email: "a.email", phone: "a.phone" },
+        ...mapping,
+      },
+    },
+  });
+
+  const mintedReference = (txRepo: { create: ReturnType<typeof vi.fn> }) =>
+    (txRepo.create.mock.calls[0]![0] as { referenceCode: string })
+      .referenceCode;
+
+  it("mints MDA-PROG-YYMM-TAIL when the recipe declares both segments", async () => {
+    const { service, txRepo } = makeMocks({
+      processors: [
+        mappedWebhook({ mdaCode: "MOH", programmeShortCode: "TRL" }),
+      ],
+    });
+
+    await service.submit(BASE_DTO);
+
+    expect(mintedReference(txRepo)).toMatch(
+      /^MOH-TRL-\d{4}-[0-9A-HJKMNP-TV-Z]{7}$/,
+    );
+  });
+
+  it("falls back to the formId prefix when the recipe declares neither", async () => {
+    const { service, txRepo } = makeMocks({
+      processors: [mappedWebhook({})],
+    });
+
+    await service.submit(BASE_DTO);
+
+    // formId "test-form" → TF
+    expect(mintedReference(txRepo)).toMatch(/^TF-\d{4}-[0-9A-HJKMNP-TV-Z]{7}$/);
   });
 });

@@ -7,10 +7,10 @@ description: >-
 stage: alpha
 visibility: public
 service_type: information
-publish_date: '2026-08-14'
+publish_date: '2026-08-21'
 category: business-trade
 ---
-This page explains the rules for temporary restaurants — who needs a licence, what it costs and what to have ready. It covers [applying for a temporary restaurant licence](https://landing.sandbox.alpha.gov.bb/business-trade/apply-for-temporary-restaurant-licence) and [requesting an environmental health officer](https://landing.sandbox.alpha.gov.bb/business-trade/request-an-environmental-health-officer).
+This page explains the rules for temporary restaurants — who needs a licence, what it costs and what to have ready. It covers [applying for a temporary restaurant licence](https://landing.sandbox.alpha.gov.bb/business-trade/apply-for-temporary-restaurant-licence) and [requesting an environmental health officer](https://landing.sandbox.alpha.gov.bb/business-trade/request-an-environmental-health-officer).
 
 ## What counts as a temporary restaurant
 
@@ -24,41 +24,44 @@ In law, a temporary restaurant is “a restaurant which operates for a period no
 
 In law, food is “any substance, whether processed, semi-processed or raw, which is intended for human consumption and includes drink, chewing gum and other substances which are used in the manufacture or treatment of food, but does not include cosmetics, tobacco or substances used only as drugs” (Health Services (Food Hygiene) Regulations, 1969).
 
-You need a licence if you will serve any food or drink, whether you sell it or give it away. This includes **bars that sell snacks or prepared drinks**, and **free samples or product promotions**.
-
-Weddings do not need a licence. Some other private events may need one, depending on how many people are there.
+You need a licence if you will serve or offer for sale, any food or drink, wether carried on for profit or not. This also includes **bars, snacks** and **confectioneries**, **free samples or product promotions**.
 
 [Apply for a licence](https://landing.sandbox.alpha.gov.bb/business-trade/apply-for-temporary-restaurant-licence)
 
 ## Who needs to apply
 
-Both the event organiser and each food vendor must apply. If you are a vendor, make your own application for each stall you will run.
+Both the event organiser and each food vendor must apply. If you are a vendor, make your own application for each stall you will operate.
 
-If someone else is organising your event, ask them for a letter confirming you can operate there — you will need to upload it with your application.
+If someone else is organising the event, ask for a letter confirming you granted permission to operate.  You will need to upload it with your application.
 
-Apply at least **14 days** before your event, so an officer can be scheduled to inspect your set-up. You can still apply closer to the date in person at the polyclinic.
+Apply at least **14 days** before the event.
 
-## Before your event
+## Before the event
 
--   Everyone handling food must have a valid medical certificate, and carry it during the event.
--   Your licence is issued at the event by the environmental health officer, once they have checked your set-up — it is not issued in advance. Keep it at your stall and show it if an officer asks.
--   Officers may give extra instructions on the day, depending on what you are serving. Please follow them.
+-   Everyone handling food must have a valid medical certificate, and have it during the event.
+-   Your licence will be issued at the event by the Environmental Health Officer, at the completion and successful compliance to the EHD standards.
+-   All licences should be kept it at your stall.
+-   Temporary permits may be granted by the EHD based on a risk based assessment.
 
 ## Paying for environmental health officers
 
-There is no application fee. If you are organising the event, you must pay any overtime costs for the officers attending. If there are overtime costs:
+There is no application fee. If you are organising the event, you must pay any overtime costs for the officers allocated to the event by the Ministry of Health and Wellness.
 
--   The fees are **payable in advance**, to the Accountant General — not to the polyclinic. This is set by regulation 7(2) of the Health Services (Assignment of Public Health Inspectors to Private Businesses) Regulations, 1986.
--   Pay at least 2 days before your event.
+-   The fees are **payable in advance**, to the Accountant General or the Permanent Secretary of the Ministry of Health and Wellness— not to the polyclinic. This is set by regulation 7(2) of the Health Services (Assignment of Public Health Inspectors to Private Businesses) Regulations, 1986.
+-   Pay at least 2 days before the event.
 -   Pay by cash or cheque only. Make cheques payable to the Accountant General.
--   Take your payment to the polyclinic or to the Environment Health Department, Ministry of Health and Wellness.
+-   Take your payment with copy of the invoices to the polyclinic or to the Environment Health Department, Ministry of Health and Wellness, Frank Walcott Building, National Insurance Building, Culloden Road, St Michael.
 -   You will get a receipt.
 
 [Request an environmental health officer](https://landing.sandbox.alpha.gov.bb/business-trade/request-an-environmental-health-officer)
 
+## What counts as a mass event
+
+A mass event or mass gathering is generally defined as a large-scale public assembly that includes but not limited to; a festival, concert, sporting match, a fair, fete, wedding, breakfast party or a jouvert —where a high concentration of people strains health and sanitation resources, triggering special response from the Environmental Health Department, issuing of temporary restaurant licenses and strict food safety protocols.
+
 ## Setting up your stall
 
-Your stall must meet food-safety standards for construction, handwashing, and hot and cold food.
+Your stall must meet food-safety standards for construction.
 
 Your stall must have:
 
@@ -122,4 +125,4 @@ You do not need to choose a polyclinic. When you apply, your application will be
 
 -   Telephone: [1 (246) 536-3800](tel:+12465363800)
 -   Email: [info@health.gov.bb](mailto:info@health.gov.bb)
--   Frank Walcott Building, Culloden Road, St. Michael
+-   Frank Walcott Building, National Insurance Building, Culloden Road, St Michael

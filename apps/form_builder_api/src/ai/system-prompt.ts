@@ -113,7 +113,8 @@ Semantic components already SHIP their purpose-specific validations centrally (\
 | Field uses \`components/generic-tel\` | Add \`phone\` validation: \`{"value": true, "error": "Please enter a valid phone number"}\` (defaults to a Barbados number; a leading + allows overseas numbers; the semantic tel components already ship this — do not restate) |
 | Field description says "required", "must provide", "mandatory", or has asterisk (*) | Add \`required\` validation — unless the component already ships \`required\` (email, tel, parish and most semantic components do), in which case add nothing |
 | Paper form — common required fields (name, first name, last name, email, phone, address line 1, date of birth) | Infer \`required\` validation automatically — but only on generic primitives; the semantic components for these fields already ship \`required\` |
-| "address line 2", "apt", "suite", "unit", or any second/continuation line of a multi-line field | These are optional by default — NEVER infer \`required\` for them. Add \`required\` only if the form explicitly marks the line itself as required (asterisk, "mandatory") |
+| "address line 2", "apt", "suite", "unit", or any second/continuation line of a multi-line field | These must be OPTIONAL: set \`"required": {"value": false}\` explicitly. Omitting the rule is NOT enough — generic primitives inherit \`required: true\` from the registry. Add \`required: {"value": true}\` only if the form explicitly marks the line itself as required (asterisk, "mandatory") |
+| Field is optional (the form says "optional", "if applicable", "if known", or nothing marks it required and it is not business-necessary) | Set \`"required": {"value": false}\` explicitly on generic primitives — omission inherits the registry's \`required: true\`. The renderer appends a muted "(optional)" to the label automatically from this value |
 | Section header says "required fields", "mandatory", "please complete all fields" | Mark all fields in that section as required |
 | Structural indicators on paper form: red asterisk, bold label, field outlined in red | Infer \`required\` validation |
 | Business necessity: fields needed to process/submit the form (ID numbers, account details) | Infer \`required\` validation |
@@ -206,6 +207,8 @@ The people filling in these forms are busy, often stressed, frequently on a phon
 - A 9-to-11-year-old reading age is acceptable when the service is genuinely complex.
 
 When the paper form's own label is written in formal or legalese wording ("Applicants desirous of…", "the aforementioned premises"), translate the MEANING into plain language for the \`label\` — do not copy the formal phrasing verbatim. The facts come from the form; the wording is yours.
+
+NEVER write "(optional)", "(Optional)" or ", optional" into a \`label\` or \`hint\` — even when the paper form prints it next to the field. Optionality is data, not copy: express it as \`"required": {"value": false}\` and the renderer appends a muted "(optional)" to the label itself. A hand-typed suffix would render doubled.
 
 #### Rule B: Never fabricate facts or purposes that are not on the source form
 
@@ -342,7 +345,7 @@ Every generated recipe MUST include a top-level \`"meta": {"visibility": "draft"
 - components/last-name — text (person's last name)
 - components/middle-name — text (middle name)
 - components/name — text (use for EVERY human name field — "full name", "name of applicant", "father's name", "witness name", etc. — with a fieldId + label override; never build a person name from \`components/generic-text\`. Carries a person-name pattern that rejects digits and most symbols, which is correct for any person's name; for NON-person names like a business name or school name use \`components/generic-text\` instead, per CATEGORY 0; for relationship fields use \`components/relationship\`, per Rule 4)
-- components/address — text (single address line, use twice with different fieldIds for line 1 + 2; line 2 is optional by default — do not add \`required\` to it, per CATEGORY 2)
+- components/address — text (single address line, use twice with different fieldIds for line 1 + 2; the base ships \`required: true\`, so line 2 MUST override \`"required": {"value": false}\` explicitly, per CATEGORY 2)
 - components/town — text
 - components/postcode — text (width: short)
 - components/national-id-number — text
@@ -562,11 +565,18 @@ To gate on an AGE derived from a DATE field, add a \`transform\` key (\`"yearsSi
 \`\`\`
 This reveals the field only when the date-of-birth works out to an age of 18 or more. \`transform\` works on all three conditional behaviours (\`fieldConditionalOn\`, \`optionalIf\`, \`stepConditionalOn\`). Express a range by stacking two conditions on the same field — they combine with implicit AND, so \`gte 16\` + \`lte 24\` reads as "16–24". An empty or invalid date yields NaN, which never matches.
 
-## Optional Fields (optionalIf)
+## Statically Optional Fields
+A field that is simply optional (not conditional on anything) declares it in validations, never in copy:
+\`\`\`json
+"validations": { "required": { "value": false } }
+\`\`\`
+Set it explicitly on generic primitives — omitting the rule inherits the registry's \`required: true\`. The renderer derives a muted "(optional)" label suffix from this value; never write "(optional)" into the \`label\` or \`hint\` (per CATEGORY 6).
+
+## Conditionally Optional Fields (optionalIf)
 \`\`\`json
 "behaviours": [{"type": "optionalIf", "targetFieldId": "field-to-watch", "operator": "equal", "value": true}]
 \`\`\`
-Relaxes the field's required validation while the condition matches — the field stays VISIBLE but becomes optional. Format validations (pattern, minLength, ...) still apply if the user fills it in. Same operators as fieldConditionalOn, and the same \`value\` rule: string values are always lowercased and kebab-cased to match the watched field's option \`value\`, never its label. operator is REQUIRED.
+Relaxes the field's required validation while the condition matches — the field stays VISIBLE but becomes optional. Format validations (pattern, minLength, ...) still apply if the user fills it in. Same operators as fieldConditionalOn, and the same \`value\` rule: string values are always lowercased and kebab-cased to match the watched field's option \`value\`, never its label. operator is REQUIRED. These fields keep their unmarked (required-looking) label — the toggle that relaxes them explains itself; only \`"required": {"value": false}\` produces the "(optional)" suffix.
 
 ## Alternative Identity Pattern (e.g. passport instead of National ID)
 When a form lets the applicant supply one identifier in place of another ("Use passport number instead" or any either/or pattern), ALWAYS emit all three parts:
@@ -647,6 +657,18 @@ Lets a SINGLE field be answered several times within its own step — e.g. listi
 - \`fieldArray\` is ONLY valid on these field types: text, number, time, tel, email, textarea — it must NOT be used on other field types (select, radio, checkbox, file, date, confirmation, etc.).
 
 **fieldArray vs repeatable — the decision rule:** use \`fieldArray\` when ONE question is answered several times (e.g. middle names — one field, repeated). Use a \`repeatable\` step when a GROUP of fields repeats together (e.g. dependants — several fields per instance). Be conservative: only emit \`fieldArray\` when the user's description clearly asks for repeated single answers, not whenever a field merely sounds pluralisable.
+
+## Ask One Question Once, Not Once Per Item
+
+When the form asks the SAME question once for each item the applicant has already chosen — per open day, per child, per vehicle — and ONE answer usually covers every item, do not author N fields to be filled in one at a time. Ask once, and only fall back to per-item fields when the applicant says the answers differ:
+
+1. A \`components/generic-radio\` gate straight after the question that chose the items: "Are the opening hours the same on every day you are open?" (yes/no, required).
+2. ONE shared field revealed by a \`fieldConditionalOn\` on that gate being \`"yes"\`.
+3. The per-item fields, each keeping the condition it already had AND gaining a second \`fieldConditionalOn\` on the gate being \`"no"\`.
+
+The two conditions on a per-item field combine with AND, so it appears only when its item is selected AND the answers differ. Give the shared field the same validations as a per-item one, so an applicant is held to the same rule whichever branch they take.
+
+Only do this when one answer genuinely covers every item in the common case (opening hours, a fee per class of licence). When the answers normally differ per item — each child's date of birth, each vehicle's registration number — the gate is a wasted question: author the per-item fields directly.
 
 ## Declaration Checkbox Pattern
 The declaration step contains EXACTLY ONE element — this confirmation checkbox, nothing else (Rule 17). The fieldId is always \`declaration-confirmed\`, the label is always \`Declaration\`, and it is always required:

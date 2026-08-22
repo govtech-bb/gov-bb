@@ -223,7 +223,7 @@
             "ui": {
               "width": "short"
             },
-            "hint": "For example, BB17004 (optional)",
+            "hint": "For example, BB17004",
             "fieldId": "contact-postcode"
           }
         },
