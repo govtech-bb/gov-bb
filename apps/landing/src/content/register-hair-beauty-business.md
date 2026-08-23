@@ -13,7 +13,7 @@ Use this service to apply for or renew a hairdressing salon licence.
 
 ## Who this licence is for
 
-[...]
+\[...\]
 
 ## Before you start
 
@@ -62,6 +62,8 @@ During the inspection, you will need to show:
 If you provide services from a vehicle, Environmental Health will also need to inspect the vehicle.
 
 They will tell you the result and what to do next if your application is approved.
+
+If your application is approved, you will receive a confirmation email and the Environment Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.
 
 Once you receive your licence, it must be displayed in the establishment
 
