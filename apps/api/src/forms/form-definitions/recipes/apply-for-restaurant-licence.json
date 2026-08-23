@@ -50,6 +50,10 @@
       }
     }
   ],
+  "catchmentRouting": {
+    "coordinatesField": "about-restaurant.restaurant-address-coordinates",
+    "parishField": "about-restaurant.restaurant-parish"
+  },
   "meta": {
     "visibility": "preview"
   },
@@ -265,7 +269,7 @@
     },
     {
       "stepId": "about-applicant",
-      "title": "Applicant details",
+      "title": "About the application",
       "elements": [
         {
           "ref": "components/generic-select",
@@ -972,7 +976,7 @@
       "title": "What locations are your food and drink prepared at",
       "elements": [
         {
-          "ref": "components/name",
+          "ref": "components/generic-text",
           "overrides": {
             "label": "Establishment name",
             "fieldId": "other-establishment-name"
@@ -989,7 +993,7 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address line 2",
-            "fieldId": "other-establihsment-address-2",
+            "fieldId": "other-establishment-address-2",
             "validations": {
               "required": {
                 "value": false
@@ -998,7 +1002,10 @@
           }
         },
         {
-          "ref": "components/parish"
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "other-establishment-parish"
+          }
         }
       ],
       "behaviours": [
@@ -1014,7 +1021,8 @@
           "targetFieldId": "food-prep-location",
           "operator": "in",
           "value": [
-            "commercial-kitchen"
+            "commercial-kitchen",
+            "another-location"
           ]
         }
       ]
@@ -1134,7 +1142,15 @@
           "overrides": {
             "fieldId": "tracking-number-instead",
             "label": "Planning and Development application number",
-            "hint": "This is the application number you received when you submitted your building plans to the Planning and Development Department"
+            "hint": "This is the application number you received when you submitted your building plans to the Planning and Development Department",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "building-plan-number",
+                "operator": "equal",
+                "value": true
+              }
+            ]
           }
         }
       ],
