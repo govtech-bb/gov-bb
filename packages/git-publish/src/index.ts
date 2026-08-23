@@ -41,25 +41,42 @@ export async function ghError(label: string, res: Response): Promise<Error> {
 }
 
 /**
+ * Parse the committed recipe out of a GitHub Contents API response body, so a
+ * re-publish can read what is already on the branch instead of assuming the
+ * incoming payload is the whole truth. The Contents response carries the file
+ * as base64 `content`. Returns `undefined` whenever there is nothing to read —
+ * no inline content (GitHub omits it for files over 1MB) or content that isn't
+ * a JSON object — so callers fall back to first-publish behaviour.
+ */
+export function recipeFromContents(body: {
+  content?: string;
+}): Record<string, unknown> | undefined {
+  if (!body.content) return undefined;
+  try {
+    const decoded = Buffer.from(body.content, "base64").toString("utf8");
+    const parsed = JSON.parse(decoded) as unknown;
+    return typeof parsed === "object" &&
+      parsed !== null &&
+      !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Pull a committed recipe's `createdAt` out of a GitHub Contents API response
- * body so a re-publish can preserve it instead of restamping (#1720). The
- * Contents response carries the file as base64 `content`; decode it, parse the
- * recipe JSON, and return its `createdAt`. Returns `undefined` whenever there's
- * nothing to preserve — no inline content (GitHub omits it for files over 1MB),
- * unparseable content, or no string `createdAt` — so callers fall back to the
- * freshly-stamped value, which is exactly first-publish behaviour.
+ * body so a re-publish can preserve it instead of restamping (#1720). Returns
+ * `undefined` whenever there's nothing to preserve — nothing `recipeFromContents`
+ * can read, or no string `createdAt` — so callers fall back to the freshly-stamped
+ * value, which is exactly first-publish behaviour.
  */
 export function createdAtFromContents(body: {
   content?: string;
 }): string | undefined {
-  if (!body.content) return undefined;
-  try {
-    const decoded = Buffer.from(body.content, "base64").toString("utf8");
-    const parsed = JSON.parse(decoded) as { createdAt?: unknown };
-    return typeof parsed.createdAt === "string" ? parsed.createdAt : undefined;
-  } catch {
-    return undefined;
-  }
+  const createdAt = recipeFromContents(body)?.["createdAt"];
+  return typeof createdAt === "string" ? createdAt : undefined;
 }
 
 export interface OpenPRHead {

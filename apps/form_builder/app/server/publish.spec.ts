@@ -200,6 +200,108 @@ describe("publishRecipe", () => {
     expect(written.updatedAt).toBe(RECIPE.updatedAt);
   });
 
+  it("carries a committed field the builder cannot author through a publish that omits it", async () => {
+    // The Environmental Health routing block is passthrough-only in the
+    // builder, so a stale draft publishes without it — and the Contents PUT is
+    // a whole-file overwrite, which used to delete it (#2376/#2377). The
+    // published file must keep the committed block.
+    const catchmentRouting = {
+      coordinatesField: "about-restaurant.restaurant-address-coordinates",
+      parishField: "about-restaurant.restaurant-parish",
+    };
+    const committed = JSON.stringify({ ...RECIPE, catchmentRouting });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      ) // GET base ref
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" })) // POST create branch
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          sha: "existing-blob-sha",
+          content: Buffer.from(committed, "utf8").toString("base64"),
+        }),
+      ) // GET existing flat file (sha + content)
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } })) // PUT contents
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          number: 42,
+          html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
+        }),
+      ); // POST pulls
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    // RECIPE has no catchmentRouting — exactly the draft that dropped it.
+    await publishRecipe({
+      data: { recipe: RECIPE, description: "" },
+      context: { session: SESSION },
+    });
+
+    const putBody = JSON.parse(
+      (fetchMock.mock.calls[3][1] as RequestInit).body as string,
+    );
+    const written = JSON.parse(
+      Buffer.from(putBody.content, "base64").toString("utf8"),
+    );
+    expect(written.catchmentRouting).toEqual(catchmentRouting);
+  });
+
+  it("lets the published payload win over the committed value, and keeps an authored field the author cleared", async () => {
+    // Only fields the builder cannot author are carried forward: a payload that
+    // does carry the block owns it, and clearing an authored field (here:
+    // processors) stays cleared rather than being resurrected from the commit.
+    const committed = JSON.stringify({
+      ...RECIPE,
+      catchmentRouting: {
+        coordinatesField: "old.coords",
+        parishField: "old.parish",
+      },
+      processors: [{ type: "email", config: { recipientField: "a.b" } }],
+    });
+    const incoming = {
+      ...RECIPE,
+      catchmentRouting: {
+        coordinatesField: "new.coords",
+        parishField: "new.parish",
+      },
+    } as ServiceContractRecipe;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      ) // GET base ref
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" })) // POST create branch
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          sha: "existing-blob-sha",
+          content: Buffer.from(committed, "utf8").toString("base64"),
+        }),
+      ) // GET existing flat file (sha + content)
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } })) // PUT contents
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          number: 42,
+          html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
+        }),
+      ); // POST pulls
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    (api.post as Mock).mockResolvedValue({ ok: true, data: incoming });
+    await publishRecipe({
+      data: { recipe: incoming, description: "" },
+      context: { session: SESSION },
+    });
+
+    const putBody = JSON.parse(
+      (fetchMock.mock.calls[3][1] as RequestInit).body as string,
+    );
+    const written = JSON.parse(
+      Buffer.from(putBody.content, "base64").toString("utf8"),
+    );
+    expect(written.catchmentRouting.coordinatesField).toBe("new.coords");
+    expect(written.processors).toBeUndefined();
+  });
+
   it("stamps a fresh createdAt on first publish (no existing file)", async () => {
     const fetchMock = vi
       .fn()

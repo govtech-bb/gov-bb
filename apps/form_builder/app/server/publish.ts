@@ -20,11 +20,59 @@ import {
   deleteBranch,
   getContents,
   createdAtFromContents,
+  recipeFromContents,
   putFile,
   openPullRequest,
 } from "./github";
 
 const DEFAULT_BASE_BRANCH = "dev";
+
+/**
+ * The top-level recipe fields the builder authors, and so the only ones a
+ * Deploy may remove. `serializeDraft` emits each of these from the draft it
+ * holds, so their absence from a published payload is a real edit (a cleared
+ * description, a form with no processors).
+ *
+ * Every other top-level field is one the builder cannot author — today
+ * `catchmentRouting`, the Environmental Health routing block. The builder only
+ * ever carried it through, so a draft that predates that passthrough (or any
+ * future field) publishes without it and the Contents PUT — a whole-file
+ * overwrite — silently deletes it from the recipe (#2376/#2377, replayed by
+ * #2394 from a stale draft row). `carryUnauthoredFields` puts those back, so
+ * losing a field the builder can't edit is no longer possible from here,
+ * whatever the draft happens to hold.
+ */
+const BUILDER_AUTHORED_RECIPE_FIELDS = new Set([
+  "formId",
+  "title",
+  "description",
+  "contactDetails",
+  "processors",
+  "meta",
+  "steps",
+  "createdAt",
+  "updatedAt",
+]);
+
+/**
+ * Fields to re-add to `published` from the recipe already committed on the
+ * branch: those the builder does not author and the payload does not carry. A
+ * field the payload does carry always wins — this only ever fills gaps.
+ */
+function carryUnauthoredFields(
+  committed: Record<string, unknown> | undefined,
+  published: object,
+): Record<string, unknown> {
+  if (!committed) return {};
+  return Object.fromEntries(
+    Object.entries(committed).filter(
+      ([key, value]) =>
+        !BUILDER_AUTHORED_RECIPE_FIELDS.has(key) &&
+        (published as Record<string, unknown>)[key] === undefined &&
+        value !== undefined,
+    ),
+  );
+}
 
 /**
  * The branch the Deploy PR is opened against, from `PUBLISH_BASE_BRANCH`.
@@ -165,6 +213,7 @@ export const publishRecipe = createServerFn({ method: "POST" })
         const existing = await getContents(token, recipePath, branch);
         let existingSha: string | undefined;
         let preservedCreatedAt: string | undefined;
+        let carriedFields: Record<string, unknown> = {};
         if (existing.status === 200) {
           const body = (await existing.json()) as {
             sha?: string;
@@ -172,10 +221,16 @@ export const publishRecipe = createServerFn({ method: "POST" })
           };
           existingSha = body.sha;
           preservedCreatedAt = createdAtFromContents(body);
+          carriedFields = carryUnauthoredFields(
+            recipeFromContents(body),
+            recipe,
+          );
         }
-        const recipeToPublish = preservedCreatedAt
-          ? { ...recipe, createdAt: preservedCreatedAt }
-          : recipe;
+        const recipeToPublish = {
+          ...recipe,
+          ...carriedFields,
+          ...(preservedCreatedAt ? { createdAt: preservedCreatedAt } : {}),
+        };
 
         const putRes = await putFile(token, {
           path: recipePath,
