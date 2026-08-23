@@ -6,7 +6,7 @@ description: >-
 category: business-trade
 stage: alpha
 publish_date: '2026-08-19'
-visibility: draft
+visibility: preview
 form_id: hairdresser-licence-application
 ---
 ## Before you start

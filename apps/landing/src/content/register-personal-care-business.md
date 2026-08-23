@@ -5,7 +5,7 @@ description: >-
   business.
 stage: alpha
 publish_date: '2026-08-20'
-visibility: draft
+visibility: preview
 form_id: register-personal-care-business
 ---
 ## About this service
