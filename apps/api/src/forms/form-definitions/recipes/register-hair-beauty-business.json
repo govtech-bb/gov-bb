@@ -1,13 +1,13 @@
 {
   "formId": "register-hair-beauty-business",
-  "title": "Register a hair or beauty business with Environmental Health",
+  "title": "Apply to Environmental Health for a hairdressing or beauty business licence",
   "description": "Use this service to register a business that provides hairdressing, barbering, beauty services, manicures or pedicures.",
   "processors": [
     {
       "type": "email",
       "config": {
-        "recipientField": "contact-details.email",
-        "subject": "Your hair or beauty business registration application has been received"
+        "subject": "Your hair or beauty business registration application has been received",
+        "recipientField": "contact-details.email"
       }
     }
   ],
@@ -22,31 +22,120 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "business-name",
             "label": "Business name",
+            "fieldId": "business-name",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the business name"
+                "error": "Enter the business name",
+                "value": true
               }
             }
           }
         },
         {
-          "ref": "components/generic-textarea",
+          "ref": "components/generic-select",
           "overrides": {
-            "fieldId": "business-location",
-            "label": "Where the business provides its services",
-            "hint": "Tell us the address or location where you provide hairdressing, beauty services, manicures or pedicures",
+            "label": "Where will the hairdressing services be provided from?",
+            "options": [
+              {
+                "label": "A fixed building or property",
+                "value": "building"
+              },
+              {
+                "label": "A vehicle",
+                "value": "vehicle"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "vehicle-licence",
+            "label": "Vehicle registration number",
+            "hint": "The registration number of the vehicle",
+            "ui": {
+              "width": "short"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "business-details",
+                "targetFieldId": "generic-select",
+                "operator": "equal",
+                "value": "vehicle"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "business-address-line-1"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2",
+            "fieldId": "business-address-line-2",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Tell us where the business provides its services"
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "business-address-parish"
+          }
+        },
+        {
+          "ref": "components/postcode",
+          "overrides": {
+            "fieldId": "business-address-postcode"
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "new-or-renew",
+            "label": "What are you applying to do",
+            "options": [
+              {
+                "label": "Apply for a hairdressing salon licence for the first time",
+                "value": "new"
+              },
+              {
+                "label": "Renew a hairdressing salon licence",
+                "value": "renew"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "validations": {
+              "required": {
+                "value": false
               }
             },
-            "ui": {
-              "width": "long"
-            }
+            "fieldId": "licence-reference-number",
+            "label": "Licence or reference number",
+            "hint": "Enter the number shown on your current licence or Environmental Health correspondence",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "business-details",
+                "targetFieldId": "new-or-renew",
+                "operator": "equal",
+                "value": "renew"
+              }
+            ]
           }
         }
       ],
@@ -57,55 +146,68 @@
       "title": "Owner or operator details",
       "elements": [
         {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "applying-for-someone-else",
-            "label": "Are you applying on behalf of the owner or operator?",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select an option"
-              }
-            }
-          }
-        },
-        {
           "ref": "components/name",
           "overrides": {
-            "fieldId": "owner-name",
             "label": "Name of owner or operator",
+            "fieldId": "owner-name",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the name of the owner or operator"
+                "error": "Enter the name of the owner or operator",
+                "value": true
               }
             }
           }
         },
         {
-          "ref": "blocks/physical-address",
+          "ref": "components/address",
           "overrides": {
-            "address": {
-              "label": "Street address"
+            "fieldId": "owner-address-line-1",
+            "label": "Address line 1"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "owner-address-line-2",
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
             }
           }
+        },
+        {
+          "ref": "components/town",
+          "overrides": {
+            "validations": {
+              "required": {
+                "value": true
+              }
+            },
+            "fieldId": "owner-city-town",
+            "label": "Parish / City / Town"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "owner-post-zip-coode",
+            "label": "Postcode / Zip code",
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/country"
         }
       ],
       "behaviours": []
     },
     {
       "stepId": "contact-details",
-      "title": "Contact details",
+      "title": "Your contact details",
       "elements": [
         {
           "ref": "components/email",
@@ -113,8 +215,8 @@
             "fieldId": "email",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter a valid email address"
+                "error": "Enter a valid email address",
+                "value": true
               }
             }
           }
@@ -125,8 +227,100 @@
             "fieldId": "telephone",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter a valid telephone number"
+                "error": "Enter a valid telephone number",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "information-upload",
+      "title": "Upload documents",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "male-staff-count",
+            "label": "Number of male staff"
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "female-staff-count",
+            "label": "Number of female staff"
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "staff-list",
+            "label": "Upload staff list",
+            "hint": "This will be a list of all staff members"
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "medical-certs",
+            "label": "Upload medical certificates",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "hint": "These are the medical certificates for all of your staff."
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "floor-plan-upload",
+            "label": "Upload a floor plan of hairdressing salon",
+            "hint": "A drawing of the layout. PDF, JPG or PNG, up to 5MB.",
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "itemMaxSize": {
+                "value": "5242880",
+                "error": "The floor plan must be smaller than 5MB."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "building-plan-upload",
+            "label": "Upload your building plan",
+            "hint": "This is the building plan submitted to the Planning and Development Department",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "fieldId": "building-plan-number",
+            "label": "Use tracking number instead"
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "tracking-number-instead",
+            "label": "Planning and Development application number",
+            "hint": "This is the application number you received when you submitted your building plans to the Planning and Development Department",
+            "validations": {
+              "required": {
+                "value": false
               }
             }
           }
@@ -148,8 +342,8 @@
         {
           "ref": "components/confirmation",
           "overrides": {
-            "fieldId": "declaration-confirmed",
             "label": "Declaration",
+            "fieldId": "declaration-confirmed",
             "options": [
               {
                 "label": "I confirm that the information provided is true and correct.",
@@ -158,8 +352,8 @@
             ],
             "validations": {
               "required": {
-                "value": true,
-                "error": "You must confirm the declaration to continue"
+                "error": "You must confirm the declaration to continue",
+                "value": true
               }
             }
           }
@@ -181,5 +375,5 @@
     }
   ],
   "createdAt": "2026-08-20T17:42:48.875Z",
-  "updatedAt": "2026-08-20T17:42:48.875Z"
+  "updatedAt": "2026-08-23T14:25:23.942Z"
 }
