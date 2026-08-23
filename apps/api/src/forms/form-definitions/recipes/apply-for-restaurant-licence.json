@@ -1069,11 +1069,15 @@
                 "error": "Upload a list of your staff."
               },
               "fileTypes": {
-                "value": "application/pdf,image/jpeg,image/png",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
                 "error": "The staff list must be a PDF, JPG or PNG."
               },
               "itemMaxSize": {
-                "value": "5242880",
+                "value": 5242880,
                 "error": "The staff list must be smaller than 5MB."
               }
             }
@@ -1087,11 +1091,15 @@
             "hint": "You can upload more than one file. PDF, JPG or PNG, up to 5MB each. If you do not have them now, you can bring them to the inspection.",
             "validations": {
               "fileTypes": {
-                "value": "application/pdf,image/jpeg,image/png",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
                 "error": "Each medical certificate must be a PDF, JPG or PNG."
               },
               "itemMaxSize": {
-                "value": "5242880",
+                "value": 5242880,
                 "error": "Each medical certificate must be smaller than 5MB."
               }
             }
@@ -1112,11 +1120,15 @@
             "hint": "A drawing of the layout. PDF, JPG or PNG, up to 5MB.",
             "validations": {
               "fileTypes": {
-                "value": "application/pdf,image/jpeg,image/png",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
                 "error": "The floor plan must be a PDF, JPG or PNG."
               },
               "itemMaxSize": {
-                "value": "5242880",
+                "value": 5242880,
                 "error": "The floor plan must be smaller than 5MB."
               }
             }

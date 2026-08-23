@@ -64,10 +64,56 @@ export const validationTypeSchema = z.enum([
 ]);
 export type ValidationType = z.infer<typeof validationTypeSchema>;
 
-export const validationRuleSchema = z.partialRecord(
-  validationTypeSchema,
-  validationConfigSchema,
-);
+// Per-rule `value` contracts (#2384). `validationConfigSchema.value` is
+// `z.any()` because one config shape is shared by every rule type, so nothing
+// stopped a builder-authored comma string from landing in `fileTypes.value`,
+// riding through the recipe schema, and crashing the forms renderer at
+// `rawFileTypes.map(...)` — the error boundary then swallowed the whole step.
+// These pin the shapes the rule runners in @govtech-bb/form-validation
+// actually consume. Rules absent from this map keep the loose `any`: their
+// runners compare against arbitrary scalars (`equal`, `contains`), or the
+// rule is a marker whose presence alone is the rule (`email`, `phone`).
+const ruleValueSchemas = {
+  required: z.boolean(),
+  minLength: z.number(),
+  maxLength: z.number(),
+  minItems: z.number(),
+  maxItems: z.number(),
+  minSelection: z.number(),
+  maxSelection: z.number(),
+  min: z.number(),
+  max: z.number(),
+  gt: z.number(),
+  lt: z.number(),
+  minYear: z.number(),
+  maxYear: z.number(),
+  itemMaxSize: z.number(),
+  maxSize: z.number(),
+  fileTypes: z.array(z.string()),
+  pattern: z.string(),
+} satisfies Partial<Record<ValidationType, z.ZodType>>;
+
+export const validationRuleSchema = z
+  .partialRecord(validationTypeSchema, validationConfigSchema)
+  .superRefine((rules, ctx) => {
+    for (const [type, config] of Object.entries(rules)) {
+      const valueSchema =
+        ruleValueSchemas[type as keyof typeof ruleValueSchemas];
+      // A rule may legitimately carry no `value`: `gt`/`lt` bound by
+      // `referenceFieldId`, `minYear`/`maxYear` bound by `currentYear`, or a
+      // rule reduced to just its `error` copy. Only a value that IS present
+      // has to match the runner's contract.
+      if (!valueSchema || config?.value === undefined) continue;
+      const result = valueSchema.safeParse(config.value);
+      if (!result.success) {
+        ctx.addIssue({
+          code: "custom",
+          path: [type, "value"],
+          message: `${type}.value: ${result.error.issues.map((i) => i.message).join("; ")}`,
+        });
+      }
+    }
+  });
 export type ValidationRule = z.infer<typeof validationRuleSchema>;
 
 // Date parts are migrating from numbers to the literal digit-string the user
