@@ -8,9 +8,10 @@ import { hydrateForm, type Resolver } from "../../registry/resolution";
 // carry each one onto the served contract, and a dropped behaviour degrades to
 // plausible-looking-but-wrong UI rather than an error. validate-recipes and
 // recipe-invariants.spec.ts both read the file on disk, so neither can see it.
-// The worst case is the floor-plan `optionalIf`: without it the upload stays
-// hard-required next to its "I do not have a floor plan" toggle, and anyone
-// taking the planning-number route can never submit. Same shape of guard as
+// The worst case is a step gate: `other-preparation-locations` must intersect
+// the multi-select `preparation-location` with `in`, because `equal` silently
+// never matches an array (#1713) and the off-site questions just stop being
+// asked. Same shape of guard as
 // request-an-environmental-health-officer.spec.ts.
 const RECIPE_PATH = path.resolve(
   __dirname,
@@ -72,33 +73,21 @@ it("keeps the applicant's telephone repeatable, so several owners' numbers fit",
   expect(tel).toMatchObject({ htmlType: "tel" });
 });
 
-it("relaxes the floor-plan upload when the planning-number route is taken", async () => {
-  const upload = await field("floor-plan", "floor-plan-upload");
+// The designer pass dropped the "I do not have a floor plan" toggle and the
+// Town and Country Planning application number that stood in for the upload, so
+// the step is now one required document (ADR 0068 keeps the plan itself). What
+// still has to hold is that SOMETHING is demanded: the same pass also dropped
+// the upload's `required`, which left the step asking for nothing at all.
+it("demands the floor plan, now that the planning-number stand-in is gone", async () => {
+  const steps = await hydratedSteps();
+  const step = steps.find((s) => s.stepId === "floor-plan");
+  expect(step, "the floor-plan step is missing from the recipe").toBeDefined();
 
-  // Required on its own, so the upload is the default path...
-  expect(upload.validations).toMatchObject({ required: { value: true } });
-  // ...but relaxed by the toggle, or the alternative route cannot submit.
+  expect(step!.elements.map((e) => e.fieldId)).toEqual(["floor-plan-upload"]);
   expect(
-    (upload.behaviours ?? []).filter((b) => b.type === "optionalIf"),
-    "floor-plan-upload lost its optionalIf — the planning-number route is unsubmittable",
-  ).toEqual([
-    {
-      type: "optionalIf",
-      targetFieldId: "no-floor-plan-toggle",
-      operator: "equal",
-      value: true,
-    },
-  ]);
-
-  const alternative = await field("floor-plan", "planning-application-number");
-  expect(alternative.behaviours).toEqual([
-    {
-      type: "fieldConditionalOn",
-      targetFieldId: "no-floor-plan-toggle",
-      operator: "equal",
-      value: true,
-    },
-  ]);
+    step!.elements[0].validations,
+    "floor-plan-upload is optional and has no alternative — the step asks for nothing",
+  ).toMatchObject({ required: { value: true } });
 });
 
 it("repeats the supplier step, gated on preparing food away from the business", async () => {
@@ -125,6 +114,23 @@ it("repeats the supplier step, gated on preparing food away from the business", 
       value: ["at-another-food-business", "at-another-location"],
     },
   ]);
+});
+
+// A designer pass added a second repeatable step asking the same establishment
+// name and address as `other-preparation-locations`, gated with `equal` against
+// the multi-select `preparation-location` — which cannot match (#1713), so it
+// was either dead or a double-ask. One step owns these questions.
+it("asks where food is prepared off-site in exactly one step", async () => {
+  const steps = await hydratedSteps();
+  const offSite = steps.filter((s) =>
+    (s.behaviours ?? []).some(
+      (b) =>
+        b.type === "stepConditionalOn" &&
+        b.targetFieldId === "preparation-location",
+    ),
+  );
+
+  expect(offSite.map((s) => s.stepId)).toEqual(["other-preparation-locations"]);
 });
 
 it("shows the supplier-licence warning only once an off-site option is ticked", async () => {
@@ -205,15 +211,19 @@ it("requires the staff list as a document, not a headcount", async () => {
   );
   expect(list.validations).toMatchObject({ required: { value: true } });
 
-  // The sex-split headcounts these replaced asked for something reg. 10(1)
-  // leaves to the Medical Officer of Health at inspection (ADR 0068).
+  // The sex-split headcounts sit alongside it rather than instead of it: ADR
+  // 0068 keeps "staff numbers by sex, which fix the restroom provision the
+  // premises must meet" on the form. An earlier version of this guard asserted
+  // the opposite and cited the same ADR; it only kept passing because the
+  // fields came back under different ids (`male-staff-count`, not
+  // `number-of-male-staff`).
   const steps = await hydratedSteps();
   const people = steps.find(
     (s) => s.stepId === "people-working-at-the-food-business",
   );
   const fieldIds = people!.elements.map((e) => e.fieldId);
-  expect(fieldIds).not.toContain("number-of-male-staff");
-  expect(fieldIds).not.toContain("number-of-female-staff");
+  expect(fieldIds).toContain("male-staff-count");
+  expect(fieldIds).toContain("female-staff-count");
 });
 
 // The catchment half of the recipe. A wrong path here is the worst kind of

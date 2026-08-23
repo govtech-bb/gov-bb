@@ -74,3 +74,20 @@ does not.
   question is built.
 - The rule is specific to services with a statutory on-site inspection. It does
   not generalise to forms whose decision is made purely on the submission.
+
+## Note — the food business licence no longer offers the planning-number stand-in
+
+A later designer pass on `apply-for-food-business-licence` (PR #2377) removed the
+"I do not have a floor plan" toggle and the `planning-application-number` field
+that stood in for the upload. The floor-plan step is now a single required
+upload.
+
+That narrows the "Documents" bullet above for this one form: the plan itself
+stays, but the Town and Country Planning application number is no longer an
+accepted substitute, so an applicant whose plans are still with Planning cannot
+submit until they have a copy. The stand-in remains available on the restaurant
+licence form, where the same pass added it as
+`building-plan-number` / `tracking-number-instead`.
+
+This is recorded rather than reversed: it is the department's call whether the
+food business form should regain the substitute.
