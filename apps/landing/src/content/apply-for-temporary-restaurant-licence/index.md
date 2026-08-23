@@ -22,7 +22,7 @@ You need a licence if you will serve any food or drink at an event, whether you 
 
 Apply at least **14 days** before your event. Applications made later than this may not be accepted.
 
-There is no application fee. If you are organising the event, you must pay any overtime costs for the environmental health officers attending. See [how to pay](/business-trade/temporary-restaurants-what-you-need-to-know#paying-for-environmental-health-officers).
+There is no application fee. If you are organising the event, you must pay any overtime costs for the Environmental Health Officers attending. See [how to pay](/business-trade/temporary-restaurants-what-you-need-to-know#paying-for-environmental-health-officers).
 
 **See the legal definitions**
 
@@ -54,7 +54,7 @@ You can also apply in person at your nearest polyclinic while we introduce this 
 ## What happens next
 
 -   The Environmental Health Department where you have applied to will review your application.
--   If you do not already have a licensed food business, an environmental health officer will inspect where the food is being prepared and stored.
+-   If you do not already have a licensed food business, an Environmental Health Officer will inspect where the food is being prepared and stored.
 -   Your licence is issued at the event, not in advance. An officer checks your set-up on the day and issues it there if it meets the requirements.
 -   The licence is valid for 30 days in the same location from the date it is issued.
 

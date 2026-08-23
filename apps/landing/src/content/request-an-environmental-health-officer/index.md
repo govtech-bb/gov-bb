@@ -1,7 +1,7 @@
 ---
-title: Request an environmental health officer
+title: Request an Environmental Health Officer
 description: >-
-  Event organisers in Barbados can request an environmental health officer to
+  Event organisers in Barbados can request an Environmental Health Officer to
   attend an event where food or drink is served to the public.
 stage: alpha
 visibility: preview
@@ -11,7 +11,7 @@ category: business-trade
 form_id: request-an-environmental-health-officer
 service_type: digital
 ---
-Use this service to request an environmental health officer to attend your event. This is required whenever food or drink is served to the public.
+Use this service to request an Environmental Health Officer to attend your event. This is required whenever food or drink is served to the public.
 
 The first question asks whether you are operating a temporary restaurant — that is, serving food yourself. If you are, this same service also completes your **temporary restaurant licence** application. You will be asked about the food and drink you serve, your food-safety arrangements, and asked to upload your own medical certificate.
 

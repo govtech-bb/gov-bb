@@ -477,7 +477,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "request-an-environmental-health-officer",
-    title: "Request an environmental health officer",
+    title: "Request an Environmental Health Officer",
     category: "business-trade",
     formId: "request-an-environmental-health-officer",
     visibility: "preview",

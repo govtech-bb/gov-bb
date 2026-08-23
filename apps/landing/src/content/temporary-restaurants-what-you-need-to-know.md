@@ -3,14 +3,14 @@ title: 'Temporary restaurants: what you need to know'
 description: >-
   What counts as a temporary restaurant in Barbados, who must apply for a
   licence, and what your event needs — including food safety, paying for
-  environmental health officers, and setting up your stall.
+  Environmental Health Officers, and setting up your stall.
 stage: alpha
 visibility: public
 service_type: information
 publish_date: '2026-08-21'
 category: business-trade
 ---
-This page explains the rules for temporary restaurants — who needs a licence, what it costs and what to have ready. It covers [applying for a temporary restaurant licence](https://landing.sandbox.alpha.gov.bb/business-trade/apply-for-temporary-restaurant-licence) and [requesting an environmental health officer](https://landing.sandbox.alpha.gov.bb/business-trade/request-an-environmental-health-officer).
+This page explains the rules for temporary restaurants — who needs a licence, what it costs and what to have ready. It covers [applying for a temporary restaurant licence](https://landing.sandbox.alpha.gov.bb/business-trade/apply-for-temporary-restaurant-licence) and [requesting an Environmental Health Officer](https://landing.sandbox.alpha.gov.bb/business-trade/request-an-environmental-health-officer).
 
 ## What counts as a temporary restaurant
 
@@ -43,7 +43,7 @@ Apply at least **14 days** before the event.
 -   All licences should be kept it at your stall.
 -   Temporary permits may be granted by the EHD based on a risk based assessment.
 
-## Paying for environmental health officers
+## Paying for Environmental Health Officers
 
 There is no application fee. If you are organising the event, you must pay any overtime costs for the officers allocated to the event by the Ministry of Health and Wellness.
 
@@ -53,7 +53,7 @@ There is no application fee. If you are organising the event, you must pay any o
 -   Take your payment with copy of the invoices to the polyclinic or to the Environment Health Department, Ministry of Health and Wellness, Frank Walcott Building, National Insurance Building, Culloden Road, St Michael.
 -   You will get a receipt.
 
-[Request an environmental health officer](https://landing.sandbox.alpha.gov.bb/business-trade/request-an-environmental-health-officer)
+[Request an Environmental Health Officer](https://landing.sandbox.alpha.gov.bb/business-trade/request-an-environmental-health-officer)
 
 ## What counts as a mass event
 

@@ -161,7 +161,7 @@
           "overrides": {
             "label": "Are you organising this event?",
             "fieldId": "is-organiser",
-            "hint": "The organiser is responsible for the overall event — including the site plan and requesting an environmental health officer to attend.",
+            "hint": "The organiser is responsible for the overall event — including the site plan and requesting an Environmental Health Officer to attend.",
             "options": [
               {
                 "label": "Yes",
@@ -256,7 +256,7 @@
           "overrides": {
             "fieldId": "organiser-officer-notice",
             "variant": "inset",
-            "content": "As the event organiser, you must also request an environmental health officer to attend. This is required whenever food is served.",
+            "content": "As the event organiser, you must also request an Environmental Health Officer to attend. This is required whenever food is served.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -272,7 +272,7 @@
           "overrides": {
             "fieldId": "organiser-officer-info",
             "variant": "text",
-            "content": "We will request an officer for you when you submit this application. The Environmental Health Department decides when officers attend, at their discretion, based on the event dates and times you have provided. You **do not need** to fill out a separate Request an environmental health officer form.",
+            "content": "We will request an officer for you when you submit this application. The Environmental Health Department decides when officers attend, at their discretion, based on the event dates and times you have provided. You **do not need** to fill out a separate Request an Environmental Health Officer form.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -1053,7 +1053,7 @@
             },
             "options": [
               {
-                "label": "I understand that the event organiser is responsible for the overtime costs of the environmental health officers who provide public health surveillance and inspection during the event.",
+                "label": "I understand that the event organiser is responsible for the overtime costs of the Environmental Health Officers who provide public health surveillance and inspection during the event.",
                 "value": "acknowledged"
               }
             ],
@@ -1080,7 +1080,7 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "elements": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your request and your temporary restaurant licence application.\n- Environmental health officers will attend on the dates and times you gave. The department will confirm arrangements and any overtime costs.\n- They may arrange an inspection before issuing the licence. The licence is collected from the polyclinic, and an electronic copy is emailed to you. It is valid for 30 days from the date it is issued.\n- If there are overtime costs, they will send an invoice after the request is approved.\n\nKeep your reference number for any follow-up."
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your request and your temporary restaurant licence application.\n- Environmental Health Officers will attend on the dates and times you gave. The department will confirm arrangements and any overtime costs.\n- They may arrange an inspection before issuing the licence. The licence is collected from the polyclinic, and an electronic copy is emailed to you. It is valid for 30 days from the date it is issued.\n- If there are overtime costs, they will send an invoice after the request is approved.\n\nKeep your reference number for any follow-up."
     }
   ],
   "meta": {
