@@ -65,6 +65,7 @@ function BuilderPage() {
   const {
     forms,
     loadError: formsLoadError,
+    openPRs: formOpenPRs,
     refetch: refetchForms,
     upsertForm,
   } = useFormsList();
@@ -509,6 +510,7 @@ function BuilderPage() {
         isPickerOpen={isPickerOpen}
         forms={forms}
         formsLoadError={formsLoadError}
+        openPRs={formOpenPRs}
         isDirty={isDirty}
         catalog={catalog}
         onLoad={handleLoad}

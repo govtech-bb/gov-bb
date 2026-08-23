@@ -195,6 +195,7 @@ export {
   deployBranchPrefix,
   deployBranchName,
   eraseBranchName,
+  formIdFromDeployBranch,
 } from "./deploy-branch";
 
 export type {
