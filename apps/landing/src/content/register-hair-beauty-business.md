@@ -13,10 +13,6 @@ Use this service to apply for or renew a hairdressing salon licence.
 
 ## Who this licence is for
 
-\[...\]
-
-## Before you start
-
 You must register your business with Environmental Health if it provides any of these services to the public:
 
 -   hairdressing or barbering
@@ -28,18 +24,33 @@ Anyone providing these services also needs their own licence. Registering the bu
 
 This applies whether you provide services at a business location, from home, at clients' locations or from a vehicle. At-home hairdressers, including hair braiders, must also register.
 
-Your registration expires on December 31st each year.
+Your licence expires on December 31st each year.
 
 If your business is not registered, Environmental Health may contact you and ask you to apply. They may issue a notice if an application is not made.
+
+## Before you start
+
+### New businesses
+You must send your floor plans to the Planning and Development Department, which was previously called Town and Country Planning. This is separate from your Hairdressing Salon Licence. Once submitted, you can provide the application number as part of your submission for your licence.
+You will need to submit a floor plan layout drawn to scale with your application, showing the size of the different areas and where they are.
+
+### Renewing your licence
+Your licence lasts for one year. 
+Your licence expires on December 31st each year and must be applied for renewal on the first business day in January.
 
 ## What you will need
 
 You will need:
 
--   the name and address of the business
+- your current Hairdressing Salon licence number, if you are renewing
+- the Barbados National Identification (ID) number for individual owners  
+- the name and address of the business
 -   the name and address of the owner or operator
--   the names of staff who work or plan to work in the business
+-   a document listing your staff, giving each person's name (staff list)
 -   medical certificates of all staff
+- the floor plan layout (if applicable)
+- your Planning and Development Department application number for your submitted building plan
+- a vehicle registration number if the business uses a vehicle
 
 Uploading medical certificates is optional. You can show them during the inspection instead.
 
