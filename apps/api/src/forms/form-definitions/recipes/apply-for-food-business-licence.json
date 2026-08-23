@@ -45,10 +45,6 @@
       }
     }
   ],
-  "catchmentRouting": {
-    "coordinatesField": "about-the-food-business.business-location-address-coordinates",
-    "parishField": "about-the-food-business.business-location-parish"
-  },
   "meta": {
     "visibility": "preview"
   },
@@ -584,7 +580,8 @@
                 "type": "fieldConditionalOn",
                 "value": "first-time",
                 "operator": "equal",
-                "targetFieldId": "application-type"
+                "targetFieldId": "application-type",
+                "targetStepId": "applicant-details"
               }
             ],
             "validations": {
@@ -605,7 +602,8 @@
                 "type": "fieldConditionalOn",
                 "value": "yes",
                 "operator": "equal",
-                "targetFieldId": "business-already-open"
+                "targetFieldId": "business-already-open",
+                "targetStepId": "about-the-food-business"
               }
             ],
             "validations": {
@@ -630,7 +628,8 @@
                 "type": "fieldConditionalOn",
                 "value": "no",
                 "operator": "equal",
-                "targetFieldId": "business-already-open"
+                "targetFieldId": "business-already-open",
+                "targetStepId": "about-the-food-business"
               }
             ],
             "validations": {
@@ -809,6 +808,55 @@
       "behaviours": []
     },
     {
+      "stepId": "location-food-drink-prepared",
+      "title": "What locations are your food and drink prepared at",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Establishment name"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address Line 1",
+            "fieldId": "other-establishment-address-1"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2",
+            "fieldId": "other-establihsment-address-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish"
+        }
+      ],
+      "behaviours": [
+        {
+          "max": 5,
+          "min": 1,
+          "type": "repeatable",
+          "instanceLabel": "establishment address"
+        },
+        {
+          "type": "stepConditionalOn",
+          "value": "at-another-food-business",
+          "operator": "equal",
+          "targetStepId": "where-food-is-prepared",
+          "targetFieldId": "preparation-location"
+        }
+      ]
+    },
+    {
       "stepId": "other-preparation-locations",
       "title": "Where else food and drink is prepared",
       "elements": [
@@ -912,12 +960,12 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "fieldId": "male-staff-count",
             "label": "How many male staff will prepare or handle food or drink?",
+            "fieldId": "male-staff-count",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of male staff"
+                "error": "Enter the number of male staff",
+                "value": true
               }
             }
           }
@@ -925,12 +973,12 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "fieldId": "female-staff-count",
             "label": "How many female staff will prepare or handle food or drink?",
+            "fieldId": "female-staff-count",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of female staff"
+                "error": "Enter the number of female staff",
+                "value": true
               }
             }
           }
@@ -1067,5 +1115,5 @@
     }
   ],
   "createdAt": "2026-08-18T20:19:05.878Z",
-  "updatedAt": "2026-08-22T23:41:32.542Z"
+  "updatedAt": "2026-08-23T14:57:29.297Z"
 }
