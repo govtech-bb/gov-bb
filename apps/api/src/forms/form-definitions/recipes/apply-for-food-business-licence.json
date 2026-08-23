@@ -584,7 +584,8 @@
                 "type": "fieldConditionalOn",
                 "value": "first-time",
                 "operator": "equal",
-                "targetFieldId": "application-type"
+                "targetFieldId": "application-type",
+                "targetStepId": "applicant-details"
               }
             ],
             "validations": {
@@ -605,7 +606,8 @@
                 "type": "fieldConditionalOn",
                 "value": "yes",
                 "operator": "equal",
-                "targetFieldId": "business-already-open"
+                "targetFieldId": "business-already-open",
+                "targetStepId": "about-the-food-business"
               }
             ],
             "validations": {
@@ -630,7 +632,8 @@
                 "type": "fieldConditionalOn",
                 "value": "no",
                 "operator": "equal",
-                "targetFieldId": "business-already-open"
+                "targetFieldId": "business-already-open",
+                "targetStepId": "about-the-food-business"
               }
             ],
             "validations": {
@@ -912,12 +915,12 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "fieldId": "male-staff-count",
             "label": "How many male staff will prepare or handle food or drink?",
+            "fieldId": "male-staff-count",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of male staff"
+                "error": "Enter the number of male staff",
+                "value": true
               }
             }
           }
@@ -925,12 +928,12 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "fieldId": "female-staff-count",
             "label": "How many female staff will prepare or handle food or drink?",
+            "fieldId": "female-staff-count",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of female staff"
+                "error": "Enter the number of female staff",
+                "value": true
               }
             }
           }
@@ -1067,5 +1070,5 @@
     }
   ],
   "createdAt": "2026-08-18T20:19:05.878Z",
-  "updatedAt": "2026-08-22T23:41:32.542Z"
+  "updatedAt": "2026-08-23T14:57:29.297Z"
 }
