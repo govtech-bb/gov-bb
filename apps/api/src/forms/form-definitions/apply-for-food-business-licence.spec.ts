@@ -75,19 +75,26 @@ it("keeps the applicant's telephone repeatable, so several owners' numbers fit",
 
 // The designer pass dropped the "I do not have a floor plan" toggle and the
 // Town and Country Planning application number that stood in for the upload, so
-// the step is now one required document (ADR 0068 keeps the plan itself). What
-// still has to hold is that SOMETHING is demanded: the same pass also dropped
-// the upload's `required`, which left the step asking for nothing at all.
-it("demands the floor plan, now that the planning-number stand-in is gone", async () => {
+// the step is one optional document: the plan is invited, not demanded. Those
+// two facts are coupled. The old `optionalIf` existed so the planning-number
+// route stayed submittable; with no route left, making the upload required
+// again would strand every applicant whose plans are still with Planning. So
+// `required` may only come back alongside an alternative.
+it("invites the floor plan without demanding it, now the stand-in is gone", async () => {
   const steps = await hydratedSteps();
   const step = steps.find((s) => s.stepId === "floor-plan");
   expect(step, "the floor-plan step is missing from the recipe").toBeDefined();
 
   expect(step!.elements.map((e) => e.fieldId)).toEqual(["floor-plan-upload"]);
+  const required = (
+    step!.elements[0].validations as
+      | { required?: { value?: unknown } }
+      | undefined
+  )?.required?.value;
   expect(
-    step!.elements[0].validations,
-    "floor-plan-upload is optional and has no alternative — the step asks for nothing",
-  ).toMatchObject({ required: { value: true } });
+    required,
+    "floor-plan-upload is required again but nothing stands in for it — an applicant without a plan to hand cannot submit",
+  ).not.toBe(true);
 });
 
 it("repeats the supplier step, gated on preparing food away from the business", async () => {

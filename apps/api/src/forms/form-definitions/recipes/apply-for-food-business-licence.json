@@ -1002,10 +1002,6 @@
             "label": "Upload a floor plan of the food business",
             "fieldId": "floor-plan-upload",
             "validations": {
-              "required": {
-                "value": true,
-                "error": "Upload a floor plan."
-              },
               "fileTypes": {
                 "error": "The floor plan must be a PDF, JPG or PNG.",
                 "value": [
