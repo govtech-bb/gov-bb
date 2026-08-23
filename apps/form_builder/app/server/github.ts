@@ -4,6 +4,7 @@ import {
   authHeaders as ghAuthHeaders,
   ghError as ghErrorImpl,
   createdAtFromContents as createdAtFromContentsImpl,
+  recipeFromContents as recipeFromContentsImpl,
   type OpenPRHead,
   type PutFileOptions,
   type OpenPullRequestOptions,
@@ -39,6 +40,7 @@ export const ghError = ghErrorImpl;
 // GitHub-Contents helper from this one facade. Used to preserve a recipe's
 // committed createdAt on re-publish (#1720).
 export const createdAtFromContents = createdAtFromContentsImpl;
+export const recipeFromContents = recipeFromContentsImpl;
 
 export function createBranchFrom(
   token: string,

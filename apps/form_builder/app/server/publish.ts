@@ -21,6 +21,7 @@ import {
   deleteBranch,
   getContents,
   createdAtFromContents,
+  recipeFromContents,
   putFile,
   openPullRequest,
   listOpenPRHeads,
@@ -29,6 +30,53 @@ import {
 } from "./github";
 
 const DEFAULT_BASE_BRANCH = "dev";
+
+/**
+ * The top-level recipe fields the builder authors, and so the only ones a
+ * Deploy may remove. `serializeDraft` emits each of these from the draft it
+ * holds, so their absence from a published payload is a real edit (a cleared
+ * description, a form with no processors).
+ *
+ * Every other top-level field is one the builder cannot author — today
+ * `catchmentRouting`, the Environmental Health routing block. The builder only
+ * ever carried it through, so a draft that predates that passthrough (or any
+ * future field) publishes without it and the Contents PUT — a whole-file
+ * overwrite — silently deletes it from the recipe (#2376/#2377, replayed by
+ * #2394 from a stale draft row). `carryUnauthoredFields` puts those back, so
+ * losing a field the builder can't edit is no longer possible from here,
+ * whatever the draft happens to hold.
+ */
+const BUILDER_AUTHORED_RECIPE_FIELDS = new Set([
+  "formId",
+  "title",
+  "description",
+  "contactDetails",
+  "processors",
+  "meta",
+  "steps",
+  "createdAt",
+  "updatedAt",
+]);
+
+/**
+ * Fields to re-add to `published` from the recipe already committed on the
+ * branch: those the builder does not author and the payload does not carry. A
+ * field the payload does carry always wins — this only ever fills gaps.
+ */
+function carryUnauthoredFields(
+  committed: Record<string, unknown> | undefined,
+  published: object,
+): Record<string, unknown> {
+  if (!committed) return {};
+  return Object.fromEntries(
+    Object.entries(committed).filter(
+      ([key, value]) =>
+        !BUILDER_AUTHORED_RECIPE_FIELDS.has(key) &&
+        (published as Record<string, unknown>)[key] === undefined &&
+        value !== undefined,
+    ),
+  );
+}
 
 /**
  * The branch the Deploy PR is opened against, from `PUBLISH_BASE_BRANCH`.
@@ -84,12 +132,16 @@ function renderPrBody({
 }
 
 /**
- * Read the recipe file's blob sha (if it exists) and preserved `createdAt`
- * from `branch`, producing the exact object a PUT to that branch should
- * carry. Shared by the reuse path (PUT onto an already-open PR's branch) and
- * the create path (PUT onto a freshly-created branch) — same lookup, just a
- * different ref, so this is the one place the createdAt-preservation logic
- * (#1720) lives rather than being duplicated for the reuse path (#2390).
+ * Read the recipe file's blob sha (if it exists) from `branch` and build the
+ * exact object a PUT to that branch should carry: the incoming recipe, plus
+ * the committed file's `createdAt` (#1720) and any top-level fields the
+ * builder cannot author (#2376/#2377 — `carryUnauthoredFields`).
+ *
+ * Shared by the create path (PUT onto a freshly-created branch) and the reuse
+ * path (PUT onto an already-open PR's branch) — same lookup, just a different
+ * ref. Keeping both behind one helper matters: the reuse path is also a
+ * whole-file overwrite, so without the passthrough a redeploy onto an open PR
+ * would delete `catchmentRouting` exactly the way #2377 did (#2390).
  */
 async function loadRecipeForWrite(
   token: string,
@@ -103,6 +155,7 @@ async function loadRecipeForWrite(
   const existing = await getContents(token, recipePath, branch);
   let existingSha: string | undefined;
   let preservedCreatedAt: string | undefined;
+  let carriedFields: Record<string, unknown> = {};
   if (existing.status === 200) {
     const body = (await existing.json()) as {
       sha?: string;
@@ -110,10 +163,13 @@ async function loadRecipeForWrite(
     };
     existingSha = body.sha;
     preservedCreatedAt = createdAtFromContents(body);
+    carriedFields = carryUnauthoredFields(recipeFromContents(body), recipe);
   }
-  const recipeToPublish = preservedCreatedAt
-    ? { ...recipe, createdAt: preservedCreatedAt }
-    : recipe;
+  const recipeToPublish = {
+    ...recipe,
+    ...carriedFields,
+    ...(preservedCreatedAt ? { createdAt: preservedCreatedAt } : {}),
+  } as ServiceContractRecipe;
   return { recipeToPublish, existingSha };
 }
 

@@ -51,19 +51,19 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "vehicle-licence",
-            "label": "Vehicle registration number",
-            "hint": "The registration number of the vehicle",
             "ui": {
               "width": "short"
             },
+            "hint": "The registration number of the vehicle",
+            "label": "Vehicle registration number",
+            "fieldId": "vehicle-licence",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetStepId": "business-details",
-                "targetFieldId": "generic-select",
+                "value": "vehicle",
                 "operator": "equal",
-                "value": "vehicle"
+                "targetStepId": "business-details",
+                "targetFieldId": "generic-select"
               }
             ]
           }
@@ -102,8 +102,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "new-or-renew",
             "label": "What are you applying to do",
+            "fieldId": "new-or-renew",
             "options": [
               {
                 "label": "Apply for a hairdressing salon licence for the first time",
@@ -119,23 +119,23 @@
         {
           "ref": "components/generic-text",
           "overrides": {
+            "hint": "Enter the number shown on your current licence or Environmental Health correspondence",
+            "label": "Licence or reference number",
+            "fieldId": "licence-reference-number",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "renew",
+                "operator": "equal",
+                "targetStepId": "business-details",
+                "targetFieldId": "new-or-renew"
+              }
+            ],
             "validations": {
               "required": {
                 "value": false
               }
-            },
-            "fieldId": "licence-reference-number",
-            "label": "Licence or reference number",
-            "hint": "Enter the number shown on your current licence or Environmental Health correspondence",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetStepId": "business-details",
-                "targetFieldId": "new-or-renew",
-                "operator": "equal",
-                "value": "renew"
-              }
-            ]
+            }
           }
         }
       ],
@@ -161,15 +161,15 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "owner-address-line-1",
-            "label": "Address line 1"
+            "label": "Address line 1",
+            "fieldId": "owner-address-line-1"
           }
         },
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "owner-address-line-2",
             "label": "Address line 2",
+            "fieldId": "owner-address-line-2",
             "validations": {
               "required": {
                 "value": false
@@ -180,23 +180,23 @@
         {
           "ref": "components/town",
           "overrides": {
+            "label": "Parish / City / Town",
+            "fieldId": "owner-city-town",
             "validations": {
               "required": {
                 "value": true
               }
-            },
-            "fieldId": "owner-city-town",
-            "label": "Parish / City / Town"
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "owner-post-zip-coode",
-            "label": "Postcode / Zip code",
             "ui": {
               "width": "short"
-            }
+            },
+            "label": "Postcode / Zip code",
+            "fieldId": "owner-post-zip-coode"
           }
         },
         {
@@ -243,51 +243,34 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "fieldId": "male-staff-count",
-            "label": "Number of male staff"
+            "label": "Number of male staff",
+            "fieldId": "male-staff-count"
           }
         },
         {
           "ref": "components/generic-number",
           "overrides": {
-            "fieldId": "female-staff-count",
-            "label": "Number of female staff"
+            "label": "Number of female staff",
+            "fieldId": "female-staff-count"
           }
         },
         {
           "ref": "components/generic-file",
           "overrides": {
-            "fieldId": "staff-list",
+            "hint": "This will be a list of all staff members",
             "label": "Upload staff list",
-            "hint": "This will be a list of all staff members"
+            "fieldId": "staff-list"
           }
         },
         {
           "ref": "components/generic-file",
           "overrides": {
-            "fieldId": "medical-certs",
+            "hint": "These are the medical certificates for all of your staff.",
             "label": "Upload medical certificates",
+            "fieldId": "medical-certs",
             "validations": {
               "required": {
                 "value": false
-              }
-            },
-            "hint": "These are the medical certificates for all of your staff."
-          }
-        },
-        {
-          "ref": "components/generic-file",
-          "overrides": {
-            "fieldId": "floor-plan-upload",
-            "label": "Upload a floor plan of hairdressing salon",
-            "hint": "A drawing of the layout. PDF, JPG or PNG, up to 5MB.",
-            "validations": {
-              "required": {
-                "value": false
-              },
-              "itemMaxSize": {
-                "value": "5242880",
-                "error": "The floor plan must be smaller than 5MB."
               }
             }
           }
@@ -295,9 +278,26 @@
         {
           "ref": "components/generic-file",
           "overrides": {
-            "fieldId": "building-plan-upload",
-            "label": "Upload your building plan",
+            "hint": "A drawing of the layout. PDF, JPG or PNG, up to 5MB.",
+            "label": "Upload a floor plan of hairdressing salon",
+            "fieldId": "floor-plan-upload",
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "itemMaxSize": {
+                "error": "The floor plan must be smaller than 5MB.",
+                "value": 5242880
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
             "hint": "This is the building plan submitted to the Planning and Development Department",
+            "label": "Upload your building plan",
+            "fieldId": "building-plan-upload",
             "validations": {
               "required": {
                 "value": false
@@ -308,16 +308,16 @@
         {
           "ref": "components/show-hide",
           "overrides": {
-            "fieldId": "building-plan-number",
-            "label": "Use tracking number instead"
+            "label": "Use tracking number instead",
+            "fieldId": "building-plan-number"
           }
         },
         {
           "ref": "components/generic-file",
           "overrides": {
-            "fieldId": "tracking-number-instead",
-            "label": "Planning and Development application number",
             "hint": "This is the application number you received when you submitted your building plans to the Planning and Development Department",
+            "label": "Planning and Development application number",
+            "fieldId": "tracking-number-instead",
             "validations": {
               "required": {
                 "value": false
@@ -375,5 +375,5 @@
     }
   ],
   "createdAt": "2026-08-20T17:42:48.875Z",
-  "updatedAt": "2026-08-23T14:25:23.942Z"
+  "updatedAt": "2026-08-23T14:50:48.209Z"
 }

@@ -4,6 +4,7 @@ import {
   ghError,
   createPublishClient,
   createdAtFromContents,
+  recipeFromContents,
 } from "./index";
 
 /** Base64-encode a UTF-8 string the way the Contents API returns file content. */
@@ -398,6 +399,25 @@ describe("createPublishClient", () => {
         /Failed to comment/,
       );
     });
+  });
+});
+
+describe("recipeFromContents", () => {
+  it("returns the recipe object decoded from the base64 file content", () => {
+    const content = b64(
+      JSON.stringify({ formId: "passport-renewal", steps: [] }),
+    );
+    expect(recipeFromContents({ content })).toEqual({
+      formId: "passport-renewal",
+      steps: [],
+    });
+  });
+
+  it("returns undefined with no inline content, bad JSON, or a non-object", () => {
+    expect(recipeFromContents({})).toBeUndefined();
+    expect(recipeFromContents({ content: b64("not json") })).toBeUndefined();
+    expect(recipeFromContents({ content: b64("[1,2]") })).toBeUndefined();
+    expect(recipeFromContents({ content: b64("null") })).toBeUndefined();
   });
 });
 

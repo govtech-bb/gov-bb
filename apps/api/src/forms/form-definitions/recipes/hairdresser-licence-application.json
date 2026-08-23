@@ -284,7 +284,7 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "label": "Upload a passport-size photograph.",
+            "label": "Upload your passport-size photographs.",
             "fieldId": "passport-photo",
             "validations": {
               "fileTypes": {
@@ -298,6 +298,9 @@
               "itemMaxSize": {
                 "error": "File must be 5 MB or smaller",
                 "value": 5242880
+              },
+              "required": {
+                "value": true
               }
             }
           }
@@ -319,6 +322,10 @@
               "itemMaxSize": {
                 "error": "File must be 5 MB or smaller",
                 "value": 5242880
+              },
+              "required": {
+                "value": true,
+                "error": "Your medical certificate is required"
               }
             }
           }
@@ -372,5 +379,5 @@
     }
   ],
   "createdAt": "2026-08-19T19:09:04.486Z",
-  "updatedAt": "2026-08-19T19:09:04.486Z"
+  "updatedAt": "2026-08-23T15:07:08.345Z"
 }

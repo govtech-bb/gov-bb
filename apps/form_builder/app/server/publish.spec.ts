@@ -227,6 +227,110 @@ describe("publishRecipe", () => {
     expect(written.updatedAt).toBe(RECIPE.updatedAt);
   });
 
+  it("carries a committed field the builder cannot author through a publish that omits it", async () => {
+    // The Environmental Health routing block is passthrough-only in the
+    // builder, so a stale draft publishes without it — and the Contents PUT is
+    // a whole-file overwrite, which used to delete it (#2376/#2377). The
+    // published file must keep the committed block.
+    const catchmentRouting = {
+      coordinatesField: "about-restaurant.restaurant-address-coordinates",
+      parishField: "about-restaurant.restaurant-parish",
+    };
+    const committed = JSON.stringify({ ...RECIPE, catchmentRouting });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(noOpenPRs()) // GET open PRs — none match
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      ) // GET base ref
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" })) // POST create branch
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          sha: "existing-blob-sha",
+          content: Buffer.from(committed, "utf8").toString("base64"),
+        }),
+      ) // GET existing flat file (sha + content)
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } })) // PUT contents
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          number: 42,
+          html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
+        }),
+      ); // POST pulls
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    // RECIPE has no catchmentRouting — exactly the draft that dropped it.
+    await publishRecipe({
+      data: { recipe: RECIPE, description: "" },
+      context: { session: SESSION },
+    });
+
+    const putBody = JSON.parse(
+      (fetchMock.mock.calls[4][1] as RequestInit).body as string,
+    );
+    const written = JSON.parse(
+      Buffer.from(putBody.content, "base64").toString("utf8"),
+    );
+    expect(written.catchmentRouting).toEqual(catchmentRouting);
+  });
+
+  it("lets the published payload win over the committed value, and keeps an authored field the author cleared", async () => {
+    // Only fields the builder cannot author are carried forward: a payload that
+    // does carry the block owns it, and clearing an authored field (here:
+    // processors) stays cleared rather than being resurrected from the commit.
+    const committed = JSON.stringify({
+      ...RECIPE,
+      catchmentRouting: {
+        coordinatesField: "old.coords",
+        parishField: "old.parish",
+      },
+      processors: [{ type: "email", config: { recipientField: "a.b" } }],
+    });
+    const incoming = {
+      ...RECIPE,
+      catchmentRouting: {
+        coordinatesField: "new.coords",
+        parishField: "new.parish",
+      },
+    } as ServiceContractRecipe;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(noOpenPRs()) // GET open PRs — none match
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      ) // GET base ref
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" })) // POST create branch
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          sha: "existing-blob-sha",
+          content: Buffer.from(committed, "utf8").toString("base64"),
+        }),
+      ) // GET existing flat file (sha + content)
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } })) // PUT contents
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          number: 42,
+          html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
+        }),
+      ); // POST pulls
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    (api.post as Mock).mockResolvedValue({ ok: true, data: incoming });
+    await publishRecipe({
+      data: { recipe: incoming, description: "" },
+      context: { session: SESSION },
+    });
+
+    const putBody = JSON.parse(
+      (fetchMock.mock.calls[4][1] as RequestInit).body as string,
+    );
+    const written = JSON.parse(
+      Buffer.from(putBody.content, "base64").toString("utf8"),
+    );
+    expect(written.catchmentRouting.coordinatesField).toBe("new.coords");
+    expect(written.processors).toBeUndefined();
+  });
+
   it("stamps a fresh createdAt on first publish (no existing file)", async () => {
     const fetchMock = vi
       .fn()
@@ -403,6 +507,47 @@ describe("publishRecipe", () => {
   // naive `startsWith` would have let "passport" match
   // "form-builder/passport-renewal-<ts>" and push the wrong recipe onto the
   // sibling form's PR.
+  it("carries a field the builder cannot author when reusing an open PR, too", async () => {
+    // The reuse path is also a whole-file Contents overwrite, so it needs the
+    // same passthrough the create path got in #2377 — otherwise redeploying
+    // onto an open PR would delete catchmentRouting exactly the way the
+    // original bug did, on a brand-new code path (#2390).
+    const catchmentRouting = {
+      coordinatesField: "about-restaurant.restaurant-address-coordinates",
+      parishField: "about-restaurant.restaurant-parish",
+    };
+    const committed = JSON.stringify({ ...RECIPE, catchmentRouting });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          openPR(17, "form-builder/passport-renewal-1699999999999"),
+        ]),
+      ) // GET open PRs — one already open for this form
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          sha: "pr-blob-sha",
+          content: Buffer.from(committed, "utf8").toString("base64"),
+        }),
+      ) // GET the recipe on the PR branch (sha + content)
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c2" } })); // PUT
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    // RECIPE carries no catchmentRouting — the stale-draft case.
+    await publishRecipe({
+      data: { recipe: RECIPE, description: "" },
+      context: { session: SESSION },
+    });
+
+    const putBody = JSON.parse(
+      (fetchMock.mock.calls[2][1] as RequestInit).body as string,
+    );
+    const written = JSON.parse(
+      Buffer.from(putBody.content, "base64").toString("utf8"),
+    );
+    expect(written.catchmentRouting).toEqual(catchmentRouting);
+  });
+
   it("sibling-branch guard: formId 'passport' must not reuse the open PR for 'passport-renewal'", async () => {
     const siblingRecipe: ServiceContractRecipe = {
       ...RECIPE,
