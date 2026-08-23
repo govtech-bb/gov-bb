@@ -3,34 +3,31 @@
   "title": "Apply to Environmental Health for a restaurant licence",
   "description": "Apply for or renew a restaurant licence",
   "contactDetails": {
+    "email": "info@health.gov.bb",
     "title": "Ministry of Health and Wellness",
-    "telephoneNumber": "+1 (246) 536-3800",
-    "email": "info@health.gov.bb"
+    "telephoneNumber": "+1 (246) 536-3800"
   },
   "processors": [
     {
       "type": "email",
       "config": {
-        "recipientField": "about-you.your-email",
-        "subject": "Your restaurant licence application has been received"
+        "subject": "Your restaurant licence application has been received",
+        "recipientField": "about-you.your-email"
       }
     },
     {
       "type": "email",
       "config": {
-        "recipientField": "catchment.mdaEmail",
-        "subject": "A new restaurant licence application has been received"
+        "subject": "A new restaurant licence application has been received",
+        "recipientField": "catchment.mdaEmail"
       }
     },
     {
       "type": "webhook",
       "config": {
         "method": "POST",
-        "signatureHeader": "X-Webhook-Signature",
         "mapping": {
-          "programmeCode": "RESTAURANT_LICENCE",
           "mdaCode": "MOH",
-          "programmeShortCode": "RSL",
           "applicant": {
             "name": [
               "about-you.your-first-name",
@@ -39,21 +36,20 @@
             "email": "about-you.your-email",
             "phone": "about-you.your-telephone"
           },
+          "groupByStep": true,
           "excludeSteps": [
             "check-your-answers",
             "declaration",
             "submission-confirmation"
           ],
-          "groupByStep": true
+          "programmeCode": "RESTAURANT_LICENCE",
+          "programmeShortCode": "RSL"
         },
-        "timeoutMs": 10000
+        "timeoutMs": 10000,
+        "signatureHeader": "X-Webhook-Signature"
       }
     }
   ],
-  "catchmentRouting": {
-    "coordinatesField": "about-restaurant.restaurant-address-coordinates",
-    "parishField": "about-restaurant.restaurant-parish"
-  },
   "meta": {
     "visibility": "preview"
   },
@@ -65,14 +61,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "completing-for",
             "label": "Are you completing this application for yourself or someone else?",
-            "validations": {
-              "required": {
-                "error": "Select an option",
-                "value": true
-              }
-            },
+            "fieldId": "completing-for",
             "options": [
               {
                 "label": "Myself",
@@ -82,41 +72,47 @@
                 "label": "Someone else or a business or organisation",
                 "value": "someone-else"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/first-name",
           "overrides": {
-            "fieldId": "your-first-name",
-            "label": "First name"
+            "label": "First name",
+            "fieldId": "your-first-name"
           }
         },
         {
           "ref": "components/middle-name",
           "overrides": {
-            "fieldId": "your-middle-name",
+            "hint": "Enter all middle names in order.",
             "label": "Middle name(s)",
-            "hint": "Enter all middle names in order."
+            "fieldId": "your-middle-name"
           }
         },
         {
           "ref": "components/last-name",
           "overrides": {
-            "fieldId": "your-last-name",
-            "label": "Last name"
+            "label": "Last name",
+            "fieldId": "your-last-name"
           }
         },
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "your-telephone",
             "label": "Telephone number",
+            "fieldId": "your-telephone",
             "behaviours": [
               {
-                "type": "fieldArray",
-                "min": 1,
                 "max": 4,
+                "min": 1,
+                "type": "fieldArray",
                 "addAnotherLabel": "Add another telephone number"
               }
             ]
@@ -125,22 +121,22 @@
         {
           "ref": "components/email",
           "overrides": {
-            "fieldId": "your-email",
-            "label": "Email address"
+            "label": "Email address",
+            "fieldId": "your-email"
           }
         },
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "your-address-line-1",
-            "label": "Address line 1"
+            "label": "Address line 1",
+            "fieldId": "your-address-line-1"
           }
         },
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "your-address-line-2",
             "label": "Address line 2",
+            "fieldId": "your-address-line-2",
             "validations": {
               "required": {
                 "value": false
@@ -170,14 +166,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "applicant-type",
             "label": "Who is applying for the restaurant licence?",
-            "validations": {
-              "required": {
-                "error": "Select an option",
-                "value": true
-              }
-            },
+            "fieldId": "applicant-type",
             "options": [
               {
                 "label": "An individual",
@@ -187,56 +177,62 @@
                 "label": "A business or organisation",
                 "value": "business"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/first-name",
           "overrides": {
-            "fieldId": "applicant-first-name",
-            "label": "First name"
+            "label": "First name",
+            "fieldId": "applicant-first-name"
           }
         },
         {
           "ref": "components/middle-name",
           "overrides": {
-            "fieldId": "applicant-middle-name",
-            "label": "Middle name(s)"
+            "label": "Middle name(s)",
+            "fieldId": "applicant-middle-name"
           }
         },
         {
           "ref": "components/last-name",
           "overrides": {
-            "fieldId": "applicant-last-name",
-            "label": "Last name"
+            "label": "Last name",
+            "fieldId": "applicant-last-name"
           }
         },
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "applicant-telephone",
-            "label": "Telephone number"
+            "label": "Telephone number",
+            "fieldId": "applicant-telephone"
           }
         },
         {
           "ref": "components/email",
           "overrides": {
-            "fieldId": "applicant-email",
-            "label": "Email address"
+            "label": "Email address",
+            "fieldId": "applicant-email"
           }
         },
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "applicant-address-line-1",
-            "label": "Address line 1"
+            "label": "Address line 1",
+            "fieldId": "applicant-address-line-1"
           }
         },
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "applicant-address-line-2",
             "label": "Address line 2",
+            "fieldId": "applicant-address-line-2",
             "validations": {
               "required": {
                 "value": false
@@ -260,28 +256,22 @@
       "behaviours": [
         {
           "type": "stepConditionalOn",
-          "targetFieldId": "completing-for",
-          "targetStepId": "about-you",
+          "value": "someone-else",
           "operator": "equal",
-          "value": "someone-else"
+          "targetStepId": "about-you",
+          "targetFieldId": "completing-for"
         }
       ]
     },
     {
       "stepId": "about-applicant",
-      "title": "About the application",
+      "title": "Applicant details",
       "elements": [
         {
           "ref": "components/generic-select",
           "overrides": {
-            "fieldId": "relationship-to-restaurant",
             "label": "What is your relationship to the restaurant?",
-            "validations": {
-              "required": {
-                "error": "Select an option",
-                "value": true
-              }
-            },
+            "fieldId": "relationship-to-restaurant",
             "options": [
               {
                 "label": "Owner",
@@ -307,41 +297,41 @@
                 "label": "Something else",
                 "value": "something-else"
               }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "relationship-other",
-            "label": "Tell us your relationship to the restaurant",
-            "validations": {
-              "required": {
-                "error": "Enter your relationship",
-                "value": true
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "relationship-to-restaurant",
-                "operator": "equal",
-                "value": "something-else"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "application-type",
-            "label": "What are you applying to do?",
+            ],
             "validations": {
               "required": {
                 "error": "Select an option",
                 "value": true
               }
-            },
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Tell us your relationship to the restaurant",
+            "fieldId": "relationship-other",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "something-else",
+                "operator": "equal",
+                "targetFieldId": "relationship-to-restaurant"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter your relationship",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "What are you applying to do?",
+            "fieldId": "application-type",
             "options": [
               {
                 "label": "Apply for a restaurant licence for the first time",
@@ -351,7 +341,13 @@
                 "label": "Renew a restaurant licence",
                 "value": "renewal"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -364,8 +360,8 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "restaurant-name",
             "label": "What is the restaurant name?",
+            "fieldId": "restaurant-name",
             "validations": {
               "required": {
                 "error": "Enter the restaurant name",
@@ -377,14 +373,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "restaurant-already-open",
             "label": "Is the restaurant already open?",
-            "validations": {
-              "required": {
-                "error": "Select an option",
-                "value": true
-              }
-            },
+            "fieldId": "restaurant-already-open",
             "options": [
               {
                 "label": "Yes",
@@ -394,20 +384,26 @@
                 "label": "No",
                 "value": "no"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-date",
           "overrides": {
-            "fieldId": "restaurant-expected-start-date",
             "label": "What date do you expect the restaurant to start?",
+            "fieldId": "restaurant-expected-start-date",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "restaurant-already-open",
+                "value": "no",
                 "operator": "equal",
-                "value": "no"
+                "targetFieldId": "restaurant-already-open"
               }
             ]
           }
@@ -415,8 +411,8 @@
         {
           "ref": "components/address-lookup",
           "overrides": {
-            "fieldId": "restaurant-address-line-1",
             "label": "Address line 1",
+            "fieldId": "restaurant-address-line-1",
             "validations": {
               "required": {
                 "error": "Enter address line 1",
@@ -433,8 +429,8 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "restaurant-address-line-2",
             "label": "Address line 2",
+            "fieldId": "restaurant-address-line-2",
             "validations": {
               "required": {
                 "value": false
@@ -457,29 +453,23 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "restaurant-address-coordinates",
+            "ui": {
+              "hidden": true
+            },
             "label": "Restaurant location coordinates",
+            "fieldId": "restaurant-address-coordinates",
             "validations": {
               "required": {
                 "value": false
               }
-            },
-            "ui": {
-              "hidden": true
             }
           }
         },
         {
           "ref": "components/generic-select",
           "overrides": {
-            "fieldId": "property-use",
             "label": "Is the property owned, rented, or something else?",
-            "validations": {
-              "required": {
-                "error": "Select an option",
-                "value": true
-              }
-            },
+            "fieldId": "property-use",
             "options": [
               {
                 "label": "Owned",
@@ -497,28 +487,34 @@
                 "label": "Something else",
                 "value": "something-else"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "property-use-other",
             "label": "Tell us what the arrangement is",
+            "fieldId": "property-use-other",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "something-else",
+                "operator": "equal",
+                "targetFieldId": "property-use"
+              }
+            ],
             "validations": {
               "required": {
                 "error": "Tell us what the arrangement is",
                 "value": true
               }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "property-use",
-                "operator": "equal",
-                "value": "something-else"
-              }
-            ]
+            }
           }
         }
       ],
@@ -531,14 +527,8 @@
         {
           "ref": "components/generic-checkbox",
           "overrides": {
-            "fieldId": "opening-days",
             "label": "Which days is the restaurant open?",
-            "validations": {
-              "required": {
-                "error": "Select at least one day",
-                "value": true
-              }
-            },
+            "fieldId": "opening-days",
             "options": [
               {
                 "label": "Monday",
@@ -568,20 +558,20 @@
                 "label": "Sunday",
                 "value": "sunday"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select at least one day",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "same-hours-every-day",
             "label": "Are the opening hours the same on every day you are open?",
-            "validations": {
-              "required": {
-                "error": "Select an option",
-                "value": true
-              }
-            },
+            "fieldId": "same-hours-every-day",
             "options": [
               {
                 "label": "Yes",
@@ -591,342 +581,348 @@
                 "label": "No",
                 "value": "no"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "everyday-hours",
-            "label": "Opening hours",
-            "hint": "These hours apply to every day the restaurant is open. Use the 24-hour clock, for example 09:00 - 17:00.",
-            "validations": {
-              "required": {
-                "error": "Enter the hours the restaurant is open",
-                "value": true
-              },
-              "pattern": {
-                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00",
-                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$"
-              }
+            "ui": {
+              "width": "short"
             },
+            "hint": "These hours apply to every day the restaurant is open. Use the 24-hour clock, for example 09:00 - 17:00.",
+            "label": "Opening hours",
+            "fieldId": "everyday-hours",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "same-hours-every-day",
+                "value": "yes",
                 "operator": "equal",
-                "value": "yes"
+                "targetFieldId": "same-hours-every-day"
               },
               {
-                "type": "fieldArray",
-                "min": 1,
                 "max": 3,
+                "min": 1,
+                "type": "fieldArray",
                 "addAnotherLabel": "Add another set of hours"
               }
             ],
-            "ui": {
-              "width": "short"
+            "validations": {
+              "pattern": {
+                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00",
+                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$"
+              },
+              "required": {
+                "error": "Enter the hours the restaurant is open",
+                "value": true
+              }
             }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "monday-hours",
-            "label": "Monday opening hours",
-            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
-            "validations": {
-              "required": {
-                "error": "Enter the hours the restaurant is open on Monday",
-                "value": true
-              },
-              "pattern": {
-                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00",
-                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$"
-              }
+            "ui": {
+              "width": "short"
             },
+            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
+            "label": "Monday opening hours",
+            "fieldId": "monday-hours",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "opening-days",
-                "operator": "in",
                 "value": [
                   "monday"
-                ]
+                ],
+                "operator": "in",
+                "targetFieldId": "opening-days"
               },
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "same-hours-every-day",
+                "value": "no",
                 "operator": "equal",
-                "value": "no"
+                "targetFieldId": "same-hours-every-day"
               },
               {
-                "type": "fieldArray",
-                "min": 1,
                 "max": 3,
+                "min": 1,
+                "type": "fieldArray",
                 "addAnotherLabel": "Add another set of hours for Monday"
               }
             ],
-            "ui": {
-              "width": "short"
+            "validations": {
+              "pattern": {
+                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00",
+                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$"
+              },
+              "required": {
+                "error": "Enter the hours the restaurant is open on Monday",
+                "value": true
+              }
             }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "tuesday-hours",
-            "label": "Tuesday opening hours",
-            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
-            "validations": {
-              "required": {
-                "error": "Enter the hours the restaurant is open on Tuesday",
-                "value": true
-              },
-              "pattern": {
-                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00",
-                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$"
-              }
+            "ui": {
+              "width": "short"
             },
+            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
+            "label": "Tuesday opening hours",
+            "fieldId": "tuesday-hours",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "opening-days",
-                "operator": "in",
                 "value": [
                   "tuesday"
-                ]
+                ],
+                "operator": "in",
+                "targetFieldId": "opening-days"
               },
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "same-hours-every-day",
+                "value": "no",
                 "operator": "equal",
-                "value": "no"
+                "targetFieldId": "same-hours-every-day"
               },
               {
-                "type": "fieldArray",
-                "min": 1,
                 "max": 3,
+                "min": 1,
+                "type": "fieldArray",
                 "addAnotherLabel": "Add another set of hours for Tuesday"
               }
             ],
-            "ui": {
-              "width": "short"
+            "validations": {
+              "pattern": {
+                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00",
+                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$"
+              },
+              "required": {
+                "error": "Enter the hours the restaurant is open on Tuesday",
+                "value": true
+              }
             }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "wednesday-hours",
-            "label": "Wednesday opening hours",
-            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
-            "validations": {
-              "required": {
-                "error": "Enter the hours the restaurant is open on Wednesday",
-                "value": true
-              },
-              "pattern": {
-                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00",
-                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$"
-              }
+            "ui": {
+              "width": "short"
             },
+            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
+            "label": "Wednesday opening hours",
+            "fieldId": "wednesday-hours",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "opening-days",
-                "operator": "in",
                 "value": [
                   "wednesday"
-                ]
+                ],
+                "operator": "in",
+                "targetFieldId": "opening-days"
               },
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "same-hours-every-day",
+                "value": "no",
                 "operator": "equal",
-                "value": "no"
+                "targetFieldId": "same-hours-every-day"
               },
               {
-                "type": "fieldArray",
-                "min": 1,
                 "max": 3,
+                "min": 1,
+                "type": "fieldArray",
                 "addAnotherLabel": "Add another set of hours for Wednesday"
               }
             ],
-            "ui": {
-              "width": "short"
+            "validations": {
+              "pattern": {
+                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00",
+                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$"
+              },
+              "required": {
+                "error": "Enter the hours the restaurant is open on Wednesday",
+                "value": true
+              }
             }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "thursday-hours",
-            "label": "Thursday opening hours",
-            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
-            "validations": {
-              "required": {
-                "error": "Enter the hours the restaurant is open on Thursday",
-                "value": true
-              },
-              "pattern": {
-                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00",
-                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$"
-              }
+            "ui": {
+              "width": "short"
             },
+            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
+            "label": "Thursday opening hours",
+            "fieldId": "thursday-hours",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "opening-days",
-                "operator": "in",
                 "value": [
                   "thursday"
-                ]
+                ],
+                "operator": "in",
+                "targetFieldId": "opening-days"
               },
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "same-hours-every-day",
+                "value": "no",
                 "operator": "equal",
-                "value": "no"
+                "targetFieldId": "same-hours-every-day"
               },
               {
-                "type": "fieldArray",
-                "min": 1,
                 "max": 3,
+                "min": 1,
+                "type": "fieldArray",
                 "addAnotherLabel": "Add another set of hours for Thursday"
               }
             ],
-            "ui": {
-              "width": "short"
+            "validations": {
+              "pattern": {
+                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00",
+                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$"
+              },
+              "required": {
+                "error": "Enter the hours the restaurant is open on Thursday",
+                "value": true
+              }
             }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "friday-hours",
-            "label": "Friday opening hours",
-            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
-            "validations": {
-              "required": {
-                "error": "Enter the hours the restaurant is open on Friday",
-                "value": true
-              },
-              "pattern": {
-                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00",
-                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$"
-              }
+            "ui": {
+              "width": "short"
             },
+            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
+            "label": "Friday opening hours",
+            "fieldId": "friday-hours",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "opening-days",
-                "operator": "in",
                 "value": [
                   "friday"
-                ]
+                ],
+                "operator": "in",
+                "targetFieldId": "opening-days"
               },
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "same-hours-every-day",
+                "value": "no",
                 "operator": "equal",
-                "value": "no"
+                "targetFieldId": "same-hours-every-day"
               },
               {
-                "type": "fieldArray",
-                "min": 1,
                 "max": 3,
+                "min": 1,
+                "type": "fieldArray",
                 "addAnotherLabel": "Add another set of hours for Friday"
               }
             ],
-            "ui": {
-              "width": "short"
+            "validations": {
+              "pattern": {
+                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00",
+                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$"
+              },
+              "required": {
+                "error": "Enter the hours the restaurant is open on Friday",
+                "value": true
+              }
             }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "saturday-hours",
-            "label": "Saturday opening hours",
-            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
-            "validations": {
-              "required": {
-                "error": "Enter the hours the restaurant is open on Saturday",
-                "value": true
-              },
-              "pattern": {
-                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00",
-                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$"
-              }
+            "ui": {
+              "width": "short"
             },
+            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
+            "label": "Saturday opening hours",
+            "fieldId": "saturday-hours",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "opening-days",
-                "operator": "in",
                 "value": [
                   "saturday"
-                ]
+                ],
+                "operator": "in",
+                "targetFieldId": "opening-days"
               },
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "same-hours-every-day",
+                "value": "no",
                 "operator": "equal",
-                "value": "no"
+                "targetFieldId": "same-hours-every-day"
               },
               {
-                "type": "fieldArray",
-                "min": 1,
                 "max": 3,
+                "min": 1,
+                "type": "fieldArray",
                 "addAnotherLabel": "Add another set of hours for Saturday"
               }
             ],
-            "ui": {
-              "width": "short"
+            "validations": {
+              "pattern": {
+                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00",
+                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$"
+              },
+              "required": {
+                "error": "Enter the hours the restaurant is open on Saturday",
+                "value": true
+              }
             }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "sunday-hours",
-            "label": "Sunday opening hours",
-            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
-            "validations": {
-              "required": {
-                "error": "Enter the hours the restaurant is open on Sunday",
-                "value": true
-              },
-              "pattern": {
-                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00",
-                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$"
-              }
+            "ui": {
+              "width": "short"
             },
+            "hint": "Use the 24-hour clock, for example 09:00 - 17:00.",
+            "label": "Sunday opening hours",
+            "fieldId": "sunday-hours",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "opening-days",
-                "operator": "in",
                 "value": [
                   "sunday"
-                ]
+                ],
+                "operator": "in",
+                "targetFieldId": "opening-days"
               },
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "same-hours-every-day",
+                "value": "no",
                 "operator": "equal",
-                "value": "no"
+                "targetFieldId": "same-hours-every-day"
               },
               {
-                "type": "fieldArray",
-                "min": 1,
                 "max": 3,
+                "min": 1,
+                "type": "fieldArray",
                 "addAnotherLabel": "Add another set of hours for Sunday"
               }
             ],
-            "ui": {
-              "width": "short"
+            "validations": {
+              "pattern": {
+                "error": "Enter the hours as a start and end time, for example 09:00 - 17:00",
+                "value": "^([01]?\\d|2[0-3]):[0-5]\\d\\s*[-–—]\\s*([01]?\\d|2[0-3]):[0-5]\\d$"
+              },
+              "required": {
+                "error": "Enter the hours the restaurant is open on Sunday",
+                "value": true
+              }
             }
           }
         }
@@ -940,14 +936,8 @@
         {
           "ref": "components/generic-checkbox",
           "overrides": {
-            "fieldId": "food-prep-location",
             "label": "Where will the food or drink be prepared?",
-            "validations": {
-              "required": {
-                "error": "Select at least one option",
-                "value": true
-              }
-            },
+            "fieldId": "food-prep-location",
             "options": [
               {
                 "label": "At the restaurant",
@@ -965,7 +955,13 @@
                 "label": "No food or drink will be prepared",
                 "value": "no-prep"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select at least one option",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -976,7 +972,7 @@
       "title": "What locations are your food and drink prepared at",
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/name",
           "overrides": {
             "label": "Establishment name",
             "fieldId": "other-establishment-name"
@@ -993,7 +989,7 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address line 2",
-            "fieldId": "other-establishment-address-2",
+            "fieldId": "other-establihsment-address-2",
             "validations": {
               "required": {
                 "value": false
@@ -1002,28 +998,24 @@
           }
         },
         {
-          "ref": "components/parish",
-          "overrides": {
-            "fieldId": "other-establishment-parish"
-          }
+          "ref": "components/parish"
         }
       ],
       "behaviours": [
         {
-          "type": "repeatable",
-          "min": 1,
           "max": 5,
+          "min": 1,
+          "type": "repeatable",
           "instanceLabel": "establishment address"
         },
         {
           "type": "stepConditionalOn",
-          "targetStepId": "food-preparation",
-          "targetFieldId": "food-prep-location",
-          "operator": "in",
           "value": [
-            "commercial-kitchen",
-            "another-location"
-          ]
+            "commercial-kitchen"
+          ],
+          "operator": "in",
+          "targetStepId": "food-preparation",
+          "targetFieldId": "food-prep-location"
         }
       ]
     },
@@ -1034,8 +1026,8 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "fieldId": "male-staff-count",
             "label": "How many male staff will prepare or handle food or drink?",
+            "fieldId": "male-staff-count",
             "validations": {
               "required": {
                 "error": "Enter the number of male staff",
@@ -1047,8 +1039,8 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "fieldId": "female-staff-count",
             "label": "How many female staff will prepare or handle food or drink?",
+            "fieldId": "female-staff-count",
             "validations": {
               "required": {
                 "error": "Enter the number of female staff",
@@ -1060,21 +1052,21 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "fieldId": "staff-list-upload",
-            "label": "Upload a list of your staff",
             "hint": "The list must give each person's name and address. PDF, JPG or PNG, up to 5MB.",
+            "label": "Upload a list of your staff",
+            "fieldId": "staff-list-upload",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Upload a list of your staff."
+                "error": "Upload a list of your staff.",
+                "value": true
               },
               "fileTypes": {
-                "value": "application/pdf,image/jpeg,image/png",
-                "error": "The staff list must be a PDF, JPG or PNG."
+                "error": "The staff list must be a PDF, JPG or PNG.",
+                "value": "application/pdf,image/jpeg,image/png"
               },
               "itemMaxSize": {
-                "value": "5242880",
-                "error": "The staff list must be smaller than 5MB."
+                "error": "The staff list must be smaller than 5MB.",
+                "value": "5242880"
               }
             }
           }
@@ -1082,17 +1074,17 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "fieldId": "medical-certificates-upload",
-            "label": "Upload medical certificates for your staff",
             "hint": "You can upload more than one file. PDF, JPG or PNG, up to 5MB each. If you do not have them now, you can bring them to the inspection.",
+            "label": "Upload medical certificates for your staff",
+            "fieldId": "medical-certificates-upload",
             "validations": {
               "fileTypes": {
-                "value": "application/pdf,image/jpeg,image/png",
-                "error": "Each medical certificate must be a PDF, JPG or PNG."
+                "error": "Each medical certificate must be a PDF, JPG or PNG.",
+                "value": "application/pdf,image/jpeg,image/png"
               },
               "itemMaxSize": {
-                "value": "5242880",
-                "error": "Each medical certificate must be smaller than 5MB."
+                "error": "Each medical certificate must be smaller than 5MB.",
+                "value": "5242880"
               }
             }
           }
@@ -1107,17 +1099,17 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "fieldId": "floor-plan-upload",
-            "label": "Upload a floor plan of the restaurant",
             "hint": "A drawing of the layout. PDF, JPG or PNG, up to 5MB.",
+            "label": "Upload a floor plan of the restaurant",
+            "fieldId": "floor-plan-upload",
             "validations": {
               "fileTypes": {
-                "value": "application/pdf,image/jpeg,image/png",
-                "error": "The floor plan must be a PDF, JPG or PNG."
+                "error": "The floor plan must be a PDF, JPG or PNG.",
+                "value": "application/pdf,image/jpeg,image/png"
               },
               "itemMaxSize": {
-                "value": "5242880",
-                "error": "The floor plan must be smaller than 5MB."
+                "error": "The floor plan must be smaller than 5MB.",
+                "value": "5242880"
               }
             }
           }
@@ -1125,32 +1117,29 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "fieldId": "building-plan-upload",
+            "hint": "This is the building plan submitted to the Planning and Development Department",
             "label": "Upload your building plan",
-            "hint": "This is the building plan submitted to the Planning and Development Department"
+            "fieldId": "building-plan-upload"
           }
         },
         {
           "ref": "components/show-hide",
           "overrides": {
-            "fieldId": "building-plan-number",
-            "label": "Use tracking number instead"
+            "label": "Use tracking number instead",
+            "fieldId": "building-plan-number"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "tracking-number-instead",
-            "label": "Planning and Development application number",
             "hint": "This is the application number you received when you submitted your building plans to the Planning and Development Department",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "building-plan-number",
-                "operator": "equal",
-                "value": true
+            "label": "Planning and Development application number",
+            "fieldId": "tracking-number-instead",
+            "validations": {
+              "required": {
+                "value": false
               }
-            ]
+            }
           }
         }
       ],
@@ -1170,20 +1159,20 @@
         {
           "ref": "components/confirmation",
           "overrides": {
-            "fieldId": "declaration-confirmed",
             "label": "Declaration",
-            "validations": {
-              "required": {
-                "error": "You must confirm the declaration to continue.",
-                "value": true
-              }
-            },
+            "fieldId": "declaration-confirmed",
             "options": [
               {
                 "label": "I confirm that the information in this application is true and correct to the best of my knowledge.",
                 "value": "confirmed"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue.",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -1203,5 +1192,5 @@
     }
   ],
   "createdAt": "2026-08-18T19:36:35.003Z",
-  "updatedAt": "2026-08-22T23:41:19.114Z"
+  "updatedAt": "2026-08-23T14:16:39.004Z"
 }
