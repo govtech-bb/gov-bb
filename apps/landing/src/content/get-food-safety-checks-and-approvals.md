@@ -5,7 +5,8 @@ description: >-
   setup, or apply for approval for a restaurant or food business.
 stage: alpha
 publish_date: '2026-08-18'
-visibility: draft
+visibility: preview
+form_id: food-safety-licence-application
 category: business-trade
 ---
 Use this service to ask for a food safety check, apply for approval for a temporary food or drink setup, or apply for approval for a restaurant or food business.

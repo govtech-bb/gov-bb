@@ -282,7 +282,8 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     slug: "get-food-safety-checks-and-approvals",
     title: "Get food safety checks and approvals from Environmental Health",
     category: "business-trade",
-    visibility: "draft",
+    formId: "food-safety-licence-application",
+    visibility: "preview",
   },
   {
     slug: "get-marriage-certificate",
