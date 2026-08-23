@@ -29,7 +29,13 @@ type HydratedField = {
   validations?: Record<string, { value?: unknown; error?: string }>;
 };
 
-async function hydratedFields(stepId: string): Promise<HydratedField[]> {
+type HydratedStep = {
+  stepId: string;
+  behaviours?: Record<string, unknown>[];
+  elements: HydratedField[];
+};
+
+async function hydratedStep(stepId: string): Promise<HydratedStep> {
   const raw = JSON.parse(await fs.readFile(RECIPE_PATH, "utf8"));
   const recipe = serviceContractRecipeSchema.parse(raw);
   // Every ref in this recipe is a builtin, so a miss is a bug in the recipe,
@@ -42,7 +48,11 @@ async function hydratedFields(stepId: string): Promise<HydratedField[]> {
   const hydrated = await hydrateForm(recipe, resolver);
   const step = hydrated.steps.find((s) => s.stepId === stepId);
   expect(step, `step "${stepId}" is missing from the recipe`).toBeDefined();
-  return step!.elements as unknown as HydratedField[];
+  return step! as unknown as HydratedStep;
+}
+
+async function hydratedFields(stepId: string): Promise<HydratedField[]> {
+  return (await hydratedStep(stepId)).elements;
 }
 
 const DAYS = [
@@ -136,7 +146,7 @@ it("holds the shared hours to the same format rule as a per-day one", async () =
 // reveals it.
 const GATED_FIELDS: [string, string, Record<string, unknown>][] = [
   [
-    "about-application",
+    "about-applicant",
     "relationship-other",
     {
       targetFieldId: "relationship-to-restaurant",
@@ -162,21 +172,6 @@ const GATED_FIELDS: [string, string, Record<string, unknown>][] = [
       value: "something-else",
     },
   ],
-  ...(
-    [
-      "other-prep-location-business",
-      "other-prep-location-address-1",
-      "other-prep-location-address-2",
-    ] as const
-  ).map((fieldId): [string, string, Record<string, unknown>] => [
-    "food-preparation",
-    fieldId,
-    {
-      targetFieldId: "food-prep-location",
-      operator: "in",
-      value: ["commercial-kitchen", "another-location"],
-    },
-  ]),
 ];
 
 it.each(GATED_FIELDS)(
@@ -196,7 +191,7 @@ it.each(GATED_FIELDS)(
 // only thing that decides which renders, so pin the served type rather than the
 // ref spelling.
 it("serves the relationship question as a dropdown, not six radios", async () => {
-  const fields = await hydratedFields("about-application");
+  const fields = await hydratedFields("about-applicant");
   const field = fields.find((f) => f.fieldId === "relationship-to-restaurant");
   expect(field, "relationship-to-restaurant is missing").toBeDefined();
   expect(field!.htmlType).toBe("select");
@@ -210,10 +205,65 @@ it.each([
   ["about-you", "your-address-line-2"],
   ["applicant-details", "applicant-address-line-2"],
   ["about-restaurant", "restaurant-address-line-2"],
-  ["food-preparation", "other-prep-location-address-2"],
+  ["location-food-drink-prepared", "other-establishment-address-2"],
 ])("serves %s.%s as optional", async (stepId, fieldId) => {
   const fields = await hydratedFields(stepId);
   const field = fields.find((f) => f.fieldId === fieldId);
   expect(field, `${fieldId} is missing from ${stepId}`).toBeDefined();
   expect(field!.validations?.required?.value).toBe(false);
+});
+
+// The three off-site address questions used to sit in `food-preparation`, each
+// with its own fieldConditionalOn. They are now one repeatable step, so the gate
+// that used to be per-field is the step's — and a step gate is invisible to
+// GATED_FIELDS above. `another-location` belongs in the gate alongside
+// `commercial-kitchen`: ADR 0068 keeps "the addresses where food is prepared
+// elsewhere" on the form, and dropping it leaves that answer asking nothing.
+it("gates the off-site address step on both away-from-restaurant answers", async () => {
+  const step = await hydratedStep("location-food-drink-prepared");
+
+  expect(step.behaviours).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        type: "stepConditionalOn",
+        targetStepId: "food-preparation",
+        targetFieldId: "food-prep-location",
+        operator: "in",
+        value: ["commercial-kitchen", "another-location"],
+      }),
+      expect.objectContaining({ type: "repeatable" }),
+    ]),
+  );
+
+  // An establishment is not a person: `components/name` would enforce the
+  // person-name pattern and reject "KFC #4".
+  expect(step.elements.map((e) => e.fieldId)).toEqual([
+    "other-establishment-name",
+    "other-establishment-address-1",
+    "other-establishment-address-2",
+    "other-establishment-parish",
+  ]);
+  const name = step.elements.find(
+    (e) => e.fieldId === "other-establishment-name",
+  );
+  expect(name!.htmlType).toBe("text");
+  expect(name!.validations?.pattern).toBeUndefined();
+});
+
+// `components/show-hide` is only ever a gate for something else, so a toggle
+// with nothing conditioned on it is dead config and the field it should reveal
+// is always on screen.
+it("reveals the planning tracking number only when the toggle is on", async () => {
+  const fields = await hydratedFields("floor-plan");
+  const tracking = fields.find((f) => f.fieldId === "tracking-number-instead");
+  expect(tracking, "tracking-number-instead is missing").toBeDefined();
+
+  expect(tracking!.behaviours).toEqual([
+    expect.objectContaining({
+      type: "fieldConditionalOn",
+      targetFieldId: "building-plan-number",
+      operator: "equal",
+      value: true,
+    }),
+  ]);
 });
