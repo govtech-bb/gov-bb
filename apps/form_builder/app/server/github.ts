@@ -82,3 +82,19 @@ export function listOpenPRHeads(
 ): Promise<OpenPRHead[]> {
   return client().listOpenPRHeads(token, baseBranch);
 }
+
+export function findOpenPRByHeadRef(
+  token: string,
+  baseBranch: string,
+  isMatch: (headRef: string) => boolean,
+): Promise<OpenPRHead | null> {
+  return client().findOpenPRByHeadRef(token, baseBranch, isMatch);
+}
+
+export function commentOnPR(
+  token: string,
+  prNumber: number,
+  body: string,
+): Promise<void> {
+  return client().commentOnPR(token, prNumber, body);
+}

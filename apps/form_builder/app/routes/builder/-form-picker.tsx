@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { GitPullRequestIcon } from "hugeicons-react";
 import { getRecipe, getFormConfig } from "../../server/forms";
+import type { OpenDeployPR } from "../../server/publish";
 import { deserializeRecipe, mergeDbProcessors } from "@govtech-bb/form-builder";
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe, Processor } from "@govtech-bb/form-types";
@@ -14,6 +16,12 @@ interface FormPickerProps {
   loadError: string | null;
   isDirty: boolean;
   catalog: RegistryCatalog;
+  /**
+   * Open Deploy PRs keyed by formId (#2390), badging a row "In review". Optional
+   * with an empty-map default so this stays wire-compatible with callers that
+   * haven't threaded it through yet.
+   */
+  openPRs?: Map<string, OpenDeployPR>;
   onLoad: (draft: RecipeDraft, formId: string) => void;
   onClose: () => void;
   /** Draft-only forms: hard-delete the draft rows (formId freed for reuse). */
@@ -34,7 +42,36 @@ function matches(query: string, ...fields: Array<string | undefined>) {
   return fields.some((f) => f !== undefined && f.toLowerCase().includes(q));
 }
 
-export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose, onRequestDelete, onRequestDisable, onRequestErase, onEnable, onDuplicate }: FormPickerProps) {
+/**
+ * "In review" badge for a form with an open Deploy PR (#2390). The row it
+ * sits in is itself clickable (loads the form), so opening the PR needs its
+ * own preventDefault/stopPropagation or the click would also select the row.
+ * Mirrors content/index.tsx's PrBadge for the CMS's equivalent flag.
+ */
+function PrBadge({ pr }: { pr: OpenDeployPR }) {
+  const openPr = (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.open(pr.prUrl, "_blank", "noopener");
+  };
+  return (
+    <span
+      className={styles.reviewBadge}
+      role="link"
+      tabIndex={0}
+      title={`Open pull request #${pr.prNumber}`}
+      onClick={openPr}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") openPr(e);
+      }}
+    >
+      <GitPullRequestIcon size={11} style={{ marginRight: 3 }} />
+      In review
+    </span>
+  );
+}
+
+export function FormPicker({ forms, loadError, isDirty, catalog, openPRs, onLoad, onClose, onRequestDelete, onRequestDisable, onRequestErase, onEnable, onDuplicate }: FormPickerProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -169,7 +206,10 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
           <p style={{ color: "#888" }}>No forms match your search.</p>
         )}
 
-        {filtered.map((form) => (
+        {filtered.map((form) => {
+          // Open Deploy PR for this row, if any (#2390).
+          const pr = openPRs?.get(form.formId);
+          return (
           <div
             key={form.id}
             className={styles.fieldRow}
@@ -201,6 +241,7 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
               {form.isDisabled && (
                 <span className={styles.disabledBadge}>Disabled</span>
               )}
+              {pr && <PrBadge pr={pr} />}
             </span>
             <span style={{ color: "#888", fontSize: "0.8rem" }}>{form.formId}</span>
             {loadingId === form.formId && <span> Loading…</span>}
@@ -280,7 +321,8 @@ export function FormPicker({ forms, loadError, isDirty, catalog, onLoad, onClose
               </>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

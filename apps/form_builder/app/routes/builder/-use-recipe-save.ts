@@ -50,6 +50,10 @@ export function useRecipeSave({
   const [publishSuccess, setPublishSuccess] = useState<{
     prUrl: string;
     prNumber: number;
+    // #2390: true when Deploy pushed onto a Deploy PR already open for this
+    // form (instead of opening a duplicate), so the modal can say which
+    // happened.
+    updatedExistingPR: boolean;
   } | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
 
@@ -173,6 +177,12 @@ export function useRecipeSave({
         isPublished: false,
         publishedVersion: existing?.publishedVersion,
       });
+      // The form now has a Deploy PR in review, but openPRs comes from GitHub
+      // and can't be patched locally the way the row above can — refetch so the
+      // picker badges it "In review" (#2390). Runs in the background after an
+      // already-slow deploy, with the picker closed, so the listForms() cost
+      // upsertForm normally avoids doesn't land on the author.
+      refetchForms();
     } catch (e) {
       setPublishError(e instanceof Error ? e.message : "Publish failed");
     } finally {
