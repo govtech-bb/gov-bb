@@ -100,6 +100,13 @@ export function serializeRecipeDraft(
     // through verbatim. `!== undefined` keeps "absent" (legacy recipe → public)
     // distinct from an explicit object — same guard as contactDetails.
     ...(draft.meta !== undefined ? { meta: draft.meta } : {}),
+    // Carry the Environmental Health catchment routing through. The builder
+    // cannot author it, but a Deploy that omits it unroutes the form: the API
+    // resolves `catchment.mdaEmail` and the per-polyclinic programme code from
+    // this block, so losing it sends every submission nowhere (#2376/#2377).
+    ...(draft.catchmentRouting !== undefined
+      ? { catchmentRouting: draft.catchmentRouting }
+      : {}),
     steps,
     createdAt: now,
     updatedAt: now,
@@ -201,6 +208,12 @@ export function deserializeRecipe(
     // an open → deploy cycle. A legacy recipe with no `meta` stays absent — the
     // builder treats that as `public` (getRecipeVisibility), not `draft`.
     ...(recipe.meta !== undefined ? { meta: recipe.meta } : {}),
+    // Symmetric read so catchment routing survives an open → deploy cycle. A
+    // recipe with no routing stays absent — the API treats that as "not
+    // catchment-routed", not as empty routing.
+    ...(recipe.catchmentRouting !== undefined
+      ? { catchmentRouting: recipe.catchmentRouting }
+      : {}),
     steps,
   };
 }

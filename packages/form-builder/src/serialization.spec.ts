@@ -86,6 +86,34 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     }
   });
 
+  // Regression guard for #2376/#2377: a Deploy of a catchment-routed form was
+  // silently stripping this block, which unroutes the form — no
+  // `catchment.mdaEmail` recipient and no per-polyclinic programme code.
+  it("preserves catchmentRouting through a full open → deploy cycle", () => {
+    const catchmentRouting = {
+      coordinatesField: "about-restaurant.restaurant-address-coordinates",
+      parishField: "about-restaurant.restaurant-parish",
+    };
+    const draft = makeBaseDraft({ catchmentRouting });
+    const recipe = serializeRecipeDraft(draft);
+
+    expect(recipe.catchmentRouting).toEqual(catchmentRouting);
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
+    // The path that actually broke: open an existing recipe, then deploy it.
+    expect(
+      serializeRecipeDraft(deserializeRecipe(recipe)).catchmentRouting,
+    ).toEqual(catchmentRouting);
+  });
+
+  it("omits catchmentRouting when the recipe has none", () => {
+    const recipe = serializeRecipeDraft(makeBaseDraft());
+
+    expect(Object.keys(recipe)).not.toContain("catchmentRouting");
+    expect(Object.keys(deserializeRecipe(recipe))).not.toContain(
+      "catchmentRouting",
+    );
+  });
+
   it("does not assert exact createdAt/updatedAt — only that they are strings", () => {
     const draft = makeBaseDraft();
     const recipe = serializeRecipeDraft(draft);
