@@ -4,8 +4,22 @@ import type {
   RecipeFormStepField,
   FieldOverrides,
 } from "@govtech-bb/form-types";
+import { normalizeRuleValues } from "@govtech-bb/form-types";
 import type { RecipeDraft, RecipeStepDraft, RecipeFieldDraft } from "./types";
 import type { RegistryCatalog } from "./catalog";
+
+// The builder's Value box is a text input, so a rule value can reach here as
+// raw text — either freshly typed or carried in from an older recipe the author
+// never reopened. This is the one choke point every save and Deploy passes
+// through, so normalising here is what stops the builder re-emitting an
+// off-shape value (a comma string for `fileTypes`, "5242880" for a byte
+// count) that the recipe schema then rejects in CI. (#2384)
+const withNormalizedValidations = (
+  overrides: FieldOverrides,
+): FieldOverrides =>
+  overrides.validations
+    ? { ...overrides, validations: normalizeRuleValues(overrides.validations) }
+    : overrides;
 
 /**
  * Serialize a RecipeDraft (UI state) into a ServiceContractRecipe (persisted format).
@@ -27,10 +41,14 @@ export function serializeRecipeDraft(
               ref: field.ref as `blocks/${string}`,
               ...(hasChildOverrides
                 ? {
-                    overrides: field.childOverrides as Record<
-                      string,
-                      FieldOverrides
-                    >,
+                    overrides: Object.fromEntries(
+                      Object.entries(
+                        field.childOverrides as Record<string, FieldOverrides>,
+                      ).map(([fieldId, childOverrides]) => [
+                        fieldId,
+                        withNormalizedValidations(childOverrides),
+                      ]),
+                    ),
                   }
                 : {}),
             };
@@ -40,7 +58,13 @@ export function serializeRecipeDraft(
               field.overrides && Object.keys(field.overrides).length > 0;
             return {
               ref: field.ref as `components/${string}`,
-              ...(hasOverrides ? { overrides: field.overrides } : {}),
+              ...(hasOverrides
+                ? {
+                    overrides: withNormalizedValidations(
+                      field.overrides as FieldOverrides,
+                    ),
+                  }
+                : {}),
             };
           }
         },

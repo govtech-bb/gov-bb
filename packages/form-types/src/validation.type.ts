@@ -111,6 +111,48 @@ const ruleValueSchemas = {
  * the API recipe loader and the builder's draft save), while the runtime read
  * path stays tolerant and normalises bad values at the point of use.
  */
+/**
+ * Coerce a rule `value` the builder wrote as raw text into the shape its runner
+ * consumes — `fileTypes` from a comma string to `string[]`, numeric rules from
+ * a numeric string to a number.
+ *
+ * The builder's Value box is a text input, so this is the choke point that
+ * stops it re-emitting a legacy off-shape value: the editor only converts what
+ * the author actually retypes, so a recipe carrying an old string that nobody
+ * touched would otherwise survive a full round-trip unchanged (#2384).
+ *
+ * A value that cannot be coerced (e.g. `minLength: "abc"`) is left exactly as
+ * it is, so `ruleValueIssues` still reports it rather than storing a NaN.
+ */
+export function normalizeRuleValues(
+  validations: ValidationRule,
+): ValidationRule {
+  const normalized: Record<string, unknown> = { ...validations };
+  for (const [type, config] of Object.entries(validations)) {
+    const valueSchema = ruleValueSchemas[type as keyof typeof ruleValueSchemas];
+    if (!valueSchema || config?.value === undefined) continue;
+    if (valueSchema.safeParse(config.value).success) continue;
+
+    if (type === "fileTypes" && typeof config.value === "string") {
+      normalized[type] = {
+        ...config,
+        value: config.value
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter(Boolean),
+      };
+      continue;
+    }
+    if (typeof config.value === "string") {
+      const parsed = Number(config.value);
+      if (config.value.trim() !== "" && Number.isFinite(parsed)) {
+        normalized[type] = { ...config, value: parsed };
+      }
+    }
+  }
+  return normalized as ValidationRule;
+}
+
 export function ruleValueIssues(validations: ValidationRule): string[] {
   const issues: string[] = [];
   for (const [type, config] of Object.entries(validations)) {
