@@ -5,7 +5,7 @@ description: >-
   existing registration with Environmental Health.
 stage: alpha
 publish_date: '2026-08-20'
-visibility: public
+visibility: preview
 form_id: register-hair-beauty-business
 ---
 You must register your business with Environmental Health if it provides any of these services to the public:

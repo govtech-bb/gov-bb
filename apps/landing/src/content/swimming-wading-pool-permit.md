@@ -3,7 +3,8 @@ title: Apply for a swimming or wading pool permit
 description: Get a permit from Environmental Health to operate a swimming or wading pool.
 stage: alpha
 publish_date: '2026-08-20'
-visibility: public
+visibility: preview
+form_id: swimming-wading-pool-permit
 ---
 Every swimming and wading pool needs a permit from Environmental Health.
 
