@@ -133,7 +133,22 @@ export default function FileUpload({
   // Accepts either MIME types ("image/png" → "png") or extension values
   // (".pdf" → ".pdf"), so a recipe can list user-friendly extensions and have
   // them shown verbatim (e.g. "Attach a .pdf, .docx, or .png file").
-  const rawFileTypes: string[] = field.validations?.fileTypes?.value ?? [];
+  //
+  // #2384: the value is declared `string[]`, but a builder-authored recipe
+  // reached production carrying a comma-separated string, so `.map` threw and
+  // the error boundary replaced the whole step with "Something went wrong".
+  // The recipe schema now rejects that shape, but DB drafts (`?draft=`) never
+  // pass through CI, so normalise here too — the same tolerance
+  // `fileTypesRunner` already applies on the validation side.
+  const configuredFileTypes: unknown = field.validations?.fileTypes?.value;
+  const rawFileTypes: string[] = Array.isArray(configuredFileTypes)
+    ? configuredFileTypes
+    : typeof configuredFileTypes === "string"
+      ? configuredFileTypes
+          .split(",")
+          .map((type) => type.trim())
+          .filter(Boolean)
+      : [];
   const readableFileTypes: string[] = rawFileTypes.map((type: string) =>
     type.includes("/") ? type.split("/")[1] : type,
   );

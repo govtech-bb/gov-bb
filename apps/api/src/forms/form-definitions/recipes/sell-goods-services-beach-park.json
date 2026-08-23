@@ -1303,11 +1303,11 @@
               },
               "minItems": {
                 "error": "At least 2 photos are required",
-                "value": "2"
+                "value": 2
               },
               "maxItems": {
                 "error": "No more than 2 photos are required",
-                "value": "2"
+                "value": 2
               },
               "fileTypes": {
                 "error": "Upload a .pdf, .docx, or .png file",

@@ -8,9 +8,9 @@
  * resetting drops the override key so the recipe carries only genuine deltas.
  */
 import "@testing-library/jest-dom";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ValidationRule } from "@govtech-bb/form-types";
+import type { HtmlTypes, ValidationRule } from "@govtech-bb/form-types";
 import type { FieldRef, StepRef } from "./-recipe-refs";
 import { ValidationRulesEditor } from "./-validation-rules-editor";
 
@@ -19,11 +19,12 @@ function renderEditor(props: {
   baseRules?: ValidationRule;
   fieldRefs?: FieldRef[];
   stepRefs?: StepRef[];
+  htmlType?: HtmlTypes;
 }) {
   const onChange = vi.fn();
   render(
     <ValidationRulesEditor
-      htmlType="text"
+      htmlType={props.htmlType ?? "text"}
       rules={props.rules}
       baseRules={props.baseRules}
       fieldRefs={props.fieldRefs ?? []}
@@ -476,5 +477,93 @@ describe("a date duration rule's transform is mandatory (#1020)", () => {
     expect(values).toEqual(
       expect.arrayContaining(["yearsSince", "monthsSince", "daysSince"]),
     );
+  });
+});
+
+/**
+ * #2384: the Value box is a plain text input, and its raw `e.target.value` was
+ * committed verbatim for every rule type. That put a comma string in
+ * `fileTypes.value` (declared `string[]`) and numeric strings in `minLength` /
+ * `itemMaxSize`. The forms file-upload renderer then called `.map` on the
+ * string and threw, and the error boundary replaced the whole step with
+ * "Something went wrong". The editor now converts what the author types into
+ * the shape the rule runner consumes.
+ */
+describe("value coercion to the rule's committed shape (#2384)", () => {
+  const valueInput = () => screen.getAllByRole("textbox")[0]!;
+
+  it("commits fileTypes as an array, splitting on commas", () => {
+    const onChange = renderEditor({
+      htmlType: "file",
+      rules: { fileTypes: {} },
+    });
+
+    fireEvent.change(valueInput(), {
+      target: { value: "application/pdf, image/jpeg,image/png" },
+    });
+
+    expect(onChange.mock.calls.at(-1)![0]).toEqual({
+      fileTypes: { value: ["application/pdf", "image/jpeg", "image/png"] },
+    });
+  });
+
+  it("renders an array fileTypes value back into the box as comma-separated text", () => {
+    renderEditor({
+      htmlType: "file",
+      rules: { fileTypes: { value: ["application/pdf", "image/png"] } },
+    });
+
+    expect(valueInput()).toHaveValue("application/pdf, image/png");
+  });
+
+  it("commits a numeric rule as a number, not a numeric string", () => {
+    const onChange = renderEditor({ rules: { minLength: {} } });
+
+    fireEvent.change(valueInput(), { target: { value: "5" } });
+
+    expect(onChange.mock.calls.at(-1)![0]).toEqual({
+      minLength: { value: 5 },
+    });
+  });
+
+  it("commits an itemMaxSize byte count as a number", () => {
+    const onChange = renderEditor({
+      htmlType: "file",
+      rules: { itemMaxSize: {} },
+    });
+
+    fireEvent.change(valueInput(), { target: { value: "5242880" } });
+
+    expect(onChange.mock.calls.at(-1)![0]).toEqual({
+      itemMaxSize: { value: 5242880 },
+    });
+  });
+
+  it("leaves a free-text rule's value as a string", () => {
+    const onChange = renderEditor({ rules: { pattern: {} } });
+
+    fireEvent.change(valueInput(), { target: { value: "^[0-9]+$" } });
+
+    expect(onChange.mock.calls.at(-1)![0]).toEqual({
+      pattern: { value: "^[0-9]+$" },
+    });
+  });
+
+  it("drops the value key when the box is cleared", () => {
+    const onChange = renderEditor({ rules: { minLength: { value: 5 } } });
+
+    fireEvent.change(valueInput(), { target: { value: "" } });
+
+    expect(onChange.mock.calls.at(-1)![0]).toEqual({ minLength: {} });
+  });
+
+  it("keeps an unparseable numeric entry as typed, for the save gate to reject", () => {
+    const onChange = renderEditor({ rules: { minLength: {} } });
+
+    fireEvent.change(valueInput(), { target: { value: "abc" } });
+
+    expect(onChange.mock.calls.at(-1)![0]).toEqual({
+      minLength: { value: "abc" },
+    });
   });
 });

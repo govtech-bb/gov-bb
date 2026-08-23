@@ -390,6 +390,45 @@ describe("FileUpload", () => {
     expect(screen.getByText(/no file type restrictions/i)).toBeInTheDocument();
   });
 
+  // #2384: the form builder wrote `fileTypes.value` as a comma-separated
+  // string, which reached this component and threw "map is not a function" —
+  // the error boundary then replaced the whole step with "Something went
+  // wrong", making the form impossible to navigate past. The schema now
+  // rejects that shape, but DB drafts never pass through CI, so the renderer
+  // tolerates it the way `fileTypesRunner` already does.
+  it("tolerates a comma-separated fileTypes string instead of crashing", () => {
+    renderComponent({
+      field: {
+        ...baseField,
+        validations: {
+          fileTypes: {
+            value: "application/pdf,image/jpeg,image/png",
+          } as unknown as { value: string[] },
+        },
+      },
+    });
+    expect(
+      screen.getByText(/attach a pdf, jpeg, or png file/i),
+    ).toBeInTheDocument();
+  });
+
+  it("constrains the native picker when fileTypes is a comma-separated string", () => {
+    const { container } = renderComponent({
+      field: {
+        ...baseField,
+        validations: {
+          fileTypes: {
+            value: ".pdf,.docx",
+          } as unknown as { value: string[] },
+        },
+      },
+    });
+    expect(container.querySelector("input[type=file]")).toHaveAttribute(
+      "accept",
+      ".pdf,.docx",
+    );
+  });
+
   it("renders the authored hint instead of the derived file-type description, without leaking raw MIME subtypes", () => {
     renderComponent({
       field: {
