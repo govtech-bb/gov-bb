@@ -30,7 +30,6 @@ export const FORM_CATEGORIES: Record<string, string> = {
   "national-assistance-grant-application": "social-empowerment",
   "national-summer-camp": "youth-and-community",
   "national-summer-camp-2025-registration": "work-employment",
-  "nhc-application-rental-unit": "housing",
   "nhc-land-property-application": "housing",
   "nhs-tenants-notice-intention-purchase-freehold": "housing",
   "non-nationals-secondary-entry": "education",
