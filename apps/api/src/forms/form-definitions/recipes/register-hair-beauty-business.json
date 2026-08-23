@@ -286,7 +286,7 @@
                 "value": false
               },
               "itemMaxSize": {
-                "value": "5242880",
+                "value": 5242880,
                 "error": "The floor plan must be smaller than 5MB."
               }
             }

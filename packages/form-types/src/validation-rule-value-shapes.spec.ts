@@ -3,7 +3,7 @@ import {
   serviceContractRecipeSchema,
   serviceContractSchema,
 } from "./service-contract.type";
-import { validationRuleSchema } from "./validation.type";
+import { normalizeRuleValues, validationRuleSchema } from "./validation.type";
 
 // #2384: `validationConfigSchema.value` is `z.any()` — one loose shape shared
 // by every rule type — so a builder-authored comma string sailed through as
@@ -229,6 +229,75 @@ describe("served contract stays tolerant of off-shape rule values (#2384)", () =
       validationRuleSchema.safeParse({
         fileTypes: { value: "application/pdf,image/png" },
       }).success,
+    ).toBe(true);
+  });
+});
+
+describe("normalizeRuleValues (#2384)", () => {
+  it("splits a comma-separated fileTypes string into an array", () => {
+    expect(
+      normalizeRuleValues({
+        fileTypes: { value: "application/pdf, image/png" },
+      }),
+    ).toEqual({ fileTypes: { value: ["application/pdf", "image/png"] } });
+  });
+
+  it("converts a numeric string to a number", () => {
+    expect(normalizeRuleValues({ itemMaxSize: { value: "5242880" } })).toEqual({
+      itemMaxSize: { value: 5242880 },
+    });
+  });
+
+  it("keeps the rest of the rule config intact", () => {
+    expect(
+      normalizeRuleValues({ minLength: { value: "5", error: "Too short." } }),
+    ).toEqual({ minLength: { value: 5, error: "Too short." } });
+  });
+
+  it("leaves an already-valid value untouched", () => {
+    const rules = {
+      itemMaxSize: { value: 5242880 },
+      fileTypes: { value: ["application/pdf"] },
+    };
+    expect(normalizeRuleValues(rules)).toEqual(rules);
+  });
+
+  it("leaves rules with no pinned shape untouched", () => {
+    const rules = { equal: { value: "yes" } };
+    expect(normalizeRuleValues(rules)).toEqual(rules);
+  });
+
+  it("leaves a rule carrying no value untouched", () => {
+    const rules = { gt: { referenceFieldId: "other-field" } };
+    expect(normalizeRuleValues(rules)).toEqual(rules);
+  });
+
+  // Coercing these would store NaN and hide the problem; leaving them alone
+  // lets the recipe schema report them by name instead.
+  it("leaves an uncoercible numeric string alone", () => {
+    expect(normalizeRuleValues({ minLength: { value: "abc" } })).toEqual({
+      minLength: { value: "abc" },
+    });
+  });
+
+  it("leaves an empty string alone", () => {
+    expect(normalizeRuleValues({ minLength: { value: "   " } })).toEqual({
+      minLength: { value: "   " },
+    });
+  });
+
+  it("leaves an off-shape non-string value alone", () => {
+    expect(normalizeRuleValues({ fileTypes: { value: 123 } })).toEqual({
+      fileTypes: { value: 123 },
+    });
+  });
+
+  it("output of a normalised recipe passes the recipe gate", () => {
+    const normalized = normalizeRuleValues({
+      itemMaxSize: { value: "5242880" },
+    });
+    expect(
+      serviceContractRecipeSchema.safeParse(recipeWith(normalized)).success,
     ).toBe(true);
   });
 });
