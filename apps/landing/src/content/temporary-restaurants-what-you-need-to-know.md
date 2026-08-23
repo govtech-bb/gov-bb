@@ -10,7 +10,7 @@ service_type: information
 publish_date: '2026-08-21'
 category: business-trade
 ---
-This page explains the rules for temporary restaurants — who needs a licence, what it costs and what to have ready. It covers [applying for a temporary restaurant licence](https://landing.sandbox.alpha.gov.bb/business-trade/apply-for-temporary-restaurant-licence) and [requesting an Environmental Health Officer](https://landing.sandbox.alpha.gov.bb/business-trade/request-an-environmental-health-officer).
+This page explains the rules for temporary restaurants — who needs a licence, what it costs and what to have ready. It covers [applying for a temporary restaurant licence](/business-trade/apply-for-temporary-restaurant-licence) and [requesting an environmental health officer](/business-trade/request-an-environmental-health-officer).
 
 ## What counts as a temporary restaurant
 
@@ -26,7 +26,7 @@ In law, food is “any substance, whether processed, semi-processed or raw, whic
 
 You need a licence if you will serve or offer for sale, any food or drink, wether carried on for profit or not. This also includes **bars, snacks** and **confectioneries**, **free samples or product promotions**.
 
-[Apply for a licence](https://landing.sandbox.alpha.gov.bb/business-trade/apply-for-temporary-restaurant-licence)
+[Apply for a licence](/business-trade/apply-for-temporary-restaurant-licence)
 
 ## Who needs to apply
 
@@ -53,7 +53,7 @@ There is no application fee. If you are organising the event, you must pay any o
 -   Take your payment with copy of the invoices to the polyclinic or to the Environment Health Department, Ministry of Health and Wellness, Frank Walcott Building, National Insurance Building, Culloden Road, St Michael.
 -   You will get a receipt.
 
-[Request an Environmental Health Officer](https://landing.sandbox.alpha.gov.bb/business-trade/request-an-environmental-health-officer)
+[Request an environmental health officer](/business-trade/request-an-environmental-health-officer)
 
 ## What counts as a mass event
 

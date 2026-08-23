@@ -427,7 +427,8 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   {
     slug: "register-hair-beauty-business",
     title:
-      "Register or renew a hairdressing or beauty business with Environmental Health",
+      "Register a hairdressing or beauty business with Environmental Health",
+    category: "business-trade",
     formId: "register-hair-beauty-business",
     visibility: "preview",
   },

@@ -42,7 +42,7 @@ Weddings do not need a licence. Some other private events may need one, dependin
 -   The number of food handlers, your water and sanitation arrangements, and the expected number of people attending the event
 -   The organiser's details, if someone else is organising the event
 -   Your own medical certificate. Everyone else working with you must walk with theirs on the day
--   Hairnets, beard nets and clean covered clothing for everyone handling food — and no jewellery, false nails, false eyelashes, make-up or perfume ([see the full list](https://landing.sandbox.alpha.gov.bb/business-trade/temporary-restaurants-what-you-need-to-know#personal-hygiene-for-food-handlers))
+-   Hairnets, beard nets and clean covered clothing for everyone handling food — and no jewellery, false nails, false eyelashes, make-up or perfume ([see the full list](/business-trade/temporary-restaurants-what-you-need-to-know#personal-hygiene-for-food-handlers))
 -   If someone else is organising the event, a letter from the venue or organiser confirming you can operate there
 -   If you are organising the event, a site or stall plan
 -   If you have one, a copy of your food business licence
