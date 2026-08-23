@@ -64,15 +64,20 @@ export const validationTypeSchema = z.enum([
 ]);
 export type ValidationType = z.infer<typeof validationTypeSchema>;
 
+export const validationRuleSchema = z.partialRecord(
+  validationTypeSchema,
+  validationConfigSchema,
+);
+export type ValidationRule = z.infer<typeof validationRuleSchema>;
+
 // Per-rule `value` contracts (#2384). `validationConfigSchema.value` is
 // `z.any()` because one config shape is shared by every rule type, so nothing
-// stopped a builder-authored comma string from landing in `fileTypes.value`,
-// riding through the recipe schema, and crashing the forms renderer at
-// `rawFileTypes.map(...)` — the error boundary then swallowed the whole step.
-// These pin the shapes the rule runners in @govtech-bb/form-validation
-// actually consume. Rules absent from this map keep the loose `any`: their
-// runners compare against arbitrary scalars (`equal`, `contains`), or the
-// rule is a marker whose presence alone is the rule (`email`, `phone`).
+// stopped a builder-authored comma string from landing in `fileTypes.value`
+// and crashing the forms renderer at `rawFileTypes.map(...)`. These pin the
+// shapes the rule runners in @govtech-bb/form-validation actually consume.
+// Rules absent from this map keep the loose `any`: their runners compare
+// against arbitrary scalars (`equal`, `contains`), or the rule is a marker
+// whose presence alone is the rule (`email`, `phone`).
 const ruleValueSchemas = {
   required: z.boolean(),
   minLength: z.number(),
@@ -93,28 +98,36 @@ const ruleValueSchemas = {
   pattern: z.string(),
 } satisfies Partial<Record<ValidationType, z.ZodType>>;
 
-export const validationRuleSchema = z
-  .partialRecord(validationTypeSchema, validationConfigSchema)
-  .superRefine((rules, ctx) => {
-    for (const [type, config] of Object.entries(rules)) {
-      const valueSchema =
-        ruleValueSchemas[type as keyof typeof ruleValueSchemas];
-      // A rule may legitimately carry no `value`: `gt`/`lt` bound by
-      // `referenceFieldId`, `minYear`/`maxYear` bound by `currentYear`, or a
-      // rule reduced to just its `error` copy. Only a value that IS present
-      // has to match the runner's contract.
-      if (!valueSchema || config?.value === undefined) continue;
-      const result = valueSchema.safeParse(config.value);
-      if (!result.success) {
-        ctx.addIssue({
-          code: "custom",
-          path: [type, "value"],
-          message: `${type}.value: ${result.error.issues.map((i) => i.message).join("; ")}`,
-        });
-      }
+/**
+ * Report every rule whose `value` does not match the shape its runner consumes.
+ *
+ * Deliberately NOT enforced by `validationRuleSchema` itself: that leaf is
+ * shared by the served-contract schema, and `apps/forms` hard-parses every API
+ * response with `serviceContractSchema.parse(...)`. Rejecting there would turn
+ * one bad value into a blank "Something went wrong" for the WHOLE form — a
+ * worse version of the #2384 crash — and it would break the moment a new
+ * frontend met an API still serving an older recipe. So the strict gate is
+ * applied to recipes only (authored artifacts, gated by CI `validate-recipes`,
+ * the API recipe loader and the builder's draft save), while the runtime read
+ * path stays tolerant and normalises bad values at the point of use.
+ */
+export function ruleValueIssues(validations: ValidationRule): string[] {
+  const issues: string[] = [];
+  for (const [type, config] of Object.entries(validations)) {
+    const valueSchema = ruleValueSchemas[type as keyof typeof ruleValueSchemas];
+    // A rule may legitimately carry no `value`: `gt`/`lt` bound by
+    // `referenceFieldId`, `minYear`/`maxYear` bound by `currentYear`, or a
+    // rule reduced to just its `error` copy.
+    if (!valueSchema || config?.value === undefined) continue;
+    const result = valueSchema.safeParse(config.value);
+    if (!result.success) {
+      issues.push(
+        `${type}.value: ${result.error.issues.map((i) => i.message).join("; ")}`,
+      );
     }
-  });
-export type ValidationRule = z.infer<typeof validationRuleSchema>;
+  }
+  return issues;
+}
 
 // Date parts are migrating from numbers to the literal digit-string the user
 // typed (so "09" no longer collapses to "9" and "00" stays distinct from "0").
