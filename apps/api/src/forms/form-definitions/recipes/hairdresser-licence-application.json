@@ -1,6 +1,6 @@
 {
   "formId": "hairdresser-licence-application",
-  "title": "Apply to Environmental Health for a Hairdresser Licence",
+  "title": "Apply to Environmental Health for a Hairdressers Licence",
   "description": "Apply for a hairdresser licence in Barbados",
   "processors": [
     {
@@ -21,6 +21,7 @@
       "type": "webhook",
       "config": {
         "method": "POST",
+        "signatureHeader": "X-Webhook-Signature",
         "mapping": {
           "programmeCode": "HAIRDRESSER_LICENCE",
           "mdaCode": "MOH",
@@ -39,7 +40,8 @@
             "submission-confirmation"
           ],
           "groupByStep": true
-        }
+        },
+        "timeoutMs": 10000
       }
     }
   ],
@@ -109,7 +111,12 @@
           "ref": "components/address",
           "overrides": {
             "fieldId": "address-line-2",
-            "label": "Address line 2"
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -255,7 +262,12 @@
                   "at-salon"
                 ]
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -320,7 +332,8 @@
               "required": {
                 "value": true
               }
-            }
+            },
+            "hint": "These photographs should have been taken recently."
           }
         },
         {
@@ -397,5 +410,5 @@
     }
   ],
   "createdAt": "2026-08-19T19:09:04.486Z",
-  "updatedAt": "2026-08-24T14:15:06.228Z"
+  "updatedAt": "2026-08-24T18:37:12.536Z"
 }
