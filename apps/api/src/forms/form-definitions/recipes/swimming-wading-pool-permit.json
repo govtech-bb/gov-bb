@@ -9,8 +9,43 @@
         "subject": "Your swimming or wading pool permit application has been received",
         "recipientField": "your-details.email"
       }
+    },
+    {
+      "type": "email",
+      "config": {
+        "subject": "A new swimming or wading pool permit application has been received",
+        "recipientField": "catchment.mdaEmail"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "mapping": {
+          "mdaCode": "MOH",
+          "programmeShortCode": "SPP",
+          "programmeCode": "SWIMMING_POOL_PERMIT",
+          "applicant": {
+            "name": [
+              "your-details.first-name",
+              "your-details.last-name"
+            ],
+            "email": "your-details.email",
+            "phone": "your-details.phone-number"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        }
+      }
     }
   ],
+  "catchmentRouting": {
+    "coordinatesField": "your-details.address-coordinates",
+    "parishField": "your-details.parish"
+  },
   "meta": {
     "visibility": "preview"
   },
@@ -86,7 +121,7 @@
           "ref": "components/last-name"
         },
         {
-          "ref": "components/address",
+          "ref": "components/address-lookup",
           "overrides": {
             "label": "Address line 1",
             "fieldId": "address-line-1",
@@ -95,6 +130,11 @@
                 "error": "Enter your address",
                 "value": true
               }
+            },
+            "geocodeTargets": {
+              "line2FieldId": "address-line-2",
+              "parishFieldId": "parish",
+              "coordinatesFieldId": "address-coordinates"
             }
           }
         },
@@ -107,6 +147,21 @@
         },
         {
           "ref": "components/parish"
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "hidden": true
+            },
+            "label": "Home address coordinates",
+            "fieldId": "address-coordinates",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
         },
         {
           "ref": "components/email",
@@ -529,32 +584,6 @@
               }
             }
           }
-        },
-        {
-          "ref": "components/name",
-          "overrides": {
-            "label": "Full name",
-            "fieldId": "declaration-name",
-            "validations": {
-              "required": {
-                "error": "Enter your full name",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-date",
-          "overrides": {
-            "label": "Date",
-            "fieldId": "declaration-date",
-            "validations": {
-              "required": {
-                "error": "Enter the date",
-                "value": true
-              }
-            }
-          }
         }
       ],
       "behaviours": []
@@ -573,5 +602,5 @@
     }
   ],
   "createdAt": "2026-08-20T09:15:58.120Z",
-  "updatedAt": "2026-08-20T09:15:58.120Z"
+  "updatedAt": "2026-08-24T00:00:00.000Z"
 }

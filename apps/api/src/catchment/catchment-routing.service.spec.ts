@@ -289,6 +289,36 @@ describe("programme codes are unchanged by composition (golden)", () => {
       "Sir Winston Scott Polyclinic": "HOTEL_LICENCE_WINSTON_SCOTT",
       "St. Philip Polyclinic": "HOTEL_LICENCE_ST_PHILIP",
     },
+    "register-hair-beauty-business": {
+      "Branford Taitt Polyclinic": "HAIR_BEAUTY_BUSINESS_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "HAIR_BEAUTY_BUSINESS_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "HAIR_BEAUTY_BUSINESS_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "HAIR_BEAUTY_BUSINESS_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "HAIR_BEAUTY_BUSINESS_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "HAIR_BEAUTY_BUSINESS_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "HAIR_BEAUTY_BUSINESS_ST_PHILIP",
+    },
+    "hairdresser-licence-application": {
+      "Branford Taitt Polyclinic": "HAIRDRESSER_LICENCE_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "HAIRDRESSER_LICENCE_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "HAIRDRESSER_LICENCE_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "HAIRDRESSER_LICENCE_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "HAIRDRESSER_LICENCE_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "HAIRDRESSER_LICENCE_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "HAIRDRESSER_LICENCE_ST_PHILIP",
+    },
+    "swimming-wading-pool-permit": {
+      "Branford Taitt Polyclinic": "SWIMMING_POOL_PERMIT_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "SWIMMING_POOL_PERMIT_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "SWIMMING_POOL_PERMIT_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "SWIMMING_POOL_PERMIT_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "SWIMMING_POOL_PERMIT_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "SWIMMING_POOL_PERMIT_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "SWIMMING_POOL_PERMIT_ST_PHILIP",
+    },
   };
 
   /** The recipe's own webhook `mapping.programmeCode`, read off the real file. */

@@ -9,8 +9,43 @@
         "subject": "Your hairdresser licence application has been received",
         "recipientField": "personal-details.email"
       }
+    },
+    {
+      "type": "email",
+      "config": {
+        "subject": "A new hairdresser licence application has been received",
+        "recipientField": "catchment.mdaEmail"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "mapping": {
+          "mdaCode": "MOH",
+          "programmeShortCode": "HDL",
+          "programmeCode": "HAIRDRESSER_LICENCE",
+          "applicant": {
+            "name": [
+              "personal-details.first-name",
+              "personal-details.last-name"
+            ],
+            "email": "personal-details.email",
+            "phone": "personal-details.phone-number"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        }
+      }
     }
   ],
+  "catchmentRouting": {
+    "coordinatesField": "personal-details.address-coordinates",
+    "parishField": "personal-details.home-parish"
+  },
   "meta": {
     "visibility": "preview"
   },
@@ -52,7 +87,7 @@
           }
         },
         {
-          "ref": "components/address",
+          "ref": "components/address-lookup",
           "overrides": {
             "label": "Address line 1",
             "fieldId": "address-line-1",
@@ -61,6 +96,11 @@
                 "error": "Enter your address",
                 "value": true
               }
+            },
+            "geocodeTargets": {
+              "line2FieldId": "address-line-2",
+              "parishFieldId": "home-parish",
+              "coordinatesFieldId": "address-coordinates"
             }
           }
         },
@@ -80,6 +120,21 @@
               "required": {
                 "error": "Select your parish",
                 "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "hidden": true
+            },
+            "label": "Home address coordinates",
+            "fieldId": "address-coordinates",
+            "validations": {
+              "required": {
+                "value": false
               }
             }
           }
@@ -379,5 +434,5 @@
     }
   ],
   "createdAt": "2026-08-19T19:09:04.486Z",
-  "updatedAt": "2026-08-23T15:07:08.345Z"
+  "updatedAt": "2026-08-24T00:00:00.000Z"
 }
