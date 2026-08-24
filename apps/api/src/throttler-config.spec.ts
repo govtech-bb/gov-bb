@@ -25,6 +25,27 @@ const hasThrottleMetadata = (target: object): boolean =>
   hasMetadataWithPrefix(target, "THROTTLER:LIMIT") ||
   hasMetadataWithPrefix(target, "THROTTLER:TTL");
 
+/**
+ * The numeric limit a route sets for one bucket, or undefined when it does not
+ * override that bucket at all (in which case the global value applies).
+ * @nestjs/throttler also accepts a resolver function; the file routes use plain
+ * numbers, so anything else is treated as "not a pinned number" and fails the
+ * assertion rather than silently passing.
+ */
+const throttleLimitFor = (
+  target: object,
+  bucket: string,
+): number | undefined => {
+  const value: unknown = Reflect.getMetadata(
+    `THROTTLER:LIMIT${bucket}`,
+    target,
+  );
+  return typeof value === "number" ? value : undefined;
+};
+
+/** The registered global `short` bucket — see ThrottlerModule.forRoot in app.module.ts. */
+const GLOBAL_SHORT_LIMIT = 5;
+
 describe("throttler configuration", () => {
   it("AppController (/health) skips throttling", () => {
     expect(hasSkipMetadata(AppController)).toBe(true);
@@ -64,6 +85,33 @@ describe("throttler configuration", () => {
         "THROTTLER:LIMITdefault",
       ),
     ).toBe(false);
+  });
+
+  // #2420: overriding only "medium" leaves the global "short" bucket
+  // (5 requests / 10s) in force, so it silently caps these routes below the
+  // rate the "medium" override declares. A step that asks for several files
+  // then trips a 429 mid-upload. Both file routes must raise "short" too, and
+  // it must sit at or above the burst "medium" implies (medium / 6, since the
+  // short window is a tenth of the medium one) or the tighter bucket goes on
+  // quietly overriding the looser one.
+  describe.each([
+    ["presignUpload", FilesController.prototype.presignUpload] as const,
+    ["confirmUpload", FilesController.prototype.confirmUpload] as const,
+  ])("FilesController.%s throttling (#2420)", (_name, handler) => {
+    it("raises the 'short' bucket above the global default", () => {
+      const short = throttleLimitFor(handler, "short");
+      expect(short).toBeDefined();
+      expect(short).toBeGreaterThan(GLOBAL_SHORT_LIMIT);
+    });
+
+    it("does not let 'short' contradict the 'medium' override", () => {
+      const short = throttleLimitFor(handler, "short");
+      const medium = throttleLimitFor(handler, "medium");
+      expect(medium).toBeDefined();
+      // medium is per 60s, short per 10s — a sixth of medium is the sustained
+      // rate the route already claims to allow.
+      expect(short).toBeGreaterThanOrEqual(Math.ceil((medium as number) / 6));
+    });
   });
 
   it("FilesController.confirmUpload overrides the registered 'medium' bucket, not 'default'", () => {
