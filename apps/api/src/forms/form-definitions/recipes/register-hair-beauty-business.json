@@ -277,7 +277,7 @@
             "fieldId": "email",
             "validations": {
               "required": {
-                "value": false
+                "value": true
               }
             }
           }
@@ -385,5 +385,5 @@
     }
   ],
   "createdAt": "2026-08-20T17:42:48.875Z",
-  "updatedAt": "2026-08-24T18:01:48.371Z"
+  "updatedAt": "2026-08-24T18:30:14.612Z"
 }
