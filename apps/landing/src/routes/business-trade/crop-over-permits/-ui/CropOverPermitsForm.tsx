@@ -405,12 +405,12 @@ export function CropOverPermitsForm() {
                 id={`feat-${id}`}
                 key={id}
                 label={label}
-                onChange={(event) =>
-                  setFeatures((prev) => ({
-                    ...prev,
-                    [id]: event.currentTarget.checked,
-                  }))
-                }
+                onChange={(event) => {
+                  // Read before the updater runs — React nulls currentTarget
+                  // once the handler returns.
+                  const { checked } = event.currentTarget
+                  setFeatures((prev) => ({ ...prev, [id]: checked }))
+                }}
               />
             ))}
           </CheckboxGroup>
