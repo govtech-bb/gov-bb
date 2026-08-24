@@ -83,16 +83,18 @@
  *    catchment is resolved from the applicant's address regardless of where the
  *    pool is. Worth knowing if a pool in another parish is ever meant to route
  *    to that parish's polyclinic.
- *  - Nothing form-specific is asserted on the confirmation screen, because
- *    nothing form-specific reaches it. This recipe's `submission-confirmation`
- *    carries its copy in `nextSteps`, and `hydrateStep`
- *    (apps/api/src/registry/resolution.ts) deliberately does NOT carry
- *    `nextSteps` into the served contract — it is dormant across every recipe.
- *    The screen renders the heading and the reference code, nothing else.
- *    Don't assert the "Environmental Health" copy or a /Polyclinic/ placeholder
- *    here; neither can ever render. Catchment routing still runs — it drives
- *    the MDA email — it just isn't surfaced to the applicant. To surface it,
- *    the copy has to move to `markdownContent`, which IS hydrated.
+ *  - The confirmation screen's "What happens next" copy is asserted, and that
+ *    is new. This recipe used to carry that copy in `nextSteps`, which
+ *    `hydrateStep` (apps/api/src/registry/resolution.ts) deliberately does NOT
+ *    carry into the served contract — so it rendered nothing and the assertion
+ *    that used to be here could never have passed. The copy now lives in
+ *    `markdownContent`, which IS hydrated, so it reaches the page. NOTE the
+ *    ordering: this assertion only passes once the converted recipe has
+ *    deployed to the target environment.
+ *    There is still no `{polyclinic}` placeholder in the copy, so the resolved
+ *    catchment name is not on the screen to assert. Catchment routing does run
+ *    — it drives the MDA email. `markdownContent` supports a `{polyclinic}`
+ *    token if that is ever wanted here.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
@@ -426,12 +428,18 @@ async function confirmAndSubmit(page: Page): Promise<void> {
     .locator(`input[id="${step}_declaration-confirmed-confirmed"]`)
     .check();
 
-  // Heading + reference code is the whole of this recipe's confirmation
-  // screen — see the header note on why there is no copy to assert.
   await submitAndConfirm(page, {
     heading: "Application submitted",
     referenceLabel: "Submission ID",
   });
+
+  // The recipe's "What happens next" copy, now carried in `markdownContent`
+  // rather than the never-hydrated `nextSteps`. Only passes once the converted
+  // recipe has deployed to the target environment — see the header note.
+  await expect(
+    page.getByRole("heading", { name: "What happens next" }),
+  ).toBeVisible();
+  await expect(page.getByText(/sent to Environmental Health/)).toBeVisible();
 }
 
 test.describe("Swimming & Wading Pool Permit — Live Smoke", () => {
