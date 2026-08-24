@@ -294,6 +294,27 @@ export function FormPicker({ forms, loadError, isDirty, catalog, openPRs, onLoad
               </button>
             ) : (
               <>
+                {/* #2411: a scratch row shadows the committed recipe on
+                    every builder read path, so a recipe hand-edited in the repo
+                    can't reach the builder while one exists. Deleting the row
+                    is the way back — resolveStoredRecipe then falls back to the
+                    committed file. Same action and handler as the draft branch
+                    above; labelled for what it removes here (the builder's copy,
+                    not the service) so it can't read as the #576 hazard, and
+                    shown only when there IS a row to remove. */}
+                {form.hasDraftRow && (
+                  <button
+                    type="button"
+                    style={{ marginLeft: 8 }}
+                    disabled={!!loadingId}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRequestDelete(form);
+                    }}
+                  >
+                    Delete working copy
+                  </button>
+                )}
                 <button
                   type="button"
                   className={styles.btnDanger}

@@ -73,4 +73,15 @@ export interface BuilderFormSummary {
    * picker renders it Enable-only and not openable (there is no recipe to load).
    */
   isOrphanOverride?: boolean;
+  /**
+   * The form has a `form_definitions` scratch row (#2411). Set by the builder's
+   * `listForms` merge, not by form_builder_api — the merge prefers a draft row
+   * over the published entry and then ORs `isPublished` back on, so by the time
+   * the picker sees a row it can no longer tell the two apart.
+   *
+   * The picker needs the distinction because a row on a *published* form
+   * shadows the committed recipe on every read path, so it offers a
+   * working-copy delete only where there is actually a row to remove.
+   */
+  hasDraftRow?: boolean;
 }

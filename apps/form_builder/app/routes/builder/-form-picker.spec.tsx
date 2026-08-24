@@ -68,6 +68,17 @@ const ORPHAN_OVERRIDE: BuilderFormSummary = {
   isOrphanOverride: true,
 };
 
+// Published, and shadowed by a builder scratch row (#2411) — the case where a
+// recipe hand-edited in the repo cannot reach the builder.
+const SHADOWED_PUBLISHED: BuilderFormSummary = {
+  id: "shadowed",
+  formId: "shadowed",
+  title: "Shadowed Service",
+  version: "1.1.0",
+  isPublished: true,
+  hasDraftRow: true,
+};
+
 function renderPicker(props: Partial<React.ComponentProps<typeof FormPicker>> = {}) {
   return render(
     <FormPicker
@@ -332,6 +343,55 @@ describe("FormPicker", () => {
       expect(getRecipe).not.toHaveBeenCalled();
 
       openSpy.mockRestore();
+    });
+  });
+
+  describe("Delete working copy (#2411)", () => {
+    it("offers it for a published form that a scratch row is shadowing, reusing the delete flow", async () => {
+      const onRequestDelete = vi.fn();
+      renderPicker({ forms: [SHADOWED_PUBLISHED], onRequestDelete });
+
+      const btn = screen.getByRole("button", { name: /delete working copy/i });
+      await userEvent.click(btn);
+
+      expect(onRequestDelete).toHaveBeenCalledWith(SHADOWED_PUBLISHED);
+    });
+
+    it("keeps Disable and Erase alongside it, and still offers no bare Delete", () => {
+      renderPicker({ forms: [SHADOWED_PUBLISHED] });
+
+      expect(screen.getByRole("button", { name: /^disable$/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^erase$/i })).toBeInTheDocument();
+      // #576: a bare "Delete" must never sit beside a live published service —
+      // the working-copy action is labelled for what it actually removes.
+      expect(screen.queryByRole("button", { name: /^delete$/i })).not.toBeInTheDocument();
+    });
+
+    it("offers nothing to delete for a published form with no scratch row", () => {
+      renderPicker({ forms: [LIVE_PUBLISHED] });
+
+      expect(
+        screen.queryByRole("button", { name: /delete working copy/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /^delete$/i })).not.toBeInTheDocument();
+    });
+
+    it("leaves a draft-only form on the plain Delete", () => {
+      renderPicker({ forms: [{ ...DRAFT, hasDraftRow: true }] });
+
+      expect(screen.getByRole("button", { name: /^delete$/i })).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /delete working copy/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("offers no working-copy delete for a disabled form — Enable wins the row", () => {
+      renderPicker({ forms: [{ ...DISABLED_PUBLISHED, hasDraftRow: true }] });
+
+      expect(
+        screen.queryByRole("button", { name: /delete working copy/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /enable/i })).toBeInTheDocument();
     });
   });
 });
