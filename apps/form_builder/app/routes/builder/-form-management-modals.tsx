@@ -46,6 +46,7 @@ export function FormManagementModals({
         <DeleteModal
           formId={deleteTarget.formId}
           title={deleteTarget.title}
+          isPublished={deleteTarget.isPublished}
           isDeleting={isDeleting}
           deleteError={deleteError}
           onConfirm={onConfirmDelete}

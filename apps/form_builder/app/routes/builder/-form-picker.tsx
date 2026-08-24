@@ -294,6 +294,37 @@ export function FormPicker({ forms, loadError, isDirty, catalog, openPRs, onLoad
               </button>
             ) : (
               <>
+                {/* #2411: a scratch row shadows the committed recipe on
+                    every builder read path, so a recipe hand-edited in the repo
+                    can't reach the builder while one exists. Deleting the row
+                    is the way back — resolveStoredRecipe then falls back to the
+                    committed file. Same action and handler as the draft branch
+                    above; labelled for what it removes here (the builder's copy,
+                    not the service) and left un-reddened, so it can't read as
+                    the #576 hazard. Shown only when there IS a row to remove.
+
+                    Safe by construction even though deleteFormHandler has no
+                    `published_at` guard (unlike deleteFormVersionHandler and
+                    rekeyFormHandler, whose guards are pre-#1196 leftovers from
+                    when a published row WAS the artifact): `isPublished` is
+                    sourced from apps/api's file-backed index, so a committed
+                    recipe provably exists whenever this renders, and nothing
+                    public reads the row — source() forces RECIPE_SOURCE=files
+                    outside development. Guarding here would instead block the
+                    oldest rows, which are the likeliest to be stale. */}
+                {form.hasDraftRow && (
+                  <button
+                    type="button"
+                    style={{ marginLeft: 8 }}
+                    disabled={!!loadingId}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRequestDelete(form);
+                    }}
+                  >
+                    Delete working copy
+                  </button>
+                )}
                 <button
                   type="button"
                   className={styles.btnDanger}
