@@ -6,7 +6,6 @@ import { CatchmentRoutingService } from "./catchment-routing.service";
 import {
   CATCHMENT_SUFFIX,
   PARISH_DEFAULTS,
-  PROGRAMME_CODE_OVERRIDES,
   SERVING_CATCHMENT,
 } from "./polyclinic-routing";
 
@@ -263,9 +262,7 @@ describe("programme codes are unchanged by composition (golden)", () => {
         "ENV_HEALTH_OFFICER_DAVID_THOMPSON",
       "Eunice Gibson Polyclinic": "ENV_HEALTH_OFFICER_EUNICE_GIBSON",
       "Maurice Byer Polyclinic": "ENV_HEALTH_OFFICER_MAURICE_BYER",
-      // Two Ls, unlike the catchment name and every licence code. Deliberate —
-      // see PROGRAMME_CODE_OVERRIDES.
-      "Randal Phillips Polyclinic": "ENV_HEALTH_OFFICER_RANDALL_PHILLIPS",
+      "Randal Phillips Polyclinic": "ENV_HEALTH_OFFICER_RANDAL_PHILLIPS",
       "Sir Winston Scott Polyclinic": "ENV_HEALTH_OFFICER_WINSTON_SCOTT",
       "St. Philip Polyclinic": "ENV_HEALTH_OFFICER_ST_PHILIP",
     },
@@ -378,22 +375,6 @@ describe("programme codes are unchanged by composition (golden)", () => {
       .map((f) => f.replace(/\.json$/, ""));
     expect(routed.sort()).toEqual(Object.keys(EXPECTED).sort());
   });
-
-  it("every PROGRAMME_CODE_OVERRIDES formId names a real catchment-routed recipe", () => {
-    // The service validates the catchment names at boot but knows nothing of
-    // recipes, so the formId half of the invariant is asserted here.
-    for (const formId of Object.keys(PROGRAMME_CODE_OVERRIDES)) {
-      const file = path.join(RECIPES_ROOT, `${formId}.json`);
-      expect(fs.existsSync(file), `no recipe file for "${formId}"`).toBe(true);
-      const raw = JSON.parse(fs.readFileSync(file, "utf8")) as {
-        catchmentRouting?: unknown;
-      };
-      expect(
-        raw.catchmentRouting,
-        `"${formId}" has overrides but no catchmentRouting`,
-      ).toBeDefined();
-    }
-  });
 });
 
 describe("CatchmentRoutingService boot validation (mocked data)", () => {
@@ -406,7 +387,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
     const { "Sir Winston Scott Polyclinic": _omit, ...rest } = CATCHMENT_SUFFIX;
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX: rest,
-      PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS,
       SERVING_CATCHMENT,
     }));
@@ -423,7 +403,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
         ...CATCHMENT_SUFFIX,
         "Not A Real Polyclinic": "BOGUS",
       },
-      PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS,
       SERVING_CATCHMENT,
     }));
@@ -443,26 +422,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
         ...CATCHMENT_SUFFIX,
         "Frederick Miller Polyclinic": "FREDERICK_MILLER",
       },
-      PROGRAMME_CODE_OVERRIDES,
-      PARISH_DEFAULTS,
-      SERVING_CATCHMENT,
-    }));
-    vi.resetModules();
-    const { CatchmentRoutingService: Svc } =
-      await import("./catchment-routing.service");
-    const svc = new Svc();
-    expect(() => svc.onModuleInit()).toThrow(/Frederick Miller Polyclinic/);
-  });
-
-  it("throws when an override names a catchment that is no longer served", async () => {
-    vi.doMock("./polyclinic-routing", () => ({
-      CATCHMENT_SUFFIX,
-      PROGRAMME_CODE_OVERRIDES: {
-        [OFFICER_FORM]: {
-          ...PROGRAMME_CODE_OVERRIDES[OFFICER_FORM],
-          "Frederick Miller Polyclinic": "ENV_HEALTH_OFFICER_FREDERICK_MILLER",
-        },
-      },
       PARISH_DEFAULTS,
       SERVING_CATCHMENT,
     }));
@@ -476,7 +435,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
   it("throws when a PARISH_DEFAULTS value names an unknown catchment", async () => {
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX,
-      PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS: {
         ...PARISH_DEFAULTS,
         "st-lucy": "Not A Real Polyclinic",
@@ -493,7 +451,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
   it("throws when SERVING_CATCHMENT redirects a catchment that is not in the GeoJSON", async () => {
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX,
-      PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS,
       SERVING_CATCHMENT: {
         ...SERVING_CATCHMENT,
@@ -510,7 +467,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
   it("throws when SERVING_CATCHMENT points at a catchment that is not in the GeoJSON", async () => {
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX,
-      PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS,
       SERVING_CATCHMENT: {
         "Frederick Miller Polyclinic": "Not A Real Polyclinic",
@@ -526,7 +482,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
   it("throws when a SERVING_CATCHMENT target is itself redirected (chain)", async () => {
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX,
-      PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS,
       SERVING_CATCHMENT: {
         "Frederick Miller Polyclinic": "St. Philip Polyclinic",
@@ -583,7 +538,6 @@ describe("CatchmentRoutingService polygon geometry (mocked GeoJSON)", () => {
   function mockRouting(catchment: string, suffix: string) {
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX: { [catchment]: suffix },
-      PROGRAMME_CODE_OVERRIDES: {},
       PARISH_DEFAULTS: {},
       SERVING_CATCHMENT: {},
     }));

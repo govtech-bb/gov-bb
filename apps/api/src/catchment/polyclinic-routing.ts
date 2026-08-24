@@ -53,30 +53,6 @@ export const CATCHMENT_SUFFIX: Record<string, string> = {
 };
 
 /**
- * CMS queues whose codes do **not** follow `<programmeCode>_<suffix>`, keyed by
- * formId then serving catchment. Every entry is a fact about a real CMS queue,
- * not a preference — the CMS names its queues, we record them.
- *
- * The one entry today: `request-an-environmental-health-officer`'s Randal
- * Phillips queue spells the place with two Ls —
- * `ENV_HEALTH_OFFICER_RANDALL_PHILLIPS` — unlike the GeoJSON catchment and
- * every licence code, which use one. Confirmed by the service owner
- * (2026-08-10): deliberate, not a typo. Do not "fix" it to one L, and do not
- * copy the two-L spelling into another form's codes.
- *
- * `CatchmentRoutingService.onModuleInit` throws at boot if an inner key is not
- * a serving catchment, so a stale override cannot linger after a CMS rename.
- */
-export const PROGRAMME_CODE_OVERRIDES: Record<
-  string,
-  Record<string, string>
-> = {
-  "request-an-environmental-health-officer": {
-    "Randal Phillips Polyclinic": "ENV_HEALTH_OFFICER_RANDALL_PHILLIPS",
-  },
-};
-
-/**
  * Parish select value (`components/parish`) → serving catchment, used only when
  * the submission has no usable coordinates. No parish maps to Branford Taitt or
  * Frederick Miller — those are reachable only by a coordinate hit.

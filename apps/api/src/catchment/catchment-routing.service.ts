@@ -4,7 +4,6 @@ import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import {
   CATCHMENT_SUFFIX,
   PARISH_DEFAULTS,
-  PROGRAMME_CODE_OVERRIDES,
   SERVING_CATCHMENT,
 } from "./polyclinic-routing";
 
@@ -107,23 +106,6 @@ export class CatchmentRoutingService implements OnModuleInit {
         );
       }
     }
-
-    // An override records an off-convention CMS queue. One naming a catchment
-    // that is no longer served would silently stop applying, so fail loud —
-    // a stale override must be deleted, not left to rot. (That its formId names
-    // a real catchment-routed recipe is asserted in the spec, which can read
-    // the recipes directory; this service deliberately knows nothing of them.)
-    for (const [formId, byCatchment] of Object.entries(
-      PROGRAMME_CODE_OVERRIDES,
-    )) {
-      for (const name of Object.keys(byCatchment)) {
-        if (!servingNames.has(name)) {
-          throw new Error(
-            `[catchment] PROGRAMME_CODE_OVERRIDES["${formId}"] has a code for unknown catchment "${name}"`,
-          );
-        }
-      }
-    }
   }
 
   resolve(input: {
@@ -142,7 +124,6 @@ export class CatchmentRoutingService implements OnModuleInit {
     const entry = hit ?? this.parishHit(input.parish);
     if (!entry) return null;
     const programmeCode = this.programmeCodeFor(
-      input.formId,
       input.programmeCode,
       entry.servedBy,
     );
@@ -171,19 +152,15 @@ export class CatchmentRoutingService implements OnModuleInit {
   }
 
   /**
-   * The CMS programme code for one form in one serving catchment: the override
-   * if the CMS issued an off-convention code, otherwise the recipe's own
-   * `mapping.programmeCode` plus the catchment suffix. Composing is what makes
-   * a new catchment-routed form cost nothing in `polyclinic-routing.ts` — the
-   * recipe already carries its programme code, and the suffixes are shared.
+   * The CMS programme code for one form in one serving catchment: the recipe's
+   * own `mapping.programmeCode` plus the catchment suffix. Composing is what
+   * makes a new catchment-routed form cost nothing in `polyclinic-routing.ts` —
+   * the recipe already carries its programme code, and the suffixes are shared.
    */
   private programmeCodeFor(
-    formId: string,
     programmeCode: string | undefined,
     servingCatchment: string,
   ): string | null {
-    const override = PROGRAMME_CODE_OVERRIDES[formId]?.[servingCatchment];
-    if (override) return override;
     const suffix = CATCHMENT_SUFFIX[servingCatchment];
     if (!programmeCode || !suffix) return null;
     return `${programmeCode}_${suffix}`;
