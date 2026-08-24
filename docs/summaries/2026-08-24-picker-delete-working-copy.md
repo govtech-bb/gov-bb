@@ -88,6 +88,18 @@ resolves through `getPublishedRecipe`, which reads the GitHub Contents API on th
 default branch (`main`) as of now. The reset endpoint would have read the recipe
 baked into the last-deployed API image.
 
+**No `published_at` guard on the delete, deliberately.** Code review flagged that
+`deleteFormHandler` (`apps/form_builder_api/src/routes/forms.ts:915`) has no
+`published_at` check, while `deleteFormVersionHandler` and `rekeyFormHandler` in
+the same file both refuse a flagged row — and that legacy pre-#1196 rows may
+still carry it. We did not add one. The button only renders when `isPublished`,
+which is sourced from `apps/api`'s file-backed index, so a committed recipe
+provably exists whenever it shows; nothing public reads the row (only `seed.ts`
+even reads `publishedAt` in `apps/api`); and a guard would block precisely the
+oldest rows — the likeliest to be stale and the hardest to clear any other way.
+The siblings' guards date from when a published row *was* the artifact. Recorded
+in a comment at the call site.
+
 ## Open questions
 
 **The automation that should prevent this has never worked.**
