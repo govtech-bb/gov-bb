@@ -293,7 +293,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "hairdresser-licence-application",
-    title: "Apply for a hairdresser licence",
+    title: "Apply for a hairdresser or beautician licence",
     category: "business-trade",
     formId: "hairdresser-licence-application",
     visibility: "preview",
