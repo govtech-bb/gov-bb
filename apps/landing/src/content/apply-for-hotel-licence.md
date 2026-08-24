@@ -9,9 +9,8 @@ publish_date: '2026-08-18'
 visibility: preview
 form_id: hotel-licence-application
 ---
-## About this service
 
-Use this service to apply for a new Hotel Licence or renew an existing licence.
+Use this service to apply for a new hotel licence or renew an existing licence.
 
 ## What you need before you start
 
