@@ -1,13 +1,13 @@
 {
   "formId": "environmental-health-offensive-trade-licence",
-  "title": "Apply for a licence offensive trade with Environmental Health",
+  "title": "Apply for a offensive trade licence with Environmental Health",
   "description": "Apply for or renew a licence to carry out work that may produce fumes or strong smells.",
   "processors": [
     {
       "type": "email",
       "config": {
-        "recipientField": "your-details.email",
-        "subject": "Application received: Environmental Health licence for work that may cause fumes or strong smells"
+        "subject": "Application received: Environmental Health licence for work that may cause fumes or strong smells",
+        "recipientField": "your-details.email"
       }
     }
   ],
@@ -22,8 +22,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "application-type",
             "label": "Are you applying for a new licence or renewing one?",
+            "fieldId": "application-type",
             "options": [
               {
                 "label": "Applying for a new licence",
@@ -36,8 +36,8 @@
             ],
             "validations": {
               "required": {
-                "value": true,
-                "error": "Select whether you are applying for a new licence or renewing one."
+                "error": "Select whether you are applying for a new licence or renewing one.",
+                "value": true
               }
             }
           }
@@ -54,8 +54,8 @@
           "overrides": {
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter your first name."
+                "error": "Enter your first name.",
+                "value": true
               }
             }
           }
@@ -75,8 +75,8 @@
           "overrides": {
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter your last name."
+                "error": "Enter your last name.",
+                "value": true
               }
             }
           }
@@ -84,12 +84,12 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "address-line-1",
             "label": "Street address line 1",
+            "fieldId": "address-line-1",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter street address line 1."
+                "error": "Enter street address line 1.",
+                "value": true
               }
             }
           }
@@ -97,8 +97,8 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "address-line-2",
             "label": "Street address line 2",
+            "fieldId": "address-line-2",
             "validations": {
               "required": {
                 "value": false
@@ -115,8 +115,8 @@
             "hint": "We will send confirmation of your application to this email address.",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter your email address."
+                "error": "Enter your email address.",
+                "value": true
               }
             }
           }
@@ -124,13 +124,13 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "fieldId": "telephone-number",
-            "label": "Telephone number",
             "hint": "Enter at least one telephone number.",
+            "label": "Telephone number",
+            "fieldId": "telephone-number",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter at least one telephone number."
+                "error": "Enter at least one telephone number.",
+                "value": true
               }
             }
           }
@@ -145,8 +145,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "address-changed",
             "label": "Has the address where you do this work changed since you got your current licence?",
+            "fieldId": "address-changed",
             "options": [
               {
                 "label": "Yes",
@@ -159,8 +159,8 @@
             ],
             "validations": {
               "required": {
-                "value": true,
-                "error": "Select whether the address where you do the work has changed."
+                "error": "Select whether the address where you do the work has changed.",
+                "value": true
               }
             }
           }
@@ -168,8 +168,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "building-changes",
             "label": "Have you made any changes to the building since you got your last licence, or do you plan to?",
+            "fieldId": "building-changes",
             "options": [
               {
                 "label": "Yes",
@@ -180,50 +180,50 @@
                 "value": "no"
               }
             ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select whether you have made or plan to make changes to the building."
-              }
-            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "address-changed",
+                "value": "no",
                 "operator": "equal",
-                "value": "no"
+                "targetFieldId": "address-changed"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select whether you have made or plan to make changes to the building.",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "State the changes you have made",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "yes",
+                "operator": "equal",
+                "targetStepId": "renewal-details",
+                "targetFieldId": "building-changes"
+              }
+            ],
             "validations": {
               "required": {
                 "value": false
               }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetStepId": "renewal-details",
-                "targetFieldId": "building-changes",
-                "operator": "equal",
-                "value": "yes"
-              }
-            ]
+            }
           }
         }
       ],
       "behaviours": [
         {
           "type": "stepConditionalOn",
-          "targetStepId": "application-type",
-          "targetFieldId": "application-type",
+          "value": "renewal",
           "operator": "equal",
-          "value": "renewal"
+          "targetStepId": "application-type",
+          "targetFieldId": "application-type"
         }
       ]
     },
@@ -234,8 +234,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "work-address-same",
             "label": "Is the address where you will do this work the same as your address?",
+            "fieldId": "work-address-same",
             "options": [
               {
                 "label": "Yes",
@@ -248,8 +248,8 @@
             ],
             "validations": {
               "required": {
-                "value": true,
-                "error": "Select whether the work address is the same as your address."
+                "error": "Select whether the work address is the same as your address.",
+                "value": true
               }
             }
           }
@@ -257,63 +257,63 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "work-address-line-1",
             "label": "Street address line 1",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Enter street address line 1."
-              }
-            },
+            "fieldId": "work-address-line-1",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "work-address-same",
+                "value": "no",
                 "operator": "equal",
-                "value": "no"
+                "targetFieldId": "work-address-same"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter street address line 1.",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "work-address-line-2",
             "label": "Street address line 2",
+            "fieldId": "work-address-line-2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetFieldId": "work-address-same"
+              }
+            ],
             "validations": {
               "required": {
                 "value": false
               }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "work-address-same",
-                "operator": "equal",
-                "value": "no"
-              }
-            ]
+            }
           }
         },
         {
           "ref": "components/parish",
           "overrides": {
-            "fieldId": "work-address-parish",
             "label": "Parish",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select the parish where you will do this work."
-              }
-            },
+            "fieldId": "work-address-parish",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "work-address-same",
+                "value": "no",
                 "operator": "equal",
-                "value": "no"
+                "targetFieldId": "work-address-same"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select the parish where you will do this work.",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -326,9 +326,9 @@
         {
           "ref": "components/generic-checkbox",
           "overrides": {
-            "fieldId": "business-activities",
-            "label": "Business activities",
             "hint": "Select all that apply. We show the legal name in brackets when needed.",
+            "label": "Business activities",
+            "fieldId": "business-activities",
             "options": [
               {
                 "label": "Heat animal blood or organs (blood or offal boiling)",
@@ -381,8 +381,8 @@
             ],
             "validations": {
               "required": {
-                "value": true,
-                "error": "Select at least one business activity."
+                "error": "Select at least one business activity.",
+                "value": true
               }
             }
           }
@@ -397,31 +397,31 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "fieldId": "building-plans",
-            "label": "Plans and details for the building",
+            "ui": {
+              "width": "long"
+            },
             "hint": "These should show the rooms, work areas and how you will use them. You can upload more than one file.",
+            "label": "Plans and details for the building",
+            "fieldId": "building-plans",
             "validations": {
+              "maxSize": {
+                "error": "Total file size must be no larger than 20 MB",
+                "value": 20971520
+              },
               "fileTypes": {
+                "error": "File must be a PDF, image or document",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
                   "image/png",
                   ".doc",
                   ".docx"
-                ],
-                "error": "File must be a PDF, image or document"
+                ]
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "Each file must be no larger than 5 MB"
-              },
-              "maxSize": {
-                "value": 20971520,
-                "error": "Total file size must be no larger than 20 MB"
+                "error": "Each file must be no larger than 5 MB",
+                "value": 5242880
               }
-            },
-            "ui": {
-              "width": "long"
             }
           }
         }
@@ -429,17 +429,17 @@
       "behaviours": [
         {
           "type": "stepConditionalOn",
-          "targetStepId": "application-type",
-          "targetFieldId": "application-type",
+          "value": "new",
           "operator": "equal",
-          "value": "new"
+          "targetStepId": "application-type",
+          "targetFieldId": "application-type"
         },
         {
           "type": "stepConditionalOn",
-          "targetStepId": "renewal-details",
-          "targetFieldId": "building-changes",
+          "value": "yes",
           "operator": "equal",
-          "value": "yes"
+          "targetStepId": "renewal-details",
+          "targetFieldId": "building-changes"
         }
       ]
     },
@@ -457,8 +457,8 @@
         {
           "ref": "components/confirmation",
           "overrides": {
-            "fieldId": "declaration-confirmed",
             "label": "Declaration",
+            "fieldId": "declaration-confirmed",
             "options": [
               {
                 "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
@@ -467,8 +467,8 @@
             ],
             "validations": {
               "required": {
-                "value": true,
-                "error": "Confirm that the information you have provided is true and correct to the best of your knowledge."
+                "error": "Confirm that the information you have provided is true and correct to the best of your knowledge.",
+                "value": true
               }
             }
           }
@@ -490,5 +490,5 @@
     }
   ],
   "createdAt": "2026-08-24T19:33:15.101Z",
-  "updatedAt": "2026-08-24T19:49:55.158Z"
+  "updatedAt": "2026-08-24T23:35:40.164Z"
 }
