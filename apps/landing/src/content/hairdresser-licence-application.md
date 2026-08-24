@@ -36,7 +36,7 @@ Your licence expires on the 31st of December of the current year and your renewa
 
 To apply, you will need to provide:
 
--   a passport-size photograph
+-   a recent passport-size photograph
 -   a medical certificate of fitness from a registered medical practitioner
 
 Note: Your passport-size photographs are valid for 5 years.<br />
