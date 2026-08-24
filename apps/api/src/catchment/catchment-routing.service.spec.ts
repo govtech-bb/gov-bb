@@ -289,6 +289,36 @@ describe("programme codes are unchanged by composition (golden)", () => {
       "Sir Winston Scott Polyclinic": "HOTEL_LICENCE_WINSTON_SCOTT",
       "St. Philip Polyclinic": "HOTEL_LICENCE_ST_PHILIP",
     },
+    "register-hair-beauty-business": {
+      "Branford Taitt Polyclinic": "HAIR_SALON_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "HAIR_SALON_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "HAIR_SALON_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "HAIR_SALON_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "HAIR_SALON_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "HAIR_SALON_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "HAIR_SALON_ST_PHILIP",
+    },
+    "hairdresser-licence-application": {
+      "Branford Taitt Polyclinic": "HAIRDRESSER_LICENCE_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "HAIRDRESSER_LICENCE_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "HAIRDRESSER_LICENCE_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "HAIRDRESSER_LICENCE_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "HAIRDRESSER_LICENCE_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "HAIRDRESSER_LICENCE_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "HAIRDRESSER_LICENCE_ST_PHILIP",
+    },
+    "swimming-wading-pool-permit": {
+      "Branford Taitt Polyclinic": "SWIMMING_POOL_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "SWIMMING_POOL_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "SWIMMING_POOL_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "SWIMMING_POOL_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "SWIMMING_POOL_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "SWIMMING_POOL_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "SWIMMING_POOL_ST_PHILIP",
+    },
   };
 
   /** The recipe's own webhook `mapping.programmeCode`, read off the real file. */

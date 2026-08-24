@@ -23,6 +23,10 @@ const resolver: Resolver = async (ref) => {
 interface MappedRecipe {
   formId: string;
   applicantPaths: string[];
+  /** `catchmentRouting`'s two paths, when the recipe routes by catchment. */
+  routingPaths: string[];
+  /** `"stepId.fieldId"` of every coordinate field an address lookup writes. */
+  geocodedCoordinateFields: string[];
   fieldIdsByStep: Map<string, Set<string>>;
 }
 
@@ -43,10 +47,24 @@ async function mappedRecipes(): Promise<MappedRecipe[]> {
     if (!mapping) continue;
 
     const { name, email, phone } = mapping.applicant;
+    const routing = recipe.catchmentRouting;
     const hydrated = await hydrateForm(recipe, resolver);
     mapped.push({
       formId: recipe.formId,
       applicantPaths: [...(Array.isArray(name) ? name : [name]), email, phone],
+      routingPaths: routing
+        ? [routing.coordinatesField, routing.parishField]
+        : [],
+      geocodedCoordinateFields: hydrated.steps.flatMap((step) =>
+        step.elements
+          .map(
+            (e) =>
+              (e as { geocodeTargets?: { coordinatesFieldId?: string } })
+                .geocodeTargets?.coordinatesFieldId,
+          )
+          .filter((id): id is string => Boolean(id))
+          .map((id) => `${step.stepId}.${id}`),
+      ),
       fieldIdsByStep: new Map(
         hydrated.steps.map((step) => [
           step.stepId,
@@ -62,21 +80,62 @@ async function mappedRecipes(): Promise<MappedRecipe[]> {
   return mapped;
 }
 
+function unresolvedIn(
+  recipes: MappedRecipe[],
+  pick: (recipe: MappedRecipe) => string[],
+): string[] {
+  return recipes.flatMap((recipe) =>
+    pick(recipe)
+      .filter((p) => {
+        const dot = p.indexOf(".");
+        const fieldIds = recipe.fieldIdsByStep.get(p.slice(0, dot));
+        return !fieldIds?.has(p.slice(dot + 1));
+      })
+      .map((p) => `${recipe.formId}: ${p}`),
+  );
+}
+
 it("resolves every mapped webhook's applicant paths to real hydrated fields", async () => {
   const recipes = await mappedRecipes();
   // A rename that drops the last mapped webhook would otherwise pass vacuously.
   expect(recipes.length).toBeGreaterThan(0);
 
-  const unresolved = recipes.flatMap(
-    ({ formId, applicantPaths, fieldIdsByStep }) =>
-      applicantPaths
-        .filter((p) => {
-          const dot = p.indexOf(".");
-          const fieldIds = fieldIdsByStep.get(p.slice(0, dot));
-          return !fieldIds?.has(p.slice(dot + 1));
-        })
-        .map((p) => `${formId}: ${p}`),
+  expect(unresolvedIn(recipes, (r) => r.applicantPaths)).toEqual([]);
+});
+
+// The same silent failure one step further along: a `catchmentRouting` path
+// naming no real field resolves no polyclinic, so `catchment.mdaEmail` finds no
+// recipient and the composed per-polyclinic programme code falls back to the
+// bare one — a queue the CMS does not have. Both are runtime-only, and a bare
+// registry ref makes it easy to get wrong: `components/parish` with no override
+// hydrates to fieldId "parish", not the name the step's siblings suggest.
+it("resolves every catchmentRouting path to a real hydrated field", async () => {
+  const routed = (await mappedRecipes()).filter(
+    (r) => r.routingPaths.length > 0,
+  );
+  expect(routed.length).toBeGreaterThan(0);
+
+  expect(unresolvedIn(routed, (r) => r.routingPaths)).toEqual([]);
+});
+
+// The coordinate only ever gets written by an address lookup's `geocodeTargets`,
+// so the two halves have to name the same field. They are declared in different
+// places — a step element and a top-level block — and a mismatch is invisible:
+// the routing reads a field nothing populates, falls back to parish, and the
+// coordinate precision the block exists for is silently gone. Same coupling
+// `apply-for-food-business-licence.spec.ts` guards for its one form.
+it("has an address lookup writing each catchmentRouting coordinate field", async () => {
+  const routed = (await mappedRecipes()).filter(
+    (r) => r.routingPaths.length > 0,
   );
 
-  expect(unresolved).toEqual([]);
+  const orphaned = routed
+    .filter((r) => !r.geocodedCoordinateFields.includes(r.routingPaths[0]))
+    .map(
+      (r) =>
+        `${r.formId}: ${r.routingPaths[0]} is written by no address lookup ` +
+        `(lookups write: ${r.geocodedCoordinateFields.join(", ") || "nothing"})`,
+    );
+
+  expect(orphaned).toEqual([]);
 });

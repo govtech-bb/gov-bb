@@ -11,12 +11,19 @@
       }
     },
     {
+      "type": "email",
+      "config": {
+        "subject": "A new hair or beauty business registration application has been received",
+        "recipientField": "catchment.mdaEmail"
+      }
+    },
+    {
       "type": "webhook",
       "config": {
         "mapping": {
           "mdaCode": "MOH",
           "programmeShortCode": "HBB",
-          "programmeCode": "HAIR_BEAUTY_BUSINESS_REGISTRATION",
+          "programmeCode": "HAIR_SALON",
           "applicant": {
             "name": ["owner-details.owner-name"],
             "email": "contact-details.email",
@@ -32,6 +39,10 @@
       }
     }
   ],
+  "catchmentRouting": {
+    "coordinatesField": "business-details.business-address-coordinates",
+    "parishField": "business-details.business-address-parish"
+  },
   "meta": {
     "visibility": "preview"
   },
@@ -90,10 +101,15 @@
           }
         },
         {
-          "ref": "components/address",
+          "ref": "components/address-lookup",
           "overrides": {
             "label": "Address line 1",
-            "fieldId": "business-address-line-1"
+            "fieldId": "business-address-line-1",
+            "geocodeTargets": {
+              "line2FieldId": "business-address-line-2",
+              "parishFieldId": "business-address-parish",
+              "coordinatesFieldId": "business-address-coordinates"
+            }
           }
         },
         {
@@ -112,6 +128,21 @@
           "ref": "components/parish",
           "overrides": {
             "fieldId": "business-address-parish"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "hidden": true
+            },
+            "label": "Business address coordinates",
+            "fieldId": "business-address-coordinates",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {

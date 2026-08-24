@@ -11,6 +11,13 @@
       }
     },
     {
+      "type": "email",
+      "config": {
+        "subject": "A new hairdresser licence application has been received",
+        "recipientField": "catchment.mdaEmail"
+      }
+    },
+    {
       "type": "webhook",
       "config": {
         "mapping": {
@@ -35,6 +42,10 @@
       }
     }
   ],
+  "catchmentRouting": {
+    "coordinatesField": "personal-details.address-coordinates",
+    "parishField": "personal-details.home-parish"
+  },
   "meta": {
     "visibility": "preview"
   },
@@ -76,7 +87,7 @@
           }
         },
         {
-          "ref": "components/address",
+          "ref": "components/address-lookup",
           "overrides": {
             "label": "Address line 1",
             "fieldId": "address-line-1",
@@ -85,6 +96,11 @@
                 "error": "Enter your address",
                 "value": true
               }
+            },
+            "geocodeTargets": {
+              "line2FieldId": "address-line-2",
+              "parishFieldId": "home-parish",
+              "coordinatesFieldId": "address-coordinates"
             }
           }
         },
@@ -104,6 +120,21 @@
               "required": {
                 "error": "Select your parish",
                 "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "hidden": true
+            },
+            "label": "Home address coordinates",
+            "fieldId": "address-coordinates",
+            "validations": {
+              "required": {
+                "value": false
               }
             }
           }
