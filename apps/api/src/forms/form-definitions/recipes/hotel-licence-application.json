@@ -1,6 +1,6 @@
 {
   "formId": "hotel-licence-application",
-  "title": "Hotel Licence Application",
+  "title": "Apply for a hotel licence with Environmental Health",
   "description": "Apply for a new Hotel Licence or renew an existing one with Environmental Health",
   "processors": [
     {
@@ -13,17 +13,19 @@
     {
       "type": "email",
       "config": {
-        "subject": "A new Hotel Licence application has been received",
-        "recipientField": "catchment.mdaEmail"
+        "recipientField": "catchment.mdaEmail",
+        "subject": "A new Hotel Licence application has been received"
       }
     },
     {
       "type": "webhook",
       "config": {
+        "method": "POST",
+        "signatureHeader": "X-Webhook-Signature",
         "mapping": {
+          "programmeCode": "HOTEL_LICENCE",
           "mdaCode": "MOH",
           "programmeShortCode": "HTL",
-          "programmeCode": "HOTEL_LICENCE",
           "applicant": {
             "name": [
               "your-details.first-name",
@@ -38,12 +40,17 @@
             "submission-confirmation"
           ],
           "groupByStep": true
-        }
+        },
+        "timeoutMs": 10000
       }
     }
   ],
   "meta": {
     "visibility": "preview"
+  },
+  "catchmentRouting": {
+    "coordinatesField": "hotel-details.hotel-address-coordinates",
+    "parishField": "hotel-details.hotel-parish"
   },
   "steps": [
     {
@@ -55,6 +62,12 @@
           "overrides": {
             "fieldId": "application-type",
             "label": "Are you applying for a new Hotel Licence or renewing one?",
+            "validations": {
+              "required": {
+                "error": "Select whether you are applying for a new licence or renewing one.",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "New licence",
@@ -64,13 +77,7 @@
                 "label": "Renew a licence",
                 "value": "renew-licence"
               }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select whether you are applying for a new licence or renewing one."
-              }
-            }
+            ]
           }
         },
         {
@@ -80,8 +87,8 @@
             "label": "Hotel Licence number",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the Hotel Licence number."
+                "error": "Enter the Hotel Licence number.",
+                "value": true
               }
             },
             "behaviours": [
@@ -107,6 +114,12 @@
             "fieldId": "is-operator",
             "label": "Are you the operator of the hotel?",
             "hint": "The operator is the person or company that runs the hotel from day to day.",
+            "validations": {
+              "required": {
+                "error": "Select whether you are the operator of the hotel.",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Yes",
@@ -116,13 +129,7 @@
                 "label": "No",
                 "value": "no"
               }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select whether you are the operator of the hotel."
-              }
-            }
+            ]
           }
         },
         {
@@ -133,8 +140,8 @@
             "hint": "This can be a person or a company.",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the operator's name."
+                "error": "Enter the operator's name.",
+                "value": true
               }
             },
             "behaviours": [
@@ -155,12 +162,12 @@
             "hint": "You can enter a local or international number.",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter a contact number for the operator."
+                "error": "Enter a contact number for the operator.",
+                "value": true
               },
               "phone": {
-                "value": true,
-                "error": "Enter a contact number for the operator."
+                "error": "Enter a contact number for the operator.",
+                "value": true
               }
             },
             "behaviours": [
@@ -180,12 +187,12 @@
             "label": "Operator's email address",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter an email address for the operator."
+                "error": "Enter an email address for the operator.",
+                "value": true
               },
               "email": {
-                "value": true,
-                "error": "Enter a valid email address."
+                "error": "Enter a valid email address.",
+                "value": true
               }
             },
             "behaviours": [
@@ -212,8 +219,8 @@
             "label": "First name",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter your first name."
+                "error": "Enter your first name.",
+                "value": true
               }
             }
           }
@@ -233,8 +240,8 @@
             "label": "Last name",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter your last name."
+                "error": "Enter your last name.",
+                "value": true
               }
             }
           }
@@ -246,8 +253,8 @@
             "label": "Address line 1",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter your address."
+                "error": "Enter your address.",
+                "value": true
               }
             }
           }
@@ -271,8 +278,8 @@
             "label": "Parish",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter your address."
+                "error": "Enter your address.",
+                "value": true
               }
             }
           }
@@ -285,12 +292,12 @@
             "hint": "You can enter a local or international number.",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter a contact number."
+                "error": "Enter a contact number.",
+                "value": true
               },
               "phone": {
-                "value": true,
-                "error": "Enter a contact number."
+                "error": "Enter a contact number.",
+                "value": true
               }
             }
           }
@@ -302,8 +309,8 @@
             "label": "Email address",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter an email address."
+                "error": "Enter an email address.",
+                "value": true
               }
             }
           }
@@ -313,6 +320,12 @@
           "overrides": {
             "fieldId": "your-role",
             "label": "What is your role with the hotel?",
+            "validations": {
+              "required": {
+                "error": "Select your role with the hotel.",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Owner",
@@ -334,13 +347,7 @@
                 "label": "Another role",
                 "value": "another-role"
               }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Select your role with the hotel."
-              }
-            }
+            ]
           }
         },
         {
@@ -350,8 +357,8 @@
             "label": "Describe your role",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter your role."
+                "error": "Enter your role.",
+                "value": true
               }
             },
             "behaviours": [
@@ -378,8 +385,8 @@
             "label": "Hotel name",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the hotel name."
+                "error": "Enter the hotel name.",
+                "value": true
               }
             }
           }
@@ -391,8 +398,8 @@
             "label": "Address line 1",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the hotel address."
+                "error": "Enter the hotel address.",
+                "value": true
               }
             },
             "geocodeTargets": {
@@ -416,8 +423,8 @@
             "label": "Parish",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the hotel address."
+                "error": "Enter the hotel address.",
+                "value": true
               }
             }
           }
@@ -427,13 +434,13 @@
           "overrides": {
             "fieldId": "hotel-address-coordinates",
             "label": "Hotel location coordinates",
-            "ui": {
-              "hidden": true
-            },
             "validations": {
               "required": {
                 "value": false
               }
+            },
+            "ui": {
+              "hidden": true
             }
           }
         },
@@ -444,12 +451,12 @@
             "label": "What is the maximum number of guests who can stay at the hotel at one time?",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the maximum number of guests."
+                "error": "Enter the maximum number of guests.",
+                "value": true
               },
               "min": {
-                "value": 1,
-                "error": "Enter the maximum number of guests."
+                "error": "Enter the maximum number of guests.",
+                "value": 1
               }
             }
           }
@@ -468,14 +475,14 @@
             "fieldId": "floor-name",
             "label": "Floor",
             "hint": "For example, ground, 1 or 2.",
-            "ui": {
-              "width": "short"
-            },
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter which floor this is."
+                "error": "Enter which floor this is.",
+                "value": true
               }
+            },
+            "ui": {
+              "width": "short"
             }
           }
         },
@@ -486,12 +493,12 @@
             "label": "Number of bedrooms on this floor",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of bedrooms on this floor."
+                "error": "Enter the number of bedrooms on this floor.",
+                "value": true
               },
               "min": {
-                "value": 0,
-                "error": "Enter 0 or more."
+                "error": "Enter 0 or more.",
+                "value": 0
               }
             }
           }
@@ -503,12 +510,12 @@
             "label": "Number of occupants on this floor",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of occupants on this floor."
+                "error": "Enter the number of occupants on this floor.",
+                "value": true
               },
               "min": {
-                "value": 0,
-                "error": "Enter 0 or more."
+                "error": "Enter 0 or more.",
+                "value": 0
               }
             }
           }
@@ -520,12 +527,12 @@
             "label": "Number of water closets on this floor",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of water closets on this floor."
+                "error": "Enter the number of water closets on this floor.",
+                "value": true
               },
               "min": {
-                "value": 0,
-                "error": "Enter 0 or more."
+                "error": "Enter 0 or more.",
+                "value": 0
               }
             }
           }
@@ -537,12 +544,12 @@
             "label": "Number of rooms with water closets on this floor",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of rooms with water closets on this floor."
+                "error": "Enter the number of rooms with water closets on this floor.",
+                "value": true
               },
               "min": {
-                "value": 0,
-                "error": "Enter 0 or more."
+                "error": "Enter 0 or more.",
+                "value": 0
               }
             }
           }
@@ -554,12 +561,12 @@
             "label": "Number of baths on this floor",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of baths on this floor."
+                "error": "Enter the number of baths on this floor.",
+                "value": true
               },
               "min": {
-                "value": 0,
-                "error": "Enter 0 or more."
+                "error": "Enter 0 or more.",
+                "value": 0
               }
             }
           }
@@ -571,12 +578,12 @@
             "label": "Number of rooms with baths on this floor",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of rooms with baths on this floor."
+                "error": "Enter the number of rooms with baths on this floor.",
+                "value": true
               },
               "min": {
-                "value": 0,
-                "error": "Enter 0 or more."
+                "error": "Enter 0 or more.",
+                "value": 0
               }
             }
           }
@@ -588,12 +595,12 @@
             "label": "Number of basins on this floor",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of basins on this floor."
+                "error": "Enter the number of basins on this floor.",
+                "value": true
               },
               "min": {
-                "value": 0,
-                "error": "Enter 0 or more."
+                "error": "Enter 0 or more.",
+                "value": 0
               }
             }
           }
@@ -605,12 +612,12 @@
             "label": "Number of rooms with basins on this floor",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of rooms with basins on this floor."
+                "error": "Enter the number of rooms with basins on this floor.",
+                "value": true
               },
               "min": {
-                "value": 0,
-                "error": "Enter 0 or more."
+                "error": "Enter 0 or more.",
+                "value": 0
               }
             }
           }
@@ -637,12 +644,12 @@
             "label": "Number of male staff",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of male staff."
+                "error": "Enter the number of male staff.",
+                "value": true
               },
               "min": {
-                "value": 0,
-                "error": "Enter 0 or more."
+                "error": "Enter 0 or more.",
+                "value": 0
               }
             }
           }
@@ -654,12 +661,12 @@
             "label": "Number of female staff",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of female staff."
+                "error": "Enter the number of female staff.",
+                "value": true
               },
               "min": {
-                "value": 0,
-                "error": "Enter 0 or more."
+                "error": "Enter 0 or more.",
+                "value": 0
               }
             }
           }
@@ -671,12 +678,12 @@
             "label": "Number of changing rooms for staff",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of changing rooms for staff."
+                "error": "Enter the number of changing rooms for staff.",
+                "value": true
               },
               "min": {
-                "value": 0,
-                "error": "Enter 0 or more."
+                "error": "Enter 0 or more.",
+                "value": 0
               }
             }
           }
@@ -688,12 +695,12 @@
             "label": "Number of lockers for staff",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of lockers for staff."
+                "error": "Enter the number of lockers for staff.",
+                "value": true
               },
               "min": {
-                "value": 0,
-                "error": "Enter 0 or more."
+                "error": "Enter 0 or more.",
+                "value": 0
               }
             }
           }
@@ -705,12 +712,12 @@
             "label": "Number of hand wash basins for staff",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of hand wash basins for staff."
+                "error": "Enter the number of hand wash basins for staff.",
+                "value": true
               },
               "min": {
-                "value": 0,
-                "error": "Enter 0 or more."
+                "error": "Enter 0 or more.",
+                "value": 0
               }
             }
           }
@@ -722,12 +729,12 @@
             "label": "Number of water closets for staff",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the number of water closets for staff."
+                "error": "Enter the number of water closets for staff.",
+                "value": true
               },
               "min": {
-                "value": 0,
-                "error": "Enter 0 or more."
+                "error": "Enter 0 or more.",
+                "value": 0
               }
             }
           }
@@ -748,20 +755,20 @@
             "hint": "A plan of the hotel site showing the buildings, the water supply, waste disposal and staff facilities. PDF, JPG or PNG.",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Upload a site plan."
+                "error": "Upload a site plan.",
+                "value": true
               },
               "fileTypes": {
+                "error": "Upload a PDF, JPG or PNG.",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
                   "image/png"
-                ],
-                "error": "Upload a PDF, JPG or PNG."
+                ]
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "Each file must be 5 MB or smaller."
+                "error": "Each file must be 5 MB or smaller.",
+                "value": 5242880
               }
             }
           }
@@ -770,8 +777,8 @@
       "behaviours": [
         {
           "type": "stepConditionalOn",
-          "targetStepId": "application-type",
           "targetFieldId": "application-type",
+          "targetStepId": "application-type",
           "operator": "equal",
           "value": "new-licence"
         }
@@ -793,18 +800,18 @@
           "overrides": {
             "fieldId": "declaration-confirmed",
             "label": "Declaration",
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "I confirm that the information provided is true and correct.",
                 "value": "confirmed"
               }
-            ],
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "You must confirm the declaration to continue"
-              }
-            }
+            ]
           }
         }
       ],
@@ -819,9 +826,5 @@
     }
   ],
   "createdAt": "2026-08-18T17:01:58.317Z",
-  "updatedAt": "2026-08-19T00:00:00.000Z",
-  "catchmentRouting": {
-    "coordinatesField": "hotel-details.hotel-address-coordinates",
-    "parishField": "hotel-details.hotel-parish"
-  }
+  "updatedAt": "2026-08-24T23:37:15.523Z"
 }
