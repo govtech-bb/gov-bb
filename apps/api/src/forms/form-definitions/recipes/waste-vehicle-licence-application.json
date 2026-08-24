@@ -1,6 +1,6 @@
 {
   "formId": "waste-vehicle-licence-application",
-  "title": "Apply for a licence offensive matter with Environmental Health",
+  "title": "Apply for a offensive matter licence with Environmental Health",
   "description": "Apply for a new licence or renew your existing licence to operate a vehicle for moving human or rotting waste.",
   "processors": [
     {
@@ -353,5 +353,5 @@
     }
   ],
   "createdAt": "2026-08-24T19:13:52.779Z",
-  "updatedAt": "2026-08-24T19:13:52.779Z"
+  "updatedAt": "2026-08-24T23:36:26.386Z"
 }
