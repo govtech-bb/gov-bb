@@ -1,5 +1,6 @@
 import {
   Button,
+  ButtonGroup,
   Checkbox,
   CheckboxGroup,
   ErrorSummary,
@@ -280,7 +281,7 @@ export function CropOverPermitsForm() {
               />
             ))}
           </fieldset>
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() =>
                 navigate({
@@ -294,7 +295,7 @@ export function CropOverPermitsForm() {
               Previous
             </Button>
             <Button type="submit">Continue</Button>
-          </div>
+          </ButtonGroup>
         </form>
       )}
 
@@ -328,7 +329,7 @@ export function CropOverPermitsForm() {
               />
             ))}
           </fieldset>
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() => go('q-event')}
               type="button"
@@ -337,7 +338,7 @@ export function CropOverPermitsForm() {
               Previous
             </Button>
             <Button type="submit">Continue</Button>
-          </div>
+          </ButtonGroup>
         </form>
       )}
 
@@ -371,7 +372,7 @@ export function CropOverPermitsForm() {
               />
             ))}
           </fieldset>
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() => go(eventType === 'cruise' ? 'q-event' : 'q-venue')}
               type="button"
@@ -380,7 +381,7 @@ export function CropOverPermitsForm() {
               Previous
             </Button>
             <Button type="submit">Continue</Button>
-          </div>
+          </ButtonGroup>
         </form>
       )}
 
@@ -414,7 +415,7 @@ export function CropOverPermitsForm() {
               />
             ))}
           </CheckboxGroup>
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() => go('q-size')}
               type="button"
@@ -423,7 +424,7 @@ export function CropOverPermitsForm() {
               Previous
             </Button>
             <Button type="submit">Show my permits</Button>
-          </div>
+          </ButtonGroup>
         </form>
       )}
 

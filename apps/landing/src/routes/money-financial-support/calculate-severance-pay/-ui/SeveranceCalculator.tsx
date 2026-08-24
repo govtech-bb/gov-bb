@@ -1,5 +1,6 @@
 import {
   Button,
+  ButtonGroup,
   DateInput,
   ErrorSummary,
   Heading,
@@ -311,7 +312,7 @@ export function SeveranceCalculator() {
               />
             ))}
           </RadioGroup>
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() =>
                 navigate({
@@ -325,7 +326,7 @@ export function SeveranceCalculator() {
               Previous
             </Button>
             <Button type="submit">Continue</Button>
-          </div>
+          </ButtonGroup>
         </form>
       )}
 
@@ -364,7 +365,7 @@ export function SeveranceCalculator() {
               ),
             )}
           </RadioGroup>
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() => go('q-employment')}
               type="button"
@@ -373,7 +374,7 @@ export function SeveranceCalculator() {
               Previous
             </Button>
             <Button type="submit">Continue</Button>
-          </div>
+          </ButtonGroup>
         </form>
       )}
 
@@ -436,7 +437,7 @@ export function SeveranceCalculator() {
             value={end}
           />
 
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() => go('q-reason')}
               type="button"
@@ -445,7 +446,7 @@ export function SeveranceCalculator() {
               Previous
             </Button>
             <Button type="submit">Continue</Button>
-          </div>
+          </ButtonGroup>
         </form>
       )}
 
@@ -495,7 +496,7 @@ export function SeveranceCalculator() {
             />
           </div>
 
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() => go('q-years')}
               type="button"
@@ -504,7 +505,7 @@ export function SeveranceCalculator() {
               Previous
             </Button>
             <Button type="submit">Continue</Button>
-          </div>
+          </ButtonGroup>
         </form>
       )}
 

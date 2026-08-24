@@ -1,5 +1,6 @@
 import {
   Button,
+  ButtonGroup,
   ErrorSummary,
   Heading,
   Input,
@@ -407,7 +408,7 @@ export function PensionCalculator() {
             value={salary}
           />
 
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() =>
                 navigate({
@@ -421,7 +422,7 @@ export function PensionCalculator() {
               Back
             </Button>
             <Button type="submit">Calculate pension</Button>
-          </div>
+          </ButtonGroup>
         </form>
 
         <div className="mt-4 border-grey-20 border-t-2 pt-6">
