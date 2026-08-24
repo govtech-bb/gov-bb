@@ -5,10 +5,3 @@
 /* Keep design-system components below application utilities in the cascade. */
 @import '@govtech-bb/frontend/css' layer(components);
 @plugin "@tailwindcss/typography";
-
-/* Flow spacing for disclosures in markdown content. The design system's
-   show-hide owns everything else — a component doesn't set its own outer
-   margin, so this stays here rather than forking the component's styles. */
-.govbb-show-hide {
-  margin-bottom: var(--spacing-s);
-}
