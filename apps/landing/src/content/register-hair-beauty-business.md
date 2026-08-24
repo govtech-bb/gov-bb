@@ -1,5 +1,5 @@
 ---
-title: Register a hairdressing or beauty business with Environmental Health
+title: Apply for a hairdressing and beautician business licence
 description: >-
   Register a new hair, beauty, manicure or pedicure business, or renew your
   existing registration with Environmental Health.
@@ -63,8 +63,8 @@ Environmental Health will review your application and inspect the business.
 
 During the inspection, you will need to show:
 
--   your cleaning schedule
--   the cleaning chemicals used
+-   your cleaning schedule of the premises and equipment
+-   the cleaning and sanitation process of the equipment.
 -   facilities with hot and cold water
 -   where towels are washed and the chemicals used to clean them
 -   any staff medical certificates you did not upload
