@@ -9,43 +9,8 @@
         "subject": "Your swimming or wading pool permit application has been received",
         "recipientField": "your-details.email"
       }
-    },
-    {
-      "type": "email",
-      "config": {
-        "subject": "A new swimming or wading pool permit application has been received",
-        "recipientField": "catchment.mdaEmail"
-      }
-    },
-    {
-      "type": "webhook",
-      "config": {
-        "mapping": {
-          "mdaCode": "MOH",
-          "programmeShortCode": "SPP",
-          "programmeCode": "SWIMMING_POOL_PERMIT",
-          "applicant": {
-            "name": [
-              "your-details.first-name",
-              "your-details.last-name"
-            ],
-            "email": "your-details.email",
-            "phone": "your-details.phone-number"
-          },
-          "excludeSteps": [
-            "check-your-answers",
-            "declaration",
-            "submission-confirmation"
-          ],
-          "groupByStep": true
-        }
-      }
     }
   ],
-  "catchmentRouting": {
-    "coordinatesField": "your-details.address-coordinates",
-    "parishField": "your-details.parish"
-  },
   "meta": {
     "visibility": "preview"
   },
@@ -71,31 +36,6 @@
             ],
             "validations": {
               "required": {
-                "error": "Select whether this is a new application or a renewal",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-select",
-          "overrides": {
-            "hint": "You can apply for the current year or the next year.",
-            "label": "What year are you applying for a permit for?",
-            "fieldId": "permit-year",
-            "options": [
-              {
-                "label": "2026",
-                "value": "2026"
-              },
-              {
-                "label": "2027",
-                "value": "2027"
-              }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select a permit year",
                 "value": true
               }
             }
@@ -112,16 +52,13 @@
           "ref": "components/first-name"
         },
         {
-          "ref": "components/middle-name",
-          "overrides": {
-            "isHidden": false
-          }
+          "ref": "components/middle-name"
         },
         {
           "ref": "components/last-name"
         },
         {
-          "ref": "components/address-lookup",
+          "ref": "components/address",
           "overrides": {
             "label": "Address line 1",
             "fieldId": "address-line-1",
@@ -130,11 +67,6 @@
                 "error": "Enter your address",
                 "value": true
               }
-            },
-            "geocodeTargets": {
-              "line2FieldId": "address-line-2",
-              "parishFieldId": "parish",
-              "coordinatesFieldId": "address-coordinates"
             }
           }
         },
@@ -142,20 +74,7 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address line 2",
-            "fieldId": "address-line-2"
-          }
-        },
-        {
-          "ref": "components/parish"
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "ui": {
-              "hidden": true
-            },
-            "label": "Home address coordinates",
-            "fieldId": "address-coordinates",
+            "fieldId": "address-line-2",
             "validations": {
               "required": {
                 "value": false
@@ -164,40 +83,30 @@
           }
         },
         {
-          "ref": "components/email",
-          "overrides": {
-            "validations": {
-              "required": {
-                "error": "Enter your email address",
-                "value": true
-              }
-            }
-          }
+          "ref": "components/parish"
         },
         {
-          "ref": "components/contact-telephone",
-          "overrides": {
-            "label": "Phone number",
-            "fieldId": "phone-number"
-          }
+          "ref": "components/email"
+        },
+        {
+          "ref": "components/mobile-telephone"
+        },
+        {
+          "ref": "components/work-telephone"
         }
       ],
       "behaviours": []
     },
     {
-      "stepId": "pool-owner-type",
-      "title": "Which best describes you?",
+      "stepId": "pool-owner-details",
+      "title": "Your connection to the pool",
       "elements": [
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Which best describes you?",
+            "label": "Which best describes your application?",
             "fieldId": "owner-type",
             "options": [
-              {
-                "label": "I own the pool at my home",
-                "value": "home-owner"
-              },
               {
                 "label": "I own the pool for a business or property",
                 "value": "business-owner"
@@ -214,85 +123,21 @@
               }
             }
           }
-        }
-      ],
-      "behaviours": []
-    },
-    {
-      "stepId": "authorisation",
-      "title": "Are you authorised to apply?",
-      "elements": [
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "label": "Are you authorised to apply for this permit?",
-            "fieldId": "is-authorised",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select an option",
-                "value": true
-              }
-            }
-          }
-        }
-      ],
-      "behaviours": [
-        {
-          "type": "stepConditionalOn",
-          "value": "manager",
-          "operator": "equal",
-          "targetStepId": "pool-owner-type",
-          "targetFieldId": "owner-type"
-        }
-      ]
-    },
-    {
-      "stepId": "not-authorised-stop",
-      "title": "You need to be authorised to apply",
-      "elements": [
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "ui": {
-              "hideLabel": true
-            },
-            "label": "",
-            "fieldId": "stop-message",
-            "isHidden": true,
-            "validations": {}
-          }
-        }
-      ],
-      "behaviours": [
-        {
-          "type": "stepConditionalOn",
-          "value": "no",
-          "operator": "equal",
-          "targetStepId": "authorisation",
-          "targetFieldId": "is-authorised"
-        }
-      ]
-    },
-    {
-      "stepId": "pool-connection",
-      "title": "How are you connected to the pool?",
-      "elements": [
+        },
         {
           "ref": "components/generic-text",
           "overrides": {
             "hint": "For example, manager, employee or authorised representative.",
             "label": "How are you connected to the pool?",
             "fieldId": "connection-to-pool",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "manager",
+                "operator": "equal",
+                "targetFieldId": "owner-type"
+              }
+            ],
             "validations": {
               "required": {
                 "error": "Enter how you are connected to the pool",
@@ -302,15 +147,7 @@
           }
         }
       ],
-      "behaviours": [
-        {
-          "type": "stepConditionalOn",
-          "value": "yes",
-          "operator": "equal",
-          "targetStepId": "authorisation",
-          "targetFieldId": "is-authorised"
-        }
-      ]
+      "behaviours": []
     },
     {
       "stepId": "about-pool",
@@ -354,7 +191,14 @@
           }
         }
       ],
-      "behaviours": []
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 10,
+          "addAnotherLabel": "Do you want to add another pool?"
+        }
+      ]
     },
     {
       "stepId": "pool-capacity",
@@ -408,15 +252,17 @@
       "title": "How is the pool mainly used?",
       "elements": [
         {
-          "ref": "components/generic-radio",
+          "ref": "components/generic-checkbox",
           "overrides": {
-            "label": "How is the pool mainly used?",
             "fieldId": "pool-usage-type",
+            "label": "How is the pool mainly used?",
+            "validations": {
+              "required": {
+                "error": "Select how the pool is mainly used",
+                "value": true
+              }
+            },
             "options": [
-              {
-                "label": "At a private home",
-                "value": "private-home"
-              },
               {
                 "label": "By guests at a hotel or other accommodation",
                 "value": "hotel"
@@ -430,16 +276,18 @@
                 "value": "public"
               },
               {
+                "label": "Condominiums",
+                "value": "condo-home"
+              },
+              {
+                "label": "School",
+                "value": "school"
+              },
+              {
                 "label": "Other",
                 "value": "other"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select how the pool is mainly used",
-                "value": true
-              }
-            }
+            ]
           }
         },
         {
@@ -529,7 +377,12 @@
                 "operator": "equal",
                 "targetFieldId": "same-address"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -557,8 +410,261 @@
       "behaviours": []
     },
     {
+      "stepId": "pool-facilities",
+      "title": "Pool facilities and maintenance",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Which of the following does the pool have?",
+            "fieldId": "pool-facilities",
+            "options": [
+              {
+                "label": "Lighting",
+                "value": "lighting"
+              },
+              {
+                "label": "Pump room",
+                "value": "clean-pump-room"
+              },
+              {
+                "label": "Shower facilities",
+                "value": "shower-facilities"
+              },
+              {
+                "label": "Access to bathroom facilities",
+                "value": "bathroom-facilities"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select at least one facility",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Are pool records up to date, including a log book?",
+            "fieldId": "records-up-to-date",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "pool-chemical-maintenance",
+      "title": "Chemical maintenance and safety",
+      "elements": [
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "label": "Describe the chemicals used to maintain the pool",
+            "fieldId": "chemicals-used",
+            "validations": {
+              "required": {
+                "error": "Describe the chemicals used",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "hint": "Enter the current pH level of the pool.",
+            "label": "What is the current pH level?",
+            "fieldId": "ph-level",
+            "validations": {
+              "required": {
+                "error": "Enter the pH level",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "When was the pool last cleaned?",
+            "fieldId": "last-cleaning-date",
+            "validations": {
+              "required": {
+                "error": "Enter the date of last cleaning",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "label": "What actions have been taken to maintain the pool?",
+            "fieldId": "maintenance-actions",
+            "hint": "Describe recent maintenance, repairs or improvements.",
+            "validations": {
+              "required": {
+                "error": "Describe maintenance actions",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "label": "What safety equipment is available at the pool?",
+            "fieldId": "safety-equipment",
+            "hint": "For example, life rings, first aid kit, rescue equipment.",
+            "validations": {
+              "required": {
+                "error": "Describe the safety equipment available",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "supporting-documents",
+      "title": "Supporting documents",
+      "elements": [
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "label": "Pool log book",
+            "fieldId": "pool-logbook",
+            "hint": "Upload your pool log book as evidence that records are up to date.",
+            "validations": {
+              "required": {
+                "error": "Upload your pool log book",
+                "value": true
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".doc",
+                  ".docx",
+                  ".xls",
+                  ".xlsx"
+                ],
+                "error": "Upload a file in PDF, JPEG, PNG, Word or Excel format"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "operator": "equal",
+                "value": "new"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "label": "Town and Country Planning Plan",
+            "fieldId": "town-country-planning-plan",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "new",
+                "operator": "equal",
+                "targetFieldId": "application-type"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Upload the Town and Country Planning Plan",
+                "value": true
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".doc",
+                  ".docx",
+                  ".xls",
+                  ".xlsx"
+                ],
+                "error": "Upload a file in PDF, JPEG, PNG, Word or Excel format"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "label": "Site Plan",
+            "fieldId": "site-plan",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "renewal",
+                "operator": "equal",
+                "targetFieldId": "application-type"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Upload the Site Plan",
+                "value": true
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".doc",
+                  ".docx",
+                  ".xls",
+                  ".xlsx"
+                ],
+                "error": "Upload a file in PDF, JPEG, PNG, Word or Excel format"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
       "stepId": "check-your-answers",
       "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
       "elements": [],
       "behaviours": []
     },
@@ -602,5 +708,9 @@
     }
   ],
   "createdAt": "2026-08-20T09:15:58.120Z",
-  "updatedAt": "2026-08-24T00:00:00.000Z"
+  "updatedAt": "2026-08-24T12:13:01.135Z",
+  "catchmentRouting": {
+    "coordinatesField": "your-details.address-coordinates",
+    "parishField": "your-details.parish"
+  }
 }
