@@ -61,7 +61,7 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address line 1",
-            "fieldId": "address-line-1",
+            "fieldId": "your-address-line-1",
             "validations": {
               "required": {
                 "error": "Enter your address",
@@ -74,7 +74,7 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address line 2",
-            "fieldId": "address-line-2",
+            "fieldId": "your-address-line-2",
             "validations": {
               "required": {
                 "value": false
@@ -191,7 +191,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "label": "How much water can the pool hold?",
-            "fieldId": "pool-water-capacity",
+            "fieldId": "pool-water-capacity-number",
             "validations": {
               "gt": {
                 "error": "Enter a value greater than 0",
@@ -287,7 +287,7 @@
             "fieldId": "other-pool",
             "validations": {
               "required": {
-                "value": false
+                "value": true
               }
             }
           }
@@ -394,7 +394,7 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "label": "Town and Country Planning Plan",
+            "label": "Town and Country Planning Site Plan",
             "fieldId": "town-country-planning-plan",
             "behaviours": [
               {
@@ -468,7 +468,8 @@
               "required": {
                 "value": false
               }
-            }
+            },
+            "fieldId": "town-text"
           }
         }
       ],
@@ -521,7 +522,7 @@
     }
   ],
   "createdAt": "2026-08-20T09:15:58.120Z",
-  "updatedAt": "2026-08-24T22:27:06.701Z",
+  "updatedAt": "2026-08-24T22:46:05.006Z",
   "catchmentRouting": {
     "coordinatesField": "your-details.address-coordinates",
     "parishField": "your-details.parish"
