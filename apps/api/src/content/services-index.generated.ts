@@ -97,13 +97,6 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
-    slug: "apply-for-nhc-rental-unit-or-lot",
-    title: "Application for Rental Unit/Lot",
-    category: "housing",
-    formId: "nhc-application-rental-unit",
-    visibility: "preview",
-  },
-  {
     slug: "apply-for-secondary-school-entry-for-a-non-national-child",
     title: "Apply for secondary school entry for a non-national child",
     category: "education",
