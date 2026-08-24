@@ -3,6 +3,7 @@ title: Register a personal care business with Environmental Health
 description: >-
   Register a hairdressing, barbering, tattoo, body piercing, beauty or spa
   business.
+category: business-trade
 stage: alpha
 publish_date: '2026-08-20'
 visibility: preview
