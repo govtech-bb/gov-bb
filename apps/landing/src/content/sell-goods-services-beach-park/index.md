@@ -17,6 +17,8 @@ Goods are physical items such as food or memorabilia. Services are experiences l
 
 If you are intending to sell food, you will need to apply for a food business licence from the Environmental Health office located at the nearest polyclinic to your intended selling location.
 
+If you are intending to do hair braiding at your location, you will also need to apply for a Hairdressing licence from the Environmental Health office located at the nearest polyclinic to your intended service location.
+
 ## How to apply
 
 ### Complete the form
