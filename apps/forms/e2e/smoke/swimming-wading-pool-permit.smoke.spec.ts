@@ -31,20 +31,29 @@
  *   FAKER_SEED       fix faker's RNG for a reproducible data set.
  *
  * Form-specific notes:
- *  - This is the most branched of the three Environmental Health forms. Three
- *    steps are gated by stepConditionalOn, chained off `owner-type`:
- *      • `authorisation`       — only when owner-type = "manager"
- *      • `not-authorised-stop` — only when is-authorised = "no"
- *      • `pool-connection`     — only when is-authorised = "yes"
- *    A home or business owner therefore sees none of the three. The three tests
- *    below cover all three routes through that chain.
- *  - `not-authorised-stop` is a title-only page: its single element
- *    (`stop-message`) is `isHidden: true` with empty validations, a placeholder
- *    so the step renders nothing but its heading. Note that every step AFTER it
- *    (`about-pool` onward) is unconditional, so it warns rather than hard-stops
- *    — an unauthorised manager can still continue. The third test asserts the
- *    warning is reached and deliberately does NOT submit; if a hard stop is
- *    intended, the later steps need gating too and that test should tighten.
+ *  - The form has ONE branch left: `owner-type` on `pool-owner-details`. Picking
+ *    "manager" reveals `connection-to-pool` inline on the same step; a business
+ *    owner never sees it. The two tests below cover both sides.
+ *    An earlier shape of this recipe gated three whole steps off that answer
+ *    (`authorisation` → `not-authorised-stop` / `pool-connection`). The
+ *    form-builder publish in #2407 removed all three, along with the
+ *    `home-owner` option, the `permit-year` question and the `private-home`
+ *    usage option. The redesign is deliberate — see that PR — so this spec
+ *    tracks the published form, not the older shape.
+ *  - Four steps carry a `repeatable` behaviour (`about-pool`, `pool-capacity`,
+ *    `pool-usage`, `pool-address`). Each renders its own `addAnother` radio,
+ *    addressed as `${stepId}_addAnother-{yes,no}`, which must be answered before
+ *    the step will advance. Every walk below answers "no" — the single-pool
+ *    path. `add-another-pool` is a separate, non-repeatable step that asks the
+ *    same thing once more at the end.
+ *  - `supporting-documents` renders NOTHING today. Its three uploads are gated
+ *    on `about-application.application-type` by a `fieldConditionalOn` that
+ *    carries no `targetStepId`, so the client resolves the target against the
+ *    upload's own step, misses, and hides all three permanently — while the API
+ *    still counts them as required. That is issue #2426, not a fault in this
+ *    spec: every pool permit is currently submitted with no documents at all.
+ *    We walk the empty step. When #2426 lands, three required uploads appear
+ *    here and this spec must gain `uploadOne` calls in the same change.
  *  - Applicant name / parish / email carry no `fieldId` override in the recipe,
  *    so they keep their component defaults (`first-name`, `parish`, `email`) —
  *    which is also what `catchmentRouting.parishField` (`your-details.parish`)
@@ -55,35 +64,48 @@
  *    (`catchmentRouting.coordinatesField` = `your-details.address-coordinates`).
  *    We faker-pick from a pool of known-geocodable locations, select the first
  *    suggestion, then assert `address-coordinates` filled.
- *  - `address-line-2` is `components/address` and the recipe does NOT set
- *    `validations.required.value: false`, so it inherits required + minLength 5
- *    and blocks the step. We fill it explicitly after the geocode.
- *  - `phone-number` is `components/contact-telephone`, which validates with
- *    libphonenumber-js, so the number needs a real Barbados exchange.
- *  - Two inline reveals: `pool-usage-type` = "other" reveals
- *    `pool-usage-description`, and `same-address` = "no" reveals the three pool
- *    address fields. The second test takes both.
+ *  - Picking a suggestion also fills `address-line-2` and `parish`. Line 2 is
+ *    optional here (the recipe sets `required: false`), but we overwrite it with
+ *    faker data so the submitted record is deterministic; `parish` is asserted
+ *    rather than overwritten, since that value is the catchment router's
+ *    fallback.
+ *  - The applicant phone is `components/mobile-telephone` — `mobile-telephone`,
+ *    not `phone-number`. It is what the webhook maps applicant phone from
+ *    (`your-details.mobile-telephone`). It validates with libphonenumber-js, so
+ *    the number needs a real Barbados exchange. `work-telephone` sits beside it
+ *    and is optional; we leave it empty.
+ *  - Two inline reveals on the pool steps: `pool-usage-type` including "other"
+ *    reveals `pool-usage-description`, and `same-address` = "no" reveals the
+ *    three pool address fields. The second test takes both.
+ *  - `pool-usage-type` is a CHECKBOX group (multi-select), not a radio — tick
+ *    options rather than selecting one.
  *  - The pool address is a plain `components/address`, NOT geocoded — the
  *    catchment is resolved from the applicant's address regardless of where the
  *    pool is. Worth knowing if a pool in another parish is ever meant to route
  *    to that parish's polyclinic.
- *  - UNLIKE hotel-licence-application, this recipe's confirmation step uses
- *    generic `nextSteps` copy and no `{polyclinic}` placeholder, so there is no
- *    resolved-catchment name on the confirmation screen to assert. Catchment
- *    routing still runs (it drives the MDA email), it just isn't surfaced to
- *    the applicant. Don't add a /Polyclinic/ assertion here; it would fail.
+ *  - Nothing form-specific is asserted on the confirmation screen, because
+ *    nothing form-specific reaches it. This recipe's `submission-confirmation`
+ *    carries its copy in `nextSteps`, and `hydrateStep`
+ *    (apps/api/src/registry/resolution.ts) deliberately does NOT carry
+ *    `nextSteps` into the served contract — it is dormant across every recipe.
+ *    The screen renders the heading and the reference code, nothing else.
+ *    Don't assert the "Environmental Health" copy or a /Polyclinic/ placeholder
+ *    here; neither can ever render. Catchment routing still runs — it drives
+ *    the MDA email — it just isn't surfaced to the applicant. To surface it,
+ *    the copy has to move to `markdownContent`, which IS hydrated.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
 import {
   STEP_TIMEOUT,
   advance,
-  currentStep,
   expectStep,
+  fillDate,
   fillField,
   selectDropdown,
   selectRadio,
   submitAndConfirm,
+  tickCheckbox,
 } from "../helpers/smoke";
 
 export const FORM_ID = "swimming-wading-pool-permit";
@@ -161,6 +183,11 @@ export function buildData() {
     poolAddressLine1: faker.location.streetAddress(),
     poolAddressLine2: faker.location.street(),
     poolParish: faker.helpers.arrayElement(PARISH_VALUES),
+
+    chemicalsUsed: "Chlorine and pH buffer, dosed weekly (smoke test)",
+    phLevel: "7.4",
+    maintenanceActions: "Filter serviced and tiles regrouted (smoke test)",
+    safetyEquipment: "Life rings, first aid kit, reaching pole (smoke test)",
   };
 }
 
@@ -183,9 +210,9 @@ export async function openForm(page: Page): Promise<void> {
  * polyclinic from, so an empty one is a real failure, not a soft skip.
  *
  * Addressed by id rather than accessible name: the combobox's label is the
- * generic "Address line 1", which the pool address on `pool-address` also uses.
+ * generic "Address line 1", which the pool address on a later step shares.
  */
-export async function fillGeocodedAddress(
+async function fillGeocodedAddress(
   page: Page,
   stepId: string,
   query: string,
@@ -210,16 +237,14 @@ export async function fillGeocodedAddress(
   return (await coordinates.inputValue()).trim();
 }
 
-/** Step 1 — application type and permit year. */
+/** Step 1 — application type. */
 export async function fillAboutApplication(
   page: Page,
   applicationType: "new" | "renewal",
-  permitYear: "2026" | "2027",
 ): Promise<void> {
   const step = expectStep(page, "about-application");
   await expect(page.locator("h1")).toContainText("About your application");
   await selectRadio(page, step, "application-type", applicationType);
-  await selectDropdown(page, step, "permit-year", permitYear);
   await advance(page, step);
 }
 
@@ -234,53 +259,94 @@ export async function fillYourDetails(
   await fillField(page, step, "middle-name", data.middleName);
   await fillField(page, step, "last-name", data.lastName);
   await fillGeocodedAddress(page, step, data.address);
-  // Line 2 inherits components/address's required + minLength 5 (the recipe
-  // never sets required:false), so fill it rather than rely on whatever the
-  // picked suggestion wrote.
+  // Line 2 is optional and the picked suggestion already wrote something —
+  // overwrite it so the submitted record is deterministic.
   await fillField(page, step, "address-line-2", data.addressLine2);
   // The geocoder fills parish from the picked suggestion; assert rather than
   // overwrite, since that value is the catchment router's fallback.
   await expect(page.locator(`select[id="${step}_parish"]`)).not.toHaveValue("");
   await fillField(page, step, "email", data.email);
-  await fillField(page, step, "phone-number", data.phone);
+  // `mobile-telephone`, not `phone-number` — this is what the webhook maps
+  // applicant phone from. `work-telephone` beside it is optional; left empty.
+  await fillField(page, step, "mobile-telephone", data.phone);
   await advance(page, step);
 }
 
-/** Steps 7–9 — the pool itself, identical on every route that reaches them. */
+/**
+ * Step 3 — connection to the pool. "manager" reveals `connection-to-pool`
+ * inline on this same step; a business owner never sees it.
+ */
+export async function fillPoolOwnerDetails(
+  page: Page,
+  data: ReturnType<typeof buildData>,
+  ownerType: "business-owner" | "manager",
+): Promise<void> {
+  const step = expectStep(page, "pool-owner-details");
+  await expect(page.locator("h1")).toContainText("Your connection to the pool");
+  const connection = page.locator(`[id="${step}_connection-to-pool"]`);
+  await expect(connection).toBeHidden();
+  await selectRadio(page, step, "owner-type", ownerType);
+  if (ownerType === "manager") {
+    await expect(connection).toBeVisible({ timeout: STEP_TIMEOUT });
+    await connection.fill(data.connectionToPool);
+  } else {
+    // The gate's whole purpose: an owner is not asked how they are connected.
+    await expect(connection).toBeHidden();
+  }
+  await advance(page, step);
+}
+
+/**
+ * Steps 4–7 — the pool itself, identical on every route. All four steps are
+ * `repeatable`, so each one also carries an `addAnother` radio that must be
+ * answered before it will advance; we always take the single-pool path.
+ */
 export async function fillPoolDetails(
   page: Page,
   data: ReturnType<typeof buildData>,
   poolType: "swimming" | "wading",
-  usageType: "private-home" | "hotel" | "apartment" | "public" | "other",
+  usageType:
+    | "hotel"
+    | "apartment"
+    | "public"
+    | "condo-home"
+    | "school"
+    | "other",
 ): Promise<void> {
   let step = expectStep(page, "about-pool");
   await expect(page.locator("h1")).toContainText("About the pool");
   await selectRadio(page, step, "pool-type", poolType);
   await fillField(page, step, "pool-name", data.poolName);
+  await selectRadio(page, step, "addAnother", "no");
   await advance(page, step);
 
   step = expectStep(page, "pool-capacity");
   await expect(page.locator("h1")).toContainText("water can the pool hold");
   await fillField(page, step, "water-capacity", data.waterCapacity);
   await selectDropdown(page, step, "capacity-unit", "gallons");
+  await selectRadio(page, step, "addAnother", "no");
   await advance(page, step);
 
-  // ─── Usage — "other" reveals the free-text description inline ──────────────
+  // ─── Usage — a checkbox group; "other" reveals the free-text description ───
   step = expectStep(page, "pool-usage");
   await expect(page.locator("h1")).toContainText("How is the pool mainly used");
   const description = page.locator(`[id="${step}_pool-usage-description"]`);
   await expect(description).toBeHidden();
-  await selectRadio(page, step, "pool-usage-type", usageType);
+  await tickCheckbox(page, step, "pool-usage-type", usageType);
   if (usageType === "other") {
     await expect(description).toBeVisible({ timeout: STEP_TIMEOUT });
     await description.fill(data.poolUsageDescription);
   } else {
     await expect(description).toBeHidden();
   }
+  await selectRadio(page, step, "addAnother", "no");
   await advance(page, step);
 }
 
-/** Step 10 — pool address. "no" reveals the three address fields inline. */
+/**
+ * Step 7 — pool address. "no" reveals the three address fields inline. Also
+ * repeatable, so it carries its own `addAnother`.
+ */
 export async function fillPoolAddress(
   page: Page,
   data: ReturnType<typeof buildData>,
@@ -299,6 +365,56 @@ export async function fillPoolAddress(
   } else {
     await expect(line1).toBeHidden();
   }
+  await selectRadio(page, step, "addAnother", "no");
+  await advance(page, step);
+}
+
+/** Steps 8–9 — facilities, then chemical maintenance and safety. */
+export async function fillPoolMaintenance(
+  page: Page,
+  data: ReturnType<typeof buildData>,
+): Promise<void> {
+  let step = expectStep(page, "pool-facilities");
+  await expect(page.locator("h1")).toContainText(
+    "Pool facilities and maintenance",
+  );
+  await tickCheckbox(page, step, "pool-facilities", "lighting");
+  await tickCheckbox(page, step, "pool-facilities", "shower-facilities");
+  await selectRadio(page, step, "records-up-to-date", "yes");
+  await advance(page, step);
+
+  step = expectStep(page, "pool-chemical-maintenance");
+  await expect(page.locator("h1")).toContainText(
+    "Chemical maintenance and safety",
+  );
+  await fillField(page, step, "chemicals-used", data.chemicalsUsed);
+  await fillField(page, step, "ph-level", data.phLevel);
+  await fillDate(page, step, "last-cleaning-date", 10, 8, 2026);
+  await fillField(page, step, "maintenance-actions", data.maintenanceActions);
+  await fillField(page, step, "safety-equipment", data.safetyEquipment);
+  await advance(page, step);
+}
+
+/**
+ * Steps 10–11 — the final "add another pool?" question, then the supporting
+ * documents step, which renders nothing at all today (issue #2426 — see the
+ * header note). Both are walked, neither branches.
+ */
+export async function fillFinalSteps(page: Page): Promise<void> {
+  let step = expectStep(page, "add-another-pool");
+  await expect(page.locator("h1")).toContainText("add another pool");
+  await selectRadio(page, step, "add-another-pool", "no");
+  await advance(page, step);
+
+  step = expectStep(page, "supporting-documents");
+  await expect(page.locator("h1")).toContainText("Supporting documents");
+  // Asserted, not skipped: the moment #2426 lands, three required uploads
+  // appear here and this expectation fails loudly instead of the step
+  // silently blocking.
+  await expect(
+    page.locator(`main input[type="file"]`),
+    "supporting-documents rendered an upload — #2426 has landed, add uploadOne calls here",
+  ).toHaveCount(0);
   await advance(page, step);
 }
 
@@ -310,18 +426,16 @@ async function confirmAndSubmit(page: Page): Promise<void> {
     .locator(`input[id="${step}_declaration-confirmed-confirmed"]`)
     .check();
 
+  // Heading + reference code is the whole of this recipe's confirmation
+  // screen — see the header note on why there is no copy to assert.
   await submitAndConfirm(page, {
     heading: "Application submitted",
     referenceLabel: "Submission ID",
   });
-
-  // No {polyclinic} placeholder on this recipe's confirmation step — assert the
-  // Environmental Health nextSteps copy instead. See the header note.
-  await expect(page.getByText(/Environmental Health/).first()).toBeVisible();
 }
 
 test.describe("Swimming & Wading Pool Permit — Live Smoke", () => {
-  test("submits a new permit as a home owner, skipping the authorisation chain", async ({
+  test("submits a new permit as a business owner, never asked how they are connected", async ({
     page,
   }) => {
     const data = buildData();
@@ -329,30 +443,20 @@ test.describe("Swimming & Wading Pool Permit — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
-    await fillAboutApplication(page, "new", "2026");
+    await fillAboutApplication(page, "new");
     await fillYourDetails(page, data);
-
-    // ─── Owner type — anything but "manager" skips authorisation entirely ────
-    let step = expectStep(page, "pool-owner-type");
-    await expect(page.locator("h1")).toContainText("Which best describes you");
-    await selectRadio(page, step, "owner-type", "home-owner");
-    await advance(page, step);
-
-    // The gate's whole purpose: a home owner is not asked to prove authority,
-    // so neither the authorisation question nor the connection follow-up
-    // appears.
-    expect(
-      currentStep(page),
-      "a home owner must skip the authorisation step",
-    ).not.toContain("authorisation");
-
-    await fillPoolDetails(page, data, "swimming", "private-home");
+    await fillPoolOwnerDetails(page, data, "business-owner");
+    await fillPoolDetails(page, data, "swimming", "hotel");
     await fillPoolAddress(page, data, "yes");
+    await fillPoolMaintenance(page, data);
+    await fillFinalSteps(page);
 
     // ─── Check your answers ─────────────────────────────────────────────────
-    step = expectStep(page, "check-your-answers");
+    const step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
     await expect(page.getByText(data.poolName).first()).toBeVisible();
+    // An owner was never asked the connection question, so it cannot appear.
+    await expect(page.getByText(data.connectionToPool)).toHaveCount(0);
     // SMOKE_HOLD_CYA=1 pauses a headed run here so the review screen can be
     // inspected before anything is submitted (matches the sibling specs).
     if (process.env.SMOKE_HOLD_CYA) await page.pause();
@@ -363,7 +467,7 @@ test.describe("Swimming & Wading Pool Permit — Live Smoke", () => {
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 
-  test("submits a renewal as an authorised manager, with a separate pool address", async ({
+  test("submits a renewal as a manager, with a separate pool address", async ({
     page,
   }) => {
     const data = buildData();
@@ -371,29 +475,16 @@ test.describe("Swimming & Wading Pool Permit — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
-    await fillAboutApplication(page, "renewal", "2027");
+    await fillAboutApplication(page, "renewal");
     await fillYourDetails(page, data);
-
-    // ─── Owner type — "manager" opens the authorisation question ─────────────
-    let step = expectStep(page, "pool-owner-type");
-    await selectRadio(page, step, "owner-type", "manager");
-    await advance(page, step);
-
-    step = expectStep(page, "authorisation");
-    await expect(page.locator("h1")).toContainText("authorised to apply");
-    await selectRadio(page, step, "is-authorised", "yes");
-    await advance(page, step);
-
-    // ─── "yes" routes to the connection question, not the stop page ──────────
-    step = expectStep(page, "pool-connection");
-    await expect(page.locator("h1")).toContainText("connected to the pool");
-    await fillField(page, step, "connection-to-pool", data.connectionToPool);
-    await advance(page, step);
-
+    // "manager" reveals the connection question inline.
+    await fillPoolOwnerDetails(page, data, "manager");
     await fillPoolDetails(page, data, "wading", "other");
     await fillPoolAddress(page, data, "no");
+    await fillPoolMaintenance(page, data);
+    await fillFinalSteps(page);
 
-    step = expectStep(page, "check-your-answers");
+    const step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
     // Everything the manager route revealed made it into the review.
     await expect(page.getByText(data.connectionToPool).first()).toBeVisible();
@@ -405,41 +496,6 @@ test.describe("Swimming & Wading Pool Permit — Live Smoke", () => {
     await advance(page, step);
 
     await confirmAndSubmit(page);
-
-    if (process.env.SMOKE_HOLD) await page.pause();
-  });
-
-  /**
-   * The unauthorised-manager route. This test submits NOTHING — it exists to
-   * prove the warning page is reachable and that the connection question is
-   * skipped. See the header note: because the steps after `not-authorised-stop`
-   * are unconditional, this is a warning rather than a hard stop, so there is
-   * no "cannot continue" state to assert yet.
-   */
-  test("routes an unauthorised manager to the stop page", async ({ page }) => {
-    const data = buildData();
-
-    await openForm(page);
-    await fillAboutApplication(page, "new", "2026");
-    await fillYourDetails(page, data);
-
-    let step = expectStep(page, "pool-owner-type");
-    await selectRadio(page, step, "owner-type", "manager");
-    await advance(page, step);
-
-    step = expectStep(page, "authorisation");
-    await selectRadio(page, step, "is-authorised", "no");
-    await advance(page, step);
-
-    step = expectStep(page, "not-authorised-stop");
-    await expect(page.locator("h1")).toContainText(
-      "You need to be authorised to apply",
-    );
-    // "no" must route here rather than to the connection follow-up.
-    expect(
-      step,
-      "an unauthorised manager must not reach the pool-connection step",
-    ).not.toContain("pool-connection");
 
     if (process.env.SMOKE_HOLD) await page.pause();
   });
