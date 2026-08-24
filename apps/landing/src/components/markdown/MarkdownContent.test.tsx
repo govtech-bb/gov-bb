@@ -42,6 +42,9 @@ describe('MarkdownBody', () => {
     expect(table).toContain('govbb-table__cell')
 
     expect(table).toContain('<th class="govbb-table__header" scope="col">')
+    // Each body row's first cell is its header — the pale-blue first column
+    // in the Figma pattern, and the label a screen reader reads with each cell.
+    expect(table).toContain('<th class="govbb-table__header" scope="row">')
 
     expect(await renderBody('- one\n- two')).toContain('govbb-list--bullet')
     expect(await renderBody('1. one\n2. two')).toContain('govbb-list--number')
