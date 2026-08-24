@@ -6,11 +6,46 @@
     {
       "type": "email",
       "config": {
-        "recipientField": "your-details.applicant-contact-number",
+        "recipientField": "your-details.applicant-email",
         "subject": "Your application to register a guest property has been received"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "catchment.mdaEmail",
+        "subject": "A new application to register a guest property has been received"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "mapping": {
+          "mdaCode": "MOH",
+          "programmeShortCode": "GPR",
+          "programmeCode": "GUEST_PROPERTY",
+          "applicant": {
+            "name": [
+              "your-details.applicant-first-name",
+              "your-details.applicant-last-name"
+            ],
+            "email": "your-details.applicant-email",
+            "phone": "your-details.applicant-contact-number"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        }
       }
     }
   ],
+  "catchmentRouting": {
+    "coordinatesField": "property-details.property-address-coordinates",
+    "parishField": "property-details.property-parish"
+  },
   "meta": {
     "visibility": "preview"
   },
@@ -105,6 +140,20 @@
           }
         },
         {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "applicant-email",
+            "label": "What is your email address?",
+            "hint": "We will send your confirmation to this address.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter an email address."
+              }
+            }
+          }
+        },
+        {
           "ref": "components/contact-telephone",
           "overrides": {
             "fieldId": "applicant-contact-number",
@@ -186,7 +235,7 @@
       "title": "Property details",
       "elements": [
         {
-          "ref": "components/address",
+          "ref": "components/address-lookup",
           "overrides": {
             "fieldId": "property-address-line-1",
             "label": "Address line 1",
@@ -195,6 +244,11 @@
                 "value": true,
                 "error": "Enter the property address."
               }
+            },
+            "geocodeTargets": {
+              "line2FieldId": "property-address-line-2",
+              "parishFieldId": "property-parish",
+              "coordinatesFieldId": "property-address-coordinates"
             }
           }
         },
@@ -213,6 +267,21 @@
               "required": {
                 "value": true,
                 "error": "Enter the property address."
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "hidden": true
+            },
+            "label": "Property address coordinates",
+            "fieldId": "property-address-coordinates",
+            "validations": {
+              "required": {
+                "value": false
               }
             }
           }
@@ -301,5 +370,5 @@
     }
   ],
   "createdAt": "2026-08-18T13:18:49.244Z",
-  "updatedAt": "2026-08-18T13:18:49.244Z"
+  "updatedAt": "2026-08-24T00:00:00.000Z"
 }
