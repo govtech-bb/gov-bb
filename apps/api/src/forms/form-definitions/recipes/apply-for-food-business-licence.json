@@ -304,6 +304,7 @@
                 "type": "fieldConditionalOn",
                 "value": "someone-else",
                 "operator": "equal",
+                "targetStepId": "about-you",
                 "targetFieldId": "completing-for"
               }
             ],
