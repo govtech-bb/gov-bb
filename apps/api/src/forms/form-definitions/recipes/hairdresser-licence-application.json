@@ -21,7 +21,6 @@
       "type": "webhook",
       "config": {
         "method": "POST",
-        "signatureHeader": "X-Webhook-Signature",
         "mapping": {
           "programmeCode": "HAIRDRESSER_LICENCE",
           "mdaCode": "MOH",
@@ -41,7 +40,6 @@
           ],
           "groupByStep": true
         },
-        "timeoutMs": 10000
       }
     }
   ],
