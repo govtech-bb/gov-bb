@@ -409,6 +409,9 @@ describe("listForms", () => {
       isDisabled: true,
       isOrphanOverride: true,
       isPublished: false,
+      // #2411: a synthetic override row is seeded after `draftIds` is built,
+      // so it must not claim a working copy — there is no row to delete.
+      hasDraftRow: false,
     });
   });
 
@@ -481,6 +484,9 @@ describe("listForms", () => {
       version: "2.0.0",
       isPublished: true,
       isDisabled: true,
+      // #2411: the row is real, so the flag is true even though the picker
+      // suppresses the action here — Enable wins a disabled row.
+      hasDraftRow: true,
     });
   });
 
