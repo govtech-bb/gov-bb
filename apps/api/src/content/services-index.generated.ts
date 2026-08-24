@@ -246,6 +246,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
+    slug: "funeral-embalmer-licence-application",
+    title: "Apply to Environmental Health for an Embalmer Licence",
+    category: "business-trade",
+    formId: "funeral-embalmer-licence-application",
+    visibility: "preview",
+  },
+  {
     slug: "get-a-document-notarised",
     title: "Get a document notarised",
     category: "travel-id-citizenship",
