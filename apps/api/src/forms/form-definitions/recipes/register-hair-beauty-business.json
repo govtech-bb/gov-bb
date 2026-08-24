@@ -20,31 +20,36 @@
     {
       "type": "webhook",
       "config": {
+        "method": "POST",
         "mapping": {
           "mdaCode": "MOH",
-          "programmeShortCode": "HBB",
-          "programmeCode": "HAIR_BEAUTY_BUSINESS",
           "applicant": {
-            "name": ["owner-details.owner-name"],
+            "name": [
+              "owner-details.owner-name"
+            ],
             "email": "contact-details.email",
             "phone": "contact-details.telephone"
           },
+          "groupByStep": true,
           "excludeSteps": [
             "check-your-answers",
             "declaration",
             "submission-confirmation"
           ],
-          "groupByStep": true
-        }
+          "programmeCode": "HAIR_BEAUTY_BUSINESS",
+          "programmeShortCode": "HBB"
+        },
+        "timeoutMs": 10000,
+        "signatureHeader": "X-Webhook-Signature"
       }
     }
   ],
-  "catchmentRouting": {
-    "coordinatesField": "business-details.business-address-coordinates",
-    "parishField": "business-details.business-address-parish"
-  },
   "meta": {
     "visibility": "preview"
+  },
+  "catchmentRouting": {
+    "parishField": "business-details.business-address-parish",
+    "coordinatesField": "business-details.business-address-coordinates"
   },
   "steps": [
     {
@@ -248,7 +253,12 @@
               "width": "short"
             },
             "label": "Postcode / Zip code",
-            "fieldId": "owner-post-zip-coode"
+            "fieldId": "owner-post-zip-coode",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -267,8 +277,7 @@
             "fieldId": "email",
             "validations": {
               "required": {
-                "error": "Enter a valid email address",
-                "value": true
+                "value": false
               }
             }
           }
@@ -309,67 +318,16 @@
         {
           "ref": "components/generic-file",
           "overrides": {
-            "hint": "This will be a list of all staff members",
-            "label": "Upload staff list",
+            "label": "Upload a list of hairdressing / beautician staff",
             "fieldId": "staff-list"
           }
         },
         {
           "ref": "components/generic-file",
           "overrides": {
-            "hint": "These are the medical certificates for all of your staff.",
+            "hint": "These are the medical certificates for all hairdressers or beauticians working in the salon. These can be shown during inspection.",
             "label": "Upload medical certificates",
             "fieldId": "medical-certs",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-file",
-          "overrides": {
-            "hint": "A drawing of the layout. PDF, JPG or PNG, up to 5MB.",
-            "label": "Upload a floor plan of hairdressing salon",
-            "fieldId": "floor-plan-upload",
-            "validations": {
-              "required": {
-                "value": false
-              },
-              "itemMaxSize": {
-                "error": "The floor plan must be smaller than 5MB.",
-                "value": 5242880
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-file",
-          "overrides": {
-            "hint": "This is the building plan submitted to the Planning and Development Department",
-            "label": "Upload your building plan",
-            "fieldId": "building-plan-upload",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/show-hide",
-          "overrides": {
-            "label": "Use tracking number instead",
-            "fieldId": "building-plan-number"
-          }
-        },
-        {
-          "ref": "components/generic-file",
-          "overrides": {
-            "hint": "This is the application number you received when you submitted your building plans to the Planning and Development Department",
-            "label": "Planning and Development application number",
-            "fieldId": "tracking-number-instead",
             "validations": {
               "required": {
                 "value": false
@@ -427,5 +385,5 @@
     }
   ],
   "createdAt": "2026-08-20T17:42:48.875Z",
-  "updatedAt": "2026-08-24T00:00:00.000Z"
+  "updatedAt": "2026-08-24T18:01:48.371Z"
 }
