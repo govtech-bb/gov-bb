@@ -419,8 +419,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "register-hair-beauty-business",
-    title:
-      "Register a hairdressing or beauty business with Environmental Health",
+    title: "Apply for a hairdressing and beautician business licence",
     category: "business-trade",
     formId: "register-hair-beauty-business",
     visibility: "preview",
