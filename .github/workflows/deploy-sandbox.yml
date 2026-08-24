@@ -571,11 +571,19 @@ jobs:
   # Live end-to-end smoke tests of the deployed forms app: each drives a real
   # form on sandbox (uploading files via the presign → S3 → confirm flow where
   # the form has uploads), SUBMITS FOR REAL, and asserts the confirmation
-  # screen. `needs: amplify-forms` so they run only after that build succeeds —
-  # and are skipped whenever forms wasn't deployed (a skipped/failed dependency
-  # skips these too). No AWS creds: the reusable workflow drives a headless
-  # browser against the public deployed URL, and uploads use presigned URLs
-  # issued server-side. Steps live in .github/workflows/forms-smoke.yml.
+  # screen. No AWS creds: the reusable workflow drives a headless browser
+  # against the public deployed URL, and uploads use presigned URLs issued
+  # server-side. Steps live in .github/workflows/forms-smoke.yml.
+  #
+  # GATED ON api OR forms, not on the forms build alone. This used to be a bare
+  # `needs: amplify-forms`, which meant a skipped forms build skipped the whole
+  # smoke — and form RECIPES live in apps/api/src/forms/form-definitions/
+  # recipes/, so publishing or editing a form marks `api` affected and never
+  # `forms`. The gate that exists to catch a broken recipe was chained to the
+  # one app a recipe change can't touch, so every recipe publish sailed past it
+  # (run 32198791239 and the three before it: forms build skipped, all four
+  # smokes skipped). Now it follows the API deploy too, and `!failure() &&
+  # !cancelled()` lets it run when the *other* dependency is merely skipped.
   #
   # Run as ONE matrix with a bounded `max-parallel` so the real
   # POST /submissions calls stay under the API's submission throttle
@@ -604,7 +612,10 @@ jobs:
   # submission email is broken. Re-add each once it returns to `public`.
   smoke-test-forms:
     name: Smoke test forms
-    needs: amplify-forms
+    needs: [setup, amplify-forms, deploy-api]
+    if: >-
+      ${{ !failure() && !cancelled() &&
+      (needs.setup.outputs.forms == 'true' || needs.setup.outputs.api == 'true') }}
     strategy:
       fail-fast: false
       max-parallel: 3
@@ -930,7 +941,7 @@ jobs:
 
   notify-failure:
     name: Notify Slack on failure
-    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
+    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, smoke-test-forms]
     if: always() && contains(needs.*.result, 'failure')
     runs-on: ubuntu-latest
     steps:
@@ -949,9 +960,13 @@ jobs:
   # every affected target deployed cleanly — a skipped/unaffected job is fine,
   # but any failure or cancellation stops the chain, so staging never receives
   # code sandbox couldn't ship.
+  #
+  # smoke-test-forms is in `needs` so a form that no longer submits on sandbox
+  # HOLDS the promote. It wasn't before: the live smoke was the only sandbox
+  # job nothing depended on, so even a red smoke let staging proceed.
   promote-to-staging:
     name: Promote to staging (on sandbox green)
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, smoke-test-forms]
     if: ${{ github.event_name == 'push' && !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
