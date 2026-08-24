@@ -1,6 +1,6 @@
 {
   "formId": "register-guest-property-environmental-health",
-  "title": "Apply for a licence barracks or lodging with Environmental Health",
+  "title": "Apply for a barracks or lodging licence with Environmental Health",
   "description": "Register a lodging house or barracks with Environmental Health",
   "processors": [
     {
@@ -833,7 +833,7 @@
     }
   ],
   "createdAt": "2026-08-18T13:18:49.244Z",
-  "updatedAt": "2026-08-24T23:22:37.760Z",
+  "updatedAt": "2026-08-24T23:34:29.469Z",
   "catchmentRouting": {
     "coordinatesField": "property-details.property-address-coordinates",
     "parishField": "property-details.property-parish"
