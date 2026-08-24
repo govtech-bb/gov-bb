@@ -4,7 +4,7 @@ description: >-
   Register a new hair, beauty, manicure or pedicure business, or renew your
   existing registration with Environmental Health.
 stage: alpha
-publish_date: '2026-08-23'
+publish_date: '2026-08-24'
 visibility: preview
 form_id: register-hair-beauty-business
 category: business-trade
@@ -31,26 +31,25 @@ If your business is not registered, Environmental Health may contact you and ask
 ## Before you start
 
 ### New businesses
-You must send your floor plans to the Planning and Development Department, which was previously called Town and Country Planning. This is separate from your Hairdressing Salon Licence. Once submitted, you can provide the application number as part of your submission for your licence.
-You will need to submit a floor plan layout drawn to scale with your application, showing the size of the different areas and where they are.
+
+You will need to provide a floor plan layout drawn to scale, showing the size of the different areas and where they are. This can be submitted with your application, or presented during inspection.
 
 ### Renewing your licence
-Your licence lasts for one year. 
-Your licence expires on December 31st each year and must be applied for renewal on the first business day in January.
+
+Your licence lasts for one year. Your licence expires on December 31st each year and must be applied for renewal on the first business day in January.
 
 ## What you will need
 
 You will need:
 
-- your current Hairdressing Salon licence number, if you are renewing
-- the Barbados National Identification (ID) number for individual owners  
-- the name and address of the business
+-   your current Hairdressing Salon licence number, if you are renewing
+-   the Barbados National Identification (ID) number for individual owners
+-   the name and address of the business
 -   the name and address of the owner or operator
 -   a document listing your staff, giving each person's name (staff list)
 -   medical certificates of all staff
-- the floor plan layout (if applicable)
-- your Planning and Development Department application number for your submitted building plan
-- a vehicle registration number if the business uses a vehicle
+-   the floor plan layout (if applicable)
+-   a vehicle registration number if the business uses a vehicle
 
 Uploading medical certificates is optional. You can show them during the inspection instead.
 
