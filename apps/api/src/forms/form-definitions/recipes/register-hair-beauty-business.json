@@ -23,7 +23,7 @@
         "mapping": {
           "mdaCode": "MOH",
           "programmeShortCode": "HBB",
-          "programmeCode": "HAIR_SALON",
+          "programmeCode": "HAIR_BEAUTY_BUSINESS",
           "applicant": {
             "name": ["owner-details.owner-name"],
             "email": "contact-details.email",

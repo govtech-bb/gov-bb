@@ -290,14 +290,14 @@ describe("programme codes are unchanged by composition (golden)", () => {
       "St. Philip Polyclinic": "HOTEL_LICENCE_ST_PHILIP",
     },
     "register-hair-beauty-business": {
-      "Branford Taitt Polyclinic": "HAIR_SALON_BRANFORD_TAITT",
+      "Branford Taitt Polyclinic": "HAIR_BEAUTY_BUSINESS_BRANFORD_TAITT",
       "David Thompson Health & Social Services Complex":
-        "HAIR_SALON_DAVID_THOMPSON",
-      "Eunice Gibson Polyclinic": "HAIR_SALON_EUNICE_GIBSON",
-      "Maurice Byer Polyclinic": "HAIR_SALON_MAURICE_BYER",
-      "Randal Phillips Polyclinic": "HAIR_SALON_RANDAL_PHILLIPS",
-      "Sir Winston Scott Polyclinic": "HAIR_SALON_WINSTON_SCOTT",
-      "St. Philip Polyclinic": "HAIR_SALON_ST_PHILIP",
+        "HAIR_BEAUTY_BUSINESS_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "HAIR_BEAUTY_BUSINESS_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "HAIR_BEAUTY_BUSINESS_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "HAIR_BEAUTY_BUSINESS_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "HAIR_BEAUTY_BUSINESS_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "HAIR_BEAUTY_BUSINESS_ST_PHILIP",
     },
     "hairdresser-licence-application": {
       "Branford Taitt Polyclinic": "HAIRDRESSER_LICENCE_BRANFORD_TAITT",
