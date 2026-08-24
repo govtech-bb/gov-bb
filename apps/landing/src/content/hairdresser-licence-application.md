@@ -48,8 +48,8 @@ The form takes about 10 minutes to complete.
 
 ## What happens after you apply
 
-Environmental Health will review your application.
+Environmental Health will review your application. If additional information is required, you will receive an email.
 
-Once all information is in order and your application is approved, you will receive a confirmation email with further instructions.
+If your application is approved, you will receive a confirmation email and the Environment Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.
 
 <a data-start-link>Start</a>
