@@ -1159,7 +1159,7 @@
             "ui": {
               "width": "short"
             },
-            "hint": "What is the value of your mortgage"
+            "hint": "How much is the lending institution giving you"
           }
         }
       ],
@@ -1296,5 +1296,5 @@
     }
   ],
   "createdAt": "2026-06-17T13:00:42.221Z",
-  "updatedAt": "2026-08-24T17:49:19.613Z"
+  "updatedAt": "2026-08-24T17:50:23.026Z"
 }
