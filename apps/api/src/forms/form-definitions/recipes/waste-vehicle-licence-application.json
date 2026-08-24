@@ -1,0 +1,357 @@
+{
+  "formId": "waste-vehicle-licence-application",
+  "title": "Apply for a licence offensive matter with Environmental Health",
+  "description": "Apply for a new licence or renew your existing licence to operate a vehicle for moving human or rotting waste.",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Application received: licence to move human or rotting waste",
+        "recipientField": "personal-and-contact-details.applicant-email"
+      }
+    }
+  ],
+  "meta": {
+    "visibility": "preview"
+  },
+  "steps": [
+    {
+      "stepId": "application-type",
+      "title": "Application type",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Are you applying for a new licence or renewing a licence?",
+            "fieldId": "application-type",
+            "options": [
+              {
+                "label": "A new licence",
+                "value": "new"
+              },
+              {
+                "label": "Renew a licence",
+                "value": "renew"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select whether you are applying for a new licence or renewing a licence.",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "personal-and-contact-details",
+      "title": "Tell us about yourself",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First name",
+            "fieldId": "applicant-first-name",
+            "validations": {
+              "required": {
+                "error": "Enter your first name.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "hint": "Enter all middle names in order.",
+            "label": "Middle name(s)",
+            "fieldId": "applicant-middle-name",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last name",
+            "fieldId": "applicant-last-name",
+            "validations": {
+              "required": {
+                "error": "Enter your last name.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "applicant-address-line-1",
+            "validations": {
+              "required": {
+                "error": "Enter your address.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2",
+            "fieldId": "applicant-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "applicant-parish",
+            "validations": {
+              "required": {
+                "error": "Select your parish.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "hint": "We will send confirmation to your email address. We may contact you if we need more information.",
+            "label": "Email address",
+            "fieldId": "applicant-email",
+            "validations": {
+              "required": {
+                "error": "Enter an email address in the correct format, such as name@example.com.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/mobile-telephone",
+          "overrides": {
+            "label": "Mobile number",
+            "fieldId": "applicant-mobile-number",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/home-telephone",
+          "overrides": {
+            "label": "Home number",
+            "fieldId": "applicant-home-number",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/work-telephone",
+          "overrides": {
+            "label": "Work number",
+            "fieldId": "applicant-work-number",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "business-address-details",
+      "title": "Your business address",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Business Name",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Is your business address the same as the address you gave?",
+            "fieldId": "business-address-same",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select whether your business address is the same as the address you gave.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "business-address-line-1",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetFieldId": "business-address-same"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter your business address.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2",
+            "fieldId": "business-address-line-2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetFieldId": "business-address-same"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "business-parish",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetFieldId": "business-address-same"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select the parish where the business is located.",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "vehicle-details",
+      "title": "Vehicle",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "hint": "Enter the number shown on the vehicle's registration documents.",
+            "label": "What is the vehicle registration number?",
+            "fieldId": "vehicle-registration-number",
+            "validations": {
+              "required": {
+                "error": "Enter the vehicle registration number.",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I confirm that the information in this application is true and correct to the best of my knowledge.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Confirm that the information in this application is true and correct.",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "Environmental Health will review your application. They may ask for more information. A Medical Officer of Health will decide whether to approve your vehicle. Environmental Health will tell you the result."
+        }
+      ]
+    }
+  ],
+  "createdAt": "2026-08-24T19:13:52.779Z",
+  "updatedAt": "2026-08-24T19:13:52.779Z"
+}
