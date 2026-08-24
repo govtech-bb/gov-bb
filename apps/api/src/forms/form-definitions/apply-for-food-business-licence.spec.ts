@@ -303,3 +303,27 @@ describe("Environmental Health routing", () => {
     ).toBe(catchmentRouting.coordinatesField.split(".")[1]);
   });
 });
+
+// A `fieldConditionalOn` that names a field on ANOTHER step must say so with
+// `targetStepId`. The client defaults an absent `targetStepId` to the field's
+// own step (`checkConditionalOn` in apps/forms), so a cross-step condition
+// without it resolves against `applicant-details.completing-for` — which never
+// exists — and the field is hidden for everyone. The API's evaluator falls back
+// to a flat whole-form lookup instead, so the two sides disagree: the renderer
+// never asks the question while the server still counts it as required.
+it("points applicant-type at the step `completing-for` actually lives on", async () => {
+  const applicantType = await field("applicant-details", "applicant-type");
+
+  expect(
+    applicantType.behaviours,
+    "applicant-type's conditional lost its targetStepId — the question is never asked when someone applies on another's behalf",
+  ).toEqual([
+    {
+      type: "fieldConditionalOn",
+      targetStepId: "about-you",
+      targetFieldId: "completing-for",
+      operator: "equal",
+      value: "someone-else",
+    },
+  ]);
+});
