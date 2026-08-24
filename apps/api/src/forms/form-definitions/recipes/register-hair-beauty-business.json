@@ -9,6 +9,27 @@
         "subject": "Your hair or beauty business registration application has been received",
         "recipientField": "contact-details.email"
       }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "mapping": {
+          "mdaCode": "MOH",
+          "programmeShortCode": "HBB",
+          "programmeCode": "HAIR_BEAUTY_BUSINESS_REGISTRATION",
+          "applicant": {
+            "name": ["owner-details.owner-name"],
+            "email": "contact-details.email",
+            "phone": "contact-details.telephone"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        }
+      }
     }
   ],
   "meta": {
@@ -375,5 +396,5 @@
     }
   ],
   "createdAt": "2026-08-20T17:42:48.875Z",
-  "updatedAt": "2026-08-23T14:50:48.209Z"
+  "updatedAt": "2026-08-24T00:00:00.000Z"
 }

@@ -9,6 +9,30 @@
         "subject": "Your hairdresser licence application has been received",
         "recipientField": "personal-details.email"
       }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "mapping": {
+          "mdaCode": "MOH",
+          "programmeShortCode": "HDL",
+          "programmeCode": "HAIRDRESSER_LICENCE",
+          "applicant": {
+            "name": [
+              "personal-details.first-name",
+              "personal-details.last-name"
+            ],
+            "email": "personal-details.email",
+            "phone": "personal-details.phone-number"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        }
+      }
     }
   ],
   "meta": {
@@ -379,5 +403,5 @@
     }
   ],
   "createdAt": "2026-08-19T19:09:04.486Z",
-  "updatedAt": "2026-08-23T15:07:08.345Z"
+  "updatedAt": "2026-08-24T00:00:00.000Z"
 }

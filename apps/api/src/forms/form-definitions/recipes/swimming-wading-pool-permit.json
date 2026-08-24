@@ -9,6 +9,30 @@
         "subject": "Your swimming or wading pool permit application has been received",
         "recipientField": "your-details.email"
       }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "mapping": {
+          "mdaCode": "MOH",
+          "programmeShortCode": "SPP",
+          "programmeCode": "SWIMMING_WADING_POOL_PERMIT",
+          "applicant": {
+            "name": [
+              "your-details.first-name",
+              "your-details.last-name"
+            ],
+            "email": "your-details.email",
+            "phone": "your-details.phone-number"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        }
+      }
     }
   ],
   "meta": {
@@ -573,5 +597,5 @@
     }
   ],
   "createdAt": "2026-08-20T09:15:58.120Z",
-  "updatedAt": "2026-08-20T09:15:58.120Z"
+  "updatedAt": "2026-08-24T00:00:00.000Z"
 }
