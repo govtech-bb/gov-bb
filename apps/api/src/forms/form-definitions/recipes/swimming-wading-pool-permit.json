@@ -23,7 +23,7 @@
         "mapping": {
           "mdaCode": "MOH",
           "programmeShortCode": "SPP",
-          "programmeCode": "SWIMMING_POOL",
+          "programmeCode": "SWIMMING_POOL_PERMIT",
           "applicant": {
             "name": [
               "your-details.first-name",
