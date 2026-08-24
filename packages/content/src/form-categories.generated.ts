@@ -17,6 +17,8 @@ export const FORM_CATEGORIES: Record<string, string> = {
   "cyber-security-training": "youth-and-community",
   "duties-performed-exam-claim": "education",
   "food-safety-licence-application": "business-trade",
+  "funeral-directors-licence-application": "business-trade",
+  "funeral-embalmer-licence-application-copy": "business-trade",
   "get-a-primary-school-textbook-grant": "money-financial-support",
   "get-birth-certificate": "family-birth-relationships",
   "get-death-certificate": "family-birth-relationships",
