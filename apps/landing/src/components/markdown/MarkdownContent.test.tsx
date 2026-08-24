@@ -41,6 +41,8 @@ describe('MarkdownBody', () => {
     expect(table).toContain('govbb-table__header')
     expect(table).toContain('govbb-table__cell')
 
+    expect(table).toContain('<th class="govbb-table__header" scope="col">')
+
     expect(await renderBody('- one\n- two')).toContain('govbb-list--bullet')
     expect(await renderBody('1. one\n2. two')).toContain('govbb-list--number')
   })

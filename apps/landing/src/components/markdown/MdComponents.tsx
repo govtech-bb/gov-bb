@@ -99,7 +99,7 @@ export const markdownComponents: Partial<Components> = {
   tbody: ({ node: _node, ...props }) => <tbody {...props} />,
   tr: ({ node: _node, ...props }) => <tr {...props} />,
   th: ({ node: _node, ...props }) => (
-    <TableHeader className="w-1/2" {...props} />
+    <TableHeader {...props} />
   ),
   td: ({ node: _node, children, ...props }) => {
     const text = extractCellText(children)
@@ -108,7 +108,7 @@ export const markdownComponents: Partial<Components> = {
     if (slashMatch) {
       const [, area, prefix, line, line2] = slashMatch
       return (
-        <TableCell className="w-1/2" {...props}>
+        <TableCell {...props}>
           <a
             className="text-teal-80 underline"
             href={`tel:+1${area}${prefix}${line}`}
@@ -130,7 +130,7 @@ export const markdownComponents: Partial<Components> = {
     if (phoneMatch) {
       const [, area, prefix, line] = phoneMatch
       return (
-        <TableCell className="w-1/2" {...props}>
+        <TableCell {...props}>
           <a
             className="text-teal-80 underline"
             href={`tel:+1${area}${prefix}${line}`}
@@ -142,7 +142,7 @@ export const markdownComponents: Partial<Components> = {
     }
 
     return (
-      <TableCell className="w-1/2" {...props}>
+      <TableCell {...props}>
         {children}
       </TableCell>
     )
