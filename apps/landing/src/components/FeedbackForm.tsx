@@ -65,7 +65,7 @@ export function FeedbackForm() {
   return (
     <div className="mb-6 space-y-6">
       {showSuccess ? (
-        <div className="flex flex-wrap items-baseline gap-2 border-4 border-teal-40 bg-teal-10 p-6">
+        <div className="flex flex-wrap items-baseline gap-2 border-4 border-teal-20 bg-teal-10 p-6">
           <Text weight="bold">Thank you for your feedback.</Text>
           <Button
             className="text-black!"
@@ -103,7 +103,7 @@ export function FeedbackForm() {
             {isPending ? 'Submitting...' : 'Send Feedback'}
           </Button>
           {showServerError && (
-            <div className="rounded-md border border-red-100 bg-red-10 px-4 py-3 text-red-00">
+            <div className="rounded-md border border-red-40 bg-red-10 px-4 py-3 text-red-80">
               {state.error}
             </div>
           )}

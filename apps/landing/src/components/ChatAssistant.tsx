@@ -18,9 +18,9 @@ const DEFAULT_QUESTIONS = [
 type OnlineState = 'checking' | 'online' | 'offline'
 
 const STATUS_STYLES: Record<OnlineState, { dot: string; label: string }> = {
-  checking: { dot: 'bg-grey-00', label: 'Checking...' },
-  online: { dot: 'bg-green-100', label: 'Online' },
-  offline: { dot: 'bg-red-100', label: 'Offline' },
+  checking: { dot: 'bg-grey-20', label: 'Checking...' },
+  online: { dot: 'bg-green-40', label: 'Online' },
+  offline: { dot: 'bg-red-40', label: 'Offline' },
 }
 
 interface ChatAssistantProps {
@@ -96,13 +96,13 @@ export function ChatAssistant({
   return (
     <div className="space-y-m">
       <div className="max-w-200 overflow-hidden rounded-lg border border-white-00 bg-white-00 shadow-md">
-        <div className="flex items-center gap-xm bg-teal-00 p-xm text-white-00">
+        <div className="flex items-center gap-xm bg-teal-80 p-xm text-white-00">
           <div className="flex-1 space-y-xxs">
             <Heading as="h2" size="h3">
               Ask your government assistant
             </Heading>
-            <div className="flex items-center gap-xs text-grey-00">
-              <div className="flex items-center gap-xs border-r border-grey-00 pr-xs">
+            <div className="flex items-center gap-xs text-grey-20">
+              <div className="flex items-center gap-xs border-r border-grey-20 pr-xs">
                 <span
                   aria-hidden="true"
                   className={`inline-block size-1.5 rounded-full ${dot}`}
@@ -118,7 +118,7 @@ export function ChatAssistant({
           <div className="flex items-start gap-2.5">
             <div
               aria-hidden="true"
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-teal-00 text-sm font-bold text-white-00"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-teal-80 text-sm font-bold text-white-00"
             >
               A
             </div>
@@ -149,7 +149,7 @@ export function ChatAssistant({
                 Send
               </Button>
             </div>
-            <Text size="caption" className="text-center text-mid-grey-00">
+            <Text size="caption" className="text-center text-grey-70">
               Responses are based on official Government of Barbados information
             </Text>
           </form>
@@ -170,7 +170,7 @@ export function ChatAssistant({
                 trackEvent('chat-suggestion', { question: q, source })
                 goToChat(q)
               }}
-              className="rounded-xl border border-grey-00 bg-blue-00 px-s py-xs text-sm text-white-00 hover:bg-blue-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100 pointer-coarse:min-h-11 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-00"
+              className="rounded-xl border border-grey-20 bg-blue-80 px-s py-xs text-sm text-white-00 hover:bg-blue-40 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-40 pointer-coarse:min-h-11 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-80"
             >
               {q}
             </button>

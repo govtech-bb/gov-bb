@@ -80,7 +80,7 @@ export function MarkdownContent({
           {frontmatter.publish_date || frontmatter.lede ? (
             <div className="flex flex-col gap-xs">
               {frontmatter.publish_date ? (
-                <div className="border-blue-10 border-b-4 pb-4 text-mid-grey-00">
+                <div className="border-blue-10 border-b-4 pb-4 text-grey-70">
                   <Text as="p" size="caption">
                     Last updated on{' '}
                     {formatPublishDate(frontmatter.publish_date)}
@@ -89,7 +89,7 @@ export function MarkdownContent({
               ) : null}
 
               {frontmatter.lede ? (
-                <Text as="p" className="text-mid-grey-00">
+                <Text as="p" className="text-grey-70">
                   {frontmatter.lede}
                 </Text>
               ) : null}

@@ -18,8 +18,8 @@ const ABOUT_URL =
 
 function ServiceTitle() {
   return (
-    <div className="border-blue-40 border-l-4 py-xs pl-s">
-      <Text as="p" className="text-mid-grey-00">
+    <div className="border-blue-20 border-l-4 py-xs pl-s">
+      <Text as="p" className="text-grey-70">
         Calculate your Government pension
       </Text>
     </div>
@@ -37,11 +37,11 @@ function ResultCard({
 }) {
   const toneClasses =
     tone === 'green'
-      ? 'border-green-00 bg-green-10 text-green-00'
-      : 'border-teal-00 bg-teal-10 text-teal-00'
+      ? 'border-green-80 bg-green-10 text-green-80'
+      : 'border-teal-80 bg-teal-10 text-teal-80'
   return (
     <div className={`rounded-sm border-l-4 px-4 py-3 ${toneClasses}`}>
-      <p className="text-mid-grey-00 text-sm">{label}</p>
+      <p className="text-grey-70 text-sm">{label}</p>
       <p className="font-bold text-2xl">{value}</p>
     </div>
   )
@@ -211,12 +211,12 @@ export function PensionCalculator() {
         >
           <ServiceTitle />
           <Heading as="h1">Your estimated pension</Heading>
-          <Text as="p" className="text-mid-grey-00" size="caption">
+          <Text as="p" className="text-grey-70" size="caption">
             {context}
           </Text>
 
           {estimate.serviceWarning && (
-            <div className="border-yellow-00 border-l-4 bg-yellow-10 p-4">
+            <div className="border-yellow-80 border-l-4 bg-yellow-10 p-4">
               <Text as="p" size="body">
                 <strong>You may not be entitled to a pension.</strong> Workers
                 with fewer than 10 years (120 months) of pensionable service who
@@ -278,7 +278,7 @@ export function PensionCalculator() {
             <Text as="p" size="body">
               Your full annual pension:
             </Text>
-            <p className="mt-2 border-blue-40 border-l-4 bg-blue-10 px-4 py-3">
+            <p className="mt-2 border-blue-20 border-l-4 bg-blue-10 px-4 py-3">
               {monthWord(months)} ÷ 600 × {money(sal)} ={' '}
               {money(estimate.fullAnnual)}
             </p>
@@ -289,7 +289,7 @@ export function PensionCalculator() {
             </Text>
           </div>
 
-          <Text as="p" className="text-mid-grey-00" size="caption">
+          <Text as="p" className="text-grey-70" size="caption">
             These figures are estimates only. Contact the PAD to discuss which
             option suits your circumstances before you retire.
           </Text>
@@ -300,7 +300,7 @@ export function PensionCalculator() {
             </Button>
           </div>
 
-          <div className="mt-4 border-grey-00 border-t-2 pt-6">
+          <div className="mt-4 border-grey-20 border-t-2 pt-6">
             <Heading as="h2">Next steps</Heading>
             <Text as="p" size="body">
               Once you have your estimate, contact the National Insurance and
@@ -343,7 +343,7 @@ export function PensionCalculator() {
         <ServiceTitle />
         <Heading as="h1">Government Pension calculator</Heading>
 
-        <div className="border-blue-40 border-l-4 bg-blue-10 p-4">
+        <div className="border-blue-20 border-l-4 bg-blue-10 p-4">
           <Text as="p" size="body">
             <strong>This calculator gives an estimate only.</strong> Your actual
             pension depends on information held by the People Resourcing and
@@ -424,7 +424,7 @@ export function PensionCalculator() {
           </div>
         </form>
 
-        <div className="mt-4 border-grey-00 border-t-2 pt-6">
+        <div className="mt-4 border-grey-20 border-t-2 pt-6">
           <Text as="p" size="body">
             <Link href={ABOUT_URL}>Learn how your pension is calculated</Link>
           </Text>

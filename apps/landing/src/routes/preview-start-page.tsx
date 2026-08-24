@@ -125,7 +125,7 @@ function PreviewStartPage() {
             availableForms={formId ? new Set([formId]) : new Set()}
           />
         ) : (
-          <p className="text-mid-grey-00">
+          <p className="text-grey-70">
             Start typing in the editor to see a live preview…
           </p>
         )}

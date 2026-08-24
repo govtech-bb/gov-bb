@@ -27,7 +27,7 @@ export function FindEmergencyShelterPage() {
     <div className="mb-l flex flex-col gap-m">
       <div className="flex flex-col gap-xs">
         <Heading as="h1">{TITLE}</Heading>
-        <div className="border-blue-10 border-b-4 pb-4 text-mid-grey-00">
+        <div className="border-blue-10 border-b-4 pb-4 text-grey-70">
           <Text as="p" size="caption">
             Last updated on {format(parseISO(SHELTERS_LAST_UPDATED), 'PPP')}.
             Next review: {format(parseISO(SHELTERS_NEXT_REVIEW), 'PPP')}.
@@ -35,7 +35,7 @@ export function FindEmergencyShelterPage() {
         </div>
       </div>
 
-      <div className="border-red-00 border-l-4 bg-red-10 px-s py-xm">
+      <div className="border-red-80 border-l-4 bg-red-10 px-s py-xm">
         <Text as="p">
           <strong>No shelter is currently open.</strong> This page lists every
           shelter in the 2026 booklet — not the live status. The Department of
@@ -46,7 +46,7 @@ export function FindEmergencyShelterPage() {
         </Text>
       </div>
 
-      <Text as="p" className="text-mid-grey-00">
+      <Text as="p" className="text-grey-70">
         Search all {SHELTER_COUNT} emergency shelters in Barbados. Filter by
         parish, category and accessibility.
       </Text>
@@ -55,7 +55,7 @@ export function FindEmergencyShelterPage() {
 
       <aside
         aria-labelledby="going-to-shelter-heading"
-        className="flex flex-col gap-xs border-grey-00 border-t pt-m"
+        className="flex flex-col gap-xs border-grey-20 border-t pt-m"
       >
         <Heading as="h2" id="going-to-shelter-heading" size="h3">
           Going to a shelter?
@@ -68,7 +68,7 @@ export function FindEmergencyShelterPage() {
         </Text>
       </aside>
 
-      <Text as="p" className="text-mid-grey-00" size="caption">
+      <Text as="p" className="text-grey-70" size="caption">
         Source: 2026 Emergency Shelter Booklet, Department of Emergency
         Management. Distance is calculated from the centre of each parish.
         Parish coordinates © OpenStreetMap contributors.

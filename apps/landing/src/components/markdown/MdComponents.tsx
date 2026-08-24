@@ -96,7 +96,7 @@ export const markdownComponents: Partial<Components> = {
   tr: ({ node: _node, ...props }) => <tr {...props} />,
   th: ({ node: _node, ...props }) => (
     <th
-      className="w-1/2 px-xs py-s text-left align-top font-bold text-caption text-mid-grey-00"
+      className="w-1/2 px-xs py-s text-left align-top font-bold text-caption text-grey-70"
       {...props}
     />
   ),
@@ -112,14 +112,14 @@ export const markdownComponents: Partial<Components> = {
           {...props}
         >
           <a
-            className="text-teal-00 underline"
+            className="text-teal-80 underline"
             href={`tel:+1${area}${prefix}${line}`}
           >
             {`(${area}) ${prefix}-${line}`}
           </a>
           {' / '}
           <a
-            className="text-teal-00 underline"
+            className="text-teal-80 underline"
             href={`tel:+1${area}${prefix}${line2}`}
           >
             {line2}
@@ -137,7 +137,7 @@ export const markdownComponents: Partial<Components> = {
           {...props}
         >
           <a
-            className="text-teal-00 underline"
+            className="text-teal-80 underline"
             href={`tel:+1${area}${prefix}${line}`}
           >
             {text}

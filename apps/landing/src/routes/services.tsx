@@ -35,7 +35,7 @@ function ServicesPage() {
 
   return (
     <>
-      <section className="border-teal-40 border-b-4 bg-teal-10 py-8">
+      <section className="border-teal-20 border-b-4 bg-teal-10 py-8">
         <div className="govbb-width-container">
           <div className="flex flex-col gap-2">
             <Text as="p" className="font-bold">
@@ -74,7 +74,7 @@ function ServicesPage() {
               {items.map((item) => (
                 <li
                   key={item.slug}
-                  className="flex flex-col items-start gap-xs border-grey-00 border-b-2 py-s first:pt-0"
+                  className="flex flex-col items-start gap-xs border-grey-20 border-b-2 py-s first:pt-0"
                 >
                   <Link
                     href={item.href}
@@ -84,7 +84,7 @@ function ServicesPage() {
                   >
                     {item.title}
                   </Link>
-                  <Text as="p" className="text-mid-grey-00">
+                  <Text as="p" className="text-grey-70">
                     {item.digital ? 'Digital service' : 'Information service'}
                   </Text>
                 </li>

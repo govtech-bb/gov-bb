@@ -36,7 +36,7 @@ function Home() {
 
   return (
     <>
-      <section className="border-b-4 border-yellow-100 bg-blue-00 text-white-00">
+      <section className="border-b-4 border-yellow-40 bg-blue-80 text-white-00">
         <div className="govbb-width-container">
           <div className="space-y-m py-[clamp(var(--spacing-m),5vw,var(--spacing-l))]">
             <div className="max-w-210 space-y-s">
@@ -53,7 +53,7 @@ function Home() {
         </div>
       </section>
 
-      <section className="border-b-4 border-teal-100 bg-green-10">
+      <section className="border-b-4 border-teal-40 bg-green-10">
         <div className="govbb-width-container">
           <div className="space-y-m py-m">
             <Heading as="h4">
@@ -86,11 +86,11 @@ function Home() {
               {categories.map((cat) => (
                 <li
                   key={cat.slug}
-                  className="border-b-2 border-grey-00 py-s lg:py-xm"
+                  className="border-b-2 border-grey-20 py-s lg:py-xm"
                 >
                   <a
                     href={`/${cat.slug}`}
-                    className="govbb-link text-[clamp(1.25rem,2.5vw,2rem)] leading-normal font-bold text-green-00"
+                    className="govbb-link text-[clamp(1.25rem,2.5vw,2rem)] leading-normal font-bold text-green-80"
                   >
                     {cat.title}
                   </a>

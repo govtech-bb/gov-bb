@@ -114,8 +114,8 @@ function parseDate(parts: DateInputValue): ParseDateResult {
 
 function ServiceTitle() {
   return (
-    <div className="border-blue-40 border-l-4 py-xs pl-s">
-      <Text as="p" className="text-mid-grey-00">
+    <div className="border-blue-20 border-l-4 py-xs pl-s">
+      <Text as="p" className="text-grey-70">
         {SERVICE_TITLE}
       </Text>
     </div>
@@ -130,7 +130,7 @@ function IneligibleResult({ variant }: { variant: IneligibleVariant }) {
           {variant.title}
         </Heading>
       </div>
-      <Text as="p" className="mt-3 text-mid-grey-00" size="caption">
+      <Text as="p" className="mt-3 text-grey-70" size="caption">
         Based on the information you gave us
       </Text>
       <Text as="p" className="mt-2" size="body">
@@ -588,7 +588,7 @@ function EligibleResult({
 
   return (
     <>
-      <div className="rounded-sm bg-green-00 p-m text-white-00">
+      <div className="rounded-sm bg-green-80 p-m text-white-00">
         <Heading as="h2" className="text-white-00">
           Your severance payment estimate
         </Heading>
@@ -597,7 +597,7 @@ function EligibleResult({
         </p>
       </div>
 
-      <div className="border-red-00 border-l-4 bg-red-10 p-4">
+      <div className="border-red-80 border-l-4 bg-red-10 p-4">
         <Text as="p" size="body">
           <strong>This is the estimated amount you may be entitled to.</strong>{' '}
           It is calculated under the Severance Payments Act (Cap. 355A). Your
@@ -719,7 +719,7 @@ function EligibleResult({
                 />
               )}
               <span className="col-span-9 mt-1 border-black-00 border-t pt-2 text-right">
-                <span className="mr-2 text-mid-grey-00">Total =</span>
+                <span className="mr-2 text-grey-70">Total =</span>
                 <strong>{money(severance)}</strong>
               </span>
             </div>
@@ -728,7 +728,7 @@ function EligibleResult({
       </ShowHide>
 
       {years > 33 && (
-        <Text as="p" className="text-mid-grey-00" size="caption">
+        <Text as="p" className="text-grey-70" size="caption">
           Under the Severance Payments Act, only the most recent 33 years of
           service are counted.
         </Text>
@@ -754,7 +754,7 @@ function EligibleResult({
         </li>
       </ol>
 
-      <div className="border-yellow-00 border-l-4 bg-yellow-10 p-4">
+      <div className="border-yellow-80 border-l-4 bg-yellow-10 p-4">
         <Text as="p" size="body">
           <strong>Keep your pink slip safe</strong>
         </Text>
@@ -782,7 +782,7 @@ function GapWeeksExample({
   const exampleSeverance = entitledWeeks * exampleAvg
 
   return (
-    <div className="border-yellow-00 border-l-4 bg-yellow-10 p-4">
+    <div className="border-yellow-80 border-l-4 bg-yellow-10 p-4">
       <Text as="p" size="body">
         <strong>Why this is only an estimate</strong>
       </Text>
@@ -803,13 +803,13 @@ function GapWeeksExample({
             <strong>For example</strong>, if {gapWeeks} of your last 104 weeks
             had no pay (say you took unpaid sick leave after an injury):
           </Text>
-          <Text as="p" className="mt-3 text-mid-grey-00" size="caption">
+          <Text as="p" className="mt-3 text-grey-70" size="caption">
             Each square is one week.
           </Text>
           <div className="mt-2 space-y-3">
             {[0, 1].map((yearIdx) => (
               <div key={yearIdx}>
-                <Text as="p" className="mb-1 text-mid-grey-00" size="caption">
+                <Text as="p" className="mb-1 text-grey-70" size="caption">
                   {yearIdx === 0 ? '2 years ago' : 'Last year'}
                 </Text>
                 <div className="flex flex-wrap gap-1">
@@ -821,8 +821,8 @@ function GapWeeksExample({
                         aria-hidden="true"
                         className={
                           isGap
-                            ? 'h-3 w-3 rounded-xs bg-red-00'
-                            : 'h-3 w-3 rounded-xs bg-green-00'
+                            ? 'h-3 w-3 rounded-xs bg-red-80'
+                            : 'h-3 w-3 rounded-xs bg-green-80'
                         }
                         key={weekIndex}
                       />
@@ -836,23 +836,23 @@ function GapWeeksExample({
             <div className="flex items-center gap-2">
               <span
                 aria-hidden="true"
-                className="h-4 w-4 shrink-0 rounded-xs bg-green-00"
+                className="h-4 w-4 shrink-0 rounded-xs bg-green-80"
               />
               <dt className="sr-only">Worked</dt>
               <dd>
                 <strong>{workedWeeks} weeks</strong>{' '}
-                <span className="text-mid-grey-00">worked</span>
+                <span className="text-grey-70">worked</span>
               </dd>
             </div>
             <div className="flex items-center gap-2">
               <span
                 aria-hidden="true"
-                className="h-4 w-4 shrink-0 rounded-xs bg-red-00"
+                className="h-4 w-4 shrink-0 rounded-xs bg-red-80"
               />
               <dt className="sr-only">No pay</dt>
               <dd>
                 <strong>{gapWeeks} weeks</strong>{' '}
-                <span className="text-mid-grey-00">no pay</span>
+                <span className="text-grey-70">no pay</span>
               </dd>
             </div>
           </dl>
@@ -865,7 +865,7 @@ function GapWeeksExample({
               = <strong>{money(exampleAvg)} a week</strong> (instead of{' '}
               {money(rawWeekly)})
             </div>
-            <div className="mt-2 border-grey-00 border-t pt-2">
+            <div className="mt-2 border-grey-20 border-t pt-2">
               Severance would be <strong>{money(exampleSeverance)}</strong>, not{' '}
               {money(severance)}.
             </div>
@@ -890,13 +890,13 @@ function TierRow({
   return (
     <>
       <span className="text-right">{money(weekly)}</span>
-      <span className="text-mid-grey-00">×</span>
+      <span className="text-grey-70">×</span>
       <span className="text-right">{multiplier}</span>
-      <span className="text-mid-grey-00">weeks</span>
-      <span className="text-mid-grey-00">×</span>
+      <span className="text-grey-70">weeks</span>
+      <span className="text-grey-70">×</span>
       <span className="text-right">{years}</span>
-      <span className="text-mid-grey-00">{years === 1 ? 'year' : 'years'}</span>
-      <span className="text-mid-grey-00">=</span>
+      <span className="text-grey-70">{years === 1 ? 'year' : 'years'}</span>
+      <span className="text-grey-70">=</span>
       <span className="text-right font-bold">{money(pay)}</span>
     </>
   )

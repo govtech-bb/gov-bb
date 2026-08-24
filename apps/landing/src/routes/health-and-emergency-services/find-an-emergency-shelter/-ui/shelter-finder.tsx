@@ -293,7 +293,7 @@ export function ShelterFinder() {
     <section aria-label="Shelter finder">
       <Text
         as="p"
-        className="mb-s text-mid-grey-00 print:hidden"
+        className="mb-s text-grey-70 print:hidden"
         size="caption"
       >
         <button
@@ -314,7 +314,7 @@ export function ShelterFinder() {
             <button
               aria-controls="shelter-filter-panel"
               aria-expanded={filterOpen}
-              className="flex w-full items-center gap-xs border-mid-grey-00 border-b py-3 text-green-00"
+              className="flex w-full items-center gap-xs border-grey-70 border-b py-3 text-green-80"
               onClick={() => setFilterOpen((open) => !open)}
               type="button"
             >
@@ -324,7 +324,7 @@ export function ShelterFinder() {
 
             {filterOpen && (
               <div
-                className="flex flex-col gap-xm border-grey-00 border-b bg-grey-00 p-xm"
+                className="flex flex-col gap-xm border-grey-20 border-b bg-grey-20 p-xm"
                 id="shelter-filter-panel"
               >
                 <Input
@@ -353,7 +353,7 @@ export function ShelterFinder() {
                     <Text
                       aria-live="polite"
                       as="p"
-                      className="text-mid-grey-00"
+                      className="text-grey-70"
                       size="caption"
                     >
                       {locationStatus}
@@ -431,7 +431,7 @@ export function ShelterFinder() {
                 <div className="flex flex-wrap items-center gap-xs">
                   {tags.map((tag) => (
                     <button
-                      className="inline-flex items-center gap-2 bg-teal-10 p-2.5 font-medium hover:bg-teal-40"
+                      className="inline-flex items-center gap-2 bg-teal-10 p-2.5 font-medium hover:bg-teal-20"
                       key={tag.key}
                       onClick={tag.remove}
                       type="button"
@@ -443,7 +443,7 @@ export function ShelterFinder() {
                   ))}
                 </div>
                 <button
-                  className="self-start font-semibold text-red-00 underline"
+                  className="self-start font-semibold text-red-80 underline"
                   onClick={clearAll}
                   type="button"
                 >
@@ -461,7 +461,7 @@ export function ShelterFinder() {
           </Text>
 
           {results.length === 0 ? (
-            <div className="border-blue-100 border-l-4 bg-blue-10 px-s py-xm">
+            <div className="border-blue-40 border-l-4 bg-blue-10 px-s py-xm">
               <Text as="p">
                 Try clearing a filter above, or call the Department of Emergency
                 Management on <Link href={DEM_TEL}>{DEM_NUMBER}</Link> for help.
@@ -517,7 +517,7 @@ function FilterGroup({
 }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="flex w-full flex-col gap-s border-mid-grey-00 border-b pb-s">
+    <div className="flex w-full flex-col gap-s border-grey-70 border-b pb-s">
       <button
         aria-expanded={open}
         className="flex w-full items-center justify-between gap-2.5"
@@ -527,14 +527,14 @@ function FilterGroup({
         <Heading as="h3" size="h4">
           {title}
         </Heading>
-        <span className="text-teal-00">
+        <span className="text-teal-80">
           <Chevron open={open} />
         </span>
       </button>
       {open && (
         <div className="flex flex-col gap-s">
           {hint && (
-            <Text as="p" className="text-mid-grey-00" size="caption">
+            <Text as="p" className="text-grey-70" size="caption">
               {hint}
             </Text>
           )}

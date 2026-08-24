@@ -379,7 +379,7 @@ function ServiceListView({
     <Shell>
       <PageHeader title={title} description={description} />
       {sorted.length === 0 ? (
-        <Text as="p" className="mt-6 text-mid-grey-00">
+        <Text as="p" className="mt-6 text-grey-70">
           No services yet.
         </Text>
       ) : (
@@ -387,7 +387,7 @@ function ServiceListView({
           {sorted.map((item) => (
             <div
               key={item.href}
-              className="border-grey-00 border-t-2 py-4 first:border-0 lg:py-8"
+              className="border-grey-20 border-t-2 py-4 first:border-0 lg:py-8"
             >
               <a
                 href={item.href}
@@ -417,7 +417,7 @@ function SubcategoryIndexView({
         {subcategories.map((sub) => (
           <li
             key={sub.slug}
-            className="border-t-2 border-grey-00 py-4 first:border-0 lg:py-8"
+            className="border-t-2 border-grey-20 py-4 first:border-0 lg:py-8"
           >
             <a
               href={`/${category.slug}/${sub.slug}`}
@@ -459,12 +459,12 @@ function ReviewBanner({ level }: { level: Exclude<ViewLevel, 'public'> }) {
   return (
     <div
       role="status"
-      className="mb-6 border-yellow-40 border-l-4 bg-yellow-10 p-4"
+      className="mb-6 border-yellow-20 border-l-4 bg-yellow-10 p-4"
     >
       <Text as="p" className="font-bold">
         {copy.heading}
       </Text>
-      <Text as="p" size="caption" className="text-mid-grey-00">
+      <Text as="p" size="caption" className="text-grey-70">
         {copy.detail}
       </Text>
     </div>

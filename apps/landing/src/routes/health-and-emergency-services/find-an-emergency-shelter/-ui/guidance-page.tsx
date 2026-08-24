@@ -55,7 +55,7 @@ export function EmergencyShelterGuidancePage() {
     <div className="mb-l flex max-w-[44rem] flex-col gap-m">
       <div className="flex flex-col gap-xs">
         <Heading as="h1">{TITLE}</Heading>
-        <div className="border-blue-10 border-b-4 pb-4 text-mid-grey-00">
+        <div className="border-blue-10 border-b-4 pb-4 text-grey-70">
           <Text as="p" size="caption">
             Last updated on {format(parseISO(SHELTERS_LAST_UPDATED), 'PPP')}.
             Next review: {format(parseISO(SHELTERS_NEXT_REVIEW), 'PPP')}.
@@ -63,13 +63,13 @@ export function EmergencyShelterGuidancePage() {
         </div>
       </div>
 
-      <Text as="p" className="text-mid-grey-00">
+      <Text as="p" className="text-grey-70">
         Read this guidance before you go to an emergency shelter in Barbados.
       </Text>
 
       <nav
         aria-labelledby="contents-heading"
-        className="flex flex-col gap-s border-teal-00 border-l-4 bg-teal-10 p-s"
+        className="flex flex-col gap-s border-teal-80 border-l-4 bg-teal-10 p-s"
       >
         <Heading as="h2" id="contents-heading" size="h3">
           Contents
@@ -228,7 +228,7 @@ export function EmergencyShelterGuidancePage() {
           <ul className="m-0 flex list-none flex-col p-0">
             {DISTRICT_CHAIRS.map((chair) => (
               <li
-                className="grid gap-0.5 border-grey-00 border-b py-s sm:grid-cols-[1fr_1fr] sm:items-baseline sm:gap-6"
+                className="grid gap-0.5 border-grey-20 border-b py-s sm:grid-cols-[1fr_1fr] sm:items-baseline sm:gap-6"
                 key={chair.district}
               >
                 <span className="font-bold">{chair.district}</span>
@@ -238,7 +238,7 @@ export function EmergencyShelterGuidancePage() {
               </li>
             ))}
           </ul>
-          <Text as="p" className="mt-s text-mid-grey-00" size="caption">
+          <Text as="p" className="mt-s text-grey-70" size="caption">
             Some districts (Christ Church South, Christ Church West Central and
             St. Michael North) currently have no listed chairperson. Contact DEM
             on <Link href={DEM_TEL}>438-7575</Link> if your district is not
@@ -254,11 +254,11 @@ export function EmergencyShelterGuidancePage() {
         <dl className="m-0 flex flex-col">
           {HURRICANE_TERMS.map((entry) => (
             <div
-              className="flex flex-col gap-0.5 border-grey-00 border-b py-s"
+              className="flex flex-col gap-0.5 border-grey-20 border-b py-s"
               key={entry.term}
             >
               <dt className="font-bold">{entry.term}</dt>
-              <dd className="m-0 text-mid-grey-00">{entry.definition}</dd>
+              <dd className="m-0 text-grey-70">{entry.definition}</dd>
             </div>
           ))}
         </dl>
@@ -283,7 +283,7 @@ export function EmergencyShelterGuidancePage() {
         ))}
       </GuidanceSection>
 
-      <aside className="border-grey-00 border-t pt-m">
+      <aside className="border-grey-20 border-t pt-m">
         <Heading as="h2" size="h3">
           Ready to find a shelter?
         </Heading>
@@ -294,7 +294,7 @@ export function EmergencyShelterGuidancePage() {
         </Text>
       </aside>
 
-      <Text as="p" className="text-mid-grey-00" size="caption">
+      <Text as="p" className="text-grey-70" size="caption">
         Source: 2026 Emergency Shelter Booklet, Department of Emergency
         Management.
       </Text>
@@ -337,7 +337,7 @@ function BulletList({ items }: { items: string[] }) {
 
 function PhoneRow({ entry }: { entry: PhoneEntry }) {
   return (
-    <li className="grid gap-0.5 border-grey-00 border-b py-s sm:grid-cols-[1fr_1fr] sm:items-baseline sm:gap-6">
+    <li className="grid gap-0.5 border-grey-20 border-b py-s sm:grid-cols-[1fr_1fr] sm:items-baseline sm:gap-6">
       <span className="font-bold">{entry.label}</span>
       <span>
         {entry.contacts.map((contact, index) => (

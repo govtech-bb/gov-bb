@@ -85,7 +85,7 @@ function BankHolidaysPage() {
             <Heading as="h1" className="mb-xs">
               Bank holidays
             </Heading>
-            <Text as="p" className="text-mid-grey-00">
+            <Text as="p" className="text-grey-70">
               Last updated on {LAST_UPDATED}
             </Text>
           </div>
@@ -115,9 +115,9 @@ function BankHolidaysPage() {
 }
 
 const YEAR_BUTTON_CLASS =
-  'inline-flex items-center gap-2 rounded-lg border border-grey-00 bg-white px-3.5 py-2 font-semibold text-blue-100 text-sm transition-colors hover:border-blue-100 hover:bg-blue-10'
+  'inline-flex items-center gap-2 rounded-lg border border-grey-20 bg-white px-3.5 py-2 font-semibold text-blue-40 text-sm transition-colors hover:border-blue-40 hover:bg-blue-10'
 const YEAR_BUTTON_DISABLED_CLASS =
-  'inline-flex cursor-not-allowed items-center gap-2 rounded-lg border border-grey-00 bg-white px-3.5 py-2 font-semibold text-blue-100 text-sm opacity-50'
+  'inline-flex cursor-not-allowed items-center gap-2 rounded-lg border border-grey-20 bg-white px-3.5 py-2 font-semibold text-blue-40 text-sm opacity-50'
 
 function YearSwitcher({ year }: { year: number }) {
   const prevYear = year - 1
@@ -140,10 +140,10 @@ function YearSwitcher({ year }: { year: number }) {
         <polyline points="15 18 9 12 15 6" />
       </svg>
       <span className="text-left leading-none">
-        <span className="block font-medium text-[11px] text-mid-grey-00 uppercase tracking-wider">
+        <span className="block font-medium text-[11px] text-grey-70 uppercase tracking-wider">
           Previous
         </span>
-        <span className="block font-bold text-blue-100 text-sm">
+        <span className="block font-bold text-blue-40 text-sm">
           {prevYear}
         </span>
       </span>
@@ -153,10 +153,10 @@ function YearSwitcher({ year }: { year: number }) {
   const nextContent = (
     <>
       <span className="text-right leading-none">
-        <span className="block font-medium text-[11px] text-mid-grey-00 uppercase tracking-wider">
+        <span className="block font-medium text-[11px] text-grey-70 uppercase tracking-wider">
           Next
         </span>
-        <span className="block font-bold text-blue-100 text-sm">
+        <span className="block font-bold text-blue-40 text-sm">
           {nextYear}
         </span>
       </span>
@@ -321,26 +321,26 @@ function NextHolidayHero({
   return (
     <section
       aria-label="Next bank holiday"
-      className="relative mb-8 overflow-hidden rounded-lg bg-blue-100 px-8 pt-7 pb-8 text-white"
+      className="relative mb-8 overflow-hidden rounded-lg bg-blue-40 px-8 pt-7 pb-8 text-white"
     >
       <div className="relative">
-        <span className="mb-6 inline-flex items-center rounded-lg bg-yellow-100 px-3.5 py-1.5 font-extrabold text-blue-100 text-xs uppercase tracking-widest">
+        <span className="mb-6 inline-flex items-center rounded-lg bg-yellow-40 px-3.5 py-1.5 font-extrabold text-blue-40 text-xs uppercase tracking-widest">
           Next bank holiday
         </span>
         <h2 className="mb-2.5 font-extrabold text-4xl leading-tight tracking-tight">
           {holiday.name}
         </h2>
-        <p className="mb-6 font-bold text-xl text-yellow-00 tracking-tight">
+        <p className="mb-6 font-bold text-xl text-yellow-80 tracking-tight">
           {fmtFullDate(holiday.date)}
         </p>
         <p className="font-medium text-[15px] text-white/70">
           {days === 0 || days === 1 ? (
-            <strong className="font-bold text-base text-yellow-00">
+            <strong className="font-bold text-base text-yellow-80">
               {countdownLabel}
             </strong>
           ) : (
             <>
-              <strong className="font-bold text-base text-yellow-00">
+              <strong className="font-bold text-base text-yellow-80">
                 {days}
               </strong>{' '}
               days away
@@ -380,12 +380,12 @@ function YearOverviewHero({
   return (
     <section
       aria-label="Year overview"
-      className="mb-8 rounded-lg border border-grey-00 bg-[#f5f7fa] px-8 py-6"
+      className="mb-8 rounded-lg border border-grey-20 bg-[#f5f7fa] px-8 py-6"
     >
-      <span className="mb-3 inline-block rounded-lg bg-grey-00 px-3 py-1 font-bold text-mid-grey-00 text-xs uppercase tracking-wider">
+      <span className="mb-3 inline-block rounded-lg bg-grey-20 px-3 py-1 font-bold text-grey-70 text-xs uppercase tracking-wider">
         {pill}
       </span>
-      <h2 className="font-extrabold text-2xl text-blue-100 leading-tight tracking-tight">
+      <h2 className="font-extrabold text-2xl text-blue-40 leading-tight tracking-tight">
         {heading}
       </h2>
     </section>
@@ -412,18 +412,18 @@ function HolidaySection({
   return (
     <section className="mt-10 first:mt-0">
       <div className="mb-4 flex items-center gap-3">
-        <h2 className="font-extrabold text-2xl text-blue-100 tracking-tight">
+        <h2 className="font-extrabold text-2xl text-blue-40 tracking-tight">
           {heading}
         </h2>
-        <span className="inline-flex items-center rounded-lg bg-grey-00 px-3 py-1 font-medium text-mid-grey-00 text-xs">
+        <span className="inline-flex items-center rounded-lg bg-grey-20 px-3 py-1 font-medium text-grey-70 text-xs">
           {chip}
         </span>
       </div>
 
-      <div className="border-grey-00 border-t">
+      <div className="border-grey-20 border-t">
         <div
           aria-hidden="true"
-          className="hidden border-grey-00 border-b-2 px-4 pt-2 pb-2.5 font-bold text-mid-grey-00 text-xs uppercase tracking-wider md:grid md:grid-cols-[72px_1fr_130px] md:gap-6"
+          className="hidden border-grey-20 border-b-2 px-4 pt-2 pb-2.5 font-bold text-grey-70 text-xs uppercase tracking-wider md:grid md:grid-cols-[72px_1fr_130px] md:gap-6"
         >
           <span>Date</span>
           <span>Holiday</span>
@@ -460,9 +460,9 @@ function HolidayRow({
   return (
     <li
       className={[
-        'grid grid-cols-[64px_1fr] items-center gap-3.5 border-grey-00 border-b px-2 py-4 md:grid-cols-[72px_1fr_130px] md:gap-6 md:px-4 md:py-4.5',
+        'grid grid-cols-[64px_1fr] items-center gap-3.5 border-grey-20 border-b px-2 py-4 md:grid-cols-[72px_1fr_130px] md:gap-6 md:px-4 md:py-4.5',
         isNext
-          ? '-mt-px mb-2 rounded-lg border border-yellow-100 bg-yellow-10 md:px-4'
+          ? '-mt-px mb-2 rounded-lg border border-yellow-40 bg-yellow-10 md:px-4'
           : '',
       ].join(' ')}
     >
@@ -470,7 +470,7 @@ function HolidayRow({
         aria-hidden="true"
         className={[
           'rounded-lg text-center font-extrabold leading-none',
-          muted ? 'bg-grey-00 text-mid-grey-00' : 'bg-yellow-100 text-blue-100',
+          muted ? 'bg-grey-20 text-grey-70' : 'bg-yellow-40 text-blue-40',
         ].join(' ')}
       >
         <span className="block px-1 pt-2 pb-1 text-[11px] uppercase tracking-wider">
@@ -484,18 +484,18 @@ function HolidayRow({
         <span
           className={[
             'block font-bold text-base leading-snug',
-            muted ? 'text-mid-grey-00' : 'text-blue-100',
+            muted ? 'text-grey-70' : 'text-blue-40',
           ].join(' ')}
         >
           {holiday.name}
         </span>
         {holiday.note && (
-          <span className="mt-0.5 block text-mid-grey-00 text-sm leading-snug">
+          <span className="mt-0.5 block text-grey-70 text-sm leading-snug">
             {holiday.note}
           </span>
         )}
         {substitute && (
-          <span className="mt-1.5 inline-flex items-center gap-1 rounded-lg border border-yellow-100 bg-yellow-10 px-2 py-0.5 font-semibold text-blue-100 text-xs">
+          <span className="mt-1.5 inline-flex items-center gap-1 rounded-lg border border-yellow-40 bg-yellow-10 px-2 py-0.5 font-semibold text-blue-40 text-xs">
             Observed: {fmtSubstituteDate(substitute.date)}
           </span>
         )}
@@ -503,7 +503,7 @@ function HolidayRow({
       <div
         className={[
           'col-span-2 mt-[-8px] pl-[78px] font-medium text-[13px] md:col-span-1 md:mt-0 md:pl-0 md:text-right md:text-[15px]',
-          muted ? 'text-mid-grey-00' : 'text-mid-grey-00',
+          muted ? 'text-grey-70' : 'text-grey-70',
         ].join(' ')}
       >
         {fmtDayOfWeek(holiday.date)}
@@ -527,14 +527,14 @@ function SubstitutionNotice({
         } for ${year}.`
 
   return (
-    <div className="mt-10 rounded-lg border-blue-100 border-l-4 bg-blue-10 px-5 py-4 text-[15px] text-mid-grey-00">
-      <strong className="mb-1 block text-base text-blue-100">
+    <div className="mt-10 rounded-lg border-blue-40 border-l-4 bg-blue-10 px-5 py-4 text-[15px] text-grey-70">
+      <strong className="mb-1 block text-base text-blue-40">
         When a bank holiday falls on a weekend
       </strong>
       Most holidays falling on a Sunday are observed on the following Monday.{' '}
-      <span className="text-mid-grey-00">{subText}</span>
+      <span className="text-grey-70">{subText}</span>
       <details className="mt-1.5" open>
-        <summary className="cursor-pointer font-semibold text-blue-100">
+        <summary className="cursor-pointer font-semibold text-blue-40">
           Read the full rules
         </summary>
         <p className="mt-2.5 text-sm">
@@ -556,27 +556,27 @@ function AboutSection() {
   return (
     <section
       aria-labelledby="about-heading"
-      className="mt-16 border-grey-00 border-t-2 pt-8"
+      className="mt-16 border-grey-20 border-t-2 pt-8"
     >
       <h2
-        className="mb-3 font-extrabold text-blue-100 text-xl"
+        className="mb-3 font-extrabold text-blue-40 text-xl"
         id="about-heading"
       >
         About this list
       </h2>
-      <p className="mb-3 max-w-[640px] text-[15px] text-mid-grey-00">
+      <p className="mb-3 max-w-[640px] text-[15px] text-grey-70">
         Bank holidays in Barbados are set out in the Public Holidays Act, Cap.
         352. The Government may also declare additional one-off public holidays
         from time to time.
       </p>
-      <p className="mb-3 max-w-[640px] text-[15px] text-mid-grey-00">
+      <p className="mb-3 max-w-[640px] text-[15px] text-grey-70">
         This page is updated when new dates are gazetted.
       </p>
-      <p className="max-w-[640px] text-[15px] text-mid-grey-00">
-        <strong className="text-blue-100">Source:</strong> Public Holidays Act,
+      <p className="max-w-[640px] text-[15px] text-grey-70">
+        <strong className="text-blue-40">Source:</strong> Public Holidays Act,
         Cap. 352 — Government of Barbados Ministry of Labour.{' '}
         <a
-          className="text-blue-100 underline hover:text-blue-100/80"
+          className="text-blue-40 underline hover:text-blue-40/80"
           href="https://labour.gov.bb/library/library-publications/holidays/"
           rel="noopener noreferrer"
           target="_blank"
