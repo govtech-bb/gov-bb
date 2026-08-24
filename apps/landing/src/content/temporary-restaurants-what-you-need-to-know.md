@@ -3,7 +3,7 @@ title: 'Temporary restaurants: what you need to know'
 description: >-
   What counts as a temporary restaurant in Barbados, who must apply for a
   licence, and what your event needs — including food safety, paying for
-  environmental health officers, and setting up your stall.
+  Environmental Health Officers, and setting up your stall.
 stage: alpha
 visibility: public
 service_type: information
@@ -43,7 +43,7 @@ Apply at least **14 days** before the event.
 -   All licences should be kept it at your stall.
 -   Temporary permits may be granted by the EHD based on a risk based assessment.
 
-## Paying for environmental health officers
+## Paying for Environmental Health Officers
 
 There is no application fee. If you are organising the event, you must pay any overtime costs for the officers allocated to the event by the Ministry of Health and Wellness.
 

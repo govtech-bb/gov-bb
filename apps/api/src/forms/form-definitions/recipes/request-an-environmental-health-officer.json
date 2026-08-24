@@ -1,7 +1,7 @@
 {
   "formId": "request-an-environmental-health-officer",
-  "title": "Request an environmental health officer",
-  "description": "Request an environmental health officer to attend an event where food or drink is served to the public.",
+  "title": "Request an Environmental Health Officer",
+  "description": "Request an Environmental Health Officer to attend an event where food or drink is served to the public.",
   "createdAt": "2026-08-10T00:00:00Z",
   "updatedAt": "2026-08-19T00:00:00Z",
   "contactDetails": {
@@ -13,14 +13,14 @@
     {
       "type": "email",
       "config": {
-        "subject": "Your request for an environmental health officer has been received",
+        "subject": "Your request for an Environmental Health Officer has been received",
         "recipientField": "applicant-details.email"
       }
     },
     {
       "type": "email",
       "config": {
-        "subject": "A new request for an environmental health officer has been received",
+        "subject": "A new request for an Environmental Health Officer has been received",
         "recipientField": "catchment.mdaEmail"
       }
     },
@@ -1042,7 +1042,7 @@
             },
             "options": [
               {
-                "label": "I understand that the event organiser is responsible for the overtime costs of the environmental health officers who provide public health surveillance and inspection during the event.",
+                "label": "I understand that the event organiser is responsible for the overtime costs of the Environmental Health Officers who provide public health surveillance and inspection during the event.",
                 "value": "acknowledged"
               }
             ],
@@ -1060,7 +1060,7 @@
       "stepId": "submission-confirmation",
       "title": "Request submitted",
       "elements": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your request.\n- Environmental health officers will attend on the dates and times you gave. The department will confirm arrangements and any overtime costs.\n- If there are overtime costs, they will send an invoice after the request is approved. The fees are payable in advance to the Accountant General.\n- If you are also operating a temporary restaurant, this request includes your licence application. An officer checks your set-up and issues the licence at the event, not in advance. It is valid for 30 days from the date it is issued.\n\nKeep your reference number for any follow-up."
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your request.\n- Environmental Health Officers will attend on the dates and times you gave. The department will confirm arrangements and any overtime costs.\n- If there are overtime costs, they will send an invoice after the request is approved. The fees are payable in advance to the Accountant General.\n- If you are also operating a temporary restaurant, this request includes your licence application. An officer checks your set-up and issues the licence at the event, not in advance. It is valid for 30 days from the date it is issued.\n\nKeep your reference number for any follow-up."
     }
   ],
   "meta": {
