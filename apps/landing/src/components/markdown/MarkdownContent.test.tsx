@@ -35,6 +35,16 @@ describe('MarkdownBody', () => {
     expect(html).toContain('href="tel:+12465351000"')
   })
 
+  it('renders tables and lists with the design system components', async () => {
+    const table = await renderBody('| Office | Phone |\n| - | - |\n| a | b |')
+    expect(table).toContain('govbb-table')
+    expect(table).toContain('govbb-table__header')
+    expect(table).toContain('govbb-table__cell')
+
+    expect(await renderBody('- one\n- two')).toContain('govbb-list--bullet')
+    expect(await renderBody('1. one\n2. two')).toContain('govbb-list--number')
+  })
+
   it('renders a Start now button when the form is available', async () => {
     const html = await renderBody('<a data-start-link>Start now</a>', {
       formId: 'birth',

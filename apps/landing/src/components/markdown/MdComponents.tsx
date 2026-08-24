@@ -1,4 +1,12 @@
-import { Heading, LinkButton, Text } from '@govtech-bb/react'
+import {
+  Heading,
+  LinkButton,
+  List,
+  Table,
+  TableCell,
+  TableHeader,
+  Text,
+} from '@govtech-bb/react'
 import type { ReactNode } from 'react'
 import type { Components } from 'hast-util-to-jsx-runtime'
 import { MarkdownLink } from './MarkdownLink'
@@ -49,14 +57,14 @@ export const markdownComponents: Partial<Components> = {
     </Text>
   ),
   ul: ({ node: _node, children, ...props }) => (
-    <ul className="list-disc pl-7" {...props}>
+    <List variant="bullet" {...props}>
       {children}
-    </ul>
+    </List>
   ),
   ol: ({ node: _node, children, ...props }) => (
-    <ol className="list-decimal space-y-4 pl-7" {...props}>
+    <List variant="number" {...props}>
       {children}
-    </ol>
+    </List>
   ),
   li: ({ node: _node, children, ...props }) => (
     <li className="space-y-s" {...props}>
@@ -80,25 +88,18 @@ export const markdownComponents: Partial<Components> = {
       {...props}
     />
   ),
+  // Not `scrollable`: that wraps the table in a role="region", and a markdown
+  // table has no caption to name it with.
   table: ({ node: _node, ...props }) => (
     <div className="my-s overflow-x-auto">
-      <div className="inline-block min-w-full align-middle">
-        <table className="min-w-full" {...props} />
-      </div>
+      <Table {...props} />
     </div>
   ),
-  thead: ({ node: _node, ...props }) => (
-    <thead className="bg-blue-10" {...props} />
-  ),
-  tbody: ({ node: _node, ...props }) => (
-    <tbody className="bg-white" {...props} />
-  ),
+  thead: ({ node: _node, ...props }) => <thead {...props} />,
+  tbody: ({ node: _node, ...props }) => <tbody {...props} />,
   tr: ({ node: _node, ...props }) => <tr {...props} />,
   th: ({ node: _node, ...props }) => (
-    <th
-      className="w-1/2 px-xs py-s text-left align-top font-bold text-caption text-grey-70"
-      {...props}
-    />
+    <TableHeader className="w-1/2" {...props} />
   ),
   td: ({ node: _node, children, ...props }) => {
     const text = extractCellText(children)
@@ -107,10 +108,7 @@ export const markdownComponents: Partial<Components> = {
     if (slashMatch) {
       const [, area, prefix, line, line2] = slashMatch
       return (
-        <td
-          className="w-1/2 px-xs py-s align-top text-black text-caption"
-          {...props}
-        >
+        <TableCell className="w-1/2" {...props}>
           <a
             className="text-teal-80 underline"
             href={`tel:+1${area}${prefix}${line}`}
@@ -124,7 +122,7 @@ export const markdownComponents: Partial<Components> = {
           >
             {line2}
           </a>
-        </td>
+        </TableCell>
       )
     }
 
@@ -132,27 +130,21 @@ export const markdownComponents: Partial<Components> = {
     if (phoneMatch) {
       const [, area, prefix, line] = phoneMatch
       return (
-        <td
-          className="w-1/2 px-xs py-s align-top text-black text-caption"
-          {...props}
-        >
+        <TableCell className="w-1/2" {...props}>
           <a
             className="text-teal-80 underline"
             href={`tel:+1${area}${prefix}${line}`}
           >
             {text}
           </a>
-        </td>
+        </TableCell>
       )
     }
 
     return (
-      <td
-        className="w-1/2 px-xs py-s align-top text-black text-caption"
-        {...props}
-      >
+      <TableCell className="w-1/2" {...props}>
         {children}
-      </td>
+      </TableCell>
     )
   },
   // Curated content palette, authored as `remark-directive` blocks
