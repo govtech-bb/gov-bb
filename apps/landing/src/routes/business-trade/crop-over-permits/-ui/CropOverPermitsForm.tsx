@@ -7,6 +7,7 @@ import {
   Heading,
   Link,
   LinkButton,
+  ServiceHeading,
   ShowHide,
   Text,
 } from '@govtech-bb/react'
@@ -266,8 +267,9 @@ export function CropOverPermitsForm() {
               title="There is a problem"
             />
           )}
-          <ServiceTitle />
-          <Heading as="h1">What are you putting on?</Heading>
+          <ServiceHeading service={SERVICE_TITLE}>
+            What are you putting on?
+          </ServiceHeading>
           <fieldset className="flex flex-col gap-xs">
             <legend className="sr-only">Choose one</legend>
             {EVENT_OPTIONS.map((option) => (
@@ -314,8 +316,9 @@ export function CropOverPermitsForm() {
               title="There is a problem"
             />
           )}
-          <ServiceTitle />
-          <Heading as="h1">Where are you holding it?</Heading>
+          <ServiceHeading service={SERVICE_TITLE}>
+            Where are you holding it?
+          </ServiceHeading>
           <fieldset className="flex flex-col gap-xs">
             <legend className="sr-only">Choose one</legend>
             {VENUE_OPTIONS.map((option) => (
@@ -357,8 +360,9 @@ export function CropOverPermitsForm() {
               title="There is a problem"
             />
           )}
-          <ServiceTitle />
-          <Heading as="h1">How many people are you expecting?</Heading>
+          <ServiceHeading service={SERVICE_TITLE}>
+            How many people are you expecting?
+          </ServiceHeading>
           <fieldset className="flex flex-col gap-xs">
             <legend className="sr-only">Choose one</legend>
             {SIZE_OPTIONS.map((option) => (
@@ -394,8 +398,9 @@ export function CropOverPermitsForm() {
             go('result')
           }}
         >
-          <ServiceTitle />
-          <Heading as="h1">Tell us what's happening at your event</Heading>
+          <ServiceHeading service={SERVICE_TITLE}>
+            Tell us what's happening at your event
+          </ServiceHeading>
           <Text as="p" size="body">
             Tick everything that applies. Leave blank any that do not.
           </Text>

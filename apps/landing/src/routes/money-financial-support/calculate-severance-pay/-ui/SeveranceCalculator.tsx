@@ -7,6 +7,7 @@ import {
   Input,
   Radio,
   RadioGroup,
+  ServiceHeading,
   ShowHide,
   Text,
 } from '@govtech-bb/react'
@@ -292,8 +293,9 @@ export function SeveranceCalculator() {
               title="There is a problem"
             />
           )}
-          <ServiceTitle />
-          <Heading as="h1">Are you self-employed?</Heading>
+          <ServiceHeading service={SERVICE_TITLE}>
+            Are you self-employed?
+          </ServiceHeading>
           <RadioGroup
             error={employmentError || undefined}
             legend="Choose one"
@@ -345,8 +347,9 @@ export function SeveranceCalculator() {
               title="There is a problem"
             />
           )}
-          <ServiceTitle />
-          <Heading as="h1">Why were you sent home?</Heading>
+          <ServiceHeading service={SERVICE_TITLE}>
+            Why were you sent home?
+          </ServiceHeading>
           <RadioGroup
             error={reasonError || undefined}
             legend="Choose one"
@@ -400,8 +403,9 @@ export function SeveranceCalculator() {
               title="There is a problem"
             />
           )}
-          <ServiceTitle />
-          <Heading as="h1">When did you work for this employer?</Heading>
+          <ServiceHeading service={SERVICE_TITLE}>
+            When did you work for this employer?
+          </ServiceHeading>
           <ul className="list-disc space-y-2 pl-7">
             <li>Enter the date you started and your last day at work.</li>
             <li>
@@ -465,8 +469,9 @@ export function SeveranceCalculator() {
               title="There is a problem"
             />
           )}
-          <ServiceTitle />
-          <Heading as="h1">Your insurable earnings</Heading>
+          <ServiceHeading service={SERVICE_TITLE}>
+            Your insurable earnings
+          </ServiceHeading>
           <Text as="p" size="body">
             Enter your usual gross pay. We'll use it as the average over the
             last 104 weeks (2 years).

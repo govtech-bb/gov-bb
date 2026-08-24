@@ -5,6 +5,7 @@ import {
   Heading,
   Input,
   Link,
+  ServiceHeading,
   Text,
 } from '@govtech-bb/react'
 import { useNavigate } from '@tanstack/react-router'
@@ -16,16 +17,6 @@ import type { PensionEstimate } from '../-lib/compute'
 const SERVICE_PATH_SPLAT = 'pensions-and-gratuities/calculate-your-pension'
 const ABOUT_URL =
   '/pensions-and-gratuities/calculate-your-pension/about-government-pensions'
-
-function ServiceTitle() {
-  return (
-    <div className="border-blue-20 border-l-4 py-xs pl-s">
-      <Text as="p" className="text-grey-70">
-        Calculate your Government pension
-      </Text>
-    </div>
-  )
-}
 
 function ResultCard({
   label,
@@ -210,8 +201,9 @@ export function PensionCalculator() {
           ref={resultsRef}
           tabIndex={-1}
         >
-          <ServiceTitle />
-          <Heading as="h1">Your estimated pension</Heading>
+          <ServiceHeading service="Calculate your Government pension">
+            Your estimated pension
+          </ServiceHeading>
           <Text as="p" className="text-grey-70" size="caption">
             {context}
           </Text>
@@ -341,8 +333,9 @@ export function PensionCalculator() {
             title="There is a problem"
           />
         )}
-        <ServiceTitle />
-        <Heading as="h1">Government Pension calculator</Heading>
+        <ServiceHeading service="Calculate your Government pension">
+          Government Pension calculator
+        </ServiceHeading>
 
         <div className="border-blue-20 border-l-4 bg-blue-10 p-4">
           <Text as="p" size="body">
