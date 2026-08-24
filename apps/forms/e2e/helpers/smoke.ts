@@ -211,6 +211,63 @@ export async function selectRadio(
     .check();
 }
 
+/** Tick a checkbox option by its value suffix (`opening-days-monday`). */
+export async function tickCheckbox(
+  page: Page,
+  stepId: string,
+  suffix: string,
+  optionValue: string,
+): Promise<void> {
+  await page
+    .locator(`input[type=checkbox][id="${stepId}_${suffix}-${optionValue}"]`)
+    .check();
+}
+
+/**
+ * Fill an address-lookup (geocoder) field: type the query, wait for the
+ * suggestion list, pick the first match, then assert the hidden coordinates
+ * field filled — that value is what the catchment router resolves the serving
+ * polyclinic from, so an empty one is a real failure, not a soft skip.
+ *
+ * Fields are addressed by id rather than accessible name because an
+ * address-lookup's label is the generic "Address line 1", which a second,
+ * plain address elsewhere on the same step usually shares.
+ *
+ * `pressSequentially` (not `fill`) so the debounced autocomplete actually
+ * fires — a single `fill` sets the value without the keystrokes the lookup
+ * listens for.
+ *
+ * Returns the resolved "lat,lng" string. The four smoke specs that predate this
+ * helper (hotel, swimming pool, hairdresser, hair & beauty) each carry their own
+ * copy; they are left alone deliberately — this is for new specs.
+ */
+export async function fillGeocodedAddress(
+  page: Page,
+  stepId: string,
+  fields: { lineFieldId: string; coordinatesFieldId: string },
+  query: string,
+): Promise<string> {
+  const combo = page.locator(`input[id="${stepId}_${fields.lineFieldId}"]`);
+  await combo.click();
+  await combo.pressSequentially(query, { delay: 20 });
+
+  const firstSuggestion = page.getByRole("option").first();
+  await expect(
+    firstSuggestion,
+    `geocoder returned no suggestion for "${query}"`,
+  ).toBeVisible({ timeout: STEP_TIMEOUT });
+  await firstSuggestion.click();
+
+  const coordinates = page.locator(
+    `input[id="${stepId}_${fields.coordinatesFieldId}"]`,
+  );
+  await expect(
+    coordinates,
+    `geocoder did not populate ${fields.coordinatesFieldId}`,
+  ).toHaveValue(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/, { timeout: STEP_TIMEOUT });
+  return (await coordinates.inputValue()).trim();
+}
+
 /**
  * Upload one file to a single-file upload field and wait until the upload is
  * CONFIRMED, not merely pending. The component renders a file's name for both
