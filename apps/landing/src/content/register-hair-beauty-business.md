@@ -1,5 +1,5 @@
 ---
-title: Register a hairdressing or beauty business with Environmental Health
+title: Apply for a hairdressing and beautician business licence
 description: >-
   Register a new hair, beauty, manicure or pedicure business, or renew your
   existing registration with Environmental Health.
@@ -30,13 +30,9 @@ If your business is not registered, Environmental Health may contact you and ask
 
 ## Before you start
 
-### New businesses
-
-You will need to provide a floor plan layout drawn to scale, showing the size of the different areas and where they are. This can be submitted with your application, or presented during inspection.
-
 ### Renewing your licence
 
-Your licence lasts for one year. Your licence expires on December 31st each year and must be applied for renewal on the first business day in January.
+Your licence expires on the 31st of December of the current year and your renewal must be applied for by the first business day in January.
 
 ## What you will need
 
@@ -46,9 +42,8 @@ You will need:
 -   the Barbados National Identification (ID) number for individual owners
 -   the name and address of the business
 -   the name and address of the owner or operator
--   a document listing your staff, giving each person's name (staff list)
--   medical certificates of all staff
--   the floor plan layout (if applicable)
+-   a document listing your hairdressing staff, giving each person's name and gender (staff list)
+-   medical certificates of all hairdressing staff
 -   a vehicle registration number if the business uses a vehicle
 
 Uploading medical certificates is optional. You can show them during the inspection instead.
@@ -63,10 +58,9 @@ Environmental Health will review your application and inspect the business.
 
 During the inspection, you will need to show:
 
--   your cleaning schedule
--   the cleaning chemicals used
+-   your cleaning schedule of the premises and equipment
+-   the cleaning and sanitation process of the equipment including towels
 -   facilities with hot and cold water
--   where towels are washed and the chemicals used to clean them
 -   any staff medical certificates you did not upload
 
 If you provide services from a vehicle, Environmental Health will also need to inspect the vehicle.
