@@ -592,19 +592,32 @@ jobs:
 
   generated-drift:
     name: Generated Files Up To Date
-    # The services index (apps/api/src/content/services-index.generated.ts) is
-    # pre-baked from landing content by `pnpm generate:services-index` so the
-    # api carries no runtime dependency on @govtech-bb/content. Nothing else
-    # forces a regen, so a content PR that skips it leaves the committed index
-    # stale (#2070). Regenerate here and fail on any diff. The generator emits
-    # Prettier-formatted output, so an in-sync file produces a clean no-op diff.
+    # Two artifacts are pre-baked from landing content so their consumers carry
+    # no runtime dependency on @govtech-bb/content:
+    #   - apps/api/src/content/services-index.generated.ts  (`GET /services`)
+    #   - packages/content/src/form-categories.generated.ts  (form -> category)
+    # Nothing in the build forces a regen, so a content PR that skips it leaves
+    # them stale (#2070). Regenerate both here; if they drifted, commit the
+    # regen back onto the PR branch rather than only failing (#2303) — the
+    # form_builder Content flow writes pages through the GitHub contents API
+    # with no checkout and no pnpm, so it can never run the generators itself
+    # and every page it adds would otherwise land red.
     # Skipped on staging-bound PRs (promotion-only, content doesn't change),
     # matching validate-recipes.
     if: github.base_ref != 'staging'
     runs-on: ubuntu-latest
     steps:
+      # On `pull_request` the default ref is the merge commit, which cannot be
+      # pushed back to the branch. Check out the PR head SHA instead (works for
+      # forks too, via refs/pull/N/head) and push from the resulting detached
+      # HEAD. Trade-off: drift that only appears once base and head are merged
+      # is no longer caught here — the post-merge `push: [main]` run of this job
+      # is what catches that.
+      # persist-credentials stays false (zizmor artipacked); the write-back
+      # pushes with an explicitly-minted App token instead.
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
@@ -613,25 +626,93 @@ jobs:
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
 
-      - name: Regenerate services index
-        run: pnpm generate:services-index
-
-      - name: Fail on drift
+      - name: Regenerate generated files
         run: |
-          if ! git diff --exit-code apps/api/src/content/services-index.generated.ts; then
-            {
-              echo "## ❌ services-index.generated.ts is out of date"
-              echo ""
-              echo "Landing content changed but the generated services index was not regenerated, so \`GET /services\` would serve stale data."
-              echo ""
-              echo "**Fix locally:**"
-              echo '```bash'
-              echo "pnpm generate:services-index"
-              echo '```'
-              echo "then commit the updated file."
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 1
+          pnpm generate:services-index
+          pnpm generate:form-categories
+
+      - name: Detect drift
+        id: drift
+        env:
+          FILES: apps/api/src/content/services-index.generated.ts packages/content/src/form-categories.generated.ts
+        run: |
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
+          if git diff --quiet -- $FILES; then
+            echo "drifted=false" >> "$GITHUB_OUTPUT"
+            echo "Generated files are in sync."
+          else
+            echo "drifted=true" >> "$GITHUB_OUTPUT"
+            git diff --stat -- $FILES
           fi
+
+      # Minted only when there is drift to push. An App installation token is
+      # required rather than the built-in GITHUB_TOKEN: pushes made with
+      # GITHUB_TOKEN do not trigger workflow runs, so the bot commit would
+      # arrive with no checks reported and — once "Generated Files Up To Date"
+      # joins the Main CI Required ruleset (#2373) — the PR would be blocked
+      # forever waiting on checks that can never run.
+      - name: Mint GitHub App token
+        id: app-token
+        if: |
+          steps.drift.outputs.drifted == 'true'
+          && github.event_name == 'pull_request'
+          && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2 # zizmor: ignore[github-app]
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.BOARD_BOT_APP_ID }}
+          private-key: ${{ secrets.BOARD_BOT_PRIVATE_KEY }}
+
+      - name: Commit the regen back to the PR branch
+        id: writeback
+        if: steps.app-token.outcome == 'success' && steps.app-token.outputs.token != ''
+        continue-on-error: true
+        env:
+          TOKEN: ${{ steps.app-token.outputs.token }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          FILES: ${{ steps.drift.outputs.files }}
+        run: |
+          git add -- $FILES
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "chore: regenerate content-derived generated files" \
+                     -m "Automated by the Generated Files Up To Date job. Regenerate locally with \`pnpm generate:services-index && pnpm generate:form-categories\`."
+          git push "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" \
+            "HEAD:refs/heads/${BRANCH}"
+
+      - name: Report outcome
+        env:
+          DRIFTED: ${{ steps.drift.outputs.drifted }}
+          PUSHED: ${{ steps.writeback.outcome }}
+        run: |
+          if [ "$DRIFTED" != "true" ]; then
+            exit 0
+          fi
+
+          if [ "$PUSHED" = "success" ]; then
+            {
+              echo "## ✅ Generated files were out of date and have been regenerated"
+              echo ""
+              echo "A commit regenerating them was pushed to this PR branch. A fresh CI run is validating it."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          {
+            echo "## ❌ Generated files are out of date"
+            echo ""
+            echo "Landing content changed but the content-derived generated files were not regenerated, so \`GET /services\` and the form→category map would serve stale data."
+            echo ""
+            echo "The automatic write-back did not run or could not push (fork PR, missing App credentials, or the App lacks \`contents: write\` on this repo — see #2303)."
+            echo ""
+            echo "**Fix locally:**"
+            echo '```bash'
+            echo "pnpm generate:services-index"
+            echo "pnpm generate:form-categories"
+            echo '```'
+            echo "then commit the updated files."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
 
   lint:
     name: Lint
