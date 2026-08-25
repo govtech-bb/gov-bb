@@ -1,5 +1,5 @@
 ---
-title: Apply for a swimming or wading pool permit
+title: Apply for a swimming pool licence with Environmental Health
 description: Get a permit from Environmental Health to operate a swimming or wading pool.
 category: business-trade
 stage: alpha
