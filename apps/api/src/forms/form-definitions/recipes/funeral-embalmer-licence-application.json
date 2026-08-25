@@ -209,7 +209,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "salon-name",
+            "fieldId": "funeral-establishment-name",
             "label": "What is the name of the funeral establishment?",
             "behaviours": [
               {
@@ -227,7 +227,7 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "salon-address-line-1",
+            "fieldId": "funeral-establishment-address-line-1",
             "label": "Address line 1",
             "behaviours": [
               {
@@ -245,7 +245,7 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "salon-address-line-2",
+            "fieldId": "funeral-establishment-address-line-2",
             "label": "Address line 2",
             "validations": {
               "required": {
@@ -268,7 +268,7 @@
         {
           "ref": "components/parish",
           "overrides": {
-            "fieldId": "salon-parish",
+            "fieldId": "funeral-establishment-parish",
             "label": "Parish",
             "behaviours": [
               {
@@ -318,13 +318,13 @@
         {
           "ref": "components/generic-file",
           "overrides": {
-            "fieldId": "embalmer-qualificatiton",
+            "fieldId": "embalmer-qualification",
             "label": "Upload your embalmer qualification",
             "behaviours": [
               {
                 "type": "optionalIf",
                 "targetStepId": "documents",
-                "targetFieldId": "show-hide",
+                "targetFieldId": "use-reference-letter",
                 "operator": "equal",
                 "value": true
               }
@@ -348,7 +348,7 @@
               {
                 "type": "fieldConditionalOn",
                 "targetStepId": "documents",
-                "targetFieldId": "show-hide",
+                "targetFieldId": "use-reference-letter",
                 "operator": "equal",
                 "value": true
               }

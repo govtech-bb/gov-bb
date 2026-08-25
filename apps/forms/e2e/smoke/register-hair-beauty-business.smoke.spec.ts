@@ -59,9 +59,6 @@
  *    `components/generic-number`'s required rule, and `staff-list` inherits
  *    `components/generic-file`'s, so all three block the step despite carrying
  *    no explicit override in the recipe.
- *  - `building-plan-number` is `components/show-hide` — a disclosure toggle with
- *    no validations, not an input. Deliberately not interacted with: it gates
- *    nothing in the journey and has no value to submit.
  *  - UNLIKE hotel-licence-application, this recipe's confirmation step uses
  *    generic `nextSteps` copy and no `{polyclinic}` placeholder, so there is no
  *    resolved-catchment name on the confirmation screen to assert. Catchment
@@ -300,8 +297,8 @@ export async function fillContactDetails(
 
 /**
  * Step 4 — staff counts and uploads. Only `staff-list` is required among the
- * files; the optional uploads are exercised anyway so a real run proves the
- * whole upload path, not just the one field that blocks.
+ * files; the optional `medical-certs` upload is exercised anyway so a real run
+ * proves the whole upload path, not just the one field that blocks.
  */
 export async function fillInformationUpload(
   page: Page,
@@ -318,11 +315,6 @@ export async function fillInformationUpload(
   });
   await uploadOne(page, step, "medical-certs", {
     name: "medical-certs.png",
-    mimeType: TEST_PNG.mimeType,
-    buffer: TEST_PNG.buffer,
-  });
-  await uploadOne(page, step, "floor-plan-upload", {
-    name: "floor-plan.png",
     mimeType: TEST_PNG.mimeType,
     buffer: TEST_PNG.buffer,
   });
