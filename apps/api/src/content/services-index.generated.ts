@@ -543,6 +543,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
+    slug: "waste-vehicle-licence-application",
+    title: "Apply for a offensive matter licence with Environmental Health",
+    category: "business-trade",
+    formId: "waste-vehicle-licence-application",
+    visibility: "draft",
+  },
+  {
     slug: "what-we-mean-by-alpha",
     title: "What we mean by alpha",
     visibility: "public",
