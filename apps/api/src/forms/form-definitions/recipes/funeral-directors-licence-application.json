@@ -1,19 +1,19 @@
 {
   "formId": "funeral-directors-licence-application",
   "title": "Apply to Environmental Health for a Funeral Directors Licence",
-  "description": "Apply for a hairdresser licence in Barbados",
+  "description": "Use this service to apply for a funeral directors licence.",
   "processors": [
     {
       "type": "email",
       "config": {
-        "subject": "Your hairdresser licence application has been received",
+        "subject": "Your funeral directors licence application has been received",
         "recipientField": "personal-details.email"
       }
     },
     {
       "type": "email",
       "config": {
-        "subject": "A new hairdresser licence application has been received",
+        "subject": "A new funeral directors licence application has been received",
         "recipientField": "catchment.mdaEmail"
       }
     },
@@ -37,8 +37,8 @@
             "declaration",
             "submission-confirmation"
           ],
-          "programmeCode": "HAIRDRESSER_LICENCE",
-          "programmeShortCode": "HDL"
+          "programmeCode": "FUNERAL_DIRECTORS_LICENCE",
+          "programmeShortCode": "FDL"
         },
         "timeoutMs": 10000,
         "signatureHeader": "X-Webhook-Signature"
@@ -186,11 +186,11 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "hint": "Select all that apply.",
-            "label": "Where do you plan to work as a hairdresser?",
+            "label": "Where do you plan to work as a funeral director?",
             "fieldId": "workplace-locations",
             "options": [
               {
-                "label": "At a salon",
+                "label": "At a funeral home",
                 "value": "at-salon"
               },
               {
@@ -217,7 +217,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "What is the name of the salon?",
+            "label": "What is the name of the funeral home?",
             "fieldId": "salon-name",
             "behaviours": [
               {
@@ -403,7 +403,7 @@
       "behaviours": [],
       "nextSteps": [
         {
-          "title": "Your application for a hairdresser licence has been submitted to Environmental Health.",
+          "title": "Your application for a funeral directors licence has been submitted to Environmental Health.",
           "content": "Environmental Health will review your application. They may contact you if they need more information. They will tell you the result and what to do next if your application is approved."
         }
       ]
