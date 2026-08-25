@@ -316,14 +316,36 @@
           }
         },
         {
-          "ref": "components/generic-file",
+          "ref": "components/upload-document",
           "overrides": {
             "label": "Upload a list of hairdressing / beautician staff",
-            "fieldId": "staff-list"
+            "fieldId": "staff-list",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload the list of hairdressing or beautician staff"
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".doc",
+                  ".docx",
+                  ".xls",
+                  ".xlsx"
+                ],
+                "error": "Upload the staff list as a PDF, image, Word or Excel file"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "File must be 5 MB or smaller"
+              }
+            }
           }
         },
         {
-          "ref": "components/generic-file",
+          "ref": "components/upload-document",
           "overrides": {
             "hint": "These are the medical certificates for all hairdressers or beauticians working in the salon. These can be shown during inspection.",
             "label": "Upload medical certificates",
@@ -331,6 +353,18 @@
             "validations": {
               "required": {
                 "value": false
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "Upload the medical certificates in PDF, JPEG or PNG format"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "File must be 5 MB or smaller"
               }
             }
           }
@@ -385,5 +419,5 @@
     }
   ],
   "createdAt": "2026-08-20T17:42:48.875Z",
-  "updatedAt": "2026-08-24T18:30:14.612Z"
+  "updatedAt": "2026-08-25T18:45:00.000Z"
 }

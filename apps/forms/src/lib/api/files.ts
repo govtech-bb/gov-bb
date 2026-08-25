@@ -112,6 +112,20 @@ export const confirmUpload = (
     draftToken,
   );
 
+/**
+ * The browser reports an empty `type` for a file whose extension it cannot map
+ * — a scan saved without an extension, an unrecognised document. Presign's DTO
+ * requires a MIME type, so an untyped file 400s there ("contentType must be
+ * MIME type format") and a required upload can never be filled. It bites the
+ * fields with no `fileTypes` hardest: their picker carries no `accept`, so the
+ * chooser offers files the browser has no type for. `application/octet-stream`
+ * is exactly "unknown binary", and it widens nothing: a field that DOES declare
+ * `fileTypes` still refuses it, because presign matches the sent type or the
+ * file's extension against that allowlist and neither one hits.
+ */
+const resolveContentType = (file: File): string =>
+  file.type || "application/octet-stream";
+
 export const putFileToS3 = async (
   uploadUrl: string,
   file: File,
@@ -120,8 +134,9 @@ export const putFileToS3 = async (
   try {
     response = await fetch(uploadUrl, {
       method: "PUT",
-      // Must match the contentType sent at presign time.
-      headers: { "Content-Type": file.type },
+      // Must match the contentType sent at presign time — S3 signs it, so a
+      // mismatch fails the PUT with SignatureDoesNotMatch.
+      headers: { "Content-Type": resolveContentType(file) },
       body: file,
     });
   } catch {
@@ -174,7 +189,7 @@ export const uploadFile = async ({
       stepId,
       fieldId,
       fileName: file.name,
-      contentType: file.type,
+      contentType: resolveContentType(file),
       size: file.size,
     },
     previewToken,
