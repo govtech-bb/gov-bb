@@ -1,6 +1,6 @@
 {
   "formId": "swimming-pool-environmental-health",
-  "title": "Apply for a swimming pool licence with Environmental Hea1th",
+  "title": "Apply for a swimming pool licence with Environmental Health",
   "description": "Apply to Environmental Health for a swimming or wading pool permit",
   "processors": [
     {
@@ -522,5 +522,5 @@
     }
   ],
   "createdAt": "2026-08-25T00:10:51.219Z",
-  "updatedAt": "2026-08-25T00:10:51.219Z"
+  "updatedAt": "2026-08-25T00:16:36.231Z"
 }
