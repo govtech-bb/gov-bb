@@ -63,6 +63,11 @@ async function postJson<T>(
       method: "POST",
       headers,
       body: JSON.stringify(body),
+      // Attach the cross-app shared `preview` cookie so presign/confirm resolve
+      // a non-public form after `canDropPreviewToken` drops the URL token and
+      // the header goes with it (#2116). Mirrors the form-GET fetch; the API
+      // CORS allows credentials and it's harmless on the normal citizen flow.
+      credentials: "include",
     });
   } catch {
     throw new FileUploadError(

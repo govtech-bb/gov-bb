@@ -27,7 +27,12 @@ const mockCheckConditionalOn = checkConditionalOn as MockedFunction<
 // ---------------------------------------------------------------------------
 // Mutable field-api state — reassign mockState between tests
 // ---------------------------------------------------------------------------
-let mockState: { value: unknown; meta: { isValid: boolean; errors: any[] } } = {
+interface MockFieldState {
+  value: unknown;
+  meta: { isValid: boolean; errors: any[] };
+}
+
+let mockState: MockFieldState = {
   value: undefined,
   meta: { isValid: true, errors: [] },
 };
@@ -172,6 +177,21 @@ describe("FieldRenderer", () => {
     expect(container.querySelector('input[type="time"]')).toBeTruthy();
   });
 
+  it("ui.indent → wraps the field in the inset rail", () => {
+    const { container } = renderField(
+      primitive("text", { ui: { indent: true } }),
+    );
+    const rail = container.querySelector(".govbb-field--indented");
+    expect(rail).toBeTruthy();
+    // The rail wraps the real control rather than replacing it.
+    expect(rail?.querySelector("input")).toBeTruthy();
+  });
+
+  it("ui.indent absent → no inset rail", () => {
+    const { container } = renderField(primitive("text"));
+    expect(container.querySelector(".govbb-field--indented")).toBeNull();
+  });
+
   const accordionGroups = [
     {
       label: "Meat and poultry",
@@ -183,7 +203,15 @@ describe("FieldRenderer", () => {
     },
     {
       label: "Snacks and sweets",
-      options: [{ value: "popcorn", label: "Popcorn" }],
+      options: [
+        { value: "popcorn", label: "Popcorn" },
+        { value: "cotton-candy", label: "Cotton candy" },
+      ],
+    },
+    // A single-option group is NOT an expander — see the two tests below.
+    {
+      label: "Other food",
+      options: [{ value: "other", label: "Other food" }],
     },
   ];
 
@@ -191,15 +219,35 @@ describe("FieldRenderer", () => {
     const { container } = renderField(
       primitive("checkbox-accordion", { groups: accordionGroups }),
     );
-    // One category checkbox per group; collapsed, so no item checkboxes yet.
+    // One checkbox per group; the multi-option ones are collapsed, so none of
+    // their items render yet.
     expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(
-      2,
+      3,
     );
     expect(screen.queryByLabelText("Chicken")).toBeNull();
     // Higher-risk badge only on the flagged category.
     const badges = container.querySelectorAll(".govbb-tag");
     expect(badges).toHaveLength(1);
     expect(badges[0]).toHaveTextContent(/higher-risk/i);
+  });
+
+  it("checkbox-accordion → a single-option group is one plain checkbox that selects the value directly", async () => {
+    const user = userEvent.setup();
+    renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
+    // It carries the GROUP's label, and ticking it selects the option value
+    // rather than expanding a category — so a lone "Other food" escape hatch
+    // costs one tick, not two.
+    await user.click(screen.getByLabelText("Other food"));
+    expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["other"]);
+  });
+
+  it("checkbox-accordion → a single-option group reflects and clears an existing selection", async () => {
+    const user = userEvent.setup();
+    mockState = { value: ["other"], meta: { isValid: true, errors: [] } };
+    renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
+    expect(screen.getByLabelText("Other food")).toBeChecked();
+    await user.click(screen.getByLabelText("Other food"));
+    expect(mockFieldApi.handleChange).toHaveBeenCalledWith([]);
   });
 
   it("checkbox-accordion → ticking a category expands it to reveal its items", async () => {
@@ -412,6 +460,41 @@ describe("FieldRenderer", () => {
         screen.getByRole("button", { name: "Remove Address line" }),
       ).toBeInTheDocument();
     });
+
+    it("with addAnotherLabel set, the button renders that label verbatim with no 'Add Another' text", () => {
+      mockState = { value: ["first"], meta: { isValid: true, errors: [] } };
+      const { container } = renderField(
+        primitive("text", {
+          label: "Middle name",
+          behaviours: [
+            {
+              ...fieldArrayBehaviour,
+              addAnotherLabel: "Add another middle name",
+            },
+          ],
+        }),
+      );
+      const button = screen.getByRole("button", {
+        name: "Add another middle name",
+      });
+      expect(button).toBeInTheDocument();
+      expect(button.textContent).toBe("Add another middle name");
+      expect(container.querySelector(".govbb-visually-hidden")).toBeNull();
+    });
+
+    it("without addAnotherLabel, the button still renders 'Add Another' with the field label visually hidden", () => {
+      mockState = { value: ["first"], meta: { isValid: true, errors: [] } };
+      const { container } = renderField(
+        primitive("text", {
+          label: "Address line",
+          behaviours: [fieldArrayBehaviour],
+        }),
+      );
+      expect(
+        screen.getByRole("button", { name: "Add Another Address line" }),
+      ).toBeInTheDocument();
+      expect(container.querySelector(".govbb-visually-hidden")).not.toBeNull();
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -503,6 +586,34 @@ describe("FieldRenderer", () => {
         }),
       );
       expect(await axe(container)).toHaveNoViolations();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // fieldArray legacy-config hardening (#2317 Phase 2): configs authored
+  // before the builder seeded sane defaults can carry {min: 0, max: 0},
+  // which used to render ZERO inputs — the field vanished from the form.
+  // The renderer clamps min >= 1 and max >= min so a degenerate config
+  // degrades to one plain input instead of deleting the field.
+  // -------------------------------------------------------------------------
+  describe("fieldArray legacy {min: 0, max: 0} config", () => {
+    const degenerate = { type: "fieldArray" as const, min: 0, max: 0 };
+
+    it("renders exactly one input and no 'Add Another' link", () => {
+      mockState = { value: [""], meta: { isValid: true, errors: [] } };
+      renderField(primitive("text", { behaviours: [degenerate] }));
+      expect(screen.getAllByRole("textbox")).toHaveLength(1);
+      expect(screen.queryByText(/Add Another/i)).toBeNull();
+    });
+
+    it("min: 0 with an empty array value still renders one input", () => {
+      mockState = { value: [], meta: { isValid: true, errors: [] } };
+      renderField(
+        primitive("text", {
+          behaviours: [{ type: "fieldArray" as const, min: 0, max: 3 }],
+        }),
+      );
+      expect(screen.getAllByRole("textbox")).toHaveLength(1);
     });
   });
 
@@ -851,6 +962,67 @@ describe("FieldRenderer", () => {
   });
 
   // -------------------------------------------------------------------------
+  // Checkbox with inset fields — the reveal sits directly under the ticked
+  // option, the same conditional-reveal pattern radios use.
+  // -------------------------------------------------------------------------
+  describe("checkbox with insetFieldsByOption", () => {
+    const multiOptions = [
+      { value: "a", label: "Option A" },
+      { value: "b", label: "Option B" },
+    ];
+
+    function insetEntriesFor(value: string) {
+      const insetField = primitive("text", {
+        id: "step-1.inset-field",
+        fieldId: "inset-field",
+        name: "inset-field",
+        label: "Inset field label",
+        htmlType: "text",
+      });
+      return new Map([
+        [value, [{ field: insetField, validationProperties: noValidation }]],
+      ]);
+    }
+
+    it("shows the inset fields under a ticked option", () => {
+      mockState = { value: ["a"], meta: { isValid: true, errors: [] } };
+
+      const { container } = renderField(
+        primitive("checkbox", { options: multiOptions }),
+        { insetFieldsByOption: insetEntriesFor("a") },
+      );
+
+      const inset = container.querySelector(
+        ".govbb-checkbox-item__conditional",
+      );
+      expect(inset).toBeTruthy();
+      expect(inset?.querySelector("input")).toBeTruthy();
+      // The reveal must sit between the two options, not after the group —
+      // the CSS reveal rule and the reading order both depend on it.
+      expect(
+        inset?.previousElementSibling?.querySelector("input"),
+      ).toHaveAttribute("id", "step-1.checkbox-field-a");
+      expect(inset?.nextElementSibling?.querySelector("input")).toHaveAttribute(
+        "id",
+        "step-1.checkbox-field-b",
+      );
+    });
+
+    it("does not show the inset fields while its option is unticked", () => {
+      mockState = { value: ["b"], meta: { isValid: true, errors: [] } };
+
+      const { container } = renderField(
+        primitive("checkbox", { options: multiOptions }),
+        { insetFieldsByOption: insetEntriesFor("a") },
+      );
+
+      expect(
+        container.querySelector(".govbb-checkbox-item__conditional"),
+      ).toBeNull();
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Date onChange handlers
   // -------------------------------------------------------------------------
   describe("date field onChange handlers", () => {
@@ -1142,13 +1314,101 @@ describe("FieldRenderer", () => {
   });
 
   // -------------------------------------------------------------------------
+  // "(optional)" label suffix — derived from the resolved required rule, using
+  // the validator's definition of required (a bare rule counts as required).
+  // Required fields carry no mark. optionalIf fields are statically required,
+  // so they never carry it and the label never rewrites itself mid-form.
+  // -------------------------------------------------------------------------
+  describe("optional label suffix", () => {
+    it("required: {value: false} → muted (optional) inside the label", () => {
+      const { container } = renderField(
+        primitive("text", { validations: { required: { value: false } } }),
+      );
+      const suffix = container.querySelector("label .govbb-label__optional");
+      expect(suffix?.textContent).toBe("(optional)");
+    });
+
+    it("no required rule at all → optional, suffix shown", () => {
+      const { container } = renderField(primitive("text"));
+      expect(container.querySelector(".govbb-label__optional")).toBeTruthy();
+    });
+
+    it("required: {value: true} → no suffix", () => {
+      const { container } = renderField(
+        primitive("text", { validations: { required: { value: true } } }),
+      );
+      expect(container.querySelector(".govbb-label__optional")).toBeNull();
+    });
+
+    it("bare required rule (no value key) → required, no suffix", () => {
+      const { container } = renderField(
+        primitive("text", {
+          validations: { required: { error: "Needed" } },
+        }),
+      );
+      expect(container.querySelector(".govbb-label__optional")).toBeNull();
+    });
+
+    it("radio → suffix renders inside the legend", () => {
+      const { container } = renderField(
+        primitive("radio", {
+          options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" },
+          ],
+          validations: { required: { value: false } },
+        }),
+      );
+      const suffix = container.querySelector(
+        ".govbb-fieldset__legend .govbb-label__optional",
+      );
+      expect(suffix?.textContent).toBe("(optional)");
+    });
+
+    it("option labels never carry the suffix, only the field legend", () => {
+      const { container } = renderField(
+        primitive("radio", {
+          options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" },
+          ],
+          validations: { required: { value: false } },
+        }),
+      );
+      expect(container.querySelectorAll(".govbb-label__optional")).toHaveLength(
+        1,
+      );
+    });
+
+    it("ui.hideLabel → suffix stays inside the visually-hidden label", () => {
+      const { container } = renderField(
+        primitive("text", {
+          ui: { hideLabel: true },
+          validations: { required: { value: false } },
+        }),
+      );
+      const label = container.querySelector(".govbb-label");
+      expect(label).toHaveClass("govbb-visually-hidden");
+      expect(label?.querySelector(".govbb-label__optional")).toBeTruthy();
+      // Nothing visible leaks outside the hidden label.
+      expect(container.querySelectorAll(".govbb-label__optional")).toHaveLength(
+        1,
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // ui.hideLabel — visually hides the label/legend while keeping it in the DOM
   // so the accessible name (htmlFor / <legend> grouping) is preserved.
   // -------------------------------------------------------------------------
   describe("ui.hideLabel", () => {
     it("text → label is present and carries govbb-visually-hidden when set", () => {
       const { container } = renderField(
-        primitive("text", { label: "Email address", ui: { hideLabel: true } }),
+        primitive("text", {
+          label: "Email address",
+          ui: { hideLabel: true },
+          validations: { required: { value: true } },
+        }),
       );
       const label = container.querySelector(".govbb-label");
       expect(label).toBeTruthy();
@@ -1172,6 +1432,7 @@ describe("FieldRenderer", () => {
             { value: "no", label: "No" },
           ],
           ui: { hideLabel: true },
+          validations: { required: { value: true } },
         }),
       );
       const legend = container.querySelector(".govbb-fieldset__legend");

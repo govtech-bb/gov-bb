@@ -11,20 +11,20 @@ category: money-financial-support
 
 ## 1. Get your National Insurance number
 
-Your number stays with you for life, from your first job to the day you retire. If you've ever worked in Barbados, or registered before and moved away, you almost certainly already have one, and your contributions from years ago still count. If you don't know your number, NIS can find it. If you've never had one, you get a number when you register.
+Your number stays with you for life, from your first job to the day you retire. If you've ever worked in Barbados, or registered before and moved away, you almost certainly already have one, and your contributions from years ago still count. If you don't know your number, National Insurance (NIS) can find it. If you've never had one, you get a number when you register.
 
 ## 2. Register with NIS
 
 You register as a self-employed person: just yourself and your National Insurance number, no registered business needed. It's all online, with no paperwork, and you can save and come back to it. There are two ways to start, depending on whether you already have a number:
 
-- If you already have an NIS number, use the [self-employment registration form](https://www.nis.gov.bb/self-employment-registration-form-page/).
+- If you already have a National Insurance number, use the [self-employment registration form](https://www.nis.gov.bb/self-employment-registration-form-page/).
 - If you've never registered, use the [new applicant registration form](https://www.nis.gov.bb/self-employment-registration-form-new-nis-applicant/).
 
 Both links take you to NIS to register.
 
 ## 3. Already have a job that pays NIS?
 
-If your employer pays National Insurance contributions for your main job, this covers your employment income. If you also work for yourself, you may make separate contributions for that self-employed income. This adds to your coverage. It does not replace what your employer already pays.
+If your employer pays NIS contributions for your main job, this covers your employment income. If you also work for yourself, you may make separate contributions for that self-employed income. This adds to your coverage. It does not replace what your employer already pays.
 
 ## 4. Pay your contributions
 
@@ -45,17 +45,17 @@ If you used to pay NIS contributions but stopped, or if you've never paid before
 
 If you're close to retirement and don't have enough contributions to qualify for a full pension, you may qualify for a one-time payment (grant) instead.
 
-To find out what contributions you can make and what benefits you may qualify for, contact NIS on 431-7400.
+To find out what contributions you can make and what benefits you may qualify for, contact the Self-Employed Unit at NIS by calling 431-7400.
 
 ## Worked overseas?
 
-If you worked in a country that has a shared agreement with Barbados, those contributions may count toward your pension here. Many people don't realise this. It's worth asking NIS if it applies to you.
+If you worked in a country that has a shared agreement with Barbados, those contributions may count towards your pension here. Many people don't realise this. It's worth asking NIS if it applies to you.
 
 ## Need to speak to someone?
 
-NIS can sit with you, look at your record, and work out what you'd pay and what you'd get. Call NIS for free advice, or visit any NIS office.
+NIS can sit with you, look at your record, and work out what you'd pay and what you'd get. Call the Self-Employed Unit at NIS for free advice, or visit any NIS office.
 
-National Insurance Office
+National Insurance and Social Security Service
 Frank Walcott Building
 Culloden Road, St. Michael
 

@@ -33,7 +33,7 @@ import type { ViewLevel } from './frontmatter'
 const COOKIE_NAME = 'preview'
 
 /** Reviewer grant cookie lifetime: 4 hours, in seconds. */
-const COOKIE_MAX_AGE_SECONDS = 4 * 60 * 60
+export const COOKIE_MAX_AGE_SECONDS = 4 * 60 * 60
 
 export interface ViewLevelResolution {
   /** The view level granted to the current request. */

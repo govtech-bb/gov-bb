@@ -1,6 +1,7 @@
 import React from "react";
 import { FileUploadProps, UploadedFile } from "@forms/types";
 import ErrorMessage from "./error-message";
+import { optionalSuffix } from "./field-renderer/optional-suffix";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
 import { uploadFile, FileUploadError } from "../lib/api/files";
@@ -132,7 +133,22 @@ export default function FileUpload({
   // Accepts either MIME types ("image/png" → "png") or extension values
   // (".pdf" → ".pdf"), so a recipe can list user-friendly extensions and have
   // them shown verbatim (e.g. "Attach a .pdf, .docx, or .png file").
-  const rawFileTypes: string[] = field.validations?.fileTypes?.value ?? [];
+  //
+  // #2384: the value is declared `string[]`, but a builder-authored recipe
+  // reached production carrying a comma-separated string, so `.map` threw and
+  // the error boundary replaced the whole step with "Something went wrong".
+  // The recipe schema now rejects that shape, but DB drafts (`?draft=`) never
+  // pass through CI, so normalise here too — the same tolerance
+  // `fileTypesRunner` already applies on the validation side.
+  const configuredFileTypes: unknown = field.validations?.fileTypes?.value;
+  const rawFileTypes: string[] = Array.isArray(configuredFileTypes)
+    ? configuredFileTypes
+    : typeof configuredFileTypes === "string"
+      ? configuredFileTypes
+          .split(",")
+          .map((type) => type.trim())
+          .filter(Boolean)
+      : [];
   const readableFileTypes: string[] = rawFileTypes.map((type: string) =>
     type.includes("/") ? type.split("/")[1] : type,
   );
@@ -158,11 +174,14 @@ export default function FileUpload({
         <div className="govbb-file-upload__info">
           <span className="govbb-file-upload__title">
             {field.label ?? "Upload a file"}
+            {optionalSuffix(field)}
           </span>
           <span className="govbb-file-upload__subtitle">
-            {readableFileTypes.length
-              ? `Attach a ${fileTypeFormatter.format(readableFileTypes)} file`
-              : "No file type restrictions"}
+            {field.hint?.trim()
+              ? field.hint
+              : readableFileTypes.length
+                ? `Attach a ${fileTypeFormatter.format(readableFileTypes)} file`
+                : "No file type restrictions"}
           </span>
         </div>
 
@@ -180,9 +199,15 @@ export default function FileUpload({
           <span className="govbb-btn--tertiary" aria-hidden="true">
             Choose file
           </span>
-          <span className="govbb-file-upload__max-size">
-            Max Size: {maxSize ? formatMb(maxSize) : "--"}
-          </span>
+          {/* Only shown when the field actually caps size. A recipe that sets
+              only `itemMaxSize` (a per-file cap) has no `maxSize`, and the old
+              "Max Size: --" placeholder read as a broken value rather than as
+              "no limit". Ternary, not `&&` — a 0 would render as "0". */}
+          {maxSize ? (
+            <span className="govbb-file-upload__max-size">
+              Max Size: {formatMb(maxSize)}
+            </span>
+          ) : null}
         </div>
       </label>
 

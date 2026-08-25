@@ -17,6 +17,10 @@ const FEATURE_URLS = [
   '/health-and-emergency-services/find-an-emergency-shelter',
   '/health-and-emergency-services/find-an-emergency-shelter/find',
   '/health-and-emergency-services/find-an-emergency-shelter/guidance',
+  // The pharmacy service page itself is markdown (content tree); only the
+  // interactive finder and the per-pharmacy detail pages are real routes.
+  '/health-and-emergency-services/find-an-open-pharmacy/find',
+  '/health-and-emergency-services/find-an-open-pharmacy/$slug',
   // StormReady is now fully content-tree — its landing AND its checklist (a
   // co-located `.tsx` content page) are served by the catch-all route, so
   // neither appears in the generated route tree.

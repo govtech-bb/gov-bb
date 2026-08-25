@@ -1,5 +1,6 @@
 import { HttpService } from "@nestjs/axios";
 import { firstValueFrom } from "rxjs";
+import { sanitizeForLog } from "@/common/log-sanitize";
 
 /**
  * Idempotency key shared by the outbound webhook/opencrvs processors. The
@@ -15,10 +16,45 @@ export class HttpPostError extends Error {
   constructor(
     readonly url: string,
     readonly status: number,
+    /**
+     * A truncated, control-char-sanitized slice of the endpoint's **response**
+     * body (via `sanitizeForLog`: ≤200 chars, CWE-117 stripped), so a non-2xx
+     * failure logs *why* — e.g. a 422's validation message — instead of the
+     * bare status (#2127). Undefined when the body is empty. Never the request
+     * body (that carries applicant PII and is excluded from logs).
+     */
+    readonly responseBody?: string,
   ) {
-    super(`Endpoint ${url} responded with HTTP ${status}`);
+    super(
+      `Endpoint ${url} responded with HTTP ${status}` +
+        (responseBody ? `: ${responseBody}` : ""),
+    );
     this.name = "HttpPostError";
   }
+}
+
+/**
+ * Summarizes an endpoint's response body for a failure log: stringifies it,
+ * drops empty / `{}` / `[]` bodies (nothing to add), and runs the rest through
+ * `sanitizeForLog` (strips injection chars, caps at 200 chars). Response body
+ * only — the endpoint's own error, not our request.
+ */
+function summarizeResponseBody(data: unknown): string | undefined {
+  if (data === null || data === undefined) return undefined;
+  let text: string;
+  if (typeof data === "string") {
+    text = data;
+  } else {
+    try {
+      text = JSON.stringify(data);
+    } catch {
+      return undefined;
+    }
+  }
+  const trimmed = text.trim();
+  if (trimmed === "" || trimmed === "{}" || trimmed === "[]") return undefined;
+  const cleaned = sanitizeForLog(trimmed);
+  return cleaned.length > 0 ? cleaned : undefined;
 }
 
 /**
@@ -55,6 +91,6 @@ export async function timedPost(
     }),
   );
   if (resp.status < 200 || resp.status >= 300) {
-    throw new HttpPostError(url, resp.status);
+    throw new HttpPostError(url, resp.status, summarizeResponseBody(resp.data));
   }
 }

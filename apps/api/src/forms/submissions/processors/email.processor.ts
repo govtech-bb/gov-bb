@@ -22,6 +22,7 @@ import type {
 } from "./submission-processor.interface";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import { FormConfigService } from "@/forms/form-config/form-config.service";
+import { CatchmentContactService } from "@/catchment/catchment-contact.service";
 import { NonRetryableError } from "./non-retryable-error";
 import { redactPii } from "@/common/log-sanitize";
 import { NotificationLogRepository } from "../notification-log.repository";
@@ -66,6 +67,7 @@ export class EmailProcessor implements ISubmissionProcessor {
     private readonly emailBodyBuilder: EmailBodyBuilder,
     private readonly filesService: FilesService,
     private readonly formConfigService: FormConfigService,
+    private readonly catchmentContactService: CatchmentContactService,
     private readonly notificationLog: NotificationLogRepository,
   ) {
     this.defaultRecipient =
@@ -135,6 +137,8 @@ export class EmailProcessor implements ISubmissionProcessor {
         const resolved = await this.resolveConfigRecipient(payload);
         recipient = resolved.recipient;
         defaulted = resolved.defaulted;
+      } else if (kind === "catchment") {
+        recipient = await this.resolveCatchmentRecipient(payload);
       } else {
         recipient = this.resolveSubmittedRecipient(payload, recipientField);
       }
@@ -305,6 +309,26 @@ export class EmailProcessor implements ISubmissionProcessor {
     return stepValues && !Array.isArray(stepValues)
       ? (stepValues[fieldId] as string | undefined)
       : undefined;
+  }
+
+  /**
+   * Resolves the MDA recipient for the reserved "catchment.mdaEmail" token: the
+   * catchment resolved at submission time (coordinate/parish routing) names the
+   * serving polyclinic, and its inbox is read from `catchment_contact` here, at
+   * send time, so a rotated address takes effect for anything still queued.
+   *
+   * Returns undefined when nothing resolved or that polyclinic has no stored
+   * inbox — the caller then fails this entry NO_RECIPIENT (non-retryable),
+   * isolated to this email by per-entry dispatch.
+   */
+  private async resolveCatchmentRecipient(
+    payload: SubmissionCreatedEvent,
+  ): Promise<string | undefined> {
+    const polyclinic = payload.resolvedCatchment?.polyclinic;
+    if (!polyclinic) return undefined;
+    const email =
+      await this.catchmentContactService.resolveMdaEmail(polyclinic);
+    return email ?? undefined;
   }
 
   /**

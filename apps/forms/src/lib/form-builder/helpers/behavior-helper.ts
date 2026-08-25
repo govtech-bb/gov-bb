@@ -34,7 +34,13 @@ export const checkConditionalOn = (
   // resolution goes through `values[targetStepId][targetFieldId]` instead.
   const flatValues = flattenStepValues(values);
 
-  for (const condition of conditionalOns) {
+  // AND semantics: the field is active only when EVERY condition matches. This
+  // loop used to return on the FIRST match, which silently OR'd them — the
+  // opposite of `applyConditions` in @govtech-bb/form-conditions (`.every()`),
+  // which is what the API applies. A stacked range like `gte 0` + `lt 14` is
+  // the documented way to express a window, and under OR it matched everything
+  // outside the window instead of the intersection inside it.
+  const allConditionsPass = conditionalOns.every((condition) => {
     // Preserve the client's historical `targetStepId ?? fieldStep` resolution:
     // a condition with no explicit target step resolves against the field's own
     // step. The shared evaluator reads `values[targetStepId][targetFieldId]`
@@ -45,18 +51,15 @@ export const checkConditionalOn = (
         ? condition
         : { ...condition, targetStepId: fieldStep };
 
-    const passesCondition = evaluateCondition(behaviour, values, flatValues);
+    return evaluateCondition(behaviour, values, flatValues);
+  });
 
-    if (!currentFieldValue) currentFieldValue = "";
-    if (passesCondition && currentFieldValue.toString().length == 0) {
-      return "requiredAndEmpty";
-    }
-    if (passesCondition && currentFieldValue.toString().length) {
-      return "notEmpty";
-    }
-  }
+  if (!allConditionsPass) return "notRequired";
 
-  return "notRequired";
+  if (!currentFieldValue) currentFieldValue = "";
+  return currentFieldValue.toString().length === 0
+    ? "requiredAndEmpty"
+    : "notEmpty";
 };
 
 const isStepVisible = (step: ClientFormStep, formApi: AnyFormApi) => {

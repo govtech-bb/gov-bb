@@ -20,13 +20,21 @@
  * `contactDetails.` convention. A step literally named "config" or
  * "contactDetails" is therefore shadowed — see FORM-CREATION-GUIDE.md.
  */
-export type RecipientKind = "literal" | "contact" | "config" | "submitted";
+export type RecipientKind =
+  | "literal"
+  | "contact"
+  | "config"
+  | "catchment"
+  | "submitted";
 
 /** Prefix marking a recipient resolved from the contract's contactDetails. */
 export const CONTACT_DETAILS_PREFIX = "contactDetails.";
 
 /** Prefix marking a recipient resolved from per-environment `form_config`. */
 export const CONFIG_RECIPIENT_PREFIX = "config.";
+
+/** Prefix marking a recipient routed to the event's polyclinic catchment. */
+export const CATCHMENT_RECIPIENT_PREFIX = "catchment.";
 
 /**
  * Classifies a `recipientField` into the kind that determines how it resolves.
@@ -37,5 +45,6 @@ export function classifyRecipientField(recipientField: string): RecipientKind {
   if (recipientField.includes("@")) return "literal";
   if (recipientField.startsWith(CONTACT_DETAILS_PREFIX)) return "contact";
   if (recipientField.startsWith(CONFIG_RECIPIENT_PREFIX)) return "config";
+  if (recipientField.startsWith(CATCHMENT_RECIPIENT_PREFIX)) return "catchment";
   return "submitted";
 }

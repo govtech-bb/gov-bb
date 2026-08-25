@@ -96,7 +96,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "hint": "Leave blank if you only have one choice",
-            "label": "Second choice of society name (optional)",
+            "label": "Second choice of society name",
             "fieldId": "society-name-2",
             "validations": {
               "required": {
@@ -116,7 +116,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "hint": "Leave blank if you only have two choices",
-            "label": "Third choice of society name (optional)",
+            "label": "Third choice of society name",
             "fieldId": "society-name-3",
             "validations": {
               "required": {
@@ -155,14 +155,14 @@
         {
           "ref": "components/additional-details",
           "overrides": {
-            "label": "Activity 2 (optional)",
+            "label": "Activity 2",
             "fieldId": "activity-2"
           }
         },
         {
           "ref": "components/additional-details",
           "overrides": {
-            "label": "Activity 3 (optional)",
+            "label": "Activity 3",
             "fieldId": "activity-3"
           }
         }
@@ -198,7 +198,7 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Optional. Provide only if known",
+            "hint": "Provide only if known",
             "fieldId": "applicant-middle-name"
           }
         },
@@ -308,7 +308,7 @@
         {
           "ref": "components/postcode",
           "overrides": {
-            "hint": "For example, BB17004 (optional)",
+            "hint": "For example, BB17004",
             "fieldId": "applicant-postcode"
           }
         },
@@ -359,14 +359,6 @@
                 "value": true
               }
             }
-          }
-        },
-        {
-          "ref": "components/date-of-birth",
-          "overrides": {
-            "label": "Date of declaration",
-            "fieldId": "declaration-date",
-            "isHidden": true
           }
         }
       ]

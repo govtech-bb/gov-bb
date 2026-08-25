@@ -26,6 +26,8 @@ import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterIndexRouteImpo
 import { Route as PensionsAndGratuitiesCalculateYourPensionFormRouteImport } from './routes/pensions-and-gratuities/calculate-your-pension/form'
 import { Route as MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRouteImport } from './routes/money-financial-support/national-insurance-for-self-employed-workers/form'
 import { Route as MoneyFinancialSupportCalculateSeverancePayFormRouteImport } from './routes/money-financial-support/calculate-severance-pay/form'
+import { Route as HealthAndEmergencyServicesFindAnOpenPharmacyFindRouteImport } from './routes/health-and-emergency-services/find-an-open-pharmacy/find'
+import { Route as HealthAndEmergencyServicesFindAnOpenPharmacySlugRouteImport } from './routes/health-and-emergency-services/find-an-open-pharmacy/$slug'
 import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/guidance'
 import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterFindRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/find'
 import { Route as BusinessTradeCropOverPermitsFormRouteImport } from './routes/business-trade/crop-over-permits/form'
@@ -124,6 +126,18 @@ const MoneyFinancialSupportCalculateSeverancePayFormRoute =
     path: '/money-financial-support/calculate-severance-pay/form',
     getParentRoute: () => rootRouteImport,
   } as any)
+const HealthAndEmergencyServicesFindAnOpenPharmacyFindRoute =
+  HealthAndEmergencyServicesFindAnOpenPharmacyFindRouteImport.update({
+    id: '/health-and-emergency-services/find-an-open-pharmacy/find',
+    path: '/health-and-emergency-services/find-an-open-pharmacy/find',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const HealthAndEmergencyServicesFindAnOpenPharmacySlugRoute =
+  HealthAndEmergencyServicesFindAnOpenPharmacySlugRouteImport.update({
+    id: '/health-and-emergency-services/find-an-open-pharmacy/$slug',
+    path: '/health-and-emergency-services/find-an-open-pharmacy/$slug',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute =
   HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRouteImport.update({
     id: '/guidance',
@@ -162,6 +176,8 @@ export interface FileRoutesByFullPath {
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
   '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
+  '/health-and-emergency-services/find-an-open-pharmacy/$slug': typeof HealthAndEmergencyServicesFindAnOpenPharmacySlugRoute
+  '/health-and-emergency-services/find-an-open-pharmacy/find': typeof HealthAndEmergencyServicesFindAnOpenPharmacyFindRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   '/money-financial-support/national-insurance-for-self-employed-workers/form': typeof MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
@@ -183,6 +199,8 @@ export interface FileRoutesByTo {
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
   '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
+  '/health-and-emergency-services/find-an-open-pharmacy/$slug': typeof HealthAndEmergencyServicesFindAnOpenPharmacySlugRoute
+  '/health-and-emergency-services/find-an-open-pharmacy/find': typeof HealthAndEmergencyServicesFindAnOpenPharmacyFindRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   '/money-financial-support/national-insurance-for-self-employed-workers/form': typeof MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
@@ -206,6 +224,8 @@ export interface FileRoutesById {
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
   '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
+  '/health-and-emergency-services/find-an-open-pharmacy/$slug': typeof HealthAndEmergencyServicesFindAnOpenPharmacySlugRoute
+  '/health-and-emergency-services/find-an-open-pharmacy/find': typeof HealthAndEmergencyServicesFindAnOpenPharmacyFindRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   '/money-financial-support/national-insurance-for-self-employed-workers/form': typeof MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute
   '/pensions-and-gratuities/calculate-your-pension/form': typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
@@ -230,6 +250,8 @@ export interface FileRouteTypes {
     | '/business-trade/crop-over-permits/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
     | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
+    | '/health-and-emergency-services/find-an-open-pharmacy/$slug'
+    | '/health-and-emergency-services/find-an-open-pharmacy/find'
     | '/money-financial-support/calculate-severance-pay/form'
     | '/money-financial-support/national-insurance-for-self-employed-workers/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
@@ -251,6 +273,8 @@ export interface FileRouteTypes {
     | '/business-trade/crop-over-permits/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
     | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
+    | '/health-and-emergency-services/find-an-open-pharmacy/$slug'
+    | '/health-and-emergency-services/find-an-open-pharmacy/find'
     | '/money-financial-support/calculate-severance-pay/form'
     | '/money-financial-support/national-insurance-for-self-employed-workers/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
@@ -273,6 +297,8 @@ export interface FileRouteTypes {
     | '/business-trade/crop-over-permits/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
     | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
+    | '/health-and-emergency-services/find-an-open-pharmacy/$slug'
+    | '/health-and-emergency-services/find-an-open-pharmacy/find'
     | '/money-financial-support/calculate-severance-pay/form'
     | '/money-financial-support/national-insurance-for-self-employed-workers/form'
     | '/pensions-and-gratuities/calculate-your-pension/form'
@@ -294,6 +320,8 @@ export interface RootRouteChildren {
   HealthAndEmergencyServicesFindAnEmergencyShelterRouteRoute: typeof HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren
   BankHolidayCalendarIndexRoute: typeof BankHolidayCalendarIndexRoute
   BusinessTradeCropOverPermitsFormRoute: typeof BusinessTradeCropOverPermitsFormRoute
+  HealthAndEmergencyServicesFindAnOpenPharmacySlugRoute: typeof HealthAndEmergencyServicesFindAnOpenPharmacySlugRoute
+  HealthAndEmergencyServicesFindAnOpenPharmacyFindRoute: typeof HealthAndEmergencyServicesFindAnOpenPharmacyFindRoute
   MoneyFinancialSupportCalculateSeverancePayFormRoute: typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute: typeof MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute
   PensionsAndGratuitiesCalculateYourPensionFormRoute: typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
@@ -420,6 +448,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MoneyFinancialSupportCalculateSeverancePayFormRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/health-and-emergency-services/find-an-open-pharmacy/find': {
+      id: '/health-and-emergency-services/find-an-open-pharmacy/find'
+      path: '/health-and-emergency-services/find-an-open-pharmacy/find'
+      fullPath: '/health-and-emergency-services/find-an-open-pharmacy/find'
+      preLoaderRoute: typeof HealthAndEmergencyServicesFindAnOpenPharmacyFindRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/health-and-emergency-services/find-an-open-pharmacy/$slug': {
+      id: '/health-and-emergency-services/find-an-open-pharmacy/$slug'
+      path: '/health-and-emergency-services/find-an-open-pharmacy/$slug'
+      fullPath: '/health-and-emergency-services/find-an-open-pharmacy/$slug'
+      preLoaderRoute: typeof HealthAndEmergencyServicesFindAnOpenPharmacySlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/health-and-emergency-services/find-an-emergency-shelter/guidance': {
       id: '/health-and-emergency-services/find-an-emergency-shelter/guidance'
       path: '/guidance'
@@ -481,6 +523,10 @@ const rootRouteChildren: RootRouteChildren = {
     HealthAndEmergencyServicesFindAnEmergencyShelterRouteRouteWithChildren,
   BankHolidayCalendarIndexRoute: BankHolidayCalendarIndexRoute,
   BusinessTradeCropOverPermitsFormRoute: BusinessTradeCropOverPermitsFormRoute,
+  HealthAndEmergencyServicesFindAnOpenPharmacySlugRoute:
+    HealthAndEmergencyServicesFindAnOpenPharmacySlugRoute,
+  HealthAndEmergencyServicesFindAnOpenPharmacyFindRoute:
+    HealthAndEmergencyServicesFindAnOpenPharmacyFindRoute,
   MoneyFinancialSupportCalculateSeverancePayFormRoute:
     MoneyFinancialSupportCalculateSeverancePayFormRoute,
   MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute:

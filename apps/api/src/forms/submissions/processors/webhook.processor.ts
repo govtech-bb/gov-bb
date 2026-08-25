@@ -98,15 +98,24 @@ export class WebhookProcessor implements ISubmissionProcessor {
       if (resolved.fromRecipe) await assertSafeUrl(url);
     }
 
+    // Resolve the hydrated contract once when a mapping is present — reused for
+    // the higher-risk signal (#2065) and to resolve option value-slugs to
+    // display labels in form_data (#842). Bypass visibility (#2125):
+    // dispatching for an already-created submission, so the published contract
+    // must resolve even for a non-public (draft/preview) form. Mirrors the
+    // email processor's contract access.
+    const contract = mapping
+      ? await this.formDefinitions.findByFormId({
+          formId: payload.formId,
+          bypassVisibility: true,
+        })
+      : null;
+
     // Derived reviewer signal (#2065): only mapped payloads carry it, and only
     // for forms with a checkbox-accordion field (deriveHigherRiskSelection
-    // returns null otherwise, so the flag is omitted). Resolving the contract
-    // here mirrors the email processor's contract access.
-    const higherRisk = mapping
-      ? deriveHigherRiskSelection(
-          await this.formDefinitions.findByFormId({ formId: payload.formId }),
-          payload.values,
-        )
+    // returns null otherwise, so the flag is omitted).
+    const higherRisk = contract
+      ? deriveHigherRiskSelection(contract, payload.values)
       : null;
 
     // Serialize once: the signature is computed over the exact string sent.
@@ -118,6 +127,8 @@ export class WebhookProcessor implements ISubmissionProcessor {
             referenceCode: payload.referenceCode,
             submittedAt: payload.meta.submittedAt,
             higherRisk,
+            programmeCodeOverride: payload.resolvedCatchment?.programmeCode,
+            contract: contract ?? undefined,
           }),
         )
       : JSON.stringify({
@@ -158,7 +169,9 @@ export class WebhookProcessor implements ISubmissionProcessor {
       this.logger.log(
         `[webhook] POST ${sanitizeForLog(url)} code=${sanitizeForLog(
           payload.referenceCode,
-        )} programme=${mapping.programmeCode} bytes=${body.length}`,
+        )} programme=${
+          payload.resolvedCatchment?.programmeCode ?? mapping.programmeCode
+        } bytes=${body.length}`,
       );
     }
 

@@ -1041,3 +1041,181 @@ it("normalizes the displayed text from the committed array on blur (#1738)", asy
   // Re-query: the value-keyed remount replaces the DOM node on commit.
   expect(screen.getByRole("textbox")).toHaveValue("abc, def");
 });
+
+// #2317: fieldArray ("Answer more than once") becomes a first-class authoring
+// tool — safe defaults, min/max clamps, availability gated on the field types
+// the runtime actually repeats, and an in-row "The applicant sees" miniature.
+
+function renderFieldArrayEditor(
+  behaviours: Behaviour[],
+  onChange = vi.fn(),
+  currentField: { label: string; htmlType: string } | undefined = {
+    label: "Middle name",
+    htmlType: "text",
+  },
+) {
+  render(
+    <BehavioursEditor
+      scope="field"
+      behaviours={behaviours}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+      currentStepId="step-1"
+      currentField={currentField}
+    />,
+  );
+  return onChange;
+}
+
+it("adding Answer more than once initialises { min: 1, max: 4 } with no addAnotherLabel", async () => {
+  const onChange = renderFieldArrayEditor([]);
+  await userEvent.selectOptions(addBehaviourSelect(), "fieldArray");
+  const added = onChange.mock.lastCall?.[0][0] as Record<string, unknown>;
+  expect(added).toMatchObject({ type: "fieldArray", min: 1, max: 4 });
+  expect("addAnotherLabel" in added).toBe(false);
+});
+
+it("the Start with input has min='1' and changing to 0 stores 1", () => {
+  const onChange = vi.fn();
+  renderFieldArrayEditor(
+    [{ type: "fieldArray", min: 1, max: 4 } as unknown as Behaviour],
+    onChange,
+  );
+  const minInput = screen
+    .getAllByRole("spinbutton")
+    .find((el) =>
+      (el as HTMLInputElement)
+        .closest("div")
+        ?.textContent?.includes("Start with"),
+    ) as HTMLInputElement;
+  expect(minInput).toHaveAttribute("min", "1");
+  fireEvent.change(minInput, { target: { value: "0" } });
+  const lastCall = onChange.mock.lastCall?.[0] as Behaviour[];
+  expect((lastCall[0] as Record<string, unknown>)["min"]).toBe(1);
+});
+
+it("with min: 3, lowering Allow up to to 2 stores 3 (clamped to Start with)", () => {
+  const onChange = vi.fn();
+  renderFieldArrayEditor(
+    [{ type: "fieldArray", min: 3, max: 5 } as unknown as Behaviour],
+    onChange,
+  );
+  const maxInput = screen
+    .getAllByRole("spinbutton")
+    .find((el) =>
+      (el as HTMLInputElement)
+        .closest("div")
+        ?.textContent?.includes("Allow up to"),
+    ) as HTMLInputElement;
+  fireEvent.change(maxInput, { target: { value: "2" } });
+  const lastCall = onChange.mock.lastCall?.[0] as Behaviour[];
+  expect((lastCall[0] as Record<string, unknown>)["max"]).toBe(3);
+});
+
+it("raising Start with above Allow up to raises both", () => {
+  const onChange = vi.fn();
+  renderFieldArrayEditor(
+    [{ type: "fieldArray", min: 2, max: 4 } as unknown as Behaviour],
+    onChange,
+  );
+  const minInput = screen
+    .getAllByRole("spinbutton")
+    .find((el) =>
+      (el as HTMLInputElement)
+        .closest("div")
+        ?.textContent?.includes("Start with"),
+    ) as HTMLInputElement;
+  fireEvent.change(minInput, { target: { value: "6" } });
+  const lastCall = onChange.mock.lastCall?.[0] as Behaviour[];
+  expect((lastCall[0] as Record<string, unknown>)["min"]).toBe(6);
+  expect((lastCall[0] as Record<string, unknown>)["max"]).toBe(6);
+});
+
+it("renders a text input for the Add another link text with the runtime default as placeholder", () => {
+  renderFieldArrayEditor([
+    { type: "fieldArray", min: 1, max: 4 } as unknown as Behaviour,
+  ]);
+  expect(screen.getByPlaceholderText("Add Another")).toBeInTheDocument();
+});
+
+it("disables Answer more than once for a select field, with a reason and a hint", () => {
+  renderFieldArrayEditor([], vi.fn(), {
+    label: "Region",
+    htmlType: "select",
+  });
+  const option = within(addBehaviourSelect()).getByRole("option", {
+    name: /Answer more than once — needs a text-like field/,
+  });
+  expect(option).toBeDisabled();
+  expect(
+    screen.getByText(
+      "Only text, number, phone, email, time and long-answer fields can be answered more than once.",
+    ),
+  ).toBeInTheDocument();
+});
+
+it("offers Answer more than once enabled (no hint) for a text field", () => {
+  renderFieldArrayEditor([]);
+  const option = within(addBehaviourSelect()).getByRole("option", {
+    name: "Answer more than once",
+  });
+  expect(option).not.toBeDisabled();
+  expect(
+    screen.queryByText(/can be answered more than once/),
+  ).not.toBeInTheDocument();
+});
+
+it("miniature shows the field label, one box per Start with, and the default link text", () => {
+  renderFieldArrayEditor([
+    { type: "fieldArray", min: 2, max: 4 } as unknown as Behaviour,
+  ]);
+  expect(screen.getByText("The applicant sees")).toBeInTheDocument();
+  expect(screen.getByText("Middle name")).toBeInTheDocument();
+  expect(screen.getAllByTestId("fa-miniature-box")).toHaveLength(2);
+  expect(screen.getByText("+ Add Another")).toBeInTheDocument();
+});
+
+it("miniature link line uses the typed addAnotherLabel", () => {
+  renderFieldArrayEditor([
+    {
+      type: "fieldArray",
+      min: 1,
+      max: 4,
+      addAnotherLabel: "Add another middle name",
+    } as unknown as Behaviour,
+  ]);
+  expect(screen.getByText("+ Add another middle name")).toBeInTheDocument();
+});
+
+it("miniature hides the link line when min equals max", () => {
+  renderFieldArrayEditor([
+    { type: "fieldArray", min: 3, max: 3 } as unknown as Behaviour,
+  ]);
+  expect(screen.getAllByTestId("fa-miniature-box")).toHaveLength(3);
+  expect(screen.queryByText("+ Add Another")).not.toBeInTheDocument();
+});
+
+it("renders no miniature without currentField", () => {
+  render(
+    <BehavioursEditor
+      scope="field"
+      behaviours={[
+        { type: "fieldArray", min: 1, max: 4 } as unknown as Behaviour,
+      ]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={vi.fn()}
+      currentStepId="step-1"
+    />,
+  );
+  expect(screen.queryByText("The applicant sees")).not.toBeInTheDocument();
+});
+
+it("miniature caps at 5 boxes and collapses the rest to an '…and N more' line", () => {
+  renderFieldArrayEditor([
+    { type: "fieldArray", min: 8, max: 10 } as unknown as Behaviour,
+  ]);
+  expect(screen.getAllByTestId("fa-miniature-box")).toHaveLength(5);
+  expect(screen.getByText("…and 3 more")).toBeInTheDocument();
+});

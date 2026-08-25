@@ -374,6 +374,52 @@ describe("Review", () => {
     expect(screen.queryByText("true")).not.toBeInTheDocument();
   });
 
+  it("does not render content elements — they carry no submission value", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-1",
+        title: "Step One",
+        fields: [
+          makeField({
+            id: "step-1.guidance",
+            fieldId: "guidance",
+            label: "Guidance",
+            htmlType: "content",
+            content: "Have your passport ready before you continue.",
+            variant: "inset",
+          }),
+          makeField({
+            id: "step-1.passport-number",
+            fieldId: "passport-number",
+            label: "Passport number",
+          }),
+        ],
+      }),
+    ];
+    // A content element carries no submission value in practice, but nothing
+    // about its htmlType prevents a stray value from landing at its field key
+    // (form.getFieldValue is a bare lookup, unrelated to htmlType). Inject one
+    // here so this test actually pins the explicit `htmlType !== "content"`
+    // guard rather than passing by coincidence via the empty-value filter.
+    const form = makeMockForm({
+      "step-1.guidance": "SHOULD NOT APPEAR",
+      "step-1.passport-number": "AB123456",
+    });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.getByText("Passport number")).toBeInTheDocument();
+    expect(screen.getByText("AB123456")).toBeInTheDocument();
+    expect(screen.queryByText("Guidance")).not.toBeInTheDocument();
+    expect(screen.queryByText("SHOULD NOT APPEAR")).not.toBeInTheDocument();
+  });
+
   it("renders an empty section with title and Change link when all fields in a step are hidden", () => {
     const steps: ClientFormStep[] = [
       makeStep({
@@ -1169,5 +1215,97 @@ describe("Review", () => {
 
     const results = await axe(container);
     expect(results).toHaveNoViolations();
+  });
+
+  // #2317 (Phase 2): fieldArray answers are string arrays. They must render
+  // comma-space separated, with blank rows dropped — never String(value)'s
+  // "Ann,Bee", and never a lone "," row for an all-blank array.
+
+  it("fieldArray answers join with a comma and space", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-1",
+        title: "Step One",
+        fields: [
+          makeField({
+            id: "step-1.middle-name",
+            fieldId: "middle-name",
+            label: "Middle name",
+            htmlType: "text",
+            behaviours: [{ type: "fieldArray", min: 1, max: 4 }],
+          }),
+        ],
+      }),
+    ];
+    const form = makeMockForm({ "step-1.middle-name": ["Ann", "Bee"] });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.getByText("Ann, Bee")).toBeInTheDocument();
+  });
+
+  it("fieldArray drops blank entries from the joined answer", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-1",
+        title: "Step One",
+        fields: [
+          makeField({
+            id: "step-1.middle-name",
+            fieldId: "middle-name",
+            label: "Middle name",
+            htmlType: "text",
+            behaviours: [{ type: "fieldArray", min: 1, max: 4 }],
+          }),
+        ],
+      }),
+    ];
+    const form = makeMockForm({ "step-1.middle-name": ["Ann", "", "Cee"] });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.getByText("Ann, Cee")).toBeInTheDocument();
+  });
+
+  it("all-blank fieldArray value renders no row", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-1",
+        title: "Step One",
+        fields: [
+          makeField({
+            id: "step-1.middle-name",
+            fieldId: "middle-name",
+            label: "Middle name",
+            htmlType: "text",
+            behaviours: [{ type: "fieldArray", min: 1, max: 4 }],
+          }),
+        ],
+      }),
+    ];
+    const form = makeMockForm({ "step-1.middle-name": ["", ""] });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.queryByText("Middle name")).not.toBeInTheDocument();
+    expect(screen.getByText("No values provided")).toBeInTheDocument();
   });
 });

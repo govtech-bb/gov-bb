@@ -4,8 +4,22 @@ import type {
   RecipeFormStepField,
   FieldOverrides,
 } from "@govtech-bb/form-types";
+import { normalizeRuleValues } from "@govtech-bb/form-types";
 import type { RecipeDraft, RecipeStepDraft, RecipeFieldDraft } from "./types";
 import type { RegistryCatalog } from "./catalog";
+
+// The builder's Value box is a text input, so a rule value can reach here as
+// raw text — either freshly typed or carried in from an older recipe the author
+// never reopened. This is the one choke point every save and Deploy passes
+// through, so normalising here is what stops the builder re-emitting an
+// off-shape value (a comma string for `fileTypes`, "5242880" for a byte
+// count) that the recipe schema then rejects in CI. (#2384)
+const withNormalizedValidations = (
+  overrides: FieldOverrides,
+): FieldOverrides =>
+  overrides.validations
+    ? { ...overrides, validations: normalizeRuleValues(overrides.validations) }
+    : overrides;
 
 /**
  * Serialize a RecipeDraft (UI state) into a ServiceContractRecipe (persisted format).
@@ -27,10 +41,14 @@ export function serializeRecipeDraft(
               ref: field.ref as `blocks/${string}`,
               ...(hasChildOverrides
                 ? {
-                    overrides: field.childOverrides as Record<
-                      string,
-                      FieldOverrides
-                    >,
+                    overrides: Object.fromEntries(
+                      Object.entries(
+                        field.childOverrides as Record<string, FieldOverrides>,
+                      ).map(([fieldId, childOverrides]) => [
+                        fieldId,
+                        withNormalizedValidations(childOverrides),
+                      ]),
+                    ),
                   }
                 : {}),
             };
@@ -40,7 +58,13 @@ export function serializeRecipeDraft(
               field.overrides && Object.keys(field.overrides).length > 0;
             return {
               ref: field.ref as `components/${string}`,
-              ...(hasOverrides ? { overrides: field.overrides } : {}),
+              ...(hasOverrides
+                ? {
+                    overrides: withNormalizedValidations(
+                      field.overrides as FieldOverrides,
+                    ),
+                  }
+                : {}),
             };
           }
         },
@@ -100,6 +124,13 @@ export function serializeRecipeDraft(
     // through verbatim. `!== undefined` keeps "absent" (legacy recipe → public)
     // distinct from an explicit object — same guard as contactDetails.
     ...(draft.meta !== undefined ? { meta: draft.meta } : {}),
+    // Carry the Environmental Health catchment routing through. The builder
+    // cannot author it, but a Deploy that omits it unroutes the form: the API
+    // resolves `catchment.mdaEmail` and the per-polyclinic programme code from
+    // this block, so losing it sends every submission nowhere (#2376/#2377).
+    ...(draft.catchmentRouting !== undefined
+      ? { catchmentRouting: draft.catchmentRouting }
+      : {}),
     steps,
     createdAt: now,
     updatedAt: now,
@@ -201,6 +232,12 @@ export function deserializeRecipe(
     // an open → deploy cycle. A legacy recipe with no `meta` stays absent — the
     // builder treats that as `public` (getRecipeVisibility), not `draft`.
     ...(recipe.meta !== undefined ? { meta: recipe.meta } : {}),
+    // Symmetric read so catchment routing survives an open → deploy cycle. A
+    // recipe with no routing stays absent — the API treats that as "not
+    // catchment-routed", not as empty routing.
+    ...(recipe.catchmentRouting !== undefined
+      ? { catchmentRouting: recipe.catchmentRouting }
+      : {}),
     steps,
   };
 }

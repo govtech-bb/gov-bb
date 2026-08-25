@@ -1,5 +1,5 @@
 import { buildMappedCasePayload, readPath } from "./webhook-mapping";
-import type { WebhookMapping } from "@govtech-bb/form-types";
+import type { ServiceContract, WebhookMapping } from "@govtech-bb/form-types";
 import type { SubmissionValues } from "../submissions.types";
 
 const VALUES: SubmissionValues = {
@@ -40,6 +40,21 @@ describe("webhook-mapping", () => {
     it("returns null for a missing step or a repeatable (array) step", () => {
       expect(readPath(VALUES, "no-such-step.field")).toBeNull();
       expect(readPath({ rep: [{ a: "1" }] } as never, "rep.a")).toBeNull();
+    });
+
+    // A fieldArray answer is a string array (#2317). An applicant path is also
+    // dropped from form_data, so returning null here would lose the answer
+    // outright — the food business licence's "add another telephone number"
+    // field is exactly that shape.
+    it("joins a fieldArray answer, null when every entry is blank", () => {
+      const values = {
+        "about-you": { "your-telephone": ["421-1234", "  ", "230-9876"] },
+        blank: { "your-telephone": ["", "  "] },
+      } as unknown as SubmissionValues;
+      expect(readPath(values, "about-you.your-telephone")).toBe(
+        "421-1234, 230-9876",
+      );
+      expect(readPath(values, "blank.your-telephone")).toBeNull();
     });
   });
 
@@ -151,6 +166,137 @@ describe("webhook-mapping", () => {
       expect(payload.form_data["collection-persons"]).toEqual([
         { "collection-person-first-name": "Bob" },
       ]);
+    });
+  });
+
+  describe("buildMappedCasePayload — option value→label resolution (#842)", () => {
+    const OPTION_VALUES: SubmissionValues = {
+      "child-details": { parish: "christ-church", "child-dob": "2015-01-01" },
+      "your-interest": { topics: ["robotics", "space"] },
+      "collection-persons": [{ relationship: "guardian" }],
+    };
+
+    const OPTION_MAPPING: WebhookMapping = {
+      programmeCode: "X",
+      applicant: { name: "a.b", email: "a.c", phone: "a.d" },
+      excludeSteps: [],
+      groupByStep: false,
+    };
+
+    const CONTRACT = {
+      steps: [
+        {
+          stepId: "child-details",
+          elements: [
+            {
+              fieldId: "parish",
+              htmlType: "radio",
+              options: [
+                { label: "Christ Church", value: "christ-church" },
+                { label: "St. Michael", value: "st-michael" },
+              ],
+            },
+            { fieldId: "child-dob", htmlType: "date" },
+          ],
+        },
+        {
+          stepId: "your-interest",
+          elements: [
+            {
+              fieldId: "topics",
+              htmlType: "checkbox",
+              options: [
+                { label: "Robotics", value: "robotics" },
+                { label: "Space", value: "space" },
+              ],
+            },
+          ],
+        },
+        {
+          stepId: "collection-persons",
+          elements: [
+            {
+              fieldId: "relationship",
+              htmlType: "radio",
+              options: [
+                { label: "Parent", value: "parent" },
+                { label: "Guardian", value: "guardian" },
+              ],
+            },
+          ],
+        },
+      ],
+    } as unknown as ServiceContract;
+
+    it("resolves option value-slugs to display labels when a contract is given", () => {
+      const p = buildMappedCasePayload({
+        mapping: OPTION_MAPPING,
+        values: OPTION_VALUES,
+        referenceCode: "R",
+        submittedAt: "2026-07-28T00:00:00Z",
+        contract: CONTRACT,
+      });
+      // radio → label; checkbox → array of labels; non-option field stays raw
+      expect(p.form_data).toMatchObject({
+        parish: "Christ Church",
+        topics: ["Robotics", "Space"],
+        "child-dob": "2015-01-01",
+      });
+      // repeatable step instances resolve too
+      expect(p.form_data["collection-persons"]).toEqual([
+        { relationship: "Guardian" },
+      ]);
+    });
+
+    it("passes raw value-slugs through when no contract is given (back-compat)", () => {
+      const p = buildMappedCasePayload({
+        mapping: OPTION_MAPPING,
+        values: OPTION_VALUES,
+        referenceCode: "R",
+        submittedAt: "2026-07-28T00:00:00Z",
+      });
+      expect(p.form_data).toMatchObject({
+        parish: "christ-church",
+        topics: ["robotics", "space"],
+      });
+      expect(p.form_data["collection-persons"]).toEqual([
+        { relationship: "guardian" },
+      ]);
+    });
+  });
+
+  describe("buildMappedCasePayload — programmeCodeOverride", () => {
+    it("uses programmeCodeOverride when provided", () => {
+      const payload = buildMappedCasePayload({
+        mapping: {
+          programmeCode: "STATIC",
+          applicant: { name: "a.b", email: "a.c", phone: "a.d" },
+          excludeSteps: [],
+          groupByStep: false,
+        },
+        values: {},
+        referenceCode: "R",
+        submittedAt: "2026-07-28T00:00:00Z",
+        programmeCodeOverride: "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
+      });
+      expect(payload.programme_code).toBe(
+        "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
+      );
+    });
+
+    it("falls back to the static programmeCode when no override", () => {
+      const payload = buildMappedCasePayload({
+        mapping: {
+          programmeCode: "STATIC",
+          applicant: { name: "a.b", email: "a.c", phone: "a.d" },
+          excludeSteps: [],
+          groupByStep: false,
+        },
+        values: {},
+        referenceCode: "R",
+        submittedAt: "2026-07-28T00:00:00Z",
+      });
+      expect(payload.programme_code).toBe("STATIC");
     });
   });
 });

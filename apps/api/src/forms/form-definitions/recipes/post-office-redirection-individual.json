@@ -302,13 +302,7 @@
           "overrides": {
             "fieldId": "old-postcode",
             "label": "Postcode",
-            "hint": "For example, BB17004 (optional)",
-            "validations": {
-              "pattern": {
-                "error": "Enter a valid postcode (for example, BB17004)",
-                "value": "^[A-Z]{2}\\d{5}$"
-              }
-            },
+            "hint": "For example, BB17004",
             "ui": {
               "width": "medium"
             }
@@ -418,13 +412,7 @@
           "overrides": {
             "fieldId": "new-postcode",
             "label": "Postcode",
-            "hint": "For example, BB17004 (optional)",
-            "validations": {
-              "pattern": {
-                "error": "Enter a valid postcode (for example, BB17004)",
-                "value": "^[A-Z]{2}\\d{5}$"
-              }
-            },
+            "hint": "For example, BB17004",
             "ui": {
               "width": "medium"
             }
@@ -819,24 +807,6 @@
                 "value": "confirmed"
               }
             ]
-          }
-        },
-        {
-          "ref": "components/generic-date",
-          "overrides": {
-            "fieldId": "declaration-date-of-declaration",
-            "label": "Date of declaration",
-            "validations": {
-              "required": {
-                "error": "Date is required",
-                "value": true
-              },
-              "pastOrToday": {
-                "error": "Date must not be in the future",
-                "value": true
-              }
-            },
-            "isHidden": true
           }
         }
       ],

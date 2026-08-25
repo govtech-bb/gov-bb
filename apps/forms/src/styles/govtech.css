@@ -65,6 +65,15 @@
   outline: 0;
 }
 
+/* The muted "(optional)" suffix inside field labels and legends. Required
+ * fields carry no mark. Mirrors the design system's .govbb-label__optional,
+ * which the published @govtech-bb/styles doesn't ship yet — drop this rule
+ * when the app moves to a styles release that includes it. */
+.govbb-label__optional {
+  font-weight: 400;
+  color: var(--color-mid-grey-00);
+}
+
 /* The skip-to-content link (#341) is meant to stay hidden until focused, but
  * @govtech-bb/styles ships an inverted `.govbb-visually-hidden-focusable`
  * rule: it applies the *visible* styles in the `:not(:focus)` state and never
@@ -195,6 +204,43 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-s);
+}
+
+/* ---- Checkbox conditional reveal ------------------------------------------
+ * @govtech-bb/styles ships the inset look for a checkbox reveal, but lays it
+ * out as a block — fine for one revealed field, and the caterer reveal is
+ * four. Elsewhere on the step the fields are spaced by the parent flex `gap`,
+ * so restate that here (this rule is unlayered and the package's is inside
+ * `@layer base`, so it wins on `display`). The checked-sibling guard is kept
+ * so the package's hide-when-unticked rule still holds; the app renders the
+ * wrapper only when ticked anyway. */
+.govbb-checkbox-item:has(> .govbb-checkbox:checked)
+  + .govbb-checkbox-item__conditional {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+/* ---- Opt-in indented field (ui.indent) ------------------------------------
+ * The same inset rail as .govbb-select__conditional, but requested per field
+ * instead of derived from an option list — the automatic inset only covers
+ * single-choice radios and selects, so a run of fields revealed by a CHECKBOX
+ * opts in via `ui.indent`. No vertical margin: consecutive indented fields
+ * each draw a rail segment and those butt together into one continuous line
+ * down the whole revealed group. */
+.govbb-field--indented {
+  padding-left: 2.5rem;
+  border-left: 8px solid var(--color-grey-00);
+}
+
+/* `.form-page__step` lays its fields out as a flex column with a `gap`, so
+ * each indented field would draw a rail segment separated by that gap —
+ * a dashed-looking ladder rather than one line. Every indented field after
+ * the first pulls itself up by the gap and re-adds it as padding INSIDE its
+ * own border, closing the seams into a single continuous rail. */
+.govbb-field--indented + .govbb-field--indented {
+  margin-top: calc(-1 * var(--spacing-s));
+  padding-top: var(--spacing-s);
 }
 
 /* ---- Checkbox accordion (#2065) ------------------------------------------
@@ -420,6 +466,10 @@
   margin-top: 0;
 }
 
+.form-page__print {
+  margin-top: var(--spacing-m);
+}
+
 /* ---- Next steps + contact details ---------------------------------------- */
 .form-page__next-steps {
   margin-top: var(--spacing-m);
@@ -481,6 +531,55 @@
 }
 
 .form-page__markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* ---- Content element (htmlType "content") ------------------------------- *
+ * Inset variant: light-blue panel with a navy left rule (same tokens as the
+ * service-title caption and closed panel). Text variant: block spacing only;
+ * the details variant reuses the .govbb-show-hide* classes. */
+.govbb-inset-text {
+  padding: var(--spacing-s) var(--spacing-m);
+  margin-bottom: var(--spacing-m);
+  background: var(--color-blue-10);
+  border-left: var(--color-blue-40) 0.25rem solid;
+}
+
+.govbb-inset-text > :last-child,
+.govbb-content-text > :last-child {
+  margin-bottom: 0;
+}
+
+.govbb-content-text {
+  margin-bottom: var(--spacing-m);
+}
+
+/* Warning variant: amber left rule with a filled roundel, no panel. Reserved
+ * for advisory copy the applicant can proceed past (e.g. a short lead time),
+ * so it must read as louder than the blue inset without looking like a
+ * blocking validation error. */
+.govbb-warning-text {
+  display: flex;
+  gap: var(--spacing-s);
+  align-items: flex-start;
+  padding: var(--spacing-s) var(--spacing-m);
+  margin-bottom: var(--spacing-m);
+  border-left: var(--color-yellow-00) 0.25rem solid;
+}
+
+.govbb-warning-text__icon {
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--color-yellow-00);
+  color: var(--color-black-00);
+  font-weight: 700;
+  line-height: 1.75rem;
+  text-align: center;
+}
+
+.govbb-warning-text__body > :last-child {
   margin-bottom: 0;
 }
 
@@ -656,4 +755,97 @@
 .govbb-address-suggestion:hover,
 .govbb-address-suggestion[aria-selected="true"] {
   background: var(--color-blue-10);
+}
+
+/* ---- Print: a clean paper copy of the confirmation (#2132) --------------- */
+/* Goal: both confirmation variants (payment and non-payment) print as one
+   consistent, plain black-on-white document — the submission ID, what-happens-
+   next and contact details — with no page chrome, no action controls, an even
+   vertical rhythm, and no block split across a page break. */
+@media print {
+  /* Chrome + every interactive control (actions are useless on paper): the
+     Print button, feedback link, "Continue to payment" and "Try again" buttons.
+     `[class*="govbb-btn"]` covers both the primary and --secondary variants. */
+  .no-print,
+  .form-page__print,
+  .form-page__feedback,
+  .govbb-btn,
+  [class*="govbb-btn"] {
+    display: none !important;
+  }
+
+  /* Use the paper's own margin: drop the on-screen page gutters and the fixed
+     two-thirds measure so content isn't boxed into a narrow column. */
+  .container {
+    max-width: none !important;
+    padding-inline: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .form-width {
+    width: 100% !important;
+  }
+
+  /* Page-break control below relies on `break-inside: avoid`, which Chrome
+     IGNORES on flex children. The confirmation is built from flex columns
+     (form-page__confirmation wraps every block; the payment card, contact and
+     lead panel are flex too), so those rules silently no-op and content splits
+     mid-block. Flatten these containers to plain block flow in print so the
+     browser honours the page-break rules. */
+  .form-page__confirmation,
+  .form-page__panel-body,
+  .govbb-payment,
+  .form-page__contact {
+    display: block !important;
+  }
+
+  /* The success/error banner is a tall (16.75rem) coloured block; print drops
+     the background, leaving a big empty gap. Collapse it to plain heading text. */
+  .form-page__panel {
+    min-height: 0 !important;
+    padding-block: 0 !important;
+  }
+
+  .form-page__panel--success,
+  .form-page__panel--error {
+    background: none !important;
+    color: var(--color-black-00) !important;
+  }
+
+  /* Payment summary card: drop its surface/border/shadow so the receipt lines
+     print as plain text, consistent with the non-payment layout. */
+  .govbb-payment {
+    background: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  /* One consistent gap between every confirmation block, both variants. */
+  .form-page__reference,
+  .govbb-payment,
+  .form-page__next-steps,
+  .form-page__markdown-content,
+  .form-page__contact {
+    margin-top: var(--spacing-m) !important;
+  }
+
+  /* Page breaks: keep a cohesive block whole and never orphan a heading from
+     the content it introduces. */
+  h1,
+  h2,
+  h3,
+  .govbb-text-h1,
+  .govbb-text-h2,
+  .govbb-text-h3 {
+    break-after: avoid-page;
+  }
+
+  .form-page__reference,
+  .form-page__contact,
+  .govbb-payment__item,
+  .form-page__next-steps > div,
+  .form-page__next-steps li {
+    break-inside: avoid;
+  }
 }

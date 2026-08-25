@@ -6,6 +6,7 @@ import type {
   DatePart,
   DateValidationError,
 } from "@govtech-bb/form-validation";
+import { optionalSuffix } from "./optional-suffix";
 
 /** An inset field entry passed from the parent radio/select group. */
 export interface InsetFieldEntry {
@@ -76,6 +77,12 @@ export function buildFieldRenderContext(args: {
   const labelClass = (base: string) =>
     field.ui?.hideLabel ? `${base} govbb-visually-hidden` : base;
 
+  // Muted "(optional)" rendered inside the label/legend (null when required).
+  // JSX on purpose: field.label doubles as the check-your-answers key, the
+  // repeatable-row aria-label and the error-message name, so the suffix must
+  // never be appended to the string.
+  const labelSuffix = optionalSuffix(field);
+
   const sharedProps = {
     type: field.htmlType,
     name: field.name,
@@ -85,8 +92,9 @@ export function buildFieldRenderContext(args: {
     onBlur: f.handleBlur,
     "aria-describedby": describedBy,
     // Native `step` for time/number inputs — e.g. 30-minute time increments.
-    // Ignored by input types that don't support it.
-    ...(field.step !== undefined ? { step: field.step } : {}),
+    // Ignored by input types that don't support it; React omits the attribute
+    // entirely when the value is undefined.
+    step: field.step,
   };
 
   // Surface required state to assistive tech. Not spread onto multi-option
@@ -113,6 +121,7 @@ export function buildFieldRenderContext(args: {
     errorId,
     describedBy,
     labelClass,
+    labelSuffix,
     sharedProps,
     requiredProps,
     autoComplete,

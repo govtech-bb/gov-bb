@@ -68,6 +68,102 @@ export async function advance(page: Page, fromStep: string): Promise<void> {
   });
 }
 
+/** Click "Previous" and wait until `?step=` changes away from `fromStep`. */
+export async function goBack(page: Page, fromStep: string): Promise<void> {
+  await page.getByRole("button", { name: /^Previous$/ }).click();
+  await page.waitForURL((url) => url.searchParams.get("step") !== fromStep, {
+    timeout: STEP_TIMEOUT,
+  });
+}
+
+/**
+ * Assert the event start date's three rules, which are easy to confuse:
+ *   1. today → 13 days out → soft warning shows, and the step STILL ADVANCES
+ *      (this replaced a hard `min: daysUntil 14` that refused the whole form),
+ *   2. in the past        → hard error ONLY, and the step does not advance,
+ *   3. 14+ days out       → the warning clears.
+ *
+ * Rule 2 is why the warning carries a `gte 0` bound as well as `lt 14`: a past
+ * date is also "fewer than 14 days", so without the floor it would draw the
+ * advisory callout alongside the blocking error and muddle which one to act on.
+ *
+ * Call this with every other field on the step already filled — the advance
+ * would otherwise fail on an unrelated required field and read as a false pass
+ * of the old blocking behaviour. Leaves the field on `compliantStart`, so the
+ * run submits the same data it would have without this check.
+ */
+export async function expectLeadTimeWarningIsAdvisory(
+  page: Page,
+  stepId: string,
+  compliantStart: Date,
+): Promise<void> {
+  const soon = new Date();
+  soon.setDate(soon.getDate() + 4);
+  await fillDate(
+    page,
+    stepId,
+    "event-from",
+    soon.getDate(),
+    soon.getMonth() + 1,
+    soon.getFullYear(),
+  );
+
+  const warning = page.locator(".govbb-warning-text");
+  await expect(warning).toContainText("fewer than 14 days", {
+    timeout: STEP_TIMEOUT,
+  });
+
+  // The regression this guards: a short-notice event used to be refused here.
+  await advance(page, stepId);
+  await goBack(page, currentStep(page));
+  expectStep(page, stepId, { exact: true });
+
+  // The floor that DID survive: yesterday is still refused outright, so the
+  // soft warning cannot be mistaken for "any date goes".
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  await fillDate(
+    page,
+    stepId,
+    "event-from",
+    yesterday.getDate(),
+    yesterday.getMonth() + 1,
+    yesterday.getFullYear(),
+  );
+  await page.getByRole("button", { name: /^Continue$/ }).click();
+  await expect(page.locator(".govbb-error-summary")).toContainText(
+    "cannot be in the past",
+    { timeout: STEP_TIMEOUT },
+  );
+  expectStep(page, stepId, { exact: true });
+  // The error stands alone — a past date gets one instruction, not two.
+  await expect(warning).toBeHidden();
+
+  // Today is the boundary the floor allows: valid, but still short notice, so
+  // the warning is back and nothing blocks.
+  const today = new Date();
+  await fillDate(
+    page,
+    stepId,
+    "event-from",
+    today.getDate(),
+    today.getMonth() + 1,
+    today.getFullYear(),
+  );
+  await expect(warning).toBeVisible({ timeout: STEP_TIMEOUT });
+  await expect(page.locator(".govbb-error-summary")).toBeHidden();
+
+  await fillDate(
+    page,
+    stepId,
+    "event-from",
+    compliantStart.getDate(),
+    compliantStart.getMonth() + 1,
+    compliantStart.getFullYear(),
+  );
+  await expect(warning).toBeHidden({ timeout: STEP_TIMEOUT });
+}
+
 /** Fill a text/textarea input addressed as `${stepId}_${suffix}`. */
 export async function fillField(
   page: Page,
@@ -113,6 +209,63 @@ export async function selectRadio(
   await page
     .locator(`input[type=radio][id="${stepId}_${suffix}-${optionValue}"]`)
     .check();
+}
+
+/** Tick a checkbox option by its value suffix (`opening-days-monday`). */
+export async function tickCheckbox(
+  page: Page,
+  stepId: string,
+  suffix: string,
+  optionValue: string,
+): Promise<void> {
+  await page
+    .locator(`input[type=checkbox][id="${stepId}_${suffix}-${optionValue}"]`)
+    .check();
+}
+
+/**
+ * Fill an address-lookup (geocoder) field: type the query, wait for the
+ * suggestion list, pick the first match, then assert the hidden coordinates
+ * field filled — that value is what the catchment router resolves the serving
+ * polyclinic from, so an empty one is a real failure, not a soft skip.
+ *
+ * Fields are addressed by id rather than accessible name because an
+ * address-lookup's label is the generic "Address line 1", which a second,
+ * plain address elsewhere on the same step usually shares.
+ *
+ * `pressSequentially` (not `fill`) so the debounced autocomplete actually
+ * fires — a single `fill` sets the value without the keystrokes the lookup
+ * listens for.
+ *
+ * Returns the resolved "lat,lng" string. The four smoke specs that predate this
+ * helper (hotel, swimming pool, hairdresser, hair & beauty) each carry their own
+ * copy; they are left alone deliberately — this is for new specs.
+ */
+export async function fillGeocodedAddress(
+  page: Page,
+  stepId: string,
+  fields: { lineFieldId: string; coordinatesFieldId: string },
+  query: string,
+): Promise<string> {
+  const combo = page.locator(`input[id="${stepId}_${fields.lineFieldId}"]`);
+  await combo.click();
+  await combo.pressSequentially(query, { delay: 20 });
+
+  const firstSuggestion = page.getByRole("option").first();
+  await expect(
+    firstSuggestion,
+    `geocoder returned no suggestion for "${query}"`,
+  ).toBeVisible({ timeout: STEP_TIMEOUT });
+  await firstSuggestion.click();
+
+  const coordinates = page.locator(
+    `input[id="${stepId}_${fields.coordinatesFieldId}"]`,
+  );
+  await expect(
+    coordinates,
+    `geocoder did not populate ${fields.coordinatesFieldId}`,
+  ).toHaveValue(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/, { timeout: STEP_TIMEOUT });
+  return (await coordinates.inputValue()).trim();
 }
 
 /**
@@ -232,10 +385,15 @@ export async function submitAndConfirm(
       // When the API returns a referenceCode, it should match the canonical
       // shape (#1468): <PREFIX>-<YYMM>-<7 Crockford-Base32 chars>. Crockford
       // omits I, L, O, U so the code survives being read aloud and retyped.
+      //
+      // The prefix is one segment when it is derived from the formId initials
+      // (RAEHO), and TWO when the recipe declares an MDA prefix (#2331:
+      // `mdaCode`-`programmeShortCode`, e.g. MOH-EHO). Both are canonical —
+      // a single-segment-only pattern rejects every MDA-migrated form.
       expect(
         referenceCode,
         "referenceCode should match the expected pattern",
-      ).toMatch(/^[A-Z]+-\d{4}-[0-9A-HJKMNP-TV-Z]{7}$/);
+      ).toMatch(/^[A-Z]+(-[A-Z]+)?-\d{4}-[0-9A-HJKMNP-TV-Z]{7}$/);
     }
     await expect(page.getByText(String(renderedReference))).toBeVisible();
   }

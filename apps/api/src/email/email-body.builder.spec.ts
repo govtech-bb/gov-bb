@@ -290,6 +290,57 @@ describe("EmailBodyBuilder", () => {
       expect(ctx.markdownHtml).toContain("We will review your request.");
     });
 
+    it("substitutes the resolved polyclinic into the {polyclinic} token", async () => {
+      const base = makeContract();
+      const contract = makeContract({
+        steps: [
+          ...base.steps,
+          {
+            stepId: "submission-confirmation",
+            title: "Application submitted",
+            elements: [],
+            markdownContent:
+              "Sent to the Environmental Health Department at **{polyclinic}**.",
+          },
+        ] as unknown as ServiceContract["steps"],
+      });
+      builder = new EmailBodyBuilder(makeFormDefinitionsService(contract));
+
+      const ctx = await builder.build(
+        makePayload({
+          resolvedCatchment: {
+            polyclinic: "Maurice Byer Polyclinic",
+            programmeCode: "TEMP_RESTAURANT_LICENCE_MAURICE_BYER",
+          },
+        }),
+      );
+
+      expect(ctx.markdownHtml).toContain("Maurice Byer Polyclinic");
+      expect(ctx.markdownHtml).not.toContain("{polyclinic}");
+    });
+
+    it("falls back to a generic phrase when no catchment resolved", async () => {
+      const base = makeContract();
+      const contract = makeContract({
+        steps: [
+          ...base.steps,
+          {
+            stepId: "submission-confirmation",
+            title: "Application submitted",
+            elements: [],
+            markdownContent:
+              "Sent to the Environmental Health Department at **{polyclinic}**.",
+          },
+        ] as unknown as ServiceContract["steps"],
+      });
+      builder = new EmailBodyBuilder(makeFormDefinitionsService(contract));
+
+      const ctx = await builder.build(makePayload());
+
+      expect(ctx.markdownHtml).toContain("your local polyclinic");
+      expect(ctx.markdownHtml).not.toContain("{polyclinic}");
+    });
+
     it("leaves markdownHtml undefined when the form authors none", async () => {
       const ctx = await builder.build(makePayload());
       expect(ctx.markdownHtml).toBeUndefined();
@@ -315,11 +366,12 @@ describe("EmailBodyBuilder", () => {
       expect(ctx.submissionId).toBe("JPP-20260604-130732-9JZRZC");
     });
 
-    it("fetches the contract by formId from the payload (#1196: no version)", async () => {
+    it("fetches the contract by formId from the payload (#1196: no version), bypassing visibility (#2125)", async () => {
       await builder.build(makePayload());
 
       expect(formSvc.findByFormId).toHaveBeenCalledWith({
         formId: "test-form",
+        bypassVisibility: true,
       });
     });
 
@@ -651,6 +703,48 @@ describe("EmailBodyBuilder", () => {
       const labels = ctx.sections[0].fields.map((f) => f.label);
 
       expect(labels).not.toContain("Note");
+    });
+
+    it("omits content elements entirely", async () => {
+      const contract = makeContract();
+      contract.steps[0].elements.push({
+        fieldId: "guidance",
+        label: "Guidance",
+        htmlType: "content",
+        content: "Have your documents ready.",
+        variant: "inset",
+      });
+      formSvc = makeFormDefinitionsService(contract);
+      builder = new EmailBodyBuilder(formSvc);
+
+      const payload = makePayload();
+      payload.meta.activeFieldIds["personal"] = [
+        "firstName",
+        "lastName",
+        "gender",
+        "interests",
+        "country",
+        "languages",
+        "dob",
+        "guidance",
+      ];
+      // A content element carries no submission value in practice, but
+      // formatValue's raw lookup (stepValues[el.fieldId]) is unrelated to
+      // htmlType — nothing stops a stray value landing at its field key.
+      // Inject one so this test actually pins the explicit SKIP_TYPES entry
+      // rather than passing by coincidence via the empty-value filter.
+      payload.values["personal"] = {
+        ...payload.values["personal"],
+        guidance: "SHOULD NOT APPEAR",
+      };
+
+      const ctx = await builder.build(payload);
+      const labels = ctx.sections[0].fields.map((f) => f.label);
+      const values = ctx.sections[0].fields.map((f) => f.value);
+
+      expect(labels).not.toContain("Guidance");
+      expect(values).not.toContain("SHOULD NOT APPEAR");
+      expect(labels).toContain("First Name");
     });
 
     it("omits sections whose every field resolved to empty", async () => {

@@ -125,6 +125,16 @@ export default function Review({
         return fileNames.join(", ");
       }
       default:
+        // fieldArray answers are string arrays (#2317): join the non-blank
+        // entries comma-space separated, or return null (row omitted) when
+        // every entry is blank — String(value) would render "Ann,Bee" and
+        // turn an all-blank array into a lone "," row.
+        if (Array.isArray(value)) {
+          const answers = value.filter(
+            (v) => v !== undefined && v !== null && v !== "",
+          );
+          return answers.length > 0 ? answers.map(String).join(", ") : null;
+        }
         return emptyToNull(value);
     }
   };
@@ -150,6 +160,9 @@ export default function Review({
           // regardless of toggle state.
           const rows = getVisibleFields(step, form)
             .filter((field) => field.htmlType !== "show-hide")
+            // Content elements carry no submission value (non-field static
+            // guidance) — never a summary row, regardless of value fallback.
+            .filter((field) => field.htmlType !== "content")
             // ui.hidden fields (e.g. geocoded coordinates) carry data but are
             // never shown to the applicant — omit them from the summary.
             .filter((field) => !field.ui?.hidden)

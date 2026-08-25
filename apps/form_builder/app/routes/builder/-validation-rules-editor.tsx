@@ -29,6 +29,57 @@ interface ValidationRulesEditorProps {
 // a double control (#618).
 const isManaged = (type: ValidationType) => type !== "required";
 
+// Rules whose `value` the recipe schema types as a number. The Value box is a
+// text input, so what the author types has to be converted before it is
+// committed — mirrors `ruleValueSchemas` in @govtech-bb/form-types, which is
+// what rejects a wrong shape on draft save and in CI. (#2384)
+const NUMERIC_RULE_VALUES = new Set<ValidationType>([
+  "minLength",
+  "maxLength",
+  "minItems",
+  "maxItems",
+  "minSelection",
+  "maxSelection",
+  "min",
+  "max",
+  "gt",
+  "lt",
+  "minYear",
+  "maxYear",
+  "itemMaxSize",
+  "maxSize",
+]);
+
+// Text box → the shape the rule runner consumes. Committing the raw string for
+// every rule is what put a comma string in `fileTypes.value` and crashed the
+// forms file-upload renderer on `.map`. (#2384)
+function parseRuleValue(ruleType: ValidationType, raw: string): unknown {
+  // An emptied box is a genuine deletion: handleUpdate strips an `undefined`
+  // patch key, so the committed config stops carrying `value` at all.
+  if (raw.trim() === "") return undefined;
+  if (ruleType === "fileTypes") {
+    return raw
+      .split(",")
+      .map((type) => type.trim())
+      .filter(Boolean);
+  }
+  if (NUMERIC_RULE_VALUES.has(ruleType)) {
+    const parsed = Number(raw);
+    // An entry that isn't a number stays as typed rather than becoming NaN —
+    // the draft-save gate then rejects it by name instead of silently storing
+    // a value no rule runner can use.
+    return Number.isFinite(parsed) ? parsed : raw;
+  }
+  return raw;
+}
+
+// The committed shape → the text box. `fileTypes` round-trips through the same
+// comma-separated form the author typed.
+function formatRuleValue(value: unknown): string {
+  if (value == null) return "";
+  return Array.isArray(value) ? value.join(", ") : String(value);
+}
+
 // Date→number transforms for the duration rules (#1020). Added rules seed
 // `yearsSince` so a date's "Min (duration)" rule is functional immediately
 // rather than comparing an underived date (which would always fail).
@@ -163,7 +214,7 @@ export function ValidationRulesEditor({
               {descriptor?.hasValue && config.value != null && (
                 <div className={styles.formGroup}>
                   <label>Value</label>
-                  <span>{String(config.value)}</span>
+                  <span>{formatRuleValue(config.value)}</span>
                 </div>
               )}
               {config.error && (
@@ -199,9 +250,11 @@ export function ValidationRulesEditor({
                 <input
                   type="text"
                   placeholder={descriptor?.valuePlaceholder}
-                  value={(config.value as string) ?? ""}
+                  value={formatRuleValue(config.value)}
                   onChange={(e) =>
-                    handleUpdate(ruleType, { value: e.target.value })
+                    handleUpdate(ruleType, {
+                      value: parseRuleValue(ruleType, e.target.value),
+                    })
                   }
                 />
               </div>

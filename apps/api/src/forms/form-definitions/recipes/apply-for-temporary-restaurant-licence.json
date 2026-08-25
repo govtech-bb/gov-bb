@@ -3,7 +3,7 @@
   "title": "Apply for a licence to operate a temporary restaurant",
   "description": "Apply for a licence to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
   "createdAt": "2026-07-23T00:00:00Z",
-  "updatedAt": "2026-07-27T00:00:00Z",
+  "updatedAt": "2026-08-19T00:00:00Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -21,14 +21,16 @@
       "type": "email",
       "config": {
         "subject": "A new temporary restaurant licence application has been received",
-        "recipientField": "config.mdaEmail"
+        "recipientField": "catchment.mdaEmail"
       }
     },
     {
       "type": "webhook",
       "config": {
         "mapping": {
-          "programmeCode": "TEMP-RESTAURANT-LICENCE",
+          "mdaCode": "MOH",
+          "programmeShortCode": "TRL",
+          "programmeCode": "TEMP_RESTAURANT_LICENCE",
           "applicant": {
             "name": [
               "applicant-details.applicant-first-name",
@@ -38,6 +40,7 @@
             "phone": "applicant-details.mobile-number"
           },
           "excludeSteps": [
+            "check-your-answers",
             "declaration",
             "submission-confirmation"
           ],
@@ -46,6 +49,10 @@
       }
     }
   ],
+  "catchmentRouting": {
+    "coordinatesField": "event-details.event-address-coordinates",
+    "parishField": "event-details.event-parish"
+  },
   "steps": [
     {
       "stepId": "applicant-details",
@@ -61,7 +68,7 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "label": "Middle name (optional)",
+            "label": "Middle name",
             "fieldId": "applicant-middle-name"
           }
         },
@@ -89,7 +96,7 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 2 (optional)",
+            "label": "Address line 2",
             "fieldId": "applicant-address-line-2",
             "validations": {
               "required": {
@@ -116,7 +123,7 @@
         {
           "ref": "components/home-telephone",
           "overrides": {
-            "label": "Home telephone (optional)",
+            "label": "Home telephone",
             "hint": "For example, (246) 433 1234.",
             "validations": {
               "required": {
@@ -128,7 +135,7 @@
         {
           "ref": "components/work-telephone",
           "overrides": {
-            "label": "Work telephone (optional)",
+            "label": "Work telephone",
             "validations": {
               "required": {
                 "value": false
@@ -154,7 +161,7 @@
           "overrides": {
             "label": "Are you organising this event?",
             "fieldId": "is-organiser",
-            "hint": "The organiser is responsible for the overall event — including the site plan and requesting an environmental health officer to attend.",
+            "hint": "The organiser is responsible for the overall event — including the site plan and requesting an Environmental Health Officer to attend.",
             "options": [
               {
                 "label": "Yes",
@@ -189,8 +196,7 @@
             ],
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the organiser's name"
+                "value": false
               }
             }
           }
@@ -211,8 +217,7 @@
             ],
             "validations": {
               "required": {
-                "value": true,
-                "error": "Enter the organiser's phone number"
+                "value": false
               },
               "phone": {
                 "value": true,
@@ -224,7 +229,7 @@
         {
           "ref": "components/generic-email",
           "overrides": {
-            "label": "Organiser's email address (optional)",
+            "label": "Organiser's email address",
             "fieldId": "organiser-email",
             "hint": "For example, organiser@example.com.",
             "behaviours": [
@@ -236,11 +241,63 @@
               }
             ],
             "validations": {
+              "required": {
+                "value": false
+              },
               "email": {
                 "value": true,
                 "error": "Enter a valid email address"
               }
             }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "organiser-officer-notice",
+            "variant": "inset",
+            "content": "As the event organiser, you must also request an Environmental Health Officer to attend. This is required whenever food is served.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-organiser",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "organiser-officer-info",
+            "variant": "text",
+            "content": "We will request an officer for you when you submit this application. The Environmental Health Department decides when officers attend, at their discretion, based on the event dates and times you have provided. You **do not need** to fill out a separate Request an Environmental Health Officer form.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-organiser",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "organiser-officer-reg-note",
+            "variant": "details",
+            "summary": "Why you do not choose officer times",
+            "content": "The Environmental Health Department assigns officers based on your event's dates and times. This follows the Health Services (Assignment of Public Health Inspectors to Private Businesses) Regulations, 1986, which set officers' working days and hours (regulation 2 and the First Schedule) and the fees for attendance outside those hours (regulation 7 and the Second Schedule).",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-organiser",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
           }
         }
       ]
@@ -277,7 +334,7 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Event address line 2 (optional)",
+            "label": "Event address line 2",
             "fieldId": "event-address-line-2",
             "validations": {
               "required": {
@@ -313,16 +370,16 @@
           "overrides": {
             "label": "Start date",
             "fieldId": "event-from",
-            "hint": "The first day the temporary restaurant will operate. You must apply at least 14 days before this date. For example, 27 8 2026.",
+            "hint": "The first day the temporary restaurant will operate. Apply at least 14 days before this date if you can. For example, 27 8 2026.",
             "validations": {
               "required": {
                 "value": true,
                 "error": "Enter the event start date"
               },
               "min": {
-                "value": 14,
+                "value": 0,
                 "transform": "daysUntil",
-                "error": "You must apply at least 14 days before the event start date"
+                "error": "The event start date cannot be in the past"
               }
             }
           }
@@ -344,6 +401,30 @@
                 "error": "The end date must be the same as or after the start date"
               }
             }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "event-lead-time-warning",
+            "variant": "warning",
+            "content": "Your event starts in fewer than 14 days. We ask for at least 14 days so an officer can be scheduled to inspect your set-up. You can still apply, but your application goes for manual review and may not be processed in time.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "event-from",
+                "transform": "daysUntil",
+                "operator": "gte",
+                "value": 0
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "event-from",
+                "transform": "daysUntil",
+                "operator": "lt",
+                "value": 14
+              }
+            ]
           }
         },
         {
@@ -543,6 +624,12 @@
                   { "label": "Sno-cones", "value": "sno-cones" },
                   { "label": "Wines and spirits", "value": "wines-and-spirits" }
                 ]
+              },
+              {
+                "label": "Other food or drink",
+                "options": [
+                  { "label": "Other food or drink", "value": "other" }
+                ]
               }
             ],
             "validations": {
@@ -554,18 +641,164 @@
           }
         },
         {
-          "ref": "components/additional-details",
+          "ref": "components/generic-textarea",
           "overrides": {
-            "label": "Where will you get the food from?",
-            "fieldId": "food-source",
-            "hint": "List your suppliers or sources. For example, fish from Oistins market; flour and oil from a wholesaler.",
+            "label": "Tell us more about the other food and drink you will serve",
+            "fieldId": "other-food-description",
+            "hint": "Describe the main ingredients and how you will cook it. This is how we grade the risk, so an officer knows what to expect.",
             "ui": {
-              "width": "long"
+              "width": "long",
+              "indent": true
             },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-served",
+                "operator": "in",
+                "value": ["other"]
+              }
+            ],
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter where you will get the food from"
+                "error": "Tell us what else you will serve"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Where will you get your food from?",
+            "fieldId": "food-source",
+            "hint": "Tick everything that applies.",
+            "options": [
+              { "label": "Supplier", "value": "supplier" },
+              { "label": "Caterer or cook", "value": "caterer" }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select where you will get your food from"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "label": "Which suppliers will you use?",
+            "fieldId": "supplier-details",
+            "hint": "A short list is enough. You do not need to name every item. For example, fish from Oistins market; flour and oil from a wholesaler; beer from a supermarket.",
+            "ui": {
+              "width": "long"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["supplier"]
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us which suppliers you will use"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Name of the caterer or cook",
+            "fieldId": "caterer-name",
+            "hint": "The business or person preparing the food. Only give this if someone other than you is preparing it.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the name of the caterer or cook"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Their address",
+            "fieldId": "caterer-address",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the address of the caterer or cook"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-tel",
+          "overrides": {
+            "label": "Their phone number",
+            "fieldId": "caterer-phone",
+            "hint": "For example, (246) 249 1234.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the phone number of the caterer or cook"
+              },
+              "phone": {
+                "value": true,
+                "error": "Please enter a valid phone number"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-email",
+          "overrides": {
+            "label": "Their email address",
+            "fieldId": "caterer-email",
+            "hint": "For example, cook@example.com.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "email": {
+                "value": true,
+                "error": "Enter a valid email address"
               }
             }
           }
@@ -677,19 +910,18 @@
     {
       "stepId": "documents",
       "title": "Supporting documents",
-      "description": "You must upload a medical certificate for everyone handling food. All staff must also carry their certificate during the event.",
+      "description": "You must upload your own medical certificate. As the event organiser, you must also upload your list of vendors. A site or stall plan and a food business licence are optional.",
       "elements": [
         {
           "ref": "components/upload-document",
           "overrides": {
-            "label": "Staff medical certificates",
+            "label": "Your medical certificate",
             "fieldId": "medical-certs",
-            "hint": "A valid medical certificate for you and everyone handling food. PDF, JPG or PNG.",
-            "multiple": true,
+            "hint": "Your own valid medical certificate. PDF, JPG or PNG.",
             "validations": {
               "required": {
                 "value": true,
-                "error": "Upload a medical certificate for everyone handling food"
+                "error": "Upload your medical certificate"
               },
               "fileTypes": {
                 "value": ["application/pdf", "image/jpeg", "image/png"],
@@ -700,6 +932,22 @@
                 "error": "Each file must be 5 MB or smaller"
               }
             }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "medical-certs-note",
+            "variant": "inset",
+            "content": "You only upload your own. Everyone else working with you on the day must **walk with their own valid medical certificate** — the officer checks them at the stall. We know your team can change at short notice, so there is nothing to upload for them here."
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "medical-certs-help",
+            "variant": "text",
+            "content": "Ask your polyclinic or doctor if you do not have a current certificate."
           }
         },
         {
@@ -740,21 +988,8 @@
           "overrides": {
             "label": "Site or stall plan",
             "fieldId": "site-plan",
-            "hint": "A plan of the event site, showing stall positions, waste disposal, water supply and facilities. PDF, JPG or PNG.",
-            "behaviours": [
-              {
-                "type": "optionalIf",
-                "targetStepId": "event-organiser",
-                "targetFieldId": "is-organiser",
-                "operator": "equal",
-                "value": "no"
-              }
-            ],
+            "hint": "A plan of the event site, showing stall positions, waste disposal, water supply and facilities. Upload one if you have it. PDF, JPG or PNG.",
             "validations": {
-              "required": {
-                "value": true,
-                "error": "Upload a site or stall plan"
-              },
               "fileTypes": {
                 "value": ["application/pdf", "image/jpeg", "image/png"],
                 "error": "Upload a PDF, JPG or PNG"
@@ -765,7 +1000,7 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "label": "Food business licence (optional)",
+            "label": "Food business licence",
             "fieldId": "food-licence",
             "hint": "A copy of your valid food business licence, if you have one. PDF, JPG or PNG.",
             "validations": {
@@ -777,6 +1012,13 @@
           }
         }
       ]
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
     },
     {
       "stepId": "declaration",
@@ -800,6 +1042,37 @@
               }
             }
           }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Officer overtime costs",
+            "fieldId": "overtime-costs-acknowledged",
+            "ui": {
+              "hideLabel": true
+            },
+            "options": [
+              {
+                "label": "I understand that the event organiser is responsible for the overtime costs of the Environmental Health Officers who provide public health surveillance and inspection during the event.",
+                "value": "acknowledged"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "event-organiser",
+                "targetFieldId": "is-organiser",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "You must confirm you understand the overtime costs to continue"
+              }
+            }
+          }
         }
       ]
     },
@@ -807,7 +1080,7 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "elements": [],
-      "markdownContent": "We have sent a confirmation email to the address you gave.\n\n## What happens next\n\n- The Environmental Health Department for your area will review your application.\n- If you do not already have a licensed food business, an officer will inspect your set-up before the licence is issued.\n- You must collect your licence from the polyclinic before your event.\n- The licence is valid for 30 days from the date it is issued.\n\nKeep your reference number for any follow-up."
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your request and your temporary restaurant licence application.\n- Environmental Health Officers will attend on the dates and times you gave. The department will confirm arrangements and any overtime costs.\n- They may arrange an inspection before issuing the licence. The licence is collected from the polyclinic, and an electronic copy is emailed to you. It is valid for 30 days from the date it is issued.\n- If there are overtime costs, they will send an invoice after the request is approved.\n\nKeep your reference number for any follow-up."
     }
   ],
   "meta": {

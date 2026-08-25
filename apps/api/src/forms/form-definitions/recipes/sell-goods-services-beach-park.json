@@ -336,7 +336,7 @@
           "ref": "components/postcode",
           "overrides": {
             "fieldId": "applicant-postcode",
-            "hint": "For example, BB17004 (optional)"
+            "hint": "For example, BB17004"
           }
         }
       ],
@@ -596,7 +596,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/relationship",
           "overrides": {
             "fieldId": "prof-ref-relationship",
             "label": "Relationship",
@@ -723,7 +723,7 @@
           "ref": "components/postcode",
           "overrides": {
             "fieldId": "prof-ref-postcode",
-            "hint": "For example, BB17004 (optional)"
+            "hint": "For example, BB17004"
           }
         }
       ],
@@ -767,7 +767,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/relationship",
           "overrides": {
             "fieldId": "pers-ref-relationship",
             "label": "Relationship",
@@ -894,7 +894,7 @@
           "ref": "components/postcode",
           "overrides": {
             "fieldId": "pers-ref-postcode",
-            "hint": "For example, BB17004 (optional)"
+            "hint": "For example, BB17004"
           }
         }
       ],
@@ -938,7 +938,7 @@
           }
         },
         {
-          "ref": "components/parish",
+          "ref": "components/generic-select",
           "overrides": {
             "fieldId": "testimonial1-relationship",
             "label": "Relationship",
@@ -1117,7 +1117,7 @@
           }
         },
         {
-          "ref": "components/parish",
+          "ref": "components/generic-select",
           "overrides": {
             "fieldId": "testimonial2-relationship",
             "label": "Relationship",
@@ -1303,11 +1303,11 @@
               },
               "minItems": {
                 "error": "At least 2 photos are required",
-                "value": "2"
+                "value": 2
               },
               "maxItems": {
                 "error": "No more than 2 photos are required",
-                "value": "2"
+                "value": 2
               },
               "fileTypes": {
                 "error": "Upload a .pdf, .docx, or .png file",
@@ -1357,14 +1357,6 @@
               }
             ]
           }
-        },
-        {
-          "ref": "components/date-of-birth",
-          "overrides": {
-            "fieldId": "declaration-date",
-            "label": "Date of declaration",
-            "isHidden": true
-          }
         }
       ],
       "behaviours": []
@@ -1372,6 +1364,8 @@
     {
       "stepId": "submission-confirmation",
       "title": "Thank you for your application",
+      "description": "Your information has been sent to the National Conservation Commission (NCC).",
+      "markdownContent": "## What happens next\n\nYou will meet with representatives from the NCC at the location where you would like to sell goods or services. They will assess suitability.\n\nIf the outcome is positive, you will need to visit the National Conservation Commission to collect:\n\n1. A letter of authorisation.\n2. A licence book outlining the conditions of where and what you can sell.\n3. Your vendor identification.\n\n## Paying for your licence\n\nYou can pay for your vendor documentation in cash or by card when you visit the NCC.\n\nThe prices include VAT.\n\n- Licence: $117.50\n  - A watersports licence costs $176.25\n- Licence book: $11.75\n- ID badge: $12.87",
       "elements": [],
       "behaviours": []
     }

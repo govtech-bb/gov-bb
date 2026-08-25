@@ -417,7 +417,16 @@ jobs:
   preview-chat:
     name: Preview (chat)
     needs: setup
-    if: needs.setup.outputs.chat == 'true' || needs.setup.outputs.amplify-config == 'true'
+    # DISABLED 2026-07-30: the gov-bb-chat Amplify app (d3snq1f0c10466) was
+    # repointed to the govtech-bb/govbb-chatbot repo during the chat cutover.
+    # A RELEASE build for a gov-bb PR head branch now fails — Amplify checks
+    # that branch out of govbb-chatbot, where it does not exist, so every
+    # gov-bb PR got a red X here. Gate the job off (always skips) while
+    # keeping the scaffolding in place; chat previews now belong in the
+    # govbb-chatbot repo's own workflow. To re-enable, restore the
+    # affected-apps condition on the line below.
+    if: false
+    # if: needs.setup.outputs.chat == 'true' || needs.setup.outputs.amplify-config == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write # OIDC for the AWS role (configure-aws-credentials)

@@ -34,7 +34,6 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Optional",
             "fieldId": "applicant-middle-name"
           }
         },
@@ -173,7 +172,6 @@
         {
           "ref": "components/address",
           "overrides": {
-            "hint": "Optional",
             "label": "Address line 2",
             "fieldId": "applicant-address-line-2",
             "validations": {
@@ -254,7 +252,6 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Optional",
             "fieldId": "emergency-contact-middle-name"
           }
         },
@@ -306,7 +303,6 @@
         {
           "ref": "components/address",
           "overrides": {
-            "hint": "Optional",
             "label": "Address line 2",
             "fieldId": "emergency-contact-address-line-2",
             "behaviours": [
@@ -492,7 +488,6 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Optional",
             "fieldId": "house-middle-name"
           }
         },
@@ -844,7 +839,6 @@
             "ui": {
               "width": "long"
             },
-            "hint": "Optional",
             "label": "Give details of any other disabilities",
             "fieldId": "disability-details",
             "behaviours": [
@@ -1020,7 +1014,6 @@
         {
           "ref": "components/generic-date",
           "overrides": {
-            "hint": "Optional",
             "label": "Date of referral",
             "fieldId": "application-date",
             "validations": {

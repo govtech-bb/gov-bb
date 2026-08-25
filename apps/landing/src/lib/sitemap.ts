@@ -1,6 +1,14 @@
 import { CATEGORIES } from '../content/categories'
 import { PAGES, isCategoryVisible, isVisible } from '../content/registry'
+import { PHARMACIES } from '../routes/health-and-emergency-services/find-an-open-pharmacy/-data/pharmacies'
+import {
+  PHARMACY_FIND_HREF,
+  pharmacyDetailHref,
+} from '../routes/health-and-emergency-services/find-an-open-pharmacy/-lib/routes'
 import type { ViewLevel } from './frontmatter'
+
+const PHARMACY_SERVICE_URL =
+  'health-and-emergency-services/find-an-open-pharmacy'
 
 export interface SitemapEntry {
   /** Absolute path with leading slash, e.g. "/services". */
@@ -41,6 +49,19 @@ export function collectSitemapEntries(
     if (!isVisible(page, 'public', overlay)) continue
     if (page.slug.endsWith('/start')) continue
     add(`/${page.url}`, 0.7)
+  }
+
+  // The pharmacy finder and its per-pharmacy detail pages are routes, not
+  // registry pages — they enter the sitemap with the service page, once it
+  // is publicly visible.
+  const pharmacyService = PAGES.find(
+    (page) => page.url === PHARMACY_SERVICE_URL,
+  )
+  if (pharmacyService && isVisible(pharmacyService, 'public', overlay)) {
+    add(PHARMACY_FIND_HREF, 0.7)
+    for (const pharmacy of PHARMACIES) {
+      add(pharmacyDetailHref(pharmacy.name), 0.6)
+    }
   }
 
   return entries

@@ -98,6 +98,13 @@ export interface SubmissionState {
    * receipt (#463). Absent on every other state.
    */
   processing?: boolean;
+  /**
+   * Name of the polyclinic the catchment router resolved for this submission
+   * (from the submit response `meta.resolvedPolyclinic`). Used by the
+   * confirmation page to name the Environmental Health Department the request
+   * went to. Absent for forms without coordinate-based routing.
+   */
+  polyclinic?: string;
   referenceNumber: string;
   // Optional: payment ("gated") submissions are not finalised yet, so the
   // server returns `submittedAt: null` — there is no submission date to show
@@ -126,6 +133,11 @@ export interface SubmissionConfirmationProps {
    * HTML escaping (no raw HTML), so recipe-authored content is XSS-safe.
    */
   markdownContent?: string;
+  /**
+   * Suppress the "Submission ID" line on the confirmation page. Set for
+   * anonymous forms (e.g. the exit survey) that issue no meaningful reference.
+   */
+  hideReferenceNumber?: boolean;
   contactDetails?: ContactDetails;
   onTryAgain?: () => void;
   /** Fired when the citizen clicks "Continue to payment" (#1955 analytics). */

@@ -266,24 +266,6 @@
               }
             ]
           }
-        },
-        {
-          "ref": "components/generic-date",
-          "overrides": {
-            "fieldId": "declaration-date-of-declaration",
-            "label": "Date of declaration",
-            "validations": {
-              "required": {
-                "error": "Date is required",
-                "value": true
-              },
-              "pastOrToday": {
-                "error": "Date must be today or in the past",
-                "value": true
-              }
-            },
-            "isHidden": true
-          }
         }
       ],
       "behaviours": []

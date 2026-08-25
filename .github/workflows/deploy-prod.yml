@@ -81,8 +81,6 @@ env:
   API_SMOKE_URL: https://api.ssb.alpha.gov.bb/health
   AMPLIFY_FORMS_URL: https://prod.d2a6u3uw8mle6w.amplifyapp.com
   AMPLIFY_LANDING_URL: https://prod.d33h8dmrfcznn0.amplifyapp.com
-  AMPLIFY_CHAT_URL: https://prod.d3dc75921xrndn.amplifyapp.com
-  AMPLIFY_CHAT_HEALTH_URL: https://prod.d3dc75921xrndn.amplifyapp.com/api/health
 
 jobs:
   # Guard + move the `prod` pointer to the commit being deployed BEFORE any
@@ -94,6 +92,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # fast-forward the prod branch ref
+    outputs:
+      # The SHA prod was serving BEFORE this deploy. `setup` uses it as the
+      # affected base — see the rationale on its "Derive base/head SHAs" step.
+      previous-sha: ${{ steps.previous.outputs.sha }}
     steps:
       - name: Guard — prod ships staging-proven code only
         env:
@@ -123,11 +125,14 @@ jobs:
       api: ${{ steps.affected.outputs.api }}
       forms: ${{ steps.affected.outputs.forms }}
       landing: ${{ steps.affected.outputs.landing }}
-      chat: ${{ steps.affected.outputs.chat }}
       ff-app: ${{ steps.affected.outputs.ff-app }}
       analytics: ${{ steps.affected.outputs.analytics }}
       migrations: ${{ steps.affected.outputs.migrations }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
+      # Surfaced so the deployment summary records the exact window deployed —
+      # a green run that rebuilt nothing should be visible, not inferred.
+      base: ${{ steps.shas.outputs.base }}
+      head: ${{ steps.shas.outputs.head }}
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -142,15 +147,67 @@ jobs:
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
 
+      # The affected base is the SHA prod was ACTUALLY serving before this run,
+      # captured by advance-prod before it moved the ref.
+      #
+      # This replaced nx-set-shas (main-branch-name: staging, workflow-id:
+      # deploy-prod.yml). That action resolves the base from the last successful
+      # run on a branch, and when the lookup misses it falls back to HEAD~1 with
+      # only a WARNING — so the deploy stays green while shipping one commit's
+      # worth of targets. Run 30490271277 (2026-07-29, dd3297ef) hit exactly
+      # that: a 96-commit promotion logged `Affected apps: ["landing"]` and
+      # deployed landing alone, skipping api (89 changed files), forms (29) and
+      # analytics (18). The analytics Amplify app then had to be rebuilt from
+      # the console by hand, and prod's api had no successful deploy from
+      # 2026-07-20 onward while the prod ref claimed otherwise.
+      #
+      # Deriving from the ref cannot degrade that way: it asks the question that
+      # actually matters ("what changed since prod last shipped"), needs no
+      # bootstrap run, and fails loudly below rather than under-deploying.
+      # sandbox/staging keep nx-set-shas — they run on `main`, which matches
+      # their main-branch-name, so their lookup chains correctly.
       - name: Derive base/head SHAs
-        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
-        with:
-          # Prod is run from the `staging` ref (the proven code), so the affected
-          # base is the last successful deploy-prod run on staging. (Was `prod`
-          # when this triggered on push:prod.) First run after cutover marks
-          # nothing affected → use the deploy_all input to bootstrap.
-          main-branch-name: staging
-          workflow-id: deploy-prod.yml
+        id: shas
+        env:
+          PROD_BEFORE: ${{ needs.advance-prod.outputs.previous-sha }}
+          DEPLOY_ALL: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_all }}
+        run: |
+          echo "NX_HEAD=$GITHUB_SHA" >> "$GITHUB_ENV"
+          echo "head=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+
+          if [ "$DEPLOY_ALL" = "true" ]; then
+            echo "deploy_all=true — affected detection bypassed; every target deploys."
+            echo "NX_BASE=${PROD_BEFORE:-$GITHUB_SHA}" >> "$GITHUB_ENV"
+            echo "base=${PROD_BEFORE:-(bypassed)}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          fail() {
+            echo "$1"
+            echo "   Re-run with deploy_all=true to deploy every target."
+            exit 1
+          }
+
+          [ -n "$PROD_BEFORE" ] ||
+            fail "❌ Could not read the prod ref, so the affected base is unknown."
+
+          git cat-file -e "${PROD_BEFORE}^{commit}" 2>/dev/null ||
+            fail "❌ prod's current SHA ($PROD_BEFORE) is not present in this checkout."
+
+          # A non-ancestor base means a rollback or an out-of-line ref. Diffing
+          # against it would mark only the divergent paths, leaving prod running
+          # a mix of old and new — so require the explicit full deploy instead.
+          git merge-base --is-ancestor "$PROD_BEFORE" "$GITHUB_SHA" ||
+            fail "❌ prod's SHA ($PROD_BEFORE) is not an ancestor of $GITHUB_SHA (rollback or out-of-line ref); a partial deploy would leave prod mixing commits."
+
+          echo "NX_BASE=$PROD_BEFORE" >> "$GITHUB_ENV"
+          echo "base=$PROD_BEFORE" >> "$GITHUB_OUTPUT"
+
+          if [ "$PROD_BEFORE" = "$GITHUB_SHA" ]; then
+            echo "prod is already at $GITHUB_SHA — no new commits to deploy."
+          else
+            echo "Affected window: $PROD_BEFORE..$GITHUB_SHA ($(git rev-list --count "${PROD_BEFORE}..${GITHUB_SHA}") commits)"
+          fi
 
       - name: Compute affected deploy targets
         id: affected
@@ -172,11 +229,28 @@ jobs:
           echo "api=$(has api)" >> "$GITHUB_OUTPUT"
           echo "forms=$(has forms)" >> "$GITHUB_OUTPUT"
           echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
-          echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
           echo "ff-app=$(has feature-flagging-app)" >> "$GITHUB_OUTPUT"
           echo "analytics=$(has analytics-app)" >> "$GITHUB_OUTPUT"
 
-          if [ "$DEPLOY_ALL" = "true" ] || git diff --name-only "$NX_BASE" "$NX_HEAD" | grep -q '^apps/api/src/database/migrations/'; then
+          # TypeORM migrations live in packages/database/src/migrations/ (22 of
+          # them). The previous pattern matched only apps/api/src/database/
+          # migrations/, which holds nothing but .gitkeep, a README and smoke
+          # specs — so this gate never fired for a real migration and
+          # `pnpm migration:run` executed only when deploy_all forced it.
+          #
+          # That is worse than a missed deploy: `api` still deploys whenever it
+          # is affected, so new code ships against an unmigrated schema.
+          # 1784000000000-AddMinistryKeyToMdaContact (2026-07-28) adds
+          # mda_contact.ministry_key, which MdaContact declares and the
+          # form-config + webhook-destination services read — without the column
+          # those queries error in prod.
+          #
+          # Both paths match: the apps/api tree's migration smoke specs are
+          # legitimately migration-adjacent, so a change there should still run
+          # them. Chat's drizzle migrations are deliberately absent — the ingest
+          # image applies those itself via its entrypoint.
+          if [ "$DEPLOY_ALL" = "true" ] || git diff --name-only "$NX_BASE" "$NX_HEAD" \
+              | grep -qE '^(packages/database/src|apps/api/src/database)/migrations/'; then
             echo "migrations=true" >> "$GITHUB_OUTPUT"
           else
             echo "migrations=false" >> "$GITHUB_OUTPUT"
@@ -299,84 +373,11 @@ jobs:
           LABEL: api
         run: bash .github/scripts/smoke-test-url.sh
 
-  deploy-chat-ingest:
-    # Chatbot RAG ingest one-shot Fargate task. Build image, push to prod ECR,
-    # then invoke the indexer Lambda so content changes propagate to chat-prod
-    # immediately instead of waiting for the cron.
-    name: Build, Push & Trigger chat-ingest
-    needs: setup
-    if: needs.setup.outputs.chat == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          persist-credentials: false
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to ECR
-        id: ecr-login
-        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
-
-      - name: Build and push chat-ingest image
-        run: |
-          set -euo pipefail
-          INGEST_URI="${{ steps.ecr-login.outputs.registry }}/chatbot-ingest-prod:${{ github.sha }}"
-          INGEST_LATEST="${{ steps.ecr-login.outputs.registry }}/chatbot-ingest-prod:latest"
-          docker build --platform linux/amd64 -f apps/chat/Dockerfile.ingest -t "$INGEST_URI" -t "$INGEST_LATEST" .
-          docker push "$INGEST_URI"
-          docker push "$INGEST_LATEST"
-
-      - name: Invoke RAG indexer
-        env:
-          COMMIT_SHA: ${{ github.sha }}
-          INDEXER: chatbot-rag-indexer-prod
-        run: |
-          set -euo pipefail
-          PAYLOAD=$(printf '{"startedBy":"gh-%.36s"}' "$COMMIT_SHA")
-
-          aws lambda invoke \
-            --function-name "$INDEXER" \
-            --payload "$PAYLOAD" \
-            --cli-binary-format raw-in-base64-out \
-            --region "$AWS_REGION" \
-            /tmp/indexer-out.json > /tmp/invoke-meta.json
-
-          echo "Lambda invocation metadata:"
-          cat /tmp/invoke-meta.json
-          echo
-          echo "Indexer response body:"
-          cat /tmp/indexer-out.json
-          echo
-
-          # Lambda returns 200 even when the function errored — FunctionError
-          # is the protocol-level error signal we check first. Then the
-          # application-level signal is the body's "status" field — the
-          # indexer Lambda returns {"status":"started","taskArn":"..."} on
-          # success (it kicks off a Fargate task and returns immediately;
-          # it doesn't wait for ingest to complete).
-          if jq -e '.FunctionError' /tmp/invoke-meta.json >/dev/null 2>&1; then
-            echo "❌ Lambda invocation reported a FunctionError"
-            exit 1
-          fi
-
-          STATUS=$(jq -r '.status // "unknown"' /tmp/indexer-out.json 2>/dev/null || echo "parse-error")
-          if [ "$STATUS" != "started" ]; then
-            echo "❌ Indexer returned status=\"$STATUS\" (expected \"started\")"
-            exit 1
-          fi
-          echo "✅ Indexer reported success — ingest task started"
-
   # ---------------------------------------------------------------------------
   # SSR smoke gate — boots each affected WEB_COMPUTE app's BUILT compute server
   # in the runner and asserts its homepage responds (<500, no hang) BEFORE the
   # Amplify deploy jobs run. Catches "compiles clean but hangs/5xx at runtime"
-  # regressions that build/typecheck/unit all miss. amplify-{landing,chat} need
+  # regressions that build/typecheck/unit all miss. amplify-landing needs
   # this job, so a failure here BLOCKS the deploy and prod stays on the last good
   # version. forms is static (WEB) — no compute server to smoke.
   # ---------------------------------------------------------------------------
@@ -385,7 +386,6 @@ jobs:
     needs: setup
     if: |
       needs.setup.outputs.landing == 'true'
-      || needs.setup.outputs.chat == 'true'
       || needs.setup.outputs.amplify-config == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -410,12 +410,6 @@ jobs:
         run: |
           pnpm exec nx build landing
           node .github/scripts/ssr-smoke.mjs apps/landing/.amplify-hosting/compute/default landing
-
-      - name: Smoke chat
-        if: needs.setup.outputs.chat == 'true' || needs.setup.outputs.amplify-config == 'true'
-        run: |
-          pnpm exec nx build chat
-          node .github/scripts/ssr-smoke.mjs apps/chat/.amplify-hosting/compute/default chat
 
   # ---------------------------------------------------------------------------
   # Amplify deploys — auto-build is OFF on the prod branch, so this workflow is
@@ -579,76 +573,6 @@ jobs:
           LABEL: landing
         run: bash .github/scripts/smoke-test-url.sh
 
-  amplify-chat:
-    name: Amplify build (chat)
-    needs: [setup, ssr-smoke]
-    if: needs.setup.outputs.chat == 'true' || needs.setup.outputs.amplify-config == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          persist-credentials: false
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Trigger and monitor Amplify build
-        env:
-          AMPLIFY_APP_ID: d3dc75921xrndn
-          AMPLIFY_BRANCH: prod
-          APP_LABEL: chat
-        run: |
-          set -euo pipefail
-          JOB_ID=$(aws amplify start-job \
-            --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
-            --job-type RELEASE --region "$AWS_REGION" \
-            --query jobSummary.jobId --output text)
-          echo "Amplify $APP_LABEL job: $JOB_ID"
-
-          for i in $(seq 1 30); do
-            STATUS=$(aws amplify get-job \
-              --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
-              --job-id "$JOB_ID" --region "$AWS_REGION" \
-              --query job.summary.status --output text)
-            echo "[$i/30] $APP_LABEL: $STATUS"
-            case "$STATUS" in
-              SUCCEED) echo "✅ Amplify $APP_LABEL build succeeded"; exit 0 ;;
-              FAILED|CANCELLED) echo "❌ Amplify $APP_LABEL build $STATUS"; exit 1 ;;
-            esac
-            sleep 30
-          done
-          echo "❌ Amplify $APP_LABEL build did not finish in 15 min"
-          exit 1
-
-      # The Terraform AWS provider doesn't manage compute_role_arn on
-      # aws_amplify_app, and a number of unrelated operations (tofu apply,
-      # console Amplify edits, possibly Amplify release jobs themselves) can
-      # silently clear it. Without the compute role, the chat SSR Lambda has
-      # no IAM identity and Bedrock/Secrets Manager calls fail — which causes
-      # /api/health to return db: disconnected. Re-attach every deploy to keep
-      # chat healing itself.
-      - name: Restore chat Amplify compute role
-        run: |
-          set -euo pipefail
-          aws amplify update-app \
-            --app-id d3dc75921xrndn \
-            --compute-role-arn arn:aws:iam::996501092968:role/gov-bb-chat-amplify-compute-prod \
-            --region "$AWS_REGION" \
-            --query "app.computeRoleArn" \
-            --output text
-          echo "✅ Chat compute role restored"
-
-      - name: Smoke test chat /api/health (validates db connection)
-        env:
-          URL: ${{ env.AMPLIFY_CHAT_HEALTH_URL }}
-          LABEL: chat
-          EXPECT_JSON_FIELD: .db
-          EXPECT_JSON_VALUE: connected
-        run: bash .github/scripts/smoke-test-url.sh
-
   amplify-analytics:
     name: Amplify build (analytics)
     needs: setup
@@ -707,7 +631,7 @@ jobs:
 
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-chat-ingest, ssr-smoke, amplify-forms, amplify-landing, amplify-chat, amplify-feature-flagging, amplify-analytics]
+    needs: [setup, deploy-api, ssr-smoke, amplify-forms, amplify-landing, amplify-feature-flagging, amplify-analytics]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -729,21 +653,24 @@ jobs:
             echo ""
             echo "**Commit:** \`${{ github.sha }}\`"
             echo ""
+            echo "**Deployed window:** \`${{ needs.setup.outputs.base }}..${{ needs.setup.outputs.head }}\`"
+            echo ""
             echo "| Target | Result |"
             echo "|--------|--------|"
             row "SSR smoke (pre-deploy)" "${{ needs.ssr-smoke.result }}"
             row "API"                  "${{ needs.deploy-api.result }}"
-            row "chat-ingest"          "${{ needs.deploy-chat-ingest.result }}"
             row "Amplify forms"        "${{ needs.amplify-forms.result }}"
             row "Amplify landing"      "${{ needs.amplify-landing.result }}"
-            row "Amplify chat"         "${{ needs.amplify-chat.result }}"
             row "Amplify feature-flagging" "${{ needs.amplify-feature-flagging.result }}"
+            # analytics was already in this job's `needs` but had no row, so the
+            # 2026-07-29 deploy reported success without ever showing that
+            # analytics had been skipped. Unreported targets hide drift.
+            row "Amplify analytics"   "${{ needs.amplify-analytics.result }}"
             echo ""
             echo "**URLs (ALB / amplifyapp.com until DNS lands):**"
             echo "- API: ${{ env.API_SMOKE_URL }}"
             echo "- forms: ${{ env.AMPLIFY_FORMS_URL }}"
             echo "- landing: ${{ env.AMPLIFY_LANDING_URL }}"
-            echo "- chat: ${{ env.AMPLIFY_CHAT_URL }}"
             echo "- feature-flagging: https://feature-flagging.alpha.gov.bb"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -766,10 +693,8 @@ jobs:
     needs:
       - advance-prod
       - deploy-api
-      - deploy-chat-ingest
       - amplify-forms
       - amplify-landing
-      - amplify-chat
       - amplify-feature-flagging
     if: always() && needs.advance-prod.result == 'success'
     runs-on: ubuntu-latest

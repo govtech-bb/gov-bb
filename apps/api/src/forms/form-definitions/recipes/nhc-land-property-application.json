@@ -6,18 +6,35 @@
     {
       "type": "email",
       "config": {
-        "subject": "Your NHC housing application has been received",
-        "recipientField": "applicant-details.email"
+        "recipientField": "your-contact-details.email",
+        "subject": "Your NHC housing application to purchase land or property has been received"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "config.mdaEmail",
+        "subject": "Submission received for NHC Housing Application to Purchase Land or Property"
       }
     }
   ],
+  "meta": {
+    "visibility": "preview"
+  },
   "steps": [
     {
       "stepId": "applicant-details",
       "title": "Tell us about yourself",
       "elements": [
         {
-          "ref": "components/title"
+          "ref": "components/title",
+          "overrides": {
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
         },
         {
           "ref": "components/first-name"
@@ -25,7 +42,6 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Optional",
             "isHidden": false
           }
         },
@@ -33,13 +49,27 @@
           "ref": "components/last-name"
         },
         {
-          "ref": "components/date-of-birth"
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "validations": {
+              "required": {
+                "error": "Enter your date of birth",
+                "value": true
+              }
+            }
+          }
         },
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Marital status",
             "fieldId": "marital-status",
+            "label": "Marital status",
+            "validations": {
+              "required": {
+                "error": "Select your marital status",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Single",
@@ -61,13 +91,7 @@
                 "label": "Separated",
                 "value": "separated"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select your marital status",
-                "value": true
-              }
-            }
+            ]
           }
         },
         {
@@ -105,16 +129,15 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 1",
-            "fieldId": "address-line-1"
+            "fieldId": "address-line-1",
+            "label": "Address line 1"
           }
         },
         {
           "ref": "components/address",
           "overrides": {
-            "hint": "Optional",
-            "label": "Address line 2",
             "fieldId": "address-line-2",
+            "label": "Address line 2",
             "validations": {
               "required": {
                 "value": false
@@ -135,14 +158,7 @@
           "ref": "components/telephone"
         },
         {
-          "ref": "components/email",
-          "overrides": {
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
-          }
+          "ref": "components/email"
         }
       ],
       "behaviours": []
@@ -154,39 +170,55 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Employer",
-            "fieldId": "employer"
+            "fieldId": "employer",
+            "label": "Employer"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Occupation",
-            "fieldId": "occupation"
+            "fieldId": "occupation",
+            "label": "Occupation"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Period of employment",
-            "fieldId": "period-of-employment"
+            "fieldId": "period-of-employment",
+            "label": "Period of employment"
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/generic-text",
           "overrides": {
+            "fieldId": "salary",
+            "label": "Salary",
+            "validations": {
+              "pattern": {
+                "error": "Enter a valid number",
+                "value": "^[0-9]+(\\.[0-9]{1,2})?$"
+              },
+              "required": {
+                "error": "Enter your salary",
+                "value": true
+              }
+            },
             "ui": {
               "width": "short"
-            },
-            "label": "Salary",
-            "fieldId": "salary"
+            }
           }
         },
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Pay period",
             "fieldId": "pay-period",
+            "label": "Pay period",
+            "validations": {
+              "required": {
+                "error": "Select a pay period",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Weekly",
@@ -200,20 +232,20 @@
                 "label": "Monthly",
                 "value": "monthly"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select a pay period",
-                "value": true
-              }
-            }
+            ]
           }
         },
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Employment status",
             "fieldId": "employment-status",
+            "label": "Employment status",
+            "validations": {
+              "required": {
+                "error": "Select employment status",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Government",
@@ -227,13 +259,7 @@
                 "label": "Self-employed",
                 "value": "self-employed"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select employment status",
-                "value": true
-              }
-            }
+            ]
           }
         }
       ],
@@ -246,8 +272,14 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Are you applying with a co-applicant?",
             "fieldId": "has-co-applicant",
+            "label": "Are you applying with a co-applicant?",
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Yes",
@@ -257,13 +289,7 @@
                 "label": "No",
                 "value": "no"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select an option",
-                "value": true
-              }
-            }
+            ]
           }
         }
       ],
@@ -276,37 +302,41 @@
         {
           "ref": "components/title",
           "overrides": {
+            "fieldId": "co-applicant-title",
             "label": "Title",
-            "fieldId": "co-applicant-title"
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
           "ref": "components/first-name",
           "overrides": {
-            "label": "First name",
-            "fieldId": "co-applicant-first-name"
+            "fieldId": "co-applicant-first-name",
+            "label": "First name"
           }
         },
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Optional",
-            "label": "Middle name",
-            "fieldId": "co-applicant-middle-name"
+            "fieldId": "co-applicant-middle-name",
+            "label": "Middle name"
           }
         },
         {
           "ref": "components/last-name",
           "overrides": {
-            "label": "Last name",
-            "fieldId": "co-applicant-last-name"
+            "fieldId": "co-applicant-last-name",
+            "label": "Last name"
           }
         },
         {
           "ref": "components/date-of-birth",
           "overrides": {
-            "label": "Date of birth",
             "fieldId": "co-applicant-date-of-birth",
+            "label": "Date of birth",
             "validations": {
               "required": {
                 "value": true
@@ -317,8 +347,14 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Marital status",
             "fieldId": "co-applicant-marital-status",
+            "label": "Marital status",
+            "validations": {
+              "required": {
+                "error": "Select marital status",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Single",
@@ -340,13 +376,7 @@
                 "label": "Separated",
                 "value": "separated"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select marital status",
-                "value": true
-              }
-            }
+            ]
           }
         },
         {
@@ -358,9 +388,9 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "hint": "Enter your valid National ID Number (for example, 450702-0130)",
-            "label": "National Registration Number",
             "fieldId": "co-applicant-national-id-number",
+            "label": "National Registration Number",
+            "hint": "Enter your valid National ID Number (for example, 450702-0130)",
             "validations": {
               "required": {
                 "value": true
@@ -371,9 +401,9 @@
         {
           "ref": "components/tamis-number",
           "overrides": {
-            "hint": "Enter your Taxpayer Identification Number from the Barbados Revenue Authority (for example 10000000000004)",
-            "label": "TAMIS number",
             "fieldId": "co-applicant-tamis-number",
+            "label": "TAMIS number",
+            "hint": "Enter your Taxpayer Identification Number from the Barbados Revenue Authority (for example 10000000000004)",
             "validations": {
               "required": {
                 "value": true
@@ -385,10 +415,10 @@
       "behaviours": [
         {
           "type": "stepConditionalOn",
-          "value": "yes",
-          "operator": "equal",
+          "targetFieldId": "has-co-applicant",
           "targetStepId": "co-applicant-question",
-          "targetFieldId": "has-co-applicant"
+          "operator": "equal",
+          "value": "yes"
         }
       ]
     },
@@ -399,16 +429,15 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 1",
-            "fieldId": "co-applicantaddress-line-1"
+            "fieldId": "co-applicantaddress-line-1",
+            "label": "Address line 1"
           }
         },
         {
           "ref": "components/address",
           "overrides": {
-            "hint": "Optional",
-            "label": "Address line 2",
             "fieldId": "co-applicant-address-line-2",
+            "label": "Address line 2",
             "validations": {
               "required": {
                 "value": false
@@ -419,15 +448,15 @@
         {
           "ref": "components/parish",
           "overrides": {
-            "label": "Parish",
-            "fieldId": "co-applicant-parish"
+            "fieldId": "co-applicant-parish",
+            "label": "Parish"
           }
         },
         {
           "ref": "components/postcode",
           "overrides": {
-            "label": "Postcode",
-            "fieldId": "co-applicant-postcode"
+            "fieldId": "co-applicant-postcode",
+            "label": "Postcode"
           }
         },
         {
@@ -457,10 +486,10 @@
       "behaviours": [
         {
           "type": "stepConditionalOn",
-          "value": "yes",
-          "operator": "equal",
+          "targetFieldId": "has-co-applicant",
           "targetStepId": "co-applicant-question",
-          "targetFieldId": "has-co-applicant"
+          "operator": "equal",
+          "value": "yes"
         }
       ]
     },
@@ -471,39 +500,55 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Employer",
-            "fieldId": "co-applicant-employer"
+            "fieldId": "co-applicant-employer",
+            "label": "Employer"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Occupation",
-            "fieldId": "co-applicant-occupation"
+            "fieldId": "co-applicant-occupation",
+            "label": "Occupation"
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Period of employment",
-            "fieldId": "co-applicant-period-of-employment"
+            "fieldId": "co-applicant-period-of-employment",
+            "label": "Period of employment"
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/generic-text",
           "overrides": {
+            "fieldId": "co-applicant-salary",
+            "label": "Salary",
+            "validations": {
+              "pattern": {
+                "error": "Enter a valid number",
+                "value": "^[0-9]+(\\.[0-9]{1,2})?$"
+              },
+              "required": {
+                "error": "Enter your salary",
+                "value": true
+              }
+            },
             "ui": {
               "width": "short"
-            },
-            "label": "Salary",
-            "fieldId": "co-applicant-salary"
+            }
           }
         },
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Pay period",
             "fieldId": "co-applicant-pay-period",
+            "label": "Pay period",
+            "validations": {
+              "required": {
+                "error": "Select a pay period",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Weekly",
@@ -517,20 +562,20 @@
                 "label": "Monthly",
                 "value": "monthly"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select a pay period",
-                "value": true
-              }
-            }
+            ]
           }
         },
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Employment status",
             "fieldId": "co-applicant-employment-status",
+            "label": "Employment status",
+            "validations": {
+              "required": {
+                "error": "Select employment status",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Government",
@@ -544,23 +589,17 @@
                 "label": "Self-employed",
                 "value": "self-employed"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select employment status",
-                "value": true
-              }
-            }
+            ]
           }
         }
       ],
       "behaviours": [
         {
           "type": "stepConditionalOn",
-          "value": "yes",
-          "operator": "equal",
+          "targetFieldId": "has-co-applicant",
           "targetStepId": "co-applicant-question",
-          "targetFieldId": "has-co-applicant"
+          "operator": "equal",
+          "value": "yes"
         }
       ]
     },
@@ -571,8 +610,14 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "House type",
             "fieldId": "house-type",
+            "label": "House type",
+            "validations": {
+              "required": {
+                "error": "Select a house type",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Timber",
@@ -594,20 +639,28 @@
                 "label": "Empty lot",
                 "value": "empty-lot"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select a house type",
-                "value": true
-              }
-            }
+            ]
           }
         },
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Preferred house type",
             "fieldId": "preferred-house-type",
+            "label": "Preferred house type",
+            "validations": {
+              "required": {
+                "error": "Select a house type",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "house-type",
+                "operator": "notEqual",
+                "value": "empty-lot"
+              }
+            ],
             "options": [
               {
                 "label": "2 Bedroom",
@@ -617,23 +670,14 @@
                 "label": "3 Bedroom",
                 "value": "3-bedroom"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select a house type",
-                "value": true
-              }
-            }
+            ]
           }
         },
         {
           "ref": "components/generic-number",
           "overrides": {
-            "ui": {
-              "width": "short"
-            },
-            "label": "Number of adults",
             "fieldId": "number-of-adults",
+            "label": "Number of adults",
             "validations": {
               "min": {
                 "error": "Number must be at least 1",
@@ -643,14 +687,23 @@
                 "error": "Enter the number of adults",
                 "value": true
               }
+            },
+            "ui": {
+              "width": "short"
             }
           }
         },
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Do you have children?",
             "fieldId": "has-children",
+            "label": "Do you have children?",
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Yes",
@@ -660,13 +713,7 @@
                 "label": "No",
                 "value": "no"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select an option",
-                "value": true
-              }
-            }
+            ]
           }
         }
       ],
@@ -679,11 +726,8 @@
         {
           "ref": "components/generic-number",
           "overrides": {
-            "ui": {
-              "width": "short"
-            },
-            "label": "Number of children",
             "fieldId": "number-of-children",
+            "label": "Number of children",
             "validations": {
               "min": {
                 "error": "Number must be at least 1",
@@ -693,14 +737,17 @@
                 "error": "Enter the number of children",
                 "value": true
               }
+            },
+            "ui": {
+              "width": "short"
             }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "List the children's ages",
             "fieldId": "children-ages",
+            "label": "List the children's ages",
             "validations": {
               "required": {
                 "error": "List the ages of your children",
@@ -713,10 +760,10 @@
       "behaviours": [
         {
           "type": "stepConditionalOn",
-          "value": "yes",
-          "operator": "equal",
+          "targetFieldId": "has-children",
           "targetStepId": "application-type",
-          "targetFieldId": "has-children"
+          "operator": "equal",
+          "value": "yes"
         }
       ]
     },
@@ -727,8 +774,14 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Are there any persons with disabilities in the household?",
             "fieldId": "persons-with-disabilities",
+            "label": "Are there any persons with disabilities in the household?",
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Yes",
@@ -738,13 +791,38 @@
                 "label": "No",
                 "value": "no"
               }
-            ],
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "other-income",
+      "title": "Other sources of income",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "has-other-income",
+            "label": "Do you have any other sources of income?",
+            "hint": "Do not include the salary you have already told us about.",
             "validations": {
               "required": {
                 "error": "Select an option",
                 "value": true
               }
-            }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
           }
         }
       ],
@@ -752,43 +830,13 @@
     },
     {
       "stepId": "household-income",
-      "title": "Tell us your household income",
-      "elements": [
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "label": "Do you have other sources of income?",
-            "fieldId": "other-income-sources",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select an option",
-                "value": true
-              }
-            }
-          }
-        }
-      ],
-      "behaviours": []
-    },
-    {
-      "stepId": "other-income-details",
-      "title": "Do you have any other income sources?",
+      "title": "Tell us about your other income",
       "elements": [
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Income source 1",
-            "fieldId": "income-source-1",
+            "fieldId": "income-source",
+            "label": "Income source",
             "validations": {
               "required": {
                 "error": "Enter the income source",
@@ -798,113 +846,36 @@
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/generic-text",
           "overrides": {
-            "ui": {
-              "width": "short"
-            },
+            "fieldId": "income-amount",
             "label": "Amount",
-            "fieldId": "income-source-1-amount",
             "validations": {
-              "min": {
-                "error": "Amount must be 0 or more",
-                "value": 0
+              "pattern": {
+                "error": "Enter a valid number",
+                "value": "^[0-9]+(\\.[0-9]{1,2})?$"
               },
               "required": {
                 "error": "Enter the amount",
                 "value": true
               }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "label": "Pay period",
-            "fieldId": "pay-period-extra",
-            "options": [
-              {
-                "label": "Weekly",
-                "value": "weekly"
-              },
-              {
-                "label": "Bi-monthly",
-                "value": "bi-monthly"
-              },
-              {
-                "label": "Monthly",
-                "value": "monthly"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "label": "Add another source of income?",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "label": "Income source 2",
-            "fieldId": "income-source-2",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "value": "yes",
-                "operator": "equal",
-                "targetStepId": "other-income-details",
-                "targetFieldId": "generic-radio"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-number",
-          "overrides": {
+            },
             "ui": {
               "width": "short"
-            },
-            "hint": "Optional",
-            "label": "Amount",
-            "fieldId": "income-source-2-amount",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "value": "yes",
-                "operator": "equal",
-                "targetStepId": "other-income-details",
-                "targetFieldId": "generic-radio"
-              }
-            ],
-            "validations": {
-              "required": {
-                "value": true
-              }
             }
           }
         },
         {
           "ref": "components/generic-radio",
           "overrides": {
+            "fieldId": "income-pay-period",
             "label": "Pay period",
-            "fieldId": "pay-period-extra1",
+            "validations": {
+              "required": {
+                "error": "Select a pay period",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Weekly",
@@ -917,15 +888,6 @@
               {
                 "label": "Monthly",
                 "value": "monthly"
-              }
-            ],
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "value": "yes",
-                "operator": "equal",
-                "targetStepId": "other-income-details",
-                "targetFieldId": "generic-radio"
               }
             ]
           }
@@ -933,11 +895,17 @@
       ],
       "behaviours": [
         {
+          "type": "repeatable",
+          "min": 1,
+          "max": 5,
+          "addAnotherLabel": "Do you have another source of income?"
+        },
+        {
           "type": "stepConditionalOn",
-          "value": "yes",
+          "targetFieldId": "has-other-income",
+          "targetStepId": "other-income",
           "operator": "equal",
-          "targetStepId": "household-income",
-          "targetFieldId": "other-income-sources"
+          "value": "yes"
         }
       ]
     },
@@ -948,8 +916,14 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Are you currently renting?",
             "fieldId": "currently-renting",
+            "label": "Are you currently renting?",
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Yes",
@@ -959,13 +933,7 @@
                 "label": "No",
                 "value": "no"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select an option",
-                "value": true
-              }
-            }
+            ]
           }
         }
       ],
@@ -973,25 +941,25 @@
     },
     {
       "stepId": "rental-details",
-      "title": "Give us you rental details",
+      "title": "Give us your rental details",
       "elements": [
         {
-          "ref": "components/generic-number",
+          "ref": "components/generic-text",
           "overrides": {
-            "ui": {
-              "width": "short"
-            },
-            "label": "Monthly rent",
             "fieldId": "monthly-rent",
+            "label": "Monthly rent",
             "validations": {
-              "min": {
-                "error": "Amount must be 0 or more",
-                "value": 0
+              "pattern": {
+                "error": "Enter a valid number",
+                "value": "^[0-9]+(\\.[0-9]{1,2})?$"
               },
               "required": {
                 "error": "Enter the monthly rent",
                 "value": true
               }
+            },
+            "ui": {
+              "width": "short"
             }
           }
         }
@@ -999,10 +967,10 @@
       "behaviours": [
         {
           "type": "stepConditionalOn",
-          "value": "yes",
-          "operator": "equal",
+          "targetFieldId": "currently-renting",
           "targetStepId": "housing-situation",
-          "targetFieldId": "currently-renting"
+          "operator": "equal",
+          "value": "yes"
         }
       ]
     },
@@ -1013,8 +981,14 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Do you own land and want NHC to provide a housing solution?",
             "fieldId": "owns-land",
+            "label": "Do you own land and want NHC to provide a housing solution?",
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Yes",
@@ -1024,20 +998,20 @@
                 "label": "No",
                 "value": "no"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select an option",
-                "value": true
-              }
-            }
+            ]
           }
         },
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Are you a tenant of the land you wish to build on?",
             "fieldId": "is-tenant",
+            "label": "Are you a tenant of the land you wish to build on?",
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Yes",
@@ -1047,13 +1021,7 @@
                 "label": "No",
                 "value": "no"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select an option",
-                "value": true
-              }
-            }
+            ]
           }
         }
       ],
@@ -1066,12 +1034,24 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "label": "Upload landlord or agent permission letter",
             "fieldId": "landlord-permission-letter",
+            "label": "Upload landlord or agent permission letter",
             "validations": {
               "required": {
                 "error": "Upload the landlord or agent permission letter",
                 "value": true
+              },
+              "fileTypes": {
+                "error": "Upload a PDF, JPG or PNG",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "Each file must be 5 MB or smaller",
+                "value": 5242880
               }
             }
           }
@@ -1080,10 +1060,10 @@
       "behaviours": [
         {
           "type": "stepConditionalOn",
-          "value": "yes",
-          "operator": "equal",
+          "targetFieldId": "is-tenant",
           "targetStepId": "land-ownership",
-          "targetFieldId": "is-tenant"
+          "operator": "equal",
+          "value": "yes"
         }
       ]
     },
@@ -1094,8 +1074,14 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "How will you finance the purchase?",
             "fieldId": "financing-method",
+            "label": "How will you finance the purchase?",
+            "validations": {
+              "required": {
+                "error": "Select a financing method",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Mortgage",
@@ -1110,11 +1096,8 @@
                 "value": "full-cash"
               }
             ],
-            "validations": {
-              "required": {
-                "error": "Select a financing method",
-                "value": true
-              }
+            "ui": {
+              "hideLabel": true
             }
           }
         }
@@ -1128,8 +1111,8 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Lending institution and branch",
             "fieldId": "lending-institution",
+            "label": "Lending institution and branch",
             "validations": {
               "required": {
                 "error": "Enter the lending institution and branch",
@@ -1139,56 +1122,57 @@
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/generic-text",
           "overrides": {
-            "ui": {
-              "width": "short"
-            },
-            "label": "Deposit available",
             "fieldId": "deposit-available",
+            "label": "Deposit available",
             "validations": {
-              "min": {
-                "error": "Amount must be 0 or more",
-                "value": 0
+              "pattern": {
+                "error": "Enter a valid number",
+                "value": "^[0-9]+(\\.[0-9]{1,2})?$"
               },
               "required": {
                 "error": "Enter the deposit amount",
                 "value": true
               }
+            },
+            "ui": {
+              "width": "short"
             }
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/generic-text",
           "overrides": {
-            "ui": {
-              "width": "short"
-            },
-            "label": "Qualifying amount (mortgage certificate)",
             "fieldId": "qualifying-amount",
+            "label": "Qualifying amount (mortgage certificate)",
             "validations": {
-              "min": {
-                "error": "Amount must be 0 or more",
-                "value": 0
+              "pattern": {
+                "error": "Enter a valid number",
+                "value": "^[0-9]+(\\.[0-9]{1,2})?$"
               },
               "required": {
                 "error": "Enter the qualifying amount",
                 "value": true
               }
-            }
+            },
+            "ui": {
+              "width": "short"
+            },
+            "hint": "How much is the lending institution giving you"
           }
         }
       ],
       "behaviours": [
         {
           "type": "stepConditionalOn",
+          "targetFieldId": "financing-method",
+          "targetStepId": "financing",
+          "operator": "in",
           "value": [
             "mortgage",
             "loan"
-          ],
-          "operator": "in",
-          "targetStepId": "financing",
-          "targetFieldId": "financing-method"
+          ]
         }
       ]
     },
@@ -1199,25 +1183,67 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "label": "Bank statement",
             "fieldId": "bank-statement",
+            "label": "Bank statement",
             "validations": {
               "required": {
                 "value": true
+              },
+              "fileTypes": {
+                "error": "Upload a PDF, JPG or PNG",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "Each file must be 5 MB or smaller",
+                "value": 5242880
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "financing-method",
+                "targetStepId": "financing",
+                "operator": "equal",
+                "value": "full-cash"
+              }
+            ]
           }
         },
         {
           "ref": "components/upload-document",
           "overrides": {
-            "label": "Mortgage certificate",
             "fieldId": "mortgage-certificate",
+            "label": "Mortgage certificate",
             "validations": {
               "required": {
                 "value": true
+              },
+              "fileTypes": {
+                "error": "Upload a PDF, JPG or PNG",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "Each file must be 5 MB or smaller",
+                "value": 5242880
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "financing-method",
+                "targetStepId": "financing",
+                "operator": "notEqual",
+                "value": "full-cash"
+              }
+            ]
           }
         }
       ],
@@ -1237,20 +1263,20 @@
         {
           "ref": "components/confirmation",
           "overrides": {
-            "label": "Declaration",
             "fieldId": "declaration-confirmed",
-            "options": [
-              {
-                "label": "I confirm that the information provided is true and correct.",
-                "value": "confirmed"
-              }
-            ],
+            "label": "Declaration",
             "validations": {
               "required": {
                 "error": "You must confirm the declaration to continue",
                 "value": true
               }
-            }
+            },
+            "options": [
+              {
+                "label": "I confirm that the information provided is true and correct.",
+                "value": "confirmed"
+              }
+            ]
           }
         }
       ],
@@ -1260,9 +1286,15 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "elements": [],
-      "behaviours": []
+      "behaviours": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "We have received your submission. You will receive a confirmation email at the address you provided."
+        }
+      ]
     }
   ],
   "createdAt": "2026-06-17T13:00:42.221Z",
-  "updatedAt": "2026-06-30T10:08:35.271Z"
+  "updatedAt": "2026-08-24T17:50:23.026Z"
 }

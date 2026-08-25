@@ -364,3 +364,47 @@ describe("resolvedProcessorSchema (post-resolution)", () => {
     ).toBe(true);
   });
 });
+
+describe("webhook mapping: reference-code segments", () => {
+  const mapped = (mapping: Record<string, unknown>) =>
+    processorSchema.safeParse({
+      type: "webhook",
+      config: {
+        endpoint: { env: "WEBHOOK_URL" },
+        mapping: {
+          programmeCode: "TEMP_RESTAURANT_LICENCE",
+          applicant: { name: "a.name", email: "a.email", phone: "a.phone" },
+          ...mapping,
+        },
+      },
+    });
+
+  it("keeps mdaCode and programmeShortCode on the parsed mapping", () => {
+    const parsed = mapped({ mdaCode: "MOH", programmeShortCode: "TRL" });
+    expect(parsed.success).toBe(true);
+    const config = (parsed as { data: { config: { mapping: unknown } } }).data
+      .config;
+    expect(config.mapping).toMatchObject({
+      mdaCode: "MOH",
+      programmeShortCode: "TRL",
+    });
+  });
+
+  it("accepts a 4-letter mdaCode", () => {
+    expect(mapped({ mdaCode: "MOEY", programmeShortCode: "EHO" }).success).toBe(
+      true,
+    );
+  });
+
+  it("leaves both optional, so an unmigrated form still parses", () => {
+    expect(mapped({}).success).toBe(true);
+  });
+
+  it("rejects a segment that is not 3-4 uppercase letters", () => {
+    expect(mapped({ mdaCode: "moh" }).success).toBe(false);
+    expect(mapped({ mdaCode: "MO" }).success).toBe(false);
+    expect(mapped({ mdaCode: "MOHWX" }).success).toBe(false);
+    expect(mapped({ mdaCode: "M0H" }).success).toBe(false);
+    expect(mapped({ programmeShortCode: "TR-L" }).success).toBe(false);
+  });
+});

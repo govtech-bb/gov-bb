@@ -3,6 +3,7 @@ export {
   htmlTypesSchema,
   optionSchema,
   optionGroupSchema,
+  contentVariantSchema,
   basePrimitiveSchema,
   textPrimitiveSchema,
   textAreaPrimitiveSchema,
@@ -17,6 +18,7 @@ export {
   radioPrimitiveSchema,
   filePrimitiveSchema,
   showHidePrimitiveSchema,
+  contentPrimitiveSchema,
   primitiveSchema,
   fieldOverridesSchema,
   primitiveUISchema,
@@ -42,6 +44,8 @@ export type {
   CheckboxAccordionPrimitive,
   ShowHidePrimitive,
   AddressLookupPrimitive,
+  ContentPrimitive,
+  ContentVariant,
   Primitive,
   HtmlTypes,
   PrimitiveUI,
@@ -54,6 +58,7 @@ export {
   validationRuleSchema,
   fieldValueSchema,
   dateValueInputSchema,
+  normalizeRuleValues,
 } from "./validation.type";
 
 export type {
@@ -182,6 +187,7 @@ export type {
   DraftRecipe,
   DateTimeFormat,
   ContactDetails,
+  CatchmentRouting,
   RecipeVisibility,
   RecipeMeta,
 } from "./service-contract.type";
@@ -190,6 +196,7 @@ export {
   deployBranchPrefix,
   deployBranchName,
   eraseBranchName,
+  formIdFromDeployBranch,
 } from "./deploy-branch";
 
 export type {

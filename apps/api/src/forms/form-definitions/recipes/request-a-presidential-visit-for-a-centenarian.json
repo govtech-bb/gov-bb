@@ -74,8 +74,13 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 2 (optional)",
-            "fieldId": "home-address-2"
+            "label": "Address line 2",
+            "fieldId": "home-address-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -183,8 +188,13 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Visit address line 2 (optional)",
+            "label": "Visit address line 2",
             "fieldId": "visit-address-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -304,8 +314,13 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 2 (optional)",
-            "fieldId": "contact-address-2"
+            "label": "Address line 2",
+            "fieldId": "contact-address-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -456,14 +471,6 @@
                 "value": true
               }
             }
-          }
-        },
-        {
-          "ref": "components/date-of-birth",
-          "overrides": {
-            "label": "Date of declaration",
-            "fieldId": "declaration-date",
-            "isHidden": true
           }
         }
       ]

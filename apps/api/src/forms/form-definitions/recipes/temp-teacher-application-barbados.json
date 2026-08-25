@@ -61,7 +61,7 @@
           "overrides": {
             "fieldId": "other-names",
             "label": "Other Names",
-            "hint": "Optional. Provide only if known",
+            "hint": "Provide only if known",
             "validations": {
               "required": {
                 "value": false
@@ -914,14 +914,6 @@
                 "value": "confirmed"
               }
             ]
-          }
-        },
-        {
-          "ref": "components/date-of-birth",
-          "overrides": {
-            "fieldId": "declaration-date",
-            "label": "Date of declaration",
-            "isHidden": true
           }
         }
       ],

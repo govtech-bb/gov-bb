@@ -1,0 +1,809 @@
+{
+  "formId": "swimming-wading-pool-permit",
+  "title": "Apply for a swimming or wading pool permit",
+  "description": "Apply to Environmental Health for a swimming or wading pool permit",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your swimming or wading pool permit application has been received",
+        "recipientField": "your-details.email"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "subject": "A new swimming or wading pool permit application has been received",
+        "recipientField": "catchment.mdaEmail"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "mapping": {
+          "mdaCode": "MOH",
+          "programmeShortCode": "SPP",
+          "programmeCode": "SWIMMING_POOL_PERMIT",
+          "applicant": {
+            "name": [
+              "your-details.first-name",
+              "your-details.last-name"
+            ],
+            "email": "your-details.email",
+            "phone": "your-details.mobile-telephone"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        }
+      }
+    }
+  ],
+  "meta": {
+    "visibility": "preview"
+  },
+  "steps": [
+    {
+      "stepId": "about-application",
+      "title": "About your application",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Is this a new application or a renewal?",
+            "fieldId": "application-type",
+            "options": [
+              {
+                "label": "New application",
+                "value": "new"
+              },
+              {
+                "label": "Renewal",
+                "value": "renewal"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "your-details",
+      "title": "Your details",
+      "elements": [
+        {
+          "ref": "components/first-name"
+        },
+        {
+          "ref": "components/middle-name"
+        },
+        {
+          "ref": "components/last-name"
+        },
+        {
+          "ref": "components/address-lookup",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "address-line-1",
+            "validations": {
+              "required": {
+                "error": "Enter your address",
+                "value": true
+              }
+            },
+            "geocodeTargets": {
+              "line2FieldId": "address-line-2",
+              "parishFieldId": "parish",
+              "coordinatesFieldId": "address-coordinates"
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2",
+            "fieldId": "address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish"
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "hidden": true
+            },
+            "label": "Home address coordinates",
+            "fieldId": "address-coordinates",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email"
+        },
+        {
+          "ref": "components/mobile-telephone"
+        },
+        {
+          "ref": "components/work-telephone"
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "pool-owner-details",
+      "title": "Your connection to the pool",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Which best describes your application?",
+            "fieldId": "owner-type",
+            "options": [
+              {
+                "label": "I own the pool for a business or property",
+                "value": "business-owner"
+              },
+              {
+                "label": "I manage or operate the pool for someone else",
+                "value": "manager"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "hint": "For example, manager, employee or authorised representative.",
+            "label": "How are you connected to the pool?",
+            "fieldId": "connection-to-pool",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "manager",
+                "operator": "equal",
+                "targetFieldId": "owner-type"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter how you are connected to the pool",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "about-pool",
+      "title": "About the pool",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "What type of pool is it?",
+            "fieldId": "pool-type",
+            "options": [
+              {
+                "label": "Swimming pool",
+                "value": "swimming"
+              },
+              {
+                "label": "Wading pool",
+                "value": "wading"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select a pool type",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "hint": "If the pool does not have a formal name, enter a simple description, such as home pool or hotel pool.",
+            "label": "What is the name of the pool?",
+            "fieldId": "pool-name",
+            "validations": {
+              "required": {
+                "error": "Enter the name of the pool",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 10
+        }
+      ]
+    },
+    {
+      "stepId": "pool-capacity",
+      "title": "How much water can the pool hold?",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "How much water can the pool hold?",
+            "fieldId": "water-capacity",
+            "validations": {
+              "gt": {
+                "error": "Enter a value greater than 0",
+                "value": 0
+              },
+              "required": {
+                "error": "Enter the water capacity",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "label": "What unit is this measured in?",
+            "fieldId": "capacity-unit",
+            "options": [
+              {
+                "label": "Gallons",
+                "value": "gallons"
+              },
+              {
+                "label": "Cubic metres",
+                "value": "cubic-metres"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select a unit",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 10
+        }
+      ]
+    },
+    {
+      "stepId": "pool-usage",
+      "title": "How is the pool mainly used?",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "How is the pool mainly used?",
+            "fieldId": "pool-usage-type",
+            "options": [
+              {
+                "label": "By guests at a hotel or other accommodation",
+                "value": "hotel"
+              },
+              {
+                "label": "By residents of an apartment building or residential complex",
+                "value": "apartment"
+              },
+              {
+                "label": "By members of the public",
+                "value": "public"
+              },
+              {
+                "label": "Condominiums",
+                "value": "condo-home"
+              },
+              {
+                "label": "School",
+                "value": "school"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select how the pool is mainly used",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "label": "Describe how the pool is mainly used",
+            "fieldId": "pool-usage-description",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "other",
+                "operator": "equal",
+                "targetFieldId": "pool-usage-type"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Describe how the pool is used",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 10
+        }
+      ]
+    },
+    {
+      "stepId": "pool-address",
+      "title": "Pool address",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Is the pool at the same address you already entered?",
+            "fieldId": "same-address",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "pool-address-line-1",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetFieldId": "same-address"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter the pool address",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2",
+            "fieldId": "pool-address-line-2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetFieldId": "same-address"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "pool-parish",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetFieldId": "same-address"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select a parish",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 10
+        }
+      ]
+    },
+    {
+      "stepId": "pool-facilities",
+      "title": "Pool facilities and maintenance",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Which of the following does the pool have?",
+            "fieldId": "pool-facilities",
+            "options": [
+              {
+                "label": "Lighting",
+                "value": "lighting"
+              },
+              {
+                "label": "Pump room",
+                "value": "clean-pump-room"
+              },
+              {
+                "label": "Shower facilities",
+                "value": "shower-facilities"
+              },
+              {
+                "label": "Access to bathroom facilities",
+                "value": "bathroom-facilities"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select at least one facility",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Are pool records up to date, including a log book?",
+            "fieldId": "records-up-to-date",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "pool-chemical-maintenance",
+      "title": "Chemical maintenance and safety",
+      "elements": [
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "label": "Describe the chemicals used to maintain the pool",
+            "fieldId": "chemicals-used",
+            "validations": {
+              "required": {
+                "error": "Describe the chemicals used",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "hint": "Enter the current pH level of the pool.",
+            "label": "What is the current pH level?",
+            "fieldId": "ph-level",
+            "validations": {
+              "required": {
+                "error": "Enter the pH level",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "label": "When was the pool last cleaned?",
+            "fieldId": "last-cleaning-date",
+            "validations": {
+              "required": {
+                "error": "Enter the date of last cleaning",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "hint": "Describe recent maintenance, repairs or improvements.",
+            "label": "What actions have been taken to maintain the pool?",
+            "fieldId": "maintenance-actions",
+            "validations": {
+              "required": {
+                "error": "Describe maintenance actions",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "hint": "For example, life rings, first aid kit, rescue equipment.",
+            "label": "What safety equipment is available at the pool?",
+            "fieldId": "safety-equipment",
+            "validations": {
+              "required": {
+                "error": "Describe the safety equipment available",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "add-another-pool",
+      "title": "Do you want to add another pool?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Do you want to add another pool?",
+            "fieldId": "add-another-pool",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "supporting-documents",
+      "title": "Supporting documents",
+      "elements": [
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "hint": "Upload your pool log book as evidence that records are up to date.",
+            "label": "Pool log book",
+            "fieldId": "pool-logbook",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "new",
+                "operator": "equal",
+                "targetFieldId": "application-type"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Upload your pool log book",
+                "value": true
+              },
+              "fileTypes": {
+                "error": "Upload a file in PDF, JPEG, PNG, Word or Excel format",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".doc",
+                  ".docx",
+                  ".xls",
+                  ".xlsx"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "label": "Town and Country Planning Plan",
+            "fieldId": "town-country-planning-plan",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "new",
+                "operator": "equal",
+                "targetFieldId": "application-type"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Upload the Town and Country Planning Plan",
+                "value": true
+              },
+              "fileTypes": {
+                "error": "Upload a file in PDF, JPEG, PNG, Word or Excel format",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".doc",
+                  ".docx",
+                  ".xls",
+                  ".xlsx"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "label": "Site Plan",
+            "fieldId": "site-plan",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "renewal",
+                "operator": "equal",
+                "targetFieldId": "application-type"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Upload the Site Plan",
+                "value": true
+              },
+              "fileTypes": {
+                "error": "Upload a file in PDF, JPEG, PNG, Word or Excel format",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".doc",
+                  ".docx",
+                  ".xls",
+                  ".xlsx"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I confirm that the information I have provided is correct.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": [],
+      "markdownContent": "## What happens next\n\nYour application for a swimming or wading pool permit has been sent to Environmental Health.\n\nEnvironmental Health will review your application. They may contact you if they need more information or need to inspect the pool. They will let you know the outcome and what you need to do next."
+    }
+  ],
+  "createdAt": "2026-08-20T09:15:58.120Z",
+  "updatedAt": "2026-08-24T13:24:36.601Z",
+  "catchmentRouting": {
+    "coordinatesField": "your-details.address-coordinates",
+    "parishField": "your-details.parish"
+  }
+}

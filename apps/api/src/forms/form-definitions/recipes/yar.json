@@ -263,20 +263,6 @@
               }
             ]
           }
-        },
-        {
-          "ref": "components/generic-date",
-          "overrides": {
-            "fieldId": "declaration-date",
-            "label": "Date of declaration",
-            "validations": {
-              "pastOrToday": {
-                "error": "Date must not be in the future",
-                "value": true
-              }
-            },
-            "isHidden": true
-          }
         }
       ],
       "behaviours": []

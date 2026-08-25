@@ -13,6 +13,7 @@ import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { shallow } from "@tanstack/react-store";
 import { isDateValidationError } from "@govtech-bb/form-validation";
+import { Behaviour } from "@govtech-bb/form-types";
 import { useStepGuard } from "../hooks/use-step-guard";
 import Review from "./review";
 import SubmissionConfirmation from "./submission-confirmation";
@@ -59,10 +60,10 @@ type ShowHideFieldGroup = {
   controlled: ClientPrimitive[];
 };
 /**
- * A radio or single-value select field that has one or more sibling fields
- * that should be revealed inline (inset) when a specific option is selected.
- * Each entry in the map keys on the option value and holds the ordered list
- * of fields to reveal.
+ * A radio, single-value select or checkbox field that has one or more sibling
+ * fields that should be revealed inline (inset) when a specific option is
+ * selected. Each entry in the map keys on the option value and holds the
+ * ordered list of fields to reveal.
  */
 type OptionConditionalFieldGroup = {
   type: "option-conditional";
@@ -75,15 +76,42 @@ type FieldGroup =
   | OptionConditionalFieldGroup;
 
 /**
- * A field hosts inset conditional reveals when it offers a single-choice
- * option list: radios, or selects without `multiple`. Multi-selects keep the
- * page-level conditional fallback — "equal" against an array value is murky.
+ * A field hosts inset conditional reveals when its options each have a DOM
+ * position to nest under: radios, selects without `multiple`, and multi-option
+ * checkboxes. A single-option checkbox is a confirmation, not an option list,
+ * so its reveals stay page-level; `multiple` selects have no per-option
+ * position to nest under.
  */
 function supportsOptionConditionals(field: ClientPrimitive): boolean {
   return (
     field.htmlType === "radio" ||
-    (field.htmlType === "select" && !field.multiple)
+    (field.htmlType === "select" && !field.multiple) ||
+    (field.htmlType === "checkbox" && (field.options?.length ?? 0) > 1)
   );
+}
+
+/**
+ * The single option value a reveal behaviour hangs off, or null when it does
+ * not name exactly one. A checkbox holds an array, so its reveals are authored
+ * as `in` with a one-entry list; `equal` covers radio/select. A behaviour
+ * naming several options (`in: ["employed", "self-employed"]`) has no single
+ * option to nest under, so it keeps the page-level fallback.
+ */
+function revealedOptionValue(behaviour: Behaviour): string | null {
+  if (behaviour.type !== "fieldConditionalOn" || !("value" in behaviour)) {
+    return null;
+  }
+  if (behaviour.operator === "equal" && !Array.isArray(behaviour.value)) {
+    return String(behaviour.value);
+  }
+  if (
+    behaviour.operator === "in" &&
+    Array.isArray(behaviour.value) &&
+    behaviour.value.length === 1
+  ) {
+    return String(behaviour.value[0]);
+  }
+  return null;
 }
 
 /**
@@ -112,23 +140,23 @@ function buildFieldGroups(fields: ClientPrimitive[]): FieldGroup[] {
       groups.push({ type: "show-hide", toggle: field, controlled });
     } else if (supportsOptionConditionals(field)) {
       // Collect sibling fields that are revealed by a specific option value
-      // on this radio/select (fieldConditionalOn + operator "equal").
+      // on this radio/select/checkbox (see `revealedOptionValue`).
       const conditionalsByOption = new Map<string, ClientPrimitive[]>();
 
       for (const other of fields) {
         if (controlledIds.has(other.id) || other.id === field.id) continue;
 
-        const revealBehaviour = other.behaviours?.find(
-          (b) =>
-            b.type === "fieldConditionalOn" &&
-            "targetFieldId" in b &&
-            b.targetFieldId === field.fieldId &&
-            "operator" in b &&
-            b.operator === "equal",
-        );
+        const optionValue = other.behaviours
+          ?.filter(
+            (b) =>
+              b.type === "fieldConditionalOn" &&
+              "targetFieldId" in b &&
+              b.targetFieldId === field.fieldId,
+          )
+          .map(revealedOptionValue)
+          .find((v) => v !== null);
 
-        if (revealBehaviour && "value" in revealBehaviour) {
-          const optionValue = String(revealBehaviour.value);
+        if (optionValue != null) {
           if (!conditionalsByOption.has(optionValue)) {
             conditionalsByOption.set(optionValue, []);
           }
@@ -569,6 +597,7 @@ function ActiveStep({
           processingMessage={currentStep.description}
           nextSteps={currentStep.nextSteps}
           markdownContent={currentStep.markdownContent}
+          hideReferenceNumber={currentStep.hideReferenceNumber}
           contactDetails={formMeta.contactDetails}
           onTryAgain={() => navigateToStep("check-your-answers")}
           onPaymentInitiated={() =>

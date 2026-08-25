@@ -1,5 +1,6 @@
 import {
   Behaviour,
+  CatchmentRouting,
   ConditionalTitle,
   ContactDetails,
   DateTimeFormat,
@@ -39,6 +40,12 @@ export interface ClientPrimitive {
   /** For `address-lookup`: sibling fields to populate when a suggestion is
    * picked (see {@link GeocodeTargets}). */
   geocodeTargets?: GeocodeTargets;
+  /** Content element (`htmlType: "content"`) markdown body. */
+  content?: string;
+  /** Content element presentation: "inset" | "text" | "details" | "warning". */
+  variant?: "inset" | "text" | "details" | "warning";
+  /** Content element `details`-variant disclosure summary. */
+  summary?: string;
 }
 
 export interface ClientFormStep {
@@ -53,6 +60,8 @@ export interface ClientFormStep {
   nextSteps?: { title: string; content?: string; items?: string[] }[];
   /** Raw markdown rendered on the submission-confirmation page. */
   markdownContent?: string;
+  /** Suppress the "Submission ID" on the confirmation page (anonymous forms). */
+  hideReferenceNumber?: boolean;
 }
 
 export interface ClientServiceContract {
@@ -61,6 +70,7 @@ export interface ClientServiceContract {
   description?: string;
   contactDetails?: ContactDetails;
   closingDateTime?: DateTimeFormat;
+  catchmentRouting?: CatchmentRouting;
   steps: ClientFormStep[];
   createdAt: DateTimeFormat;
   updatedAt: DateTimeFormat;

@@ -1,9 +1,9 @@
 import { Button, ErrorSummary, Link } from '@govtech-bb/react'
+import type { ErrorSummaryItem } from '@govtech-bb/react'
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode, RefObject } from 'react'
-import { money } from '@/lib/money'
+import { money as formatBbd } from '@/lib/money'
 import {
-  earningsAtRisk,
   estimateBenefits,
   monthlyAverage,
   NIS,
@@ -14,7 +14,10 @@ import type { EarningsInputs } from '../-lib/compute'
 
 type Screen = 'hero' | 'benefits' | 'income' | 'plan' | 'result' | 'next-steps'
 
-const SERVICE_CAPTION = 'NISSS for self-employed and gig workers'
+// This service shows all amounts in Barbados dollars, prefixed "BDS $".
+const money = (n: number) => `BDS ${formatBbd(n)}`
+
+const SERVICE_CAPTION = 'NIS for self-employed and gig workers'
 // The same NIS registration page the service page's "Register as self-employed"
 // links to, so both routes into registration land in one place.
 const REGISTER_HREF = 'https://www.nis.gov.bb/self-employment-registration/'
@@ -201,10 +204,14 @@ function IconCircle({
 export function CoverageCalculator() {
   const [screen, setScreen] = useState<Screen>('hero')
 
+  const [earningsVary, setEarningsVary] = useState<'yes' | 'no' | ''>('')
+  const [usualMonth, setUsualMonth] = useState('')
   const [goodMonth, setGoodMonth] = useState('')
   const [slowMonth, setSlowMonth] = useState('')
   const [goodMonths, setGoodMonths] = useState('')
   const [errors, setErrors] = useState<{
+    earningsVary?: string
+    usualMonth?: string
     goodMonth?: string
     slowMonth?: string
     goodMonths?: string
@@ -232,34 +239,53 @@ export function CoverageCalculator() {
 
   const go = (next: Screen) => setScreen(next)
 
+  const usualMonthNum = Number.parseFloat(usualMonth.replace(/,/g, '').trim())
   const goodMonthNum = Number.parseFloat(goodMonth.replace(/,/g, '').trim())
   const slowMonthNum = Number.parseFloat(slowMonth.replace(/,/g, '').trim())
   const goodMonthsNum = Number.parseInt(goodMonths.trim(), 10)
 
-  const earnings: EarningsInputs = {
-    goodMonth: Number.isFinite(goodMonthNum) ? goodMonthNum : 0,
-    slowMonth: Number.isFinite(slowMonthNum) ? slowMonthNum : 0,
-    goodMonthsPerYear: Number.isFinite(goodMonthsNum) ? goodMonthsNum : 0,
-  }
+  // When earnings don't change, the same monthly figure stands in for the busy
+  // and slow month across all 12 months.
+  const earnings: EarningsInputs =
+    earningsVary === 'no'
+      ? {
+          goodMonth: Number.isFinite(usualMonthNum) ? usualMonthNum : 0,
+          slowMonth: Number.isFinite(usualMonthNum) ? usualMonthNum : 0,
+          goodMonthsPerYear: 12,
+        }
+      : {
+          goodMonth: Number.isFinite(goodMonthNum) ? goodMonthNum : 0,
+          slowMonth: Number.isFinite(slowMonthNum) ? slowMonthNum : 0,
+          goodMonthsPerYear: Number.isFinite(goodMonthsNum) ? goodMonthsNum : 0,
+        }
 
   function submitIncome() {
     const next: typeof errors = {}
-    if (!goodMonth.trim())
-      next.goodMonth = 'Enter your earnings in a good month'
-    else if (!Number.isFinite(goodMonthNum) || goodMonthNum <= 0)
-      next.goodMonth = 'Good month earnings must be an amount greater than 0'
-    if (!slowMonth.trim())
-      next.slowMonth = 'Enter your earnings in a slow month'
-    else if (!Number.isFinite(slowMonthNum) || slowMonthNum < 0)
-      next.slowMonth = 'Slow month earnings must be 0 or more'
-    if (!goodMonths.trim())
-      next.goodMonths = 'Enter how many good months you have in a year'
-    else if (
-      !/^\d+$/.test(goodMonths.trim()) ||
-      goodMonthsNum < 1 ||
-      goodMonthsNum > 12
-    )
-      next.goodMonths = 'Enter a whole number of good months from 1 to 12'
+    if (earningsVary === '') {
+      next.earningsVary = 'Select whether your earnings change during the year'
+    } else if (earningsVary === 'no') {
+      if (!usualMonth.trim())
+        next.usualMonth = 'Enter how much you usually earn each month'
+      else if (!Number.isFinite(usualMonthNum) || usualMonthNum <= 0)
+        next.usualMonth = 'Monthly earnings must be an amount greater than 0'
+    } else {
+      if (!goodMonth.trim())
+        next.goodMonth = 'Enter your earnings in a busy month'
+      else if (!Number.isFinite(goodMonthNum) || goodMonthNum <= 0)
+        next.goodMonth = 'Busy month earnings must be an amount greater than 0'
+      if (!slowMonth.trim())
+        next.slowMonth = 'Enter your earnings in a slow month'
+      else if (!Number.isFinite(slowMonthNum) || slowMonthNum < 0)
+        next.slowMonth = 'Slow month earnings must be 0 or more'
+      if (!goodMonths.trim())
+        next.goodMonths = 'Enter how many busy months you have in a year'
+      else if (
+        !/^\d+$/.test(goodMonths.trim()) ||
+        goodMonthsNum < 1 ||
+        goodMonthsNum > 12
+      )
+        next.goodMonths = 'Enter a whole number of busy months from 1 to 12'
+    }
     setErrors(next)
     if (Object.keys(next).length === 0) {
       setTierError('')
@@ -269,7 +295,23 @@ export function CoverageCalculator() {
     }
   }
 
+  // Switching the branch clears the fields the other branch used, so no stale
+  // earnings carry into the estimate, and clears any income validation errors.
+  function chooseEarningsVary(value: 'yes' | 'no') {
+    setEarningsVary(value)
+    if (value === 'no') {
+      setGoodMonth('')
+      setSlowMonth('')
+      setGoodMonths('')
+    } else {
+      setUsualMonth('')
+    }
+    setErrors({})
+  }
+
   function restart() {
+    setEarningsVary('')
+    setUsualMonth('')
     setGoodMonth('')
     setSlowMonth('')
     setGoodMonths('')
@@ -280,7 +322,7 @@ export function CoverageCalculator() {
   }
 
   return (
-    <div className="govbb-width-container govbb-main-wrapper">
+    <div className="container pt-4 pb-10 lg:py-8">
       <article
         className="mx-auto w-full max-w-3xl outline-none"
         ref={topRef}
@@ -297,16 +339,20 @@ export function CoverageCalculator() {
 
         {screen === 'income' && (
           <IncomeStep
+            earningsVary={earningsVary}
             errorRef={incomeErrorRef}
             errors={errors}
             goodMonth={goodMonth}
             goodMonths={goodMonths}
             onBack={() => go('hero')}
             onContinue={submitIncome}
+            onEarningsVaryChange={chooseEarningsVary}
             setGoodMonth={setGoodMonth}
             setGoodMonths={setGoodMonths}
             setSlowMonth={setSlowMonth}
+            setUsualMonth={setUsualMonth}
             slowMonth={slowMonth}
+            usualMonth={usualMonth}
           />
         )}
 
@@ -318,7 +364,7 @@ export function CoverageCalculator() {
             onBack={() => go('income')}
             onContinue={() => {
               if (!tier) {
-                setTierError('Select a contribution level')
+                setTierError('Select an amount to compare')
                 focusErrorSummary(planErrorRef)
                 return
               }
@@ -377,61 +423,53 @@ function Hero({
       >
         <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-teal-10 px-3 py-1.5 font-medium text-[0.95rem] text-teal-80">
           <Icon className="h-4 w-4" name="shield" />
-          From NISSS Barbados
+          From National Insurance (NIS)
         </span>
         <h1 className="mb-4 font-bold text-[2.75rem] text-black-00 leading-[1.1] tracking-tight sm:text-[3.5rem]">
-          Protect your income.
-          <br />
-          <span className="text-teal-80">Protect your future.</span>
+          Estimate how much National Insurance to pay
         </h1>
         <p className="mb-6 text-[1.125rem] text-grey-70">
-          You work for yourself: driving, delivering, freelancing, building,
-          selling, creating. NISSS is how you look after yourself when life
-          happens.
+          Answer a few questions about what you earn to compare payment amounts.
         </p>
         <div className="flex flex-col items-stretch gap-3 [&_button]:w-full [&_button]:justify-center">
           <Button onClick={onStart} type="button">
             Estimate my contributions
           </Button>
           <Button onClick={onBenefits} type="button" variant="secondary">
-            See what you may qualify for
+            See the benefits you may get
           </Button>
           <Link
             className="justify-center py-2 text-center"
+            external
             href={REGISTER_HREF}
-            rel="noopener noreferrer"
-            target="_blank"
           >
-            I&rsquo;m ready to register for NISSS
+            I&rsquo;m ready to register for NIS
           </Link>
         </div>
       </div>
 
       <div className="mt-10">
         <h2 className="mb-3 font-bold text-[1.5rem] text-black-00">
-          What is NISSS, simply?
+          What is NIS, simply?
         </h2>
         <p className="mb-4 text-[1.125rem] text-grey-70">
-          NISSS stands for the{' '}
-          <strong className="text-black-00">
-            National Insurance and Social Security Scheme
-          </strong>{' '}
-          (formerly known as NIS). Think of it as a safety net you build up bit
-          by bit. You put in a small amount when you earn. It&rsquo;s there when
-          you need it: when you&rsquo;re sick, when you have a baby, when you
-          retire.
+          NIS stands for{' '}
+          <strong className="text-black-00">National Insurance</strong>. Think
+          of it as a safety net you build up bit by bit. You put in a small
+          amount when you earn. It&rsquo;s there when you need it: when
+          you&rsquo;re sick, when you have a baby, when you retire.
         </p>
         <p className="mb-6 text-[1.125rem] text-grey-70">
           Self-employed Bajans can join too. You choose how much you put in:{' '}
           <strong className="text-black-00">
-            more in good months, less in slow ones
+            more in busy months, less in slow ones
           </strong>
           . It&rsquo;s voluntary, and what matters is your total over the year.
         </p>
 
         <div className="mb-6 rounded-2xl border border-blue-10 bg-blue-10/40 p-5">
           <p className="mb-3 font-semibold text-black-00">
-            What NISSS can help with
+            What NIS can help with
           </p>
           <ul className="flex flex-col gap-2.5">
             {HELPS.map(([icon, text]) => (
@@ -512,7 +550,7 @@ function BenefitsQuick({ onBack }: { onBack: () => void }) {
   return (
     <div>
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
-        Six ways NISSS protects you.
+        Six ways NIS protects you.
       </h1>
       <p className="mb-6 text-[1.125rem] text-grey-70">
         Quick read: about a minute.
@@ -550,6 +588,7 @@ function MoneyField({
   hint,
   id,
   label,
+  max,
   onChange,
   prefix,
   value,
@@ -558,10 +597,14 @@ function MoneyField({
   hint: string
   id: string
   label: string
+  max?: number
   onChange: (v: string) => void
   prefix?: string
   value: string
 }) {
+  const numeric = Number.parseFloat(value.replace(/,/g, '').trim())
+  const overCeiling =
+    max !== undefined && Number.isFinite(numeric) && numeric > max
   return (
     <div className={`${CARD} p-5`}>
       <label
@@ -578,7 +621,11 @@ function MoneyField({
           error ? 'border-red-80' : 'border-black-00'
         }`}
       >
-        {prefix && <span className="pl-3 text-grey-70">{prefix}</span>}
+        {prefix && (
+          <span className="shrink-0 whitespace-nowrap pl-3 text-grey-70">
+            {prefix}
+          </span>
+        )}
         <input
           aria-describedby={`${id}-hint${error ? ` ${id}-error` : ''}`}
           aria-invalid={error ? 'true' : undefined}
@@ -595,38 +642,76 @@ function MoneyField({
           {error}
         </p>
       )}
+      {overCeiling && max !== undefined && (
+        <div
+          className="mt-4 border-blue-20 border-l-4 bg-grey-20/50 p-3 text-[1rem] text-black-00"
+          role="status"
+        >
+          The most NIS can insure is {money(max)} a month, so earning more than
+          this will not increase most of your benefits.
+        </div>
+      )}
     </div>
   )
 }
 
 function IncomeStep({
+  earningsVary,
   errorRef,
   errors,
   goodMonth,
   goodMonths,
   onBack,
   onContinue,
+  onEarningsVaryChange,
   setGoodMonth,
   setGoodMonths,
   setSlowMonth,
+  setUsualMonth,
   slowMonth,
+  usualMonth,
 }: {
+  earningsVary: 'yes' | 'no' | ''
   errorRef: RefObject<HTMLDivElement | null>
-  errors: { goodMonth?: string; slowMonth?: string; goodMonths?: string }
+  errors: {
+    earningsVary?: string
+    usualMonth?: string
+    goodMonth?: string
+    slowMonth?: string
+    goodMonths?: string
+  }
   goodMonth: string
   goodMonths: string
   onBack: () => void
   onContinue: () => void
+  onEarningsVaryChange: (value: 'yes' | 'no') => void
   setGoodMonth: (v: string) => void
   setGoodMonths: (v: string) => void
   setSlowMonth: (v: string) => void
+  setUsualMonth: (v: string) => void
   slowMonth: string
+  usualMonth: string
 }) {
+  const varyOptions = [
+    { id: 'yes' as const, label: 'Yes' },
+    { id: 'no' as const, label: 'No' },
+  ]
+  const varyRadio = rovingRadioProps(
+    varyOptions,
+    (o) => `earnings-vary-${o.id}`,
+    varyOptions.findIndex((o) => o.id === earningsVary),
+    (i) => onEarningsVaryChange(varyOptions[i].id),
+  )
   const errorItems = [
-    errors.goodMonth && { href: '#good-month', label: errors.goodMonth },
-    errors.slowMonth && { href: '#slow-month', label: errors.slowMonth },
-    errors.goodMonths && { href: '#good-months', label: errors.goodMonths },
-  ].filter(Boolean) as Array<{ href: string; label: string }>
+    errors.earningsVary && {
+      label: errors.earningsVary,
+      href: '#earnings-vary-yes',
+    },
+    errors.usualMonth && { label: errors.usualMonth, href: '#usual-month' },
+    errors.goodMonth && { label: errors.goodMonth, href: '#good-month' },
+    errors.slowMonth && { label: errors.slowMonth, href: '#slow-month' },
+    errors.goodMonths && { label: errors.goodMonths, href: '#good-months' },
+  ].filter(Boolean) as ErrorSummaryItem[]
   return (
     <div>
       {errorItems.length > 0 && (
@@ -643,38 +728,107 @@ function IncomeStep({
         Let&rsquo;s talk about your earnings.
       </h1>
       <p className="mb-6 text-[1.125rem] text-grey-70">
-        Be honest. There are no wrong answers, and this stays on your phone. We
-        use it to give you a real estimate that fits your life.
+        Enter your best estimate. We use it to give you a real estimate that
+        fits your life.
       </p>
 
-      <div className="flex flex-col gap-4">
-        <MoneyField
-          error={errors.goodMonth}
-          hint="When work is steady and money comes in. A rough number is fine."
-          id="good-month"
-          label="What does a good month look like?"
-          onChange={setGoodMonth}
-          prefix="$"
-          value={goodMonth}
-        />
-        <MoneyField
-          error={errors.slowMonth}
-          hint="When work is quiet: slow season, hurricane month, sickness. A rough number is fine."
-          id="slow-month"
-          label="And a slow month?"
-          onChange={setSlowMonth}
-          prefix="$"
-          value={slowMonth}
-        />
-        <MoneyField
-          error={errors.goodMonths}
-          hint="Enter a number from 1 to 12."
-          id="good-months"
-          label="How many good months do you usually have in a year?"
-          onChange={setGoodMonths}
-          value={goodMonths}
-        />
+      <div className={`${CARD} mb-4 p-5`}>
+        <p
+          className="font-semibold text-[1.25rem] text-black-00"
+          id="earnings-vary-label"
+        >
+          Do your earnings change during the year?
+        </p>
+        <p
+          className="mt-1 mb-3 text-[1rem] text-grey-70"
+          id="earnings-vary-hint"
+        >
+          For example, busier in season and quieter out of season.
+        </p>
+        {errors.earningsVary && (
+          <p
+            className="mb-2 font-semibold text-[1rem] text-red-80"
+            id="earnings-vary-error"
+          >
+            {errors.earningsVary}
+          </p>
+        )}
+        <div
+          aria-describedby={`earnings-vary-hint${errors.earningsVary ? ' earnings-vary-error' : ''}`}
+          aria-labelledby="earnings-vary-label"
+          className="flex gap-3"
+          role="radiogroup"
+        >
+          {varyOptions.map((o, i) => {
+            const selected = earningsVary === o.id
+            return (
+              <button
+                aria-checked={selected}
+                className={`min-w-[6rem] rounded-xl border-2 px-5 py-3 text-center font-semibold text-[1.125rem] transition-all focus-visible:ring-4 focus-visible:ring-teal-40 ${
+                  selected
+                    ? 'border-teal-80 bg-teal-10 text-black-00'
+                    : 'border-grey-20 bg-white-00 text-black-00'
+                }`}
+                id={`earnings-vary-${o.id}`}
+                key={o.id}
+                onClick={() => onEarningsVaryChange(o.id)}
+                onKeyDown={varyRadio[i].onKeyDown}
+                role="radio"
+                tabIndex={varyRadio[i].tabIndex}
+                type="button"
+              >
+                {o.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
+
+      {earningsVary === 'no' && (
+        <div className="flex flex-col gap-4">
+          <MoneyField
+            error={errors.usualMonth}
+            hint="What you typically bring in each month. A rough number is fine."
+            id="usual-month"
+            label="How much do you usually earn each month?"
+            max={NIS.MAX_MONTHLY_INSURABLE}
+            onChange={setUsualMonth}
+            prefix="BDS $"
+            value={usualMonth}
+          />
+        </div>
+      )}
+
+      {earningsVary === 'yes' && (
+        <div className="flex flex-col gap-4">
+          <MoneyField
+            error={errors.goodMonth}
+            hint="When work is steady and money comes in. A rough estimate is fine."
+            id="good-month"
+            label="What does a busy month look like?"
+            onChange={setGoodMonth}
+            prefix="BDS $"
+            value={goodMonth}
+          />
+          <MoneyField
+            error={errors.slowMonth}
+            hint="When work is quiet: slow season, hurricane month, sickness. A rough number is fine."
+            id="slow-month"
+            label="And a slow month?"
+            onChange={setSlowMonth}
+            prefix="BDS $"
+            value={slowMonth}
+          />
+          <MoneyField
+            error={errors.goodMonths}
+            hint="Enter a number from 1 to 12."
+            id="good-months"
+            label="How many busy months do you usually have in a year?"
+            onChange={setGoodMonths}
+            value={goodMonths}
+          />
+        </div>
+      )}
 
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
@@ -689,32 +843,18 @@ function IncomeStep({
 }
 
 /* ── Screen: plan ───────────────────────────────────────────────────── */
+// The options are deliberately unnamed (no Minimum/Moderate/Stronger tiers,
+// no "Recommended" badge): each is just an amount to compare, so none reads
+// as the endorsed choice. Only the minimum carries a label, because that
+// amount is a rule, not a suggestion.
 const TIERS: Array<{
   id: Tier
-  label: string
+  label?: string
   tone: Tone
-  recommended?: boolean
-  sub: string
 }> = [
-  {
-    id: Tier.Minimum,
-    label: 'Minimum',
-    tone: 'yellow',
-    sub: 'Smaller payouts, but every benefit still counts.',
-  },
-  {
-    id: Tier.Moderate,
-    label: 'Moderate',
-    tone: 'green',
-    recommended: true,
-    sub: 'A bigger share of your earnings.',
-  },
-  {
-    id: Tier.Stronger,
-    label: 'Stronger',
-    tone: 'teal',
-    sub: 'The strongest cover you can build.',
-  },
+  { id: Tier.Minimum, label: 'Minimum contribution', tone: 'yellow' },
+  { id: Tier.Moderate, tone: 'green' },
+  { id: Tier.Stronger, tone: 'teal' },
 ]
 
 function PlanStep({
@@ -736,6 +876,10 @@ function PlanStep({
 }) {
   const suggested = suggestedContributions(earnings)
   const monthlyAvg = monthlyAverage(earnings)
+  // When 17.25% of the entered earnings comes out below the flat minimum, the
+  // Minimum card explains why it shows $100 rather than the calculated amount.
+  const rateFromEarnings = monthlyAvg * NIS.SE_RATE
+  const minimumApplies = rateFromEarnings < suggested[Tier.Minimum]
   const chosen = tier ? suggested[tier] : null
   const selTier = TIERS.find((t) => t.id === tier)
   const tierRadio = rovingRadioProps(
@@ -750,7 +894,7 @@ function PlanStep({
       {error && (
         <div className="mb-6">
           <ErrorSummary
-            errors={[{ href: '#tier-minimum', label: error }]}
+            errors={[{ label: error, href: '#tier-minimum' }]}
             ref={errorRef}
             title="There is a problem"
           />
@@ -758,12 +902,11 @@ function PlanStep({
       )}
       <ServiceCaption />
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
-        What should you put in?
+        Choose an amount to compare
       </h1>
       <p className="mb-5 text-[1.125rem] text-grey-70">
-        Pick a level you can afford. The more you put in, the bigger your
-        benefits. You&rsquo;ll see what each one protects next. These estimates
-        are based on the earnings you entered.
+        Compare how much you could pay and the benefits you may get. You can
+        choose a different amount when you make a payment.
       </p>
 
       {/* A caption, not a card: the contribution levels below are the things to
@@ -773,14 +916,13 @@ function PlanStep({
         <span className="font-semibold text-black-00 tabular-nums">
           {money(monthlyAvg)}
         </span>
-        <Button
-          className="ml-auto"
+        <button
+          className="govbb-link ml-auto"
           onClick={onBack}
           type="button"
-          variant="text"
         >
           Change your earnings
-        </Button>
+        </button>
       </div>
 
       <div className={error ? 'border-red-80 border-l-4 pl-4' : ''}>
@@ -794,7 +936,7 @@ function PlanStep({
         )}
         <div
           aria-describedby={error ? 'tier-error' : undefined}
-          aria-label="Contribution level"
+          aria-label="Contribution amount to compare"
           className="flex flex-col gap-3"
           role="radiogroup"
         >
@@ -821,24 +963,44 @@ function PlanStep({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1 text-black-00">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-[1.25rem]">{t.label}</p>
-                      {t.recommended && (
-                        <span
-                          className={`rounded-full border bg-white-00 ${tone.border} ${tone.text} px-2.5 py-1 font-semibold text-[0.85rem]`}
-                        >
-                          Recommended
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 font-bold text-[2rem] tabular-nums leading-none">
+                    {t.label && (
+                      <p className="mb-1 font-semibold text-[1rem] text-grey-70">
+                        {t.label}
+                      </p>
+                    )}
+                    <p className="font-bold text-[2rem] tabular-nums leading-none">
                       {money(suggested[t.id])}
                       <span className="font-normal text-[1rem] text-grey-70">
                         {' '}
                         /month
                       </span>
                     </p>
-                    <p className="mt-2 text-[1rem] text-grey-70">{t.sub}</p>
+                    <p className="mt-1 text-[1rem] text-grey-70">
+                      About{' '}
+                      <span className="tabular-nums">
+                        {money((suggested[t.id] * 12) / 52)}
+                      </span>{' '}
+                      a week
+                    </p>
+                    {t.id === Tier.Minimum && minimumApplies && (
+                      <p className="mt-3 text-[1rem] text-black-00">
+                        <strong>Why have we shown this minimum</strong>
+                        <br />
+                        {(NIS.SE_RATE * 100).toFixed(2)}% of the{' '}
+                        <span className="tabular-nums">
+                          {money(monthlyAvg)}
+                        </span>{' '}
+                        monthly earnings you entered is about{' '}
+                        <span className="tabular-nums">
+                          {money(rateFromEarnings)}
+                        </span>
+                        . The lowest contribution is{' '}
+                        <span className="tabular-nums">
+                          {money(suggested[Tier.Minimum])}
+                        </span>{' '}
+                        a month, so we have shown the minimum.
+                      </p>
+                    )}
                   </div>
                   <span
                     className={`mt-1 inline-flex h-6 w-6 shrink-0 rounded-full ${
@@ -864,13 +1026,15 @@ function PlanStep({
         >
           <div className="mb-1 flex items-start justify-between gap-3">
             <p className="font-semibold text-[0.95rem] text-teal-20 uppercase tracking-wide">
-              Your plan
+              Your selected amount
             </p>
-            <span
-              className={`inline-flex items-center rounded-full ${TONE[selTier.tone].bg} ${TONE[selTier.tone].text} px-4 py-1.5 font-bold text-[1.05rem]`}
-            >
-              {selTier.label}
-            </span>
+            {selTier.label && (
+              <span
+                className={`inline-flex items-center rounded-full ${TONE[selTier.tone].bg} ${TONE[selTier.tone].text} px-4 py-1.5 font-bold text-[1.05rem]`}
+              >
+                {selTier.label}
+              </span>
+            )}
           </div>
           <p className="mb-1 font-bold text-[2rem] tabular-nums leading-tight">
             {money(chosen)}
@@ -880,33 +1044,26 @@ function PlanStep({
             </span>
           </p>
           <p className="text-[1rem] text-white-00/90">
-            About <strong className="tabular-nums">{money(chosen / 4)}</strong>{' '}
+            About{' '}
+            <strong className="tabular-nums">
+              {money((chosen * 12) / 52)}
+            </strong>{' '}
             a week.
           </p>
-          <div className="mt-4 grid grid-cols-2 gap-4 border-white-00/20 border-t pt-4">
-            <div>
-              <p className="text-[0.95rem] text-teal-20 uppercase tracking-wide">
-                In a year
-              </p>
-              <p className="font-bold text-[1.3rem] tabular-nums">
-                {money(chosen * 12)}
-              </p>
-            </div>
-            <div>
-              <p className="text-[0.95rem] text-teal-20 uppercase tracking-wide">
-                In 10 years
-              </p>
-              <p className="font-bold text-[1.3rem] tabular-nums">
-                {money(chosen * 12 * 10)}
-              </p>
-            </div>
+          <div className="mt-4 border-white-00/20 border-t pt-4">
+            <p className="text-[0.95rem] text-teal-20 uppercase tracking-wide">
+              In a year
+            </p>
+            <p className="font-bold text-[1.3rem] tabular-nums">
+              {money(chosen * 12)}
+            </p>
           </div>
         </div>
       )}
 
       <div className="mt-6 space-y-2 border-blue-20 border-l-4 bg-grey-20/50 p-4 text-[1rem] text-black-00">
         <p>
-          <strong>Good month?</strong> Pay a bit more.{' '}
+          <strong>Busy month?</strong> Pay a bit more.{' '}
           <strong>Slow month?</strong> Pay less, or skip it. What matters is
           your total for the year.
         </p>
@@ -921,7 +1078,7 @@ function PlanStep({
           Previous
         </Button>
         <Button onClick={onContinue} type="button">
-          See what this protects
+          See your estimated benefits
         </Button>
       </div>
     </div>
@@ -934,6 +1091,7 @@ function BenefitCard({
   icon,
   title,
   tone,
+  explain,
   without,
   withNis,
 }: {
@@ -941,6 +1099,7 @@ function BenefitCard({
   icon: string
   title: string
   tone: Tone
+  explain: ReactNode
   without: ReactNode
   withNis: ReactNode
 }) {
@@ -961,15 +1120,16 @@ function BenefitCard({
         />
       </summary>
       <div className="flex flex-col gap-3 border-grey-20 border-t px-4 pt-4 pb-5">
-        <div className="rounded-lg border border-red-20/60 bg-red-10 p-3">
-          <p className="mb-1 font-semibold text-[0.95rem] text-red-80 uppercase tracking-wide">
-            Without NISSS
+        <p className="text-[1.125rem] text-black-00">{explain}</p>
+        <div className="rounded-lg border border-grey-20 bg-grey-20/40 p-3">
+          <p className="mb-1 font-semibold text-[0.95rem] text-grey-70 uppercase tracking-wide">
+            Without NIS
           </p>
           <p className="text-[1.125rem] text-black-00">{without}</p>
         </div>
         <div className="rounded-lg border border-green-20 bg-green-10 p-3">
           <p className="mb-1 font-semibold text-[0.95rem] text-green-80 uppercase tracking-wide">
-            With NISSS
+            With NIS
           </p>
           <p className="text-[1.125rem] text-black-00">{withNis}</p>
         </div>
@@ -990,32 +1150,27 @@ function ResultStep({
   tier: Tier
 }) {
   const b = estimateBenefits(earnings, tier)
-  const risk = earningsAtRisk(earnings)
 
   const items: Array<{
     icon: string
     title: string
     tone: Tone
+    explain: ReactNode
     without: ReactNode
-    withNis: ReactNode
+    estimate: ReactNode
   }> = [
     {
       icon: 'sickness',
       title: 'Sickness Benefit',
       tone: 'teal',
-      without: (
+      explain: 'May help if you cannot work because you are ill.',
+      without: 'Time off to recover would be unpaid.',
+      estimate: (
         <>
-          Two weeks off sick is about{' '}
-          <strong>{money(risk.twoWeeksLost)}</strong> you couldn&rsquo;t earn —
-          rent, food and bills still due.
-        </>
-      ),
-      withNis: (
-        <>
-          Sickness Benefit pays about <PerWeek weekly={b.sicknessWeekly} />,
-          roughly two-thirds of your usual earnings, for up to{' '}
-          {NIS.SICKNESS_MAX_WEEKS} weeks. If you&rsquo;re still unwell after
-          that, NISSS may pay for up to {NIS.SICKNESS_MAX_WEEKS} more weeks.
+          Based on the contribution you selected, your estimated Sickness
+          Benefit is about <PerWeek weekly={b.sicknessWeekly} />. If you
+          qualify, NIS may pay it for up to {NIS.SICKNESS_MAX_WEEKS} weeks and,
+          in some cases, for up to {NIS.SICKNESS_MAX_WEEKS} more weeks.
         </>
       ),
     },
@@ -1023,12 +1178,13 @@ function ResultStep({
       icon: 'maternity',
       title: 'Maternity Benefit',
       tone: 'pink',
-      without:
-        'Time off to have your baby means no money coming in. Many parents go back to work too soon.',
-      withNis: (
+      explain: 'May help mothers who take time off to have a baby.',
+      without: 'Time off to have your baby would be unpaid.',
+      estimate: (
         <>
-          Maternity Benefit pays about <PerWeek weekly={b.maternityWeekly} />,
-          based on your earnings, for your time off.
+          If you qualify, you may get about{' '}
+          <PerWeek weekly={b.maternityWeekly} /> in Maternity Benefit, based on
+          your earnings, for your time off.
         </>
       ),
     },
@@ -1036,12 +1192,13 @@ function ResultStep({
       icon: 'paternity',
       title: 'Paternity Benefit',
       tone: 'blue',
-      without:
-        'Taking time with a new baby usually means unpaid days away from work.',
-      withNis: (
+      explain: 'May help fathers who take time off after a baby is born.',
+      without: 'Time off after your baby arrives would be unpaid.',
+      estimate: (
         <>
-          Paternity Benefit gives new fathers a {NIS.PATERNITY_WEEKS}-week paid
-          break of about <PerWeek weekly={b.paternityWeekly} />.
+          If you qualify, you may get a {NIS.PATERNITY_WEEKS}-week paid
+          Paternity Benefit break of about{' '}
+          <PerWeek weekly={b.paternityWeekly} />.
         </>
       ),
     },
@@ -1049,10 +1206,13 @@ function ResultStep({
       icon: 'invalidity',
       title: 'Invalidity Pension',
       tone: 'purple',
-      without: 'No safety net. Savings go fast, and family has to step in.',
-      withNis: (
+      explain:
+        'May help if a long-term illness or injury stops you from working.',
+      without:
+        'There would be no ongoing income if you could not work long-term.',
+      estimate: (
         <>
-          Invalidity Pension gives ongoing income of about{' '}
+          If you qualify, you may get ongoing Invalidity Pension income of about{' '}
           <PerWeek weekly={b.invalidityWeekly} /> (at least{' '}
           {money(NIS.INVALIDITY_MIN_WEEKLY)} a week).
         </>
@@ -1062,11 +1222,11 @@ function ResultStep({
       icon: 'survivors',
       title: "Survivors' Benefit",
       tone: 'yellow',
-      without:
-        'Your partner, children or parents lose the income you brought in.',
-      withNis: (
+      explain: 'May help some family members after you die.',
+      without: 'Your family would not receive this support.',
+      estimate: (
         <>
-          Survivors&rsquo; Benefit shares about{' '}
+          If they qualify, Survivors&rsquo; Benefit may share about{' '}
           <PerWeek weekly={b.survivorsWeekly} /> among your partner, children or
           parents, plus a {money(b.childGrant)} grant per child.
         </>
@@ -1076,17 +1236,13 @@ function ResultStep({
       icon: 'pension',
       title: 'Old-Age Contributory Pension',
       tone: 'green',
-      without: (
+      explain: <>May provide regular support from age {NIS.PENSIONABLE_AGE}.</>,
+      without: 'You would need to fund your retirement another way.',
+      estimate: (
         <>
-          Without a pension, that&rsquo;s about{' '}
-          <strong>{money(risk.yearLost)}/year</strong> you&rsquo;d need to find
-          from somewhere else.
-        </>
-      ),
-      withNis: (
-        <>
-          An Old-Age Pension for life from age {NIS.PENSIONABLE_AGE}, starting
-          around <PerWeek weekly={b.pensionWeekly} /> and growing the longer you
+          If you qualify, you may get an Old-Age Pension for life from age{' '}
+          {NIS.PENSIONABLE_AGE}, starting around{' '}
+          <PerWeek weekly={b.pensionWeekly} /> and growing the longer you
           contribute.
         </>
       ),
@@ -1095,12 +1251,13 @@ function ResultStep({
       icon: 'shield',
       title: 'Funeral Grant',
       tone: 'teal',
-      without: 'Funeral costs land on your family at the worst possible time.',
-      withNis: (
+      explain: 'May help with funeral costs.',
+      without: 'Funeral costs would fall to your family.',
+      estimate: (
         <>
-          A one-time Funeral Grant of{' '}
-          <strong className="tabular-nums">{money(b.funeralGrant)}</strong>{' '}
-          helps your family with the costs. Included at every level.
+          If you qualify, a one-time Funeral Grant of{' '}
+          <strong className="tabular-nums">{money(b.funeralGrant)}</strong> may
+          help your family with the costs. Included at every level.
         </>
       ),
     },
@@ -1110,51 +1267,34 @@ function ResultStep({
     <div>
       <ServiceCaption />
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
-        What your plan protects you from
+        Benefits you may get
       </h1>
       <p className="mb-6 text-[1.125rem] text-grey-70">
-        For{' '}
+        These estimates are based on the{' '}
         <strong className="text-black-00 tabular-nums">
           {money(b.monthlyContribution)}
-        </strong>
-        /month, here&rsquo;s each moment{' '}
-        <strong className="text-red-80">without NISSS</strong> and{' '}
-        <strong className="text-green-80">with it</strong>. Figures are
-        estimates based on the amount you chose to put in.
+        </strong>{' '}
+        a month contribution you selected. They are not based directly on the
+        earnings you entered. NIS will confirm whether you qualify and how much
+        you may get when you claim.
       </p>
       <p className="mb-3 text-[1rem] text-grey-70">
-        Tap any benefit to see what happens.
+        Select a benefit to see who may get it and when.
       </p>
 
       <div className="flex flex-col gap-3">
         {items.map((it, i) => (
           <BenefitCard
             defaultOpen={i === 0}
+            explain={it.explain}
             icon={it.icon}
             key={it.title}
             title={it.title}
             tone={it.tone}
             without={it.without}
-            withNis={it.withNis}
+            withNis={it.estimate}
           />
         ))}
-      </div>
-
-      <div className="mt-6 space-y-2 border-blue-20 border-l-4 bg-grey-20/50 p-4 text-[1rem] text-black-00">
-        <p>
-          Each benefit has its own qualifying rules. How much you receive may
-          depend on your earnings and contribution record.
-        </p>
-        <p>
-          National Insurance for self-employed workers does not include
-          unemployment benefit.
-        </p>
-        <p>
-          Estimates only. Benefit amounts are calculated from your insurable
-          earnings (your contribution ÷ {Math.round(NIS.SE_RATE * 10000) / 100}
-          %) and your most recent year of contributions, and are subject to
-          change. Final amounts are confirmed by NISSS Benefits.
-        </p>
       </div>
 
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
@@ -1170,63 +1310,6 @@ function ResultStep({
 }
 
 /* ── Screen: next steps ─────────────────────────────────────────────── */
-// A disclosure styled like the benefit cards on the result screen: neutral
-// card, colour only on the icon, a rule under the title separating it from the
-// body. Each card carries its own detail rather than linking away, so the
-// payment and contact routes are here rather than at the end of a link.
-function NextStepCard({
-  children,
-  icon,
-  sub,
-  title,
-  tone,
-}: {
-  children: ReactNode
-  icon: string
-  sub: string
-  title: string
-  tone: Tone
-}) {
-  return (
-    <details className="group overflow-hidden rounded-xl border border-grey-20 bg-white-00">
-      <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
-        <IconCircle name={icon} tint tone={tone} />
-        <span className="min-w-0 flex-1 font-semibold text-[1.25rem] text-black-00">
-          {title}
-        </span>
-        <Icon
-          className="h-6 w-6 shrink-0 text-black-00 transition-transform group-open:rotate-180"
-          name="chevronDown"
-          strokeWidth={2.25}
-        />
-      </summary>
-      <div className="border-grey-20 border-t px-4 pt-4 pb-5">
-        <p className="text-[1rem] text-black-00/80">{sub}</p>
-        {children}
-      </div>
-    </details>
-  )
-}
-
-// `label — detail` rows. Unmarked (no bullets) to match the prototype, but a
-// list so the routes are announced as a set.
-function OptionList({
-  items,
-}: {
-  items: Array<{ detail: ReactNode; label: string }>
-}) {
-  return (
-    <ul className="mt-3 flex flex-col gap-2 text-[1rem] text-black-00">
-      {items.map((it) => (
-        <li key={it.label}>
-          <strong className="font-semibold">{it.label}</strong> &mdash;{' '}
-          {it.detail}
-        </li>
-      ))}
-    </ul>
-  )
-}
-
 function NextSteps({
   onBack,
   onRestart,
@@ -1234,119 +1317,52 @@ function NextSteps({
   onBack: () => void
   onRestart: () => void
 }) {
+  const serviceHref =
+    '/money-financial-support/national-insurance-for-self-employed-workers'
   return (
     <div>
       <ServiceCaption />
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
-        Ready to take the next step?
+        What to do next
       </h1>
       <p className="mb-6 text-[1.125rem] text-grey-70">
-        Choose what works best for you right now.
+        Below are a few steps you could take:
       </p>
 
-      <div className="flex flex-col gap-3">
-        <NextStepCard
-          icon="shield"
-          sub="Get set up to start contributing. Takes about 10 minutes."
-          title="Register with NISSS"
-          tone="teal"
-        >
-          <Link
-            className="mt-3 inline-flex items-center gap-2"
-            href={REGISTER_HREF}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            Start registration
-            <Icon className="h-4 w-4" name="arrowRight" strokeWidth={2} />
+      <ul className="flex flex-col gap-3 text-[1.125rem]">
+        <li>
+          <Link href={`${serviceHref}/how-to-get-your-benefits`}>
+            Find out how to get your benefits
           </Link>
-        </NextStepCard>
+        </li>
+        <li>
+          <Link href={`${serviceHref}#make-a-payment`}>
+            See how and when to pay National Insurance
+          </Link>
+        </li>
+      </ul>
 
-        <NextStepCard
-          icon="card"
-          sub="Pay weekly, monthly, or in a lump sum — whatever fits your cash flow."
-          title="See how to pay"
-          tone="blue"
-        >
-          <OptionList
-            items={[
-              {
-                label: 'NISSS online portal',
-                detail: 'pay from your phone, anytime',
-              },
-              {
-                label: 'SurePay',
-                detail: 'pay cash or card at any SurePay location',
-              },
-              {
-                label: 'EZpay+',
-                detail: (
-                  <>
-                    pay 24/7 at{' '}
-                    <Link
-                      href="https://ezpay.gov.bb"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      ezpay.gov.bb
-                    </Link>
-                  </>
-                ),
-              },
-              {
-                label: 'Bank transfer',
-                detail: 'standing order or one-off transfer',
-              },
-              {
-                label: 'In person at NISSS',
-                detail: 'pay at the office and get help',
-              },
-            ]}
-          />
-        </NextStepCard>
+      <h2 className="mt-8 mb-2 font-bold text-[1.5rem] text-black-00">
+        Get help
+      </h2>
+      <p className="text-[1.125rem]">
+        Contact the <strong>Self-Employed Unit</strong> at NIS by calling{' '}
+        <strong>431-7400</strong>, or visit the <strong>NIS office</strong> in
+        person.
+      </p>
+      <p className="mt-4 text-[1.125rem]">
+        <strong>NIS office</strong>
+        <br />
+        National Insurance and Social Security Service
+        <br />
+        Frank Walcott Building
+        <br />
+        Culloden Road
+        <br />
+        St. Michael
+      </p>
 
-        <NextStepCard
-          icon="phone"
-          sub="Have a question? Here’s how to reach them."
-          title="Contact NISSS"
-          tone="yellow"
-        >
-          <OptionList
-            items={[
-              {
-                label: 'Call',
-                detail: <Link href="tel:+12464317400">246-431-7400</Link>,
-              },
-              {
-                label: 'Visit',
-                detail:
-                  'Frank Walcott Building, Bridgetown, or any branch office',
-              },
-              {
-                label: 'Online',
-                detail: (
-                  <Link
-                    href="https://www.nis.gov.bb"
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    nis.gov.bb
-                  </Link>
-                ),
-              },
-            ]}
-          />
-        </NextStepCard>
-      </div>
-
-      <div className="mt-6 border-blue-20 border-l-4 bg-grey-20/50 p-4 text-[1rem] text-black-00">
-        <p>
-          You can step away at any time. Joining is voluntary, and you choose
-          how much to contribute.
-        </p>
-      </div>
-
-      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
+      <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">
         <Button onClick={onBack} type="button" variant="secondary">
           Previous
         </Button>

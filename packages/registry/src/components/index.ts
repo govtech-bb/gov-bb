@@ -6,6 +6,7 @@ export { Address } from "./address";
 export { AddressLookup } from "./address-lookup";
 export { Bank } from "./bank";
 export { Confirmation } from "./confirmation";
+export { Content } from "./content";
 export { ContactTelephone } from "./contact-number";
 export { Country } from "./country";
 export { GenericDate } from "./date";
@@ -58,6 +59,7 @@ import { Address } from "./address";
 import { AddressLookup } from "./address-lookup";
 import { Bank } from "./bank";
 import { Confirmation } from "./confirmation";
+import { Content } from "./content";
 import { ContactTelephone } from "./contact-number";
 import { Country } from "./country";
 import { GenericDate } from "./date";
@@ -126,6 +128,7 @@ const ALL = [
   AddressLookup,
   Bank,
   Confirmation,
+  Content,
   ContactTelephone,
   Country,
   GenericDate,
@@ -161,7 +164,7 @@ const ALL = [
 
 // Completeness guard: bump the literal type whenever you add a component to
 // ALL, so a registered-but-unlisted component fails the build.
-const _componentCount: 50 = ALL.length;
+const _componentCount: 51 = ALL.length;
 
 export const REGISTRY_COMPONENTS: Record<`components/${string}`, Primitive> =
   Object.fromEntries(ALL.map((c) => [`components/${c.fieldId}`, c]));

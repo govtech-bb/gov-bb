@@ -15,10 +15,12 @@ import {
 } from "@govtech-bb/form-validation";
 import {
   resolveStepTitle,
+  interpolateConfirmationMarkdown,
   type StepScopedValues,
 } from "@govtech-bb/form-conditions";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import { deriveHigherRiskSelection } from "../forms/submissions/derive-higher-risk";
+import { isOptionField, resolveOptionDisplay } from "../forms/field-display";
 import type {
   SubmissionAuditTrail,
   SubmissionCreatedEvent,
@@ -215,9 +217,16 @@ export class EmailBodyBuilder {
     // It's the same markdown the live confirmation page renders; parsing it
     // synchronously (marked.parse returns a string when async isn't enabled)
     // keeps the email copy in step with the page.
-    const markdownContent = contract.steps.find(
+    const rawMarkdown = contract.steps.find(
       (s) => s.stepId === "submission-confirmation",
     )?.markdownContent;
+    // Substitute the resolved polyclinic into the `{polyclinic}` token so the
+    // email names the polyclinic the request went to. Shared with the live
+    // confirmation page via interpolateConfirmationMarkdown so the email and
+    // page copy can't drift (#2201).
+    const markdownContent = interpolateConfirmationMarkdown(rawMarkdown, {
+      polyclinic: payload.resolvedCatchment?.polyclinic,
+    });
     const markdownHtml = markdownContent
       ? markdownRenderer.render(markdownContent)
       : undefined;
@@ -270,7 +279,14 @@ export class EmailBodyBuilder {
     const cached = this.contractCache.get<ServiceContract>(formId);
     if (cached) return cached;
 
-    const contract = await this.formDefinitionsService.findByFormId({ formId });
+    // Bypass the visibility gate (#2125): this builds the email for an
+    // already-created submission, so the published contract must resolve
+    // regardless of the form's current visibility (e.g. a draft/preview form).
+    // Serves the published recipe only — never the draft DB scratch.
+    const contract = await this.formDefinitionsService.findByFormId({
+      formId,
+      bypassVisibility: true,
+    });
     this.contractCache.set(formId, contract);
     return contract;
   }
@@ -304,7 +320,7 @@ export class EmailBodyBuilder {
           ? [...new Set((rawHidden as string[][]).flat())]
           : (rawHidden as string[]);
 
-    const SKIP_TYPES = new Set<Primitive["htmlType"]>(["show-hide"]);
+    const SKIP_TYPES = new Set<Primitive["htmlType"]>(["show-hide", "content"]);
 
     const fields = step.elements
       .filter((el) => !SKIP_TYPES.has(el.htmlType))
@@ -326,38 +342,15 @@ export class EmailBodyBuilder {
   private formatValue(field: Primitive, raw: unknown): string {
     if (raw === null || raw === undefined || raw === "") return "";
 
+    // Option fields (radio/select/checkbox/checkbox-accordion) resolve value
+    // slugs to labels via the shared helper — the same resolution the CMS
+    // webhook payload uses (#842) — then render as a comma-joined string.
+    if (isOptionField(field)) {
+      const display = resolveOptionDisplay(field, raw);
+      return Array.isArray(display) ? display.join(", ") : String(display);
+    }
+
     switch (field.htmlType) {
-      case "radio":
-        return (
-          field.options?.find((o) => o.value === String(raw))?.label ??
-          String(raw)
-        );
-
-      case "select": {
-        // select[multiple] carries an array of values; single-select carries a scalar.
-        if (field.multiple && Array.isArray(raw)) {
-          return this.resolveOptionLabels(field.options ?? [], raw);
-        }
-        return (
-          field.options?.find((o) => o.value === String(raw))?.label ??
-          String(raw)
-        );
-      }
-
-      case "checkbox":
-        return this.resolveOptionLabels(
-          field.options ?? [],
-          Array.isArray(raw) ? raw : [raw],
-        );
-
-      case "checkbox-accordion":
-        // Value is a flat string[] across all categories; resolve labels from
-        // the groups' options flattened into one list.
-        return this.resolveOptionLabels(
-          (field.groups ?? []).flatMap((g) => g.options),
-          Array.isArray(raw) ? raw : [raw],
-        );
-
       case "file": {
         // Stored answer is an array of { key, name, size, type } upload items.
         // Mirror FilesService.collectFileEntries: only items with a non-empty
@@ -387,17 +380,6 @@ export class EmailBodyBuilder {
       default:
         return String(raw);
     }
-  }
-
-  private resolveOptionLabels(
-    options: Array<{ label: string; value: string }>,
-    selected: unknown[],
-  ): string {
-    return selected
-      .map(
-        (v) => options.find((o) => o.value === String(v))?.label ?? String(v),
-      )
-      .join(", ");
   }
 }
 

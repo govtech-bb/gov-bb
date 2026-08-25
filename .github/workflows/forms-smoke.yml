@@ -46,6 +46,9 @@ jobs:
   smoke:
     name: Smoke (${{ inputs.spec }})
     runs-on: ubuntu-latest
+    # A single spec runs in ~3m; this is a backstop against a hang, not a
+    # performance budget. Without it the job inherits GitHub's 6h default.
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -57,8 +60,30 @@ jobs:
           node-version-file: ".nvmrc"
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
+      - name: Resolve Playwright version
+        id: playwright-version
+        # Keys the browser cache. `playwright --version` prints "Version 1.2.3".
+        run: |
+          version="$(pnpm --filter @govtech-bb/forms exec playwright --version | awk '{print $2}')"
+          test -n "$version" || { echo "could not resolve playwright version"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          # Version-pinned with no restore-keys: a partial hit would restore a
+          # browser build the installed Playwright can't drive.
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
       - name: Install Playwright chromium
-        run: pnpm --filter @govtech-bb/forms exec playwright install --with-deps chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        # No --with-deps: it shells out to apt as root on every run, and a
+        # retry loop against an unreachable Ubuntu mirror is what wedged the
+        # sandbox queue for hours (#2291, #2299). The ubuntu-latest image
+        # already ships chromium's shared libraries. Timeout kept as a
+        # backstop for the browser download itself.
+        timeout-minutes: 10
+        run: pnpm --filter @govtech-bb/forms exec playwright install chromium
       - name: Run live smoke spec
         env:
           # Both via env (not inline ${{ }}) so nothing is interpolated into the

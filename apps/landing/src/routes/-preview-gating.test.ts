@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   isStartSubPageVisible: vi.fn(() => true),
   isUrlVisible: vi.fn(() => true),
   urlLevel: vi.fn(() => 'public' as const),
+  resolveBareSlugRedirect: vi.fn(() => undefined as string | undefined),
   PAGES: [] as ContentPage[],
 }))
 
@@ -61,6 +62,7 @@ beforeEach(() => {
   mocks.isStartSubPageVisible.mockReturnValue(true)
   mocks.isUrlVisible.mockReturnValue(true)
   mocks.urlLevel.mockReturnValue('public')
+  mocks.resolveBareSlugRedirect.mockReturnValue(undefined)
 })
 
 describe('$ route loader gating', () => {
@@ -77,6 +79,49 @@ describe('$ route loader gating', () => {
     expect(err).toBeDefined()
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
     expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'public', new Map())
+  })
+
+  it('301-redirects a bare service slug to its canonical URL (#2145)', async () => {
+    const { Route } = await import('./$')
+    // No page/category matches the bare slug, so the loader reaches the
+    // pre-404 bare-slug resolution.
+    mocks.findPage.mockReturnValue(undefined)
+    mocks.resolveBareSlugRedirect.mockReturnValue(
+      'family-birth-relationships/get-marriage-certificate',
+    )
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const err = await loader({
+      params: { _splat: 'get-marriage-certificate' },
+      context: { level: 'public', serviceStatuses: [] },
+    }).catch((e: unknown) => e)
+
+    const opts = (err as { options?: { href?: string; statusCode?: number } })
+      .options
+    expect(opts?.href).toBe(
+      '/family-birth-relationships/get-marriage-certificate',
+    )
+    expect(opts?.statusCode).toBe(301)
+    // Gating context is threaded through to the resolver.
+    expect(mocks.resolveBareSlugRedirect).toHaveBeenCalledWith(
+      'get-marriage-certificate',
+      'public',
+      new Map(),
+    )
+  })
+
+  it('falls through to notFound when a bare slug does not resolve (#2145)', async () => {
+    const { Route } = await import('./$')
+    mocks.findPage.mockReturnValue(undefined)
+    mocks.resolveBareSlugRedirect.mockReturnValue(undefined)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const err = await loader({
+      params: { _splat: 'not-a-real-service' },
+      context: { level: 'public', serviceStatuses: [] },
+    }).catch((e: unknown) => e)
+
+    expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
   })
 
   it('throws notFound for a /start step whose form is non-public to the public', async () => {

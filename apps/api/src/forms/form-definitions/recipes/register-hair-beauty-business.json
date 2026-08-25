@@ -1,0 +1,389 @@
+{
+  "formId": "register-hair-beauty-business",
+  "title": "Apply to Environmental Health for a hairdressing or beauty business licence",
+  "description": "Use this service to register a business that provides hairdressing, barbering, beauty services, manicures or pedicures.",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your hair or beauty business registration application has been received",
+        "recipientField": "contact-details.email"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "subject": "A new hair or beauty business registration application has been received",
+        "recipientField": "catchment.mdaEmail"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "method": "POST",
+        "mapping": {
+          "mdaCode": "MOH",
+          "applicant": {
+            "name": [
+              "owner-details.owner-name"
+            ],
+            "email": "contact-details.email",
+            "phone": "contact-details.telephone"
+          },
+          "groupByStep": true,
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "programmeCode": "HAIR_BEAUTY_BUSINESS",
+          "programmeShortCode": "HBB"
+        },
+        "timeoutMs": 10000,
+        "signatureHeader": "X-Webhook-Signature"
+      }
+    }
+  ],
+  "meta": {
+    "visibility": "preview"
+  },
+  "catchmentRouting": {
+    "parishField": "business-details.business-address-parish",
+    "coordinatesField": "business-details.business-address-coordinates"
+  },
+  "steps": [
+    {
+      "stepId": "business-details",
+      "title": "Business details",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Business name",
+            "fieldId": "business-name",
+            "validations": {
+              "required": {
+                "error": "Enter the business name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "label": "Where will the hairdressing services be provided from?",
+            "options": [
+              {
+                "label": "A fixed building or property",
+                "value": "building"
+              },
+              {
+                "label": "A vehicle",
+                "value": "vehicle"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "hint": "The registration number of the vehicle",
+            "label": "Vehicle registration number",
+            "fieldId": "vehicle-licence",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "vehicle",
+                "operator": "equal",
+                "targetStepId": "business-details",
+                "targetFieldId": "generic-select"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address-lookup",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "business-address-line-1",
+            "geocodeTargets": {
+              "line2FieldId": "business-address-line-2",
+              "parishFieldId": "business-address-parish",
+              "coordinatesFieldId": "business-address-coordinates"
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2",
+            "fieldId": "business-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "business-address-parish"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "hidden": true
+            },
+            "label": "Business address coordinates",
+            "fieldId": "business-address-coordinates",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/postcode",
+          "overrides": {
+            "fieldId": "business-address-postcode"
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "What are you applying to do",
+            "fieldId": "new-or-renew",
+            "options": [
+              {
+                "label": "Apply for a hairdressing salon licence for the first time",
+                "value": "new"
+              },
+              {
+                "label": "Renew a hairdressing salon licence",
+                "value": "renew"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "hint": "Enter the number shown on your current licence or Environmental Health correspondence",
+            "label": "Licence or reference number",
+            "fieldId": "licence-reference-number",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "renew",
+                "operator": "equal",
+                "targetStepId": "business-details",
+                "targetFieldId": "new-or-renew"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "owner-details",
+      "title": "Owner or operator details",
+      "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Name of owner or operator",
+            "fieldId": "owner-name",
+            "validations": {
+              "required": {
+                "error": "Enter the name of the owner or operator",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "owner-address-line-1"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 2",
+            "fieldId": "owner-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/town",
+          "overrides": {
+            "label": "Parish / City / Town",
+            "fieldId": "owner-city-town",
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "label": "Postcode / Zip code",
+            "fieldId": "owner-post-zip-coode",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/country"
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "contact-details",
+      "title": "Your contact details",
+      "elements": [
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "email",
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "telephone",
+            "validations": {
+              "required": {
+                "error": "Enter a valid telephone number",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "information-upload",
+      "title": "Upload documents",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Number of male staff",
+            "fieldId": "male-staff-count"
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "Number of female staff",
+            "fieldId": "female-staff-count"
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "label": "Upload a list of hairdressing / beautician staff",
+            "fieldId": "staff-list"
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "hint": "These are the medical certificates for all hairdressers or beauticians working in the salon. These can be shown during inspection.",
+            "label": "Upload medical certificates",
+            "fieldId": "medical-certs",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I confirm that the information provided is true and correct.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "Environmental Health will review your application. They may contact you if they need more information. They will tell you the result and what to do next if your application is approved. You will receive a confirmation email at the address you provided."
+        }
+      ]
+    }
+  ],
+  "createdAt": "2026-08-20T17:42:48.875Z",
+  "updatedAt": "2026-08-24T18:30:14.612Z"
+}
