@@ -1,6 +1,6 @@
 {
   "formId": "barraks-lodging-environmental-health",
-  "title": "Apply for a barracks or lodging licence with Environmental Hea1th",
+  "title": "Apply for a barracks or lodging licence with Environmental Health",
   "description": "Register a lodging house or barracks with Environmental Health",
   "processors": [
     {
@@ -833,5 +833,5 @@
     }
   ],
   "createdAt": "2026-08-24T23:54:14.187Z",
-  "updatedAt": "2026-08-24T23:54:14.187Z"
+  "updatedAt": "2026-08-25T00:04:17.110Z"
 }
