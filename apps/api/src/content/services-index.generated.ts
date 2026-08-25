@@ -261,7 +261,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "funeral-embalmer-licence-application",
-    title: "Apply to environmental health for an embalmer licence",
+    title: "Apply for an embalmer licence",
     category: "business-trade",
     formId: "funeral-embalmer-licence-application",
     visibility: "preview",

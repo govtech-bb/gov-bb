@@ -1,5 +1,5 @@
 ---
-title: Apply to environmental health for an embalmer licence
+title: Apply for an embalmer licence
 category: business-trade
 stage: alpha
 publish_date: '2026-08-25'
