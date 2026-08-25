@@ -330,17 +330,17 @@ function NextHolidayHero({
         <h2 className="mb-2.5 font-extrabold text-4xl leading-tight tracking-tight">
           {holiday.name}
         </h2>
-        <p className="mb-6 font-bold text-xl text-yellow-80 tracking-tight">
+        <p className="mb-6 font-bold text-body text-yellow-80 tracking-tight">
           {fmtFullDate(holiday.date)}
         </p>
         <p className="font-medium text-[15px] text-white/70">
           {days === 0 || days === 1 ? (
-            <strong className="font-bold text-base text-yellow-80">
+            <strong className="font-bold text-body-sm text-yellow-80">
               {countdownLabel}
             </strong>
           ) : (
             <>
-              <strong className="font-bold text-base text-yellow-80">
+              <strong className="font-bold text-body-sm text-yellow-80">
                 {days}
               </strong>{' '}
               days away
@@ -385,7 +385,7 @@ function YearOverviewHero({
       <span className="mb-3 inline-block rounded-lg bg-grey-20 px-3 py-1 font-bold text-grey-70 text-xs uppercase tracking-wider">
         {pill}
       </span>
-      <h2 className="font-extrabold text-2xl text-blue-40 leading-tight tracking-tight">
+      <h2 className="font-extrabold text-body-lg text-blue-40 leading-tight tracking-tight">
         {heading}
       </h2>
     </section>
@@ -412,7 +412,7 @@ function HolidaySection({
   return (
     <section className="mt-10 first:mt-0">
       <div className="mb-4 flex items-center gap-3">
-        <h2 className="font-extrabold text-2xl text-blue-40 tracking-tight">
+        <h2 className="font-extrabold text-body-lg text-blue-40 tracking-tight">
           {heading}
         </h2>
         <span className="inline-flex items-center rounded-lg bg-grey-20 px-3 py-1 font-medium text-grey-70 text-xs">
@@ -476,14 +476,14 @@ function HolidayRow({
         <span className="block px-1 pt-2 pb-1 text-[11px] uppercase tracking-wider">
           {fmtMonthShort(holiday.date)}
         </span>
-        <span className="block px-1 pb-2.5 text-2xl tracking-tight">
+        <span className="block px-1 pb-2.5 text-body-lg tracking-tight">
           {fmtDayNum(holiday.date)}
         </span>
       </div>
       <div>
         <span
           className={[
-            'block font-bold text-base leading-snug',
+            'block font-bold text-body-sm leading-snug',
             muted ? 'text-grey-70' : 'text-blue-40',
           ].join(' ')}
         >
@@ -528,7 +528,7 @@ function SubstitutionNotice({
 
   return (
     <div className="mt-10 rounded-lg border-blue-40 border-l-4 bg-blue-10 px-5 py-4 text-[15px] text-grey-70">
-      <strong className="mb-1 block text-base text-blue-40">
+      <strong className="mb-1 block text-body-sm text-blue-40">
         When a bank holiday falls on a weekend
       </strong>
       Most holidays falling on a Sunday are observed on the following Monday.{' '}
@@ -559,7 +559,7 @@ function AboutSection() {
       className="mt-16 border-grey-20 border-t-2 pt-8"
     >
       <h2
-        className="mb-3 font-extrabold text-blue-40 text-xl"
+        className="mb-3 font-extrabold text-blue-40 text-body"
         id="about-heading"
       >
         About this list

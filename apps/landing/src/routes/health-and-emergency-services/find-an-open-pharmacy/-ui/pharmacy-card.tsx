@@ -123,7 +123,7 @@ export function PharmacyCard({
         {pharmacy.phone ? (
           <p className="hidden print:block">Call {pharmacy.phone}</p>
         ) : (
-          <Text as="p" className="text-mid-grey-00" size="caption">
+          <Text as="p" className="text-mid-grey-00" size="body-sm">
             No number listed. Call the Drug Service on{' '}
             <Link href={telHref(DRUG_SERVICE_PHONE)}>
               {DRUG_SERVICE_PHONE}
@@ -131,7 +131,7 @@ export function PharmacyCard({
             .
           </Text>
         )}
-        <Text as="p" className="font-medium text-mid-grey-00" size="caption">
+        <Text as="p" className="font-medium text-mid-grey-00" size="body-sm">
           {pharmacy.type === 'unconfirmed'
             ? 'Not confirmed with the Drug Service — call to check.'
             : `Confirmed with the Drug Service, ${REGISTER_VERIFIED}.`}

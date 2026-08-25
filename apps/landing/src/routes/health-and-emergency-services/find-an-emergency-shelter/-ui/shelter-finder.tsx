@@ -294,7 +294,7 @@ export function ShelterFinder() {
       <Text
         as="p"
         className="mb-s text-grey-70 print:hidden"
-        size="caption"
+        size="body-sm"
       >
         <button
           className="underline"
@@ -318,7 +318,7 @@ export function ShelterFinder() {
               onClick={() => setFilterOpen((open) => !open)}
               type="button"
             >
-              <span className="font-bold text-[20px] underline">Filter</span>
+              <span className="font-bold text-body underline">Filter</span>
               <Chevron open={filterOpen} />
             </button>
 
@@ -354,7 +354,7 @@ export function ShelterFinder() {
                       aria-live="polite"
                       as="p"
                       className="text-grey-70"
-                      size="caption"
+                      size="body-sm"
                     >
                       {locationStatus}
                     </Text>
@@ -534,7 +534,7 @@ function FilterGroup({
       {open && (
         <div className="flex flex-col gap-s">
           {hint && (
-            <Text as="p" className="text-grey-70" size="caption">
+            <Text as="p" className="text-grey-70" size="body-sm">
               {hint}
             </Text>
           )}

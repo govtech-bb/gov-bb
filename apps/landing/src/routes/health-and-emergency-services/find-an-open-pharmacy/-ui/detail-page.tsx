@@ -49,7 +49,7 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
       <div className="flex flex-col gap-xs">
         <Heading as="h1">{pharmacy.name}</Heading>
         <div className="border-blue-10 border-b-4 pb-4 text-mid-grey-00">
-          <Text as="p" size="caption">
+          <Text as="p" size="body-sm">
             Last updated on {format(parseISO(PHARMACIES_LAST_UPDATED), 'PPP')}.
             Next review: {format(parseISO(PHARMACIES_NEXT_REVIEW), 'PPP')}.
           </Text>
@@ -144,7 +144,7 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
             </Link>
           </Caveat>
         )}
-        <Text as="p" className="text-mid-grey-00" size="caption">
+        <Text as="p" className="text-mid-grey-00" size="body-sm">
           {pharmacy.type === 'unconfirmed'
             ? 'Drawn from a wider public pharmacy list. '
             : `Confirmed with the Drug Service, ${REGISTER_VERIFIED}. `}

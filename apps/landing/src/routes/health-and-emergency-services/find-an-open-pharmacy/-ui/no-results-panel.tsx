@@ -143,7 +143,7 @@ export function NoResultsPanel({
               <span className="font-semibold text-green-00 underline">
                 {hatch.label}
               </span>
-              <Text as="span" className="text-mid-grey-00" size="caption">
+              <Text as="span" className="text-mid-grey-00" size="body-sm">
                 {hatch.caption}
               </Text>
             </button>

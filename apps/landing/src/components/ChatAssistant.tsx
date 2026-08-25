@@ -107,9 +107,9 @@ export function ChatAssistant({
                   aria-hidden="true"
                   className={`inline-block size-1.5 rounded-full ${dot}`}
                 />
-                <span className="text-base">{label}</span>
+                <span className="text-body-sm">{label}</span>
               </div>
-              <span className="text-base">Powered by alpha.gov.bb</span>
+              <span className="text-body-sm">Powered by alpha.gov.bb</span>
             </div>
           </div>
         </div>
@@ -123,7 +123,7 @@ export function ChatAssistant({
               A
             </div>
             <div className="rounded-2xl rounded-bl-xs bg-blue-10 px-s py-3.5 text-black-00 max-w-130">
-              <Text as="p" className="text-pretty">
+              <Text as="p">
                 Welcome to <strong>alpha.gov.bb.</strong> What would you like
                 help with today?
               </Text>
@@ -149,7 +149,7 @@ export function ChatAssistant({
                 Send
               </Button>
             </div>
-            <Text size="caption" className="text-center text-grey-70">
+            <Text size="body-sm" className="text-center text-grey-70">
               Responses are based on official Government of Barbados information
             </Text>
           </form>

@@ -43,8 +43,8 @@ export function Contact({
       <span
         className={
           isEmergency
-            ? 'font-bold text-2xl text-red-80'
-            : 'font-bold text-teal-80 text-xl'
+            ? 'font-bold text-body-lg text-red-80'
+            : 'font-bold text-teal-80 text-body'
         }
       >
         {number}
