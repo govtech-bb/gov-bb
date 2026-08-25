@@ -32,29 +32,30 @@
  *   FAKER_SEED       fix faker's RNG for a reproducible data set.
  *
  * Form-specific notes:
- *  - This recipe was published from a copy of the hairdresser licence form
- *    (fieldIds like `salon-name`, `salon-address-line-1`, `salon-parish` and
- *    the checkbox option value "at-salon" are leftovers — out of scope for
- *    this smoke fix, tracked separately). Every step in the recipe carries
- *    `behaviours: []`, so — unlike hairdresser-licence-application, which
- *    gates the whole `workplace-details` step behind a separate
- *    `workplace-known` step — there is no step-level conditional here: the
- *    journey is always personal-details → workplace-details → documents →
- *    check-your-answers → declaration → submission-confirmation, so one test
- *    covers the whole form.
- *  - `workplace-details` DOES still carry the hairdresser form's FIELD-level
- *    inline reveals (`fieldConditionalOn` on `workplace-locations`):
- *    `salon-name` / `salon-address-line-1` / `salon-address-line-2` /
- *    `salon-parish` only render once "at-salon" is ticked, and `somewhere-else`
- *    only once "somewhere-else" is ticked. None of the four revealed-and-kept
- *    fields (`salon-name`, `salon-address-line-1`, `salon-parish`,
- *    `somewhere-else`) sets a `required` override, so each inherits
- *    `required: true` from its registry primitive
- *    (packages/registry/src/components/generic-text.ts,
- *    address.ts, parish.ts) — this test ticks both options and fills all four,
- *    or the step will not advance. `salon-address-line-2` DOES set
- *    `required: false` explicitly (like the applicant's own `address-line-2`),
- *    so both are left blank on purpose — proof the optional rule holds.
+ *  - This recipe was published from a copy of the hairdresser licence form.
+ *    Its copy, routing config and field IDs have all since been corrected,
+ *    so what remains inherited is only the SHAPE of `workplace-details`.
+ *  - Every step's `behaviours` array is `[]` — there is no step-level gate.
+ *    Unlike hairdresser-licence-application, which gates the whole
+ *    `workplace-details` step behind a separate `workplace-known` step, that
+ *    gating step does not exist here, so the journey is always
+ *    personal-details → workplace-details → documents → check-your-answers →
+ *    declaration → submission-confirmation. One test covers the whole form.
+ *  - `workplace-details` does carry ELEMENT-level reveals, on the individual
+ *    fields (`overrides.behaviours`, not the step's):
+ *    `funeral-establishment-name`, `-address-line-1`, `-address-line-2` and
+ *    `-parish` are `fieldConditionalOn workplace-locations in
+ *    ["at-funeral-establishment"]`; `somewhere-else` is the same on
+ *    ["somewhere-else"]. `workplace-locations` is a checkbox (operator "in"),
+ *    so this test ticks BOTH options to exercise every conditional field in
+ *    the single journey the form has.
+ *  - `funeral-establishment-name`, `funeral-establishment-address-line-1`,
+ *    `funeral-establishment-parish` and `somewhere-else` set no `required`
+ *    override, so each inherits `required: true` from its registry primitive
+ *    (`components/generic-text`, `components/address`, `components/parish`).
+ *    Only `funeral-establishment-address-line-2` sets `required: false`
+ *    explicitly, matching `address-line-2` on `personal-details` — both are
+ *    left empty on purpose, to prove the optional rule holds.
  *  - `address-line-1` is `components/address-lookup`, so it cannot take a
  *    free-text faker address — the geocoder must return a real Barbados match
  *    to populate the hidden coordinates the catchment router reads
@@ -65,7 +66,7 @@
  *  - `phone-number` is `components/telephone`, whose `phone` rule runs
  *    libphonenumber-js `.isValid()` — a random `246 NNN NNNN` is rejected, the
  *    exchange has to be a real assignable one.
- *  - Both `documents` uploads (`passport-photo`, `medical-certificate`) use
+ *  - Both `documents` uploads (`passport-photo`, `upload-scanned-id`) use
  *    `components/upload-document` with `multiple: false`, so each is a single
  *    confirmed upload via `uploadOne`, not `uploadMany`.
  *  - The confirmation step's `nextSteps` copy (fixed off "hairdresser licence"
@@ -153,9 +154,9 @@ export function buildData() {
     phone: bbMobileNumber(),
 
     // Timestamped so the resulting submission is easy to find in the target env.
-    salonName: `Smoke Test Funeral Home ${new Date().toISOString()}`,
-    salonAddressLine1: faker.location.streetAddress(),
-    salonParish: faker.helpers.arrayElement(PARISH_VALUES),
+    establishmentName: `Smoke Test Funeral Establishment ${new Date().toISOString()}`,
+    establishmentAddressLine1: faker.location.streetAddress(),
+    establishmentParish: faker.helpers.arrayElement(PARISH_VALUES),
     somewhereElse: "Mobile — client homes across the island (smoke test)",
   };
 }
@@ -205,11 +206,11 @@ export async function fillPersonalDetails(
 }
 
 /**
- * Step 2 — workplace details. Ticking "at-salon" reveals the salon block
- * (salon-name / salon-address-line-1 / salon-address-line-2 / salon-parish);
+ * Step 2 — workplace details. Ticking "at-funeral-establishment" reveals the establishment block
+ * (funeral-establishment-name / funeral-establishment-address-line-1 / funeral-establishment-address-line-2 / funeral-establishment-parish);
  * ticking "somewhere-else" independently reveals the free-text
  * `somewhere-else` field. Both blocks are ticked so every inherited-required
- * field in this step (salon-name, salon-address-line-1, salon-parish,
+ * field in this step (funeral-establishment-name, funeral-establishment-address-line-1, funeral-establishment-parish,
  * somewhere-else) is exercised and filled.
  */
 export async function fillWorkplaceDetails(
@@ -219,24 +220,41 @@ export async function fillWorkplaceDetails(
   const step = expectStep(page, "workplace-details");
   await expect(page.locator("h1")).toContainText("where you plan to work");
 
-  const salonName = page.locator(`[id="${step}_salon-name"]`);
+  const establishmentName = page.locator(
+    `[id="${step}_funeral-establishment-name"]`,
+  );
   const somewhereElse = page.locator(`[id="${step}_somewhere-else"]`);
-  await expect(salonName).toBeHidden();
+  await expect(establishmentName).toBeHidden();
   await expect(somewhereElse).toBeHidden();
 
-  await tickCheckbox(page, step, "workplace-locations", "at-salon");
-  await expect(salonName).toBeVisible({ timeout: STEP_TIMEOUT });
-  // "at-salon" reveals the salon block but not the other free-text field.
+  await tickCheckbox(
+    page,
+    step,
+    "workplace-locations",
+    "at-funeral-establishment",
+  );
+  await expect(establishmentName).toBeVisible({ timeout: STEP_TIMEOUT });
+  // "at-funeral-establishment" reveals the establishment block but not the other free-text field.
   await expect(somewhereElse).toBeHidden();
 
   await tickCheckbox(page, step, "workplace-locations", "somewhere-else");
   await expect(somewhereElse).toBeVisible({ timeout: STEP_TIMEOUT });
 
-  await salonName.fill(data.salonName);
-  await fillField(page, step, "salon-address-line-1", data.salonAddressLine1);
-  // salon-address-line-2 is left empty on purpose — the recipe sets
+  await establishmentName.fill(data.establishmentName);
+  await fillField(
+    page,
+    step,
+    "funeral-establishment-address-line-1",
+    data.establishmentAddressLine1,
+  );
+  // funeral-establishment-address-line-2 is left empty on purpose — the recipe sets
   // required: false, and this step advancing is the proof.
-  await selectDropdown(page, step, "salon-parish", data.salonParish);
+  await selectDropdown(
+    page,
+    step,
+    "funeral-establishment-parish",
+    data.establishmentParish,
+  );
   await somewhereElse.fill(data.somewhereElse);
   await advance(page, step);
 }
@@ -250,8 +268,8 @@ export async function fillDocuments(page: Page): Promise<void> {
     mimeType: TEST_PNG.mimeType,
     buffer: TEST_PNG.buffer,
   });
-  await uploadOne(page, step, "medical-certificate", {
-    name: "medical-certificate.png",
+  await uploadOne(page, step, "upload-scanned-id", {
+    name: "national-id.png",
     mimeType: TEST_PNG.mimeType,
     buffer: TEST_PNG.buffer,
   });
@@ -277,7 +295,7 @@ async function confirmAndSubmit(page: Page): Promise<void> {
 }
 
 test.describe("Funeral Directors Licence Application — Live Smoke", () => {
-  test("submits a complete application working at a funeral home and somewhere else", async ({
+  test("submits a complete application working at an establishment and somewhere else", async ({
     page,
   }) => {
     const data = buildData();
@@ -292,7 +310,7 @@ test.describe("Funeral Directors Licence Application — Live Smoke", () => {
     // ─── Check your answers ─────────────────────────────────────────────────
     const step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
-    await expect(page.getByText(data.salonName).first()).toBeVisible();
+    await expect(page.getByText(data.establishmentName).first()).toBeVisible();
     await expect(page.getByText(data.somewhereElse).first()).toBeVisible();
     // SMOKE_HOLD_CYA=1 pauses a headed run here so the review screen can be
     // inspected before anything is submitted (matches the sibling specs).

@@ -196,8 +196,8 @@
             },
             "options": [
               {
-                "label": "At a funeral home",
-                "value": "at-salon"
+                "label": "At a funeral establishment",
+                "value": "at-funeral-establishment"
               },
               {
                 "label": "From home",
@@ -217,16 +217,16 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "salon-name",
-            "label": "What is the name of the funeral home?",
+            "label": "What is the name of the funeral establishment?",
+            "fieldId": "funeral-establishment-name",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "workplace-locations",
-                "operator": "in",
                 "value": [
-                  "at-salon"
-                ]
+                  "at-funeral-establishment"
+                ],
+                "operator": "in",
+                "targetFieldId": "workplace-locations"
               }
             ]
           }
@@ -234,16 +234,16 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "salon-address-line-1",
             "label": "Address line 1",
+            "fieldId": "funeral-establishment-address-line-1",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "workplace-locations",
-                "operator": "in",
                 "value": [
-                  "at-salon"
-                ]
+                  "at-funeral-establishment"
+                ],
+                "operator": "in",
+                "targetFieldId": "workplace-locations"
               }
             ]
           }
@@ -251,38 +251,38 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "salon-address-line-2",
             "label": "Address line 2",
+            "fieldId": "funeral-establishment-address-line-2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": [
+                  "at-funeral-establishment"
+                ],
+                "operator": "in",
+                "targetFieldId": "workplace-locations"
+              }
+            ],
             "validations": {
               "required": {
                 "value": false
               }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "workplace-locations",
-                "operator": "in",
-                "value": [
-                  "at-salon"
-                ]
-              }
-            ]
+            }
           }
         },
         {
           "ref": "components/parish",
           "overrides": {
-            "fieldId": "salon-parish",
             "label": "Parish",
+            "fieldId": "funeral-establishment-parish",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "workplace-locations",
-                "operator": "in",
                 "value": [
-                  "at-salon"
-                ]
+                  "at-funeral-establishment"
+                ],
+                "operator": "in",
+                "targetFieldId": "workplace-locations"
               }
             ]
           }
@@ -345,6 +345,18 @@
               "required": {
                 "value": true,
                 "error": "National ID is required"
+              },
+              "fileTypes": {
+                "error": "Upload your National ID in PDF, JPEG or PNG format",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "File must be 5 MB or smaller",
+                "value": 5242880
               }
             }
           }
