@@ -35,6 +35,14 @@ describe('MarkdownBody', () => {
     expect(html).toContain('href="tel:+12465351000"')
   })
 
+  it('renders an inline phone link as a dialable tel: link in the same tab', async () => {
+    const html = await renderBody(
+      'Telephone: [(246) 536-3800](tel:+12465363800)',
+    )
+    expect(html).toContain('href="tel:+12465363800"')
+    expect(html).not.toContain('target="_blank"')
+  })
+
   it('renders tables and lists with the design system components', async () => {
     const table = await renderBody('| Office | Phone |\n| - | - |\n| a | b |')
     expect(table).toContain('govbb-table')

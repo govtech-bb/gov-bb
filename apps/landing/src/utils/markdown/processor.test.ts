@@ -27,21 +27,20 @@ describe('processMarkdown', () => {
     expect(anchor?.properties.className).toContain('anchor-heading')
   })
 
-  it('sanitizes non-allowlisted link protocols to empty (react-markdown parity)', async () => {
-    const { hast } = await processMarkdown(
-      '[call](tel:+12465351000) [x](javascript:alert(1))',
-    )
-    expect(elements(hast, 'a').map((a) => a.properties.href)).toEqual(['', ''])
+  it('sanitizes non-allowlisted link protocols to empty', async () => {
+    const { hast } = await processMarkdown('[x](javascript:alert(1))')
+    expect(elements(hast, 'a').map((a) => a.properties.href)).toEqual([''])
   })
 
   it('leaves safe, relative and in-page urls untouched', async () => {
     const { hast } = await processMarkdown(
-      '[site](https://gov.bb) [page](/services) [mail](mailto:a@b.com)',
+      '[site](https://gov.bb) [page](/services) [mail](mailto:a@b.com) [call](tel:+12465351000)',
     )
     expect(elements(hast, 'a').map((a) => a.properties.href)).toEqual([
       'https://gov.bb',
       '/services',
       'mailto:a@b.com',
+      'tel:+12465351000',
     ])
   })
 
