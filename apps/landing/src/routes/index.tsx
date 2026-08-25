@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Heading, Search, Text } from '@govtech-bb/react'
 import { ChatAssistant } from '../components/ChatAssistant'
+import { Featured } from '../components/Featured'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { CATEGORIES } from '../content/categories'
 import { isCategoryVisible } from '../content/registry'
@@ -78,30 +79,39 @@ function Home() {
 
       <section>
         <div className="govbb-width-container">
-          <div className="space-y-m py-m lg:py-l">
-            <Heading as="h2">
-              All government services
-            </Heading>
-            <ul className="m-0 flex list-none flex-col p-0">
-              {categories.map((cat) => (
-                <li
-                  key={cat.slug}
-                  className="border-neutral border-b-2 py-s lg:py-xm [--govbb-link-color:var(--govbb-color-tertiary)]"
-                >
-                  <a
-                    href={`/${cat.slug}`}
-                    className="govbb-link govbb-text-body-lg govbb-text-bold"
+          {/*
+            Two columns from lg, matching the design's 1256 = 752 + 128 + 376:
+            with a single 128px gap, 2fr/1fr lands on exactly those widths.
+            Stacks below lg, services first.
+          */}
+          <div className="py-m lg:grid lg:grid-cols-[2fr_1fr] lg:gap-x-xl lg:py-l">
+            <div className="space-y-m">
+              <Heading as="h2">All government services</Heading>
+              <ul className="m-0 flex list-none flex-col p-0">
+                {categories.map((cat) => (
+                  <li
+                    key={cat.slug}
+                    className="border-neutral border-b-2 py-s lg:py-xm [--govbb-link-color:var(--govbb-color-tertiary)]"
                   >
-                    {cat.title}
-                  </a>
-                  {cat.description ? (
-                    <Text as="p" className="mt-xxs">
-                      {cat.description}
-                    </Text>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
+                    <a
+                      href={`/${cat.slug}`}
+                      className="govbb-link govbb-text-body-lg govbb-text-bold"
+                    >
+                      {cat.title}
+                    </a>
+                    {cat.description ? (
+                      <Text as="p" className="mt-xxs">
+                        {cat.description}
+                      </Text>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mt-l lg:mt-0">
+              <Featured />
+            </div>
           </div>
         </div>
       </section>
