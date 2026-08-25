@@ -1,11 +1,11 @@
 ---
-title: Apply for a Funeral Directors Licence
+title: Apply for a funeral directors licence
 description: >-
   Apply to Environmental Health for a Funeral Directors Licence. Free
   application with an annual renewal deadline.
 category: business-trade
 stage: alpha
-publish_date: '2026-08-24'
+publish_date: '2026-08-25'
 visibility: preview
 form_id: funeral-directors-licence-application
 ---
@@ -34,11 +34,12 @@ Your licence expires on 31 December each year. You need to renew it by the first
 You will need to upload:
 
 -   a scanned copy of your ID
+-   a passport sized photograph
 -   a letter evidencing you have been engaged in the business of funeral directing under the direct supervision of a licensed funeral director for over two (2) years or have been working in a funeral director's office for over three (3) years
 
 ## Cost
 
-This is a free service.
+There is neither a cost to apply, nor to receive your licence
 
 ## How long it takes
 
