@@ -241,6 +241,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   {
     slug: "environmental-health-offensive-trade-licence",
     title: "Apply for a offensive trade licence with Environmental Health",
+    category: "business-trade",
     formId: "environmental-health-offensive-trade-licence",
     visibility: "draft",
   },
