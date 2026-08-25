@@ -191,7 +191,7 @@
             "options": [
               {
                 "label": "At a funeral establishment",
-                "value": "at-salon"
+                "value": "at-funeral-establishment"
               },
               {
                 "label": "From home",
@@ -218,12 +218,12 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "What is the name of the funeral establishment?",
-            "fieldId": "salon-name",
+            "fieldId": "funeral-establishment-name",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
                 "value": [
-                  "at-salon"
+                  "at-funeral-establishment"
                 ],
                 "operator": "in",
                 "targetFieldId": "workplace-locations"
@@ -235,12 +235,12 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address line 1",
-            "fieldId": "salon-address-line-1",
+            "fieldId": "funeral-establishment-address-line-1",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
                 "value": [
-                  "at-salon"
+                  "at-funeral-establishment"
                 ],
                 "operator": "in",
                 "targetFieldId": "workplace-locations"
@@ -252,12 +252,12 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address line 2",
-            "fieldId": "salon-address-line-2",
+            "fieldId": "funeral-establishment-address-line-2",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
                 "value": [
-                  "at-salon"
+                  "at-funeral-establishment"
                 ],
                 "operator": "in",
                 "targetFieldId": "workplace-locations"
@@ -274,12 +274,12 @@
           "ref": "components/parish",
           "overrides": {
             "label": "Parish",
-            "fieldId": "salon-parish",
+            "fieldId": "funeral-establishment-parish",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
                 "value": [
-                  "at-salon"
+                  "at-funeral-establishment"
                 ],
                 "operator": "in",
                 "targetFieldId": "workplace-locations"

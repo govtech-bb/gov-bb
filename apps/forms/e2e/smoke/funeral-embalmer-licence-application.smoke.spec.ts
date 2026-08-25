@@ -31,35 +31,30 @@
  *   FAKER_SEED       fix faker's RNG for a reproducible data set.
  *
  * Form-specific notes:
- *  - This recipe is a copy of hairdresser-licence-application (formId + title
- *    + a handful of labels changed, see the recipe file). Its field IDs and
- *    step IDs are the hairdresser form's.
- *  - Every STEP's `behaviours` array is `[]` — there is no step-level gate.
- *    Unlike hairdresser-licence-application (which has a `workplace-known`
- *    step with a `stepConditionalOn` that skips the whole `workplace-details`
- *    step on "no"), that gating step does not exist here, so
- *    `workplace-details` is ALWAYS visited.
- *  - `workplace-details` DOES still carry element-level conditionals, on the
- *    individual fields (`overrides.behaviours`, not the step's). `salon-name`,
- *    `salon-address-line-1`, `salon-address-line-2` and `salon-parish` are
- *    `fieldConditionalOn workplace-locations in ["at-salon"]`; `somewhere-else`
- *    is `fieldConditionalOn workplace-locations in ["somewhere-else"]`.
- *    `workplace-locations` is a CHECKBOX (operator "in"), so this test ticks
- *    BOTH options to exercise every conditional field in the one journey the
- *    form has (there are no other branches, so one test is correct — see
- *    hairdresser-licence-application.smoke.spec.ts for the same pattern).
- *  - The checkbox option labelled "At a funeral establishment" still carries
- *    the hairdresser-derived option `value` "at-salon" (only the label text
- *    was corrected) — the conditionals above match on that value, so it was
- *    deliberately left alone.
- *  - `salon-name`, `salon-address-line-1`, `salon-parish` and `somewhere-else`
- *    have no `required` override in the recipe, so they inherit `required:
- *    true` from their registry primitives (`components/generic-text`,
- *    `components/address`, `components/parish`) — confirmed by reading
- *    packages/registry/src/components directly, not assumed. Only
- *    `salon-address-line-2` sets `required: false` explicitly (matching
- *    `address-line-2` on `personal-details`), so both are left empty on
- *    purpose to prove the optional rule.
+ *  - This recipe was published from a copy of the hairdresser licence form.
+ *    Its copy, routing config and field IDs have all since been corrected,
+ *    so what remains inherited is only the SHAPE of `workplace-details`.
+ *  - Every step's `behaviours` array is `[]` — there is no step-level gate.
+ *    Unlike hairdresser-licence-application, which gates the whole
+ *    `workplace-details` step behind a separate `workplace-known` step, that
+ *    gating step does not exist here, so the journey is always
+ *    personal-details → workplace-details → documents → check-your-answers →
+ *    declaration → submission-confirmation. One test covers the whole form.
+ *  - `workplace-details` does carry ELEMENT-level reveals, on the individual
+ *    fields (`overrides.behaviours`, not the step's):
+ *    `funeral-establishment-name`, `-address-line-1`, `-address-line-2` and
+ *    `-parish` are `fieldConditionalOn workplace-locations in
+ *    ["at-funeral-establishment"]`; `somewhere-else` is the same on
+ *    ["somewhere-else"]. `workplace-locations` is a checkbox (operator "in"),
+ *    so this test ticks BOTH options to exercise every conditional field in
+ *    the single journey the form has.
+ *  - `funeral-establishment-name`, `funeral-establishment-address-line-1`,
+ *    `funeral-establishment-parish` and `somewhere-else` set no `required`
+ *    override, so each inherits `required: true` from its registry primitive
+ *    (`components/generic-text`, `components/address`, `components/parish`).
+ *    Only `funeral-establishment-address-line-2` sets `required: false`
+ *    explicitly, matching `address-line-2` on `personal-details` — both are
+ *    left empty on purpose, to prove the optional rule holds.
  *  - The applicant's address is an address-lookup (geocoder) field, so it
  *    cannot take a free-text faker address — the geocoder must return a real
  *    Barbados match to populate the hidden coordinates the catchment router
@@ -158,9 +153,9 @@ export function buildData() {
     phone: bbMobileNumber(),
 
     // Timestamped so the resulting submission is easy to find in the target env.
-    salonName: `Smoke Test Funeral Establishment ${new Date().toISOString()}`,
-    salonAddressLine1: faker.location.streetAddress(),
-    salonParish: faker.helpers.arrayElement(PARISH_VALUES),
+    establishmentName: `Smoke Test Funeral Establishment ${new Date().toISOString()}`,
+    establishmentAddressLine1: faker.location.streetAddress(),
+    establishmentParish: faker.helpers.arrayElement(PARISH_VALUES),
     somewhereElse:
       "At other locations across the island as required (smoke test)",
   };
@@ -212,7 +207,7 @@ export async function fillPersonalDetails(
 
 /**
  * Step 2 — workplace details. There is no step-level gate (see header note),
- * so this step is always visited, but the salon fields and `somewhere-else`
+ * so this step is always visited, but the establishment fields and `somewhere-else`
  * are individually revealed by ticking the matching `workplace-locations`
  * checkbox option. Ticking both options in one pass exercises every
  * conditional field the recipe has.
@@ -224,24 +219,41 @@ export async function fillWorkplaceDetails(
   const step = expectStep(page, "workplace-details");
   await expect(page.locator("h1")).toContainText("where you plan to work");
 
-  const salonName = page.locator(`[id="${step}_salon-name"]`);
+  const establishmentName = page.locator(
+    `[id="${step}_funeral-establishment-name"]`,
+  );
   const somewhereElse = page.locator(`[id="${step}_somewhere-else"]`);
-  await expect(salonName).toBeHidden();
+  await expect(establishmentName).toBeHidden();
   await expect(somewhereElse).toBeHidden();
 
-  await tickCheckbox(page, step, "workplace-locations", "at-salon");
-  await expect(salonName).toBeVisible({ timeout: STEP_TIMEOUT });
-  // "at-salon" reveals the salon block but not the other free-text field.
+  await tickCheckbox(
+    page,
+    step,
+    "workplace-locations",
+    "at-funeral-establishment",
+  );
+  await expect(establishmentName).toBeVisible({ timeout: STEP_TIMEOUT });
+  // "at-funeral-establishment" reveals the establishment block but not the other free-text field.
   await expect(somewhereElse).toBeHidden();
 
   await tickCheckbox(page, step, "workplace-locations", "somewhere-else");
   await expect(somewhereElse).toBeVisible({ timeout: STEP_TIMEOUT });
 
-  await salonName.fill(data.salonName);
-  await fillField(page, step, "salon-address-line-1", data.salonAddressLine1);
-  // salon-address-line-2 is left empty on purpose — the recipe sets
+  await establishmentName.fill(data.establishmentName);
+  await fillField(
+    page,
+    step,
+    "funeral-establishment-address-line-1",
+    data.establishmentAddressLine1,
+  );
+  // funeral-establishment-address-line-2 is left empty on purpose — the recipe sets
   // required: false, same as personal-details.address-line-2.
-  await selectDropdown(page, step, "salon-parish", data.salonParish);
+  await selectDropdown(
+    page,
+    step,
+    "funeral-establishment-parish",
+    data.establishmentParish,
+  );
   await somewhereElse.fill(data.somewhereElse);
   await advance(page, step);
 }
@@ -297,7 +309,7 @@ test.describe("Funeral Embalmer Licence Application — Live Smoke", () => {
     // ─── Check your answers ─────────────────────────────────────────────────
     const step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
-    await expect(page.getByText(data.salonName).first()).toBeVisible();
+    await expect(page.getByText(data.establishmentName).first()).toBeVisible();
     await expect(page.getByText(data.somewhereElse).first()).toBeVisible();
     // SMOKE_HOLD_CYA=1 pauses a headed run here so the review screen can be
     // inspected before anything is submitted (matches the sibling specs).
