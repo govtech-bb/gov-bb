@@ -273,6 +273,10 @@
                   "image/jpeg",
                   "image/png"
                 ]
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }
@@ -296,6 +300,10 @@
                   "image/jpeg",
                   "image/png"
                 ]
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }
@@ -319,6 +327,10 @@
                   "image/jpeg",
                   "image/png"
                 ]
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }
@@ -341,6 +353,10 @@
                   "image/jpeg",
                   "image/png"
                 ]
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }
