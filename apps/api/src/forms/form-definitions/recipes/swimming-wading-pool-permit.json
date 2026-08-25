@@ -1,6 +1,6 @@
 {
   "formId": "swimming-wading-pool-permit",
-  "title": "Apply for a licence swimming pool with Environmental Health",
+  "title": "App1y for a swimming pool licence with Environmental Health",
   "description": "Apply to Environmental Health for a swimming or wading pool permit",
   "processors": [
     {
@@ -272,19 +272,19 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Describe the other use of the pool",
+            "label": "Describe how is the pool mainly used",
+            "fieldId": "other-pool",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetStepId": "pool-details",
-                "targetFieldId": "pool-usage-type",
-                "operator": "in",
                 "value": [
                   "other"
-                ]
+                ],
+                "operator": "in",
+                "targetStepId": "pool-details",
+                "targetFieldId": "pool-usage-type"
               }
             ],
-            "fieldId": "other-pool",
             "validations": {
               "required": {
                 "value": true
@@ -455,6 +455,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Town and Country Planning Application Number",
+            "fieldId": "town-text",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -468,8 +469,7 @@
               "required": {
                 "value": false
               }
-            },
-            "fieldId": "town-text"
+            }
           }
         }
       ],
@@ -522,7 +522,7 @@
     }
   ],
   "createdAt": "2026-08-20T09:15:58.120Z",
-  "updatedAt": "2026-08-24T22:46:05.006Z",
+  "updatedAt": "2026-08-25T00:09:20.776Z",
   "catchmentRouting": {
     "coordinatesField": "your-details.address-coordinates",
     "parishField": "your-details.parish"
