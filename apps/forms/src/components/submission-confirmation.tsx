@@ -2,7 +2,10 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { interpolateConfirmationMarkdown } from "@govtech-bb/form-conditions";
-import { markdownComponents } from "./markdown-components";
+import {
+  markdownComponents,
+  markdownUrlTransform,
+} from "./markdown-components";
 import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
 import { SubmissionConfirmationProps } from "../types/props.type";
 
@@ -133,6 +136,7 @@ export default function SubmissionConfirmation({
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={markdownComponents}
+            urlTransform={markdownUrlTransform}
           >
             {resolvedMarkdown}
           </ReactMarkdown>

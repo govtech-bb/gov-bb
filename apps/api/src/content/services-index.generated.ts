@@ -193,6 +193,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
+    slug: "barraks-lodging-environmental-health",
+    title: "Apply for a barracks or lodging licence with Environmental Health",
+    category: "business-trade",
+    formId: "barraks-lodging-environmental-health",
+    visibility: "draft",
+  },
+  {
     slug: "calculate-severance-pay",
     title: "Find out how much severance payment you are owed",
     category: "money-financial-support",
@@ -243,7 +250,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     title: "Apply for a offensive trade licence with Environmental Health",
     category: "business-trade",
     formId: "environmental-health-offensive-trade-licence",
-    visibility: "draft",
+    visibility: "preview",
   },
   {
     slug: "funeral-directors-licence-application",
@@ -264,7 +271,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     title: "Apply for a funeral establishment licence",
     category: "business-trade",
     formId: "funeral-establishment-licence-application",
-    visibility: "draft",
+    visibility: "preview",
   },
   {
     slug: "get-a-document-notarised",
@@ -554,7 +561,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     title: "Apply for a offensive matter licence with Environmental Health",
     category: "business-trade",
     formId: "waste-vehicle-licence-application",
-    visibility: "draft",
+    visibility: "preview",
   },
   {
     slug: "what-we-mean-by-alpha",
