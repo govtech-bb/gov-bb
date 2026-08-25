@@ -1,8 +1,8 @@
 ---
-title: Apply to Environmental Health for an Embalmer Licence
+title: Apply for an embalmer licence
 category: business-trade
 stage: alpha
-publish_date: '2026-08-24'
+publish_date: '2026-08-25'
 visibility: preview
 form_id: funeral-embalmer-licence-application
 ---
@@ -19,7 +19,7 @@ You must:
 -   be at least 18 years old
 -   have a valid form of identification
 -   hold a qualification in embalming from an institution of embalming approved by the chief medical officer; or
--   have been engaged in the practice of embalming for a period of more than five (5) years, or have worked under the direct supervision of an approved embalmer for more than three (3) years.
+-   if you have been engaged in the practice of embalming, prior to the regulations coming into effect in 1984, you will need to evidence you have been practicing for a period of more than five (5) years, or have worked under the direct supervision of an approved embalmer for more than three (3) years.
 
 Read the [Health Services (Embalmers and Funeral Directors) Regulations, 1984](https://oag.gov.bb/attachments/Health%20Services%20\(Embalmers%20and%20Funeral%20Directors\)%20Regulations,%201984%20Cap44'L.PDF) for the full legal requirements.
 
