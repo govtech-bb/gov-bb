@@ -44,13 +44,14 @@
  *    fields (`overrides.behaviours`, not the step's):
  *    `funeral-establishment-name`, `-address-line-1`, `-address-line-2` and
  *    `-parish` are `fieldConditionalOn workplace-locations in
- *    ["at-funeral-establishment"]`; `somewhere-else` is the same on
- *    ["somewhere-else"]. `workplace-locations` is a checkbox (operator "in"),
- *    so this test ticks BOTH options to exercise every conditional field in
- *    the single journey the form has.
- *  - `funeral-establishment-name`, `funeral-establishment-address-line-1`,
- *    `funeral-establishment-parish` and `somewhere-else` set no `required`
- *    override, so each inherits `required: true` from its registry primitive
+ *    ["one-funeral-establishment"]`. `workplace-locations` only has two
+ *    options — "At a funeral establishment" (`one-funeral-establishment`) and
+ *    "At multiple funeral establishments" (`multiple-establishments`) — and
+ *    only the first reveals the establishment block, so this test ticks that
+ *    option only.
+ *  - `funeral-establishment-name`, `funeral-establishment-address-line-1` and
+ *    `funeral-establishment-parish` set no `required` override, so each
+ *    inherits `required: true` from its registry primitive
  *    (`components/generic-text`, `components/address`, `components/parish`).
  *    Only `funeral-establishment-address-line-2` sets `required: false`
  *    explicitly, matching `address-line-2` on `personal-details` — both are
@@ -65,9 +66,16 @@
  *  - `phone-number` is `components/telephone`, whose `phone` rule runs
  *    libphonenumber-js `.isValid()` — a random `246 NNN NNNN` is rejected, the
  *    exchange has to be a real assignable one.
- *  - Both `documents` uploads (`passport-photo`, `medical-certificate`) are
- *    required, single-file (`components/upload-document`, `multiple: false`)
- *    fields, so each needs its own confirmed `uploadOne` call.
+ *  - `documents` no longer carries a medical certificate — it now covers the
+ *    statutory eligibility evidence (#2475): `passport-photo` is a required
+ *    single-file upload; `embalmer-qualification` (`components/generic-file`)
+ *    is required unless the `use-reference-letter` disclosure
+ *    (`components/show-hide`) is opened, which flips it `optionalIf` and
+ *    reveals `embalmer-evidence` (`fieldConditionalOn`) — the alternative
+ *    statutory route for applicants who were embalming before the 1984
+ *    regulations. This test opens the disclosure and uploads both files, so
+ *    the reveal itself is asserted (hidden → toggle → visible), not just the
+ *    happy path.
  *  - The confirmation step's `nextSteps` copy has no `{polyclinic}`
  *    placeholder, so there is no resolved-catchment name on screen to assert.
  *    Catchment routing still runs — it picks the polyclinic that gets the MDA
@@ -156,8 +164,6 @@ export function buildData() {
     establishmentName: `Smoke Test Funeral Establishment ${new Date().toISOString()}`,
     establishmentAddressLine1: faker.location.streetAddress(),
     establishmentParish: faker.helpers.arrayElement(PARISH_VALUES),
-    somewhereElse:
-      "At other locations across the island as required (smoke test)",
   };
 }
 
@@ -207,10 +213,10 @@ export async function fillPersonalDetails(
 
 /**
  * Step 2 — workplace details. There is no step-level gate (see header note),
- * so this step is always visited, but the establishment fields and `somewhere-else`
- * are individually revealed by ticking the matching `workplace-locations`
- * checkbox option. Ticking both options in one pass exercises every
- * conditional field the recipe has.
+ * so this step is always visited, but the establishment fields are revealed
+ * by ticking the "At a funeral establishment" `workplace-locations` checkbox
+ * option. The other option, "At multiple funeral establishments", reveals
+ * nothing, so this test ticks the one that does.
  */
 export async function fillWorkplaceDetails(
   page: Page,
@@ -222,22 +228,15 @@ export async function fillWorkplaceDetails(
   const establishmentName = page.locator(
     `[id="${step}_funeral-establishment-name"]`,
   );
-  const somewhereElse = page.locator(`[id="${step}_somewhere-else"]`);
   await expect(establishmentName).toBeHidden();
-  await expect(somewhereElse).toBeHidden();
 
   await tickCheckbox(
     page,
     step,
     "workplace-locations",
-    "at-funeral-establishment",
+    "one-funeral-establishment",
   );
   await expect(establishmentName).toBeVisible({ timeout: STEP_TIMEOUT });
-  // "at-funeral-establishment" reveals the establishment block but not the other free-text field.
-  await expect(somewhereElse).toBeHidden();
-
-  await tickCheckbox(page, step, "workplace-locations", "somewhere-else");
-  await expect(somewhereElse).toBeVisible({ timeout: STEP_TIMEOUT });
 
   await establishmentName.fill(data.establishmentName);
   await fillField(
@@ -254,11 +253,16 @@ export async function fillWorkplaceDetails(
     "funeral-establishment-parish",
     data.establishmentParish,
   );
-  await somewhereElse.fill(data.somewhereElse);
   await advance(page, step);
 }
 
-/** Step 3 — both required documents. */
+/**
+ * Step 3 — documents and eligibility evidence. `embalmer-qualification` is
+ * uploaded up front (it's required unless the reference-letter disclosure is
+ * opened). Opening `use-reference-letter` reveals `embalmer-evidence` — this
+ * is the reveal #2475 was raised about, so it's asserted hidden → toggle →
+ * visible, then uploaded too.
+ */
 export async function fillDocuments(page: Page): Promise<void> {
   const step = expectStep(page, "documents");
   await expect(page.locator("h1")).toContainText("Add your documents");
@@ -267,11 +271,29 @@ export async function fillDocuments(page: Page): Promise<void> {
     mimeType: TEST_PNG.mimeType,
     buffer: TEST_PNG.buffer,
   });
-  await uploadOne(page, step, "medical-certificate", {
-    name: "medical-certificate.png",
+  await uploadOne(page, step, "embalmer-qualification", {
+    name: "embalmer-qualification.png",
     mimeType: TEST_PNG.mimeType,
     buffer: TEST_PNG.buffer,
   });
+
+  const embalmerEvidence = page.locator(`[id="${step}_embalmer-evidence"]`);
+  await expect(embalmerEvidence).toBeHidden();
+  // `components/show-hide` renders as a native <details>/<summary>; clicking
+  // the summary commits `true` through TanStack-Form, which is what the
+  // conditional on `embalmer-evidence` reads.
+  await page
+    .locator("details.govbb-show-hide summary", {
+      hasText: "Use reference letter instead",
+    })
+    .click();
+  await expect(embalmerEvidence).toBeVisible({ timeout: STEP_TIMEOUT });
+  await uploadOne(page, step, "embalmer-evidence", {
+    name: "embalmer-evidence.png",
+    mimeType: TEST_PNG.mimeType,
+    buffer: TEST_PNG.buffer,
+  });
+
   await advance(page, step);
 }
 
@@ -294,7 +316,7 @@ async function confirmAndSubmit(page: Page): Promise<void> {
 }
 
 test.describe("Funeral Embalmer Licence Application — Live Smoke", () => {
-  test("submits a complete application with both workplace options revealed", async ({
+  test("submits a complete application, revealing the reference-letter evidence upload", async ({
     page,
   }) => {
     const data = buildData();
@@ -310,7 +332,6 @@ test.describe("Funeral Embalmer Licence Application — Live Smoke", () => {
     const step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
     await expect(page.getByText(data.establishmentName).first()).toBeVisible();
-    await expect(page.getByText(data.somewhereElse).first()).toBeVisible();
     // SMOKE_HOLD_CYA=1 pauses a headed run here so the review screen can be
     // inspected before anything is submitted (matches the sibling specs).
     if (process.env.SMOKE_HOLD_CYA) await page.pause();
