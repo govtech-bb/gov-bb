@@ -27,15 +27,6 @@ export default function Header() {
         imageAlt=""
         showLearnMore={false}
       />
-      <StatusBanner variant="alpha" fullWidth>
-        <p>
-          This page is in{' '}
-          <GovLink href="/what-we-mean-by-alpha" linkComponent={RouterLink}>
-            Alpha
-          </GovLink>
-          .
-        </p>
-      </StatusBanner>
       <GovHeader
         homeHref="/"
         logoAlt="Go to the alpha.gov.bb homepage"
@@ -51,6 +42,15 @@ export default function Header() {
         }
         navAriaLabel="Primary navigation"
       />
+      <StatusBanner variant="alpha" fullWidth>
+        <p>
+          This page is in{' '}
+          <GovLink href="/what-we-mean-by-alpha" linkComponent={RouterLink}>
+            Alpha
+          </GovLink>
+          .
+        </p>
+      </StatusBanner>
     </>
   )
 }
