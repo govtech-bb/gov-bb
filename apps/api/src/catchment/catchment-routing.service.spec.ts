@@ -276,7 +276,7 @@ describe("programme codes are unchanged by composition (golden)", () => {
       "Sir Winston Scott Polyclinic": "FOOD_BUSINESS_LICENCE_WINSTON_SCOTT",
       "St. Philip Polyclinic": "FOOD_BUSINESS_LICENCE_ST_PHILIP",
     },
-    "hotel-licence-application": {
+    "apply-for-hotel-licence": {
       "Branford Taitt Polyclinic": "HOTEL_LICENCE_BRANFORD_TAITT",
       "David Thompson Health & Social Services Complex":
         "HOTEL_LICENCE_DAVID_THOMPSON",

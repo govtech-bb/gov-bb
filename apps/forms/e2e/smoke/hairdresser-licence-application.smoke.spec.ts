@@ -58,7 +58,7 @@
  *    the picked suggestion carried.
  *  - Both `documents` uploads (`passport-photo`, `medical-certificate`) are
  *    required single-file fields, so each needs its own confirmed upload.
- *  - UNLIKE hotel-licence-application, this recipe's confirmation step uses
+ *  - UNLIKE apply-for-hotel-licence, this recipe's confirmation step uses
  *    generic `nextSteps` copy and no `{polyclinic}` placeholder, so there is no
  *    resolved-catchment name on the confirmation screen to assert. Catchment
  *    routing still runs (it drives the MDA email), it just isn't surfaced to
