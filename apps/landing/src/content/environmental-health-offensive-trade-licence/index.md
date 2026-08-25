@@ -4,6 +4,9 @@ stage: alpha
 publish_date: '2026-08-25'
 visibility: draft
 form_id: environmental-health-offensive-trade-licence
+description: >-
+  Apply online to register or renew a licence for business activities that may
+  cause fumes, gases, waste or strong smells that could harm people’s health.
 ---
 Use this service to apply for or renew an offensive trade licence.
 
