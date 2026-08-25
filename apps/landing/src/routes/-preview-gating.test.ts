@@ -1,5 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ContentPage } from '../content/registry'
+// Type-only, so it erases at runtime and the route still loads lazily, after
+// the mocks below are in place.
+import type * as ContentRouteModule from './$'
 
 // Mock the registry to drive the gate's throw paths deterministically. Only the
 // exports the routes use are stubbed.
@@ -69,7 +72,7 @@ beforeEach(() => {
 // transform takes longer than the 5s default testTimeout on a loaded CI runner,
 // and the cost lands on whichever test imports first — so the hook takes it,
 // with its own generous timeout, and every test then sees a warm module.
-let Route: (typeof import('./$'))['Route']
+let Route: typeof ContentRouteModule.Route
 beforeAll(async () => {
   ;({ Route } = await import('./$'))
 }, 60_000)
