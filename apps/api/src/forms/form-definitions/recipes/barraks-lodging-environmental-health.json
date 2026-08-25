@@ -1,0 +1,837 @@
+{
+  "formId": "barraks-lodging-environmental-health",
+  "title": "Apply for a barracks or lodging licence with Environmental Hea1th",
+  "description": "Register a lodging house or barracks with Environmental Health",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "subject": "Your application to register a guest property has been received",
+        "recipientField": "your-details.applicant-email"
+      }
+    }
+  ],
+  "meta": {
+    "visibility": "preview"
+  },
+  "steps": [
+    {
+      "stepId": "your-details",
+      "title": "Your details",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "label": "First name",
+            "fieldId": "applicant-first-name"
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "hint": "Leave this blank if you do not have a middle name.",
+            "label": "Middle name",
+            "fieldId": "applicant-middle-name",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "label": "Last name",
+            "fieldId": "applicant-last-name"
+          }
+        },
+        {
+          "ref": "components/contact-telephone",
+          "overrides": {
+            "hint": "You can enter a local or international number.",
+            "label": "Contact number",
+            "fieldId": "applicant-contact-number"
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "label": "Email address",
+            "fieldId": "applicant-email"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "property-owner-details",
+      "title": "Property ownership and owner details",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Are you the property owner?",
+            "fieldId": "is-property-owner",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Choose whether you are the property owner.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Full name of property owner",
+            "fieldId": "owner-full-name",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetStepId": "property-owner-details",
+                "targetFieldId": "is-property-owner"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter the property owner's full name.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Address line 1",
+            "fieldId": "owner-address-line-1",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetStepId": "property-owner-details",
+                "targetFieldId": "is-property-owner"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter the property owner's address.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "hint": "Optional.",
+            "label": "Address line 2",
+            "fieldId": "owner-address-line-2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetStepId": "property-owner-details",
+                "targetFieldId": "is-property-owner"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Parish",
+            "fieldId": "owner-parish",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetStepId": "property-owner-details",
+                "targetFieldId": "is-property-owner"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter the property owner's parish.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "What is your role at the property?",
+            "fieldId": "applicant-role-owner",
+            "options": [
+              {
+                "label": "Manager",
+                "value": "manager"
+              },
+              {
+                "label": "Attorney",
+                "value": "attorney"
+              },
+              {
+                "label": "Other",
+                "value": "other-role"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "no",
+                "operator": "equal",
+                "targetStepId": "property-owner-details",
+                "targetFieldId": "is-property-owner"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Choose your role at the property.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Describe your role at the property",
+            "fieldId": "applicant-role-other",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": "other-role",
+                "operator": "equal",
+                "targetStepId": "property-owner-details",
+                "targetFieldId": "applicant-role-owner"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter your role at the property.",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "property-details",
+      "title": "Property details",
+      "elements": [
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Property address line 1",
+            "fieldId": "property-address-line-1",
+            "validations": {
+              "required": {
+                "error": "Enter the property address.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "hint": "Optional.",
+            "label": "Property address line 2",
+            "fieldId": "property-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Property parish",
+            "fieldId": "property-parish",
+            "validations": {
+              "required": {
+                "error": "Enter the property parish.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "How many barracks or lodging units does the property have?",
+            "fieldId": "property-number-of-rooms",
+            "validations": {
+              "min": {
+                "error": "Enter a number greater than 0.",
+                "value": 1
+              },
+              "required": {
+                "error": "Enter the number of barracks or lodging units.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "How many person can stay on the property at one time?",
+            "fieldId": "property-number-of-occupants",
+            "validations": {
+              "min": {
+                "error": "Enter a number greater than 0.",
+                "value": 1
+              },
+              "required": {
+                "error": "Enter the maximum number of occupants.",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "unit-details-and-facilities",
+      "title": "Barracks/lodging information and facilities",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Barracks or lodging name",
+            "fieldId": "barracks-name-1",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "ui": {
+              "width": "short"
+            },
+            "label": "How many rooms does this unit have?",
+            "fieldId": "number-of-rooms-1",
+            "validations": {
+              "min": {
+                "error": "Enter a number greater than 0.",
+                "value": 1
+              },
+              "required": {
+                "error": "Enter the number of rooms.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "ui": {
+              "width": "long"
+            },
+            "hint": "Enter length × width × height in metres. For example: Room 1: 4m × 3m × 2.5m, Room 2: 5m × 4m × 2.5m",
+            "label": "Enter the dimensions for each room in the barracks/lodging",
+            "fieldId": "room-dimensions-1",
+            "validations": {
+              "required": {
+                "error": "Enter the room dimensions.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Is sleeping accommodation segregated by gender?",
+            "fieldId": "sleeping-accommodation-segregated-1",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Choose whether sleeping accommodation is segregated by gender.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "How many beds are at this unit?",
+            "fieldId": "property-number-of-beds-1",
+            "validations": {
+              "min": {
+                "error": "Enter a number of 0 or greater.",
+                "value": 0
+              },
+              "required": {
+                "error": "Enter the number of beds.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "How many bunk beds are at this unit?",
+            "fieldId": "property-number-of-bunk-beds-1",
+            "validations": {
+              "min": {
+                "error": "Enter a number of 0 or greater.",
+                "value": 0
+              },
+              "required": {
+                "error": "Enter the number of bunk beds.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Is accommodation segregated for sanitary facilities?",
+            "fieldId": "sanitary-facilities-segregated-1",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Choose whether sanitary facilities are segregated.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "How many showers are at this unit?",
+            "fieldId": "property-number-of-showers-1",
+            "validations": {
+              "min": {
+                "error": "Enter a number of 0 or greater.",
+                "value": 0
+              },
+              "required": {
+                "error": "Enter the number of showers.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "How many toilets are at this unit?",
+            "fieldId": "property-number-of-water-closets-1",
+            "validations": {
+              "min": {
+                "error": "Enter a number of 0 or greater.",
+                "value": 0
+              },
+              "required": {
+                "error": "Enter the number of toilets.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "How many urinals are at this unit?",
+            "fieldId": "property-number-of-urinals-1",
+            "validations": {
+              "min": {
+                "error": "Enter a number of 0 or greater.",
+                "value": 0
+              },
+              "required": {
+                "error": "Enter the number of urinals.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "How many water fountains are at this unit?",
+            "fieldId": "property-number-of-taps-1",
+            "validations": {
+              "min": {
+                "error": "Enter a number of 0 or greater.",
+                "value": 0
+              },
+              "required": {
+                "error": "Enter the number of water fountains.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "label": "How many wash basins are at this unit?",
+            "fieldId": "property-number-of-sinks-1",
+            "validations": {
+              "min": {
+                "error": "Enter a number of 0 or greater.",
+                "value": 0
+              },
+              "required": {
+                "error": "Enter the number of wash basins.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "What is the water supply source?",
+            "fieldId": "water-supply-source-1",
+            "options": [
+              {
+                "label": "Mains water from Barbados Water Authority",
+                "value": "mains-water"
+              },
+              {
+                "label": "Rainwater collection",
+                "value": "rainwater-collection"
+              },
+              {
+                "label": "Well",
+                "value": "well"
+              },
+              {
+                "label": "Other source",
+                "value": "other-water-source"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Choose the water supply source.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Specify the other water supply source",
+            "fieldId": "water-supply-source-other-1",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": [
+                  "other-water-source"
+                ],
+                "operator": "in",
+                "targetFieldId": "water-supply-source-1"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter the water supply source.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "What type of lighting is used at this unit?",
+            "fieldId": "lighting-type-1",
+            "options": [
+              {
+                "label": "Mains electricity from Barbados Light and Power",
+                "value": "mains-electricity"
+              },
+              {
+                "label": "Generator",
+                "value": "generator"
+              },
+              {
+                "label": "Solar",
+                "value": "solar"
+              },
+              {
+                "label": "Other",
+                "value": "other-lighting"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Choose the lighting type.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Specify the other lighting type",
+            "fieldId": "lighting-type-other-1",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": [
+                  "other-lighting"
+                ],
+                "operator": "in",
+                "targetFieldId": "lighting-type-1"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter the lighting type.",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "max": 100,
+          "min": 1,
+          "type": "repeatable",
+          "addAnotherLabel": "Do you want to add another barrack/lodging?"
+        }
+      ]
+    },
+    {
+      "stepId": "kitchen-facilities",
+      "title": "Kitchen facilities",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Is the kitchen licensed?",
+            "fieldId": "kitchen-licensed",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              },
+              {
+                "label": "Not applicable",
+                "value": "not-applicable"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Choose whether the kitchen is licensed.",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "amenities-other",
+      "title": "Other amenities and facilities",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "label": "Select all other amenities that apply",
+            "fieldId": "other-amenities",
+            "options": [
+              {
+                "label": "Bar",
+                "value": "bar-licensed"
+              },
+              {
+                "label": "Restaurant",
+                "value": "restaurant-food-service"
+              },
+              {
+                "label": "Canteen or shop",
+                "value": "recreation-sports"
+              },
+              {
+                "label": "Salon or barber",
+                "value": "salon-barber"
+              },
+              {
+                "label": "Other amenities",
+                "value": "other-amenities-text"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Describe the other amenities",
+            "fieldId": "other-amenities-description",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": [
+                  "other-amenities-text"
+                ],
+                "operator": "in",
+                "targetFieldId": "other-amenities"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter a description of the other amenities.",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "supporting-documents",
+      "title": "Supporting documents and licences",
+      "elements": [
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "hint": "You can upload multiple files. Accepted formats: PDF, JPG, PNG. Maximum 5 MB per file.",
+            "label": "Upload supporting documents or licences",
+            "fieldId": "supporting-documents-upload",
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "fileTypes": {
+                "error": "Upload only PDF, JPG or PNG files.",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "Each file must be 5 MB or less.",
+                "value": 5242880
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "label": "Declaration",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I confirm that the information I have provided is correct.",
+                "value": "confirmed"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue.",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "Your application has been sent to Environmental Health.\n\nEnvironmental Health will review your application. They may contact you if they need more information.\n\nSubmitting the application does not mean the property has been registered."
+        }
+      ]
+    }
+  ],
+  "createdAt": "2026-08-24T23:54:14.187Z",
+  "updatedAt": "2026-08-24T23:54:14.187Z"
+}
