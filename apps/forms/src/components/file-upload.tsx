@@ -5,10 +5,7 @@ import { optionalSuffix } from "./field-renderer/optional-suffix";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
 import { uploadFile, FileUploadError } from "../lib/api/files";
-import {
-  fileTypesRunner,
-  UNVERIFIED_CONTENT_TYPE,
-} from "@govtech-bb/form-validation";
+import { fileTypesRunner } from "@govtech-bb/form-validation";
 
 /** A file being uploaded, or one whose upload failed. */
 interface PendingUpload {
