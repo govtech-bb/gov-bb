@@ -519,7 +519,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "swimming-wading-pool-permit",
-    title: "Apply for a swimming or wading pool permit",
+    title: "Apply for a swimming pool licence",
     category: "business-trade",
     formId: "swimming-wading-pool-permit",
     visibility: "preview",
