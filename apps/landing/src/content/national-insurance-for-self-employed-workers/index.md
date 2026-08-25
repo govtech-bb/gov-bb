@@ -50,6 +50,7 @@ Have your National Insurance number ready. You can pay:
 
 - online through SurePay
 - online through EZpay+
+- online through CIBC FirstPay
 - through a bank
 - in person at the NIS office, Frank Walcott Building, Culloden Road, St. Michael
 
