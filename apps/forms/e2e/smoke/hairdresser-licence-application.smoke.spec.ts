@@ -31,25 +31,31 @@
  *   FAKER_SEED       fix faker's RNG for a reproducible data set.
  *
  * Form-specific notes:
- *  - `know-workplace` on `workplace-known` is the only step gate: "yes" puts
- *    the whole `workplace-details` step in the journey via stepConditionalOn,
- *    "no" skips straight to `documents`. The two tests below cover both answers.
+ *  - `workplace-details` has no step-level gate — every submission visits it
+ *    (the old `workplace-known` step and its stepConditionalOn were dropped
+ *    from the recipe on 2026-08-24). The two tests below instead cover the
+ *    two ends of the step's own checkbox-driven inline reveals: one ticks
+ *    options that reveal every conditional field, the other ticks an option
+ *    that reveals none.
  *  - `workplace-locations` is a CHECKBOX field (operator "in"), not a radio, and
  *    it drives two independent inline reveals: "at-salon" reveals salon name /
  *    address line 1 / line 2 / parish, and "somewhere-else" reveals the
  *    free-text `somewhere-else`. The first test ticks both to exercise both
  *    reveals in one pass; checkbox ids follow the same
- *    `${stepId}_${fieldId}-${value}` shape as radios.
+ *    `${stepId}_${fieldId}-${value}` shape as radios. The second test ticks
+ *    "from-home" alone, which reveals neither.
  *  - The applicant's address is an address-lookup (geocoder) field, so it cannot
  *    take a free-text faker address — the geocoder must return a real Barbados
  *    match to populate the hidden coordinates the catchment router reads
  *    (`catchmentRouting.coordinatesField` = `personal-details.address-coordinates`).
  *    We faker-pick from a pool of known-geocodable locations, select the first
  *    suggestion, then assert `address-coordinates` filled.
- *  - `address-line-2` is `components/address` and the recipe does NOT set
- *    `validations.required.value: false`, so it inherits required + minLength 5
- *    and blocks the step. We fill it explicitly after the geocode rather than
- *    trust whatever line 2 the suggestion carried — same trap as the hotel form.
+ *  - `address-line-2` (`components/address`) has the recipe's
+ *    `validations.required.value: false` override, so it's optional here —
+ *    unlike `salon-address-line-1` below, which has no such override and
+ *    inherits `components/address`'s required + minLength 5. We still fill
+ *    line 2 explicitly after the geocode rather than trust whatever line 2
+ *    the picked suggestion carried.
  *  - Both `documents` uploads (`passport-photo`, `medical-certificate`) are
  *    required single-file fields, so each needs its own confirmed upload.
  *  - UNLIKE hotel-licence-application, this recipe's confirmation step uses
@@ -66,11 +72,9 @@ import { test, expect, type Page } from "@playwright/test";
 import {
   STEP_TIMEOUT,
   advance,
-  currentStep,
   expectStep,
   fillField,
   selectDropdown,
-  selectRadio,
   submitAndConfirm,
   uploadOne,
 } from "../helpers/smoke";
@@ -223,9 +227,9 @@ export async function fillPersonalDetails(
   await fillField(page, step, "middle-name", data.middleName);
   await fillField(page, step, "last-name", data.lastName);
   await fillGeocodedAddress(page, step, data.address);
-  // Line 2 inherits components/address's required + minLength 5 (the recipe
-  // never sets required:false), so fill it rather than rely on whatever the
-  // picked suggestion wrote.
+  // Line 2 is optional here (the recipe overrides required:false), but fill
+  // it explicitly rather than rely on whatever line 2 the picked suggestion
+  // wrote.
   await fillField(page, step, "address-line-2", data.addressLine2);
   // The geocoder fills parish from the picked suggestion; assert rather than
   // overwrite, since that value is the catchment router's fallback.
@@ -283,14 +287,8 @@ test.describe("Hairdresser Licence Application — Live Smoke", () => {
     await openForm(page);
     await fillPersonalDetails(page, data);
 
-    // ─── Workplace known — "yes" puts the workplace-details step in play ─────
-    let step = expectStep(page, "workplace-known");
-    await expect(page.locator("h1")).toContainText("where you plan to work");
-    await selectRadio(page, step, "know-workplace", "yes");
-    await advance(page, step);
-
     // ─── Workplace details — two independent inline reveals ──────────────────
-    step = expectStep(page, "workplace-details");
+    let step = expectStep(page, "workplace-details");
     await expect(page.locator("h1")).toContainText("where you plan to work");
 
     const salonName = page.locator(`[id="${step}_salon-name"]`);
@@ -330,7 +328,7 @@ test.describe("Hairdresser Licence Application — Live Smoke", () => {
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 
-  test("submits without a known workplace, skipping the workplace-details step", async ({
+  test("submits selecting a workplace option that reveals no extra details (from home)", async ({
     page,
   }) => {
     const data = buildData();
@@ -340,23 +338,27 @@ test.describe("Hairdresser Licence Application — Live Smoke", () => {
     await openForm(page);
     await fillPersonalDetails(page, data);
 
-    // ─── Workplace known — "no" drops the whole workplace-details step ───────
-    let step = expectStep(page, "workplace-known");
-    await selectRadio(page, step, "know-workplace", "no");
-    await advance(page, step);
+    // ─── Workplace details — "from-home" alone triggers neither inline reveal ─
+    let step = expectStep(page, "workplace-details");
+    await expect(page.locator("h1")).toContainText("where you plan to work");
 
-    // The gate's whole purpose: not knowing the workplace skips the step that
-    // asks about it, landing straight on documents.
-    expect(
-      currentStep(page),
-      'answering "no" must skip the workplace-details step',
-    ).not.toContain("workplace-details");
+    const salonName = page.locator(`[id="${step}_salon-name"]`);
+    const somewhereElse = page.locator(`[id="${step}_somewhere-else"]`);
+    await expect(salonName).toBeHidden();
+    await expect(somewhereElse).toBeHidden();
+
+    await checkOption(page, step, "workplace-locations", "from-home");
+    await expect(salonName).toBeHidden();
+    await expect(somewhereElse).toBeHidden();
+
+    await advance(page, step);
 
     await fillDocuments(page);
 
     step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
-    // The salon answers were never asked, so they must not appear in the review.
+    // The salon and "somewhere else" answers were never asked, so they must
+    // not appear in the review.
     await expect(page.getByText("What is the name of the salon?")).toHaveCount(
       0,
     );
