@@ -335,6 +335,19 @@
               }
             }
           }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "upload-scanned-id",
+            "label": "Upload scanned copy of your National ID",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "National ID is required"
+              }
+            }
+          }
         }
       ],
       "behaviours": []
@@ -385,5 +398,5 @@
     }
   ],
   "createdAt": "2026-08-25T14:05:00.922Z",
-  "updatedAt": "2026-08-25T15:11:20.454Z"
+  "updatedAt": "2026-08-25T15:12:48.462Z"
 }
