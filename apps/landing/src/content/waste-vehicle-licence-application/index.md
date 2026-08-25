@@ -38,6 +38,12 @@ There is no cost for this service.
 
 The form takes about 10 minutes to complete.
 
+
+### Apply online
+
+<a data-start-link>Start now</a>
+
+
 ## What happens after you apply
 
 Environmental Health will review your application.
@@ -46,11 +52,7 @@ A Medical Officer of Health will decide whether to approve your vehicle.
 
 Environmental Health will tell you the result.
 
-### Apply online
-
-<a data-start-link>Start now</a>
-
-## Contact us 
+## Contact us
 
 If you need help, contact the Ministry of Health and Wellness. Full contact details are on the offensive matter licence.
 
