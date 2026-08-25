@@ -28,7 +28,7 @@ export function FindEmergencyShelterPage() {
       <div className="flex flex-col gap-xs">
         <Heading as="h1">{TITLE}</Heading>
         <div className="border-blue-10 border-b-4 pb-4 text-grey-70">
-          <Text as="p" size="caption">
+          <Text as="p" size="body-sm">
             Last updated on {format(parseISO(SHELTERS_LAST_UPDATED), 'PPP')}.
             Next review: {format(parseISO(SHELTERS_NEXT_REVIEW), 'PPP')}.
           </Text>
@@ -68,7 +68,7 @@ export function FindEmergencyShelterPage() {
         </Text>
       </aside>
 
-      <Text as="p" className="text-grey-70" size="caption">
+      <Text as="p" className="text-grey-70" size="body-sm">
         Source: 2026 Emergency Shelter Booklet, Department of Emergency
         Management. Distance is calculated from the centre of each parish.
         Parish coordinates © OpenStreetMap contributors.

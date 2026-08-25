@@ -40,10 +40,10 @@ function Home() {
         <div className="govbb-width-container">
           <div className="space-y-m py-[clamp(var(--spacing-m),5vw,var(--spacing-l))]">
             <div className="max-w-210 space-y-s">
-              <Heading as="h1" className="text-balance">
+              <Heading as="h1">
                 Find and use Barbados government services
               </Heading>
-              <Text as="p" className="text-pretty">
+              <Text as="p" size="body-lg">
                 Ask anything — applications, certificates, licences, benefits,
                 and more. Get instant guidance.
               </Text>
@@ -79,23 +79,23 @@ function Home() {
       <section>
         <div className="govbb-width-container">
           <div className="space-y-m py-m lg:py-l">
-            <Heading as="h2" className="text-balance">
+            <Heading as="h2">
               All government services
             </Heading>
             <ul className="m-0 flex list-none flex-col p-0">
               {categories.map((cat) => (
                 <li
                   key={cat.slug}
-                  className="border-b-2 border-grey-20 py-s lg:py-xm"
+                  className="border-neutral border-b-2 py-s lg:py-xm [--govbb-link-color:var(--govbb-color-tertiary)]"
                 >
                   <a
                     href={`/${cat.slug}`}
-                    className="govbb-link text-[clamp(1.25rem,2.5vw,2rem)] leading-normal font-bold text-green-80"
+                    className="govbb-link govbb-text-body-lg govbb-text-bold"
                   >
                     {cat.title}
                   </a>
                   {cat.description ? (
-                    <Text as="p" className="mt-xxs text-pretty">
+                    <Text as="p" className="mt-xxs">
                       {cat.description}
                     </Text>
                   ) : null}

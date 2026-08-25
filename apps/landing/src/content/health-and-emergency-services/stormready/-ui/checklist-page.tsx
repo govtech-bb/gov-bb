@@ -91,10 +91,10 @@ export function StormReadyChecklistPage() {
         <Heading as="h1" size="h2">
           {TITLE}
         </Heading>
-        <Text as="p" size="caption">
+        <Text as="p" size="body-sm">
           StormReady Barbados — Government of Barbados
         </Text>
-        <Text as="p" className="text-grey-70" size="caption">
+        <Text as="p" className="text-grey-70" size="body-sm">
           Name: _______________________ Date: ______________
         </Text>
       </div>

@@ -58,7 +58,7 @@ export function StatusLine({
 
   if (status === null) {
     return (
-      <Text as="p" className="font-bold text-mid-grey-00" size="caption">
+      <Text as="p" className="font-bold text-mid-grey-00" size="body-sm">
         <Dot className="bg-mid-grey-00" />
         Hours not confirmed
       </Text>
@@ -70,7 +70,7 @@ export function StatusLine({
     const minutesLeft = toMinutes(status.closes) - wall.minutes
     if (minutesLeft <= CLOSING_SOON_MINUTES) {
       return (
-        <Text as="p" className="font-bold" size="caption">
+        <Text as="p" className="font-bold" size="body-sm">
           <Dot className="bg-yellow-00" />
           Closes in {minutesLeft} min{' '}
           <span className="font-normal text-mid-grey-00">
@@ -80,7 +80,7 @@ export function StatusLine({
       )
     }
     return (
-      <Text as="p" className="font-bold text-green-00" size="caption">
+      <Text as="p" className="font-bold text-green-00" size="body-sm">
         <Dot className="bg-green-00" />
         Open{' '}
         <span className="font-normal text-mid-grey-00">
@@ -106,7 +106,7 @@ export function StatusLine({
   }
 
   return (
-    <Text as="p" className="font-bold text-mid-grey-00" size="caption">
+    <Text as="p" className="font-bold text-mid-grey-00" size="body-sm">
       <Dot className="bg-mid-grey-00" />
       Closed
       {opensPart && <span className="font-normal"> · {opensPart}</span>}

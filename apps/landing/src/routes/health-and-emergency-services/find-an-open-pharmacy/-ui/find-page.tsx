@@ -25,7 +25,7 @@ export function FindOpenPharmacyPage() {
       <div className="flex flex-col gap-xs">
         <Heading as="h1">{TITLE}</Heading>
         <div className="border-blue-10 border-b-4 pb-4 text-mid-grey-00">
-          <Text as="p" size="caption">
+          <Text as="p" size="body-sm">
             Last updated on {format(parseISO(PHARMACIES_LAST_UPDATED), 'PPP')}.
             Next review: {format(parseISO(PHARMACIES_NEXT_REVIEW), 'PPP')}.
           </Text>

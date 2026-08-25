@@ -164,8 +164,8 @@ function OptionCard<T extends string>({
         value={option.value}
       />
       <span>
-        <span className="block font-bold text-base">{option.title}</span>
-        <span className="mt-1 block text-base text-grey-70">
+        <span className="block font-bold text-body-sm">{option.title}</span>
+        <span className="mt-1 block text-body-sm text-grey-70">
           {option.hint}
         </span>
       </span>
@@ -446,7 +446,7 @@ export function CropOverPermitsForm() {
             </Text>
             <p className="mt-3 font-bold text-3xl text-yellow-40">
               {activePermits.length}{' '}
-              <span className="font-normal text-base text-white-00">
+              <span className="font-normal text-body-sm text-white-00">
                 {activePermits.length === 1 ? 'permit' : 'permits'}
               </span>
             </p>
@@ -518,7 +518,7 @@ function PermitCard({ permit }: { permit: Permit; displayStep: number }) {
             {permit.agency}
           </Text>
           <p
-            className={`mt-2 font-bold text-base ${URGENCY_CLASSES[permit.urgency]}`}
+            className={`mt-2 font-bold text-body-sm ${URGENCY_CLASSES[permit.urgency]}`}
           >
             {permit.lead}
           </p>
@@ -543,7 +543,7 @@ function PermitCard({ permit }: { permit: Permit; displayStep: number }) {
               <Text
                 as="p"
                 className="mb-2 font-bold text-grey-70 uppercase tracking-wider"
-                size="caption"
+                size="body-sm"
               >
                 How to apply
               </Text>

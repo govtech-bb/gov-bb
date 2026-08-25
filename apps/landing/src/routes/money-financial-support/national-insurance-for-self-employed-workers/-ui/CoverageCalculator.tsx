@@ -175,7 +175,7 @@ function rovingRadioProps<T>(
 
 function ServiceCaption() {
   return (
-    <p className="mb-2 border-blue-20 border-l-4 py-2 pl-4 text-[1rem] text-grey-70">
+    <p className="mb-2 border-blue-20 border-l-4 py-2 pl-4 text-body-sm text-grey-70">
       {SERVICE_CAPTION}
     </p>
   )
@@ -449,7 +449,7 @@ function Hero({
       </div>
 
       <div className="mt-10">
-        <h2 className="mb-3 font-bold text-[1.5rem] text-black-00">
+        <h2 className="mb-3 font-bold text-body-lg text-black-00">
           What is NIS, simply?
         </h2>
         <p className="mb-4 text-[1.125rem] text-grey-70">
@@ -477,14 +477,14 @@ function Hero({
                 <span className="mt-0.5 text-teal-80">
                   <Icon className="h-6 w-6" name={icon} />
                 </span>
-                <span className="text-[1.25rem] text-black-00">{text}</span>
+                <span className="text-body text-black-00">{text}</span>
               </li>
             ))}
           </ul>
         </div>
 
         <button
-          className="inline-flex items-center gap-1.5 font-medium text-[1rem] text-teal-80 underline underline-offset-2 hover:no-underline"
+          className="inline-flex items-center gap-1.5 font-medium text-body-sm text-teal-80 underline underline-offset-2 hover:no-underline"
           onClick={onBenefits}
           type="button"
         >
@@ -493,7 +493,7 @@ function Hero({
         </button>
       </div>
 
-      <p className="mt-8 flex items-center gap-2 border-grey-20 border-t pt-6 text-[1rem] text-grey-70">
+      <p className="mt-8 flex items-center gap-2 border-grey-20 border-t pt-6 text-body-sm text-grey-70">
         <Icon className="h-4 w-4 shrink-0" name="lock" />
         This is a guide only. Nothing you enter here is saved or shared.
       </p>
@@ -608,12 +608,12 @@ function MoneyField({
   return (
     <div className={`${CARD} p-5`}>
       <label
-        className="block font-semibold text-[1.25rem] text-black-00"
+        className="block font-semibold text-body text-black-00"
         htmlFor={id}
       >
         {label}
       </label>
-      <p className="mt-1 mb-3 text-[1rem] text-grey-70" id={`${id}-hint`}>
+      <p className="mt-1 mb-3 text-body-sm text-grey-70" id={`${id}-hint`}>
         {hint}
       </p>
       <div
@@ -638,13 +638,13 @@ function MoneyField({
         />
       </div>
       {error && (
-        <p className="mt-2 text-[1rem] text-red-80" id={`${id}-error`}>
+        <p className="mt-2 text-body-sm text-red-80" id={`${id}-error`}>
           {error}
         </p>
       )}
       {overCeiling && max !== undefined && (
         <div
-          className="mt-4 border-blue-20 border-l-4 bg-grey-20/50 p-3 text-[1rem] text-black-00"
+          className="mt-4 border-blue-20 border-l-4 bg-grey-20/50 p-3 text-body-sm text-black-00"
           role="status"
         >
           The most NIS can insure is {money(max)} a month, so earning more than
@@ -734,20 +734,20 @@ function IncomeStep({
 
       <div className={`${CARD} mb-4 p-5`}>
         <p
-          className="font-semibold text-[1.25rem] text-black-00"
+          className="font-semibold text-body text-black-00"
           id="earnings-vary-label"
         >
           Do your earnings change during the year?
         </p>
         <p
-          className="mt-1 mb-3 text-[1rem] text-grey-70"
+          className="mt-1 mb-3 text-body-sm text-grey-70"
           id="earnings-vary-hint"
         >
           For example, busier in season and quieter out of season.
         </p>
         {errors.earningsVary && (
           <p
-            className="mb-2 font-semibold text-[1rem] text-red-80"
+            className="mb-2 font-semibold text-body-sm text-red-80"
             id="earnings-vary-error"
           >
             {errors.earningsVary}
@@ -928,7 +928,7 @@ function PlanStep({
       <div className={error ? 'border-red-80 border-l-4 pl-4' : ''}>
         {error && (
           <p
-            className="mb-2 font-semibold text-[1rem] text-red-80"
+            className="mb-2 font-semibold text-body-sm text-red-80"
             id="tier-error"
           >
             {error}
@@ -964,18 +964,18 @@ function PlanStep({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1 text-black-00">
                     {t.label && (
-                      <p className="mb-1 font-semibold text-[1rem] text-grey-70">
+                      <p className="mb-1 font-semibold text-body-sm text-grey-70">
                         {t.label}
                       </p>
                     )}
                     <p className="font-bold text-[2rem] tabular-nums leading-none">
                       {money(suggested[t.id])}
-                      <span className="font-normal text-[1rem] text-grey-70">
+                      <span className="font-normal text-body-sm text-grey-70">
                         {' '}
                         /month
                       </span>
                     </p>
-                    <p className="mt-1 text-[1rem] text-grey-70">
+                    <p className="mt-1 text-body-sm text-grey-70">
                       About{' '}
                       <span className="tabular-nums">
                         {money((suggested[t.id] * 12) / 52)}
@@ -983,7 +983,7 @@ function PlanStep({
                       a week
                     </p>
                     {t.id === Tier.Minimum && minimumApplies && (
-                      <p className="mt-3 text-[1rem] text-black-00">
+                      <p className="mt-3 text-body-sm text-black-00">
                         <strong>Why have we shown this minimum</strong>
                         <br />
                         {(NIS.SE_RATE * 100).toFixed(2)}% of the{' '}
@@ -1038,12 +1038,12 @@ function PlanStep({
           </div>
           <p className="mb-1 font-bold text-[2rem] tabular-nums leading-tight">
             {money(chosen)}
-            <span className="font-normal text-[1rem] text-teal-20">
+            <span className="font-normal text-body-sm text-teal-20">
               {' '}
               / month
             </span>
           </p>
-          <p className="text-[1rem] text-white-00/90">
+          <p className="text-body-sm text-white-00/90">
             About{' '}
             <strong className="tabular-nums">
               {money((chosen * 12) / 52)}
@@ -1061,7 +1061,7 @@ function PlanStep({
         </div>
       )}
 
-      <div className="mt-6 space-y-2 border-blue-20 border-l-4 bg-grey-20/50 p-4 text-[1rem] text-black-00">
+      <div className="mt-6 space-y-2 border-blue-20 border-l-4 bg-grey-20/50 p-4 text-body-sm text-black-00">
         <p>
           <strong>Busy month?</strong> Pay a bit more.{' '}
           <strong>Slow month?</strong> Pay less, or skip it. What matters is
@@ -1110,7 +1110,7 @@ function BenefitCard({
     >
       <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
         <IconCircle name={icon} tint tone={tone} />
-        <span className="min-w-0 flex-1 font-semibold text-[1.25rem] text-black-00">
+        <span className="min-w-0 flex-1 font-semibold text-body text-black-00">
           {title}
         </span>
         <Icon
@@ -1278,7 +1278,7 @@ function ResultStep({
         earnings you entered. NIS will confirm whether you qualify and how much
         you may get when you claim.
       </p>
-      <p className="mb-3 text-[1rem] text-grey-70">
+      <p className="mb-3 text-body-sm text-grey-70">
         Select a benefit to see who may get it and when.
       </p>
 
@@ -1342,7 +1342,7 @@ function NextSteps({
         </li>
       </ul>
 
-      <h2 className="mt-8 mb-2 font-bold text-[1.5rem] text-black-00">
+      <h2 className="mt-8 mb-2 font-bold text-body-lg text-black-00">
         Get help
       </h2>
       <p className="text-[1.125rem]">

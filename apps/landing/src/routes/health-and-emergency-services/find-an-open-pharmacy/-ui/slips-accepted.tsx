@@ -77,7 +77,7 @@ function SlipRow({
       <span className="mt-0.75">{mark}</span>
       <div className="flex flex-col gap-xxs">
         <p className="font-bold">{SLIP_LABELS[slip]}</p>
-        <Text as="p" className="text-mid-grey-00" size="caption">
+        <Text as="p" className="text-mid-grey-00" size="body-sm">
           {slipDescription(pharmacy, slip)}
         </Text>
       </div>
