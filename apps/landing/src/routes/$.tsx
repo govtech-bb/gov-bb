@@ -334,7 +334,7 @@ function PageView({
     <Shell>
       {level !== 'public' ? <ReviewBanner level={level} /> : null}
       {underMaintenance ? (
-        <StatusBanner variant="service" className="mb-s">
+        <StatusBanner variant="service" className="mb-s" rounded>
           <p>
             This form is currently being upgraded to serve you better. Please
             check back soon.
@@ -342,7 +342,7 @@ function PageView({
         </StatusBanner>
       ) : null}
       {applicationClosed ? (
-        <StatusBanner variant="service" className="mb-s">
+        <StatusBanner variant="service" className="mb-s" rounded>
           <p>Applications for this service have closed.</p>
         </StatusBanner>
       ) : null}

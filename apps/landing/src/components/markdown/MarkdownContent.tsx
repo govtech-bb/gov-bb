@@ -62,7 +62,7 @@ export function MarkdownContent({
           </Heading>
 
           {frontmatter.source_url ? (
-            <StatusBanner variant="migrated">
+            <StatusBanner variant="migrated" rounded>
               <p>
                 This page was originally published on{' '}
                 <Link href="https://www.gov.bb" external>
