@@ -1,6 +1,10 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { serviceContractRecipeSchema } from "@govtech-bb/form-types";
+import {
+  canonicalizeRecipe,
+  serializeRecipe,
+  serviceContractRecipeSchema,
+} from "@govtech-bb/form-types";
 import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
 
 // Guards the invariants RecipeFileLoaderService relies on. Recipes are flat
@@ -259,5 +263,32 @@ describe("checkRecipe rejects malformed recipes", () => {
         p.includes("duplicate fieldId"),
       ),
     ).toBe(true);
+  });
+});
+
+// Canonical serialization (#2487). Every writer of a recipe file goes through
+// serializeRecipe, so it must be safe to apply to any recipe already in the
+// repo: value-preserving (only key order changes) and a fixed point once
+// applied. Those two properties together also cover the subtrees the schema
+// walk cannot read — a z.pipe/transform, an unmatched union member — which it
+// deliberately leaves in place rather than guessing at.
+describe("canonical serialization over the real recipes", () => {
+  it("only ever reorders keys — nothing dropped, added or changed", async () => {
+    const recipes = await readRecipeFiles();
+    expect(recipes.length).toBeGreaterThan(50);
+
+    for (const { file, raw } of recipes) {
+      // toEqual is order-insensitive, so this fails only on a real value change.
+      expect(canonicalizeRecipe(raw), file).toEqual(raw);
+    }
+  });
+
+  it("is a fixed point — normalizing an already-canonical file is a no-op", async () => {
+    const recipes = await readRecipeFiles();
+
+    for (const { file, raw } of recipes) {
+      const once = serializeRecipe(raw);
+      expect(serializeRecipe(JSON.parse(once)), file).toBe(once);
+    }
   });
 });

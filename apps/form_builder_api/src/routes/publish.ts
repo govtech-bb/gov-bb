@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 import {
   deployBranchName,
+  serializeRecipe,
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
 import {
@@ -110,7 +111,7 @@ export async function publishHandler(req: Request, res: Response) {
     const putRes = await gh.putFile(token, {
       path: contentsPath,
       message: `Publish ${typedRecipe.formId}`,
-      content: JSON.stringify(recipeToPublish, null, 2) + "\n",
+      content: serializeRecipe(recipeToPublish),
       branch,
       ...(existingSha ? { sha: existingSha } : {}),
     });

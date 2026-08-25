@@ -209,3 +209,5 @@ export type {
   PublicFormSummary,
   BuilderFormSummary,
 } from "./form-summary.type";
+
+export { canonicalizeRecipe, serializeRecipe } from "./canonical-json";
