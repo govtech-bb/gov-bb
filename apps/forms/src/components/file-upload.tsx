@@ -18,6 +18,11 @@ interface PendingUpload {
 const formatMb = (bytes: number) =>
   `${(bytes / (1024 * 1024)).toPrecision(2)} MB`;
 
+/** Mirrors the API's presign message for a file it cannot identify by type. */
+const UNIDENTIFIED_FILE_ERROR =
+  "The file type could not be identified. Rename the file so it has its " +
+  "correct extension (for example .pdf or .jpg) and try again.";
+
 export default function FileUpload({
   field,
   sharedProps,
@@ -91,22 +96,22 @@ export default function FileUpload({
           .filter(Boolean)
       : [];
 
-  // A file field with no `fileTypes` cannot say what it accepts, so nothing can
-  // establish that an upload is a permitted type — the API refuses unverifiable
-  // files against such a field rather than storing something it cannot
-  // identify. That is a recipe defect, not something an applicant can act on,
-  // so say so on the field and warn once in the console for whoever is
-  // reviewing the form.
+  // A file field with no `fileTypes` cannot say what it accepts. That is a
+  // recipe defect — `validate-recipes` now rejects it, so it can only reach a
+  // citizen through a DB draft — and it is not something an applicant can act
+  // on, so it degrades rather than blocks: a typed file still uploads (exactly
+  // what the API's presign gate allows), and only an unidentifiable one is
+  // refused. Warn once in the console for whoever is reviewing the form.
   const configuredTypes = field.validations?.fileTypes;
-  const isMisconfigured = rawFileTypes.length === 0;
+  const isUnconstrained = rawFileTypes.length === 0;
   React.useEffect(() => {
-    if (!isMisconfigured) return;
+    if (!isUnconstrained) return;
     console.warn(
       `[file-upload] ${formId ?? "(unknown form)"} ${field.stepId}.${field.fieldId}: ` +
-        "no `fileTypes` validation is configured, so no file type can be " +
-        "accepted as valid. Add a fileTypes rule to the recipe.",
+        "no `fileTypes` validation is configured, so an unidentifiable file " +
+        "cannot be accepted. Add a fileTypes rule to the recipe.",
     );
-  }, [isMisconfigured, formId, field.stepId, field.fieldId]);
+  }, [isUnconstrained, formId, field.stepId, field.fieldId]);
 
   /**
    * The reason to refuse `file`, or null to let it upload. Mirrors the API's
@@ -115,8 +120,12 @@ export default function FileUpload({
    * only ever match on its extension.
    */
   const rejectUnacceptable = (file: File): string | null => {
-    if (isMisconfigured) {
-      return "File types are not correctly configured for this question, so this file cannot be accepted. Please report this to the service team.";
+    // No allowlist: nothing can establish that an unidentifiable file is a
+    // permitted type, so refuse only that one case — the same call the API
+    // makes. Refusing every file here instead would leave a required upload on
+    // such a field impossible to satisfy.
+    if (isUnconstrained) {
+      return file.type === "" ? UNIDENTIFIED_FILE_ERROR : null;
     }
     const error = fileTypesRunner(
       [{ name: file.name, size: file.size, type: file.type }],
@@ -227,16 +236,6 @@ export default function FileUpload({
   return (
     <div className="govbb-file-upload">
       {errorMessage && <ErrorMessage id={errorId} message={errorMessage} />}
-      {/* A recipe defect, so it is stated plainly rather than dressed up as
-          something the applicant did wrong. It replaces the old "No file type
-          restrictions" subtitle, which read as a deliberate choice when it
-          actually meant nothing could be verified. */}
-      {isMisconfigured && (
-        <ErrorMessage
-          id={`${field.id}-misconfigured`}
-          message="File types are not correctly configured for this question. No file can be accepted until the accepted formats are set — please report this to the service team."
-        />
-      )}
       <label className="govbb-file-upload__dropzone" htmlFor={field.id}>
         <div className="govbb-file-upload__info">
           <span className="govbb-file-upload__title">
@@ -248,7 +247,7 @@ export default function FileUpload({
               ? field.hint
               : readableFileTypes.length
                 ? `Attach a ${fileTypeFormatter.format(readableFileTypes)} file`
-                : "File types are not correctly configured"}
+                : "No file type restrictions"}
           </span>
         </div>
 

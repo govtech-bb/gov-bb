@@ -41,9 +41,8 @@ function makeUploaded(
   };
 }
 
-// A field with no `fileTypes` is a recipe defect the component now refuses to
-// upload against (nothing can establish a file is a permitted type), so the
-// shared fixture declares one. The misconfigured case has its own tests below.
+// A field with no `fileTypes` is a recipe defect, so the shared fixture
+// declares one. The unconstrained case has its own tests below.
 const baseField: FileUploadProps["field"] = {
   id: "step-1.doc-field",
   fieldId: "doc-field",
@@ -399,23 +398,25 @@ describe("FileUpload", () => {
     ).toBeInTheDocument();
   });
 
-  it("flags a field with no fileTypes as misconfigured instead of unrestricted", () => {
+  it("warns in the console for a field with no fileTypes without blocking the applicant", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     renderComponent({ field: { ...noFileTypesField, hint: undefined } });
 
-    // Both the error banner and the dropzone subtitle say it.
-    expect(
-      screen.getAllByText(/file types are not correctly configured/i).length,
-    ).toBeGreaterThan(0);
-    // Whoever is reviewing the form needs to see this even if nobody reads the
-    // rendered copy — it is a recipe defect, not applicant error.
+    // Whoever is reviewing the form needs to see this even though the applicant
+    // is shown nothing — it is a recipe defect, not applicant error.
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining("no `fileTypes` validation is configured"),
     );
+    expect(
+      screen.queryByText(/not correctly configured/i),
+    ).not.toBeInTheDocument();
     warn.mockRestore();
   });
 
-  it("refuses to upload against a misconfigured field", async () => {
+  // A field with no allowlist must not become impossible to satisfy — that is
+  // the bug this branch set out to fix. It takes a typed file (the same call the
+  // API's presign gate makes) and refuses only one it cannot identify.
+  it("uploads a typed file against a field with no fileTypes", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const user = userEvent.setup();
     const { onFileChange, fileInput } = renderComponent({
@@ -424,8 +425,22 @@ describe("FileUpload", () => {
 
     await user.upload(fileInput, makeFile("a.pdf", "application/pdf", 10));
 
+    await waitFor(() => expect(mockUploadFile).toHaveBeenCalledTimes(1));
+    expect(onFileChange).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("refuses an unidentifiable file against a field with no fileTypes", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const user = userEvent.setup();
+    const { onFileChange, fileInput } = renderComponent({
+      field: noFileTypesField,
+    });
+
+    await user.upload(fileInput, makeFile("scan", "", 10));
+
     expect(
-      await screen.findByText(/not correctly configured/i, {
+      await screen.findByText(/file type could not be identified/i, {
         selector: ".govbb-file-upload__status--error",
       }),
     ).toBeInTheDocument();
@@ -503,12 +518,10 @@ describe("FileUpload", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("says the types are misconfigured when both hint and fileTypes are absent", () => {
+  it("says there are no file type restrictions when both hint and fileTypes are absent", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     renderComponent({ field: { ...noFileTypesField, hint: undefined } });
-    expect(
-      screen.getAllByText(/file types are not correctly configured/i).length,
-    ).toBeGreaterThan(0);
+    expect(screen.getByText(/no file type restrictions/i)).toBeInTheDocument();
     warn.mockRestore();
   });
 
