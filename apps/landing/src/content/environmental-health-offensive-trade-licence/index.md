@@ -2,7 +2,7 @@
 title: Apply for a offensive trade licence with Environmental Health
 stage: alpha
 publish_date: '2026-08-25'
-visibility: draft
+visibility: preview
 form_id: environmental-health-offensive-trade-licence
 description: >-
   Apply online to register or renew a licence for business activities that may
