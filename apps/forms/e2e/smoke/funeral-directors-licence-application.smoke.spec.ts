@@ -66,7 +66,7 @@
  *  - `phone-number` is `components/telephone`, whose `phone` rule runs
  *    libphonenumber-js `.isValid()` — a random `246 NNN NNNN` is rejected, the
  *    exchange has to be a real assignable one.
- *  - Both `documents` uploads (`passport-photo`, `medical-certificate`) use
+ *  - Both `documents` uploads (`passport-photo`, `upload-scanned-id`) use
  *    `components/upload-document` with `multiple: false`, so each is a single
  *    confirmed upload via `uploadOne`, not `uploadMany`.
  *  - The confirmation step's `nextSteps` copy (fixed off "hairdresser licence"
@@ -268,8 +268,8 @@ export async function fillDocuments(page: Page): Promise<void> {
     mimeType: TEST_PNG.mimeType,
     buffer: TEST_PNG.buffer,
   });
-  await uploadOne(page, step, "medical-certificate", {
-    name: "medical-certificate.png",
+  await uploadOne(page, step, "upload-scanned-id", {
+    name: "national-id.png",
     mimeType: TEST_PNG.mimeType,
     buffer: TEST_PNG.buffer,
   });
