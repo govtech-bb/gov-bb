@@ -9,6 +9,40 @@
         "recipientField": "about-the-applicant.email",
         "subject": "Your funeral establishment licence application has been received"
       }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "catchment.mdaEmail",
+        "subject": "A new funeral establishment licence application has been received"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "method": "POST",
+        "signatureHeader": "X-Webhook-Signature",
+        "mapping": {
+          "programmeCode": "FUNERAL_ESTABLISHMENT_LICENCE",
+          "mdaCode": "MOH",
+          "programmeShortCode": "FEL",
+          "applicant": {
+            "name": [
+              "about-the-applicant.first-name",
+              "about-the-applicant.last-name"
+            ],
+            "email": "about-the-applicant.email",
+            "phone": "about-the-applicant.telephone"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        },
+        "timeoutMs": 10000
+      }
     }
   ],
   "meta": {
@@ -157,7 +191,8 @@
             "fieldId": "establishment-address-parish",
             "validations": {
               "required": {
-                "value": false
+                "value": true,
+                "error": "Select the parish the establishment is in"
               }
             }
           }
