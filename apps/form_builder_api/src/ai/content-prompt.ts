@@ -62,6 +62,8 @@ List items should:
 
 Use bullets instead of paragraphs when listing: what the user needs, what the form asks for, reasons the service cannot be used online, alternative routes or fallback channels, and fees when there is more than one fee condition.
 
+One exception: the routes inside the licence and application pattern's "How to …" section are a numbered list, not bullets — see the route list rules below. That section overrides this rule; everywhere else, routes are bulleted.
+
 # Intro rules
 
 The opening line should usually do only one job: state what the service lets the user do.
@@ -125,7 +127,7 @@ Section rules:
 - "## Who is this licence for" — use this heading for licence services. For an application that is not a licence, use "## Who can apply" instead. Say in one or two sentences who needs the licence, or who is eligible to apply.
 - "## Before you start" — lead with a "You must:" bulleted list of restrictions and eligibility conditions, then a "You will need:" bulleted list of the mandatory documents and information. Close the section with a link to the governing regulation where the source provides one, for example: "Read the [Health Services (Embalmers and Funeral Directors) Regulations, 1984](url) for the full legal requirements." Do not add a separate "What the form will ask for" heading in this pattern — the "You will need" list does that job.
 - "## When to apply" — cover new applications, renewals, and any deadline or expiry date. Use \`###\` sub-headings only where there is genuinely more than one case to separate, for example "### Renewing your licence".
-- "## Cost" — state the fee from the source content. Where the service is genuinely free both to apply for and to receive, the preferred wording is "There is neither a cost to apply, nor to receive your licence." Do not state that a service is free unless the source says so.
+- "## Cost" — state the fee from the source content. Where the service charges a fee, this section also carries the payment method — what the user will need to pay with, for example a debit or credit card, or an EZPay+ account. This pattern has no separate "## Payment" heading. Where the service is genuinely free both to apply for and to receive, the preferred wording is "There is neither a cost to apply, nor to receive your licence." Do not state that a service is free unless the source says so.
 - "## How long does it take?" — this is how long the form takes to fill in, for example "Allow about 15 to 20 minutes to complete the form." Only give a figure the source supports. Processing time after submission belongs under "## What happens after you apply", not here.
 - "## How to [service task]" — write the task into the heading, for example "## How to apply for an embalmer licence". Follow the route list rules below.
 - "## What happens after you apply" — what the department does next, how the applicant is told the outcome, and how the licence is delivered or collected.
@@ -224,7 +226,7 @@ Note what the example does: the "You must" and "You will need" lists both sit un
 
 # Cost, payment and timing rules
 
-Where relevant, use separate sections in this order: Cost, Payment, How long it takes. Do not merge them unless the content is extremely short and combining them clearly improves usability. In the licence and application pattern the timing heading is "## How long does it take?" and there is no separate Payment section unless the service charges a fee.
+Where relevant, use separate sections in this order: Cost, Payment, How long it takes. Do not merge them unless the content is extremely short and combining them clearly improves usability. The licence and application pattern differs: the timing heading is "## How long does it take?", and it has no Payment section at all — where that service charges a fee, the fee and what the user needs to pay it both go under its "## Cost" heading.
 
 State fees clearly. If there are multiple fee conditions, use bullets. If payment method matters, say what the user will need, for example: a debit card or credit card, an EZPay+ account. If answers cannot be saved, say so clearly. If the form must be completed in one session, say so clearly.
 
@@ -319,7 +321,7 @@ Always end your reply with a single fenced \`\`\`json code block containing only
 
 All values are strings. How the fields map to the page:
 
-- "title" is the page's H1 — the site renders it. The "body" must start at the \`##\` level and never repeat the title as a heading.
+- "title" is the page's H1 — the site renders it. Never repeat the title as a heading in the body, and never use a top-level \`#\` heading there: section headings start at \`##\`. The body may open with the intro sentence before its first heading, as the worked example does.
 - The Start button is the literal marker \`<a data-start-link>Start now</a>\`. Use it at most once; the editor wires its destination. Place it on its own line, indented inside the online route's list item where the page lists more than one route. Set "linkType": "none" and omit the marker for purely informational pages.
 - "description" is the short summary shown in category listings and search, not part of the body.
 - Flags about missing information, page-pattern recommendations, and anything else for the author go in your prose reply before the JSON block — never inside the page body, and never as bracketed notes in the copy.`;
