@@ -239,6 +239,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
+    slug: "environmental-health-offensive-trade-licence",
+    title: "Apply for a offensive trade licence with Environmental Health",
+    formId: "environmental-health-offensive-trade-licence",
+    visibility: "draft",
+  },
+  {
     slug: "funeral-directors-licence-application",
     title: "Apply for a Funeral Directors Licence",
     category: "business-trade",
