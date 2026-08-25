@@ -6,7 +6,7 @@ description: >-
 category: business-trade
 stage: alpha
 publish_date: '2026-08-25'
-visibility: draft
+visibility: preview
 form_id: waste-vehicle-licence-application
 ---
 Use this service to apply for or renew a licence to move human waste, rotting animal or plant waste, or other waste that could harm people’s health.
