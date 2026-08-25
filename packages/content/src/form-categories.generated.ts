@@ -19,7 +19,6 @@ export const FORM_CATEGORIES: Record<string, string> = {
   "food-safety-licence-application": "business-trade",
   "funeral-directors-licence-application": "business-trade",
   "funeral-embalmer-licence-application": "business-trade",
-  "funeral-establishment-licence-application": "business-trade",
   "get-a-primary-school-textbook-grant": "money-financial-support",
   "get-birth-certificate": "family-birth-relationships",
   "get-death-certificate": "family-birth-relationships",
