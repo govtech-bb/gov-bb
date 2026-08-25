@@ -254,7 +254,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "funeral-directors-licence-application",
-    title: "Apply for a Funeral Directors Licence",
+    title: "Apply for a funeral directors licence",
     category: "business-trade",
     formId: "funeral-directors-licence-application",
     visibility: "preview",
