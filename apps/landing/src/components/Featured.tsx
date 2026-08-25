@@ -27,8 +27,13 @@ import { trackEvent } from '../lib/analytics'
  * change, so it departs from the frame deliberately.
  *
  * It is filled, like the other two, using `evenodd` to punch the lines out of a
- * solid page rather than stroking an outline — so all three icons read at the
- * same weight in their tiles.
+ * solid page rather than stroking an outline.
+ *
+ * Measured ink, as a share of the 26 box: chat 75%, calendar 83% square, and this
+ * one 67% wide by 83% tall — so its height matches the calendar and exceeds the
+ * chat icon, and it only reads narrower because a page is portrait where a bubble
+ * and a calendar are square. The three exports are not uniform with each other
+ * either, so there is no single weight to match.
  *
  * ── Sizes ─────────────────────────────────────────────────────────────────
  * The link is `govbb-text-body` (20px), not the `body-lg` (24px) the service
@@ -68,20 +73,25 @@ function IconDocument() {
       className="size-[26px] shrink-0"
       fill="none"
       focusable="false"
-      viewBox="0 0 24 24"
+      viewBox="0 0 26 26"
     >
       {/*
-        Solid page with a cut corner and three lines punched out. `evenodd` is
-        what turns the bars into holes rather than more filled shape — the same
-        construction the Figma exports use, so it sits at the same visual weight
-        as the chat and calendar icons beside it.
+        A solid page with a cut corner and three lines punched out; `evenodd` is
+        what turns the bars into holes rather than more filled shape, which is
+        the construction the two Figma exports use.
+
+        The artwork is drawn on a 24 grid, so the scale puts it on the 26 grid
+        those exports use and all three icons share one coordinate space. Uniform,
+        so proportions and arc radii are unchanged.
       */}
-      <path
-        clipRule="evenodd"
-        d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm2 6h3v2H8V8zm0 4h8v2H8v-2zm0 4h8v2H8v-2z"
-        fill="currentColor"
-        fillRule="evenodd"
-      />
+      <g transform="scale(1.0833333)">
+        <path
+          clipRule="evenodd"
+          d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm2 6h3v2H8V8zm0 4h8v2H8v-2zm0 4h8v2H8v-2z"
+          fill="currentColor"
+          fillRule="evenodd"
+        />
+      </g>
     </svg>
   )
 }

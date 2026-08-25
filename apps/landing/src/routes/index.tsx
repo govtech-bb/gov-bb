@@ -80,11 +80,19 @@ function Home() {
       <section>
         <div className="govbb-width-container">
           {/*
-            Two columns from lg, matching the design's 1256 = 752 + 128 + 376:
-            with a single 128px gap, 2fr/1fr lands on exactly those widths.
-            Stacks below lg, services first.
+            Two columns from lg, stacking below it with services first.
+
+            The gap steps up at xl. 128px all the way down to lg squeezed the
+            Featured column to 245px at a 1024 viewport, leaving 173px for the
+            descriptions — four lines each; 64px keeps them to three. From xl it
+            widens to 128px, which reproduces the design's 1256 = 752 + 128 + 376
+            at the 1512 frame width.
+
+            xl (1280) rather than a min-[1512px] query: a 1512 *viewport* is only
+            ~1497 CSS px once the scrollbar is taken off, so a 1512 breakpoint
+            never matches at the width the design is drawn for.
           */}
-          <div className="py-m lg:grid lg:grid-cols-[2fr_1fr] lg:gap-x-xl lg:py-l">
+          <div className="py-m lg:grid lg:grid-cols-[2fr_1fr] lg:gap-x-l lg:py-l xl:gap-x-xl">
             <div className="space-y-m">
               <Heading as="h2">All government services</Heading>
               <ul className="m-0 flex list-none flex-col p-0">
