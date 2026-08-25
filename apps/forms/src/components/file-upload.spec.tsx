@@ -41,6 +41,9 @@ function makeUploaded(
   };
 }
 
+// A field with no `fileTypes` is a recipe defect the component now refuses to
+// upload against (nothing can establish a file is a permitted type), so the
+// shared fixture declares one. The misconfigured case has its own tests below.
 const baseField: FileUploadProps["field"] = {
   id: "step-1.doc-field",
   fieldId: "doc-field",
@@ -52,6 +55,17 @@ const baseField: FileUploadProps["field"] = {
   hidden: false,
   conditionallyHidden: false,
   behaviours: [],
+  validations: {
+    fileTypes: {
+      value: ["application/pdf", "image/png", "image/jpeg"],
+      error: "Upload a PDF, PNG or JPEG",
+    },
+  },
+};
+
+const noFileTypesField: FileUploadProps["field"] = {
+  ...baseField,
+  validations: {},
 };
 
 const baseSharedProps: FileUploadProps["sharedProps"] = {
@@ -255,7 +269,7 @@ describe("FileUpload", () => {
     const { onFileChange, fileInput } = renderComponent({
       field: {
         ...baseField,
-        validations: { maxSize: { value: 1024 } }, // 1KB cap
+        validations: { ...baseField.validations, maxSize: { value: 1024 } }, // 1KB cap
       },
     });
 
@@ -385,9 +399,39 @@ describe("FileUpload", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders fallback description when no fileTypes validation is set", () => {
-    renderComponent();
-    expect(screen.getByText(/no file type restrictions/i)).toBeInTheDocument();
+  it("flags a field with no fileTypes as misconfigured instead of unrestricted", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    renderComponent({ field: { ...noFileTypesField, hint: undefined } });
+
+    // Both the error banner and the dropzone subtitle say it.
+    expect(
+      screen.getAllByText(/file types are not correctly configured/i).length,
+    ).toBeGreaterThan(0);
+    // Whoever is reviewing the form needs to see this even if nobody reads the
+    // rendered copy — it is a recipe defect, not applicant error.
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("no `fileTypes` validation is configured"),
+    );
+    warn.mockRestore();
+  });
+
+  it("refuses to upload against a misconfigured field", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const user = userEvent.setup();
+    const { onFileChange, fileInput } = renderComponent({
+      field: noFileTypesField,
+    });
+
+    await user.upload(fileInput, makeFile("a.pdf", "application/pdf", 10));
+
+    expect(
+      await screen.findByText(/not correctly configured/i, {
+        selector: ".govbb-file-upload__status--error",
+      }),
+    ).toBeInTheDocument();
+    expect(mockUploadFile).not.toHaveBeenCalled();
+    expect(onFileChange).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   // #2384: the form builder wrote `fileTypes.value` as a comma-separated
@@ -459,9 +503,13 @@ describe("FileUpload", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders fallback description when hint is absent and no fileTypes validation is set", () => {
-    renderComponent({ field: { ...baseField, hint: undefined } });
-    expect(screen.getByText(/no file type restrictions/i)).toBeInTheDocument();
+  it("says the types are misconfigured when both hint and fileTypes are absent", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    renderComponent({ field: { ...noFileTypesField, hint: undefined } });
+    expect(
+      screen.getAllByText(/file types are not correctly configured/i).length,
+    ).toBeGreaterThan(0);
+    warn.mockRestore();
   });
 
   it("treats a whitespace-only hint as absent, falling back to the derived file-type description", () => {
@@ -513,8 +561,10 @@ describe("FileUpload", () => {
   });
 
   it("leaves accept empty when no fileTypes validation is set", () => {
-    const { fileInput } = renderComponent();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { fileInput } = renderComponent({ field: noFileTypesField });
     expect(fileInput.accept).toBe("");
+    warn.mockRestore();
   });
 
   // -------------------------------------------------------------------------
