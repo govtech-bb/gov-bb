@@ -57,7 +57,7 @@ export const FORM_CATEGORIES: Record<string, string> = {
   "seniors-recreational-activities-programme": "social-empowerment",
   "sports-training-programme-form-schema": "work-employment",
   "statement-of-travelling-form": "education",
-  "swimming-wading-pool-permit": "business-trade",
+  "swimming-pool-environmental-health": "business-trade",
   "temp-teacher-application-barbados": "work-employment",
   "term-leave-application": "education",
   "waste-vehicle-licence-application": "business-trade",
