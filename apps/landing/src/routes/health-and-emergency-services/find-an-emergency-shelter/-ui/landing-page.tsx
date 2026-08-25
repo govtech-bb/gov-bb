@@ -42,7 +42,7 @@ export function EmergencyShelterLandingPage() {
       <div className="flex flex-col gap-xs">
         <Heading as="h1">{META.title}</Heading>
         <div className="border-blue-10 border-b-4 pb-4 text-grey-70">
-          <Text as="p" size="caption">
+          <Text as="p" size="body-sm">
             Last updated on {format(parseISO(SHELTERS_LAST_UPDATED), 'PPP')}.
             Next review: {format(parseISO(SHELTERS_NEXT_REVIEW), 'PPP')}.
           </Text>
@@ -57,7 +57,7 @@ export function EmergencyShelterLandingPage() {
         <LinkButton className="self-start" href={EMERGENCY_SHELTER_FIND_HREF}>
           Find a shelter
         </LinkButton>
-        <Text as="p" className="text-grey-70" size="caption">
+        <Text as="p" className="text-grey-70" size="body-sm">
           It&apos;s free and you don&apos;t need to sign in.
         </Text>
       </div>
@@ -91,14 +91,14 @@ export function EmergencyShelterLandingPage() {
                 href={phone.tel}
               >
                 <span className="font-bold">{phone.service}</span>
-                <span className="font-bold text-red-80 text-xl">
+                <span className="font-bold text-red-80 text-body">
                   {phone.number}
                 </span>
               </a>
             </li>
           ))}
         </ul>
-        <Text as="p" size="caption">
+        <Text as="p" size="body-sm">
           <Link href={`${EMERGENCY_SHELTER_GUIDANCE_HREF}#phone-numbers`}>
             See all phone numbers
           </Link>
@@ -193,7 +193,7 @@ export function EmergencyShelterLandingPage() {
         </Text>
       </aside>
 
-      <Text as="p" className="text-grey-70" size="caption">
+      <Text as="p" className="text-grey-70" size="body-sm">
         Source: 2026 Emergency Shelter Booklet, Department of Emergency
         Management.
       </Text>

@@ -18,11 +18,11 @@
     "check": "prettier --check ."
   },
   "dependencies": {
-    "@fontsource/figtree": "^5.2.10",
+    "@datadog/browser-rum": "^7.8.0",
     "@govtech-bb/analytics": "workspace:*",
     "@govtech-bb/content": "workspace:*",
-    "@govtech-bb/frontend": "1.0.0-alpha.25",
-    "@govtech-bb/react": "1.0.0-alpha.25",
+    "@govtech-bb/frontend": "1.0.0-alpha.27",
+    "@govtech-bb/react": "1.0.0-alpha.27",
     "@mdx-js/react": "^3.1.1",
     "@tailwindcss/vite": "^4.3.0",
     "@tanstack/react-query": "catalog:",

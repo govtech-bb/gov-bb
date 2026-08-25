@@ -53,7 +53,7 @@ function ResultCard({
   return (
     <div className={`rounded-sm border-l-4 px-4 py-3 ${toneClasses}`}>
       <p className="text-grey-70 text-sm">{label}</p>
-      <p className="font-bold text-2xl">{value}</p>
+      <p className="font-bold text-body-lg">{value}</p>
     </div>
   )
 }
@@ -261,7 +261,7 @@ export function PensionCalculator() {
           <ServiceHeading service="Calculate your Government pension">
             Your estimated pension
           </ServiceHeading>
-          <Text as="p" className="text-grey-70" size="caption">
+          <Text as="p" className="text-grey-70" size="body-sm">
             {context}
           </Text>
 
@@ -339,7 +339,7 @@ export function PensionCalculator() {
             </Text>
           </div>
 
-          <Text as="p" className="text-grey-70" size="caption">
+          <Text as="p" className="text-grey-70" size="body-sm">
             These figures are estimates only. Contact the PRC to discuss which
             option suits your circumstances before you retire.
           </Text>
@@ -434,7 +434,7 @@ export function PensionCalculator() {
             <legend className="mb-1 font-bold">
               When you started pensionable service
             </legend>
-            <Text as="p" className="text-grey-70" size="caption">
+            <Text as="p" className="text-grey-70" size="body-sm">
               The month and year you began the service that counts towards your
               pension.
             </Text>
@@ -467,7 +467,7 @@ export function PensionCalculator() {
             <legend className="mb-1 font-bold">
               When you stopped or will retire
             </legend>
-            <Text as="p" className="text-grey-70" size="caption">
+            <Text as="p" className="text-grey-70" size="body-sm">
               The month and year your pensionable service ends. If you have not
               retired yet, use your expected retirement date.
             </Text>

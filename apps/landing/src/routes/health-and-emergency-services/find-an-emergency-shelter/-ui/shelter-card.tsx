@@ -55,7 +55,7 @@ export function ShelterCard({
 
   return (
     <li className="flex h-full flex-col gap-xs rounded-lg border-4 border-grey-20 bg-white-00 p-s">
-      <p className="inline-flex w-fit items-center gap-2 rounded-full bg-grey-20 px-3 py-1 font-bold text-grey-70 text-xs uppercase tracking-wide">
+      <p className="inline-flex w-fit items-center gap-2 rounded-full bg-grey-20 px-3 py-1 font-bold text-grey-70 text-body-sm uppercase tracking-wide">
         <span
           aria-hidden="true"
           className="size-2 rounded-full bg-grey-70"

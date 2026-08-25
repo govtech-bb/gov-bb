@@ -56,7 +56,7 @@ export function EmergencyShelterGuidancePage() {
       <div className="flex flex-col gap-xs">
         <Heading as="h1">{TITLE}</Heading>
         <div className="border-blue-10 border-b-4 pb-4 text-grey-70">
-          <Text as="p" size="caption">
+          <Text as="p" size="body-sm">
             Last updated on {format(parseISO(SHELTERS_LAST_UPDATED), 'PPP')}.
             Next review: {format(parseISO(SHELTERS_NEXT_REVIEW), 'PPP')}.
           </Text>
@@ -238,7 +238,7 @@ export function EmergencyShelterGuidancePage() {
               </li>
             ))}
           </ul>
-          <Text as="p" className="mt-s text-grey-70" size="caption">
+          <Text as="p" className="mt-s text-grey-70" size="body-sm">
             Some districts (Christ Church South, Christ Church West Central and
             St. Michael North) currently have no listed chairperson. Contact DEM
             on <Link href={DEM_TEL}>438-7575</Link> if your district is not
@@ -294,7 +294,7 @@ export function EmergencyShelterGuidancePage() {
         </Text>
       </aside>
 
-      <Text as="p" className="text-grey-70" size="caption">
+      <Text as="p" className="text-grey-70" size="body-sm">
         Source: 2026 Emergency Shelter Booklet, Department of Emergency
         Management.
       </Text>

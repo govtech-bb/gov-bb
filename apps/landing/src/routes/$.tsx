@@ -334,7 +334,7 @@ function PageView({
     <Shell>
       {level !== 'public' ? <ReviewBanner level={level} /> : null}
       {underMaintenance ? (
-        <StatusBanner variant="service" className="mb-s">
+        <StatusBanner variant="service" className="mb-s" rounded>
           <p>
             This form is currently being upgraded to serve you better. Please
             check back soon.
@@ -342,7 +342,7 @@ function PageView({
         </StatusBanner>
       ) : null}
       {applicationClosed ? (
-        <StatusBanner variant="service" className="mb-s">
+        <StatusBanner variant="service" className="mb-s" rounded>
           <p>Applications for this service have closed.</p>
         </StatusBanner>
       ) : null}
@@ -402,7 +402,7 @@ function ServiceListView({
             >
               <a
                 href={item.href}
-                className="govbb-link text-[20px] leading-normal lg:text-3xl"
+                className="govbb-link text-body leading-normal lg:text-3xl"
               >
                 {item.title}
               </a>
@@ -432,7 +432,7 @@ function SubcategoryIndexView({
           >
             <a
               href={`/${category.slug}/${sub.slug}`}
-              className="govbb-link text-[20px] leading-normal lg:text-3xl"
+              className="govbb-link text-body leading-normal lg:text-3xl"
             >
               {sub.title}
             </a>
@@ -475,7 +475,7 @@ function ReviewBanner({ level }: { level: Exclude<ViewLevel, 'public'> }) {
       <Text as="p" className="font-bold">
         {copy.heading}
       </Text>
-      <Text as="p" size="caption" className="text-grey-70">
+      <Text as="p" size="body-sm" className="text-grey-70">
         {copy.detail}
       </Text>
     </div>

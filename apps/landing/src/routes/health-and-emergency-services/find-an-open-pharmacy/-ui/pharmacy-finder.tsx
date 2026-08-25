@@ -180,7 +180,7 @@ export function PharmacyFinder() {
       <Text
         as="p"
         className="mb-s text-mid-grey-00 print:hidden"
-        size="caption"
+        size="body-sm"
       >
         <button
           className="underline"
@@ -212,7 +212,7 @@ export function PharmacyFinder() {
               <Text as="p" className="mb-xxs font-bold" role="status">
                 {resultCountLabel(visiblePharmacies.length, results.length)}
               </Text>
-              <Text as="p" className="mb-s text-mid-grey-00" size="caption">
+              <Text as="p" className="mb-s text-mid-grey-00" size="body-sm">
                 {filters.subsidisedOnly ? (
                   <>
                     Showing pharmacies that give free or cheaper medication.{' '}

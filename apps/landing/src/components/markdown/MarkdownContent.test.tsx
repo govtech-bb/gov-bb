@@ -43,7 +43,7 @@ describe('MarkdownBody', () => {
     expect(html).not.toContain('target="_blank"')
   })
 
-  it('renders tables and lists with the design system components', async () => {
+  it('renders tables with the design system components', async () => {
     const table = await renderBody('| Office | Phone |\n| - | - |\n| a | b |')
     expect(table).toContain('govbb-table')
     expect(table).toContain('govbb-table__header')
@@ -53,9 +53,19 @@ describe('MarkdownBody', () => {
     // Each body row's first cell is its header — the pale-blue first column
     // in the Figma pattern, and the label a screen reader reads with each cell.
     expect(table).toContain('<th class="govbb-table__header" scope="row">')
+  })
 
-    expect(await renderBody('- one\n- two')).toContain('govbb-list--bullet')
-    expect(await renderBody('1. one\n2. two')).toContain('govbb-list--number')
+  it('leaves prose tags bare for govbb-prose to style', async () => {
+    const html = await renderBody('## Heading\n\ntext\n\n- one\n- two')
+
+    expect(html).toContain('govbb-prose')
+    expect(html).toContain('<li>one</li>')
+    expect(html).toContain('<p>text</p>')
+    // the heading keeps its autolink anchor; prose gives it scroll-margin
+    expect(html).toMatch(/<h2 id="heading">Heading/)
+    // the old per-element wrappers are gone: no section divs, no size classes
+    expect(html).not.toContain('space-y-s')
+    expect(html).not.toContain('govbb-text-')
   })
 
   it('renders a Start now button when the form is available', async () => {

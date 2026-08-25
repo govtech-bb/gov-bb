@@ -132,7 +132,7 @@ function IneligibleResult({ variant }: { variant: IneligibleVariant }) {
           {variant.title}
         </Heading>
       </div>
-      <Text as="p" className="mt-3 text-grey-70" size="caption">
+      <Text as="p" className="mt-3 text-grey-70" size="body-sm">
         Based on the information you gave us
       </Text>
       <Text as="p" className="mt-2" size="body">
@@ -698,7 +698,7 @@ function EligibleResult({
             )}
             . Here is how that adds up:
           </Text>
-          <div className="overflow-x-auto rounded-sm bg-grey-10 p-4 text-center font-mono text-base">
+          <div className="overflow-x-auto rounded-sm bg-grey-10 p-4 text-center font-mono text-body-sm">
             <div className="inline-grid grid-cols-[auto_auto_auto_auto_auto_auto_auto_auto_auto] items-center gap-x-2 gap-y-2 text-left">
               {tier1Years > 0 && (
                 <TierRow
@@ -734,7 +734,7 @@ function EligibleResult({
       </ShowHide>
 
       {years > 33 && (
-        <Text as="p" className="text-grey-70" size="caption">
+        <Text as="p" className="text-grey-70" size="body-sm">
           Under the Severance Payments Act, only the most recent 33 years of
           service are counted.
         </Text>
@@ -809,13 +809,13 @@ function GapWeeksExample({
             <strong>For example</strong>, if {gapWeeks} of your last 104 weeks
             had no pay (say you took unpaid sick leave after an injury):
           </Text>
-          <Text as="p" className="mt-3 text-grey-70" size="caption">
+          <Text as="p" className="mt-3 text-grey-70" size="body-sm">
             Each square is one week.
           </Text>
           <div className="mt-2 space-y-3">
             {[0, 1].map((yearIdx) => (
               <div key={yearIdx}>
-                <Text as="p" className="mb-1 text-grey-70" size="caption">
+                <Text as="p" className="mb-1 text-grey-70" size="body-sm">
                   {yearIdx === 0 ? '2 years ago' : 'Last year'}
                 </Text>
                 <div className="flex flex-wrap gap-1">

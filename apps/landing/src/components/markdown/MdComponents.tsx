@@ -1,12 +1,4 @@
-import {
-  Heading,
-  LinkButton,
-  List,
-  Table,
-  TableCell,
-  TableHeader,
-  Text,
-} from '@govtech-bb/react'
+import { LinkButton, Table, TableCell, TableHeader } from '@govtech-bb/react'
 import type { ReactNode } from 'react'
 import type { Components } from 'hast-util-to-jsx-runtime'
 import { MarkdownLink } from './MarkdownLink'
@@ -31,62 +23,10 @@ function extractCellText(children: ReactNode): string | null {
 }
 
 export const markdownComponents: Partial<Components> = {
-  h1: ({ node: _node, children, ...props }) => (
-    <Heading as="h1" {...props}>
-      {children}
-    </Heading>
-  ),
-  h2: ({ node: _node, children, ...props }) => (
-    <Heading as="h2" className="scroll-mt-24" {...props}>
-      {children}
-    </Heading>
-  ),
-  h3: ({ node: _node, children, ...props }) => (
-    <Heading as="h3" className="scroll-mt-24" {...props}>
-      {children}
-    </Heading>
-  ),
-  h4: ({ node: _node, children, ...props }) => (
-    <Heading as="h4" className="scroll-mt-24" {...props}>
-      {children}
-    </Heading>
-  ),
-  p: ({ node: _node, children, ...props }) => (
-    <Text as="p" size="body" {...props}>
-      {children}
-    </Text>
-  ),
-  ul: ({ node: _node, children, ...props }) => (
-    <List variant="bullet" {...props}>
-      {children}
-    </List>
-  ),
-  ol: ({ node: _node, children, ...props }) => (
-    <List variant="number" {...props}>
-      {children}
-    </List>
-  ),
-  li: ({ node: _node, children, ...props }) => (
-    <li className="space-y-s" {...props}>
-      {children}
-    </li>
-  ),
-  hr: ({ node: _node, ...props }) => (
-    <hr className="my-8 border border-gray-100" {...props} />
-  ),
-  pre: ({ node: _node, ...props }) => (
-    <pre className="overflow-x-auto whitespace-pre-wrap" {...props} />
-  ),
   a: ({ node: _node, href, children, ...rest }) => (
     <MarkdownLink href={href} {...rest}>
       {children}
     </MarkdownLink>
-  ),
-  blockquote: ({ node: _node, ...props }) => (
-    <blockquote
-      className="ml-[0.075em] border-gray-300 border-l-3 pl-4 text-gray-700"
-      {...props}
-    />
   ),
   // Not `scrollable`: that wraps the table in a role="region", and a markdown
   // table has no caption to name it with.

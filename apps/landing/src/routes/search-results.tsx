@@ -119,7 +119,7 @@ function SearchResultsPage() {
                     className="flex flex-col items-start gap-xs border-grey-20 border-b-2 py-s first:pt-0"
                   >
                     <Link
-                      className="text-[20px] leading-normal"
+                      className="text-body leading-normal"
                       href={hit.href}
                       onClick={() =>
                         trackEvent('search-result-click', {

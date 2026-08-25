@@ -1005,9 +1005,9 @@ importers:
 
   apps/landing:
     dependencies:
-      '@fontsource/figtree':
-        specifier: ^5.2.10
-        version: 5.2.10
+      '@datadog/browser-rum':
+        specifier: ^7.8.0
+        version: 7.9.0
       '@govtech-bb/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
@@ -1015,11 +1015,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/content
       '@govtech-bb/frontend':
-        specifier: 1.0.0-alpha.25
-        version: 1.0.0-alpha.25
+        specifier: 1.0.0-alpha.27
+        version: 1.0.0-alpha.27
       '@govtech-bb/react':
-        specifier: 1.0.0-alpha.25
-        version: 1.0.0-alpha.25(react@19.2.7)
+        specifier: 1.0.0-alpha.27
+        version: 1.0.0-alpha.27(react@19.2.7)
       '@mdx-js/react':
         specifier: ^3.1.1
         version: 3.1.1(@types/react@19.2.17)(react@19.2.7)
@@ -2147,6 +2147,23 @@ packages:
     resolution: {integrity: sha512-QxULHAm7cNu72w97JUNCBFODFaXpbDg+dP8b/oWFAZ2MTRppA3U00Y2L1HqaS4J6yBqxwa/Y3nMBaxVKbB/NsA==}
     engines: {node: '>=20.19.0'}
 
+  '@datadog/browser-core@7.9.0':
+    resolution: {integrity: sha512-pGgMbVVtoWJeQ6xiH5r266Fk256e0ihdCIZEF402rQTjyn0t2zBc0TYn5CqgDtF9En66HepzW5oNjPbCXDazSw==}
+
+  '@datadog/browser-rum-core@7.9.0':
+    resolution: {integrity: sha512-h60o6/MLIiNGYXtt55/mcIsFKmBqRWReN3A9aR+gLuXUi9EsdABnnUxA/h9NuL0JG/YCu9NYJVHxsLmPk28C8Q==}
+
+  '@datadog/browser-rum@7.9.0':
+    resolution: {integrity: sha512-mgieKqTr5TP/5Z1sTPDtxZ08sdufTPtNCbu2lj9saNH25/+1Q/ZTjSRhKeUKtWMP8/P6OE8kfyC7BM3z47RlKw==}
+    peerDependencies:
+      '@datadog/browser-logs': 7.9.0
+    peerDependenciesMeta:
+      '@datadog/browser-logs':
+        optional: true
+
+  '@datadog/js-core@0.0.10':
+    resolution: {integrity: sha512-QZfHnRgdcr68mKrtoAIqSSAID5g6fbSh7sh5xmolUhlbUIUDV/OSrTEQm0IpSFfgUzLWz29Tf1kzprxVEA2XdA==}
+
   '@dnd-kit/accessibility@3.1.1':
     resolution: {integrity: sha512-2P+YgaXF+gRsIihwwY1gCsQSYnu9Zyj2py8kY5fFvUM1qm2WA2u639R6YNVfU4GWr+ZM5mqEsfHZZLoRONbemw==}
     peerDependencies:
@@ -2474,8 +2491,8 @@ packages:
   '@govtech-bb/design@1.0.0-alpha.17':
     resolution: {integrity: sha512-hJ0VtPN+XaUWYCxKCZaCFdRpRf9Hd2vJGyH8gJ/AMKzd2AKQ6P2WnYAxL0W1b7tv9bSbJSK73k8NtLEYgtVL9A==}
 
-  '@govtech-bb/frontend@1.0.0-alpha.25':
-    resolution: {integrity: sha512-ZHVHyr6kCtZ5TwntmNVmg4R1IAjMv5nmc1BBcMdsu9sBbLCH/8veSUHcbRFmPcpPj/HSlAZAoWMrG7qFVuGBLg==}
+  '@govtech-bb/frontend@1.0.0-alpha.27':
+    resolution: {integrity: sha512-Pt0UXCk2FGEL5jlo1Z/46lp8MLBYxdlSSRXjLmzGSJVqCAT9ZZ5O5SSK9oLn1x3UHGKK67542R5fiBAYSmCTUA==}
 
   '@govtech-bb/react@1.0.0-alpha.17':
     resolution: {integrity: sha512-CWb/7ntU51gmGLalvgFFedfyT4OYUyvVWWx4+4+rARYLp/aHd1anOeM2vEzTWUZYZHsdrCF7R7LDdE/qyxeafQ==}
@@ -2484,8 +2501,8 @@ packages:
       react-dom: ^18.0.0 || ^19.0.0
       tailwindcss: ^4.0.0
 
-  '@govtech-bb/react@1.0.0-alpha.25':
-    resolution: {integrity: sha512-kTJYvIl8ihhIs/C3bqCIYDqjie+RWDcoylmUMl3kHeKCHSx1xO6su0mooYQJjOfTyCDZMagQMc81WzeXmVN2Uw==}
+  '@govtech-bb/react@1.0.0-alpha.27':
+    resolution: {integrity: sha512-JKUCRMSUlNVXEoP3/JhAOncDSDshAqzZDvL1jInIhYmapRt/6xE1J89OcZ6CQhrtgXHUf+rMra4O29F/UHSyJQ==}
     peerDependencies:
       react: '>=18'
 
@@ -10773,6 +10790,23 @@ snapshots:
 
   '@csstools/css-tokenizer@4.0.0': {}
 
+  '@datadog/browser-core@7.9.0':
+    dependencies:
+      '@datadog/js-core': 0.0.10
+
+  '@datadog/browser-rum-core@7.9.0':
+    dependencies:
+      '@datadog/browser-core': 7.9.0
+      '@datadog/js-core': 0.0.10
+
+  '@datadog/browser-rum@7.9.0':
+    dependencies:
+      '@datadog/browser-core': 7.9.0
+      '@datadog/browser-rum-core': 7.9.0
+      '@datadog/js-core': 0.0.10
+
+  '@datadog/js-core@0.0.10': {}
+
   '@dnd-kit/accessibility@3.1.1(react@19.2.7)':
     dependencies:
       react: 19.2.7
@@ -11071,7 +11105,7 @@ snapshots:
 
   '@govtech-bb/design@1.0.0-alpha.17': {}
 
-  '@govtech-bb/frontend@1.0.0-alpha.25': {}
+  '@govtech-bb/frontend@1.0.0-alpha.27': {}
 
   '@govtech-bb/react@1.0.0-alpha.17(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)':
     dependencies:
@@ -11089,9 +11123,9 @@ snapshots:
       - '@types/react'
       - '@types/react-dom'
 
-  '@govtech-bb/react@1.0.0-alpha.25(react@19.2.7)':
+  '@govtech-bb/react@1.0.0-alpha.27(react@19.2.7)':
     dependencies:
-      '@govtech-bb/frontend': 1.0.0-alpha.25
+      '@govtech-bb/frontend': 1.0.0-alpha.27
       class-variance-authority: 0.7.1
       react: 19.2.7
 

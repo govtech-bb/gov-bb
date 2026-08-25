@@ -40,7 +40,7 @@ export function BreadcrumbRegion({ children }: { children: ReactNode }) {
   return (
     <PreviewBreadcrumbPathContext.Provider value={setPreviewPath}>
       {showBreadcrumbs ? (
-        <div className="govbb-width-container py-4 print:hidden lg:py-6">
+        <div className="govbb-width-container pt-4 print:hidden lg:pt-6">
           <Breadcrumbs pathname={pathname} />
         </div>
       ) : null}

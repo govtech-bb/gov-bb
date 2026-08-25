@@ -94,7 +94,7 @@ export function FilterSidebar({
           onClick={() => setFilterOpen((open) => !open)}
           type="button"
         >
-          <span className="font-bold text-[20px] underline">Filter</span>
+          <span className="font-bold text-body underline">Filter</span>
           <Chevron open={filterOpen} />
         </button>
 
@@ -126,7 +126,7 @@ export function FilterSidebar({
                   aria-live="polite"
                   as="p"
                   className="text-mid-grey-00"
-                  size="caption"
+                  size="body-sm"
                 >
                   {locationStatus}
                 </Text>
@@ -298,7 +298,7 @@ function FilterGroup({
       {open && (
         <div className="flex flex-col gap-s">
           {hint && (
-            <Text as="p" className="text-mid-grey-00" size="caption">
+            <Text as="p" className="text-mid-grey-00" size="body-sm">
               {hint}
             </Text>
           )}

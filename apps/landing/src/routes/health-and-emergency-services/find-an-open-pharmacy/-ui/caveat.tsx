@@ -29,7 +29,7 @@ export function Caveat({
       <Text
         as="p"
         className={tone === 'confidence' ? 'text-mid-grey-00' : undefined}
-        size="caption"
+        size="body-sm"
       >
         {children}
       </Text>

@@ -1,4 +1,3 @@
-@import '@fontsource/figtree/800.css';
 @import 'tailwindcss';
 /* Register the design system's tokens as Tailwind theme values, so utilities
    resolve to the same custom properties the components use. */
