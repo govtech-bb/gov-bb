@@ -32,6 +32,7 @@ Pay what you can afford within the year, in a way that suits you, as long as the
 
 - online with SurePay (or at a SurePay kiosk)
 - online with EZpay+
+- online with CIBC FirstPay
 - at any CIBC FirstCaribbean branch
 - in person at the NIS office at Frank Walcott Building
 
