@@ -30,12 +30,12 @@ export function Contact({
       href={tel}
       className={
         isEmergency
-          ? 'col-span-full flex flex-col gap-xxs border-red-00 border-l-4 bg-red-10 p-s text-current no-underline transition-colors hover:bg-red-40 focus-visible:outline focus-visible:outline-4 focus-visible:outline-red-100 focus-visible:outline-offset-2'
-          : 'flex flex-col gap-xxs border-teal-00 border-l-4 bg-teal-10 p-s text-current no-underline transition-colors hover:bg-teal-40 focus-visible:outline focus-visible:outline-4 focus-visible:outline-teal-100 focus-visible:outline-offset-2'
+          ? 'col-span-full flex flex-col gap-xxs border-red-80 border-l-4 bg-red-10 p-s text-current no-underline transition-colors hover:bg-red-20 focus-visible:outline focus-visible:outline-4 focus-visible:outline-red-40 focus-visible:outline-offset-2'
+          : 'flex flex-col gap-xxs border-teal-80 border-l-4 bg-teal-10 p-s text-current no-underline transition-colors hover:bg-teal-20 focus-visible:outline focus-visible:outline-4 focus-visible:outline-teal-40 focus-visible:outline-offset-2'
       }
     >
       {isEmergency ? (
-        <span className="font-bold text-red-00 text-xs uppercase tracking-wider">
+        <span className="font-bold text-red-80 text-xs uppercase tracking-wider">
           Emergency
         </span>
       ) : null}
@@ -43,8 +43,8 @@ export function Contact({
       <span
         className={
           isEmergency
-            ? 'font-bold text-2xl text-red-00'
-            : 'font-bold text-teal-00 text-xl'
+            ? 'font-bold text-2xl text-red-80'
+            : 'font-bold text-teal-80 text-xl'
         }
       >
         {number}

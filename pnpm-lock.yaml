@@ -963,12 +963,12 @@ importers:
       '@govtech-bb/content':
         specifier: workspace:*
         version: link:../../packages/content
-      '@govtech-bb/design':
-        specifier: ^1.0.0-alpha.17
-        version: 1.0.0-alpha.17
+      '@govtech-bb/frontend':
+        specifier: 1.0.0-alpha.25
+        version: 1.0.0-alpha.25
       '@govtech-bb/react':
-        specifier: ^1.0.0-alpha.17
-        version: 1.0.0-alpha.17(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)
+        specifier: 1.0.0-alpha.25
+        version: 1.0.0-alpha.25(react@19.2.7)
       '@mdx-js/react':
         specifier: ^3.1.1
         version: 3.1.1(@types/react@19.2.17)(react@19.2.7)
@@ -2476,12 +2476,20 @@ packages:
   '@govtech-bb/design@1.0.0-alpha.17':
     resolution: {integrity: sha512-hJ0VtPN+XaUWYCxKCZaCFdRpRf9Hd2vJGyH8gJ/AMKzd2AKQ6P2WnYAxL0W1b7tv9bSbJSK73k8NtLEYgtVL9A==}
 
+  '@govtech-bb/frontend@1.0.0-alpha.25':
+    resolution: {integrity: sha512-ZHVHyr6kCtZ5TwntmNVmg4R1IAjMv5nmc1BBcMdsu9sBbLCH/8veSUHcbRFmPcpPj/HSlAZAoWMrG7qFVuGBLg==}
+
   '@govtech-bb/react@1.0.0-alpha.17':
     resolution: {integrity: sha512-CWb/7ntU51gmGLalvgFFedfyT4OYUyvVWWx4+4+rARYLp/aHd1anOeM2vEzTWUZYZHsdrCF7R7LDdE/qyxeafQ==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
       tailwindcss: ^4.0.0
+
+  '@govtech-bb/react@1.0.0-alpha.25':
+    resolution: {integrity: sha512-kTJYvIl8ihhIs/C3bqCIYDqjie+RWDcoylmUMl3kHeKCHSx1xO6su0mooYQJjOfTyCDZMagQMc81WzeXmVN2Uw==}
+    peerDependencies:
+      react: '>=18'
 
   '@govtech-bb/styles@1.0.0-alpha.17':
     resolution: {integrity: sha512-4klEF5AgbhXyIE11pdQQhqLH2dCWqZDLINcL516cpjMBzobkVqK5Jb41KvfSysUYUSGTEiv+XQrTzq+joHRM6Q==}
@@ -6363,6 +6371,7 @@ packages:
   eslint@9.39.4:
     resolution: {integrity: sha512-XoMjdBOwe/esVgEvLmNsD3IRHkm7fbKIUGvrleloJXUZgDHig2IPWNniv+GwjyJXzuNqVjlr5+4yVUZjycJwfQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -11183,6 +11192,8 @@ snapshots:
 
   '@govtech-bb/design@1.0.0-alpha.17': {}
 
+  '@govtech-bb/frontend@1.0.0-alpha.25': {}
+
   '@govtech-bb/react@1.0.0-alpha.17(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)':
     dependencies:
       '@govtech-bb/design': 1.0.0-alpha.17
@@ -11198,6 +11209,12 @@ snapshots:
     transitivePeerDependencies:
       - '@types/react'
       - '@types/react-dom'
+
+  '@govtech-bb/react@1.0.0-alpha.25(react@19.2.7)':
+    dependencies:
+      '@govtech-bb/frontend': 1.0.0-alpha.25
+      class-variance-authority: 0.7.1
+      react: 19.2.7
 
   '@govtech-bb/styles@1.0.0-alpha.17': {}
 

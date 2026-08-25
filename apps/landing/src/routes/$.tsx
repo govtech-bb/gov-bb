@@ -1,10 +1,7 @@
 import { useEffect } from 'react'
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router'
-import { Heading, Text, linkVariants } from '@govtech-bb/react'
-import { Breadcrumbs } from '../components/Breadcrumbs'
+import { Heading, StatusBanner, Text } from '@govtech-bb/react'
 import { HelpfulBox } from '../components/HelpfulBox'
-import { MaintenanceNotice } from '../components/MaintenanceNotice'
-import { ApplicationClosedNotice } from '../components/ApplicationClosedNotice'
 import { MarkdownContent } from '../components/markdown'
 import {
   categoryServices,
@@ -84,6 +81,7 @@ type LoaderData =
     }
 
 export const Route = createFileRoute('/$')({
+  staticData: { breadcrumbMode: 'location' },
   loader: async ({ params, context }): Promise<LoaderData> => {
     const { level, serviceStatuses } = context
     // The runtime service_status overlay overrides frontmatter visibility per
@@ -335,8 +333,19 @@ function PageView({
   return (
     <Shell>
       {level !== 'public' ? <ReviewBanner level={level} /> : null}
-      {underMaintenance ? <MaintenanceNotice /> : null}
-      {applicationClosed ? <ApplicationClosedNotice /> : null}
+      {underMaintenance ? (
+        <StatusBanner variant="service" className="mb-s">
+          <p>
+            This form is currently being upgraded to serve you better. Please
+            check back soon.
+          </p>
+        </StatusBanner>
+      ) : null}
+      {applicationClosed ? (
+        <StatusBanner variant="service" className="mb-s">
+          <p>Applications for this service have closed.</p>
+        </StatusBanner>
+      ) : null}
       {Body ? (
         <Body />
       ) : (
@@ -381,7 +390,7 @@ function ServiceListView({
     <Shell>
       <PageHeader title={title} description={description} />
       {sorted.length === 0 ? (
-        <Text as="p" className="mt-6 text-mid-grey-00">
+        <Text as="p" className="mt-6 text-grey-70">
           No services yet.
         </Text>
       ) : (
@@ -389,11 +398,11 @@ function ServiceListView({
           {sorted.map((item) => (
             <div
               key={item.href}
-              className="border-grey-00 border-t-2 py-4 first:border-0 lg:py-8"
+              className="border-grey-20 border-t-2 py-4 first:border-0 lg:py-8"
             >
               <a
                 href={item.href}
-                className={`${linkVariants()} text-[20px] leading-normal lg:text-3xl`}
+                className="govbb-link text-[20px] leading-normal lg:text-3xl"
               >
                 {item.title}
               </a>
@@ -419,11 +428,11 @@ function SubcategoryIndexView({
         {subcategories.map((sub) => (
           <li
             key={sub.slug}
-            className="border-t-2 border-grey-00 py-4 first:border-0 lg:py-8"
+            className="border-t-2 border-grey-20 py-4 first:border-0 lg:py-8"
           >
             <a
               href={`/${category.slug}/${sub.slug}`}
-              className={`${linkVariants()} text-[20px] leading-normal lg:text-3xl`}
+              className="govbb-link text-[20px] leading-normal lg:text-3xl"
             >
               {sub.title}
             </a>
@@ -461,12 +470,12 @@ function ReviewBanner({ level }: { level: Exclude<ViewLevel, 'public'> }) {
   return (
     <div
       role="status"
-      className="mb-6 border-yellow-40 border-l-4 bg-yellow-10 p-4"
+      className="mb-6 border-yellow-20 border-l-4 bg-yellow-10 p-4"
     >
       <Text as="p" className="font-bold">
         {copy.heading}
       </Text>
-      <Text as="p" size="caption" className="text-mid-grey-00">
+      <Text as="p" size="caption" className="text-grey-70">
         {copy.detail}
       </Text>
     </div>
@@ -476,11 +485,8 @@ function ReviewBanner({ level }: { level: Exclude<ViewLevel, 'public'> }) {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <div className="container py-4 lg:py-6 print:hidden">
-        <Breadcrumbs />
-      </div>
-      <div className="container pt-4 pb-8 lg:py-8">{children}</div>
-      <div className="container print:hidden">
+      <div className="govbb-width-container govbb-main-wrapper">{children}</div>
+      <div className="govbb-width-container print:hidden">
         <HelpfulBox className="mb-4 lg:mb-16" />
       </div>
     </>

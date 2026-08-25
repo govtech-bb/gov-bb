@@ -39,7 +39,13 @@ export function MarkdownLink({
   }
 
   return (
-    <Link external={isExternal} href={safeHref} {...rest}>
+    <Link
+      href={safeHref}
+      {...(isExternal
+        ? { rel: 'noopener noreferrer', target: '_blank' }
+        : undefined)}
+      {...rest}
+    >
       {children}
     </Link>
   )

@@ -42,20 +42,26 @@ function SearchResultsPage() {
 
   return (
     <>
-      <section className="border-teal-40 border-b-4 bg-teal-10 py-8">
-        <div className="container">
+      <section className="border-teal-20 border-b-4 bg-teal-10 py-8">
+        <div className="govbb-width-container">
           <div className="flex flex-col gap-2">
             <Text as="p" className="font-bold">
               Search for a service
             </Text>
             <SearchInput
               action="/search-results"
-              name="q"
               label="Search for a service"
               buttonLabel="Search"
-              defaultValue={query}
-              onSearch={(submitted) => {
-                trackEvent('search-submit', { query: submitted, source: 'results' })
+              inputProps={{ defaultValue: query, name: 'q' }}
+              onSubmit={(event) => {
+                event.preventDefault()
+                const submitted = String(
+                  new FormData(event.currentTarget).get('q') ?? '',
+                ).trim()
+                trackEvent('search-submit', {
+                  query: submitted,
+                  source: 'results',
+                })
                 window.location.href = submitted
                   ? `/search-results?q=${encodeURIComponent(submitted)}`
                   : '/search-results'
@@ -66,7 +72,7 @@ function SearchResultsPage() {
       </section>
 
       <section className="pt-4 pb-8">
-        <div className="container">
+        <div className="govbb-width-container">
           <div aria-live="polite">
             <Heading as="h2" className="mb-s">
               Search results
@@ -110,7 +116,7 @@ function SearchResultsPage() {
                 {hits.map((hit, index) => (
                   <li
                     key={hit.id}
-                    className="flex flex-col items-start gap-xs border-grey-00 border-b-2 py-s first:pt-0"
+                    className="flex flex-col items-start gap-xs border-grey-20 border-b-2 py-s first:pt-0"
                   >
                     <Link
                       className="text-[20px] leading-normal"
@@ -130,7 +136,7 @@ function SearchResultsPage() {
                         {hit.description}
                       </Text>
                     ) : null}
-                    <Text as="p" className="text-mid-grey-00">
+                    <Text as="p" className="text-grey-70">
                       Information service
                     </Text>
                   </li>

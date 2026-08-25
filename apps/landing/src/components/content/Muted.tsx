@@ -18,7 +18,7 @@ export function Muted({
     <Text
       as="p"
       size={isCaption ? 'caption' : undefined}
-      className="text-mid-grey-00"
+      className="text-grey-70"
     >
       {children}
     </Text>

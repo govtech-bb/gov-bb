@@ -18,7 +18,7 @@ export const Route = createFileRoute('/feedback')({
 
 function FeedbackPage() {
   return (
-    <div className="container pt-4 pb-8 lg:py-8">
+    <div className="govbb-width-container govbb-main-wrapper">
       <div className="mb-6 space-y-6">
         <Heading as="h1">Help us improve alpha.gov.bb</Heading>
         <div className="space-y-3">

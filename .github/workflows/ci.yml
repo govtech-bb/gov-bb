@@ -42,6 +42,9 @@ jobs:
       # Fails on dependency-version drift across workspace packages.
       # Deliberate splits (express 4/5, forms' eslint 9, react-markdown 9/10)
       # are ignored via flags in the script — see root package.json.
+      # @govtech-bb/react is split while apps move to the new design system one
+      # at a time: landing is on alpha.25, analytics still on alpha.17. Drop the
+      # flag once every app has migrated.
       - name: Dependency consistency (sherif)
         run: pnpm lint:deps
 

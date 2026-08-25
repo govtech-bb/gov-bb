@@ -12,7 +12,7 @@
   "scripts": {
     "build": "nx run-many -t build",
     "lint": "nx run-many -t lint",
-    "lint:deps": "sherif -i express -i @types/express -i eslint -i @eslint/js -i react-markdown -r root-package-dependencies",
+    "lint:deps": "sherif -i express -i @types/express -i eslint -i @eslint/js -i react-markdown -i @govtech-bb/react -r root-package-dependencies",
     "test:all": "nx run-many -t test",
     "dev:forms": "nx dev forms",
     "dev:api": "ln -sfn ../dist/apps/api/src node_modules/@ && nx dev api",

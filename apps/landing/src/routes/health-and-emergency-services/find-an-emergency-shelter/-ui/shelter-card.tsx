@@ -21,10 +21,10 @@ function mapsUrl(shelter: Shelter): string {
 }
 
 const TAG_TONES = {
-  category: 'bg-yellow-40 text-blue-100',
-  access: 'bg-teal-10 text-teal-00',
-  water: 'bg-green-10 text-green-100',
-  warning: 'bg-red-10 text-red-00',
+  category: 'bg-yellow-20 text-blue-40',
+  access: 'bg-teal-10 text-teal-80',
+  water: 'bg-green-10 text-green-40',
+  warning: 'bg-red-10 text-red-80',
 } as const
 
 function Tag({
@@ -54,17 +54,17 @@ export function ShelterCard({
     shelter.ownership === 'Public' ? 'public' : 'privately owned'
 
   return (
-    <li className="flex h-full flex-col gap-xs rounded-lg border-4 border-grey-00 bg-white-00 p-s">
-      <p className="inline-flex w-fit items-center gap-2 rounded-full bg-grey-00 px-3 py-1 font-bold text-mid-grey-00 text-xs uppercase tracking-wide">
+    <li className="flex h-full flex-col gap-xs rounded-lg border-4 border-grey-20 bg-white-00 p-s">
+      <p className="inline-flex w-fit items-center gap-2 rounded-full bg-grey-20 px-3 py-1 font-bold text-grey-70 text-xs uppercase tracking-wide">
         <span
           aria-hidden="true"
-          className="size-2 rounded-full bg-mid-grey-00"
+          className="size-2 rounded-full bg-grey-70"
         />
         Not currently open
       </p>
 
       {shelter.restriction && (
-        <p className="inline-flex w-fit items-center gap-1 rounded-full bg-red-10 px-3 py-1 font-semibold text-red-00 text-sm">
+        <p className="inline-flex w-fit items-center gap-1 rounded-full bg-red-10 px-3 py-1 font-semibold text-red-80 text-sm">
           <strong>Restricted:</strong> {shelter.restriction}
         </p>
       )}
@@ -73,7 +73,7 @@ export function ShelterCard({
         {shelter.name}
       </Heading>
 
-      <Text as="p" className="text-mid-grey-00">
+      <Text as="p" className="text-grey-70">
         {shelter.parish}, {ownership}, holds up to {shelter.capacity} people
         (booklet planning figure — not live availability)
       </Text>
@@ -86,7 +86,7 @@ export function ShelterCard({
       )}
 
       {distance && (
-        <p className="inline-flex items-center gap-1.5 font-semibold text-blue-100">
+        <p className="inline-flex items-center gap-1.5 font-semibold text-blue-40">
           <MapPinIcon />
           {formatDistance(distance)}
         </p>
@@ -103,7 +103,7 @@ export function ShelterCard({
       </div>
 
       <p>
-        <Link external href={mapsUrl(shelter)}>
+        <Link href={mapsUrl(shelter)} rel="noopener noreferrer" target="_blank">
           Get directions on Google Maps
         </Link>
       </p>

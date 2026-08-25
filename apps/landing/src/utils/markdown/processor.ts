@@ -6,7 +6,7 @@ import rehypeRaw from 'rehype-raw'
 import rehypeSlug from 'rehype-slug'
 import rehypeAutolinkHeadings from 'rehype-autolink-headings'
 import type { Root } from 'hast'
-import { sanitizeUrls } from './plugins'
+import { sanitizeUrls, tableScopes } from './plugins'
 
 type ProcessedMarkdown = {
   hast: Root
@@ -21,6 +21,7 @@ export async function processMarkdown(
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
     .use(sanitizeUrls)
+    .use(tableScopes)
     .use(rehypeSlug)
     .use(rehypeAutolinkHeadings, {
       behavior: 'append',

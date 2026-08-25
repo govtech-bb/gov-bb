@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Heading, Search, Text, linkVariants } from '@govtech-bb/react'
+import { Heading, Search, Text } from '@govtech-bb/react'
 import { ChatAssistant } from '../components/ChatAssistant'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { CATEGORIES } from '../content/categories'
@@ -36,8 +36,8 @@ function Home() {
 
   return (
     <>
-      <section className="border-b-4 border-yellow-100 bg-blue-00 text-white-00">
-        <div className="container">
+      <section className="border-b-4 border-yellow-40 bg-blue-80 text-white-00">
+        <div className="govbb-width-container">
           <div className="space-y-m py-[clamp(var(--spacing-m),5vw,var(--spacing-l))]">
             <div className="max-w-210 space-y-s">
               <Heading as="h1" className="text-balance">
@@ -53,34 +53,44 @@ function Home() {
         </div>
       </section>
 
-      <section className="border-b-4 border-teal-100 bg-green-10">
-        <div className="container">
+      <section className="border-b-4 border-teal-40 bg-green-10">
+        <div className="govbb-width-container">
           <div className="space-y-m py-m">
-            <Heading as="h4">Or search all government services directly</Heading>
+            <Heading as="h4">
+              Or search all government services directly
+            </Heading>
             <Search
               action="/search-results"
-              name="q"
               label="Search for a service"
               buttonLabel="Search"
-              onSearch={handleSearch}
+              inputProps={{ name: 'q' }}
+              onSubmit={(event) => {
+                event.preventDefault()
+                const q = String(
+                  new FormData(event.currentTarget).get('q') ?? '',
+                ).trim()
+                handleSearch(q)
+              }}
             />
           </div>
         </div>
       </section>
 
       <section>
-        <div className="container">
+        <div className="govbb-width-container">
           <div className="space-y-m py-m lg:py-l">
-            <Heading as="h2" className="text-balance">All government services</Heading>
+            <Heading as="h2" className="text-balance">
+              All government services
+            </Heading>
             <ul className="m-0 flex list-none flex-col p-0">
               {categories.map((cat) => (
                 <li
                   key={cat.slug}
-                  className="border-b-2 border-grey-00 py-s lg:py-xm"
+                  className="border-b-2 border-grey-20 py-s lg:py-xm"
                 >
                   <a
                     href={`/${cat.slug}`}
-                    className={`${linkVariants()} text-[clamp(1.25rem,2.5vw,2rem)] leading-normal font-bold text-green-00`}
+                    className="govbb-link text-[clamp(1.25rem,2.5vw,2rem)] leading-normal font-bold text-green-80"
                   >
                     {cat.title}
                   </a>
@@ -96,7 +106,7 @@ function Home() {
         </div>
       </section>
 
-      <div className="container">
+      <div className="govbb-width-container">
         <HelpfulBox className="mb-s lg:mb-l" />
       </div>
     </>

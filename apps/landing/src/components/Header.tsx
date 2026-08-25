@@ -1,8 +1,15 @@
 import { forwardRef } from 'react'
 import type { ComponentPropsWithoutRef } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Header as GovHeader, OfficialBanner } from '@govtech-bb/react'
-import { StageBanner } from './StageBanner'
+import {
+  Header as GovHeader,
+  Link as GovLink,
+  LinkButton,
+  OfficialBanner,
+  StatusBanner,
+} from '@govtech-bb/react'
+import govBbLogoUrl from '@govtech-bb/frontend/assets/images/govbb-logo.svg?url'
+import { CHAT_URL } from '../lib/chat-url'
 
 // The DS Header renders links via `href`; map it to TanStack Router's `to` for
 // client-side navigation, and forward the ref so focus management keeps working.
@@ -12,27 +19,38 @@ const RouterLink = forwardRef<HTMLAnchorElement, RouterLinkProps>(
 )
 RouterLink.displayName = 'RouterLink'
 
-const NAV_ITEMS = [{ label: 'Services', href: '/services' }]
-
 export default function Header() {
   return (
-    <div>
+    <>
       <OfficialBanner
         imageSrc="/images/coat-of-arms.png"
         imageAlt=""
         showLearnMore={false}
       />
-      <div className="bg-blue-10">
-        <div className="container">
-          <StageBanner stage="alpha" />
-        </div>
-      </div>
+      <StatusBanner variant="alpha" fullWidth>
+        <p>
+          This page is in{' '}
+          <GovLink href="/what-we-mean-by-alpha" linkComponent={RouterLink}>
+            Alpha
+          </GovLink>
+          .
+        </p>
+      </StatusBanner>
       <GovHeader
         homeHref="/"
-        homeLabel="Go to the alpha.gov.bb homepage"
-        navItems={NAV_ITEMS}
+        logoAlt="Go to the alpha.gov.bb homepage"
+        logoSrc={govBbLogoUrl}
         linkComponent={RouterLink}
+        nav={
+          <>
+            <GovLink href="/services" linkComponent={RouterLink}>
+              Services
+            </GovLink>
+            <LinkButton href={CHAT_URL}>Ask Assistant</LinkButton>
+          </>
+        }
+        navAriaLabel="Primary navigation"
       />
-    </div>
+    </>
   )
 }

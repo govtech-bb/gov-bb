@@ -1,11 +1,13 @@
 import {
   Button,
+  ButtonGroup,
   DateInput,
   ErrorSummary,
   Heading,
   Input,
   Radio,
   RadioGroup,
+  ServiceHeading,
   ShowHide,
   Text,
 } from '@govtech-bb/react'
@@ -27,8 +29,7 @@ import {
 
 type Step = 'q-employment' | 'q-reason' | 'q-years' | 'q-pay' | 'result'
 
-const START_PATH_SPLAT =
-  'money-financial-support/calculate-severance-pay/start'
+const START_PATH_SPLAT = 'money-financial-support/calculate-severance-pay/start'
 const SERVICE_TITLE = 'Find out how much severance payment you are owed'
 
 const EMPLOYMENT_LABELS: Record<Employment, string> = {
@@ -115,8 +116,8 @@ function parseDate(parts: DateInputValue): ParseDateResult {
 
 function ServiceTitle() {
   return (
-    <div className="border-blue-40 border-l-4 py-xs pl-s">
-      <Text as="p" className="text-mid-grey-00">
+    <div className="border-blue-20 border-l-4 py-xs pl-s">
+      <Text as="p" className="text-grey-70">
         {SERVICE_TITLE}
       </Text>
     </div>
@@ -131,7 +132,7 @@ function IneligibleResult({ variant }: { variant: IneligibleVariant }) {
           {variant.title}
         </Heading>
       </div>
-      <Text as="p" className="mt-3 text-mid-grey-00" size="caption">
+      <Text as="p" className="mt-3 text-grey-70" size="caption">
         Based on the information you gave us
       </Text>
       <Text as="p" className="mt-2" size="body">
@@ -276,7 +277,7 @@ export function SeveranceCalculator() {
   }
 
   return (
-    <div className="container pt-4 pb-8 lg:py-8">
+    <div className="govbb-width-container govbb-main-wrapper">
       {step === 'q-employment' && (
         <form
           className="flex flex-col gap-6"
@@ -288,30 +289,32 @@ export function SeveranceCalculator() {
         >
           {employmentError && (
             <ErrorSummary
-              errors={[{ text: employmentError, target: 'employment-yes' }]}
+              errors={[{ href: '#employment-yes', label: employmentError }]}
               title="There is a problem"
             />
           )}
-          <ServiceTitle />
-          <Heading as="h1">Are you self-employed?</Heading>
+          <ServiceHeading service={SERVICE_TITLE}>
+            Are you self-employed?
+          </ServiceHeading>
           <RadioGroup
             error={employmentError || undefined}
-            label="Choose one"
+            legend="Choose one"
+            name="employment"
             onValueChange={(v) => setEmployment(v as Employment)}
             value={employment || undefined}
           >
-            {(Object.entries(EMPLOYMENT_LABELS) as Array<[Employment, string]>).map(
-              ([value, label]) => (
-                <Radio
-                  id={`employment-${value}`}
-                  key={value}
-                  label={label}
-                  value={value}
-                />
-              ),
-            )}
+            {(
+              Object.entries(EMPLOYMENT_LABELS) as Array<[Employment, string]>
+            ).map(([value, label]) => (
+              <Radio
+                id={`employment-${value}`}
+                key={value}
+                label={label}
+                value={value}
+              />
+            ))}
           </RadioGroup>
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() =>
                 navigate({
@@ -325,7 +328,7 @@ export function SeveranceCalculator() {
               Previous
             </Button>
             <Button type="submit">Continue</Button>
-          </div>
+          </ButtonGroup>
         </form>
       )}
 
@@ -340,15 +343,17 @@ export function SeveranceCalculator() {
         >
           {reasonError && (
             <ErrorSummary
-              errors={[{ text: reasonError, target: 'reason-redundancy' }]}
+              errors={[{ href: '#reason-redundancy', label: reasonError }]}
               title="There is a problem"
             />
           )}
-          <ServiceTitle />
-          <Heading as="h1">Why were you sent home?</Heading>
+          <ServiceHeading service={SERVICE_TITLE}>
+            Why were you sent home?
+          </ServiceHeading>
           <RadioGroup
             error={reasonError || undefined}
-            label="Choose one"
+            legend="Choose one"
+            name="reason"
             onValueChange={(v) => setReason(v as Reason)}
             value={reason || undefined}
           >
@@ -363,7 +368,7 @@ export function SeveranceCalculator() {
               ),
             )}
           </RadioGroup>
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() => go('q-employment')}
               type="button"
@@ -372,7 +377,7 @@ export function SeveranceCalculator() {
               Previous
             </Button>
             <Button type="submit">Continue</Button>
-          </div>
+          </ButtonGroup>
         </form>
       )}
 
@@ -389,17 +394,18 @@ export function SeveranceCalculator() {
             <ErrorSummary
               errors={[
                 ...(startError
-                  ? [{ text: startError, target: 'start-date-day' }]
+                  ? [{ href: '#start-date-day', label: startError }]
                   : []),
                 ...(endError
-                  ? [{ text: endError, target: 'end-date-day' }]
+                  ? [{ href: '#end-date-day', label: endError }]
                   : []),
               ]}
               title="There is a problem"
             />
           )}
-          <ServiceTitle />
-          <Heading as="h1">When did you work for this employer?</Heading>
+          <ServiceHeading service={SERVICE_TITLE}>
+            When did you work for this employer?
+          </ServiceHeading>
           <ul className="list-disc space-y-2 pl-7">
             <li>Enter the date you started and your last day at work.</li>
             <li>
@@ -414,24 +420,28 @@ export function SeveranceCalculator() {
           <DateInput
             description="The first day you worked for this employer. For example, 27 3 1990"
             error={startError || undefined}
-            label="Start date"
+            legend="Start date"
             name="start-date"
             onChange={setStart}
-            required
+            dayProps={{ required: true }}
+            monthProps={{ required: true }}
+            yearProps={{ required: true }}
             value={start}
           />
 
           <DateInput
             description="Your last day at work. For example, 27 3 1990"
             error={endError || undefined}
-            label="End date"
+            legend="End date"
             name="end-date"
             onChange={setEnd}
-            required
+            dayProps={{ required: true }}
+            monthProps={{ required: true }}
+            yearProps={{ required: true }}
             value={end}
           />
 
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() => go('q-reason')}
               type="button"
@@ -440,7 +450,7 @@ export function SeveranceCalculator() {
               Previous
             </Button>
             <Button type="submit">Continue</Button>
-          </div>
+          </ButtonGroup>
         </form>
       )}
 
@@ -455,12 +465,13 @@ export function SeveranceCalculator() {
         >
           {payError && (
             <ErrorSummary
-              errors={[{ text: payError, target: 'simple-avg' }]}
+              errors={[{ href: '#simple-avg', label: payError }]}
               title="There is a problem"
             />
           )}
-          <ServiceTitle />
-          <Heading as="h1">Your insurable earnings</Heading>
+          <ServiceHeading service={SERVICE_TITLE}>
+            Your insurable earnings
+          </ServiceHeading>
           <Text as="p" size="body">
             Enter your usual gross pay. We'll use it as the average over the
             last 104 weeks (2 years).
@@ -468,7 +479,8 @@ export function SeveranceCalculator() {
 
           <RadioGroup
             description="Choose one"
-            label="How are you paid?"
+            legend="How are you paid?"
+            name="pay-period"
             onValueChange={(v) => setPeriod(v as PayPeriod)}
             value={period}
           >
@@ -489,7 +501,7 @@ export function SeveranceCalculator() {
             />
           </div>
 
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() => go('q-years')}
               type="button"
@@ -498,7 +510,7 @@ export function SeveranceCalculator() {
               Previous
             </Button>
             <Button type="submit">Continue</Button>
-          </div>
+          </ButtonGroup>
         </form>
       )}
 
@@ -523,9 +535,9 @@ export function SeveranceCalculator() {
 
           <Heading as="h2">Need help or advice?</Heading>
           <Text as="p" size="body">
-            Contact the <strong>NIS Severance Payment Department</strong>.
-            They can give you free advice and help you claim if your employer
-            does not pay.
+            Contact the <strong>NIS Severance Payment Department</strong>. They
+            can give you free advice and help you claim if your employer does
+            not pay.
           </Text>
           <Text as="p" size="body">
             NIS Severance Payment Department
@@ -582,7 +594,7 @@ function EligibleResult({
 
   return (
     <>
-      <div className="rounded-sm bg-green-00 p-m text-white-00">
+      <div className="rounded-sm bg-green-80 p-m text-white-00">
         <Heading as="h2" className="text-white-00">
           Your severance payment estimate
         </Heading>
@@ -591,11 +603,9 @@ function EligibleResult({
         </p>
       </div>
 
-      <div className="border-red-00 border-l-4 bg-red-10 p-4">
+      <div className="border-red-80 border-l-4 bg-red-10 p-4">
         <Text as="p" size="body">
-          <strong>
-            This is the estimated amount you may be entitled to.
-          </strong>{' '}
+          <strong>This is the estimated amount you may be entitled to.</strong>{' '}
           It is calculated under the Severance Payments Act (Cap. 355A). Your
           contract of employment may entitle you to more.
         </Text>
@@ -625,8 +635,8 @@ function EligibleResult({
               years
             </li>
             <li>
-              <strong>3 weeks</strong> of gross pay for each year between 11
-              and 20 years
+              <strong>3 weeks</strong> of gross pay for each year between 11 and
+              20 years
             </li>
             <li>
               <strong>3.5 weeks</strong> of gross pay for each year between 21
@@ -645,8 +655,8 @@ function EligibleResult({
             last 2 years), divided by 104.
           </Text>
           <Text as="p" size="body">
-            Insurable earnings are the wages NIS records contributions on.
-            They include your regular pay plus overtime, commissions, service
+            Insurable earnings are the wages NIS records contributions on. They
+            include your regular pay plus overtime, commissions, service
             charges, production bonuses, and holiday pay.
           </Text>
           {period === PayPeriod.Monthly && (
@@ -683,8 +693,7 @@ function EligibleResult({
             {years > 33 && (
               <>
                 {' '}
-                (we counted the most recent 33 of the {years} years you told
-                us)
+                (we counted the most recent 33 of the {years} years you told us)
               </>
             )}
             . Here is how that adds up:
@@ -716,7 +725,7 @@ function EligibleResult({
                 />
               )}
               <span className="col-span-9 mt-1 border-black-00 border-t pt-2 text-right">
-                <span className="mr-2 text-mid-grey-00">Total =</span>
+                <span className="mr-2 text-grey-70">Total =</span>
                 <strong>{money(severance)}</strong>
               </span>
             </div>
@@ -725,7 +734,7 @@ function EligibleResult({
       </ShowHide>
 
       {years > 33 && (
-        <Text as="p" className="text-mid-grey-00" size="caption">
+        <Text as="p" className="text-grey-70" size="caption">
           Under the Severance Payments Act, only the most recent 33 years of
           service are counted.
         </Text>
@@ -746,19 +755,18 @@ function EligibleResult({
           You have <strong>30 days</strong> to respond to the letter.
         </li>
         <li>
-          Return the <strong>registered pink slip</strong> from the post
-          office, together with a copy of the letter, before the 30 days are
-          up.
+          Return the <strong>registered pink slip</strong> from the post office,
+          together with a copy of the letter, before the 30 days are up.
         </li>
       </ol>
 
-      <div className="border-yellow-00 border-l-4 bg-yellow-10 p-4">
+      <div className="border-yellow-80 border-l-4 bg-yellow-10 p-4">
         <Text as="p" size="body">
           <strong>Keep your pink slip safe</strong>
         </Text>
         <Text as="p" className="mt-2" size="body">
-          If the pink slip is lost, damaged, stolen, or misplaced, you will
-          have to restart the entire severance process from the beginning.
+          If the pink slip is lost, damaged, stolen, or misplaced, you will have
+          to restart the entire severance process from the beginning.
         </Text>
       </div>
     </>
@@ -780,15 +788,15 @@ function GapWeeksExample({
   const exampleSeverance = entitledWeeks * exampleAvg
 
   return (
-    <div className="border-yellow-00 border-l-4 bg-yellow-10 p-4">
+    <div className="border-yellow-80 border-l-4 bg-yellow-10 p-4">
       <Text as="p" size="body">
         <strong>Why this is only an estimate</strong>
       </Text>
       <Text as="p" className="mt-2" size="body">
-        NIS divides by 104 weeks no matter what. If you had weeks in the last
-        2 years where you did not work, or were on lay-off, short-time, sick
-        leave, or unpaid leave, those weeks still count as part of the 104.
-        They will pull your real average down.
+        NIS divides by 104 weeks no matter what. If you had weeks in the last 2
+        years where you did not work, or were on lay-off, short-time, sick
+        leave, or unpaid leave, those weeks still count as part of the 104. They
+        will pull your real average down.
       </Text>
       <Text as="p" className="mt-2" size="body">
         This calculator assumes you earned your stated pay every week for the
@@ -801,17 +809,13 @@ function GapWeeksExample({
             <strong>For example</strong>, if {gapWeeks} of your last 104 weeks
             had no pay (say you took unpaid sick leave after an injury):
           </Text>
-          <Text as="p" className="mt-3 text-mid-grey-00" size="caption">
+          <Text as="p" className="mt-3 text-grey-70" size="caption">
             Each square is one week.
           </Text>
           <div className="mt-2 space-y-3">
             {[0, 1].map((yearIdx) => (
               <div key={yearIdx}>
-                <Text
-                  as="p"
-                  className="mb-1 text-mid-grey-00"
-                  size="caption"
-                >
+                <Text as="p" className="mb-1 text-grey-70" size="caption">
                   {yearIdx === 0 ? '2 years ago' : 'Last year'}
                 </Text>
                 <div className="flex flex-wrap gap-1">
@@ -823,8 +827,8 @@ function GapWeeksExample({
                         aria-hidden="true"
                         className={
                           isGap
-                            ? 'h-3 w-3 rounded-xs bg-red-00'
-                            : 'h-3 w-3 rounded-xs bg-green-00'
+                            ? 'h-3 w-3 rounded-xs bg-red-80'
+                            : 'h-3 w-3 rounded-xs bg-green-80'
                         }
                         key={weekIndex}
                       />
@@ -838,23 +842,23 @@ function GapWeeksExample({
             <div className="flex items-center gap-2">
               <span
                 aria-hidden="true"
-                className="h-4 w-4 shrink-0 rounded-xs bg-green-00"
+                className="h-4 w-4 shrink-0 rounded-xs bg-green-80"
               />
               <dt className="sr-only">Worked</dt>
               <dd>
                 <strong>{workedWeeks} weeks</strong>{' '}
-                <span className="text-mid-grey-00">worked</span>
+                <span className="text-grey-70">worked</span>
               </dd>
             </div>
             <div className="flex items-center gap-2">
               <span
                 aria-hidden="true"
-                className="h-4 w-4 shrink-0 rounded-xs bg-red-00"
+                className="h-4 w-4 shrink-0 rounded-xs bg-red-80"
               />
               <dt className="sr-only">No pay</dt>
               <dd>
                 <strong>{gapWeeks} weeks</strong>{' '}
-                <span className="text-mid-grey-00">no pay</span>
+                <span className="text-grey-70">no pay</span>
               </dd>
             </div>
           </dl>
@@ -862,16 +866,14 @@ function GapWeeksExample({
             <div>
               ({workedWeeks} × {money(rawWeekly)}) + ({gapWeeks} × {money(0)})
             </div>
-            <div className="mt-1">
-              = {money(rawWeekly * workedWeeks)} ÷ 104
-            </div>
+            <div className="mt-1">= {money(rawWeekly * workedWeeks)} ÷ 104</div>
             <div className="mt-1">
               = <strong>{money(exampleAvg)} a week</strong> (instead of{' '}
               {money(rawWeekly)})
             </div>
-            <div className="mt-2 border-grey-00 border-t pt-2">
-              Severance would be <strong>{money(exampleSeverance)}</strong>,
-              not {money(severance)}.
+            <div className="mt-2 border-grey-20 border-t pt-2">
+              Severance would be <strong>{money(exampleSeverance)}</strong>, not{' '}
+              {money(severance)}.
             </div>
           </div>
         </div>
@@ -894,13 +896,13 @@ function TierRow({
   return (
     <>
       <span className="text-right">{money(weekly)}</span>
-      <span className="text-mid-grey-00">×</span>
+      <span className="text-grey-70">×</span>
       <span className="text-right">{multiplier}</span>
-      <span className="text-mid-grey-00">weeks</span>
-      <span className="text-mid-grey-00">×</span>
+      <span className="text-grey-70">weeks</span>
+      <span className="text-grey-70">×</span>
       <span className="text-right">{years}</span>
-      <span className="text-mid-grey-00">{years === 1 ? 'year' : 'years'}</span>
-      <span className="text-mid-grey-00">=</span>
+      <span className="text-grey-70">{years === 1 ? 'year' : 'years'}</span>
+      <span className="text-grey-70">=</span>
       <span className="text-right font-bold">{money(pay)}</span>
     </>
   )

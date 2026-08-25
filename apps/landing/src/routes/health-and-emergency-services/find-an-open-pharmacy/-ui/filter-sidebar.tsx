@@ -170,10 +170,10 @@ export function FilterSidebar({
                 checked={filters.subsidisedOnly}
                 id="filter-subsidised"
                 label="Free and subsidised medication only"
-                onCheckedChange={(checked) =>
+                onChange={(event) =>
                   dispatch({
                     type: 'set-subsidised-only',
-                    value: checked === true,
+                    value: event.target.checked,
                   })
                 }
               />
@@ -213,8 +213,8 @@ export function FilterSidebar({
                 checked={filters.openNow}
                 id="filter-open-now"
                 label="Open right now"
-                onCheckedChange={(checked) =>
-                  dispatch({ type: 'set-open-now', value: checked === true })
+                onChange={(event) =>
+                  dispatch({ type: 'set-open-now', value: event.target.checked })
                 }
               />
             </FilterGroup>
@@ -226,7 +226,7 @@ export function FilterSidebar({
                   id={`parish-${name}`}
                   key={name}
                   label={name}
-                  onCheckedChange={() =>
+                  onChange={() =>
                     dispatch({ type: 'toggle-parish', parish: name })
                   }
                 />
