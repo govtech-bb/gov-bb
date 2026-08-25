@@ -257,7 +257,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     title: "Apply for a funeral establishment licence",
     category: "business-trade",
     formId: "funeral-establishment-licence-application",
-    visibility: "draft",
+    visibility: "preview",
   },
   {
     slug: "get-a-document-notarised",
