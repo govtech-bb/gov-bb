@@ -182,7 +182,13 @@ export async function fillGeocodedBusinessAddress(
   // pressSequentially (not fill) so the debounced autocomplete actually fires.
   await combo.pressSequentially(query, { delay: 20 });
 
-  const firstSuggestion = page.getByRole("option").first();
+  // Scoped to this field's own listbox: a bare `getByRole("option")` would match
+  // the premises-type <select>'s blank placeholder option, which sits earlier in
+  // the DOM and is hidden while the select is closed.
+  const firstSuggestion = page
+    .locator(`ul[id="${stepId}_business-address-line-1-listbox"]`)
+    .getByRole("option")
+    .first();
   await expect(
     firstSuggestion,
     `geocoder returned no suggestion for "${query}"`,
