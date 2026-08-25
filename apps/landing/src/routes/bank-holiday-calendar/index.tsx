@@ -140,7 +140,7 @@ function YearSwitcher({ year }: { year: number }) {
         <polyline points="15 18 9 12 15 6" />
       </svg>
       <span className="text-left leading-none">
-        <span className="block font-medium text-[11px] text-grey-70 uppercase tracking-wider">
+        <span className="block font-medium text-body-sm text-grey-70 uppercase tracking-wider">
           Previous
         </span>
         <span className="block font-bold text-blue-40 text-sm">
@@ -153,7 +153,7 @@ function YearSwitcher({ year }: { year: number }) {
   const nextContent = (
     <>
       <span className="text-right leading-none">
-        <span className="block font-medium text-[11px] text-grey-70 uppercase tracking-wider">
+        <span className="block font-medium text-body-sm text-grey-70 uppercase tracking-wider">
           Next
         </span>
         <span className="block font-bold text-blue-40 text-sm">
@@ -324,10 +324,10 @@ function NextHolidayHero({
       className="relative mb-8 overflow-hidden rounded-lg bg-blue-40 px-8 pt-7 pb-8 text-white"
     >
       <div className="relative">
-        <span className="mb-6 inline-flex items-center rounded-lg bg-yellow-40 px-3.5 py-1.5 font-extrabold text-blue-40 text-xs uppercase tracking-widest">
+        <span className="mb-6 inline-flex items-center rounded-lg bg-yellow-40 px-3.5 py-1.5 font-bold text-blue-40 text-body-sm uppercase tracking-widest">
           Next bank holiday
         </span>
-        <h2 className="mb-2.5 font-extrabold text-4xl leading-tight tracking-tight">
+        <h2 className="mb-2.5 font-bold text-4xl leading-tight tracking-tight">
           {holiday.name}
         </h2>
         <p className="mb-6 font-bold text-body text-yellow-80 tracking-tight">
@@ -382,10 +382,10 @@ function YearOverviewHero({
       aria-label="Year overview"
       className="mb-8 rounded-lg border border-grey-20 bg-[#f5f7fa] px-8 py-6"
     >
-      <span className="mb-3 inline-block rounded-lg bg-grey-20 px-3 py-1 font-bold text-grey-70 text-xs uppercase tracking-wider">
+      <span className="mb-3 inline-block rounded-lg bg-grey-20 px-3 py-1 font-bold text-grey-70 text-body-sm uppercase tracking-wider">
         {pill}
       </span>
-      <h2 className="font-extrabold text-body-lg text-blue-40 leading-tight tracking-tight">
+      <h2 className="font-bold text-body-lg text-blue-40 leading-tight tracking-tight">
         {heading}
       </h2>
     </section>
@@ -412,10 +412,10 @@ function HolidaySection({
   return (
     <section className="mt-10 first:mt-0">
       <div className="mb-4 flex items-center gap-3">
-        <h2 className="font-extrabold text-body-lg text-blue-40 tracking-tight">
+        <h2 className="font-bold text-body-lg text-blue-40 tracking-tight">
           {heading}
         </h2>
-        <span className="inline-flex items-center rounded-lg bg-grey-20 px-3 py-1 font-medium text-grey-70 text-xs">
+        <span className="inline-flex items-center rounded-lg bg-grey-20 px-3 py-1 font-medium text-grey-70 text-body-sm">
           {chip}
         </span>
       </div>
@@ -423,7 +423,7 @@ function HolidaySection({
       <div className="border-grey-20 border-t">
         <div
           aria-hidden="true"
-          className="hidden border-grey-20 border-b-2 px-4 pt-2 pb-2.5 font-bold text-grey-70 text-xs uppercase tracking-wider md:grid md:grid-cols-[72px_1fr_130px] md:gap-6"
+          className="hidden border-grey-20 border-b-2 px-4 pt-2 pb-2.5 font-bold text-grey-70 text-body-sm uppercase tracking-wider md:grid md:grid-cols-[72px_1fr_130px] md:gap-6"
         >
           <span>Date</span>
           <span>Holiday</span>
@@ -469,11 +469,11 @@ function HolidayRow({
       <div
         aria-hidden="true"
         className={[
-          'rounded-lg text-center font-extrabold leading-none',
+          'rounded-lg text-center font-bold leading-none',
           muted ? 'bg-grey-20 text-grey-70' : 'bg-yellow-40 text-blue-40',
         ].join(' ')}
       >
-        <span className="block px-1 pt-2 pb-1 text-[11px] uppercase tracking-wider">
+        <span className="block px-1 pt-2 pb-1 text-body-sm uppercase tracking-wider">
           {fmtMonthShort(holiday.date)}
         </span>
         <span className="block px-1 pb-2.5 text-body-lg tracking-tight">
@@ -495,14 +495,14 @@ function HolidayRow({
           </span>
         )}
         {substitute && (
-          <span className="mt-1.5 inline-flex items-center gap-1 rounded-lg border border-yellow-40 bg-yellow-10 px-2 py-0.5 font-semibold text-blue-40 text-xs">
+          <span className="mt-1.5 inline-flex items-center gap-1 rounded-lg border border-yellow-40 bg-yellow-10 px-2 py-0.5 font-semibold text-blue-40 text-body-sm">
             Observed: {fmtSubstituteDate(substitute.date)}
           </span>
         )}
       </div>
       <div
         className={[
-          'col-span-2 mt-[-8px] pl-[78px] font-medium text-[13px] md:col-span-1 md:mt-0 md:pl-0 md:text-right md:text-[15px]',
+          'col-span-2 mt-[-8px] pl-[78px] font-medium text-body-sm md:col-span-1 md:mt-0 md:pl-0 md:text-right md:text-[15px]',
           muted ? 'text-grey-70' : 'text-grey-70',
         ].join(' ')}
       >
@@ -559,7 +559,7 @@ function AboutSection() {
       className="mt-16 border-grey-20 border-t-2 pt-8"
     >
       <h2
-        className="mb-3 font-extrabold text-blue-40 text-body"
+        className="mb-3 font-bold text-blue-40 text-body"
         id="about-heading"
       >
         About this list

@@ -35,7 +35,7 @@ export function Contact({
       }
     >
       {isEmergency ? (
-        <span className="font-bold text-red-80 text-xs uppercase tracking-wider">
+        <span className="font-bold text-red-80 text-body-sm uppercase tracking-wider">
           Emergency
         </span>
       ) : null}
