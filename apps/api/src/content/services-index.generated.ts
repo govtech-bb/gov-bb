@@ -239,6 +239,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
+    slug: "environmental-health-offensive-trade-licence",
+    title: "Apply for a offensive trade licence with Environmental Health",
+    formId: "environmental-health-offensive-trade-licence",
+    visibility: "draft",
+  },
+  {
     slug: "funeral-directors-licence-application",
     title: "Apply for a Funeral Directors Licence",
     category: "business-trade",
@@ -519,7 +525,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "swimming-wading-pool-permit",
-    title: "Apply for a swimming or wading pool permit",
+    title: "Apply for a swimming pool licence",
     category: "business-trade",
     formId: "swimming-wading-pool-permit",
     visibility: "preview",
@@ -541,6 +547,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     slug: "terms-conditions",
     title: "Terms & Conditions",
     visibility: "public",
+  },
+  {
+    slug: "waste-vehicle-licence-application",
+    title: "Apply for a offensive matter licence with Environmental Health",
+    category: "business-trade",
+    formId: "waste-vehicle-licence-application",
+    visibility: "draft",
   },
   {
     slug: "what-we-mean-by-alpha",
