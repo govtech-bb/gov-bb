@@ -278,10 +278,10 @@ render:  MarkdownContent reads `form_id` from frontmatter
 
 Both are documented in `.env.example`:
 
-| Variable             | When used   | Purpose                                                                                                   |
-| -------------------- | ----------- | --------------------------------------------------------------------------------------------------------- |
+| Variable             | When used            | Purpose                                                                                                                                                                                                                             |
+| -------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `VITE_FORMS_API_URL` | server (build-baked) | Forms API base. Server-side: resolves `/form-definitions` for Start buttons and POSTs the `/feedback` form. Baked into the Nitro runtime config at build (see `vite.config.ts`). Default: `https://forms.api.sandbox.alpha.gov.bb`. |
-| `VITE_FORMS_URL`     | render time | Base URL used in resolved button hrefs. Default: `https://forms.sandbox.alpha.gov.bb`.                    |
+| `VITE_FORMS_URL`     | render time          | Base URL used in resolved button hrefs. Default: `https://forms.sandbox.alpha.gov.bb`.                                                                                                                                              |
 
 Set these per environment in the deploy console (Amplify) to point
 sandbox at the sandbox API and prod at the prod API.
@@ -382,9 +382,9 @@ otherwise 404 once the grant is gone.
 
 ### Environment variables
 
-| Variable         | When used | Purpose                                                                                                                                  |
-| ---------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `PREVIEW_SECRET` | run time  | The token reviewers append as `?preview=<value>` to unlock `preview`. Server-only. When unset, no preview token works.                   |
+| Variable         | When used | Purpose                                                                                                                                                     |
+| ---------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PREVIEW_SECRET` | run time  | The token reviewers append as `?preview=<value>` to unlock `preview`. Server-only. When unset, no preview token works.                                      |
 | `DRAFT_SECRET`   | run time  | The token reviewers append as `?draft=<value>` to unlock `draft`. Server-only, and **must differ** from `PREVIEW_SECRET`. When unset, no draft token works. |
 
 Set them per environment in the deploy console (Amplify) — or, locally, in
@@ -410,9 +410,9 @@ auto-sends on mount.
 
 ### Environment variable
 
-| Variable        | When used   | Purpose                                                                                  |
-| --------------- | ----------- | ---------------------------------------------------------------------------------------- |
-| `VITE_CHAT_URL` | build time  | Base URL of the deployed chat app. Used for both the health probe and the submit handoff. |
+| Variable        | When used  | Purpose                                                                                   |
+| --------------- | ---------- | ----------------------------------------------------------------------------------------- |
+| `VITE_CHAT_URL` | build time | Base URL of the deployed chat app. Used for both the health probe and the submit handoff. |
 
 `ChatAssistant` defaults to `https://chat.sandbox.alpha.gov.bb` in code
 when `VITE_CHAT_URL` is unset, so deploys work with no Amplify Console
@@ -436,6 +436,38 @@ The SSR bundle runs in a Lambda where `process.env.*` reads are not
 reliably populated by Amplify. `apps/chat/src/config/env.ts` documents
 the same constraint. Treat changing this URL as a deploy: set the var,
 rebuild, ship.
+
+## Application tracker links (cross-app)
+
+The homepage's **Featured** column and the **Track my application** item in the
+header nav both link out to the application tracker, which is a separate app
+(`govtech-bb/cms-application-tracker`) on its own domain.
+
+### Environment variable
+
+| Variable           | When used  | Purpose                                       |
+| ------------------ | ---------- | --------------------------------------------- |
+| `VITE_TRACKER_URL` | build time | Base URL of the deployed application tracker. |
+
+`src/lib/tracker-url.ts` defaults to `https://tracking.alpha.gov.bb` when
+`VITE_TRACKER_URL` is unset, so deploys work with no Amplify Console config.
+
+Note this defaults to **production**, where the chat and forms URLs default to
+sandbox. That is because production is currently the only tracker host that
+exists — `tracking.sandbox.alpha.gov.bb` and `tracking.staging.alpha.gov.bb` have
+no DNS record — so a sandbox default would put a dead link in the primary
+navigation of every page. Sandbox and staging therefore link to production
+tracking for now. The value is a navigation target rather than a data source, so
+crossing environments costs a reader nothing.
+
+Set `VITE_TRACKER_URL` once a per-environment tracker exists, or to point local
+dev at one on `localhost`:
+
+- **Local**: add `VITE_TRACKER_URL=http://localhost:3000` to
+  `apps/landing/.env.local`.
+- **Amplify**: App settings → Environment variables → add
+  `VITE_TRACKER_URL=<url>`. **Then trigger a rebuild** — the value is baked at
+  build time, not read at runtime.
 
 # Demo files
 

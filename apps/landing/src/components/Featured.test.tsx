@@ -18,9 +18,7 @@ describe('Featured', () => {
     const href = (name: string) =>
       screen.getByRole('link', { name }).getAttribute('href')
 
-    expect(href('Track your application')).toBe(
-      'https://tracker.sandbox.alpha.gov.bb',
-    )
+    expect(href('Track your application')).toBe('https://tracking.alpha.gov.bb')
     expect(href('Ask the assistant')).toBe('https://chat.sandbox.alpha.gov.bb')
     expect(href('Bank holidays')).toBe('/bank-holiday-calendar')
   })
