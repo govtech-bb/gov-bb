@@ -32,6 +32,21 @@ describe('pharmacy dataset', () => {
     expect(winstonScott?.hours?.sun).toEqual([])
   })
 
+  it('includes the reviewed government-clinic operating hours', () => {
+    const stAndrew = PHARMACIES.find(
+      (p) => p.name === 'St. Andrew Outpatient Clinic',
+    )
+    expect(stAndrew?.hours?.mon).toEqual([{ opens: '08:15', closes: '12:00' }])
+    expect(stAndrew?.hours?.wed).toEqual([{ opens: '08:15', closes: '12:00' }])
+
+    const randalPhillips = PHARMACIES.find(
+      (p) => p.name === 'Randal Phillips Polyclinic',
+    )
+    expect(randalPhillips?.hours?.mon).toEqual([
+      { opens: '07:30', closes: '16:30' },
+    ])
+  })
+
   it.each(PHARMACIES.map((p) => [p.name, p] as const))(
     '%s has well-formed fields and hours',
     (_name, pharmacy) => {

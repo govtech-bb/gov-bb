@@ -256,11 +256,33 @@
           }
         },
         {
-          "ref": "components/generic-file",
+          "ref": "components/upload-document",
           "overrides": {
             "fieldId": "embalmer-list",
             "label": "Upload list of Embalmers",
-            "hint": "This is a list of the hired embalmers, with their names, and genders"
+            "hint": "This is a list of the hired embalmers, with their names, and genders",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload the list of embalmers"
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".doc",
+                  ".docx",
+                  ".xls",
+                  ".xlsx"
+                ],
+                "error": "Upload the list of embalmers as a PDF, image, Word or Excel file"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "File must be 5 MB or smaller"
+              }
+            }
           }
         }
       ],
@@ -313,5 +335,5 @@
     }
   ],
   "createdAt": "2026-08-25T00:45:35.451Z",
-  "updatedAt": "2026-08-25T00:45:35.451Z"
+  "updatedAt": "2026-08-25T18:45:00.000Z"
 }

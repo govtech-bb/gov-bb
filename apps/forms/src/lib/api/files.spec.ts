@@ -306,6 +306,39 @@ describe("files API client", () => {
     expect(result).toEqual(attachment);
   });
 
+  // A browser reports an empty `type` for a file whose extension it cannot map
+  // (a scan saved without an extension, an unrecognised document). Presign's
+  // DTO requires a MIME type, so an untyped file used to 400 there and the
+  // field could never be filled — most visibly on an upload with no
+  // `fileTypes`, whose picker isn't constrained to types the browser always
+  // recognises.
+  it("uploadFile falls back to application/octet-stream when the browser reports no type", async () => {
+    const presign = {
+      uploadUrl: "https://s3/put?sig=1",
+      key: "uploads/k",
+      expiresIn: 900,
+      maxSize: 10485760,
+    };
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(presign)) // presign
+      .mockResolvedValueOnce({ ok: true, status: 200 } as Response) // PUT
+      .mockResolvedValueOnce(jsonResponse({})); // confirm
+
+    const file = new File(["x"], "qualification-scan", { type: "" });
+    await uploadFile({ file, formId: "f", stepId: "s", fieldId: "fld" });
+
+    const presignBody = JSON.parse(
+      (fetchMock.mock.calls[0][1] as { body: string }).body,
+    ) as { contentType: string };
+    expect(presignBody.contentType).toBe("application/octet-stream");
+
+    // S3 signs the content type, so the PUT header has to match what presign
+    // signed — sending the empty original here fails with SignatureDoesNotMatch.
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({
+      headers: { "Content-Type": "application/octet-stream" },
+    });
+  });
+
   it("uploadFile surfaces a presign failure without PUTting", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({}, false, 400)); // presign 400
     const file = new File(["x"], "a.pdf", { type: "application/pdf" });

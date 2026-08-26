@@ -56,10 +56,13 @@
  *  - `owner-address-line-1` is `components/address` (required, minLength 5) and
  *    is NOT geocoded — plain faker street addresses are fine there.
  *  - `male-staff-count` / `female-staff-count` inherit
- *    `components/generic-number`'s required rule, and `staff-list` inherits
- *    `components/generic-file`'s, so all three block the step despite carrying
- *    no explicit override in the recipe.
- *  - UNLIKE hotel-licence-application, this recipe's confirmation step uses
+ *    `components/generic-number`'s required rule, so both block the step
+ *    despite carrying no explicit override in the recipe. `staff-list` used to
+ *    inherit the same way from `components/generic-file`; it is now
+ *    `components/upload-document` (which ships NO validations) declaring
+ *    `required` explicitly, alongside `fileTypes` + `itemMaxSize`. Both file
+ *    fields accept PNG, so the uploads below are unaffected.
+ *  - UNLIKE apply-for-hotel-licence, this recipe's confirmation step uses
  *    generic `nextSteps` copy and no `{polyclinic}` placeholder, so there is no
  *    resolved-catchment name on the confirmation screen to assert. Catchment
  *    routing still runs (it drives the MDA email), it just isn't surfaced to

@@ -17,3 +17,6 @@ export {
 } from "./validate-date";
 export type { DatePart, DateValidationError } from "./validate-date";
 export { RULE_REGISTRY } from "./rules";
+
+// File-type policy shared by the browser pre-check and the API presign gate.
+export { fileTypesRunner, UNVERIFIED_CONTENT_TYPE } from "./rules/file";

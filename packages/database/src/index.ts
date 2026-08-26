@@ -39,6 +39,9 @@ import { CreateNotificationLog1783458705143 } from "./migrations/1783458705143-C
 import { SeedServiceStatus1783520007424 } from "./migrations/1783520007424-SeedServiceStatus";
 import { AddMinistryKeyToMdaContact1784000000000 } from "./migrations/1784000000000-AddMinistryKeyToMdaContact";
 import { CreateCatchmentContact1785500000000 } from "./migrations/1785500000000-CreateCatchmentContact";
+import { RenameHotelLicenceFormId1787682865564 } from "./migrations/1787682865564-RenameHotelLicenceFormId";
+import { RenameSwimmingPoolFormId1787769265564 } from "./migrations/1787769265564-RenameSwimmingPoolFormId";
+import { RenameTemporaryRestaurantFormId1787855665564 } from "./migrations/1787855665564-RenameTemporaryRestaurantFormId";
 
 export const entities = [
   FormComponentEntity,
@@ -80,6 +83,9 @@ export const migrations = [
   SeedServiceStatus1783520007424,
   AddMinistryKeyToMdaContact1784000000000,
   CreateCatchmentContact1785500000000,
+  RenameHotelLicenceFormId1787682865564,
+  RenameSwimmingPoolFormId1787769265564,
+  RenameTemporaryRestaurantFormId1787855665564,
 ];
 
 /**

@@ -76,6 +76,14 @@
  *    regulations. This test opens the disclosure and uploads both files, so
  *    the reveal itself is asserted (hidden → toggle → visible), not just the
  *    happy path.
+ *  - All three uploads are `components/upload-document` declaring
+ *    `fileTypes` + `itemMaxSize`, so each picker carries a real `accept` and
+ *    only the listed formats reach presign. The two evidence uploads were
+ *    briefly `components/generic-file` with no `fileTypes` at all — an
+ *    unconstrained picker handed presign files the browser had no MIME type
+ *    for, which 400'd and left a required field impossible to fill. Upload
+ *    typed files here; the untyped-file fallback itself is covered by
+ *    src/lib/api/files.spec.ts.
  *  - The confirmation step's `nextSteps` copy has no `{polyclinic}`
  *    placeholder, so there is no resolved-catchment name on screen to assert.
  *    Catchment routing still runs — it picks the polyclinic that gets the MDA

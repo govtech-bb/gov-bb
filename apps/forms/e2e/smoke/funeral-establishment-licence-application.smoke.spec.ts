@@ -53,8 +53,12 @@
  *  - `max-bodies`, `male-embalmers` and `female-embalmers` are
  *    `components/generic-number` with no `required` override, so they inherit
  *    the primitive's `required: true` and all three must be answered.
- *  - `embalmer-list` is a single-file upload and is required for the same
- *    reason (`components/generic-file` is required by default).
+ *  - `embalmer-list` is a single-file upload and is required. It used to be
+ *    `components/generic-file` (required by default); it is now
+ *    `components/upload-document`, which ships NO validations, so `required`
+ *    is declared explicitly in the recipe alongside `fileTypes` +
+ *    `itemMaxSize`. The allowlist accepts PNG, so the upload below is
+ *    unaffected.
  *  - The confirmation step uses generic `nextSteps` copy with no `{polyclinic}`
  *    placeholder, so there is no resolved-catchment name on screen to assert.
  *    Catchment routing still runs — it picks the polyclinic that gets the MDA

@@ -160,11 +160,18 @@ const TYPE_ORDER = {
   unconfirmed: 2,
 } satisfies Record<PharmacyType, number>
 
+const FACILITY_GROUP_ORDER = {
+  government: 0,
+  'private-sbs': 1,
+  unconfirmed: 1,
+} satisfies Record<PharmacyType, number>
+
 /**
- * Open pharmacies first (the point of the service). Then nearest when the
- * user shared their location, else free (government) before private before
- * unconfirmed; name breaks ties. Before mount `now` is null, so the server
- * and hydration renders sort identically by type and name.
+ * Government/outpatient facilities first, then private pharmacies. Within
+ * each group, open facilities come first, followed by the nearest when the
+ * user shared their location. Subsidy status and name break remaining ties.
+ * Before mount `now` is null, so the server and hydration renders sort
+ * identically by type and name.
  */
 export function compareForSort(
   a: Pharmacy,
@@ -172,6 +179,10 @@ export function compareForSort(
   now: Date | null,
   user: LatLon | null,
 ): number {
+  const groupDifference =
+    FACILITY_GROUP_ORDER[a.type] - FACILITY_GROUP_ORDER[b.type]
+  if (groupDifference !== 0) return groupDifference
+
   if (now) {
     const aOpen = pharmacyStatus(a, now)?.open === true
     const bOpen = pharmacyStatus(b, now)?.open === true

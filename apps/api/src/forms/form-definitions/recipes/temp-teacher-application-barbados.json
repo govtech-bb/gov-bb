@@ -842,6 +842,10 @@
                   ".png"
                 ]
               },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
+              },
               "maxSize": {
                 "error": "The file must be 25MB or smaller",
                 "value": 26214400
@@ -874,6 +878,10 @@
                   ".docx",
                   ".png"
                 ]
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               },
               "maxSize": {
                 "error": "The files must be 25MB or smaller in total",

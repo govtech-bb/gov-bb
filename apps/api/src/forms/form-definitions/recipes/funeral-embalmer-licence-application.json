@@ -316,10 +316,28 @@
           }
         },
         {
-          "ref": "components/generic-file",
+          "ref": "components/upload-document",
           "overrides": {
             "fieldId": "embalmer-qualification",
             "label": "Upload your embalmer qualification",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload your embalmer qualification, or use a reference letter instead"
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "Upload your embalmer qualification in PDF, JPEG or PNG format"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "File must be 5 MB or smaller"
+              }
+            },
             "behaviours": [
               {
                 "type": "optionalIf",
@@ -339,11 +357,29 @@
           }
         },
         {
-          "ref": "components/generic-file",
+          "ref": "components/upload-document",
           "overrides": {
             "fieldId": "embalmer-evidence",
             "label": "Upload letter of embalmer work experience",
             "hint": "If you have been engaged in the practice of embalming, prior to the regulations coming into effect in 1984, you will need to evidence you have been practicing for a period of more than five (5) years, or have worked under the direct supervision of an approved embalmer for more than three (3) years.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload your letter of embalmer work experience"
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "Upload your letter of embalmer work experience in PDF, JPEG or PNG format"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "File must be 5 MB or smaller"
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -404,5 +440,5 @@
     }
   ],
   "createdAt": "2026-08-25T14:05:29.888Z",
-  "updatedAt": "2026-08-25T15:29:40.700Z"
+  "updatedAt": "2026-08-25T18:30:00.000Z"
 }

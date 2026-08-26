@@ -5,6 +5,7 @@ import { optionalSuffix } from "./field-renderer/optional-suffix";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
 import { uploadFile, FileUploadError } from "../lib/api/files";
+import { fileTypesRunner } from "@govtech-bb/form-validation";
 
 /** A file being uploaded, or one whose upload failed. */
 interface PendingUpload {
@@ -16,6 +17,11 @@ interface PendingUpload {
 
 const formatMb = (bytes: number) =>
   `${(bytes / (1024 * 1024)).toPrecision(2)} MB`;
+
+/** Mirrors the API's presign message for a file it cannot identify by type. */
+const UNIDENTIFIED_FILE_ERROR =
+  "The file type could not be identified. Rename the file so it has its " +
+  "correct extension (for example .pdf or .jpg) and try again.";
 
 export default function FileUpload({
   field,
@@ -70,6 +76,70 @@ export default function FileUpload({
   const dismissPending = (id: number) =>
     setPending((prev) => prev.filter((p) => p.id !== id));
 
+  // Accepts either MIME types ("image/png" → "png") or extension values
+  // (".pdf" → ".pdf"), so a recipe can list user-friendly extensions and have
+  // them shown verbatim (e.g. "Attach a .pdf, .docx, or .png file").
+  //
+  // #2384: the value is declared `string[]`, but a builder-authored recipe
+  // reached production carrying a comma-separated string, so `.map` threw and
+  // the error boundary replaced the whole step with "Something went wrong".
+  // The recipe schema now rejects that shape, but DB drafts (`?draft=`) never
+  // pass through CI, so normalise here too — the same tolerance
+  // `fileTypesRunner` already applies on the validation side.
+  const configuredFileTypes: unknown = field.validations?.fileTypes?.value;
+  const rawFileTypes: string[] = Array.isArray(configuredFileTypes)
+    ? configuredFileTypes
+    : typeof configuredFileTypes === "string"
+      ? configuredFileTypes
+          .split(",")
+          .map((type) => type.trim())
+          .filter(Boolean)
+      : [];
+
+  // A file field with no `fileTypes` cannot say what it accepts. That is a
+  // recipe defect — `validate-recipes` now rejects it, so it can only reach a
+  // citizen through a DB draft — and it is not something an applicant can act
+  // on, so it degrades rather than blocks: a typed file still uploads (exactly
+  // what the API's presign gate allows), and only an unidentifiable one is
+  // refused. Warn once in the console for whoever is reviewing the form.
+  const configuredTypes = field.validations?.fileTypes;
+  const isUnconstrained = rawFileTypes.length === 0;
+  React.useEffect(() => {
+    if (!isUnconstrained) return;
+    console.warn(
+      `[file-upload] ${formId ?? "(unknown form)"} ${field.stepId}.${field.fieldId}: ` +
+        "no `fileTypes` validation is configured, so an unidentifiable file " +
+        "cannot be accepted. Add a fileTypes rule to the recipe.",
+    );
+  }, [isUnconstrained, formId, field.stepId, field.fieldId]);
+
+  /**
+   * The reason to refuse `file`, or null to let it upload. Mirrors the API's
+   * presign gate so the two agree: the shared runner matches an allowlist entry
+   * by MIME or by extension, and a file the browser could not type at all can
+   * only ever match on its extension.
+   */
+  const rejectUnacceptable = (file: File): string | null => {
+    // No allowlist: nothing can establish that an unidentifiable file is a
+    // permitted type, so refuse only that one case — the same call the API
+    // makes. Refusing every file here instead would leave a required upload on
+    // such a field impossible to satisfy.
+    if (isUnconstrained) {
+      return file.type === "" ? UNIDENTIFIED_FILE_ERROR : null;
+    }
+    const error = fileTypesRunner(
+      [{ name: file.name, size: file.size, type: file.type }],
+      configuredTypes!,
+    );
+    if (!error) return null;
+    // A file the browser could not type is the confusing case — the applicant
+    // sees a rejection with nothing obviously wrong with the file — so name the
+    // fix rather than only restating the allowed formats.
+    return file.type === ""
+      ? `${error} We could not tell what kind of file this is; check it has the right extension (for example .pdf or .jpg).`
+      : error;
+  };
+
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = e.target.files ? Array.from(e.target.files) : [];
     e.target.value = "";
@@ -86,6 +156,21 @@ export default function FileUpload({
         });
 
         const id = ++idRef.current;
+
+        // Refuse a file we cannot show is an accepted type BEFORE uploading it.
+        // The API enforces the same rule at presign, but rejecting here is what
+        // puts the recipe's own `fileTypes.error` copy in front of the
+        // applicant — a presign rejection only ever surfaced as the generic
+        // "File upload failed", so the authored message never reached anyone.
+        const rejection = rejectUnacceptable(file);
+        if (rejection) {
+          setPending((prev) => [
+            ...prev,
+            { id, name: file.name, status: "error", error: rejection },
+          ]);
+          setStatusMessage(`${file.name}: ${rejection}`);
+          return;
+        }
 
         // Short-circuit oversize files before hitting the network.
         if (maxSize && file.size > maxSize) {
@@ -130,25 +215,6 @@ export default function FileUpload({
     );
   };
 
-  // Accepts either MIME types ("image/png" → "png") or extension values
-  // (".pdf" → ".pdf"), so a recipe can list user-friendly extensions and have
-  // them shown verbatim (e.g. "Attach a .pdf, .docx, or .png file").
-  //
-  // #2384: the value is declared `string[]`, but a builder-authored recipe
-  // reached production carrying a comma-separated string, so `.map` threw and
-  // the error boundary replaced the whole step with "Something went wrong".
-  // The recipe schema now rejects that shape, but DB drafts (`?draft=`) never
-  // pass through CI, so normalise here too — the same tolerance
-  // `fileTypesRunner` already applies on the validation side.
-  const configuredFileTypes: unknown = field.validations?.fileTypes?.value;
-  const rawFileTypes: string[] = Array.isArray(configuredFileTypes)
-    ? configuredFileTypes
-    : typeof configuredFileTypes === "string"
-      ? configuredFileTypes
-          .split(",")
-          .map((type) => type.trim())
-          .filter(Boolean)
-      : [];
   const readableFileTypes: string[] = rawFileTypes.map((type: string) =>
     type.includes("/") ? type.split("/")[1] : type,
   );

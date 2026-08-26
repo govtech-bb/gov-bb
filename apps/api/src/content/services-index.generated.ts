@@ -86,7 +86,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     slug: "apply-for-hotel-licence",
     title: "Apply for a hotel licence",
     category: "business-trade",
-    formId: "hotel-licence-application",
+    formId: "apply-for-hotel-licence",
     visibility: "preview",
   },
   {
@@ -104,10 +104,17 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
-    slug: "apply-for-temporary-restaurant-licence",
-    title: "Apply for a licence to operate a temporary restaurant",
+    slug: "apply-for-swimming-pool-licence",
+    title: "Apply for a swimming pool licence",
     category: "business-trade",
-    formId: "apply-for-temporary-restaurant-licence",
+    formId: "apply-for-swimming-pool-licence",
+    visibility: "preview",
+  },
+  {
+    slug: "apply-for-temporary-restaurant-permit",
+    title: "Apply for a temporary restaurant permit",
+    category: "business-trade",
+    formId: "apply-for-temporary-restaurant-permit",
     visibility: "preview",
   },
   {
@@ -353,7 +360,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "health-and-emergency-services/prescription-slip-colours",
-    title: "What prescription slip colours mean",
+    title: "What prescription colours mean",
     category: "health-and-emergency-services",
     visibility: "preview",
   },
@@ -530,13 +537,6 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     category: "business-trade",
     formId: "sell-goods-services-beach-park",
     visibility: "public",
-  },
-  {
-    slug: "swimming-wading-pool-permit",
-    title: "Apply for a swimming pool licence",
-    category: "business-trade",
-    formId: "swimming-wading-pool-permit",
-    visibility: "preview",
   },
   {
     slug: "temporary-restaurants-what-you-need-to-know",

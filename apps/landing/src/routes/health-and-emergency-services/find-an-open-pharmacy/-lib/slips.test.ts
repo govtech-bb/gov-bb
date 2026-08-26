@@ -12,9 +12,9 @@ const pharmacy = (overrides: Partial<Pharmacy>): Pharmacy => ({
 })
 
 describe('acceptsSlip', () => {
-  it('government pharmacies accept every slip colour', () => {
+  it('government pharmacies accept yellow and green prescriptions only', () => {
     const gov = pharmacy({ type: 'government' })
-    expect(acceptsSlip(gov, 'white')).toBe(true)
+    expect(acceptsSlip(gov, 'white')).toBe(false)
     expect(acceptsSlip(gov, 'yellow')).toBe(true)
     expect(acceptsSlip(gov, 'green')).toBe(true)
   })
@@ -64,6 +64,16 @@ describe('nearestAccepting', () => {
     expect(result?.pharmacy.name).toBe('Near Gov')
     expect(result?.km).toBeGreaterThan(0)
     expect(result?.km).toBeLessThan(2)
+  })
+
+  it('finds a private pharmacy for a white prescription', () => {
+    const result = nearestAccepting(nearGov, 'white', [
+      farGov,
+      here,
+      nearPrivate,
+      nearGov,
+    ])
+    expect(result?.pharmacy.name).toBe('Near Private')
   })
 
   it('returns null when the pharmacy itself has no coordinates', () => {

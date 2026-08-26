@@ -372,7 +372,7 @@ describe("webhook mapping: reference-code segments", () => {
       config: {
         endpoint: { env: "WEBHOOK_URL" },
         mapping: {
-          programmeCode: "TEMP_RESTAURANT_LICENCE",
+          programmeCode: "TEMP_RESTAURANT_PERMIT",
           applicant: { name: "a.name", email: "a.email", phone: "a.phone" },
           ...mapping,
         },

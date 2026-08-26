@@ -62,7 +62,7 @@ List items should:
 
 Use bullets instead of paragraphs when listing: what the user needs, what the form asks for, reasons the service cannot be used online, alternative routes or fallback channels, and fees when there is more than one fee condition.
 
-One exception: the routes inside the licence and application pattern's "How to …" section are a numbered list, not bullets — see the route list rules below. That section overrides this rule; everywhere else, routes are bulleted.
+One exception: the routes inside the licence and application pattern's "Complete the form" section are a numbered list, not bullets, and each route opens with a bold title rather than a lowercase fragment — see the route list rules below. That section overrides both rules; everywhere else, routes are bulleted and list items start in lowercase.
 
 # Intro rules
 
@@ -116,117 +116,121 @@ Use these headings in this order, omitting any section the source content does n
 ## Who is this licence for
 ## Before you start
 ## When to apply
+## Complete the form
 ## Cost
-## How long does it take?
-## How to [service task]
 ## What happens after you apply
-## Need assistance
+## Contact
 
 Section rules:
 
 - "## Who is this licence for" — use this heading for licence services. For an application that is not a licence, use "## Who can apply" instead. Say in one or two sentences who needs the licence, or who is eligible to apply.
-- "## Before you start" — lead with a "You must:" bulleted list of restrictions and eligibility conditions, then a "You will need:" bulleted list of the mandatory documents and information. Close the section with a link to the governing regulation where the source provides one, for example: "Read the [Health Services (Embalmers and Funeral Directors) Regulations, 1984](url) for the full legal requirements." Do not add a separate "What the form will ask for" heading in this pattern — the "You will need" list does that job.
+- "## Before you start" — lead with a "You must:" bulleted list of restrictions and eligibility conditions where the source has any, then a "You will need:" bulleted list of the mandatory documents and information. Where a requirement applies to only one case, open the bullet with that case, for example "New licences: a site plan of the pool…" or "Licence renewals: your current licence number". Close the section with a link to the governing regulation where the source provides one, for example: "Read the [Health Services (Swimming Pools) Regulations, 1970](url) for the full legal requirements." Do not add a separate "What the form will ask for" heading in this pattern — the "You will need" list does that job.
 - "## When to apply" — cover new applications, renewals, and any deadline or expiry date. Use \`###\` sub-headings only where there is genuinely more than one case to separate, for example "### Renewing your licence".
-- "## Cost" — state the fee from the source content. Where the service charges a fee, this section also carries the payment method — what the user will need to pay with, for example a debit or credit card, or an EZPay+ account. This pattern has no separate "## Payment" heading. Where the service is genuinely free both to apply for and to receive, the preferred wording is "There is neither a cost to apply, nor to receive your licence." Do not state that a service is free unless the source says so.
-- "## How long does it take?" — this is how long the form takes to fill in, for example "Allow about 15 to 20 minutes to complete the form." Only give a figure the source supports. Processing time after submission belongs under "## What happens after you apply", not here.
-- "## How to [service task]" — write the task into the heading, for example "## How to apply for an embalmer licence". Follow the route list rules below.
-- "## What happens after you apply" — what the department does next, how the applicant is told the outcome, and how the licence is delivered or collected.
-- "## Need assistance" — contact details, laid out as set out in the contact details rules below.
+- "## Complete the form" — this heading is fixed wording. Do not write the service task into it, and do not use a "How to …" heading. The section carries the service's routes and the page's only start link; follow the route list rules below. How long the online form takes to fill in goes inside the online route's list item, not under a heading of its own — this pattern has no "How long does it take?" section.
+- "## Cost" — state the fee from the source content. This section sits after "Complete the form", not before it. Where the service charges a fee, this section also carries the payment method — what the user will need to pay with, for example a debit or credit card, or an EZPay+ account. This pattern has no separate "## Payment" heading. Where the service is genuinely free both to apply for and to receive, the preferred wording is "There is neither a cost to apply, nor to receive your licence." Do not state that a service is free unless the source says so.
+- "## What happens after you apply" — a bulleted list of what happens next: which department handles the application, that they may contact the applicant for more information, any inspection, and how an approved licence is delivered or collected. Close the section with a plain sentence outside the list saying that submitting an application does not mean the licence has been granted. Processing time after submission belongs here, not in the "Complete the form" section.
+- "## Contact" — contact details, laid out as set out in the contact details rules below.
 
-# Route list rules for the "How to …" section
+# Route list rules for the "Complete the form" section
 
-Where the service has more than one route, introduce them with a short lead-in paragraph and write each route as a numbered list item:
+Where the service has more than one route, introduce them with a short lead-in paragraph and write each route as a numbered list item. Each item opens with a bold title naming the route, with its detail indented underneath:
 
-There are 2 ways to apply for an embalmer licence. You can:
+There are 2 ways to apply for a swimming pool licence. You can:
 
-1. apply online
-   Optional short description of the online route.
+1. **Apply for a licence online**
+
+   Allow about 5-10 minutes to complete the form.
+
    <a data-start-link>Start now</a>
-2. get a paper form from the Environmental Health Department
-   Where to get the form, where to return it, and any other detail the user needs.
+
+2. **Get a paper application from the polyclinic**
+
+   You must complete it by hand and submit the application to the polyclinic associated with the district where the pool is located.
+
+Style rules:
+
+- Bold the route title, write it in sentence case, and end it without a full stop. These titles are the only bold text on the page.
+- Keep each title short and start it with a verb — "Apply for a licence online", "Get a paper application from the polyclinic".
+- Indent the description, the completion time and the start link under their route so they belong to that list item.
+- The line saying how long the online form takes to fill in sits inside the online route's item, above the start link — for example "Allow about 5-10 minutes to complete the form." Only give a figure the source supports.
 
 The site rewrites this section for visitors who cannot use the online route — it removes the online method and counts the remaining routes down. That makes the following mechanical, not stylistic:
 
 - Write the count as a plain digit or a plain word — "There are 2 ways to…" or "There are two ways to…". Never write it as "two (2)": the count rewrite does not recognise that form, so the page would claim more routes than it shows.
-- The online route must be a single list item containing the start link, because the site removes that whole list item. A start link outside a list item leaves an orphaned heading or description behind.
+- The online route must be a single list item holding its title, its completion time and the start link, because the site removes that whole list item. A start link outside a list item leaves an orphaned title or description behind.
 - Keep the lead-in on its own paragraph and keep it plain text. Links, bold and other inline formatting inside it are lost when the count is rewritten.
-- If the online route is the only route, do not write a route list or a count at all — put the start link on its own line under the "How to …" heading.
+- If the online route is the only route, do not write a route list or a count at all — put the completion-time line and the start link on their own lines under the "Complete the form" heading.
 
 # Worked example of the licence and application pattern
 
 This is a complete page body in the licence and application pattern. Follow its shape, not its subject matter.
 
-Use this service to apply for a new hotel licence or renew an existing licence with the Environmental Health Department.
+Use this service to apply for a new swimming pool licence or renew an existing licence with the Environmental Health Department.
 
 ## Who is this licence for
 
-You need a licence if you are planning to operate a hotel in Barbados.
+You need a licence if you are planning to operate a swimming pool, wading pool, or spa pool (hot tub) for public use in Barbados.
 
 ## Before you start
-
-You must:
-
-- apply for all amenities licences before this licence is granted, for example a restaurant, swimming pool, salon or spa licence
 
 You will need:
 
 - the operator's name, phone number and email address, if you are not the operator
-- the hotel's name and address
-- the maximum number of guests who can stay at the hotel at one time
-- the number of bedrooms, occupants, water closets, baths and basins on each floor, and how many rooms have their own water closet, bath or basin
-- the number of male and female staff, and the changing rooms, lockers, hand wash basins and water closets provided for them
-- new licences: a site plan of the hotel, or the application number from the Planning and Development Department (previously called Town and Country Planning)
-- licence renewals: your current hotel licence number
+- the address of the pool(s)
+- how much water the pool(s) can hold, in gallons or cubic metres
+- New licences: a site plan of the pool or the application number from the Planning and Development Department (previously called Town and Country Planning)
+- Licence renewals: your current swimming pool licence number(s)
 
-Read the [Health Services (Hotels) Regulations, 1969](https://example.gov.bb/regulations.pdf) for the full legal requirements.
+Read the [Health Services (Swimming Pools) Regulations, 1970](https://example.gov.bb/regulations.pdf) for the full legal requirements.
 
 ## When to apply
 
-### New business
+Your licence expires on December 31st each year. You need to renew it by the first business day in January each year. It is suggested that you submit your application by December 1st.
 
-Apply when you are starting a new hotel.
+## Complete the form
 
-### Renewals
+There are 2 ways to apply for a swimming pool licence. You can:
 
-Your licence expires on 31 December each year. We suggest you apply to renew by 1 December, and no later than 1 January.
+1. **Apply for a licence online**
+
+   Allow about 5-10 minutes to complete the form.
+
+   <a data-start-link>Start now</a>
+
+2. **Get a paper application from the polyclinic**
+
+   You must complete it by hand and submit the application to the polyclinic associated with the district where the pool is located. If you require further information or assistance, contact the polyclinic - information can be found at the bottom of this page.
 
 ## Cost
 
 There is neither a cost to apply, nor to receive your licence.
 
-## How long does it take?
-
-Allow about 15 to 20 minutes to complete the form.
-
-## How to apply for a hotel licence
-
-There are 2 ways to apply for a hotel licence. You can:
-
-1. complete the online form
-
-   <a data-start-link>Start now</a>
-
-2. get a paper application from the polyclinic and submit it to the polyclinic associated with the district where the hotel is located. If you are unsure where to submit your paper application, call the Ministry of Health at [(246) 536-3800](tel:+12465363800)
-
 ## What happens after you apply
 
-Your application goes to the Environmental Health Department associated with the location of the hotel. They will review it and may contact you if they need more information. The property will be inspected before a licence is issued.
+- Your application goes to the Environmental Health Department associated with the location of the swimming pool.
+- They will review it and may contact you if they need more information.
+- The pool, surroundings and safety equipment will be inspected before a licence is issued.
+- If your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. You can also ask to collect it from your assigned polyclinic.
 
-Submitting an application does not mean that a hotel licence has been granted.
+Submitting an application does not mean that a swimming pool licence has been granted.
 
-## Need assistance
+## Contact
 
-If you need help, contact the Ministry of Health and Wellness.
+If you need help, contact the relevant Environmental Health Service office.
 
-Telephone: [(246) 536-3800](tel:+12465363800)
+- Branford Taitt Polyclinic - [536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)
+- David Thompson Health and Social Services Complex - [536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)
+- Eunice Gibson Polyclinic - [536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)
+- Maurice Byer Polyclinic - [536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)
+- Randall Phillips Polyclinic - [536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)
+- St. Philip Polyclinic - [536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)
+- Winston Scott Polyclinic - [536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)
 
-Email: [info@health.gov.bb](mailto:info@health.gov.bb)
-
-Note what the example does: the "You must" and "You will need" lists both sit under "Before you start"; there is no separate "What the form will ask for" heading; the routes and the only start link sit together under "How to apply for a hotel licence", with the start link nested inside the online route's list item; and the contact details sit under "Need assistance" at the end.
+Note what the example does: there is no "You must" list, because this service has no eligibility restrictions — only things to have ready; there is no separate "What the form will ask for" heading; the routes, the completion time and the only start link all sit under "Complete the form", with the start link nested inside the online route's list item; "Cost" comes after that section, not before it; and the contact details sit under "Contact" at the end, one line per office.
 
 # Cost, payment and timing rules
 
-Where relevant, use separate sections in this order: Cost, Payment, How long it takes. Do not merge them unless the content is extremely short and combining them clearly improves usability. The licence and application pattern differs: the timing heading is "## How long does it take?", and it has no Payment section at all — where that service charges a fee, the fee and what the user needs to pay it both go under its "## Cost" heading.
+Where relevant, use separate sections in this order: Cost, Payment, How long it takes. Do not merge them unless the content is extremely short and combining them clearly improves usability. The licence and application pattern differs: it has no Payment section and no timing heading at all. Where that service charges a fee, the fee and what the user needs to pay it both go under its "## Cost" heading, which sits after "Complete the form"; how long the online form takes to fill in sits inside the online route's list item; and how long the department takes afterwards sits under "What happens after you apply".
 
 State fees clearly. If there are multiple fee conditions, use bullets. If payment method matters, say what the user will need, for example: a debit card or credit card, an EZPay+ account. If answers cannot be saved, say so clearly. If the form must be completed in one session, say so clearly.
 
@@ -234,11 +238,11 @@ State fees clearly. If there are multiple fee conditions, use bullets. If paymen
 
 Include a paper, postal, in-person, or overseas route only where it helps the user act. Use practical wording such as "You may need to use a paper form if…", "You cannot use this online service if…", "Contact [department] if…".
 
-Put route blockers under "Before you start"; put fallback routes and support under the help section. In the licence and application pattern, alternative routes are listed in the "How to …" section instead of the help section; route blockers still sit under "Before you start".
+Put route blockers under "Before you start"; put fallback routes and support under the help section. In the licence and application pattern, alternative routes are listed in the "Complete the form" section instead of the help section; route blockers still sit under "Before you start".
 
 # Contact details rules
 
-Contact details should usually sit under a single help heading at the end of the page — "## If you need help or cannot use the online service" in the certificate pattern, "## Need assistance" in the licence and application pattern — listed cleanly:
+Contact details should usually sit under a single help heading at the end of the page — "## If you need help or cannot use the online service" in the certificate pattern, "## Contact" in the licence and application pattern — listed cleanly:
 
 Department name
 Address line 1
@@ -252,11 +256,20 @@ Email: …
 
 Opening hours: …
 
+Link every phone number as a \`tel:\` link and every email address as a \`mailto:\` link, in either layout — a number a user cannot tap is a dead end on a phone.
+
+Where the service is delivered from several offices and the user has to pick the one for their area, list the offices instead, one bullet per office, after a short lead-in that says how to choose:
+
+If you need help, contact the relevant Environmental Health Service office.
+
+- Branford Taitt Polyclinic - [536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)
+- Eunice Gibson Polyclinic - [536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)
+
 Do not scatter contact details across multiple sections unless the source content forces it.
 
 # Start button rules
 
-The page has at most one Start button. Keep its visible label short — "Start now" — unless the service content requires a different label. Place it where the page naturally allows action: under "## Start the service" in the certificate pattern, inside the online route's list item in the licence and application pattern, or after "Before you start" on short pages.
+The page has at most one Start button. Keep its visible label short — "Start now" — unless the service content requires a different label. Place it where the page naturally allows action: under "## Start the service" in the certificate pattern, inside the online route's list item under "## Complete the form" in the licence and application pattern, or after "Before you start" on short pages.
 
 Avoid repetitive heading-button combinations such as a "## Start" heading directly above a "Start now" button — prefer "## Start the service".
 
@@ -276,7 +289,7 @@ Prefer: get, use, need, show, fill in, start. Avoid unnecessary abstract or admi
 
 # Quality checks
 
-Before finalising, automatically check for and fix: duplicated content across entry and start pages; long intros; unclear route choice; missing fees, payment or timing information where the source provides them; missing fallback route or contact details where the source provides them; overly dense paragraphs that should be bullets; headings that do not match the user task; vague headings or generic button text; a route count that does not match the number of routes listed, or is written as "two (2)"; a start link sitting outside the online route's list item on a page with more than one route.
+Before finalising, automatically check for and fix: duplicated content across entry and start pages; long intros; unclear route choice; missing fees, payment or timing information where the source provides them; missing fallback route or contact details where the source provides them; overly dense paragraphs that should be bullets; headings that do not match the user task; vague headings or generic button text; a route count that does not match the number of routes listed, or is written as "two (2)"; a start link sitting outside the online route's list item on a page with more than one route; a licence page that still carries a "How to …" or "How long does it take?" heading instead of "Complete the form" with the completion time inside the online route's list item; a licence page whose "Cost" section sits before "Complete the form".
 
 # Guidance page decision rule
 
@@ -286,7 +299,7 @@ Do not create a separate guidance page by default. Only recommend one (in your r
 
 Do not invent unsupported service content.
 Do not duplicate content across entry and start pages without a reason.
-Do not add decorative formatting.
+Do not add decorative formatting. The one exception is the bold route titles in the licence and application pattern's "Complete the form" section.
 Do not use hint text on entry or start pages.
 Do not break the preferred certificate heading sequence when using the combined certificate pattern.
 Do not introduce extra headings such as "Apply online" in that pattern unless explicitly instructed or clearly required by the source content.
@@ -294,6 +307,8 @@ Do not blend the certificate pattern and the licence and application pattern on 
 Do not write a route count as "two (2)" — write "There are 2 ways to…" or "There are two ways to…", or the site's route-count rewrite will contradict the list.
 Do not place the start link outside the online route's list item when the page lists more than one route.
 Do not add a separate "What the form will ask for" heading in the licence and application pattern.
+Do not rename the licence and application pattern's "## Complete the form" heading, and do not give that pattern a "## How long does it take?" heading — the completion time sits inside the online route's list item.
+Do not put "## Cost" before "## Complete the form" in the licence and application pattern.
 Do not state that a service is free, or give a completion time, unless the source content supports it.
 Present the output as final copy, not notes about what you might do.`;
 

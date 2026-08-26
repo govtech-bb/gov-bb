@@ -1,8 +1,8 @@
 /**
- * apply-for-temporary-restaurant-licence.smoke.spec.ts
+ * apply-for-temporary-restaurant-permit.smoke.spec.ts
  *
- * Live, on-demand smoke test for the Temporary Restaurant Licence form
- * (formId `apply-for-temporary-restaurant-licence`).
+ * Live, on-demand smoke test for the Temporary Restaurant Permit form
+ * (formId `apply-for-temporary-restaurant-permit`).
  *
  * It drives the REAL deployed form (default: the sandbox environment), fills
  * every step with valid @faker-js/faker data, SUBMITS FOR REAL, and asserts the
@@ -16,7 +16,7 @@
  *
  * Run it on demand (from the repo root):
  *   pnpm --filter @govtech-bb/forms exec playwright test \
- *     --config playwright.smoke.config.ts apply-for-temporary-restaurant-licence
+ *     --config playwright.smoke.config.ts apply-for-temporary-restaurant-permit
  *
  * Useful env overrides:
  *   SMOKE_BASE_URL   target environment (default https://forms.sandbox.alpha.gov.bb)
@@ -40,17 +40,14 @@
  *    to populate the hidden coordinates the catchment router reads. We faker-pick
  *    from a small pool of known-geocodable locations and select the first
  *    suggestion, then assert the hidden `event-address-coordinates` field filled.
- *  - The national ID is a Maskito-masked field: fill() bypasses the mask, so the
- *    raw digits are typed with pressSequentially and the YYMMDD-NNNN shape is
- *    asserted (mirrors the vendor-registration spec).
  *  - food-served is a checkbox-accordion: open a category, then tick one leaf.
  *    "Other food or drink" is the exception: a single-option group renders as one
  *    plain checkbox (no expander), and ticking it reveals the required free-text
  *    other-food-description.
  *  - food-source is a TWO-option checkbox (values "supplier" and "caterer"), so
  *    the input ids are `<step>_food-source-supplier` / `-caterer`. It gates the
- *    supplier textarea and the caterer contact fields respectively; both are
- *    asserted hidden before the boxes are ticked and then filled.
+ *    supplier textarea and the caterer address and contact fields respectively;
+ *    both are asserted hidden before the boxes are ticked and then filled.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
@@ -68,7 +65,7 @@ import {
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
-const FORM_ID = "apply-for-temporary-restaurant-licence";
+const FORM_ID = "apply-for-temporary-restaurant-permit";
 
 /** Parish <select> option values (slugs) from components/parish. */
 const PARISH_VALUES = [
@@ -141,14 +138,6 @@ const OTHER_LABEL = "Other food or drink";
 function buildData() {
   if (process.env.FAKER_SEED) faker.seed(Number(process.env.FAKER_SEED));
 
-  // NRN must match ^\d{6}-\d{4}$ (mask 999999-9999): type 10 raw digits and let
-  // Maskito insert the dash.
-  const dob = faker.date.birthdate({ min: 21, max: 70, mode: "age" });
-  const yy = String(dob.getFullYear()).slice(-2);
-  const mm = String(dob.getMonth() + 1).padStart(2, "0");
-  const dd = String(dob.getDate()).padStart(2, "0");
-  const nrnDigits = `${yy}${mm}${dd}${faker.string.numeric(4)}`;
-
   // Keep the start >= 14 days out so the soft lead-time warning stays hidden
   // (it is advisory, not blocking); end date is the same day or a few later.
   const start = new Date();
@@ -159,7 +148,6 @@ function buildData() {
   return {
     firstName: faker.person.firstName(),
     lastName: faker.person.lastName(),
-    nrnDigits,
     addressLine1: faker.location.streetAddress(),
     applicantParish: faker.helpers.arrayElement(PARISH_VALUES),
     mobile: bbMobileNumber(),
@@ -183,7 +171,9 @@ function buildData() {
     otherFood: `${faker.commerce.productName()} (smoke test)`,
     supplierDetails: "Fish from Oistins market; dry goods from a wholesaler",
     catererName: faker.company.name(),
-    catererAddress: faker.location.streetAddress(),
+    catererAddressLine1: faker.location.streetAddress(),
+    catererAddressLine2: faker.location.secondaryAddress(),
+    catererParish: faker.helpers.arrayElement(PARISH_VALUES),
     catererPhone: bbMobileNumber(),
     catererEmail: faker.internet.email().toLowerCase(),
 
@@ -284,7 +274,7 @@ async function dateField(
   await afterField(page);
 }
 
-test.describe("Temporary Restaurant Licence — Live Smoke", () => {
+test.describe("Temporary Restaurant Permit — Live Smoke", () => {
   test("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
   }) => {
@@ -311,11 +301,6 @@ test.describe("Temporary Restaurant Licence — Live Smoke", () => {
     await expect(page.locator("h1")).toContainText("Your details");
     await field(page, step, "applicant-first-name", data.firstName);
     await field(page, step, "applicant-last-name", data.lastName);
-    // Masked NRN: type raw digits so Maskito formats to YYMMDD-NNNN.
-    const nrn = page.locator(`input[id="${step}_national-id-number"]`);
-    await nrn.pressSequentially(data.nrnDigits);
-    await expect(nrn).toHaveValue(/^\d{6}-\d{4}$/);
-    await afterField(page);
     await field(page, step, "applicant-address-line-1", data.addressLine1);
     await dropdown(page, step, "applicant-parish", data.applicantParish);
     await field(page, step, "mobile-number", data.mobile);
@@ -398,7 +383,9 @@ test.describe("Temporary Restaurant Licence — Live Smoke", () => {
     await afterField(page);
     await field(page, step, "supplier-details", data.supplierDetails);
     await field(page, step, "caterer-name", data.catererName);
-    await field(page, step, "caterer-address", data.catererAddress);
+    await field(page, step, "caterer-address-line-1", data.catererAddressLine1);
+    await field(page, step, "caterer-address-line-2", data.catererAddressLine2);
+    await dropdown(page, step, "caterer-parish", data.catererParish);
     await field(page, step, "caterer-phone", data.catererPhone);
     await field(page, step, "caterer-email", data.catererEmail);
     await advance(page, step);
