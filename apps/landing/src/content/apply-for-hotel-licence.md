@@ -12,18 +12,15 @@ form_id: hotel-licence-application
 
 Use this service to apply for a new hotel licence or renew an existing licence with the Environmental Health Department.
 
-## Who this licence is for
+## Who is this licence for
 
 You need a licence if you are planning to operate a hotel in Barbados.
 
-There are 2 ways to apply for a hotel licence. You can:
-
-- complete the online form
-- get a paper application from the polyclinic and submit it to the polyclinic associated with the district where the hotel is located. If you are unsure where to submit your paper application, you can call the Ministry of Health at [(246) 536-3800](tel:+12465363800)
-
 ## Before you start
 
-You must apply for all amenities licences before this licence is granted, for example a restaurant, swimming pool, salon or spa licence.
+You must:
+
+- apply for all amenities licences before this licence is granted, for example a [restaurant](/business-trade/apply-to-environmental-health-for-a-restaurant-licence), [swimming pool](/business-trade/swimming-wading-pool-permit) or [salon or spa](/business-trade/register-hair-beauty-business) licence
 
 You will need:
 
@@ -35,32 +32,46 @@ You will need:
 - new licences: a site plan of the hotel, or the application number from the Planning and Development Department (previously called Town and Country Planning)
 - licence renewals: your current hotel licence number
 
-Read the [Health Services (Hotels) Regulations, 1969](https://www.barbadoslawcourts.gov.bb/assets/content/pdfs/subsidiary_legislation_of_barbados/HealthServices%28Hotels%29Regulations%2C1969Cap44%27P.pdf) for the full legal requirements.
+Read the [Health Services (Hotels) Regulations, 1969](https://oag.gov.bb/attachments/Health%20Services%20%28Hotels%29%20Regulations,%201969%20Cap44'P.PDF) for the full legal requirements.
 
 ## When to apply
 
-Your licence expires on 31 December each year. You need to renew it by the first business day in January each year. We suggest you submit your application by 15 December.
+Your licence expires on 31 December each year. You need to renew it by the first business day in January each year. We suggest you submit your application by 1 December.
 
 ## Cost
 
-There is no cost to apply for or to receive your licence.
+There is neither a cost to apply, nor to receive your licence.
 
-## How long it takes
+## How long does it take?
 
-Allow about 15 to 20 minutes to complete the form.
+Allow about 5 to 10 minutes to complete the form.
 
-<a data-start-link>Start now</a>
+## How to apply for a hotel licence
+
+There are 2 ways to apply for a hotel licence. You can:
+
+1. complete the online form
+
+   <a data-start-link>Start now</a>
+
+2. get a paper application from the polyclinic, fill it in by hand and submit it to the polyclinic associated with the district where the hotel is located. If you need help, contact that polyclinic using the details below
 
 ## What happens after you apply
 
 Your application goes to the Environmental Health Department associated with the location of the hotel. They will review it and may contact you if they need more information. The property will be inspected before a licence is issued.
 
+If your application is approved, you will get a confirmation email and the Environmental Health Department will post your licence to you. You can also ask to collect it from your assigned polyclinic.
+
 Submitting an application does not mean that a hotel licence has been granted.
 
-## Contact us
+## Need assistance
 
-If you need help, contact the Ministry of Health and Wellness.
+If you need help, contact the Environmental Health Service office for your area.
 
-Telephone: [(246) 536-3800](tel:+12465363800)
-
-Email: [info@health.gov.bb](mailto:info@health.gov.bb)
+- Branford Taitt Polyclinic: [(246) 536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)
+- David Thompson Health and Social Services Complex: [(246) 536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)
+- Eunice Gibson Polyclinic: [(246) 536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)
+- Maurice Byer Polyclinic: [(246) 536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)
+- Randall Phillips Polyclinic: [(246) 536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)
+- St. Philip Polyclinic: [(246) 536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)
+- Winston Scott Polyclinic: [(246) 536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)
