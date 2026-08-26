@@ -62,7 +62,7 @@
  *    `components/upload-document` (which ships NO validations) declaring
  *    `required` explicitly, alongside `fileTypes` + `itemMaxSize`. Both file
  *    fields accept PNG, so the uploads below are unaffected.
- *  - UNLIKE hotel-licence-application, this recipe's confirmation step uses
+ *  - UNLIKE apply-for-hotel-licence, this recipe's confirmation step uses
  *    generic `nextSteps` copy and no `{polyclinic}` placeholder, so there is no
  *    resolved-catchment name on the confirmation screen to assert. Catchment
  *    routing still runs (it drives the MDA email), it just isn't surfaced to

@@ -3,6 +3,7 @@
 export const FORM_CATEGORIES: Record<string, string> = {
   "apply-for-conductor-licence": "work-employment",
   "apply-for-food-business-licence": "business-trade",
+  "apply-for-hotel-licence": "business-trade",
   "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026":
     "education",
   "apply-for-restaurant-licence": "business-trade",
@@ -29,7 +30,6 @@ export const FORM_CATEGORIES: Record<string, string> = {
   "hairdresser-licence-application": "business-trade",
   "home-care-programme-services": "social-empowerment",
   "homeschooling-application-2024": "education",
-  "hotel-licence-application": "business-trade",
   "jobstart-plus-programme": "work-employment",
   "mission-barbados": "youth-and-community",
   "mohlm-application-use-state-land": "housing",

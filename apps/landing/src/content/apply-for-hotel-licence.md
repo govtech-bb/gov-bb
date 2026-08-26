@@ -7,7 +7,7 @@ category: business-trade
 stage: alpha
 publish_date: '2026-08-18'
 visibility: preview
-form_id: hotel-licence-application
+form_id: apply-for-hotel-licence
 ---
 
 Use this service to apply for a new hotel licence or renew an existing licence with the Environmental Health Department.
