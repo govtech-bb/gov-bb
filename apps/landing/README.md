@@ -463,8 +463,20 @@ crossing environments costs a reader nothing.
 Set `VITE_TRACKER_URL` once a per-environment tracker exists, or to point local
 dev at one on `localhost`:
 
-- **Local**: add `VITE_TRACKER_URL=http://localhost:3000` to
-  `apps/landing/.env.local`.
+- **Local**: add `VITE_TRACKER_URL=http://localhost:3400` to
+  `apps/landing/.env.local`, and start the tracker on that port:
+
+  ```bash
+  # in the cms-application-tracker checkout
+  pnpm -C apps/web exec vite dev --port 3400
+  ```
+
+  Any free port works; it must not be **3000**, which this app's own dev server
+  uses. The tracker's `pnpm dev` also defaults to 3000, and passing
+  `-- --port <n>` does **not** override it — its script already carries
+  `--port 3000`, Vite honours the first flag and quietly auto-increments to the
+  next free port when 3000 is taken, so you end up pointing at the wrong app or
+  at nothing. Invoke `vite` directly, as above.
 - **Amplify**: App settings → Environment variables → add
   `VITE_TRACKER_URL=<url>`. **Then trigger a rebuild** — the value is baked at
   build time, not read at runtime.

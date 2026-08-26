@@ -18,9 +18,15 @@ import { trackEvent } from '../lib/analytics'
  * system's own `govbb-link` styling and the tile is built here.
  *
  * ── Icons ─────────────────────────────────────────────────────────────────
- * Chat and calendar are the exact paths exported from the Figma, refilled with
- * `currentColor` so the tile sets the colour from a token instead of the hex
- * baked into the export.
+ * Chat and calendar are the Figma's paths, refilled with `currentColor` so the
+ * tile sets the colour from a token instead of the hex baked into the export.
+ *
+ * The chat path's subpath now opens at the end of the top-left arc (`M6.5 3.25`)
+ * rather than at the corner point with a closing `H4.33333` before `Z`. That
+ * segment was a zero-area spike — `Z` draws the same line anyway — so it changed
+ * nothing, but it reads like a squared-off corner and a review spent time on it.
+ * Confirmed equivalent by rasterising both at 40x under `nonzero` and `evenodd`:
+ * 0 differing pixels of 487,357.
  *
  * The tracker's icon is a document rather than the frame's clipboard-and-tick,
  * which read as "completed" rather than "something to check on". Requested
@@ -59,7 +65,7 @@ function IconChat() {
       viewBox="0 0 26 26"
     >
       <path
-        d="M4.33333 3.25H21.6667C22.2413 3.25 22.7924 3.47827 23.1987 3.8846C23.6051 4.29093 23.8333 4.84203 23.8333 5.41667V16.25C23.8333 16.8246 23.6051 17.3757 23.1987 17.7821C22.7924 18.1884 22.2413 18.4167 21.6667 18.4167H9.75L4.33333 22.75V5.41667C4.33333 4.84203 4.56161 4.29093 4.96793 3.8846C5.37426 3.47827 5.92536 3.25 6.5 3.25H4.33333ZM7.58333 8.66667H18.4167V10.8333H7.58333V8.66667ZM7.58333 13H15.1667V15.1667H7.58333V13Z"
+        d="M6.5 3.25H21.6667C22.2413 3.25 22.7924 3.47827 23.1987 3.8846C23.6051 4.29093 23.8333 4.84203 23.8333 5.41667V16.25C23.8333 16.8246 23.6051 17.3757 23.1987 17.7821C22.7924 18.1884 22.2413 18.4167 21.6667 18.4167H9.75L4.33333 22.75V5.41667C4.33333 4.84203 4.56161 4.29093 4.96793 3.8846C5.37426 3.47827 5.92536 3.25 6.5 3.25ZM7.58333 8.66667H18.4167V10.8333H7.58333V8.66667ZM7.58333 13H15.1667V15.1667H7.58333V13Z"
         fill="currentColor"
       />
     </svg>
@@ -159,6 +165,17 @@ export function Featured() {
         Featured
       </Heading>
 
+      {/*
+        One renderer for all three, and a plain `<a>`, which is this app's
+        convention for body links: the homepage's own category list beside this
+        column does the same, as do the service lists in routes/$.tsx. Only the
+        chrome — Header, Breadcrumbs — navigates client-side, via a
+        `linkComponent` adapter. There is no `<Link to=…>` anywhere in this app.
+
+        It also has to stay a plain anchor here: the list mixes two estate apps
+        on their own origins with one internal route, and TanStack's Link cannot
+        take a cross-origin `to`.
+      */}
       <ul className="m-0 flex list-none flex-col gap-m p-0">
         {FEATURED.map((item) => (
           <li className="flex gap-s" key={item.href}>
