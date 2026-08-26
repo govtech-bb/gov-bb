@@ -20,7 +20,7 @@ You need a licence if you are planning to operate a hotel in Barbados.
 
 You must:
 
-- apply for all amenities licences before this licence is granted, for example a [restaurant](/business-trade/apply-to-environmental-health-for-a-restaurant-licence), [swimming pool](/business-trade/swimming-wading-pool-permit) or [salon or spa](/business-trade/register-hair-beauty-business) licence
+- apply for all amenities licences before this licence is granted, for example a [restaurant](/business-trade/apply-to-environmental-health-for-a-restaurant-licence), [swimming pool](/business-trade/apply-for-swimming-pool-licence) or [salon or spa](/business-trade/register-hair-beauty-business) licence
 
 You will need:
 
