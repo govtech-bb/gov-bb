@@ -1,19 +1,45 @@
 /**
- * Fallback copy substituted for a confirmation token when the caller has no
- * resolved value. Owned here in exactly one place so the confirmation page and
- * the applicant email can never drift — they previously carried duplicate
+ * How one confirmation `{token}` behaves when it is substituted.
+ *
+ * Owned here in exactly one place so the confirmation page and the applicant
+ * email can never drift — they previously carried duplicate
  * `replaceAll("{polyclinic}", … ?? "your local polyclinic")` literals kept in
  * step only by a comment (#2201).
  */
-const TOKEN_FALLBACKS = {
+type TokenSpec = {
+  /** Substituted when the caller has no value for the token. */
+  fallback: string;
+  /**
+   * Applied to a caller-supplied value before substitution. Returning
+   * `undefined` rejects the value and hands the token back to `fallback`.
+   * Tokens without a normaliser substitute whatever the caller passed,
+   * empty string included.
+   */
+  normalise?: (value: string) => string | undefined;
+};
+
+const TOKENS = {
   // Coordinate-routed forms name the resolved polyclinic; non-routed forms and
   // unresolved submissions read the generic phrase instead.
-  polyclinic: "your local polyclinic",
-} as const;
+  polyclinic: { fallback: "your local polyclinic" },
+
+  // Origin of the public landing site, so recipe copy can link to a service
+  // page as `{landingUrl}/business-trade/…` and resolve per environment. Both
+  // confirmation surfaces sit off the landing origin — the confirmation page
+  // is served from `forms.<env>.alpha.gov.bb`, and an email has no base URL at
+  // all — so a root-relative link would 404 on one and be dead on the other.
+  landingUrl: {
+    fallback: "https://alpha.gov.bb",
+    // A trailing slash would double up against the authored `{landingUrl}/path`,
+    // and a blank origin would emit exactly the root-relative link the token
+    // exists to avoid. Both degrade to prod, which is a real page.
+    normalise: (value) => value.replace(/\/+$/, "") || undefined,
+  },
+} satisfies Record<string, TokenSpec>;
 
 /** Values a caller may supply for the known confirmation tokens. */
 export type ConfirmationTokens = {
-  [K in keyof typeof TOKEN_FALLBACKS]?: string | null;
+  [K in keyof typeof TOKENS]?: string | null;
 };
 
 /**
@@ -37,11 +63,16 @@ export function interpolateConfirmationMarkdown(
   if (markdownContent === undefined) return undefined;
 
   let result = markdownContent;
-  for (const token of Object.keys(
-    TOKEN_FALLBACKS,
-  ) as (keyof typeof TOKEN_FALLBACKS)[]) {
-    const value = tokens[token] ?? TOKEN_FALLBACKS[token];
-    result = result.replaceAll(`{${token}}`, value);
+  for (const token of Object.keys(TOKENS) as (keyof typeof TOKENS)[]) {
+    const spec: TokenSpec = TOKENS[token];
+    const supplied = tokens[token];
+    const value =
+      supplied === undefined || supplied === null
+        ? undefined
+        : spec.normalise
+          ? spec.normalise(supplied)
+          : supplied;
+    result = result.replaceAll(`{${token}}`, value ?? spec.fallback);
   }
   return result;
 }
