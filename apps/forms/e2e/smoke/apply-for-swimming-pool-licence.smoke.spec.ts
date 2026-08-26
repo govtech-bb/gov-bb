@@ -31,25 +31,25 @@
  *   FAKER_SEED       fix faker's RNG for a reproducible data set.
  *
  * Form-specific notes:
- *  - The form is FOUR authored steps: `about-application`, `your-details`,
- *    `pool-details` and `supporting-documents`. This is the #2451 rebuild's
- *    shape, re-integrated in #2507 — an earlier recipe spread the pool across
- *    six separately-repeatable steps plus a hand-rolled `add-another-pool`, so
- *    pool 2's capacity had no guaranteed relationship to pool 2's address. If
- *    you are looking for `about-pool` / `pool-capacity` / `pool-usage` /
- *    `pool-address` / `pool-facilities` / `pool-chemical-maintenance`, they are
- *    gone — the first four collapsed into `pool-details`, and the last two were
- *    dropped by the rebuild (flagged on #2507 for MDA confirmation).
+ *  - The form is FIVE authored steps: `about-application`, `your-details`,
+ *    `pool-location`, `pool-details` and `supporting-documents`. This is the
+ *    #2451 rebuild's shape, re-integrated in #2507 — an earlier recipe spread
+ *    the pool across six separately-repeatable steps plus a hand-rolled
+ *    `add-another-pool`, so pool 2's capacity had no guaranteed relationship to
+ *    pool 2's address. If you are looking for `about-pool` / `pool-capacity` /
+ *    `pool-usage` / `pool-address` / `pool-facilities` /
+ *    `pool-chemical-maintenance`, they are gone — the first four collapsed into
+ *    `pool-details`, and the last two were dropped by the rebuild (flagged on
+ *    #2507 for MDA confirmation).
  *  - `pool-details` is the ONLY repeatable step. It renders its own `addAnother`
  *    radio, addressed as `pool-details_addAnother-{yes,no}`, which must be
  *    answered before the step will advance. Every walk below answers "no" — the
- *    single-pool path. Because the whole pool (type, capacity, usage, address)
- *    is one instance, the fields are addressed plainly as
- *    `${stepId}_${fieldId}` for the first instance.
+ *    single-pool path. Because the whole pool (type, capacity, usage) is one
+ *    instance, the fields are addressed plainly as `${stepId}_${fieldId}` for
+ *    the first instance.
  *  - Two branches, both inline on `pool-details`: `owner-type` = "manager"
- *    reveals `connection-to-pool`, and `pool-same-address` = "no" reveals the
- *    three pool address fields. `pool-usage-type` including "other" reveals
- *    `other-pool`. The second test takes all three.
+ *    reveals `connection-to-pool`, and `pool-usage-type` including "other"
+ *    reveals `other-pool`. The second test takes both.
  *  - `pool-usage-type` is a CHECKBOX group (multi-select), not a radio — tick
  *    options rather than selecting one. Its reveal of `other-pool` uses the
  *    `in` operator against `["other"]`, since a checkbox submits a list.
@@ -62,34 +62,39 @@
  *    hiding everything — that was issue #2426, and this recipe is no longer
  *    one of its cases.
  *  - Applicant name / parish / email carry no `fieldId` override in the recipe,
- *    so they keep their component defaults (`first-name`, `parish`, `email`) —
- *    which is also what `catchmentRouting.parishField` (`your-details.parish`)
- *    refers to.
- *  - The applicant address is an address-lookup (geocoder) field, so it cannot
- *    take a free-text faker address — the geocoder must return a real Barbados
- *    match to populate the hidden coordinates the catchment router reads
- *    (`catchmentRouting.coordinatesField` =
- *    `your-details.your-address-coordinates`). We faker-pick from a pool of
+ *    so they keep their component defaults (`first-name`, `parish`, `email`).
+ *  - The APPLICANT address is a plain `components/address` — it takes free-text
+ *    faker data and nothing routes on it.
+ *  - The POOL address on `pool-location` is the address-lookup (geocoder) field,
+ *    so it cannot take a free-text faker address: the geocoder must return a
+ *    real Barbados match to populate the hidden coordinates the catchment router
+ *    reads (`catchmentRouting.coordinatesField` =
+ *    `pool-location.pool-address-coordinates`). We faker-pick from a pool of
  *    known-geocodable locations, select the first suggestion, then assert the
  *    coordinates filled.
- *  - Picking a suggestion also fills `your-address-line-2` and `parish`. Line 2
- *    is optional here (the recipe sets `required: false`), but we overwrite it
- *    with faker data so the submitted record is deterministic; `parish` is
- *    asserted rather than overwritten, since that value is the catchment
- *    router's fallback.
+ *  - Picking a suggestion also fills `pool-address-line-2` and `pool-parish`.
+ *    Line 2 is optional here (the recipe sets `required: false`), but we
+ *    overwrite it with faker data so the submitted record is deterministic;
+ *    `pool-parish` is asserted rather than overwritten, since that value is the
+ *    catchment router's fallback.
  *  - The applicant phone is `components/mobile-telephone` — `mobile-telephone`,
  *    not `phone-number`. It is what the webhook maps applicant phone from
  *    (`your-details.mobile-telephone`). It validates with libphonenumber-js, so
  *    the number needs a real Barbados exchange. `work-telephone` sits beside it
  *    and is optional; we leave it empty.
- *  - The pool address is a plain `components/address`, NOT geocoded — the
- *    catchment is resolved from the APPLICANT's address regardless of where the
- *    pool is. That is what #2405 shipped and what #2507 ported forward
- *    unchanged, but it is worth knowing: the landing page tells citizens their
- *    application goes to the polyclinic for the pool's location, and a pool in
- *    another parish routes to the applicant's polyclinic instead. Routing on the
- *    pool address is blocked on `pool-details` being repeatable — `readPath`
- *    would find a list, not a value.
+ *  - `pool-location` exists so the catchment can route on the POOL, which is
+ *    what the landing page promises citizens ("the Environmental Health
+ *    Department associated with the location of the swimming pool"). Up to #2405
+ *    it routed on the applicant's home address instead. The address has to sit
+ *    on its own non-repeatable step, unconditionally, because `readPath`
+ *    (`processors/webhook-mapping.ts`) returns null for a repeatable step's
+ *    array and `catchmentRoutingSchema` takes ONE path with no fallback chain —
+ *    so an address nested in `pool-details`, or hidden behind a "same as your
+ *    address?" gate, resolves to nothing and the MDA email fails with
+ *    NO_RECIPIENT. This is the same shape every other catchment-routed recipe
+ *    uses (hotel, restaurant, guest property): one unconditional geocoded
+ *    premises address on a plain step. Do not move it back inside the
+ *    repeatable step without changing the platform first.
  *  - The confirmation screen's "What happens next" copy is asserted. It lives in
  *    `markdownContent`, which `hydrateStep` (apps/api/src/registry/resolution.ts)
  *    carries into the served contract; `nextSteps` — where the #2451 rebuild put
@@ -175,23 +180,26 @@ export function buildData() {
     firstName: faker.person.firstName(),
     middleName: faker.person.middleName(),
     lastName: faker.person.lastName(),
-    address: faker.helpers.arrayElement(GEOCODABLE_ADDRESSES),
+    // The applicant address is plain text — nothing routes on it.
+    applicantAddress: faker.location.streetAddress(),
     addressLine2: faker.location.street(),
+    applicantParish: faker.helpers.arrayElement(PARISH_VALUES),
     // Goes to the monitored test inbox so a real run is verifiable end-to-end.
     email: "testing@govtech.bb",
     phone: bbMobileNumber(),
 
     connectionToPool: "Property manager for the owner (smoke test)",
 
+    // The POOL address is the one the catchment routes on, so it has to be
+    // geocodable — a free-text address would resolve to no polyclinic.
+    poolAddress: faker.helpers.arrayElement(GEOCODABLE_ADDRESSES),
+    poolAddressLine2: faker.location.street(),
+
     // Timestamped so the resulting submission is easy to find in the target env.
     poolName: `Smoke Test Pool ${new Date().toISOString()}`,
     waterCapacity: String(faker.number.int({ min: 500, max: 50_000 })),
     poolUsageDescription:
       "Shared pool for a residents' association (smoke test)",
-
-    poolAddressLine1: faker.location.streetAddress(),
-    poolAddressLine2: faker.location.street(),
-    poolParish: faker.helpers.arrayElement(PARISH_VALUES),
 
     planningApplicationNumber: `TCP/${faker.string.numeric(5)}`,
   };
@@ -230,23 +238,11 @@ export async function fillYourDetails(
   await fillField(page, step, "first-name", data.firstName);
   await fillField(page, step, "middle-name", data.middleName);
   await fillField(page, step, "last-name", data.lastName);
-  // The geocoder writes the hidden coordinates the catchment router reads — an
-  // empty one is a real failure, which the helper asserts rather than skips.
-  await fillGeocodedAddress(
-    page,
-    step,
-    {
-      lineFieldId: "your-address-line-1",
-      coordinatesFieldId: "your-address-coordinates",
-    },
-    data.address,
-  );
-  // Line 2 is optional and the picked suggestion already wrote something —
-  // overwrite it so the submitted record is deterministic.
+  // A plain address, not the geocoder — nothing routes on where the applicant
+  // lives, so free-text faker data is fine here.
+  await fillField(page, step, "your-address-line-1", data.applicantAddress);
   await fillField(page, step, "your-address-line-2", data.addressLine2);
-  // The geocoder fills parish from the picked suggestion; assert rather than
-  // overwrite, since that value is the catchment router's fallback.
-  await expect(page.locator(`select[id="${step}_parish"]`)).not.toHaveValue("");
+  await selectDropdown(page, step, "parish", data.applicantParish);
   await fillField(page, step, "email", data.email);
   // `mobile-telephone`, not `phone-number` — this is what the webhook maps
   // applicant phone from. `work-telephone` beside it is optional; left empty.
@@ -255,11 +251,44 @@ export async function fillYourDetails(
 }
 
 /**
- * Step 3 — the whole pool, on one repeatable step. Three inline reveals:
- * `owner-type` = "manager" shows `connection-to-pool`, `pool-usage-type`
- * including "other" shows `other-pool`, and `pool-same-address` = "no" shows the
- * three pool address fields. The step's own `addAnother` radio is answered "no"
- * on every walk — the single-pool path.
+ * Step 3 — where the pool is. This is the step the catchment routes on, so the
+ * geocoder MUST resolve: the helper asserts the hidden coordinates filled rather
+ * than soft-skipping, because an empty one means the submission reaches no
+ * polyclinic at all.
+ */
+export async function fillPoolLocation(
+  page: Page,
+  data: ReturnType<typeof buildData>,
+): Promise<string> {
+  const step = expectStep(page, "pool-location");
+  await expect(page.locator("h1")).toContainText("Where is the pool");
+  const coordinates = await fillGeocodedAddress(
+    page,
+    step,
+    {
+      lineFieldId: "pool-address-line-1",
+      coordinatesFieldId: "pool-address-coordinates",
+    },
+    data.poolAddress,
+  );
+  // Line 2 is optional and the picked suggestion already wrote something —
+  // overwrite it so the submitted record is deterministic.
+  await fillField(page, step, "pool-address-line-2", data.poolAddressLine2);
+  // The geocoder fills the parish from the picked suggestion; assert rather than
+  // overwrite, since that value is the catchment router's fallback.
+  await expect(
+    page.locator(`select[id="${step}_pool-parish"]`),
+  ).not.toHaveValue("");
+  await advance(page, step);
+  return coordinates;
+}
+
+/**
+ * Step 4 — the pool itself, on one repeatable step. Two inline reveals:
+ * `owner-type` = "manager" shows `connection-to-pool`, and `pool-usage-type`
+ * including "other" shows `other-pool`. The step's own `addAnother` radio is
+ * answered "no" on every walk — the single-pool path. The pool ADDRESS is not
+ * here; it is on `pool-location`, because that is what routes.
  */
 export async function fillPoolDetails(
   page: Page,
@@ -274,7 +303,6 @@ export async function fillPoolDetails(
       | "condo-home"
       | "school"
       | "other";
-    sameAddress: "yes" | "no";
   },
 ): Promise<void> {
   const step = expectStep(page, "pool-details");
@@ -311,18 +339,14 @@ export async function fillPoolDetails(
     await expect(description).toBeHidden();
   }
 
-  // ─── Pool address — "no" reveals the three fields inline ──────────────────
-  const line1 = page.locator(`[id="${step}_pool-address-line-1"]`);
-  await expect(line1).toBeHidden();
-  await selectRadio(page, step, "pool-same-address", branch.sameAddress);
-  if (branch.sameAddress === "no") {
-    await expect(line1).toBeVisible({ timeout: STEP_TIMEOUT });
-    await line1.fill(data.poolAddressLine1);
-    await fillField(page, step, "pool-address-line-2", data.poolAddressLine2);
-    await selectDropdown(page, step, "pool-parish", data.poolParish);
-  } else {
-    await expect(line1).toBeHidden();
-  }
+  // The address is NOT on this step any more (#2507) — it moved to
+  // `pool-location` so the catchment can route on it. Asserted, so putting it
+  // back inside the repeatable step fails here instead of silently breaking
+  // routing at submit time.
+  await expect(
+    page.locator(`[id="${step}_pool-address-line-1"]`),
+    "the pool address is back on the repeatable step — catchment routing cannot read it there",
+  ).toHaveCount(0);
 
   await selectRadio(page, step, "addAnother", "no");
   await advance(page, step);
@@ -401,11 +425,11 @@ test.describe("Swimming Pool Licence — Live Smoke", () => {
     await openForm(page);
     await fillAboutApplication(page, "new");
     await fillYourDetails(page, data);
+    const coordinates = await fillPoolLocation(page, data);
     await fillPoolDetails(page, data, {
       ownerType: "business-owner",
       poolType: "swimming",
       usageType: "hotel",
-      sameAddress: "yes",
     });
     await fillSupportingDocuments(page, data, "new");
 
@@ -413,6 +437,10 @@ test.describe("Swimming Pool Licence — Live Smoke", () => {
     const step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
     await expect(page.getByText(data.poolName).first()).toBeVisible();
+    // The coordinate the catchment routes on was resolved from the POOL address,
+    // not the applicant's. Logged so a real run can be traced to a polyclinic.
+    if (process.env.SMOKE_LOG_DATA)
+      console.log("[smoke-data] pool coordinates:", coordinates);
     // An owner was never asked the connection question, so it cannot appear.
     await expect(page.getByText(data.connectionToPool)).toHaveCount(0);
     // SMOKE_HOLD_CYA=1 pauses a headed run here so the review screen can be
@@ -425,7 +453,7 @@ test.describe("Swimming Pool Licence — Live Smoke", () => {
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 
-  test("submits a renewal as a manager, with a separate pool address", async ({
+  test("submits a renewal as a manager, with a pool away from the applicant's address", async ({
     page,
   }) => {
     const data = buildData();
@@ -434,14 +462,16 @@ test.describe("Swimming Pool Licence — Live Smoke", () => {
 
     await openForm(page);
     await fillAboutApplication(page, "renewal");
+    // A free-text applicant address that would geocode to nothing — proof the
+    // catchment is resolved from the pool's location and not from this one.
     await fillYourDetails(page, data);
-    // "manager" reveals the connection question, "other" the usage description,
-    // and "no" the pool address — all three inline on the one pool step.
+    const coordinates = await fillPoolLocation(page, data);
+    // "manager" reveals the connection question and "other" the usage
+    // description — both inline on the one pool step.
     await fillPoolDetails(page, data, {
       ownerType: "manager",
       poolType: "jacuzzi",
       usageType: "other",
-      sameAddress: "no",
     });
     await fillSupportingDocuments(page, data, "renewal");
 
@@ -452,7 +482,9 @@ test.describe("Swimming Pool Licence — Live Smoke", () => {
     await expect(
       page.getByText(data.poolUsageDescription).first(),
     ).toBeVisible();
-    await expect(page.getByText(data.poolAddressLine1).first()).toBeVisible();
+    await expect(page.getByText(data.poolAddress).first()).toBeVisible();
+    if (process.env.SMOKE_LOG_DATA)
+      console.log("[smoke-data] pool coordinates:", coordinates);
     if (process.env.SMOKE_HOLD_CYA) await page.pause();
     await advance(page, step);
 

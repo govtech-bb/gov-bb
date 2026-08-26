@@ -21,7 +21,7 @@ You need a licence if you are planning to operate a swimming pool, wading pool o
 You will need:
 
 - the operator's name, phone number and email address, if you are not the operator
-- the address of each pool
+- the address of the property the pool is on
 - how much water each pool can hold, in gallons or cubic metres
 - new licences: a site plan of the pool, or the application number from the Planning and Development Department (previously called Town and Country Planning)
 - licence renewals: your current swimming pool licence numbers
