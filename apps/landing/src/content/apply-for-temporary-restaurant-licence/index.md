@@ -13,7 +13,7 @@ form_id: apply-for-temporary-restaurant-licence
 service_type: digital
 ---
 
-Use this service to apply to the Environmental Health Department for a licence to operate a temporary restaurant - for example, to serve food at an event. For more information, and to find out if you should apply for a temporary restaurant licence, read [temporary restaurants: what you need to know](/business-trade/temporary-restaurants-what-you-need-to-know).
+Use this service to apply to the Environmental Health Department for a licence to operate a temporary restaurant - for example, to serve food at an event. For more information, and to find out if you should apply for a temporary restaurant licence, [click here](/business-trade/temporary-restaurants-what-you-need-to-know).
 
 ## Who is this licence for
 
@@ -50,7 +50,7 @@ There are 2 ways to apply for a temporary restaurant licence. You can:
 
 1. ### Apply for a licence online
 
-   Allow about 5 - 10 minutes to complete the form.
+   Allow about 10 - 15 minutes to complete the form.
 
    <a data-start-link>Start now</a>
 
