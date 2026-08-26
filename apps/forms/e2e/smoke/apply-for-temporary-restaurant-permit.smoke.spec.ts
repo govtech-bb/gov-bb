@@ -28,13 +28,27 @@
  *   FAKER_SEED       fix faker's RNG for a reproducible data set.
  *
  * Form-specific notes from the live walkthrough:
- *  - is-organiser is fixed to "no" (the applicant is not the organiser). This is
- *    the scenario the catchment-routing fix was verified against, and it keeps
- *    the required set minimal: only the medical certificate is a required
- *    upload (site-plan is optional for everyone, vendor-list is organiser-only),
- *    and the declaration has no organiser overtime-costs acknowledgement. The "yes"
- *    branch (num-patrons/num-stalls, extra required uploads, overtime notice) is
- *    intentionally not exercised here.
+ *  - The organiser step is now two nested gates: is-for-event ("Do you require
+ *    this permit for an event?") reveals is-organiser, which in turn reveals the
+ *    organiser's contact details on "no". This run answers is-for-event = "yes"
+ *    and is-organiser = "no" (the applicant is not the organiser). That is the
+ *    scenario the catchment-routing fix was verified against, and it keeps the
+ *    required set minimal: only the medical certificate is a required upload
+ *    (site-plan is optional for everyone, vendor-list is organiser-only), and
+ *    the declaration has no organiser overtime-costs acknowledgement. The
+ *    is-organiser = "yes" branch (num-patrons/num-stalls, extra required
+ *    uploads, overtime notice) is intentionally not exercised here. Every
+ *    organiser-branch field carries the is-for-event gate as a second stacked
+ *    fieldConditionalOn, and stacked conditions are AND — so is-organiser is
+ *    asserted hidden until the event gate is answered.
+ *  - The applicant's phone is a single `telephone` fieldArray (min 1, max 4)
+ *    replacing the old mobile/home/work trio. Row 0 keeps the plain
+ *    `${stepId}_telephone` id — only rows 1+ are index-suffixed — so one
+ *    fillField is enough and the "Add another" link is left alone.
+ *  - water-source is a select (Water tank / BWA water tanker / Main line /
+ *    Other). Picking "other" reveals the optional free-text
+ *    water-source-other, which this run asserts hidden, then reveals and
+ *    fills.
  *  - The event address is an address-lookup (geocoder) field, so it cannot take
  *    a free-text faker address — the geocoder must return a real Barbados match
  *    to populate the hidden coordinates the catchment router reads. We faker-pick
@@ -150,7 +164,7 @@ function buildData() {
     lastName: faker.person.lastName(),
     addressLine1: faker.location.streetAddress(),
     applicantParish: faker.helpers.arrayElement(PARISH_VALUES),
-    mobile: bbMobileNumber(),
+    telephone: bbMobileNumber(),
     // Applicant email goes to the monitored test inbox so a real run is
     // verifiable end-to-end (incl. the confirmation email).
     applicantEmail: "testing@govtech.bb",
@@ -179,11 +193,9 @@ function buildData() {
 
     handlersMale: String(faker.number.int({ min: 0, max: 6 })),
     handlersFemale: String(faker.number.int({ min: 1, max: 6 })),
-    waterSource: faker.helpers.arrayElement([
-      "Mains supply",
-      "Water tank",
-      "Bottled water",
-    ]),
+    // The "other" option is picked deliberately so the reveal it gates is
+    // exercised on every run (the same reason "Other food or drink" is ticked).
+    waterSourceOther: "Standpipe shared with the neighbouring property",
     handwashing: "Portable station with soap and paper towels",
     wasteDisposal: "Bagged and collected daily",
   };
@@ -303,12 +315,18 @@ test.describe("Temporary Restaurant Permit — Live Smoke", () => {
     await field(page, step, "applicant-last-name", data.lastName);
     await field(page, step, "applicant-address-line-1", data.addressLine1);
     await dropdown(page, step, "applicant-parish", data.applicantParish);
-    await field(page, step, "mobile-number", data.mobile);
+    // fieldArray row 0 keeps the unsuffixed id — see the header note.
+    await field(page, step, "telephone", data.telephone);
     await field(page, step, "email", data.applicantEmail);
     await advance(page, step);
 
-    // ─── Step 2: The event organiser (is-organiser = no) ─────────────────────
+    // ─── Step 2: Event and organiser (is-for-event = yes, is-organiser = no) ─
     step = expectStep(page, "event-organiser");
+    // is-organiser only exists once the permit is declared to be for an event.
+    const isOrganiser = page.locator(`input[id="${step}_is-organiser-no"]`);
+    await expect(isOrganiser).toBeHidden();
+    await radio(page, step, "is-for-event", "yes");
+    await expect(isOrganiser).toBeVisible({ timeout: STEP_TIMEOUT });
     await radio(page, step, "is-organiser", "no");
     await field(page, step, "organiser-name", data.organiserName);
     await field(page, step, "organiser-phone", data.organiserPhone);
@@ -395,7 +413,11 @@ test.describe("Temporary Restaurant Permit — Live Smoke", () => {
     await radio(page, step, "has-food-licence", "no");
     await field(page, step, "handlers-male", data.handlersMale);
     await field(page, step, "handlers-female", data.handlersFemale);
-    await field(page, step, "water-source", data.waterSource);
+    const waterSourceOther = page.locator(`[id="${step}_water-source-other"]`);
+    await expect(waterSourceOther).toBeHidden();
+    await dropdown(page, step, "water-source", "other");
+    await expect(waterSourceOther).toBeVisible({ timeout: STEP_TIMEOUT });
+    await field(page, step, "water-source-other", data.waterSourceOther);
     await field(page, step, "handwashing", data.handwashing);
     await field(page, step, "waste-disposal", data.wasteDisposal);
     await advance(page, step);

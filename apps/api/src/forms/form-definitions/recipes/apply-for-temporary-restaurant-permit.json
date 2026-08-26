@@ -3,7 +3,7 @@
   "title": "Apply for a permit to operate a temporary restaurant",
   "description": "Apply for a permit to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
   "createdAt": "2026-07-23T00:00:00Z",
-  "updatedAt": "2026-08-26T00:00:00Z",
+  "updatedAt": "2026-08-26T12:00:00Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -37,7 +37,7 @@
               "applicant-details.applicant-last-name"
             ],
             "email": "applicant-details.email",
-            "phone": "applicant-details.mobile-number"
+            "phone": "applicant-details.telephone"
           },
           "excludeSteps": [
             "check-your-answers",
@@ -106,34 +106,17 @@
           }
         },
         {
-          "ref": "components/mobile-telephone",
+          "ref": "components/telephone",
           "overrides": {
-            "label": "Mobile number",
-            "fieldId": "mobile-number",
-            "hint": "We will use your mobile number to contact you. For example, (246) 249 1234."
-          }
-        },
-        {
-          "ref": "components/home-telephone",
-          "overrides": {
-            "label": "Home telephone",
-            "hint": "For example, (246) 433 1234.",
-            "validations": {
-              "required": {
-                "value": false
+            "hint": "We will use this to contact you about your application. For example, (246) 249 1234.",
+            "behaviours": [
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 4,
+                "addAnotherLabel": "Add another telephone number"
               }
-            }
-          }
-        },
-        {
-          "ref": "components/work-telephone",
-          "overrides": {
-            "label": "Work telephone",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
+            ]
           }
         },
         {
@@ -147,8 +130,32 @@
     },
     {
       "stepId": "event-organiser",
-      "title": "The event organiser",
+      "title": "Event and organiser",
       "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "label": "Do you require this permit for an event?",
+            "fieldId": "is-for-event",
+            "hint": "An event is something like a festival, fete, fair or sports day. Answer no if you are serving at a single location that is not part of an event.",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether you need this permit for an event"
+              }
+            }
+          }
+        },
         {
           "ref": "components/generic-radio",
           "overrides": {
@@ -163,6 +170,14 @@
               {
                 "label": "No",
                 "value": "no"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-for-event",
+                "operator": "equal",
+                "value": "yes"
               }
             ],
             "validations": {
@@ -180,6 +195,12 @@
             "fieldId": "organiser-name",
             "hint": "Give a phone number or an email for the organiser.",
             "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-for-event",
+                "operator": "equal",
+                "value": "yes"
+              },
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "is-organiser",
@@ -201,6 +222,12 @@
             "fieldId": "organiser-phone",
             "hint": "For example, (246) 249 1234.",
             "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-for-event",
+                "operator": "equal",
+                "value": "yes"
+              },
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "is-organiser",
@@ -228,6 +255,12 @@
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
+                "targetFieldId": "is-for-event",
+                "operator": "equal",
+                "value": "yes"
+              },
+              {
+                "type": "fieldConditionalOn",
                 "targetFieldId": "is-organiser",
                 "operator": "equal",
                 "value": "no"
@@ -253,6 +286,12 @@
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
+                "targetFieldId": "is-for-event",
+                "operator": "equal",
+                "value": "yes"
+              },
+              {
+                "type": "fieldConditionalOn",
                 "targetFieldId": "is-organiser",
                 "operator": "equal",
                 "value": "yes"
@@ -267,6 +306,12 @@
             "variant": "text",
             "content": "We will request an officer for you when you submit this application. The Environmental Health Department decides when officers attend, at their discretion, based on the event dates and times you have provided. You **do not need** to fill out a separate Request an Environmental Health Officer form.",
             "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-for-event",
+                "operator": "equal",
+                "value": "yes"
+              },
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "is-organiser",
@@ -284,6 +329,12 @@
             "summary": "Why you do not choose officer times",
             "content": "The Environmental Health Department assigns officers based on your event's dates and times. This follows the Health Services (Assignment of Public Health Inspectors to Private Businesses) Regulations, 1986, which set officers' working days and hours (regulation 2 and the First Schedule) and the fees for attendance outside those hours (regulation 7 and the Second Schedule).",
             "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-for-event",
+                "operator": "equal",
+                "value": "yes"
+              },
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "is-organiser",
@@ -458,6 +509,13 @@
               {
                 "type": "fieldConditionalOn",
                 "targetStepId": "event-organiser",
+                "targetFieldId": "is-for-event",
+                "operator": "equal",
+                "value": "yes"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "event-organiser",
                 "targetFieldId": "is-organiser",
                 "operator": "equal",
                 "value": "yes"
@@ -482,6 +540,13 @@
             "fieldId": "num-stalls",
             "hint": "Count each bar as a stall. For example, 4.",
             "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "event-organiser",
+                "targetFieldId": "is-for-event",
+                "operator": "equal",
+                "value": "yes"
+              },
               {
                 "type": "fieldConditionalOn",
                 "targetStepId": "event-organiser",
@@ -892,15 +957,55 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-select",
           "overrides": {
-            "label": "Water source",
+            "label": "Where do you get your water from while on location?",
             "fieldId": "water-source",
-            "hint": "Where will safe water come from? For example, mains supply, a water tank, or bottled water.",
+            "options": [
+              {
+                "label": "Water tank",
+                "value": "water-tank"
+              },
+              {
+                "label": "BWA water tanker",
+                "value": "bwa-water-tanker"
+              },
+              {
+                "label": "Main line",
+                "value": "main-line"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter the water source for the event"
+                "error": "Select where you get your water from"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "label": "Tell us where you get your water from",
+            "fieldId": "water-source-other",
+            "ui": {
+              "indent": true
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "water-source",
+                "operator": "equal",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
               }
             }
           }
@@ -985,6 +1090,13 @@
             "fieldId": "vendor-list",
             "hint": "A list of the food vendors taking part in your event. PDF, JPG, PNG, DOC or DOCX.",
             "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "event-organiser",
+                "targetFieldId": "is-for-event",
+                "operator": "equal",
+                "value": "yes"
+              },
               {
                 "type": "fieldConditionalOn",
                 "targetStepId": "event-organiser",
@@ -1098,6 +1210,13 @@
               }
             ],
             "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "event-organiser",
+                "targetFieldId": "is-for-event",
+                "operator": "equal",
+                "value": "yes"
+              },
               {
                 "type": "fieldConditionalOn",
                 "targetStepId": "event-organiser",
