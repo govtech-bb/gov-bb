@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Heading, Search, Text } from '@govtech-bb/react'
 import { ChatAssistant } from '../components/ChatAssistant'
+import { Featured } from '../components/Featured'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { CATEGORIES } from '../content/categories'
 import { isCategoryVisible } from '../content/registry'
@@ -78,30 +79,47 @@ function Home() {
 
       <section>
         <div className="govbb-width-container">
-          <div className="space-y-m py-m lg:py-l">
-            <Heading as="h2">
-              All government services
-            </Heading>
-            <ul className="m-0 flex list-none flex-col p-0">
-              {categories.map((cat) => (
-                <li
-                  key={cat.slug}
-                  className="border-neutral border-b-2 py-s lg:py-xm [--govbb-link-color:var(--govbb-color-tertiary)]"
-                >
-                  <a
-                    href={`/${cat.slug}`}
-                    className="govbb-link govbb-text-body-lg govbb-text-bold"
+          {/*
+            Two columns from lg, stacking below it with services first.
+
+            The gap steps up at xl. 128px all the way down to lg squeezed the
+            Featured column to 245px at a 1024 viewport, leaving 173px for the
+            descriptions — four lines each; 64px keeps them to three. From xl it
+            widens to 128px, which reproduces the design's 1256 = 752 + 128 + 376
+            at the 1512 frame width.
+
+            xl (1280) rather than a min-[1512px] query: a 1512 *viewport* is only
+            ~1497 CSS px once the scrollbar is taken off, so a 1512 breakpoint
+            never matches at the width the design is drawn for.
+          */}
+          <div className="py-m lg:grid lg:grid-cols-[2fr_1fr] lg:gap-x-l lg:py-l xl:gap-x-xl">
+            <div className="space-y-m">
+              <Heading as="h2">All government services</Heading>
+              <ul className="m-0 flex list-none flex-col p-0">
+                {categories.map((cat) => (
+                  <li
+                    key={cat.slug}
+                    className="border-neutral border-b-2 py-s lg:py-xm [--govbb-link-color:var(--govbb-color-tertiary)]"
                   >
-                    {cat.title}
-                  </a>
-                  {cat.description ? (
-                    <Text as="p" className="mt-xxs">
-                      {cat.description}
-                    </Text>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
+                    <a
+                      href={`/${cat.slug}`}
+                      className="govbb-link govbb-text-body-lg govbb-text-bold"
+                    >
+                      {cat.title}
+                    </a>
+                    {cat.description ? (
+                      <Text as="p" className="mt-xxs">
+                        {cat.description}
+                      </Text>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mt-l lg:mt-0">
+              <Featured />
+            </div>
           </div>
         </div>
       </section>
