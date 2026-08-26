@@ -114,14 +114,14 @@ const webhookAuthSchema = z.discriminatedUnion("scheme", [
 // into the submission values, so any form can be mapped from its recipe without
 // hard-coding step/field conventions in the API. `name` may be a single path or
 // an ordered list joined with spaces (e.g. first + last name).
-/** A reference-code segment: 3-4 uppercase letters, e.g. `MOH`, `TRL`. */
+/** A reference-code segment: 3-4 uppercase letters, e.g. `MOH`, `TRP`. */
 const referenceSegment = z.string().regex(/^[A-Z]{3,4}$/);
 
 const webhookMappingSchema = z.object({
   programmeCode: z.string().min(1),
   /**
    * Short code for the MDA whose CaMS this form syncs to, used as the leading
-   * segment of the submission reference (`MOH-TRL-2608-47E4AD6`). Optional: a
+   * segment of the submission reference (`MOH-TRP-2608-47E4AD6`). Optional: a
    * form without one falls back to the formId-derived prefix, so an unmigrated
    * recipe keeps minting valid references.
    */
