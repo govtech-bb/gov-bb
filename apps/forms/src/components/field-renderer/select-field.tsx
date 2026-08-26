@@ -71,12 +71,17 @@ export function renderSelectField(ctx: FieldRenderContext): JSX.Element {
       {selectInsetEntries && (
         <div className="govbb-select__conditional">
           {selectInsetEntries.map(
-            ({ field: insetField, validationProperties: insetValidation }) => (
+            ({
+              field: insetField,
+              validationProperties: insetValidation,
+              insetFieldsByOption: nestedInsets,
+            }) => (
               <FieldRenderer
                 key={insetField.id}
                 form={form}
                 field={insetField}
                 validationProperties={insetValidation}
+                insetFieldsByOption={nestedInsets}
                 formId={formId}
                 previewToken={previewToken}
                 draftToken={draftToken}

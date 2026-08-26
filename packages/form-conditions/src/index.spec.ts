@@ -1,5 +1,9 @@
 import { DEFAULT_ZONE } from "@govtech-bb/expressions";
-import { evaluateFormConditions, resolveStepTitle } from "./index";
+import {
+  evaluateFormConditions,
+  resolveFieldLabel,
+  resolveStepTitle,
+} from "./index";
 import { evaluateCondition, flattenStepValues } from "./internals";
 // Also import via the package entry to exercise the public re-exports (#668):
 // `apps/forms` consumes these low-level primitives directly from the package.
@@ -1460,5 +1464,81 @@ describe("resolveStepTitle", () => {
     };
     expect(resolveStepTitle(multi, { s: { kind: "b" } })).toBe("Title B");
     expect(resolveStepTitle(multi, { s: { kind: "a" } })).toBe("Title A");
+  });
+});
+
+// ─── resolveFieldLabel ───────────────────────────────────────────────────────
+
+describe("resolveFieldLabel", () => {
+  // The temporary restaurant permit's case: one fieldId, reworded when the
+  // permit is not for an event.
+  const field = {
+    label: "Name of event",
+    conditionalLabel: [
+      {
+        targetStepId: "event-organiser",
+        targetFieldId: "is-for-event",
+        operator: "equal" as const,
+        value: "no",
+        label: "Name of location",
+      },
+    ],
+  };
+
+  it("returns the static label when there is no conditionalLabel", () => {
+    expect(resolveFieldLabel({ label: "Name of event" }, EMPTY_VALUES)).toBe(
+      "Name of event",
+    );
+  });
+
+  it("returns the static label when the conditionalLabel array is empty", () => {
+    expect(
+      resolveFieldLabel(
+        { label: "Name of event", conditionalLabel: [] },
+        { "event-organiser": { "is-for-event": "no" } },
+      ),
+    ).toBe("Name of event");
+  });
+
+  it("returns the conditional label when its condition matches", () => {
+    expect(
+      resolveFieldLabel(field, {
+        "event-organiser": { "is-for-event": "no" },
+      }),
+    ).toBe("Name of location");
+  });
+
+  it("falls back to the static label when no condition matches", () => {
+    expect(
+      resolveFieldLabel(field, {
+        "event-organiser": { "is-for-event": "yes" },
+      }),
+    ).toBe("Name of event");
+  });
+
+  it("falls back to the static label when the watched field is absent", () => {
+    expect(resolveFieldLabel(field, EMPTY_VALUES)).toBe("Name of event");
+  });
+
+  it("returns the first matching entry's label (first match wins)", () => {
+    const multi = {
+      label: "Default",
+      conditionalLabel: [
+        {
+          targetFieldId: "kind",
+          operator: "equal" as const,
+          value: "a",
+          label: "Label A",
+        },
+        {
+          targetFieldId: "kind",
+          operator: "equal" as const,
+          value: "b",
+          label: "Label B",
+        },
+      ],
+    };
+    expect(resolveFieldLabel(multi, { s: { kind: "b" } })).toBe("Label B");
+    expect(resolveFieldLabel(multi, { s: { kind: "a" } })).toBe("Label A");
   });
 });

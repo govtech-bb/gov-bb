@@ -12,6 +12,12 @@ import { optionalSuffix } from "./optional-suffix";
 export interface InsetFieldEntry {
   field: ClientPrimitive;
   validationProperties: FieldValidationProperties;
+  /**
+   * Set when this inset field is itself an option host: its own reveals, so a
+   * revealed radio/select nests its answers a level deeper rather than
+   * dropping them beside itself.
+   */
+  insetFieldsByOption?: Map<string, InsetFieldEntry[]>;
 }
 
 /**

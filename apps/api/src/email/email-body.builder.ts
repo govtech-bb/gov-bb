@@ -15,6 +15,7 @@ import {
   formatDateValue,
 } from "@govtech-bb/form-validation";
 import {
+  resolveFieldLabel,
   resolveStepTitle,
   interpolateConfirmationMarkdown,
   type StepScopedValues,
@@ -178,6 +179,7 @@ export class EmailBodyBuilder {
                 step,
                 instance as Record<string, unknown>,
                 meta,
+                values as StepScopedValues,
                 needsIndex ? `${stepTitle} (${i + 1})` : stepTitle,
               ),
             )
@@ -188,6 +190,7 @@ export class EmailBodyBuilder {
           step,
           (rawVal as Record<string, unknown>) ?? {},
           meta,
+          values as StepScopedValues,
           stepTitle,
         );
         return section.fields.length > 0 ? [section] : [];
@@ -300,6 +303,7 @@ export class EmailBodyBuilder {
     step: FormStep,
     stepValues: Record<string, unknown>,
     meta: SubmissionAuditTrail,
+    allValues: StepScopedValues,
     titleOverride?: string,
   ): EmailSection {
     // When activeFieldIds for a step is absent, default to showing all fields.
@@ -336,7 +340,10 @@ export class EmailBodyBuilder {
       )
       .filter((el) => !hiddenFieldIds.includes(el.fieldId))
       .map((el) => ({
-        label: el.label,
+        // Resolve any per-answer label override (#2521) the same way the step
+        // title is resolved above, so the email names each answer exactly as
+        // the applicant was asked for it.
+        label: resolveFieldLabel(el, allValues),
         value: this.formatValue(el, stepValues[el.fieldId]),
       }))
       .filter((f) => f.value !== "");

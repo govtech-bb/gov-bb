@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { behaviourSchema } from "./behavior.type";
+import { behaviourSchema, conditionalLabelSchema } from "./behavior.type";
 import { validationRuleSchema } from "./validation.type";
 import { kebabIdSchema } from "./id-pattern";
 
@@ -91,6 +91,9 @@ export type GeocodeTargets = z.infer<typeof geocodeTargetsSchema>;
 export const basePrimitiveSchema = z.object({
   fieldId: kebabIdSchema,
   label: z.string(),
+  // Per-answer label overrides (#2521) — see conditionalLabelSchema. The
+  // static `label` above stays the fallback.
+  conditionalLabel: z.array(conditionalLabelSchema).optional(),
   name: z.string().optional(),
   htmlType: htmlTypesSchema,
   placeholder: z.string().optional(),
@@ -245,6 +248,10 @@ export const fieldOverridesSchema = basePrimitiveSchema
   .pick({
     fieldId: true,
     label: true,
+    // Recipe overrides are picked, not spread: without this key a recipe's
+    // `conditionalLabel` would be silently dropped before it ever reached the
+    // served contract.
+    conditionalLabel: true,
     hint: true,
     placeholder: true,
     validations: true,

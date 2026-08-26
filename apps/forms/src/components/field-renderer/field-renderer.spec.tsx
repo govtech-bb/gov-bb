@@ -1250,6 +1250,67 @@ describe("FieldRenderer", () => {
         container.querySelector(".govbb-radio-item__conditional"),
       ).toBeNull();
     });
+
+    it("renders a revealed radio's OWN inset fields nested inside it", () => {
+      mockState = { value: "yes", meta: { isValid: true, errors: [] } };
+
+      const deepField = primitive("text", {
+        id: "step-1.deep-field",
+        fieldId: "deep-field",
+        name: "deep-field",
+        label: "Deep field label",
+      });
+      const nestedRadio = primitive("radio", {
+        id: "step-1.nested-radio",
+        fieldId: "nested-radio",
+        name: "nested-radio",
+        label: "Nested radio label",
+        options: [
+          { value: "yes", label: "Yes" },
+          { value: "no", label: "No" },
+        ],
+      });
+
+      const insetFieldsByOption = new Map([
+        [
+          "yes",
+          [
+            {
+              field: nestedRadio,
+              validationProperties: noValidation,
+              insetFieldsByOption: new Map([
+                [
+                  "yes",
+                  [{ field: deepField, validationProperties: noValidation }],
+                ],
+              ]),
+            },
+          ],
+        ],
+      ]);
+
+      const { container } = renderField(
+        primitive("radio", {
+          options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" },
+          ],
+        }),
+        { insetFieldsByOption },
+      );
+
+      // The deep field sits inside the NESTED radio's reveal, which itself
+      // sits inside the outer radio's reveal — two levels, not one flat list.
+      const outerReveal = container.querySelector(
+        ".govbb-radio-item__conditional",
+      );
+      expect(outerReveal).toBeTruthy();
+      const innerReveal = outerReveal!.querySelector(
+        ".govbb-radio-item__conditional",
+      );
+      expect(innerReveal).toBeTruthy();
+      expect(innerReveal!.querySelector("#step-1\\.deep-field")).toBeTruthy();
+    });
   });
 
   // -------------------------------------------------------------------------

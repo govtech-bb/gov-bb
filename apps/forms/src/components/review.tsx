@@ -4,7 +4,10 @@ import { AnyFormApi } from "@tanstack/react-form";
 import { ClientFormStep, ClientPrimitive, FormMeta } from "@forms/types";
 import { getInstanceMarker, getVisibleFields } from "@forms/lib";
 import { DateValue } from "@govtech-bb/form-types";
-import { resolveStepTitle } from "@govtech-bb/form-conditions";
+import {
+  resolveFieldLabel,
+  resolveStepTitle,
+} from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
@@ -200,7 +203,9 @@ export default function Review({
                 <dl className="govbb-summary-list">
                   {rows.map(({ field, value }) => (
                     <div key={field.id} className="govbb-summary-list__row">
-                      <dt className="govbb-summary-list__key">{field.label}</dt>
+                      <dt className="govbb-summary-list__key">
+                        {resolveFieldLabel(field, stepScopedValues)}
+                      </dt>
                       <dd className="govbb-summary-list__value">{value}</dd>
                     </div>
                   ))}
