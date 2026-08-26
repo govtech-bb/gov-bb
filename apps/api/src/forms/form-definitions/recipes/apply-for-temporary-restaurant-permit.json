@@ -3,12 +3,7 @@
   "title": "Apply for a permit to operate a temporary restaurant",
   "description": "Apply for a permit to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
   "createdAt": "2026-07-23T00:00:00Z",
-  "updatedAt": "2026-08-26T00:00:00Z",
-  "contactDetails": {
-    "title": "Ministry of Health and Wellness",
-    "email": "info@health.gov.bb",
-    "telephoneNumber": "+1 (246) 536-3800"
-  },
+  "updatedAt": "2026-08-26T16:00:00Z",
   "processors": [
     {
       "type": "email",
