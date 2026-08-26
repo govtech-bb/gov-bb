@@ -93,7 +93,7 @@ There are 2 ways to apply for a swimming pool licence. You can:
 - **Keep the lead-in a plain paragraph.** The rewrite collapses it to a single text node, so links and bold inside it are lost.
 - **One route means no list and no count** — just the completion time and the start link under the heading.
 
-`apps/landing/src/content/swimming-wading-pool-permit.md` is the closest full page to copy from — it is the licence pattern end to end. One detail there has moved on: it writes its route titles as `###` sub-headings inside the list items, where new pages author them in bold. `apply-for-hotel-licence.md` and `apply-for-temporary-restaurant-licence/index.md` carry the same `###` shape.
+`apps/landing/src/content/apply-for-swimming-pool-licence.md` is the closest full page to copy from — it is the licence pattern end to end. One detail there has moved on: it writes its route titles as `###` sub-headings inside the list items, where new pages author them in bold. `apply-for-hotel-licence.md` and `apply-for-temporary-restaurant-permit/index.md` carry the same `###` shape.
 
 ## Step 4 — Verify
 

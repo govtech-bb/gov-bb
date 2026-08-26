@@ -5,8 +5,8 @@
 `content-prompt.ts` gained a "licence and application" page pattern in #2484,
 built around a worked example of the hotel licence page. Since then the content
 designers finalized the swimming pool licence page, and the shipped pages moved
-with it — `swimming-wading-pool-permit.md`, `apply-for-hotel-licence.md` and
-`apply-for-temporary-restaurant-licence/index.md` all use a heading sequence the
+with it — `apply-for-swimming-pool-licence.md`, `apply-for-hotel-licence.md` and
+`apply-for-temporary-restaurant-permit/index.md` all use a heading sequence the
 prompt never learned. The prompt (and the `service-page-content` skill that
 defers to it) was teaching a shape no live page uses any more.
 
@@ -75,7 +75,7 @@ the new table rows were hand-padded to the existing column widths instead.
 ## Open questions
 
 - Four shipped licence pages still close with `## Need assistance`
-  (`swimming-wading-pool-permit.md`, `apply-for-hotel-licence.md`,
+  (`apply-for-swimming-pool-licence.md`, `apply-for-hotel-licence.md`,
   `funeral-establishment-licence-application/index.md`,
   `apply-to-buy-nhc-land-or-property.md`). Deliberately out of scope here —
   renaming published headings is a content-designer call.
