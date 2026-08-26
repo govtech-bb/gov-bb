@@ -104,6 +104,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
+    slug: "apply-for-swimming-pool-licence",
+    title: "Apply for a swimming pool licence",
+    category: "business-trade",
+    formId: "apply-for-swimming-pool-licence",
+    visibility: "preview",
+  },
+  {
     slug: "apply-for-temporary-restaurant-licence",
     title: "Apply for a temporary restaurant licence",
     category: "business-trade",
@@ -530,13 +537,6 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     category: "business-trade",
     formId: "sell-goods-services-beach-park",
     visibility: "public",
-  },
-  {
-    slug: "swimming-wading-pool-permit",
-    title: "Apply for a swimming pool licence",
-    category: "business-trade",
-    formId: "apply-for-swimming-pool-licence",
-    visibility: "preview",
   },
   {
     slug: "temporary-restaurants-what-you-need-to-know",
