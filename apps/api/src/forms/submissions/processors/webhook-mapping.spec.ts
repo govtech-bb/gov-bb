@@ -277,10 +277,10 @@ describe("webhook-mapping", () => {
         values: {},
         referenceCode: "R",
         submittedAt: "2026-07-28T00:00:00Z",
-        programmeCodeOverride: "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
+        programmeCodeOverride: "TEMP_RESTAURANT_PERMIT_WINSTON_SCOTT",
       });
       expect(payload.programme_code).toBe(
-        "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
+        "TEMP_RESTAURANT_PERMIT_WINSTON_SCOTT",
       );
     });
 

@@ -79,10 +79,14 @@ live in
 [`apps/api/src/catchment/polyclinic-routing.ts`](../apps/api/src/catchment/polyclinic-routing.ts)
 (`PROGRAMME_CODES_BY_FORM`, keyed by formId then **serving** catchment) and are
 **CMS-issued** — MOH created the CMS programmes using exactly these
-`TEMP_RESTAURANT_LICENCE_*` / `ENV_HEALTH_OFFICER_*` strings, so a rename has to
-happen in the CMS first. Keys must match the GeoJSON `properties.name` values of
-the serving catchments, for every form; a mismatch — including a leftover key
-for a redirected catchment — **throws at boot**, by design.
+`TEMP_RESTAURANT_PERMIT_*` / `ENV_HEALTH_OFFICER_*` strings, so a rename has to
+happen in the CMS first. The temporary restaurant codes were renamed from
+`TEMP_RESTAURANT_LICENCE_*` in #2514, when the service became a permit: **MOH
+has to rename the CMS programmes to match** before a submission from this form
+reaches the CMS, or the webhook posts a programme code the CMS does not know.
+Keys must match the GeoJSON `properties.name` values of the serving catchments,
+for every form; a mismatch — including a leftover key for a redirected
+catchment — **throws at boot**, by design.
 
 **The `mda_contact` row is not in this form's email path.** Its MDA notification
 resolves via `catchment.mdaEmail` (the per-polyclinic Environmental Health
@@ -122,7 +126,7 @@ matrix 404s and breaks the deploy gate (#1842).
 | `mda_contact` row + `form_config` link | provisioned | **outstanding** (#2211) |
 | `POLYCLINIC_EMAILS` | test inbox, by design | real inboxes pending (#2211) |
 | `MDA_REQUIRE_RECIPIENT` | unset (override active) | must be set |
-| CMS programme codes | `TEMP_RESTAURANT_LICENCE_*` | same — codes do not differ by env |
+| CMS programme codes | `TEMP_RESTAURANT_PERMIT_*` (renamed in #2514 — CMS side outstanding) | same — codes do not differ by env |
 
 Because the codes are identical in both environments, they stay in the
 checked-in file. If prod ever needs different codes, that file is the wrong home

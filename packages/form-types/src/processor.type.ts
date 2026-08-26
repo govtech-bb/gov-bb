@@ -129,7 +129,7 @@ const webhookMappingSchema = z.object({
   /**
    * Short form of `programmeCode` for the reference's second segment.
    * Separate because `programmeCode` is CaMS-issued and far too long to read
-   * aloud (`TEMP_RESTAURANT_LICENCE`).
+   * aloud (`TEMP_RESTAURANT_PERMIT`).
    */
   programmeShortCode: referenceSegment.optional(),
   applicant: z.object({

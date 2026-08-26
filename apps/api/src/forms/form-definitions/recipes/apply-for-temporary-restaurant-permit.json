@@ -30,7 +30,7 @@
         "mapping": {
           "mdaCode": "MOH",
           "programmeShortCode": "TRL",
-          "programmeCode": "TEMP_RESTAURANT_LICENCE",
+          "programmeCode": "TEMP_RESTAURANT_PERMIT",
           "applicant": {
             "name": [
               "applicant-details.applicant-first-name",
