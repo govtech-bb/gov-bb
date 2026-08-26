@@ -7,6 +7,7 @@ export const FORM_CATEGORIES: Record<string, string> = {
   "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026":
     "education",
   "apply-for-restaurant-licence": "business-trade",
+  "apply-for-swimming-pool-licence": "business-trade",
   "apply-for-temporary-restaurant-licence": "business-trade",
   "barbados-secondary-entrance-exam-choice": "education",
   "barraks-lodging-environmental-health": "business-trade",
@@ -57,7 +58,6 @@ export const FORM_CATEGORIES: Record<string, string> = {
   "seniors-recreational-activities-programme": "social-empowerment",
   "sports-training-programme-form-schema": "work-employment",
   "statement-of-travelling-form": "education",
-  "swimming-pool-environmental-health": "business-trade",
   "temp-teacher-application-barbados": "work-employment",
   "term-leave-application": "education",
   "waste-vehicle-licence-application": "business-trade",

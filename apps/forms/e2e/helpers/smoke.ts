@@ -237,9 +237,10 @@ export async function tickCheckbox(
  * fires — a single `fill` sets the value without the keystrokes the lookup
  * listens for.
  *
- * Returns the resolved "lat,lng" string. The four smoke specs that predate this
- * helper (hotel, swimming pool, hairdresser, hair & beauty) each carry their own
- * copy; they are left alone deliberately — this is for new specs.
+ * Returns the resolved "lat,lng" string. Three of the four smoke specs that
+ * predate this helper (hotel, hairdresser, hair & beauty) each carry their own
+ * copy; they are left alone deliberately — this is for new specs. The swimming
+ * pool spec was rewritten against the merged recipe in #2507 and uses this one.
  */
 export async function fillGeocodedAddress(
   page: Page,

@@ -7,7 +7,7 @@ category: business-trade
 stage: alpha
 publish_date: '2026-08-20'
 visibility: preview
-form_id: swimming-pool-environmental-health
+form_id: apply-for-swimming-pool-licence
 ---
 
 Use this service to apply for a new swimming pool licence or renew an existing licence with the Environmental Health Department.

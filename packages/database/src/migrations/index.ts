@@ -20,3 +20,4 @@ export { SeedServiceStatus1783520007424 } from "./1783520007424-SeedServiceStatu
 export { AddMinistryKeyToMdaContact1784000000000 } from "./1784000000000-AddMinistryKeyToMdaContact";
 export { CreateCatchmentContact1785500000000 } from "./1785500000000-CreateCatchmentContact";
 export { RenameHotelLicenceFormId1787682865564 } from "./1787682865564-RenameHotelLicenceFormId";
+export { RenameSwimmingPoolFormId1787769265564 } from "./1787769265564-RenameSwimmingPoolFormId";
