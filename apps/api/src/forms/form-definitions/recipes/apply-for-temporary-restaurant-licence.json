@@ -3,7 +3,7 @@
   "title": "Apply for a licence to operate a temporary restaurant",
   "description": "Apply for a licence to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
   "createdAt": "2026-07-23T00:00:00Z",
-  "updatedAt": "2026-08-19T00:00:00Z",
+  "updatedAt": "2026-08-26T00:00:00Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -77,13 +77,6 @@
           "overrides": {
             "label": "Last name",
             "fieldId": "applicant-last-name"
-          }
-        },
-        {
-          "ref": "components/national-id-number",
-          "overrides": {
-            "label": "National Registration Number",
-            "hint": "You can find this on your national ID card. For example, 870315-1234."
           }
         },
         {
@@ -734,8 +727,8 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Their address",
-            "fieldId": "caterer-address",
+            "label": "Their address line 1",
+            "fieldId": "caterer-address-line-1",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -750,6 +743,41 @@
                 "error": "Enter the address of the caterer or cook"
               }
             }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Their address line 2",
+            "fieldId": "caterer-address-line-2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "label": "Their parish",
+            "fieldId": "caterer-parish",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-source",
+                "operator": "in",
+                "value": ["caterer"]
+              }
+            ]
           }
         },
         {
