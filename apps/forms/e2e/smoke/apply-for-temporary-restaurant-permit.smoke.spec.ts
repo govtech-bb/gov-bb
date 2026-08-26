@@ -1,8 +1,8 @@
 /**
- * apply-for-temporary-restaurant-licence.smoke.spec.ts
+ * apply-for-temporary-restaurant-permit.smoke.spec.ts
  *
- * Live, on-demand smoke test for the Temporary Restaurant Licence form
- * (formId `apply-for-temporary-restaurant-licence`).
+ * Live, on-demand smoke test for the Temporary Restaurant Permit form
+ * (formId `apply-for-temporary-restaurant-permit`).
  *
  * It drives the REAL deployed form (default: the sandbox environment), fills
  * every step with valid @faker-js/faker data, SUBMITS FOR REAL, and asserts the
@@ -16,7 +16,7 @@
  *
  * Run it on demand (from the repo root):
  *   pnpm --filter @govtech-bb/forms exec playwright test \
- *     --config playwright.smoke.config.ts apply-for-temporary-restaurant-licence
+ *     --config playwright.smoke.config.ts apply-for-temporary-restaurant-permit
  *
  * Useful env overrides:
  *   SMOKE_BASE_URL   target environment (default https://forms.sandbox.alpha.gov.bb)
@@ -65,7 +65,7 @@ import {
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
-const FORM_ID = "apply-for-temporary-restaurant-licence";
+const FORM_ID = "apply-for-temporary-restaurant-permit";
 
 /** Parish <select> option values (slugs) from components/parish. */
 const PARISH_VALUES = [
@@ -274,7 +274,7 @@ async function dateField(
   await afterField(page);
 }
 
-test.describe("Temporary Restaurant Licence — Live Smoke", () => {
+test.describe("Temporary Restaurant Permit — Live Smoke", () => {
   test("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
   }) => {

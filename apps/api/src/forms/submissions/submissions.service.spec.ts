@@ -848,7 +848,7 @@ describe("SubmissionsService", () => {
           processors: [
             {
               type: "webhook",
-              config: { mapping: { programmeCode: "TEMP_RESTAURANT_LICENCE" } },
+              config: { mapping: { programmeCode: "TEMP_RESTAURANT_PERMIT" } },
             },
           ],
           catchmentRouting: {
@@ -866,7 +866,7 @@ describe("SubmissionsService", () => {
 
       expect(catchmentRouting.resolve as Mock).toHaveBeenCalledWith(
         expect.objectContaining({
-          programmeCode: "TEMP_RESTAURANT_LICENCE",
+          programmeCode: "TEMP_RESTAURANT_PERMIT",
           parish: "st-philip",
         }),
       );
@@ -884,7 +884,7 @@ describe("SubmissionsService", () => {
           processors: [
             {
               type: "webhook",
-              config: { mapping: { programmeCode: "TEMP_RESTAURANT_LICENCE" } },
+              config: { mapping: { programmeCode: "TEMP_RESTAURANT_PERMIT" } },
             },
           ],
           catchmentRouting: {
@@ -901,7 +901,7 @@ describe("SubmissionsService", () => {
       await service.submit({ ...BASE_DTO, isSmokeSubmission: true });
 
       expect(catchmentRouting.resolve as Mock).toHaveBeenCalledWith(
-        expect.objectContaining({ programmeCode: "TEMP_RESTAURANT_LICENCE" }),
+        expect.objectContaining({ programmeCode: "TEMP_RESTAURANT_PERMIT" }),
       );
     });
 
@@ -923,7 +923,7 @@ describe("reference-code prefix from the recipe (#2318)", () => {
     type: "webhook",
     config: {
       mapping: {
-        programmeCode: "TEMP_RESTAURANT_LICENCE",
+        programmeCode: "TEMP_RESTAURANT_PERMIT",
         applicant: { name: "a.name", email: "a.email", phone: "a.phone" },
         ...mapping,
       },

@@ -8,7 +8,7 @@ export const FORM_CATEGORIES: Record<string, string> = {
     "education",
   "apply-for-restaurant-licence": "business-trade",
   "apply-for-swimming-pool-licence": "business-trade",
-  "apply-for-temporary-restaurant-licence": "business-trade",
+  "apply-for-temporary-restaurant-permit": "business-trade",
   "barbados-secondary-entrance-exam-choice": "education",
   "barraks-lodging-environmental-health": "business-trade",
   "bssee-form-a-pupil-under-11-request": "education",

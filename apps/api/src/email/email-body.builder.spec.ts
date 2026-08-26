@@ -310,7 +310,7 @@ describe("EmailBodyBuilder", () => {
         makePayload({
           resolvedCatchment: {
             polyclinic: "Maurice Byer Polyclinic",
-            programmeCode: "TEMP_RESTAURANT_LICENCE_MAURICE_BYER",
+            programmeCode: "TEMP_RESTAURANT_PERMIT_MAURICE_BYER",
           },
         }),
       );

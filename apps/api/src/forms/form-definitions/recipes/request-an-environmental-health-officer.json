@@ -3,7 +3,7 @@
   "title": "Request an Environmental Health Officer",
   "description": "Request an Environmental Health Officer to attend an event where food or drink is served to the public.",
   "createdAt": "2026-08-10T00:00:00Z",
-  "updatedAt": "2026-08-19T00:00:00Z",
+  "updatedAt": "2026-08-26T00:00:00Z",
   "contactDetails": {
     "title": "Ministry of Health and Wellness",
     "email": "info@health.gov.bb",
@@ -63,7 +63,7 @@
           "overrides": {
             "label": "Are you operating a temporary restaurant (serving food) at this event?",
             "fieldId": "operating-restaurant",
-            "hint": "A temporary restaurant is any set-up serving food or drink to the public for 30 days or less. If you are serving food, you also need a temporary restaurant licence — we will collect that in this same form.",
+            "hint": "A temporary restaurant is any set-up serving food or drink to the public for 30 days or less. If you are serving food, you also need a temporary restaurant permit — we will collect that in this same form.",
             "options": [
               { "label": "Yes", "value": "yes" },
               { "label": "No", "value": "no" }
@@ -81,7 +81,7 @@
           "overrides": {
             "fieldId": "operating-restaurant-licence-notice",
             "variant": "inset",
-            "content": "Because you are serving food, this request also includes your application for a temporary restaurant licence. We will ask about the food you serve and your food-safety arrangements.",
+            "content": "Because you are serving food, this request also includes your application for a temporary restaurant permit. We will ask about the food you serve and your food-safety arrangements.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -97,7 +97,7 @@
           "overrides": {
             "fieldId": "operating-restaurant-licence-info",
             "variant": "text",
-            "content": "You **do not need** to fill out a separate temporary restaurant licence form.",
+            "content": "You **do not need** to fill out a separate temporary restaurant permit form.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -810,7 +810,7 @@
             "fieldId": "water-sanitation-note",
             "variant": "details",
             "summary": "Why we ask about water and sanitation",
-            "content": "Running water is mandatory. A stall without it can be closed on the day, and a licence cannot be issued in advance because an officer has to verify this in place.\n\n**Contact your event organiser to check whether water will be available — but be prepared to bring your own.** Vendors have arrived at events expecting water to be provided and found none. Whoever supplies it, it is your stall that is closed without it.\n\n[Read more about keeping food safe](https://alpha.gov.bb/business-trade/temporary-restaurants-what-you-need-to-know#keeping-food-safe)"
+            "content": "Running water is mandatory. A stall without it can be closed on the day, and a permit cannot be issued in advance because an officer has to verify this in place.\n\n**Contact your event organiser to check whether water will be available — but be prepared to bring your own.** Vendors have arrived at events expecting water to be provided and found none. Whoever supplies it, it is your stall that is closed without it.\n\n[Read more about keeping food safe](https://alpha.gov.bb/business-trade/temporary-restaurants-what-you-need-to-know#keeping-food-safe)"
           }
         },
         {
@@ -1072,7 +1072,7 @@
       "stepId": "submission-confirmation",
       "title": "Request submitted",
       "elements": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your request.\n- Environmental Health Officers will attend on the dates and times you gave. The department will confirm arrangements and any overtime costs.\n- If there are overtime costs, they will send an invoice after the request is approved. The fees are payable in advance to the Accountant General.\n- If you are also operating a temporary restaurant, this request includes your licence application. An officer checks your set-up and issues the licence at the event, not in advance. It is valid for 30 days from the date it is issued.\n\nKeep your reference number for any follow-up."
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your request.\n- Environmental Health Officers will attend on the dates and times you gave. The department will confirm arrangements and any overtime costs.\n- If there are overtime costs, they will send an invoice after the request is approved. The fees are payable in advance to the Accountant General.\n- If you are also operating a temporary restaurant, this request includes your permit application. An officer checks your set-up and issues the permit at the event, not in advance. It is valid for 30 days from the date it is issued.\n\nKeep your reference number for any follow-up."
     }
   ],
   "meta": {
