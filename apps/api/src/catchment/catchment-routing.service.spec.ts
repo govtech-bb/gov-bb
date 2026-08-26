@@ -306,7 +306,7 @@ describe("programme codes are unchanged by composition (golden)", () => {
       "Sir Winston Scott Polyclinic": "HAIRDRESSER_LICENCE_WINSTON_SCOTT",
       "St. Philip Polyclinic": "HAIRDRESSER_LICENCE_ST_PHILIP",
     },
-    "swimming-wading-pool-permit": {
+    "apply-for-swimming-pool-licence": {
       "Branford Taitt Polyclinic": "SWIMMING_POOL_PERMIT_BRANFORD_TAITT",
       "David Thompson Health & Social Services Complex":
         "SWIMMING_POOL_PERMIT_DAVID_THOMPSON",
