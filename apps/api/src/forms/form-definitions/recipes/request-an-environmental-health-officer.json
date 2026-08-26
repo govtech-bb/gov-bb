@@ -880,6 +880,10 @@
                   "image/png"
                 ],
                 "error": "Upload a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }
@@ -894,6 +898,10 @@
               "fileTypes": {
                 "value": ["application/pdf", "image/jpeg", "image/png"],
                 "error": "Upload a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }
@@ -965,6 +973,10 @@
               "fileTypes": {
                 "value": ["application/pdf", "image/jpeg", "image/png"],
                 "error": "Upload a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }

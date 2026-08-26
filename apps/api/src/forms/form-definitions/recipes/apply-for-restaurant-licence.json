@@ -1139,7 +1139,17 @@
           "overrides": {
             "fieldId": "building-plan-upload",
             "label": "Upload your building plan",
-            "hint": "This is the building plan submitted to the Planning and Development Department"
+            "hint": "This is the building plan submitted to the Planning and Development Department",
+            "validations": {
+              "fileTypes": {
+                "value": ["application/pdf", "image/jpeg", "image/png"],
+                "error": "Upload a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
+              }
+            }
           }
         },
         {
