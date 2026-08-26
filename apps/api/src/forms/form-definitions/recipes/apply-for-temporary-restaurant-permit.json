@@ -992,9 +992,6 @@
           "overrides": {
             "label": "Tell us where you get your water from",
             "fieldId": "water-source-other",
-            "ui": {
-              "indent": true
-            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
