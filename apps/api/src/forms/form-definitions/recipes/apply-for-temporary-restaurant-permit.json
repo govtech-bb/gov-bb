@@ -376,7 +376,7 @@
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter the name of the event"
+                "error": "Enter the name of the event or location"
               }
             }
           }
@@ -442,7 +442,7 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Event location coordinates",
+            "label": "Location coordinates",
             "fieldId": "event-address-coordinates",
             "ui": {
               "hidden": true
@@ -463,12 +463,12 @@
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter the event start date"
+                "error": "Enter the start date"
               },
               "min": {
                 "value": 0,
                 "transform": "daysUntil",
-                "error": "The event start date cannot be in the past"
+                "error": "The start date cannot be in the past"
               }
             }
           }
@@ -482,7 +482,7 @@
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter the event end date"
+                "error": "Enter the end date"
               },
               "onOrAfter": {
                 "referenceFieldId": "event-from",
@@ -497,7 +497,7 @@
           "overrides": {
             "fieldId": "event-lead-time-warning",
             "variant": "warning",
-            "content": "Your event starts in fewer than 14 days. We ask for at least 14 days so an officer can be scheduled to inspect your set-up. You can still apply, but your application goes for manual review and may not be processed in time.",
+            "content": "Your start date is fewer than 14 days away. We ask for at least 14 days so an officer can be scheduled to inspect your set-up. You can still apply, but your application goes for manual review and may not be processed in time.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -1085,7 +1085,7 @@
     {
       "stepId": "documents",
       "title": "Supporting documents",
-      "description": "You must upload your own medical certificate. As the event organiser, you must also upload your list of vendors. A site or stall plan and a food business licence are optional.",
+      "description": "You must upload your own medical certificate. If you are organising an event, you must also upload your list of vendors. A site or stall plan and a food business licence are optional.",
       "elements": [
         {
           "ref": "components/upload-document",
@@ -1174,7 +1174,7 @@
           "overrides": {
             "label": "Site or stall plan",
             "fieldId": "site-plan",
-            "hint": "A plan of the event site, showing stall positions, waste disposal, water supply and facilities. Upload one if you have it. PDF, JPG or PNG.",
+            "hint": "A plan of the site, showing stall positions, waste disposal, water supply and facilities. Upload one if you have it. PDF, JPG or PNG.",
             "validations": {
               "fileTypes": {
                 "value": ["application/pdf", "image/jpeg", "image/png"],
