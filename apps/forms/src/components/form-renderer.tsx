@@ -1,10 +1,11 @@
 import {
   ClientPrimitive,
   FieldValidationErrors,
+  FieldValidationProperties,
   FormRendererProps,
   FormValues,
 } from "@forms/types";
-import FieldRenderer from "./field-renderer";
+import FieldRenderer, { InsetFieldEntry } from "./field-renderer";
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -63,12 +64,15 @@ type ShowHideFieldGroup = {
  * A radio, single-value select or checkbox field that has one or more sibling
  * fields that should be revealed inline (inset) when a specific option is
  * selected. Each entry in the map keys on the option value and holds the
- * ordered list of fields to reveal.
+ * ordered groups to reveal — groups, not bare fields, so a revealed field that
+ * is itself an option host carries its own reveals and nests a level deeper
+ * (e.g. "are you organising this event?" revealed by "is this for an event?",
+ * with the organiser's details revealed in turn under its own "no").
  */
 type OptionConditionalFieldGroup = {
   type: "option-conditional";
   field: ClientPrimitive;
-  conditionalsByOption: Map<string, ClientPrimitive[]>;
+  conditionalsByOption: Map<string, FieldGroup[]>;
 };
 type FieldGroup =
   | PlainFieldGroup
@@ -169,7 +173,16 @@ function buildFieldGroups(fields: ClientPrimitive[]): FieldGroup[] {
         groups.push({
           type: "option-conditional",
           field,
-          conditionalsByOption,
+          // Group each option's reveals among themselves, so a revealed option
+          // host keeps its own reveals instead of them landing beside it. The
+          // recursion always runs on a strictly smaller set (the host is never
+          // in its own reveal list), so it terminates.
+          conditionalsByOption: new Map(
+            [...conditionalsByOption.entries()].map(([optVal, revealed]) => [
+              optVal,
+              buildFieldGroups(revealed),
+            ]),
+          ),
         });
       } else {
         groups.push({ type: "plain", field });
@@ -180,6 +193,58 @@ function buildFieldGroups(fields: ClientPrimitive[]): FieldGroup[] {
   }
 
   return groups;
+}
+
+/**
+ * Flatten grouped reveals into the entries a radio/select/checkbox renders
+ * under one option. An option-conditional group keeps its own reveal map, so
+ * the nesting carries as deep as the conditions go. A show-hide group inside a
+ * reveal keeps its pre-existing flat rendering — its bordered wrapper is a
+ * page-level affordance.
+ */
+function insetEntriesFromGroups(
+  groups: FieldGroup[],
+  resolveValidators: (field: ClientPrimitive) => FieldValidationProperties,
+): InsetFieldEntry[] {
+  return groups.flatMap((group) => {
+    if (group.type === "option-conditional") {
+      return [
+        {
+          field: group.field,
+          validationProperties: resolveValidators(group.field),
+          insetFieldsByOption: insetFieldsByOptionFromGroups(
+            group.conditionalsByOption,
+            resolveValidators,
+          ),
+        },
+      ];
+    }
+    if (group.type === "show-hide") {
+      return [group.toggle, ...group.controlled].map((field) => ({
+        field,
+        validationProperties: resolveValidators(field),
+      }));
+    }
+    return [
+      {
+        field: group.field,
+        validationProperties: resolveValidators(group.field),
+      },
+    ];
+  });
+}
+
+/** The option → inset entries map a host field is rendered with. */
+function insetFieldsByOptionFromGroups(
+  conditionalsByOption: Map<string, FieldGroup[]>,
+  resolveValidators: (field: ClientPrimitive) => FieldValidationProperties,
+): Map<string, InsetFieldEntry[]> {
+  return new Map(
+    [...conditionalsByOption.entries()].map(([optVal, groups]) => [
+      optVal,
+      insetEntriesFromGroups(groups, resolveValidators),
+    ]),
+  );
 }
 
 export default function FormRenderer({
@@ -717,19 +782,13 @@ function ActiveStep({
             }
 
             if (group.type === "option-conditional") {
-              // Build a map of option value → [{field, validationProperties}]
-              // so the radio/select FieldRenderer can render inset fields per
-              // option.
-              const insetFieldsByOption = new Map(
-                [...group.conditionalsByOption.entries()].map(
-                  ([optVal, insetFields]) => [
-                    optVal,
-                    insetFields.map((f) => ({
-                      field: f,
-                      validationProperties: resolveValidators(f),
-                    })),
-                  ],
-                ),
+              // Build a map of option value → inset entries so the
+              // radio/select FieldRenderer can render inset fields per option.
+              // An entry that is itself an option host carries its own map, so
+              // the reveal nests as deep as the conditions do.
+              const insetFieldsByOption = insetFieldsByOptionFromGroups(
+                group.conditionalsByOption,
+                resolveValidators,
               );
 
               return (

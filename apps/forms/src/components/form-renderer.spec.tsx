@@ -37,12 +37,28 @@ vi.mock("../hooks/use-step-guard", () => ({
 // tests can verify the toggle/insetFieldsByOption arguments — without this
 // extra metadata the spec could only assert which field IDs were rendered,
 // not whether the right props were threaded through.
+type MockInsetEntry = {
+  field: { id: string };
+  insetFieldsByOption?: Map<string, MockInsetEntry[]>;
+};
+
+/** A field id, or `{ id, nested }` when the entry hosts reveals of its own. */
+function serializeInsetEntry(entry: MockInsetEntry) {
+  if (!entry.insetFieldsByOption) return entry.field.id;
+  return {
+    id: entry.field.id,
+    nested: Array.from(entry.insetFieldsByOption.entries()).map(
+      ([value, entries]) => [value, entries.map(serializeInsetEntry)],
+    ),
+  };
+}
+
 vi.mock("./field-renderer", () => ({
   __esModule: true,
   default: (props: {
     field: { id: string };
     formVersion?: string;
-    insetFieldsByOption?: Map<string, Array<{ field: { id: string } }>>;
+    insetFieldsByOption?: Map<string, MockInsetEntry[]>;
   }) => (
     <div
       data-testid="field-renderer"
@@ -52,7 +68,7 @@ vi.mock("./field-renderer", () => ({
         props.insetFieldsByOption
           ? JSON.stringify(
               Array.from(props.insetFieldsByOption.entries()).map(
-                ([value, entries]) => [value, entries.map((e) => e.field.id)],
+                ([value, entries]) => [value, entries.map(serializeInsetEntry)],
               ),
             )
           : ""
@@ -825,6 +841,82 @@ describe("FormRenderer", () => {
       radioEl.getAttribute("data-inset-options") || "[]",
     ) as Array<[string, string[]]>;
     expect(insetOptions).toEqual([["yes", ["step1_extra"]]]);
+  });
+
+  it("radio-conditional: a revealed radio keeps its OWN reveals, nested a level deeper", () => {
+    const radio = (id: string, fieldId: string, behaviours: any[] = []) => ({
+      id,
+      fieldId,
+      stepId: "step1",
+      name: fieldId,
+      label: fieldId,
+      htmlType: "radio" as const,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      options: [
+        { value: "yes", label: "Yes" },
+        { value: "no", label: "No" },
+      ],
+      behaviours,
+    });
+    const revealedBy = (targetFieldId: string, value: string) => ({
+      type: "fieldConditionalOn",
+      targetFieldId,
+      operator: "equal",
+      value,
+    });
+
+    // outer=yes reveals inner; inner=yes reveals a notice, inner=no reveals a
+    // detail field. The detail/notice ALSO carry the outer condition (the
+    // stale-value guard authored in the recipe), so this asserts they nest
+    // under the inner question rather than being claimed by the outer one.
+    const outer = radio("step1_outer", "outer");
+    const inner = radio("step1_inner", "inner", [revealedBy("outer", "yes")]);
+    const notice = {
+      ...makePlainField("step1_notice", "notice", "step1"),
+      behaviours: [revealedBy("outer", "yes"), revealedBy("inner", "yes")],
+    };
+    const detail = {
+      ...makePlainField("step1_detail", "detail", "step1"),
+      behaviours: [revealedBy("outer", "yes"), revealedBy("inner", "no")],
+    };
+    const step = makeStep("step1", [outer, inner, notice, detail]);
+
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    // Only the outer radio renders page-level; everything else is an inset.
+    const renderers = screen.getAllByTestId("field-renderer");
+    const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
+    expect(fieldIds).toEqual(["step1_outer"]);
+
+    const outerEl = renderers[0];
+    const insetOptions = JSON.parse(
+      outerEl.getAttribute("data-inset-options") || "[]",
+    );
+    expect(insetOptions).toEqual([
+      [
+        "yes",
+        [
+          {
+            id: "step1_inner",
+            nested: [
+              ["yes", ["step1_notice"]],
+              ["no", ["step1_detail"]],
+            ],
+          },
+        ],
+      ],
+    ]);
   });
 
   it("select-conditional: select field with conditional child is grouped with insetFieldsByOption (#863)", () => {

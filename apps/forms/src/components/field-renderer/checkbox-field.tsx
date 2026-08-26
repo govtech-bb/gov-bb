@@ -132,12 +132,14 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
                     ({
                       field: insetField,
                       validationProperties: insetValidation,
+                      insetFieldsByOption: nestedInsets,
                     }) => (
                       <FieldRenderer
                         key={insetField.id}
                         form={form}
                         field={insetField}
                         validationProperties={insetValidation}
+                        insetFieldsByOption={nestedInsets}
                         formId={formId}
                         previewToken={previewToken}
                         draftToken={draftToken}
