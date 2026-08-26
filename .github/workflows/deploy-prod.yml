@@ -110,6 +110,30 @@ jobs:
             echo "   For a deliberate rollback/hotfix from another ref, set allow_non_staging=true."
             exit 1
           fi
+      # Read BEFORE the fast-forward below moves the ref — this is the SHA
+      # prod is actually serving, and `setup` uses it as the affected base.
+      #
+      # Without this step the job output `previous-sha` resolves to an empty
+      # string (it referenced a step id that did not exist), `setup` gets an
+      # empty PROD_BEFORE, and every affected-detection run fails with
+      # "Could not read the prod ref". Broken since #2165 introduced the
+      # output and its consumer without the producer; only deploy_all=true
+      # runs have succeeded since.
+      - name: Record the SHA prod is currently serving
+        id: previous
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          SHA=$(gh api "repos/$REPO/git/refs/heads/prod" --jq .object.sha)
+          [ -n "$SHA" ] || {
+            echo "::error title=prod ref unreadable::refs/heads/prod returned no SHA"
+            exit 1
+          }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "prod is currently serving $SHA"
+
       - name: Fast-forward prod → ${{ github.sha }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
