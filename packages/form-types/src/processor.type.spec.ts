@@ -380,13 +380,13 @@ describe("webhook mapping: reference-code segments", () => {
     });
 
   it("keeps mdaCode and programmeShortCode on the parsed mapping", () => {
-    const parsed = mapped({ mdaCode: "MOH", programmeShortCode: "TRL" });
+    const parsed = mapped({ mdaCode: "MOH", programmeShortCode: "TRP" });
     expect(parsed.success).toBe(true);
     const config = (parsed as { data: { config: { mapping: unknown } } }).data
       .config;
     expect(config.mapping).toMatchObject({
       mdaCode: "MOH",
-      programmeShortCode: "TRL",
+      programmeShortCode: "TRP",
     });
   });
 
@@ -405,6 +405,6 @@ describe("webhook mapping: reference-code segments", () => {
     expect(mapped({ mdaCode: "MO" }).success).toBe(false);
     expect(mapped({ mdaCode: "MOHWX" }).success).toBe(false);
     expect(mapped({ mdaCode: "M0H" }).success).toBe(false);
-    expect(mapped({ programmeShortCode: "TR-L" }).success).toBe(false);
+    expect(mapped({ programmeShortCode: "TR-P" }).success).toBe(false);
   });
 });

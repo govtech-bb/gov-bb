@@ -68,8 +68,8 @@ describe("generateReferenceCode", () => {
 
 describe("canonicalizeReferenceCode", () => {
   it("applies the Crockford decode rules: O→0, I→1, L→1", () => {
-    expect(canonicalizeReferenceCode("MOH-TRL-2608-47E4AD6")).toBe(
-      "M0H-TR1-2608-47E4AD6",
+    expect(canonicalizeReferenceCode("MOH-HTL-2608-47E4AD6")).toBe(
+      "M0H-HT1-2608-47E4AD6",
     );
     expect(canonicalizeReferenceCode("RAEHO-2608-1CHHHVK")).toBe(
       "RAEH0-2608-1CHHHVK",
@@ -77,8 +77,8 @@ describe("canonicalizeReferenceCode", () => {
   });
 
   it("uppercases, so a lowercased code still matches", () => {
-    expect(canonicalizeReferenceCode("moh-trl-2608-47e4ad6")).toBe(
-      canonicalizeReferenceCode("MOH-TRL-2608-47E4AD6"),
+    expect(canonicalizeReferenceCode("moh-htl-2608-47e4ad6")).toBe(
+      canonicalizeReferenceCode("MOH-HTL-2608-47E4AD6"),
     );
   });
 
@@ -110,9 +110,9 @@ describe("referencePrefixFromProcessors", () => {
   it("composes MDA-PROG from the webhook mapping", () => {
     expect(
       referencePrefixFromProcessors(
-        webhook({ mdaCode: "MOH", programmeShortCode: "TRL" }),
+        webhook({ mdaCode: "MOH", programmeShortCode: "TRP" }),
       ),
-    ).toBe("MOH-TRL");
+    ).toBe("MOH-TRP");
   });
 
   it("returns undefined when the form declares neither segment", () => {
@@ -127,7 +127,7 @@ describe("referencePrefixFromProcessors", () => {
       referencePrefixFromProcessors(webhook({ mdaCode: "MOH" })),
     ).toBeUndefined();
     expect(
-      referencePrefixFromProcessors(webhook({ programmeShortCode: "TRL" })),
+      referencePrefixFromProcessors(webhook({ programmeShortCode: "TRP" })),
     ).toBeUndefined();
   });
 
@@ -136,7 +136,7 @@ describe("referencePrefixFromProcessors", () => {
       referencePrefixFromProcessors([
         {
           type: "email",
-          config: { mdaCode: "MOH", programmeShortCode: "TRL" },
+          config: { mdaCode: "MOH", programmeShortCode: "TRP" },
         },
       ]),
     ).toBeUndefined();
