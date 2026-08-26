@@ -199,6 +199,11 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
 
+      # BuildKit builder — required for the registry-backed layer cache below.
+      # The default `docker build` driver cannot export a cache manifest.
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
       - name: Build and push image
         id: build
         env:
@@ -207,10 +212,17 @@ jobs:
         run: |
           IMAGE_URI="$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           LATEST_URI="$REGISTRY/$ECR_REPOSITORY:latest"
+          CACHE_URI="$REGISTRY/$ECR_REPOSITORY:buildcache"
 
-          docker build --platform linux/amd64 -f apps/api/Dockerfile -t "$IMAGE_URI" -t "$LATEST_URI" .
-          docker push "$IMAGE_URI"
-          docker push "$LATEST_URI"
+          # Layer cache lives in the same ECR repo under the `buildcache` tag —
+          # without it every deploy re-runs the full pnpm install + nx build cold.
+          # `image-manifest=true,oci-mediatypes=true` is required: ECR rejects
+          # BuildKit's default cache manifest type. A miss just builds cold.
+          docker buildx build --platform linux/amd64 -f apps/api/Dockerfile \
+            -t "$IMAGE_URI" -t "$LATEST_URI" \
+            --cache-from "type=registry,ref=$CACHE_URI" \
+            --cache-to "type=registry,ref=$CACHE_URI,mode=max,image-manifest=true,oci-mediatypes=true" \
+            --push .
 
           echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
           echo "✅ Pushed $IMAGE_URI"
@@ -348,6 +360,11 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
 
+      # BuildKit builder — required for the registry-backed layer cache below.
+      # The default `docker build` driver cannot export a cache manifest.
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
       - name: Build and push form-builder image
         id: build-form-builder
         env:
@@ -356,10 +373,17 @@ jobs:
         run: |
           IMAGE_URI="$REGISTRY/gov-bb-form-builder:$IMAGE_TAG"
           LATEST_URI="$REGISTRY/gov-bb-form-builder:latest"
+          CACHE_URI="$REGISTRY/gov-bb-form-builder:buildcache"
 
-          docker build --platform linux/amd64 -f apps/form_builder_api/Dockerfile -t "$IMAGE_URI" -t "$LATEST_URI" .
-          docker push "$IMAGE_URI"
-          docker push "$LATEST_URI"
+          # Layer cache lives in the same ECR repo under the `buildcache` tag —
+          # without it every deploy re-runs the full pnpm install + nx build cold.
+          # `image-manifest=true,oci-mediatypes=true` is required: ECR rejects
+          # BuildKit's default cache manifest type. A miss just builds cold.
+          docker buildx build --platform linux/amd64 -f apps/form_builder_api/Dockerfile \
+            -t "$IMAGE_URI" -t "$LATEST_URI" \
+            --cache-from "type=registry,ref=$CACHE_URI" \
+            --cache-to "type=registry,ref=$CACHE_URI,mode=max,image-manifest=true,oci-mediatypes=true" \
+            --push .
 
           echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
           echo "✅ Pushed form-builder $IMAGE_URI"
