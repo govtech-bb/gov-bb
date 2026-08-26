@@ -18,7 +18,7 @@ If you are eligible, you can get prescription medication free at a government po
 ## What to take to the pharmacy
 
 -   your prescription
--   original accepted ID for the person the medication is for — a Barbados National Identification (ID) card, passport, driver's licence, or child health book
+-   original accepted ID for the person the medication is for — a Barbados National Identification (ID) card, passport or child health book. A child health book is only accepted for children up to 6 weeks old. After 6 weeks, an ID card is required.
 
 Photocopies are not accepted.
 
@@ -32,11 +32,11 @@ Some pharmacies can lower or remove the cost of your prescription medication thr
 
 [Check who qualifies and what to bring](/health-and-emergency-services/free-or-subsidised-medication)
 
-## Prescription slip colours
+## Prescription colours
 
 Prescriptions in Barbados come on different coloured slips. The colour of your slip can affect which pharmacy can fill it.
 
-[Check what the prescription slip colours mean](/health-and-emergency-services/prescription-slip-colours)
+[Check what the prescription colours mean](/health-and-emergency-services/prescription-slip-colours)
 
 ## Get help
 

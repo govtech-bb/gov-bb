@@ -6,10 +6,12 @@
  * confirmed Drug Service type — the single source of truth — never stored
  * per record:
  *
- *   white  (Drug Service)   → government and private pharmacies in the
- *                             subsidy (free / small dispensing fee)
+ *   white  (Drug Service)   → private pharmacies in the subsidy only
  *   yellow (GEHP)           → government pharmacies only
  *   green  (GEHP dependant) → government pharmacies only
+ *
+ * Blue and pink are not filter options because both confirmed facility types
+ * accept them.
  *
  * For an unconfirmed pharmacy the honest answer is unknown (null).
  */
@@ -32,15 +34,15 @@ export function acceptsSlip(
   pharmacy: Pharmacy,
   slip: SlipColour,
 ): boolean | null {
-  if (pharmacy.type === 'government') return true
+  if (pharmacy.type === 'government') return slip !== 'white'
   if (pharmacy.type === 'private-sbs') return slip === 'white'
   return null
 }
 
 /**
  * The closest pharmacy to `from` that definitely accepts the slip — used to
- * point yellow/green holders at the nearest government dispensary. Null when
- * `from` has no coordinates.
+ * point people at a compatible facility when the current one cannot fill
+ * their prescription. Null when `from` has no coordinates.
  */
 export function nearestAccepting(
   from: Pharmacy,

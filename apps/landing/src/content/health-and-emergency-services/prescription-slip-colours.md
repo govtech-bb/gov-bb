@@ -1,12 +1,12 @@
 ---
-title: What prescription slip colours mean
+title: What prescription colours mean
 description: >-
-  What the different coloured prescription slips mean in Barbados, and how the
-  colour can affect which pharmacy can fill your prescription.
+  What the different prescription colours mean in Barbados, and how the colour
+  can affect which pharmacy can fill your prescription.
 stage: alpha
 visibility: preview
 featured: false
-publish_date: '2026-08-18'
+publish_date: '2026-05-15'
 category: health-and-emergency-services
 service_type: information
 ---
@@ -34,7 +34,7 @@ You can take it to:
 
 If you take it to a participating private pharmacy, you may have to pay the full cost.
 
-## Pink or white prescription
+## Pink prescription
 
 This is usually from a private doctor.
 
@@ -44,6 +44,10 @@ You can take it to:
 -   a participating private pharmacy
 
 At a participating private pharmacy, you pay a fee to prepare your medication. This is called a dispensing fee. Some medications may still cost money.
+
+## White prescription
+
+White prescriptions can only be taken to a private pharmacy.
 
 ## If you are not sure
 
