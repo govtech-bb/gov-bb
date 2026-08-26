@@ -16,6 +16,12 @@ import { evaluateCondition, flattenStepValues } from "./internals";
 export { evaluateCondition, flattenStepValues } from "./internals";
 export type { ConditionCriteria } from "./internals";
 
+// Mirror another field's answer into this one while a condition holds (#2507) —
+// the "same address as yours?" shortcut, without the stale copy a one-shot write
+// would leave behind. Consumed by the forms client (display + submit).
+export { resolveCopyFrom } from "./copy-from";
+export type { CopyFromField, CopyFromResult, CopyFromStep } from "./copy-from";
+
 // Shared confirmation-markdown token interpolation, consumed by both the
 // confirmation page (apps/forms) and the applicant email (apps/api) so the two
 // surfaces can't drift (#2201).

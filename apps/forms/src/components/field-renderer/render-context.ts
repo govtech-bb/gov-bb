@@ -94,6 +94,7 @@ export function buildFieldRenderContext(args: {
     name: field.name,
     id: field.id,
     disabled: field.disabled,
+    readOnly: field.readOnly,
     placeholder: field.placeholder,
     onBlur: f.handleBlur,
     "aria-describedby": describedBy,

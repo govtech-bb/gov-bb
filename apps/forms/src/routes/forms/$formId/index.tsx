@@ -43,6 +43,7 @@ import {
   applyPaymentReturn,
 } from "../../../lib/submission-outcome";
 import { fillParishRoutingCoordinate } from "../../../lib/parish-routing-points";
+import { resolveCopyFrom } from "@govtech-bb/form-conditions";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
@@ -264,12 +265,30 @@ function FormView() {
         );
         return step.fields.filter((field) => !visibleFieldIds.has(field.id));
       });
-      const formattedData: FormValuesByStep = fillParishRoutingCoordinate(
+      // `copyFrom` mirrors are re-derived here rather than trusted from form
+      // state (#2507): the UI keeps them in step while the applicant fills the
+      // form in, but this is the authoritative pass — a mirror that went stale
+      // in the client cannot reach the payload, and a stale premises address is
+      // a silently misrouted submission. Runs BEFORE the parish fallback, which
+      // reads the (possibly mirrored) routing fields.
+      const { values: mirroredData } = resolveCopyFrom(
+        // The field mapper renames the contract's `elements` to `fields`;
+        // resolveCopyFrom reads `elements`, so adapt rather than have the
+        // library accept two shapes for the same thing.
+        {
+          steps: formMeta.steps.map((step) => ({
+            stepId: step.stepId,
+            elements: step.fields,
+          })),
+        },
         formatDataForSubmission(
           values,
           repeatableStepSettingsRef.current,
           hiddenFields,
         ),
+      );
+      const formattedData: FormValuesByStep = fillParishRoutingCoordinate(
+        mirroredData,
         formMeta.catchmentRouting,
       );
       let response;
