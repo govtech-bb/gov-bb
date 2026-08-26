@@ -70,22 +70,30 @@ Use it at most once per page. With a `form_id` in frontmatter the destination is
 When a service has more than one route, `rehypeHideStartLinks` (`apps/landing/src/utils/markdown/plugins/hideStartLinks.ts`) hides the online route for a visitor who cannot see the page's `/start` sub-page, and counts the remaining routes down. That rewrite only stays coherent if you author the list the way it expects:
 
 ```markdown
-There are 2 ways to apply for a hotel licence. You can:
+## Complete the form
 
-1. complete the online form
+There are 2 ways to apply for a swimming pool licence. You can:
+
+1. **Apply for a licence online**
+
+   Allow about 5-10 minutes to complete the form.
 
    <a data-start-link>Start now</a>
 
-2. get a paper application from the polyclinic and submit it to the polyclinic
-   associated with the district where the hotel is located
+2. **Get a paper application from the polyclinic**
+
+   You must complete it by hand and submit the application to the polyclinic
+   associated with the district where the pool is located.
 ```
 
 - **Write the count as `2` or `two`, never `two (2)`.** The plugin matches `/are (\d+) ways|are ([a-zA-Z]+) ways/i`, and `two (2)` fails it — the count then never updates and the page contradicts its own list.
 - **Keep the start link inside the online route's list item.** The plugin removes a whole `<li>`; a bare anchor is removed on its own while still decrementing the count, which leaves the route listed with no way to take it.
+- **Keep the completion time inside that same list item.** "Allow about 5-10 minutes to complete the form." goes above the start link, not under a heading of its own — the licence pattern has no `## How long does it take?` section, and a time line left outside the item survives the rewrite that removes the route it describes.
+- **Bold each route title, in sentence case, with no full stop.** These titles are the only bold text on the page, and the one place list items do not start in lowercase.
 - **Keep the lead-in a plain paragraph.** The rewrite collapses it to a single text node, so links and bold inside it are lost.
-- **One route means no list and no count** — just the start link under the heading.
+- **One route means no list and no count** — just the completion time and the start link under the heading.
 
-`apps/landing/src/content/apply-for-conductor-licence/index.md` is a good page to copy the shape from.
+`apps/landing/src/content/swimming-wading-pool-permit.md` is the closest full page to copy from — it is the licence pattern end to end. One detail there has moved on: it writes its route titles as `###` sub-headings inside the list items, where new pages author them in bold. `apply-for-hotel-licence.md` and `apply-for-temporary-restaurant-licence/index.md` carry the same `###` shape.
 
 ## Step 4 — Verify
 
@@ -110,5 +118,9 @@ Do not run `landing:build` to check your work — its prebuild fetches from a li
 | Repeating the frontmatter `title` as an `#` or `##` heading          | The site renders the title; body headings start at `##`                                 |
 | Omitting `visibility` expecting the page to stay hidden              | It defaults to `public` — set it explicitly                                             |
 | Adding a `## Payment` heading to a licence page                      | That pattern folds payment method into `## Cost`                                        |
+| A licence page headed `## How to apply for a …`                      | The heading is fixed wording: `## Complete the form`                                    |
+| A `## How long does it take?` section on a licence page              | Put the completion time inside the online route's list item                             |
+| `## Cost` placed above the route list on a licence page              | In this pattern `## Cost` sits after `## Complete the form`                             |
+| Closing a licence page with `## Need assistance`                     | The help heading in this pattern is `## Contact`                                        |
 | Mixing the certificate heading sequence with the licence one         | Pick one pattern per page                                                               |
 | Inventing a fee, a processing time or a phone number to fill a gap   | Flag the gap to the author instead                                                      |
