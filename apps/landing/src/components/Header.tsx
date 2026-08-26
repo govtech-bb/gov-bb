@@ -45,7 +45,7 @@ export default function Header() {
               target="_blank", and this is a step in the same journey rather than
               a link off the platform. MarkdownLink.tsx makes the same call.
             */}
-            <GovLink href={TRACKER_URL}>Application Tracker</GovLink>
+            <GovLink href={TRACKER_URL}>Track my application</GovLink>
             <LinkButton href={CHAT_URL}>Ask Assistant</LinkButton>
           </>
         }
