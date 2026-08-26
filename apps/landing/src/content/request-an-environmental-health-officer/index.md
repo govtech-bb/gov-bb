@@ -14,10 +14,10 @@ service_type: digital
 
 Use this service to request an Environmental Health Officer to attend your event. This is required whenever food or drink is served to the public at a [mass event](/business-trade/temporary-restaurants-what-you-need-to-know#what-counts-as-a-mass-event).
 
-## Who can apply
+## Who is this for
 
 - You need to request the attendance of Environmental Health Officers if you are the organiser of a mass event where food or drink will be served.
-- If you are also directly responsible for food or drink being served, you should [apply for a temporary restaurant permit](/business-trade/apply-for-temporary-restaurant-permit) first, as that form will cover both applications.
+- If you are also directly responsible for food or drink being served, this form will cover both requesting an Environmental Health Officer and the application for a temporary restaurant permit. Review the [full requirements here](/business-trade/apply-for-temporary-restaurant-permit).
 
 ## Before you start
 
@@ -37,7 +37,7 @@ Apply at least **14 days** before your event, so officers can be scheduled to at
 
 There are 2 ways to request an Environmental Health Officer at your event. You can:
 
-1. ### Request an officer online
+1. ### Apply online
 
    Allow about 10 - 15 minutes to complete the form.
 
@@ -49,13 +49,18 @@ There are 2 ways to request an Environmental Health Officer at your event. You c
 
 ## Cost
 
-There is no fee to request an officer. If there are overtime costs for officers attending, those fees are payable in advance to the Accountant General - the polyclinic will tell you the amount after your request is approved. See [how to pay](/business-trade/temporary-restaurants-what-you-need-to-know#paying-for-environmental-health-officers).
+There is no fee to request an officer. If there are overtime costs for officers attending, those fees are **payable in advance to the Accountant General** - the polyclinic will tell you the amount after your request is approved. See [how to pay](/business-trade/temporary-restaurants-what-you-need-to-know#paying-for-environmental-health-officers).
 
 ## What happens after you apply
 
 - Your application goes to the Environmental Health Department associated with the polyclinic closest to the location of your event.
 - After they review your application, they will contact you to arrange the officers' attendance.
+- The Environmental Health Department will conduct a risk assessment and may require more information including a site plan.
+- The Environmental Health Department will also determine the number and cost of officers to be assigned.
 - If there are overtime costs, they will send an invoice after the request is approved.
+- All monies to be paid to the Consolidated Fund or to the Permanent Secretary of the Ministry of Health and Wellness **two days in advance** of the event.
+- If you are also operating a temporary restaurant, this request includes your permit application.
+- An officer checks your set-up, and if compliant, issues the permit at the event, not in advance. Permits are **non-transferable** - Permits are issued for a specific location and event, and may be valid for 30 days from the date of issue.
 
 ## Contact
 
