@@ -60,13 +60,13 @@ There are 2 ways to apply for a temporary restaurant permit. You can:
 
 ## Cost
 
-There is neither a cost to apply, nor to receive your temporary restaurant permit.
+There is no cost to apply, nor to receive your temporary restaurant permit.
 
 ## What happens after you apply
 
 - Your application goes to the Environmental Health Department associated with the polyclinic closest to the location of where you will be serving food or drink.
 - If you do not already have a licensed food business, an Environmental Health Officer will inspect where the food is being prepared and stored.
-- For [mass events](/business-trade/temporary-restaurants-what-you-need-to-know#what-counts-as-a-mass-event), your permit is issued at the event, not in advance. An officer checks your set-up on the day and issues the permit if it meets the requirements.
+- [Mass events](/business-trade/temporary-restaurants-what-you-need-to-know#what-counts-as-a-mass-event) - your permit is issued at the event, not in advance. An officer checks your set-up on the day and issues the permit if it meets the requirements.
 - The permit is valid for 30 days in the same location from the date it is issued.
 
 Submitting an application does not mean that a temporary restaurant permit has been granted.
