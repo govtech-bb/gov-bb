@@ -533,7 +533,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "swimming-wading-pool-permit",
-    title: "Apply for a swimming pool licence with Environmental Health",
+    title: "Apply for a swimming pool licence",
     category: "business-trade",
     formId: "swimming-pool-environmental-health",
     visibility: "preview",
