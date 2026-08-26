@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { axe } from "jest-axe";
 import SubmissionConfirmation from "./submission-confirmation";
 import type { SubmissionState } from "@forms/types";
+import { LANDING_URL } from "../config/landing";
 
 const baseState: SubmissionState = {
   hasPayment: false,
@@ -455,6 +456,23 @@ describe("SubmissionConfirmation — markdownContent rendering", () => {
     expect(md).toHaveTextContent("Phone:");
     // Wrapper class is the styling hook for paragraph spacing (govtech.css).
     expect(md.closest(".form-page__markdown-content")).not.toBeNull();
+  });
+
+  it("substitutes the landing origin into a {landingUrl} link", () => {
+    // The page is served from the forms host, so an authored root-relative
+    // link would 404. LANDING_URL is env-driven (VITE_LANDING_URL), so the
+    // same recipe resolves to sandbox/staging/prod landing per environment.
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Test"
+        stepTitle="Done"
+        submissionState={successState}
+        markdownContent="See [mass events]({landingUrl}/business-trade/guide#anchor)."
+      />,
+    );
+    expect(screen.getByTestId("react-markdown")).toHaveTextContent(
+      `See [mass events](${LANDING_URL}/business-trade/guide#anchor).`,
+    );
   });
 
   it("does not render a markdown block when markdownContent is absent", () => {

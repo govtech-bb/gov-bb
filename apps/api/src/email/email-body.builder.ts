@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import NodeCache from "node-cache";
 import MarkdownIt from "markdown-it";
 import { DateTime } from "luxon";
@@ -143,6 +144,7 @@ export class EmailBodyBuilder {
 
   constructor(
     private readonly formDefinitionsService: FormDefinitionsService,
+    private readonly config: ConfigService,
   ) {}
 
   async build(payload: SubmissionCreatedEvent): Promise<EmailTemplateContext> {
@@ -221,11 +223,14 @@ export class EmailBodyBuilder {
       (s) => s.stepId === "submission-confirmation",
     )?.markdownContent;
     // Substitute the resolved polyclinic into the `{polyclinic}` token so the
-    // email names the polyclinic the request went to. Shared with the live
-    // confirmation page via interpolateConfirmationMarkdown so the email and
-    // page copy can't drift (#2201).
+    // email names the polyclinic the request went to, and the landing origin
+    // into `{landingUrl}` so an authored link to a service page is absolute —
+    // an email has no base URL, so a root-relative href is simply dead. Shared
+    // with the live confirmation page via interpolateConfirmationMarkdown so
+    // the email and page copy can't drift (#2201).
     const markdownContent = interpolateConfirmationMarkdown(rawMarkdown, {
       polyclinic: payload.resolvedCatchment?.polyclinic,
+      landingUrl: this.config.get<string>("app.landingUrl"),
     });
     const markdownHtml = markdownContent
       ? markdownRenderer.render(markdownContent)
