@@ -821,6 +821,27 @@ describe("AiSidebar — Upload", () => {
     expect((box as HTMLTextAreaElement).value).toBe("skip the payment page");
   });
 
+  it("shows the friendly upload message, not the browser's \"Failed to fetch\", when the S3 POST is refused (#2511)", async () => {
+    const user = setupUser();
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", fields: { key: "uploads/abc.pdf" }, s3Key: "uploads/abc.pdf" });
+    // A CORS-refused or dropped cross-origin POST rejects the fetch outright —
+    // it never resolves to a response whose `.ok` we could check.
+    fetchSpy.mockRejectedValue(new TypeError("Failed to fetch"));
+    setup();
+
+    await pickPdf(user);
+    await user.click(screen.getByRole("button", { name: /upload/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /upload failed — please refresh and try again/i,
+      ),
+    );
+    expect(screen.getByRole("alert")).not.toHaveTextContent(/failed to fetch/i);
+    // The upload never happened, so the convert must not have been started.
+    expect(startPdfConvert).not.toHaveBeenCalled();
+  });
+
   it("shows an apply-specific error, not an upload error, when apply rejects after a successful convert (#1532)", async () => {
     vi.useFakeTimers();
     const user = setupUser();
