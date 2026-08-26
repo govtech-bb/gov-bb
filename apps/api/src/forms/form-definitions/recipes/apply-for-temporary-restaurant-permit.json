@@ -24,7 +24,7 @@
       "config": {
         "mapping": {
           "mdaCode": "MOH",
-          "programmeShortCode": "TRL",
+          "programmeShortCode": "TRP",
           "programmeCode": "TEMP_RESTAURANT_PERMIT",
           "applicant": {
             "name": [
