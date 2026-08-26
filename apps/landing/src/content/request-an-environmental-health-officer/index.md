@@ -29,6 +29,8 @@ You will need:
 - A list of the food vendors taking part
 - A [site or stall plan](/business-trade/temporary-restaurants-what-you-need-to-know#setting-up-your-stall)
 
+If directly responsible for food or drink being served, check list [here](/business-trade/temporary-restaurants-what-you-need-to-know#paying-for-environmental-health-officers).
+
 ## When to apply
 
 Apply at least **14 days** before your event, so officers can be scheduled to attend.

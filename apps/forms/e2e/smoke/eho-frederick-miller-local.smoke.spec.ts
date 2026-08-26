@@ -96,7 +96,7 @@ function buildData() {
     firstName: "Smoke",
     lastName: "Tester",
     addressLine1: "1 Test Road",
-    mobile: "246 249 1234",
+    telephone: "246 249 1234",
     applicantEmail: "testing@govtech.bb",
     eventName: `Frederick Miller catchment smoke ${new Date().toISOString()}`,
     start,
@@ -142,7 +142,7 @@ test("routes a Frederick Miller event to St. Philip and mints an MOH-EHO referen
   await fillField(page, step, "applicant-last-name", data.lastName);
   await fillField(page, step, "applicant-address-line-1", data.addressLine1);
   await selectDropdown(page, step, "applicant-parish", "st-michael");
-  await fillField(page, step, "mobile-number", data.mobile);
+  await fillField(page, step, "telephone", data.telephone);
   await fillField(page, step, "email", data.applicantEmail);
   await advance(page, step);
 

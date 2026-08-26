@@ -3,7 +3,7 @@
   "title": "Request an Environmental Health Officer",
   "description": "Request an Environmental Health Officer to attend an event where food or drink is served to the public.",
   "createdAt": "2026-08-10T00:00:00Z",
-  "updatedAt": "2026-08-26T16:00:00Z",
+  "updatedAt": "2026-08-26T18:00:00Z",
   "processors": [
     {
       "type": "email",
@@ -32,7 +32,7 @@
               "applicant-details.applicant-last-name"
             ],
             "email": "applicant-details.email",
-            "phone": "applicant-details.mobile-number"
+            "phone": "applicant-details.telephone"
           },
           "excludeSteps": [
             "check-your-answers",
@@ -58,7 +58,7 @@
           "overrides": {
             "label": "Are you operating a temporary restaurant (serving food) at this event?",
             "fieldId": "operating-restaurant",
-            "hint": "A temporary restaurant is any set-up serving food or drink to the public for 30 days or less. If you are serving food, you also need a temporary restaurant permit — we will collect that in this same form.",
+            "hint": "A temporary restaurant is any set-up serving food or drink to the public for 30 days or less. If directly responsible for food or drink being served, click yes.",
             "options": [
               { "label": "Yes", "value": "yes" },
               { "label": "No", "value": "no" }
@@ -157,34 +157,17 @@
           }
         },
         {
-          "ref": "components/mobile-telephone",
+          "ref": "components/telephone",
           "overrides": {
-            "label": "Mobile number",
-            "fieldId": "mobile-number",
-            "hint": "We will use your mobile number to contact you. For example, (246) 249 1234."
-          }
-        },
-        {
-          "ref": "components/home-telephone",
-          "overrides": {
-            "label": "Home telephone",
-            "hint": "For example, (246) 433 1234.",
-            "validations": {
-              "required": {
-                "value": false
+            "hint": "We will use this to contact you about your request. For example, (246) 249 1234.",
+            "behaviours": [
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 4,
+                "addAnotherLabel": "Add another telephone number"
               }
-            }
-          }
-        },
-        {
-          "ref": "components/work-telephone",
-          "overrides": {
-            "label": "Work telephone",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
+            ]
           }
         },
         {
