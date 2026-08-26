@@ -937,14 +937,14 @@ describe("reference-code prefix from the recipe (#2318)", () => {
   it("mints MDA-PROG-YYMM-TAIL when the recipe declares both segments", async () => {
     const { service, txRepo } = makeMocks({
       processors: [
-        mappedWebhook({ mdaCode: "MOH", programmeShortCode: "TRL" }),
+        mappedWebhook({ mdaCode: "MOH", programmeShortCode: "TRP" }),
       ],
     });
 
     await service.submit(BASE_DTO);
 
     expect(mintedReference(txRepo)).toMatch(
-      /^MOH-TRL-\d{4}-[0-9A-HJKMNP-TV-Z]{7}$/,
+      /^MOH-TRP-\d{4}-[0-9A-HJKMNP-TV-Z]{7}$/,
     );
   });
 
