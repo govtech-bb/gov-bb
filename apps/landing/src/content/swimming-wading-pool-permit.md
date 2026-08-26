@@ -32,29 +32,30 @@ Read the [Health Services (Swimming Pools) Regulations, 1970](https://oag.gov.bb
 
 Your licence expires on 31 December each year. You need to renew it by the first business day in January each year. We suggest you submit your application by 1 December.
 
+## Complete the form
+
+There are 2 ways to apply for a swimming pool licence. You can:
+
+1. ### Apply for a licence online
+
+   Allow about 5-10 minutes to complete the form.
+
+   <a data-start-link>Start now</a>
+
+2. ### Get a paper application from the polyclinic
+
+   You must complete it by hand and submit the application to the polyclinic associated with the district where the pool is located. If you require further information or assistance, contact the polyclinic - information can be found at the bottom of this page.
+
 ## Cost
 
 There is neither a cost to apply, nor to receive your licence.
 
-## How long does it take?
-
-Allow about 5 to 10 minutes to complete the form.
-
-## How to apply for a swimming pool licence
-
-There are 2 ways to apply for a swimming pool licence. You can:
-
-1. complete the online form
-
-   <a data-start-link>Start now</a>
-
-2. get a paper application from the polyclinic, fill it in by hand and submit it to the polyclinic associated with the district where the pool is located. If you need help, contact that polyclinic using the details below
-
 ## What happens after you apply
 
-Your application goes to the Environmental Health Department associated with the location of the swimming pool. They will review it and may contact you if they need more information. The pool, its surroundings and its safety equipment will be inspected before a licence is issued.
-
-If your application is approved, you will get a confirmation email and the Environmental Health Department will post your licence to you. You can also ask to collect it from your assigned polyclinic.
+- Your application goes to the Environmental Health Department associated with the location of the swimming pool.
+- They will review it and may contact you if they need more information.
+- The pool, surroundings and safety equipment will be inspected before a licence is issued.
+- If your application is approved, you will receive a confirmation email and the Environment Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.
 
 Submitting an application does not mean that a swimming pool licence has been granted.
 

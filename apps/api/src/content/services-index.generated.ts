@@ -105,7 +105,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-temporary-restaurant-licence",
-    title: "Apply for a licence to operate a temporary restaurant",
+    title: "Apply for a temporary restaurant licence",
     category: "business-trade",
     formId: "apply-for-temporary-restaurant-licence",
     visibility: "preview",

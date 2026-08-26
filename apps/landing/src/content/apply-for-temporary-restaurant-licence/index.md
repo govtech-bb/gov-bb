@@ -1,5 +1,5 @@
 ---
-title: Apply for a licence to operate a temporary restaurant
+title: Apply for a temporary restaurant licence
 description: >-
   Apply online for a licence to serve food or drink at a temporary event in
   Barbados, such as a stall, booth or bar operating for up to 30 days. Issued by
@@ -12,6 +12,7 @@ category: business-trade
 form_id: apply-for-temporary-restaurant-licence
 service_type: digital
 ---
+
 Use this service to apply to the Environmental Health Department for a licence to operate a temporary restaurant - for example, to serve food at an event. For more information, and to find out if you should apply for a temporary restaurant licence, read [temporary restaurants: what you need to know](/business-trade/temporary-restaurants-what-you-need-to-know).
 
 ## Who is this licence for
@@ -22,44 +23,44 @@ You need to apply for a licence if you are responsible for the serving of any fo
 
 You must:
 
--   Have a medical certificate for all staff handling food or drink
+- Have a medical certificate for all staff handling food or drink
 
 You will need:
 
--   Your name, address, phone number and email address
--   The name, address and dates of the event
--   The food and drinks you will serve and where you will get them
--   The number of food handlers, your water and sanitation arrangements, and the expected number of people attending the event
--   The organiser's details, if someone else is organising the event
--   Your own medical certificate. Everyone else working with you must walk with theirs on the day
--   Hairnets, beard nets and clean covered clothing for everyone handling food — and no jewellery, false nails, false eyelashes, make-up or perfume ([see the full list](/business-trade/temporary-restaurants-what-you-need-to-know#personal-hygiene-for-food-handlers))
--   If someone else is organising the event, a letter from the venue or organiser confirming you can operate there
--   If you are organising the event, a site or stall plan
--   If you have one, a copy of your food business licence
+- Your name, address, phone number and email address
+- The name, address and dates of the event
+- The food and drinks you will serve and where you will get them
+- The number of food handlers, your water and sanitation arrangements, and the expected number of people attending the event
+- The organiser's details, if someone else is organising the event
+- Your own medical certificate. Everyone else working with you must walk with theirs on the day
+- Hairnets, beard nets and clean covered clothing for everyone handling food — and no jewellery, false nails, false eyelashes, make-up or perfume ([see the full list](/business-trade/temporary-restaurants-what-you-need-to-know#personal-hygiene-for-food-handlers))
+- If someone else is organising the event, a letter from the venue or organiser confirming you can operate there
+- If you are organising the event, a site or stall plan
+- If you have one, a copy of your food business licence
 
-Read the [Health Services (Restaurants) Regulations, 1969](https://oag.gov.bb/attachments/Health%20Services%20(Restaurants)%20Regulations,%201969%20Cap44'Z.PDF) for the full legal requirements.
+Read the [Health Services (Restaurants) Regulations, 1969](<https://oag.gov.bb/attachments/Health%20Services%20(Restaurants)%20Regulations,%201969%20Cap44'Z.PDF>) for the full legal requirements.
 
 ## When to apply
 
 Apply at least **14 days before your event**. Applications made later than this may not be accepted.
 
-## Cost
-
-There is neither a cost to apply, nor to receive your temporary restaurant licence.
-
-## How long does it take?
-
-Allow about 10 to 15 minutes to complete the form.
-
-## How to apply for a temporary restaurant licence
+## Complete the form
 
 There are 2 ways to apply for a temporary restaurant licence. You can:
 
-1. complete the online form
+1. ### Apply for a licence online
+
+   Allow about 5 - 10 minutes to complete the form.
 
    <a data-start-link>Start now</a>
 
-2. get a paper application from the polyclinic, fill it in by hand and submit it to the polyclinic associated with the area where the food or drink will be served. If you need help, contact that polyclinic using the details below
+2. ### Get a paper application from the polyclinic
+
+   You must complete it by hand and submit the application to the polyclinic associated with the area where the food or drink will be served. If you require further information or assistance, contact the polyclinic - information can be found at the bottom of this page.
+
+## Cost
+
+There is neither a cost to apply, nor to receive your temporary restaurant licence.
 
 ## What happens after you apply
 
@@ -70,7 +71,7 @@ There are 2 ways to apply for a temporary restaurant licence. You can:
 
 Submitting an application does not mean that a temporary restaurant licence has been granted.
 
-## Need assistance
+## Contact
 
 If you need help, contact the Environmental Health Service office for your area.
 
