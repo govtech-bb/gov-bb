@@ -281,11 +281,23 @@ export function AiSidebar({ draft, onApplyRecipe }: AiSidebarProps) {
         form.append(key, value);
       }
       form.append("file", pdfFile);
-      const uploadResponse = await fetch(url, {
-        method: "POST",
-        body: form,
-        signal: abort.signal,
-      });
+      let uploadResponse: Response;
+      try {
+        uploadResponse = await fetch(url, {
+          method: "POST",
+          body: form,
+          signal: abort.signal,
+        });
+      } catch (err) {
+        // A *rejected* fetch is a network-level failure — a dropped connection,
+        // or S3 refusing the cross-origin POST because the bucket's CORS rule
+        // doesn't allow it (#2511). There's no response, so the `.ok` check
+        // below can't see it, and the browser's bare "Failed to fetch" tells
+        // the user nothing. Abort stays untouched: the caller's catch checks
+        // signal.aborted and stays silent on a cancellation.
+        if (abort.signal.aborted) throw err;
+        throw new Error("Upload failed — please refresh and try again.");
+      }
       if (!uploadResponse.ok) {
         throw new Error("Upload failed — please refresh and try again.");
       }
