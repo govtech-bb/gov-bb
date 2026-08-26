@@ -349,12 +349,30 @@
     {
       "stepId": "event-details",
       "title": "About the event",
+      "conditionalTitle": [
+        {
+          "targetStepId": "event-organiser",
+          "targetFieldId": "is-for-event",
+          "operator": "equal",
+          "value": "no",
+          "title": "About the location"
+        }
+      ],
       "elements": [
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Name of event",
             "fieldId": "event-name",
+            "conditionalLabel": [
+              {
+                "targetStepId": "event-organiser",
+                "targetFieldId": "is-for-event",
+                "operator": "equal",
+                "value": "no",
+                "label": "Name of location"
+              }
+            ],
             "validations": {
               "required": {
                 "value": true,
@@ -368,6 +386,15 @@
           "overrides": {
             "label": "Event address line 1",
             "fieldId": "event-address-line-1",
+            "conditionalLabel": [
+              {
+                "targetStepId": "event-organiser",
+                "targetFieldId": "is-for-event",
+                "operator": "equal",
+                "value": "no",
+                "label": "Location address line 1"
+              }
+            ],
             "geocodeTargets": {
               "line2FieldId": "event-address-line-2",
               "parishFieldId": "event-parish",
@@ -380,6 +407,15 @@
           "overrides": {
             "label": "Event address line 2",
             "fieldId": "event-address-line-2",
+            "conditionalLabel": [
+              {
+                "targetStepId": "event-organiser",
+                "targetFieldId": "is-for-event",
+                "operator": "equal",
+                "value": "no",
+                "label": "Location address line 2"
+              }
+            ],
             "validations": {
               "required": {
                 "value": false
@@ -391,7 +427,16 @@
           "ref": "components/parish",
           "overrides": {
             "label": "Parish of event",
-            "fieldId": "event-parish"
+            "fieldId": "event-parish",
+            "conditionalLabel": [
+              {
+                "targetStepId": "event-organiser",
+                "targetFieldId": "is-for-event",
+                "operator": "equal",
+                "value": "no",
+                "label": "Parish of location"
+              }
+            ]
           }
         },
         {

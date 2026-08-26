@@ -81,6 +81,7 @@ export {
   equalityOperationsSchema,
   durationTransformSchema,
   conditionalTitleSchema,
+  conditionalLabelSchema,
 } from "./behavior.type";
 
 export type {
@@ -94,6 +95,7 @@ export type {
   EqualityOperations,
   DurationTransform,
   ConditionalTitle,
+  ConditionalLabel,
 } from "./behavior.type";
 
 export type { Block } from "./block.type";

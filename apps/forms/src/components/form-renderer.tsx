@@ -40,7 +40,10 @@ import { reviewDwellSeconds } from "./review-dwell";
 import { buildValidationErrorPayload } from "./validation-error-event";
 import { stepCompleteEventName } from "./step-events";
 import { StatusBanner } from "@govtech-bb/react";
-import { resolveStepTitle } from "@govtech-bb/form-conditions";
+import {
+  resolveFieldLabel,
+  resolveStepTitle,
+} from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
 
 // The feedback form citizens are sent to from a confirmation page, and its
@@ -49,6 +52,10 @@ import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
 // local. The originating form id is appended as `?source=` at render time.
 const EXIT_SURVEY_FORM_ID = "exit-survey";
 const EXIT_SURVEY_FIRST_STEP = "difficulty-rating";
+
+/** Stable empty map for steps with no `conditionalLabel` fields (#2521), so
+ * the label selector returns an unchanging reference for them. */
+const EMPTY_LABELS: Record<string, string> = {};
 
 // ---------------------------------------------------------------------------
 // Field grouping (show-hide + radio/select conditional reveal)
@@ -394,9 +401,40 @@ function ActiveStep({
   navigateToStep,
   completeAndContinue,
 }: ActiveStepProps) {
-  const currentFields = React.useMemo(
-    () => [...currentStep.fields],
+  // A field may carry `conditionalLabel` overrides (#2521) that reword it off
+  // an earlier answer, so its label — like the step title below — has to
+  // recompute when the watched value changes. Only fields that actually carry
+  // overrides are resolved; every other step keeps the stable empty map and
+  // re-renders exactly as before.
+  const hasConditionalLabels = React.useMemo(
+    () => currentStep.fields.some((field) => field.conditionalLabel?.length),
     [currentStep],
+  );
+  const resolvedLabels = useStore(
+    form.store,
+    (state) => {
+      if (!hasConditionalLabels) return EMPTY_LABELS;
+      const values = buildStepScopedValues(
+        state.values as Record<string, unknown>,
+      );
+      const labels: Record<string, string> = {};
+      for (const field of currentStep.fields) {
+        if (field.conditionalLabel?.length) {
+          labels[field.id] = resolveFieldLabel(field, values);
+        }
+      }
+      return labels;
+    },
+    shallow,
+  );
+  const currentFields = React.useMemo(
+    () =>
+      currentStep.fields.map((field) =>
+        resolvedLabels[field.id]
+          ? { ...field, label: resolvedLabels[field.id] }
+          : field,
+      ),
+    [currentStep, resolvedLabels],
   );
 
   // #801: distinguish repeat instances beyond the first. undefined for base

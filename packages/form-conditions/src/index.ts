@@ -1,4 +1,5 @@
 import type {
+  ConditionalLabel,
   ConditionalTitle,
   FieldConditionalOnBehaviour,
   FormStep,
@@ -47,6 +48,34 @@ export function resolveStepTitle(
     if (evaluateCondition(entry, values, flatValues)) return entry.title;
   }
   return step.title;
+}
+
+/**
+ * Resolve a field's effective label for a given set of submitted values.
+ *
+ * The field-level counterpart of {@link resolveStepTitle}: a field may carry
+ * `conditionalLabel` entries (#2521) so one question can reword itself off an
+ * earlier answer — "Name of event" when the permit is for an event, "Name of
+ * location" when it is not — while keeping ONE fieldId, and so one key in the
+ * submitted payload, the webhook mapping and the reviewer's columns.
+ *
+ * The first entry whose condition matches wins; the static `label` is the
+ * fallback when there are no entries or none match. Shared by the forms client
+ * (live field + check-your-answers) and the API (email bodies), so the label an
+ * applicant answered under is the label every downstream surface shows.
+ */
+export function resolveFieldLabel(
+  field: { label: string; conditionalLabel?: ConditionalLabel[] },
+  values: StepScopedValues,
+): string {
+  const conditionalLabels: ConditionalLabel[] = field.conditionalLabel ?? [];
+  if (conditionalLabels.length === 0) return field.label;
+
+  const flatValues = flattenStepValues(values);
+  for (const entry of conditionalLabels) {
+    if (evaluateCondition(entry, values, flatValues)) return entry.label;
+  }
+  return field.label;
 }
 
 export type StepScopedValues = Record<

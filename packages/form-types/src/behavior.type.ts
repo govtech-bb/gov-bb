@@ -97,6 +97,30 @@ export const conditionalTitleSchema = z.object({
 });
 export type ConditionalTitle = z.infer<typeof conditionalTitleSchema>;
 
+// A conditional field label (#2521): the field-level counterpart of
+// `conditionalTitle`. When its condition matches the submitted values, the
+// field renders this `label` in place of its static `Primitive.label` — so one
+// field can ask for "Name of event" or "Name of location" off an earlier
+// answer WITHOUT splitting into two fieldIds (which would fork the submitted
+// payload, the webhook mapping and the reviewer's columns). Fields carry an
+// ARRAY; the first entry whose condition matches wins, and the static label is
+// the fallback when none do.
+export const conditionalLabelSchema = z.object({
+  targetFieldId: kebabIdSchema,
+  targetStepId: kebabIdSchema.optional(),
+  operator: equalityOperationsSchema,
+  transform: durationTransformSchema.optional(),
+  value: z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.string()),
+    z.array(z.number()),
+  ]),
+  label: z.string(),
+});
+export type ConditionalLabel = z.infer<typeof conditionalLabelSchema>;
+
 export const stepConditionalOnBehaviourSchema = z.object({
   type: z.literal("stepConditionalOn"),
   targetFieldId: kebabIdSchema,
