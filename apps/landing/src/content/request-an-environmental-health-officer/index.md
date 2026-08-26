@@ -17,7 +17,7 @@ Use this service to request an Environmental Health Officer to attend your event
 ## Who can apply
 
 - You need to request the attendance of Environmental Health Officers if you are the organiser of a mass event where food or drink will be served.
-- If you are also directly responsible for food or drink being served, you should [apply for a temporary restaurant licence](/business-trade/apply-for-temporary-restaurant-licence) first, as that form will cover both applications.
+- If you are also directly responsible for food or drink being served, you should [apply for a temporary restaurant permit](/business-trade/apply-for-temporary-restaurant-permit) first, as that form will cover both applications.
 
 ## Before you start
 

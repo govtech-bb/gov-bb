@@ -21,3 +21,4 @@ export { AddMinistryKeyToMdaContact1784000000000 } from "./1784000000000-AddMini
 export { CreateCatchmentContact1785500000000 } from "./1785500000000-CreateCatchmentContact";
 export { RenameHotelLicenceFormId1787682865564 } from "./1787682865564-RenameHotelLicenceFormId";
 export { RenameSwimmingPoolFormId1787769265564 } from "./1787769265564-RenameSwimmingPoolFormId";
+export { RenameTemporaryRestaurantFormId1787855665564 } from "./1787855665564-RenameTemporaryRestaurantFormId";

@@ -9,7 +9,7 @@ import {
   SERVING_CATCHMENT,
 } from "./polyclinic-routing";
 
-const LICENCE_FORM = "apply-for-temporary-restaurant-licence";
+const LICENCE_FORM = "apply-for-temporary-restaurant-permit";
 const LICENCE_CODE = "TEMP_RESTAURANT_LICENCE";
 const OFFICER_FORM = "request-an-environmental-health-officer";
 const OFFICER_CODE = "ENV_HEALTH_OFFICER";
@@ -236,7 +236,7 @@ describe("programme codes are unchanged by composition (golden)", () => {
   };
 
   const EXPECTED: Record<string, Record<string, string>> = {
-    "apply-for-temporary-restaurant-licence": {
+    "apply-for-temporary-restaurant-permit": {
       "Branford Taitt Polyclinic": "TEMP_RESTAURANT_LICENCE_BRANFORD_TAITT",
       "David Thompson Health & Social Services Complex":
         "TEMP_RESTAURANT_LICENCE_DAVID_THOMPSON",

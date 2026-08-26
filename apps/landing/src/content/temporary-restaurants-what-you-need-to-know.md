@@ -2,7 +2,7 @@
 title: 'Temporary restaurants: what you need to know'
 description: >-
   What counts as a temporary restaurant in Barbados, who must apply for a
-  licence, and what your event needs — including food safety, paying for
+  permit, and what your event needs — including food safety, paying for
   Environmental Health Officers, and setting up your stall.
 stage: alpha
 visibility: public
@@ -10,7 +10,7 @@ service_type: information
 publish_date: '2026-08-24'
 category: business-trade
 ---
-This page explains the rules for temporary restaurants — who needs a licence, what it costs and what to have ready. It covers [applying for a temporary restaurant licence](/business-trade/apply-for-temporary-restaurant-licence) and [requesting an environmental health officer](/business-trade/request-an-environmental-health-officer).
+This page explains the rules for temporary restaurants — who needs a permit, what it costs and what to have ready. It covers [applying for a temporary restaurant permit](/business-trade/apply-for-temporary-restaurant-permit) and [requesting an environmental health officer](/business-trade/request-an-environmental-health-officer).
 
 ## What counts as a temporary restaurant
 
@@ -24,9 +24,9 @@ In law, a temporary restaurant is “a restaurant which operates for a period no
 
 In law, food is “any substance, whether processed, semi-processed or raw, which is intended for human consumption and includes drink, chewing gum and other substances which are used in the manufacture or treatment of food, but does not include cosmetics, tobacco or substances used only as drugs” (Health Services (Food Hygiene) Regulations, 1969).
 
-You need a licence if you will serve or offer for sale, any food or drink, whether carried on for profit or not. This also includes **bars, snacks** and **confectioneries**, **free samples or product promotions**.
+You need a permit if you will serve or offer for sale, any food or drink, whether carried on for profit or not. This also includes **bars, snacks** and **confectioneries**, **free samples or product promotions**.
 
-[Apply for a licence](/business-trade/apply-for-temporary-restaurant-licence)
+[Apply for a permit](/business-trade/apply-for-temporary-restaurant-permit)
 
 ## Who needs to apply
 
@@ -42,8 +42,8 @@ Apply at least **14 days** before the event.
 
 -   Everyone handling food must get a valid medical certificate, and have it during the event.
 -   To obtain a medical certificate in Barbados, you can visit a private doctor, private clinic or public polyclinic.
--   Your licence will be issued at the event by the Environmental Health Officer, at the completion and successful compliance to the Environmental Health Department standards.
--   Keep your licence at your stall.
+-   Your permit will be issued at the event by the Environmental Health Officer, at the completion and successful compliance to the Environmental Health Department standards.
+-   Keep your permit at your stall.
 -   Some temporary permits may be granted by the Environmental Health Department based on a risk based assessment.
 
 ## Paying for Environmental Health Officers
@@ -60,7 +60,7 @@ There is no application fee. If you are organising the event and it falls outsid
 
 ## What counts as a mass event
 
-A mass event or mass gathering is generally defined as a large-scale public assembly that includes but not limited to: a festival, concert, sporting match, a fair, fete, wedding, breakfast party or a j'ouvert —where a high concentration of people strains health and sanitation resources, triggering special response from the Environmental Health Department, issuing of temporary restaurant licences and strict food safety protocols.
+A mass event or mass gathering is generally defined as a large-scale public assembly that includes but not limited to: a festival, concert, sporting match, a fair, fete, wedding, breakfast party or a j'ouvert —where a high concentration of people strains health and sanitation resources, triggering special response from the Environmental Health Department, issuing of temporary restaurant permits and strict food safety protocols.
 
 ## Setting up your stall
 

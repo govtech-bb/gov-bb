@@ -1,7 +1,7 @@
 ---
-title: Apply for a temporary restaurant licence
+title: Apply for a temporary restaurant permit
 description: >-
-  Apply online for a licence to serve food or drink at a temporary event in
+  Apply online for a permit to serve food or drink at a temporary event in
   Barbados, such as a stall, booth or bar operating for up to 30 days. Issued by
   the Environmental Health Department.
 stage: alpha
@@ -9,15 +9,15 @@ visibility: preview
 featured: false
 publish_date: '2026-08-14'
 category: business-trade
-form_id: apply-for-temporary-restaurant-licence
+form_id: apply-for-temporary-restaurant-permit
 service_type: digital
 ---
 
-Use this service to apply to the Environmental Health Department for a licence to operate a temporary restaurant - for example, to serve food at an event. For more information, and to find out if you should apply for a temporary restaurant licence, [click here](/business-trade/temporary-restaurants-what-you-need-to-know).
+Use this service to apply to the Environmental Health Department for a permit to operate a temporary restaurant - for example, to serve food at an event. For more information, and to find out if you should apply for a temporary restaurant permit, [click here](/business-trade/temporary-restaurants-what-you-need-to-know).
 
-## Who is this licence for
+## Who is this permit for
 
-You need to apply for a licence if you are responsible for the serving of any food or drink at an event, whether you sell it or give it away, including free samples. Both the event organiser and each food vendor must apply. Read [what counts as a temporary restaurant, who must apply, and what your event needs](/business-trade/temporary-restaurants-what-you-need-to-know#what-counts-as-a-temporary-restaurant).
+You need to apply for a permit if you are responsible for the serving of any food or drink at an event, whether you sell it or give it away, including free samples. Both the event organiser and each food vendor must apply. Read [what counts as a temporary restaurant, who must apply, and what your event needs](/business-trade/temporary-restaurants-what-you-need-to-know#what-counts-as-a-temporary-restaurant).
 
 ## Before you start
 
@@ -46,9 +46,9 @@ Apply at least **14 days before your event**. Applications made later than this 
 
 ## Complete the form
 
-There are 2 ways to apply for a temporary restaurant licence. You can:
+There are 2 ways to apply for a temporary restaurant permit. You can:
 
-1. ### Apply for a licence online
+1. ### Apply for a permit online
 
    Allow about 10 - 15 minutes to complete the form.
 
@@ -60,16 +60,16 @@ There are 2 ways to apply for a temporary restaurant licence. You can:
 
 ## Cost
 
-There is neither a cost to apply, nor to receive your temporary restaurant licence.
+There is neither a cost to apply, nor to receive your temporary restaurant permit.
 
 ## What happens after you apply
 
 - Your application goes to the Environmental Health Department associated with the polyclinic closest to the location of where you will be serving food or drink.
 - If you do not already have a licensed food business, an Environmental Health Officer will inspect where the food is being prepared and stored.
-- For [mass events](/business-trade/temporary-restaurants-what-you-need-to-know#what-counts-as-a-mass-event), your licence is issued at the event, not in advance. An officer checks your set-up on the day and issues the licence if it meets the requirements.
-- The licence is valid for 30 days in the same location from the date it is issued.
+- For [mass events](/business-trade/temporary-restaurants-what-you-need-to-know#what-counts-as-a-mass-event), your permit is issued at the event, not in advance. An officer checks your set-up on the day and issues the permit if it meets the requirements.
+- The permit is valid for 30 days in the same location from the date it is issued.
 
-Submitting an application does not mean that a temporary restaurant licence has been granted.
+Submitting an application does not mean that a temporary restaurant permit has been granted.
 
 ## Contact
 

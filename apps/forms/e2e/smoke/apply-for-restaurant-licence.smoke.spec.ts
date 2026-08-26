@@ -4,7 +4,7 @@
  * Live, on-demand smoke test for the Apply to Environmental Health for a
  * restaurant licence service (formId `apply-for-restaurant-licence`, programme
  * `RESTAURANT_LICENCE`) — the ongoing licence, as opposed to the 30-day
- * `apply-for-temporary-restaurant-licence`.
+ * `apply-for-temporary-restaurant-permit`.
  *
  * Drives the REAL form, fills every step with valid @faker-js/faker data,
  * SUBMITS FOR REAL, and asserts the confirmation screen is reached with a

@@ -1,7 +1,7 @@
 {
-  "formId": "apply-for-temporary-restaurant-licence",
-  "title": "Apply for a licence to operate a temporary restaurant",
-  "description": "Apply for a licence to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
+  "formId": "apply-for-temporary-restaurant-permit",
+  "title": "Apply for a permit to operate a temporary restaurant",
+  "description": "Apply for a permit to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
   "createdAt": "2026-07-23T00:00:00Z",
   "updatedAt": "2026-08-26T00:00:00Z",
   "contactDetails": {
@@ -13,14 +13,14 @@
     {
       "type": "email",
       "config": {
-        "subject": "Your temporary restaurant licence application has been received",
+        "subject": "Your temporary restaurant permit application has been received",
         "recipientField": "applicant-details.email"
       }
     },
     {
       "type": "email",
       "config": {
-        "subject": "A new temporary restaurant licence application has been received",
+        "subject": "A new temporary restaurant permit application has been received",
         "recipientField": "catchment.mdaEmail"
       }
     },
@@ -1120,7 +1120,7 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "elements": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your request and your temporary restaurant licence application.\n- Environmental Health Officers will attend on the dates and times you gave. The department will confirm arrangements and any overtime costs.\n- They may arrange an inspection before issuing the licence. The licence is collected from the polyclinic, and an electronic copy is emailed to you. It is valid for 30 days from the date it is issued.\n- If there are overtime costs, they will send an invoice after the request is approved.\n\nKeep your reference number for any follow-up."
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your request and your temporary restaurant permit application.\n- Environmental Health Officers will attend on the dates and times you gave. The department will confirm arrangements and any overtime costs.\n- They may arrange an inspection before issuing the permit. The permit is collected from the polyclinic, and an electronic copy is emailed to you. It is valid for 30 days from the date it is issued.\n- If there are overtime costs, they will send an invoice after the request is approved.\n\nKeep your reference number for any follow-up."
     }
   ],
   "meta": {
