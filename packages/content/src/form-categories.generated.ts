@@ -26,7 +26,6 @@ export const FORM_CATEGORIES: Record<string, string> = {
   "csec-private-candidate-registration": "education",
   "cyber-security-training": "youth-and-community",
   "duties-performed-exam-claim": "education",
-  "food-safety-licence-application": "business-trade",
   "get-a-primary-school-textbook-grant": "money-financial-support",
   "get-birth-certificate": "family-birth-relationships",
   "get-death-certificate": "family-birth-relationships",
@@ -48,8 +47,6 @@ export const FORM_CATEGORIES: Record<string, string> = {
   "post-office-redirection-individual": "travel-id-citizenship",
   "project-protege-mentor": "work-employment",
   "referral-student-support-services": "education",
-  "register-guest-property-environmental-health": "business-trade",
-  "register-personal-care-business": "business-trade",
   "request-a-presidential-visit-for-a-centenarian":
     "family-birth-relationships",
   "request-an-environmental-health-officer": "business-trade",
