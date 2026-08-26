@@ -1,20 +1,21 @@
-// Converts the pharmacy prototype dataset (govtech static prototype, 23 Jul 2026)
-// into apps/landing's -data/pharmacies.ts. Run: node convert-pharmacies.mjs
+// Converts the pharmacy dataset (govtech static prototype, 23 Jul 2026, plus
+// subsequent Drug Service review amendments) into apps/landing's
+// -data/pharmacies.ts. Run: node convert-pharmacies.mjs
 import { writeFileSync } from 'node:fs'
 import { inspect } from 'node:util'
 
-/* ── Verbatim from the prototype (index.html) ── */
+/* ── Prototype dataset plus reviewed amendments ── */
 const PHARMACIES = [
   { id: 'gov-1', name: 'Winston Scott Polyclinic', type: 'government', address: 'Jemmotts Lane, St. Michael', parish: 'St. Michael', phone: '(246) 536-3419', hours: [ { days: [1,2,3,4,5], open: 495, close: 1320 }, { days: [6], open: 495, close: 990 } ], hoursText: 'Mon–Fri 8:15am–10pm · Sat 8:15am–4:30pm', notes: 'Latest-closing government pharmacy. The only one open Saturdays.', routes: 'Routes 11, 12 from Bridgetown Terminal (Probyn St)' },
   { id: 'gov-2', name: 'Branford Taitt Polyclinic', type: 'government', address: 'Black Rock Main Road, St. Michael', parish: 'St. Michael', phone: '(246) 536-3701', hours: [{ days: [1,2,3,4,5], open: 510, close: 990 }], hoursText: 'Mon–Fri 8:30am–4:30pm', notes: '', routes: 'Routes 11, 11A from Bridgetown Terminal' },
   { id: 'gov-3', name: 'Edgar Cochrane Polyclinic', type: 'government', address: 'Wildey, St. Michael', parish: 'St. Michael', phone: '(246) 536-4103', hours: [{ days: [1,2,3,4,5], open: 510, close: 990 }], hoursText: 'Mon–Fri 8:30am–4:30pm', notes: '', routes: 'Routes 11, 22 from Bridgetown' },
   { id: 'gov-4', name: 'Eunice Gibson Polyclinic', type: 'government', address: 'Henry Dunant Road, Warrens, St. Michael', parish: 'St. Michael', phone: '(246) 536-4000', hours: [{ days: [1,2,3,4,5], open: 495, close: 990 }], hoursText: 'Mon–Fri 8:15am–4:30pm', notes: '', routes: 'Routes 11, 11C from Bridgetown' },
-  { id: 'gov-5', name: 'Randal Phillips Polyclinic', type: 'government', address: 'Oistins Main Road, Oistins, Christ Church', parish: 'Christ Church', phone: '(246) 536-4300', hours: [ { days: [1], open: 450, close: 1050 }, { days: [2,3,5], open: 495, close: 990 }, { days: [4], open: 510, close: 990 } ], hoursText: 'Mon 7:30am–5:30pm · Tue, Wed & Fri 8:15am–4:30pm · Thu 8:30am–4:30pm', notes: '', routes: 'Routes 30, 31 from Bridgetown (Fairchild St Terminal)' },
+  { id: 'gov-5', name: 'Randal Phillips Polyclinic', type: 'government', address: 'Oistins Main Road, Oistins, Christ Church', parish: 'Christ Church', phone: '(246) 536-4300', hours: [ { days: [1], open: 450, close: 990 }, { days: [2,3,5], open: 495, close: 990 }, { days: [4], open: 510, close: 990 } ], hoursText: 'Mon 7:30am–4:30pm · Tue, Wed & Fri 8:15am–4:30pm · Thu 8:30am–4:30pm', notes: '', routes: 'Routes 30, 31 from Bridgetown (Fairchild St Terminal)' },
   { id: 'gov-6', name: 'Frederick Miller Polyclinic', type: 'government', address: 'Glebe, St. George', parish: 'St. George', phone: '(246) 536-3940', hours: [{ days: [1,2,3,4,5], open: 510, close: 990 }], hoursText: 'Mon–Fri 8:30am–4:30pm', notes: '', routes: 'Route 3 from Bridgetown (Fairchild St Terminal)' },
   { id: 'gov-7', name: 'David Thompson Health Complex', type: 'government', address: 'Colleton Road, Glebe, St. John', parish: 'St. John', phone: '(246) 416-7000', hours: [{ days: [1,2,3,4,5], open: 510, close: 990 }], hoursText: 'Mon–Fri 8:30am–4:30pm', notes: '', routes: 'Routes 3B or 5 from Bridgetown' },
   { id: 'gov-8', name: 'Maurice Byer Polyclinic', type: 'government', address: 'Station Hill, St. Peter', parish: 'St. Peter', phone: '(246) 536-3200', hours: [{ days: [1,2,3,4,5], open: 495, close: 990 }], hoursText: 'Mon–Fri 8:15am–4:30pm', notes: '', routes: 'Route 1B from Bridgetown (Lower Green Terminal)' },
   { id: 'gov-9', name: 'St. Philip Polyclinic', type: 'government', address: 'Six Roads, St. Philip', parish: 'St. Philip', phone: '(246) 536-4215', hours: [{ days: [1,2,3,4,5], open: 495, close: 990 }], hoursText: 'Mon–Fri 8:15am–4:30pm', notes: '', routes: 'Route 10 from Bridgetown (Fairchild St Terminal)' },
-  { id: 'gov-10', name: 'St. Andrew Outpatient Clinic', type: 'government', address: 'Belleplaine, St. Andrew', parish: 'St. Andrew', phone: '(246) 536-4071', hours: [ { days: [3], open: 495, close: 720 } ], hoursText: 'Wed 8:15am–12pm only', notes: 'Open Wednesdays only.', routes: 'Route 2 from Bridgetown (Lower Green Terminal)' },
+  { id: 'gov-10', name: 'St. Andrew Outpatient Clinic', type: 'government', address: 'Belleplaine, St. Andrew', parish: 'St. Andrew', phone: '(246) 536-4071', hours: [ { days: [1,3], open: 495, close: 720 } ], hoursText: 'Mon & Wed 8:15am–12pm only', notes: 'Open Mondays and Wednesdays only.', routes: 'Route 2 from Bridgetown (Lower Green Terminal)' },
   { id: 'gov-11', name: 'St. Joseph Outpatient Clinic', type: 'government', address: 'Horse Hill, St. Joseph', parish: 'St. Joseph', phone: '(246) 536-3285', hours: [{ days: [2,3,5], open: 495, close: 990 }], hoursText: 'Tue, Wed & Fri 8:15am–4:30pm only', notes: 'Three days per week.', routes: 'Route 5 from Bridgetown' },
   { id: 'gov-12', name: 'St. Thomas Outpatient Clinic', type: 'government', address: 'Rock Hall, St. Thomas', parish: 'St. Thomas', phone: '(246) 536-4952', hours: [{ days: [2,4,5], open: 495, close: 990 }], hoursText: 'Tue, Thu & Fri 8:15am–4:30pm only', notes: 'Three days per week.', routes: 'Route 6 from Bridgetown' },
   { id: 'priv-1', name: 'iMart Pharmacy — Lanterns Mall', type: 'private-sbs', address: 'Lanterns Mall, Christ Church', parish: 'Christ Church', phone: '(246) 271-3784', hours: [ { days: [1,2,3,4,5,6], open: 480, close: 1200 }, { days: [0], open: 540, close: 840 } ], hoursText: 'Mon–Sat 8am–8pm · Sun 9am–2pm', notes: 'WhatsApp prescription service available.', routes: 'Routes 30, 31 from Bridgetown' },
@@ -268,8 +269,9 @@ const file = `/**
  * Single source of truth for the pharmacy finder at
  * /health-and-emergency-services/find-an-open-pharmacy.
  *
- * GENERATED from the GovTech pharmacy prototype dataset (23 July 2026) —
- * do not hand-edit records; regenerate via the conversion script instead.
+ * GENERATED from the GovTech pharmacy prototype dataset (23 July 2026), with
+ * subsequent Drug Service review amendments — do not hand-edit records;
+ * regenerate via the conversion script instead.
  * Provenance: government and Drug Service pharmacies come from the Drug
  * Service register, verified May 2026; 'unconfirmed' entries are drawn from
  * a wider public pharmacy list and have NOT been confirmed with the Drug
@@ -360,7 +362,7 @@ export interface Pharmacy {
   whatsapp?: string
 }
 
-export const PHARMACIES_LAST_UPDATED = '2026-07-23'
+export const PHARMACIES_LAST_UPDATED = '2026-08-25'
 export const PHARMACIES_NEXT_REVIEW = '2027-01-01'
 /** When the Drug Service register was last verified (shown per card). */
 export const REGISTER_VERIFIED = 'May 2026'

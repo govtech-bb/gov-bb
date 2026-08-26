@@ -4,8 +4,9 @@
  * Single source of truth for the pharmacy finder at
  * /health-and-emergency-services/find-an-open-pharmacy.
  *
- * GENERATED from the GovTech pharmacy prototype dataset (23 July 2026) —
- * do not hand-edit records; regenerate via the conversion script instead.
+ * GENERATED from the GovTech pharmacy prototype dataset (23 July 2026), with
+ * subsequent Drug Service review amendments — do not hand-edit records;
+ * regenerate via the conversion script instead.
  * Provenance: government and Drug Service pharmacies come from the Drug
  * Service register, verified May 2026; 'unconfirmed' entries are drawn from
  * a wider public pharmacy list and have NOT been confirmed with the Drug
@@ -96,7 +97,7 @@ export interface Pharmacy {
   whatsapp?: string
 }
 
-export const PHARMACIES_LAST_UPDATED = '2026-07-23'
+export const PHARMACIES_LAST_UPDATED = '2026-08-25'
 export const PHARMACIES_NEXT_REVIEW = '2027-01-01'
 /** When the Drug Service register was last verified (shown per card). */
 export const REGISTER_VERIFIED = 'May 2026'
@@ -182,7 +183,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     address: 'Oistins Main Road, Oistins, Christ Church',
     phone: '(246) 536-4300',
     hours: {
-      mon: [{ opens: '07:30', closes: '17:30' }],
+      mon: [{ opens: '07:30', closes: '16:30' }],
       tue: [{ opens: '08:15', closes: '16:30' }],
       wed: [{ opens: '08:15', closes: '16:30' }],
       thu: [{ opens: '08:30', closes: '16:30' }],
@@ -272,7 +273,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     address: 'Belleplaine, St. Andrew',
     phone: '(246) 536-4071',
     hours: {
-      mon: [],
+      mon: [{ opens: '08:15', closes: '12:00' }],
       tue: [],
       wed: [{ opens: '08:15', closes: '12:00' }],
       thu: [],
@@ -280,7 +281,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
       sat: [],
       sun: [],
     },
-    notes: 'Open Wednesdays only.',
+    notes: 'Open Mondays and Wednesdays only.',
     routes: 'Route 2 from Bridgetown (Lower Green Terminal)',
     coords: { lat: 13.24567, lon: -59.562925 },
   },
