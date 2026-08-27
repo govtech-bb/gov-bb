@@ -24,7 +24,7 @@ export const OpeningHours: OpeningHoursPrimitive = {
       value:
         "^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) (([01]\\d|2[0-3]):[0-5]\\d) - (?!\\2$)([01]\\d|2[0-3]):[0-5]\\d$",
       error:
-        "Opening and closing hours cannot be the same, for 24 hours, enter 12:00 AM to 11:59 PM",
+        "Enter an opening and a closing time that are not the same, for 24 hours, enter 12:00 AM to 11:59 PM",
     },
   },
 };
