@@ -4,13 +4,6 @@ import type { ServiceIndexEntry } from "./service-index.type";
 
 export const SERVICES_INDEX: ServiceIndexEntry[] = [
   {
-    slug: "apply-environmental-health-food-business-license",
-    title: "Apply for a food business licence",
-    category: "business-trade",
-    formId: "apply-for-food-business-licence",
-    visibility: "preview",
-  },
-  {
     slug: "apply-financial-assistance",
     title: "Apply for financial assistance",
     category: "money-financial-support",
@@ -74,6 +67,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     title: "Apply for exemption from school attendance",
     category: "education",
     visibility: "draft",
+  },
+  {
+    slug: "apply-for-food-business-licence",
+    title: "Apply for a food business licence",
+    category: "business-trade",
+    formId: "apply-for-food-business-licence",
+    visibility: "preview",
   },
   {
     slug: "apply-for-funeral-director-licence",
@@ -153,6 +153,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
+    slug: "apply-for-restaurant-licence",
+    title: "Apply for a restaurant licence",
+    category: "business-trade",
+    formId: "apply-for-restaurant-licence",
+    visibility: "preview",
+  },
+  {
     slug: "apply-for-secondary-school-entry-for-a-non-national-child",
     title: "Apply for secondary school entry for a non-national child",
     category: "education",
@@ -200,13 +207,6 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     title: "Application to Purchase Land or Property",
     category: "housing",
     formId: "nhc-land-property-application",
-    visibility: "preview",
-  },
-  {
-    slug: "apply-to-environmental-health-for-a-restaurant-licence",
-    title: "Apply for a restaurant licence",
-    category: "business-trade",
-    formId: "apply-for-restaurant-licence",
     visibility: "preview",
   },
   {
