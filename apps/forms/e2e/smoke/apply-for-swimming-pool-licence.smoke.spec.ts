@@ -2,7 +2,7 @@
  * apply-for-swimming-pool-licence.smoke.spec.ts
  *
  * Live, on-demand smoke test for the swimming pool licence service
- * (formId `apply-for-swimming-pool-licence`, programme `SWIMMING_POOL_PERMIT`).
+ * (formId `apply-for-swimming-pool-licence`, programme `SWIMMING_POOL_LICENCE`).
  *
  * Drives the REAL form, fills every step with valid @faker-js/faker data,
  * SUBMITS FOR REAL, and asserts the confirmation screen is reached with a

@@ -1,19 +1,19 @@
 {
   "formId": "apply-for-swimming-pool-licence",
   "title": "Apply for a swimming pool licence with Environmental Health",
-  "description": "Apply to Environmental Health for a swimming or wading pool permit",
+  "description": "Apply to Environmental Health for a swimming pool licence",
   "processors": [
     {
       "type": "email",
       "config": {
-        "subject": "Your swimming or wading pool permit application has been received",
+        "subject": "Your application for a swimming pool licence has been received",
         "recipientField": "your-details.email"
       }
     },
     {
       "type": "email",
       "config": {
-        "subject": "A new swimming or wading pool permit application has been received",
+        "subject": "A new application for a swimming pool licence has been received",
         "recipientField": "catchment.mdaEmail"
       }
     },
@@ -22,8 +22,8 @@
       "config": {
         "mapping": {
           "mdaCode": "MOH",
-          "programmeShortCode": "SPP",
-          "programmeCode": "SWIMMING_POOL_PERMIT",
+          "programmeShortCode": "SPL",
+          "programmeCode": "SWIMMING_POOL_LICENCE",
           "applicant": {
             "name": [
               "your-details.first-name",

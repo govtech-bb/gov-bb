@@ -305,14 +305,14 @@ describe("programme codes are unchanged by composition (golden)", () => {
       "St. Philip Polyclinic": "HAIRDRESSER_LICENCE_ST_PHILIP",
     },
     "apply-for-swimming-pool-licence": {
-      "Branford Taitt Polyclinic": "SWIMMING_POOL_PERMIT_BRANFORD_TAITT",
+      "Branford Taitt Polyclinic": "SWIMMING_POOL_LICENCE_BRANFORD_TAITT",
       "David Thompson Health & Social Services Complex":
-        "SWIMMING_POOL_PERMIT_DAVID_THOMPSON",
-      "Eunice Gibson Polyclinic": "SWIMMING_POOL_PERMIT_EUNICE_GIBSON",
-      "Maurice Byer Polyclinic": "SWIMMING_POOL_PERMIT_MAURICE_BYER",
-      "Randal Phillips Polyclinic": "SWIMMING_POOL_PERMIT_RANDAL_PHILLIPS",
-      "Sir Winston Scott Polyclinic": "SWIMMING_POOL_PERMIT_WINSTON_SCOTT",
-      "St. Philip Polyclinic": "SWIMMING_POOL_PERMIT_ST_PHILIP",
+        "SWIMMING_POOL_LICENCE_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "SWIMMING_POOL_LICENCE_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "SWIMMING_POOL_LICENCE_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "SWIMMING_POOL_LICENCE_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "SWIMMING_POOL_LICENCE_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "SWIMMING_POOL_LICENCE_ST_PHILIP",
     },
     "register-guest-property-environmental-health": {
       "Branford Taitt Polyclinic": "GUEST_PROPERTY_BRANFORD_TAITT",
