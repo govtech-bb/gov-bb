@@ -78,11 +78,11 @@
  *    `business-start-date` for `business-expected-start-date`. Both tests are
  *    real submissions, so the suite stays at two; test 1 takes the "yes" path
  *    because `pastOrToday` is the riskier of the two date rules.
- *  - The confirmation step uses generic `nextSteps` copy with no `{polyclinic}`
- *    placeholder, so there is no resolved-catchment name on screen to assert.
- *    Catchment routing still runs (it drives the MDA email), it just isn't
- *    surfaced to the applicant. Don't add a /Polyclinic/ assertion here; it
- *    would fail.
+ *  - The confirmation step's `markdownContent` opens with the `{polyclinic}`
+ *    token, so the resolved-catchment name IS on screen. We assert the
+ *    Environmental Health copy rather than the name itself: which polyclinic
+ *    resolves depends on the faker-picked address, so pinning a specific one
+ *    would flake.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
@@ -538,8 +538,9 @@ async function confirmAndSubmit(page: Page): Promise<void> {
     referenceLabel: "Submission ID",
   });
 
-  // No {polyclinic} placeholder on this recipe's confirmation step — assert the
-  // Environmental Health nextSteps copy instead. See the header note.
+  // The confirmation markdown names the resolved polyclinic's Environmental
+  // Health Department — assert that copy, not a specific polyclinic name. See
+  // the header note.
   await expect(page.getByText(/Environmental Health/).first()).toBeVisible();
 }
 
