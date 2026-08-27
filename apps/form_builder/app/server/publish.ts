@@ -8,6 +8,7 @@ import {
   kebabIdSchema,
   KEBAB_ID_PATTERN,
   KEBAB_ID_ERROR,
+  serializeRecipe,
   type ServiceContractRecipe,
   type ValidationResult,
 } from "@govtech-bb/form-types";
@@ -281,7 +282,7 @@ export const publishRecipe = createServerFn({ method: "POST" })
         const putRes = await putFile(token, {
           path: recipePath,
           message: `Publish ${recipe.formId}`,
-          content: JSON.stringify(recipeToPublish, null, 2) + "\n",
+          content: serializeRecipe(recipeToPublish),
           branch: existingPR.headRef,
           ...(existingSha ? { sha: existingSha } : {}),
         });
@@ -339,7 +340,7 @@ export const publishRecipe = createServerFn({ method: "POST" })
         const putRes = await putFile(token, {
           path: recipePath,
           message: `Publish ${recipe.formId}`,
-          content: JSON.stringify(recipeToPublish, null, 2) + "\n",
+          content: serializeRecipe(recipeToPublish),
           branch,
           ...(existingSha ? { sha: existingSha } : {}),
         });

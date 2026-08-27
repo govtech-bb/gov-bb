@@ -2,7 +2,10 @@ import type { Mock } from "vitest";
 /**
  * @vitest-environment node
  */
-import type { ServiceContractRecipe } from "@govtech-bb/form-types";
+import {
+  serializeRecipe,
+  type ServiceContractRecipe,
+} from "@govtech-bb/form-types";
 
 // Mock the session-cipher module before importing the SUT.
 vi.mock("./session-cipher.server", () => ({
@@ -168,7 +171,7 @@ describe("publishRecipe", () => {
     expect(putBody.message).toBe("Publish passport-renewal");
     expect(putBody.sha).toBe("existing-blob-sha");
     expect(Buffer.from(putBody.content, "base64").toString("utf8")).toBe(
-      JSON.stringify(RECIPE, null, 2) + "\n",
+      serializeRecipe(RECIPE),
     );
     // POST PR
     const prBody = JSON.parse(
@@ -360,7 +363,48 @@ describe("publishRecipe", () => {
     // No existing file → no sha, recipe written verbatim with its minted stamps.
     expect(putBody.sha).toBeUndefined();
     expect(Buffer.from(putBody.content, "base64").toString("utf8")).toBe(
-      JSON.stringify(RECIPE, null, 2) + "\n",
+      serializeRecipe(RECIPE),
+    );
+  });
+
+  it("writes the recipe in canonical key order (#2487)", async () => {
+    // The fixture is deliberately mis-ordered (`version` ahead of the stamps,
+    // `steps` last). Deploy must normalize it, so a recipe hand-edited in one
+    // key order and re-deployed in another yields a diff of the changed lines
+    // instead of the whole file.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(noOpenPRs())
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      )
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" }))
+      .mockResolvedValueOnce(emptyResponse(404)) // no existing file
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } }))
+      .mockResolvedValueOnce(
+        jsonResponse(201, { number: 42, html_url: "https://pr/42" }),
+      );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await publishRecipe({
+      data: { recipe: RECIPE, description: "" },
+      context: { session: SESSION },
+    });
+
+    const putBody = JSON.parse(
+      (fetchMock.mock.calls[4][1] as RequestInit).body as string,
+    );
+    expect(Buffer.from(putBody.content, "base64").toString("utf8")).toBe(
+      `{
+  "formId": "passport-renewal",
+  "title": "Passport Renewal",
+  "description": "Renew your passport",
+  "steps": [],
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-05-22T00:00:00.000Z",
+  "version": "1.2.0"
+}
+`,
     );
   });
 
