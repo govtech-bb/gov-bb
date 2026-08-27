@@ -36,8 +36,8 @@
             "declaration",
             "submission-confirmation"
           ],
-          "programmeCode": "HAIR_BEAUTY_BUSINESS",
-          "programmeShortCode": "HBB"
+          "programmeCode": "HAIR_SALON_LICENCE",
+          "programmeShortCode": "HSL"
         },
         "timeoutMs": 10000,
         "signatureHeader": "X-Webhook-Signature"

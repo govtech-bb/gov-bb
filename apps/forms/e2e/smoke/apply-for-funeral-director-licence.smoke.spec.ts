@@ -3,7 +3,7 @@
  *
  * Live, on-demand smoke test for the Funeral Directors Licence service
  * (formId `apply-for-funeral-director-licence`, programme
- * `FUNERAL_DIRECTOR`).
+ * `FUNERAL_DIRECTOR_LICENCE`).
  *
  * Drives the REAL form, fills every step with valid @faker-js/faker data,
  * SUBMITS FOR REAL, and asserts the confirmation screen is reached with a

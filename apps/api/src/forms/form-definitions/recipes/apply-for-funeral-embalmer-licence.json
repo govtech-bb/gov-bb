@@ -23,9 +23,9 @@
         "method": "POST",
         "signatureHeader": "X-Webhook-Signature",
         "mapping": {
-          "programmeCode": "FUNERAL_EMBALMER",
+          "programmeCode": "FUNERAL_EMBALMER_LICENCE",
           "mdaCode": "MOH",
-          "programmeShortCode": "FER",
+          "programmeShortCode": "FEL",
           "applicant": {
             "name": [
               "personal-details.first-name",

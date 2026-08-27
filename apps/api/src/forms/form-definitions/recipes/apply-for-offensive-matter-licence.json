@@ -16,7 +16,7 @@
         "method": "POST",
         "signatureHeader": "X-Webhook-Signature",
         "mapping": {
-          "programmeCode": "OFFENSIVE_MATTER",
+          "programmeCode": "OFFENSIVE_MATTER_LICENCE",
           "mdaCode": "MOH",
           "programmeShortCode": "OMT",
           "applicant": {

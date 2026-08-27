@@ -2,7 +2,7 @@
  * apply-for-funeral-embalmer-licence.smoke.spec.ts
  *
  * Live, on-demand smoke test for the Embalmer Licence service (formId
- * `apply-for-funeral-embalmer-licence`, programme `FUNERAL_EMBALMER`).
+ * `apply-for-funeral-embalmer-licence`, programme `FUNERAL_EMBALMER_LICENCE`).
  *
  * Drives the REAL form, fills every step with valid @faker-js/faker data,
  * SUBMITS FOR REAL, and asserts the confirmation screen is reached with a

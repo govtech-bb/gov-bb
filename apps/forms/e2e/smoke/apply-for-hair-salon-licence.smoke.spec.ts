@@ -3,7 +3,7 @@
  *
  * Live, on-demand smoke test for the hairdressing / beauty business licence
  * service (formId `apply-for-hair-salon-licence`, programme
- * `HAIR_BEAUTY_BUSINESS`).
+ * `HAIR_SALON_LICENCE`).
  *
  * Drives the REAL form, fills every step with valid @faker-js/faker data,
  * SUBMITS FOR REAL, and asserts the confirmation screen is reached with a
@@ -133,7 +133,7 @@ export function buildData() {
     businessAddressLine2: faker.location.street(),
     businessPostcode: bbPostcode(),
     vehicleLicence: `V-${faker.string.numeric(6)}`,
-    licenceReferenceNumber: `HBB-${faker.string.numeric(5)}`,
+    licenceReferenceNumber: `HSL-${faker.string.numeric(5)}`,
 
     ownerName: `${faker.person.firstName()} ${faker.person.lastName()}`,
     ownerAddressLine1: faker.location.streetAddress(),

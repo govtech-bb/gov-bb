@@ -23,9 +23,9 @@
         "method": "POST",
         "signatureHeader": "X-Webhook-Signature",
         "mapping": {
-          "programmeCode": "FUNERAL_DIRECTOR",
+          "programmeCode": "FUNERAL_DIRECTOR_LICENCE",
           "mdaCode": "MOH",
-          "programmeShortCode": "FDR",
+          "programmeShortCode": "FDL",
           "applicant": {
             "name": [
               "personal-details.first-name",

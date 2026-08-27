@@ -23,9 +23,9 @@
         "method": "POST",
         "signatureHeader": "X-Webhook-Signature",
         "mapping": {
-          "programmeCode": "FUNERAL_HOME",
+          "programmeCode": "FUNERAL_ESTABLISHMENT_LICENCE",
           "mdaCode": "MOH",
-          "programmeShortCode": "FHM",
+          "programmeShortCode": "FEM",
           "applicant": {
             "name": [
               "about-the-applicant.first-name",
