@@ -44,14 +44,14 @@
  *        `property-use-other`; `restaurant-already-open` = "no" reveals
  *        `restaurant-expected-start-date`; the `building-plan-number` show-hide
  *        reveals `tracking-number-instead`.
- *  - `opening-hours` is the fiddly step. `same-hours-every-day` = "yes" reveals
- *    a single `everyday-hours`; "no" reveals one field PER TICKED DAY
- *    (`monday-hours` … `sunday-hours`), each carrying TWO stacked
- *    `fieldConditionalOn` behaviours — "this day is ticked" AND "hours are not
- *    the same every day". Stacked conditions are AND, not OR (see
- *    `checkConditionalOn` in apps/forms/src/lib/form-builder/helpers), so a day
- *    field appears only when both hold. Every hours field is also a `fieldArray`
- *    (min 1, max 3) and pattern-checked as `HH:MM - HH:MM`.
+ *  - `opening-hours` is one weekly field: seven day rows, each "Not open"
+ *    until "Add hours for <Day>" adds a set of native time pickers (up to
+ *    three sets a day). The pickers are reached by aria-label — "<Day>
+ *    opening time" / "<Day> closing time", suffixed ", set N" once a day
+ *    holds more than one set. Each row also offers an "Open 24 hours on
+ *    <Day>" checkbox (stores the 00:00 - 23:59 full-day sentinel), and a
+ *    top toggle collapses Monday-Friday into one shared row. The submitted
+ *    value is one string array of "<Day> HH:MM - HH:MM" entries.
  *  - `your-telephone` is likewise a `fieldArray` (min 1, max 4). Row 0 keeps the
  *    plain `${stepId}_your-telephone` id — only rows 1+ are index-suffixed — so
  *    one `fillField` is enough and the "Add another" button is left alone.
@@ -114,15 +114,15 @@ const GEOCODABLE_ADDRESSES = [
   "Oistins",
 ] as const;
 
-/** `opening-days` option values, in recipe order — one `<day>-hours` field each. */
+/** Day rows of the weekly `opening-hours` field, in render order. */
 const WEEKDAY_VALUES = [
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-  "sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
 ] as const;
 
 /** Parish <select> option values (slugs) from components/parish. */
@@ -360,38 +360,39 @@ export async function fillAboutTheRestaurant(
 }
 
 /**
- * Step 5 — opening hours. With `sameHours` = "yes" one `everyday-hours` field is
- * asked; with "no" one field per ticked day. See the header note on the stacked
- * (AND) conditions behind the per-day fields.
+ * Step 5 — opening hours. One weekly field: for each day with hours, click
+ * "Add hours for <Day>" and set both pickers; a day left alone stays
+ * "Not open". `hoursByDay` values are "HH:MM - HH:MM" strings, one per set,
+ * or the literal "24 hours" to tick that day's "Open 24 hours" checkbox.
+ * Sets are added one at a time because a day's picker labels gain a
+ * ", set N" suffix the moment it holds more than one set.
  */
 export async function fillOpeningHours(
   page: Page,
-  days: readonly string[],
-  sameHours: "yes" | "no",
-  hoursByDay: Record<string, string>,
+  hoursByDay: Partial<Record<(typeof WEEKDAY_VALUES)[number], string[]>>,
 ): Promise<void> {
   const step = expectStep(page, "opening-hours");
   await expect(page.locator("h1")).toContainText("Opening hours");
-  for (const day of days) {
-    await tickCheckbox(page, step, "opening-days", day);
-  }
-  await selectRadio(page, step, "same-hours-every-day", sameHours);
 
-  if (sameHours === "yes") {
-    const everyday = page.locator(`[id="${step}_everyday-hours"]`);
-    await expect(everyday).toBeVisible({ timeout: STEP_TIMEOUT });
-    await everyday.fill(hoursByDay.everyday);
-  } else {
-    for (const day of days) {
-      const field = page.locator(`[id="${step}_${day}-hours"]`);
-      await expect(field).toBeVisible({ timeout: STEP_TIMEOUT });
-      await field.fill(hoursByDay[day]);
-    }
-    // A day that was never ticked keeps its hours field out of the step.
-    for (const day of WEEKDAY_VALUES.filter((d) => !days.includes(d))) {
-      await expect(page.locator(`[id="${step}_${day}-hours"]`)).toBeHidden();
+  for (const [day, sets] of Object.entries(hoursByDay)) {
+    for (let i = 0; i < sets.length; i++) {
+      if (sets[i] === "24 hours") {
+        await page
+          .getByRole("checkbox", { name: `Open 24 hours on ${day}` })
+          .check();
+        continue;
+      }
+      await page.getByRole("button", { name: `Add hours for ${day}` }).click();
+      const suffix = sets.length > 1 && i > 0 ? `, set ${i + 1}` : "";
+      const [start, end] = sets[i].split(" - ");
+      await page.getByLabel(`${day} opening time${suffix}`).fill(start);
+      await page.getByLabel(`${day} closing time${suffix}`).fill(end);
     }
   }
+
+  // A day with no hours reads "Not open".
+  const closedDays = WEEKDAY_VALUES.filter((d) => !(d in hoursByDay));
+  await expect(page.getByText("Not open")).toHaveCount(closedDays.length);
 
   await advance(page, step);
 }
@@ -553,12 +554,13 @@ test.describe("Apply for a Restaurant Licence — Live Smoke", () => {
     await fillAboutYou(page, data, "myself");
     await fillAboutTheApplication(page, data, "owner", "first-time");
     await fillAboutTheRestaurant(page, data, "yes", "owned");
-    await fillOpeningHours(
-      page,
-      ["monday", "tuesday", "wednesday", "thursday", "friday"],
-      "yes",
-      { everyday: "09:00 - 17:00" },
-    );
+    await fillOpeningHours(page, {
+      Monday: ["09:00 - 17:00"],
+      Tuesday: ["09:00 - 17:00"],
+      Wednesday: ["09:00 - 17:00"],
+      Thursday: ["09:00 - 17:00"],
+      Friday: ["09:00 - 17:00"],
+    });
     // All preparation on site, so `location-food-drink-prepared` stays out.
     await fillFoodPreparation(page, "at-restaurant");
     await fillPeopleWorkingAtTheFoodBusiness(page, data);
@@ -595,9 +597,9 @@ test.describe("Apply for a Restaurant Licence — Live Smoke", () => {
     await fillApplicantDetails(page, data, "individual");
     await fillAboutTheApplication(page, data, "something-else", "renewal");
     await fillAboutTheRestaurant(page, data, "no", "something-else");
-    await fillOpeningHours(page, ["monday", "saturday"], "no", {
-      monday: "07:30 - 15:00",
-      saturday: "10:00 - 22:00",
+    await fillOpeningHours(page, {
+      Monday: ["07:30 - 15:00"],
+      Saturday: ["10:00 - 14:00", "18:00 - 22:00"],
     });
     await fillFoodPreparation(page, "commercial-kitchen");
     await fillOtherEstablishment(page, data);

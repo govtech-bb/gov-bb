@@ -616,6 +616,20 @@ describe("EmailBodyBuilder", () => {
       expect(field?.value).toBe("Female");
     });
 
+    it("joins multi-value string answers with ', '", async () => {
+      // A fieldArray / opening-hours answer is a plain string[]: it must
+      // join like every other list, not String()'s bare-comma join.
+      const payload = makePayload();
+      (payload.values.contact as Record<string, unknown>).phone = [
+        "Monday 09:00 - 17:00",
+        "Tuesday 09:00 - 17:00",
+      ];
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[1].fields.find((f) => f.label === "Phone");
+
+      expect(field?.value).toBe("Monday 09:00 - 17:00, Tuesday 09:00 - 17:00");
+    });
+
     it("resolves checkbox values to joined option labels", async () => {
       const ctx = await builder.build(makePayload());
       const field = ctx.sections[0].fields.find((f) => f.label === "Interests");

@@ -8,15 +8,14 @@ import { validateField } from "@govtech-bb/form-validation";
 import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
 import { hydrateForm, type Resolver } from "../../registry/resolution";
 
-// This recipe leans entirely on FIELD-level behaviours: each day's opening
-// hours are a gate plus a fieldArray on one text field, and three other
-// questions only appear for a particular answer. Element behaviours and
-// validations reach the served contract through applyFieldOverrides, so a change
-// there would serve all seven hours fields at once (unrepeatable, and with the
-// 09:00 - 17:00 format unenforced) and show the conditional questions to
-// everyone. validate-recipes and recipe-invariants.spec.ts both read the file on
-// disk, so neither can see that. This spec hydrates the real recipe and asserts
-// the wiring survives.
+// This recipe leans on FIELD-level behaviours: opening hours are one weekly
+// `opening-hours` field whose format rule reaches the contract through
+// applyFieldOverrides, and three other questions only appear for a particular
+// answer. A change there would serve the hours with the "Day HH:MM - HH:MM"
+// format unenforced and show the conditional questions to everyone.
+// validate-recipes and recipe-invariants.spec.ts both read the file on disk,
+// so neither can see that. This spec hydrates the real recipe and asserts the
+// wiring survives.
 const RECIPE_PATH = path.resolve(
   __dirname,
   "recipes/apply-for-restaurant-licence.json",
@@ -55,91 +54,47 @@ async function hydratedFields(stepId: string): Promise<HydratedField[]> {
   return (await hydratedStep(stepId)).elements;
 }
 
-const DAYS = [
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-  "sunday",
-] as const;
-
-it.each(DAYS)(
-  "shows %s's hours only when that day is selected and the hours differ, and lets them repeat",
-  async (day) => {
-    const fields = await hydratedFields("opening-hours");
-    const field = fields.find((f) => f.fieldId === `${day}-hours`);
-    expect(field, `${day}-hours is missing`).toBeDefined();
-    // The two conditions AND together, so a per-day field appears only when
-    // that day is ticked AND the applicant said the hours are not the same
-    // every day. Were they OR'd, every ticked day would show its own field
-    // alongside the shared one and the applicant would answer twice.
-    expect(field!.behaviours).toEqual([
-      expect.objectContaining({
-        type: "fieldConditionalOn",
-        targetFieldId: "opening-days",
-        operator: "in",
-        value: [day],
-      }),
-      expect.objectContaining({
-        type: "fieldConditionalOn",
-        targetFieldId: "same-hours-every-day",
-        operator: "equal",
-        value: "no",
-      }),
-      expect.objectContaining({ type: "fieldArray", min: 1, max: 3 }),
-    ]);
-  },
-);
-
-// The shared field is the other half of that gate: most restaurants keep one
-// set of hours, so they answer once here instead of once per open day.
-it("shows the shared hours only when the hours are the same every day", async () => {
+// The step is one weekly field: seven day rows, native time pickers, value
+// entries shaped "Monday 09:00 - 17:00". The old shape (a days checkbox, a
+// "same hours every day?" gate and seven gated per-day text fields) is gone —
+// were any of it still served, the applicant would answer the question twice.
+it("serves opening hours as the single weekly field", async () => {
   const fields = await hydratedFields("opening-hours");
-  const field = fields.find((f) => f.fieldId === "everyday-hours");
-  expect(field, "everyday-hours is missing").toBeDefined();
-  expect(field!.behaviours).toEqual([
-    expect.objectContaining({
-      type: "fieldConditionalOn",
-      targetFieldId: "same-hours-every-day",
-      operator: "equal",
-      value: "yes",
-    }),
-    expect.objectContaining({ type: "fieldArray", min: 1, max: 3 }),
-  ]);
+  expect(fields.map((f) => f.fieldId)).toEqual(["opening-hours"]);
+  expect(fields[0].htmlType).toBe("opening-hours");
 });
 
-// The hours are free text, so "09:00 - 17:00" is only as good as the pattern
-// rule — and it has to hold for EVERY entry the applicant adds, not just the
-// first. Run the real validator over the hydrated field to prove both.
+// A restaurant that is never open cannot be licensed to open: the required
+// rule is what rejects a week of "Not open" rows.
+it("requires hours for at least one day", async () => {
+  const fields = await hydratedFields("opening-hours");
+  const field = fields.find((f) => f.fieldId === "opening-hours");
+  expect(field, "opening-hours is missing").toBeDefined();
+
+  const errors = validateField(field as unknown as Primitive, [], {});
+  expect(errors).toEqual(["Add opening hours for at least one day"]);
+});
+
+// The renderer composes each entry from two native time pickers, so the
+// pattern rule is the guard against a set of hours that was added but never
+// completed — and it has to hold for EVERY entry the applicant adds, not just
+// the first. Run the real validator over the hydrated field to prove both.
 it.each([
-  [["09:00 - 17:00"], true],
-  [["9:00-17:00"], true], // a missing zero is a typing habit, not a different answer
-  [["11:00 - 15:00", "18:00 - 22:00"], true], // a second set of hours
-  [["11:00 - 15:00", "9am to 5pm"], false], // ...which is still checked
-  [["24:00 - 25:00"], false],
-  [["all day"], false],
-])("validates %j as Monday's hours -> %s", async (entries, valid) => {
+  [["Monday 09:00 - 17:00"], true],
+  [["Monday 11:00 - 15:00", "Monday 18:00 - 22:00"], true], // a second set of hours
+  [["Friday 18:00 - 02:00"], true], // overnight service is a real answer
+  [["Monday 00:00 - 23:59"], true], // the "Open 24 hours" checkbox's sentinel
+  [["Monday 09:00 -"], false], // added but never completed
+  [["Monday 11:00 - 15:00", "Monday 18:00 -"], false], // ...which is still checked
+  [["Monday 9am to 5pm"], false],
+  [["Someday 09:00 - 17:00"], false],
+])("validates %j as opening hours -> %s", async (entries, valid) => {
   const fields = await hydratedFields("opening-hours");
-  const monday = fields.find((f) => f.fieldId === "monday-hours");
-  expect(monday, "monday-hours is missing").toBeDefined();
+  const field = fields.find((f) => f.fieldId === "opening-hours");
+  expect(field, "opening-hours is missing").toBeDefined();
 
-  const errors = validateField(monday as unknown as Primitive, entries, {});
+  const errors = validateField(field as unknown as Primitive, entries, {});
   expect(errors, errors.join("; ")).toHaveLength(valid ? 0 : 1);
-});
-
-// The shared field is a second copy of that rule. The table above proves what
-// the rule accepts; this proves both fields are running the same one, so an
-// applicant is not held to a different standard depending on which branch of
-// the gate they took.
-it("holds the shared hours to the same format rule as a per-day one", async () => {
-  const fields = await hydratedFields("opening-hours");
-  const patternOf = (fieldId: string) =>
-    fields.find((f) => f.fieldId === fieldId)?.validations?.pattern?.value;
-
-  expect(patternOf("everyday-hours")).toBeDefined();
-  expect(patternOf("everyday-hours")).toBe(patternOf("monday-hours"));
 });
 
 // Each entry: the step holding the field, the gated field, and the answer that
