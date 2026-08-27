@@ -390,7 +390,10 @@ export class EmailBodyBuilder {
       }
 
       default:
-        return String(raw);
+        // Multi-value string answers (fieldArray, opening-hours entries)
+        // join like every other list in the email — ", ", not the bare
+        // comma String() would produce.
+        return Array.isArray(raw) ? raw.map(String).join(", ") : String(raw);
     }
   }
 }

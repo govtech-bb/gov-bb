@@ -278,6 +278,98 @@
   border: 1px solid var(--color-yellow-00);
 }
 
+/* ---- Opening hours weekly grid (#2358) ------------------------------------
+   One row per day: day name | sets of hours (or "Not open") | Add hours.
+   Each set is two native time pickers, and Monday-Friday can collapse into
+   one shared row. Colour, spacing and type all come from the design-system
+   tokens. */
+.opening-hours {
+  /* The height of a single-line control row ("Not open", the Add hours
+     button) that day names centre against. */
+  --oh-control-height: calc(
+    var(--spacing-s) * 2 + 1.5rem + var(--border-width-form, 2px) * 2
+  );
+}
+
+/* The "same hours every weekday" toggle sits between the hint and the grid. */
+.opening-hours__same-weekdays {
+  margin-block: var(--spacing-s);
+}
+
+.opening-hours__week {
+  margin-top: var(--spacing-s);
+  border-top: 1px solid var(--color-grey-00);
+}
+
+.opening-hours__day {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr) auto;
+  column-gap: var(--spacing-s);
+  row-gap: var(--spacing-xs);
+  align-items: start;
+  padding-block: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-grey-00);
+}
+
+.opening-hours__day-name {
+  font-weight: var(--font-weight-bold);
+}
+
+.opening-hours__day-name,
+.opening-hours__not-open {
+  display: flex;
+  align-items: center;
+  min-height: var(--oh-control-height);
+}
+
+.opening-hours__not-open {
+  color: var(--color-text-muted);
+}
+
+.opening-hours__sets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.opening-hours__set {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+/* The wrapper is full-width by default; shrink it to the picker. */
+.opening-hours__set .govbb-input-wrapper {
+  width: auto;
+}
+
+.opening-hours__set input[type="time"] {
+  width: 10rem;
+}
+
+/* On small screens each day stacks: name, its sets of hours, then the Add
+   hours button — the side-by-side grid leaves too little room for a pair of
+   pickers. Slimmer picker padding keeps "start to end" on one line. */
+@media (max-width: 40rem) {
+  .opening-hours__day {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .opening-hours__day-name {
+    min-height: 0;
+  }
+
+  .opening-hours__add {
+    justify-self: start;
+  }
+
+  .opening-hours__set input[type="time"] {
+    width: 9.25rem;
+    padding-inline: var(--spacing-xs);
+  }
+}
+
 /* ---- Submission confirmation panels -------------------------------------- */
 /* Full-width wrapper for the confirmation step — no container/padding so the
  * banner can bleed to the viewport edges; inner sections supply their own

@@ -444,4 +444,21 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
       hasReference: false,
     },
   ],
+  // Weekly opening hours: the renderer composes "Day HH:MM - HH:MM" entries,
+  // so required ("at least one day") and pattern (a complete set of hours)
+  // are the only rules that make sense.
+  "opening-hours": [
+    {
+      type: "required",
+      label: "Required",
+      hasValue: false,
+      hasReference: false,
+    },
+    {
+      type: "pattern",
+      label: "Pattern",
+      hasValue: true,
+      hasReference: false,
+    },
+  ],
 };

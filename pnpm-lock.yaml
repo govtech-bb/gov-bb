@@ -214,7 +214,7 @@ importers:
         version: 4.22.4
       typeorm:
         specifier: ^0.3.31
-        version: 0.3.31(babel-plugin-macros@3.1.0)(pg@8.22.0)(supports-color@7.2.0)(ts-node@10.9.2(@swc/core@1.15.41)(@types/node@24.13.2)(typescript@5.9.3))
+        version: 0.3.31(babel-plugin-macros@3.1.0)(pg@8.22.0)(ts-node@10.9.2(@swc/core@1.15.41)(@types/node@24.13.2)(typescript@5.9.3))
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -371,7 +371,7 @@ importers:
         version: 6.5.0(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)
       '@nestjs/typeorm':
         specifier: ^11.0.0
-        version: 11.0.2(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.31(babel-plugin-macros@3.1.0)(pg@8.22.0)(ts-node@10.9.2(@swc/core@1.15.46)(@types/node@24.13.3)(typescript@5.9.3)))
+        version: 11.0.2(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.31(babel-plugin-macros@3.1.0)(pg@8.22.0)(supports-color@7.2.0)(ts-node@10.9.2(@swc/core@1.15.46)(@types/node@24.13.3)(typescript@5.9.3)))
       '@opentelemetry/api':
         specifier: ^1.9.1
         version: 1.9.1
@@ -437,7 +437,7 @@ importers:
         version: 7.8.2
       typeorm:
         specifier: ^0.3.31
-        version: 0.3.31(babel-plugin-macros@3.1.0)(pg@8.22.0)(ts-node@10.9.2(@swc/core@1.15.46)(@types/node@24.13.3)(typescript@5.9.3))
+        version: 0.3.31(babel-plugin-macros@3.1.0)(pg@8.22.0)(supports-color@7.2.0)(ts-node@10.9.2(@swc/core@1.15.46)(@types/node@24.13.3)(typescript@5.9.3))
       uuid:
         specifier: ^11.1.1
         version: 11.1.1
@@ -1216,7 +1216,7 @@ importers:
         version: link:../form-types
       typeorm:
         specifier: ^0.3.31
-        version: 0.3.31(babel-plugin-macros@3.1.0)(pg@8.22.0)(ts-node@10.9.2(@swc/core@1.15.46)(@types/node@24.13.3)(typescript@5.9.3))
+        version: 0.3.31(babel-plugin-macros@3.1.0)(pg@8.22.0)(supports-color@7.2.0)(ts-node@10.9.2(@swc/core@1.15.46)(@types/node@24.13.3)(typescript@5.9.3))
     devDependencies:
       '@types/pg':
         specifier: ^8.20.0
@@ -1287,6 +1287,9 @@ importers:
       '@govtech-bb/expressions':
         specifier: workspace:*
         version: link:../expressions
+      '@govtech-bb/form-types':
+        specifier: workspace:*
+        version: link:../form-types
       libphonenumber-js:
         specifier: ^1.13.5
         version: 1.13.7
@@ -11380,13 +11383,13 @@ snapshots:
       '@nestjs/core': 11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       reflect-metadata: 0.2.2
 
-  '@nestjs/typeorm@11.0.2(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.31(babel-plugin-macros@3.1.0)(pg@8.22.0)(ts-node@10.9.2(@swc/core@1.15.46)(@types/node@24.13.3)(typescript@5.9.3)))':
+  '@nestjs/typeorm@11.0.2(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.31(babel-plugin-macros@3.1.0)(pg@8.22.0)(supports-color@7.2.0)(ts-node@10.9.2(@swc/core@1.15.46)(@types/node@24.13.3)(typescript@5.9.3)))':
     dependencies:
       '@nestjs/common': 11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/core': 11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       reflect-metadata: 0.2.2
       rxjs: 7.8.2
-      typeorm: 0.3.31(babel-plugin-macros@3.1.0)(pg@8.22.0)(ts-node@10.9.2(@swc/core@1.15.46)(@types/node@24.13.3)(typescript@5.9.3))
+      typeorm: 0.3.31(babel-plugin-macros@3.1.0)(pg@8.22.0)(supports-color@7.2.0)(ts-node@10.9.2(@swc/core@1.15.46)(@types/node@24.13.3)(typescript@5.9.3))
 
   '@noble/hashes@1.8.0': {}
 
@@ -18779,7 +18782,31 @@ snapshots:
 
   typedarray@0.0.6: {}
 
-  typeorm@0.3.31(babel-plugin-macros@3.1.0)(pg@8.22.0)(supports-color@7.2.0)(ts-node@10.9.2(@swc/core@1.15.41)(@types/node@24.13.2)(typescript@5.9.3)):
+  typeorm@0.3.31(babel-plugin-macros@3.1.0)(pg@8.22.0)(supports-color@7.2.0)(ts-node@10.9.2(@swc/core@1.15.46)(@types/node@24.13.3)(typescript@5.9.3)):
+    dependencies:
+      '@sqltools/formatter': 1.2.5
+      ansis: 4.3.1
+      app-root-path: 3.1.0
+      buffer: 6.0.3
+      dayjs: 1.11.21
+      debug: 4.4.3(supports-color@7.2.0)
+      dedent: 1.7.2(babel-plugin-macros@3.1.0)
+      dotenv: 16.6.1
+      glob: 10.5.0
+      reflect-metadata: 0.2.2
+      sha.js: 2.4.12
+      sql-highlight: 6.1.0
+      tslib: 2.8.1
+      uuid: 11.1.1
+      yargs: 17.7.3
+    optionalDependencies:
+      pg: 8.22.0
+      ts-node: 10.9.2(@swc/core@1.15.46)(@types/node@24.13.3)(typescript@5.9.3)
+    transitivePeerDependencies:
+      - babel-plugin-macros
+      - supports-color
+
+  typeorm@0.3.31(babel-plugin-macros@3.1.0)(pg@8.22.0)(ts-node@10.9.2(@swc/core@1.15.41)(@types/node@24.13.2)(typescript@5.9.3)):
     dependencies:
       '@sqltools/formatter': 1.2.5
       ansis: 4.3.1
@@ -18823,30 +18850,6 @@ snapshots:
     optionalDependencies:
       pg: 8.22.0
       ts-node: 10.9.2(@swc/core@1.15.46)(@types/node@24.13.2)(typescript@5.9.3)
-    transitivePeerDependencies:
-      - babel-plugin-macros
-      - supports-color
-
-  typeorm@0.3.31(babel-plugin-macros@3.1.0)(pg@8.22.0)(ts-node@10.9.2(@swc/core@1.15.46)(@types/node@24.13.3)(typescript@5.9.3)):
-    dependencies:
-      '@sqltools/formatter': 1.2.5
-      ansis: 4.3.1
-      app-root-path: 3.1.0
-      buffer: 6.0.3
-      dayjs: 1.11.21
-      debug: 4.4.3(supports-color@7.2.0)
-      dedent: 1.7.2(babel-plugin-macros@3.1.0)
-      dotenv: 16.6.1
-      glob: 10.5.0
-      reflect-metadata: 0.2.2
-      sha.js: 2.4.12
-      sql-highlight: 6.1.0
-      tslib: 2.8.1
-      uuid: 11.1.1
-      yargs: 17.7.3
-    optionalDependencies:
-      pg: 8.22.0
-      ts-node: 10.9.2(@swc/core@1.15.46)(@types/node@24.13.3)(typescript@5.9.3)
     transitivePeerDependencies:
       - babel-plugin-macros
       - supports-color

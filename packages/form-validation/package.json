@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@govtech-bb/expressions": "workspace:*",
+    "@govtech-bb/form-types": "workspace:*",
     "libphonenumber-js": "^1.13.5",
     "luxon": "^3.7.2"
   }

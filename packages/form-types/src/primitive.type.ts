@@ -24,6 +24,7 @@ export const htmlTypesSchema = z.enum([
   "select",
   "show-hide",
   "address-lookup",
+  "opening-hours",
   "content",
 ]);
 export type HtmlTypes = z.infer<typeof htmlTypesSchema>;
@@ -214,6 +215,17 @@ export type AddressLookupPrimitive = z.infer<
   typeof addressLookupPrimitiveSchema
 >;
 
+// A weekly opening-hours grid (#2358): seven day rows, each holding zero or
+// more sets of hours entered through native time pickers. The submitted value
+// is a string array of "Monday 09:00 - 17:00" entries — one per set of hours,
+// days with no entries are simply absent — so ADR 0069's one-field-per-pair
+// invariant holds and array validation, check-your-answers and payload
+// rendering treat it like any other multi-value string field.
+export const openingHoursPrimitiveSchema = basePrimitiveSchema.extend({
+  htmlType: z.literal("opening-hours"),
+});
+export type OpeningHoursPrimitive = z.infer<typeof openingHoursPrimitiveSchema>;
+
 // A non-field static content block: renders markdown guidance (inset callout,
 // plain paragraph, amber warning, or a collapsible details disclosure). Carries
 // no submitted value — the renderer draws it outside the form-field wrapper, so
@@ -240,6 +252,7 @@ export const primitiveSchema = z.discriminatedUnion("htmlType", [
   filePrimitiveSchema,
   showHidePrimitiveSchema,
   addressLookupPrimitiveSchema,
+  openingHoursPrimitiveSchema,
   contentPrimitiveSchema,
 ]);
 export type Primitive = z.infer<typeof primitiveSchema>;

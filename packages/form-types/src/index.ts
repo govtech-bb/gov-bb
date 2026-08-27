@@ -18,6 +18,7 @@ export {
   radioPrimitiveSchema,
   filePrimitiveSchema,
   showHidePrimitiveSchema,
+  openingHoursPrimitiveSchema,
   contentPrimitiveSchema,
   primitiveSchema,
   fieldOverridesSchema,
@@ -44,6 +45,7 @@ export type {
   CheckboxAccordionPrimitive,
   ShowHidePrimitive,
   AddressLookupPrimitive,
+  OpeningHoursPrimitive,
   ContentPrimitive,
   ContentVariant,
   Primitive,
@@ -104,7 +106,11 @@ export type { SubmissionValues } from "./submission.type";
 
 export type { ApiResponseShape } from "./api-response.type";
 
-export { valueIsEmpty, isDateComplete } from "./value-empty";
+export {
+  valueIsEmpty,
+  isDateComplete,
+  isAllBlankStringArray,
+} from "./value-empty";
 
 export {
   assembleStepKeyedValues,
