@@ -58,12 +58,13 @@
  *    the picked suggestion carried.
  *  - Both `documents` uploads (`passport-photo`, `medical-certificate`) are
  *    required single-file fields, so each needs its own confirmed upload.
- *  - UNLIKE apply-for-hotel-licence, this recipe's confirmation step uses
- *    generic `nextSteps` copy and no `{polyclinic}` placeholder, so there is no
- *    resolved-catchment name on the confirmation screen to assert. Catchment
- *    routing still runs (it drives the MDA email), it just isn't surfaced to
- *    the applicant — so these tests assert the Environmental Health copy
- *    instead. Don't add a /Polyclinic/ assertion here; it would fail.
+ *  - LIKE apply-for-hotel-licence, this recipe's confirmation step opens its
+ *    `markdownContent` with the `{polyclinic}` token, so the resolved-catchment
+ *    name IS on screen. Which polyclinic resolves depends on the faker-picked
+ *    address, so pinning a specific name would flake — and a /Polyclinic/
+ *    match proves nothing here, because the copy's Contact section lists all
+ *    seven by name regardless. What does prove resolution ran is the ABSENCE of
+ *    the generic "your local polyclinic" fallback.
  *  - There is no National Registration Number on this form, so no Maskito-masked
  *    field to type digit-by-digit.
  */
@@ -271,9 +272,12 @@ async function confirmAndSubmit(page: Page): Promise<void> {
     referenceLabel: "Submission ID",
   });
 
-  // No {polyclinic} placeholder on this recipe's confirmation step — assert the
-  // Environmental Health nextSteps copy instead. See the header note.
+  // The confirmation markdown names the resolved polyclinic's Environmental
+  // Health Department. The generic "your local polyclinic" fallback means
+  // catchment resolution failed — which would also break the polyclinic's copy
+  // of the application — so assert it is absent. See the header note.
   await expect(page.getByText(/Environmental Health/).first()).toBeVisible();
+  await expect(page.getByText("your local polyclinic")).toHaveCount(0);
 }
 
 test.describe("Hairdresser Licence Application — Live Smoke", () => {
