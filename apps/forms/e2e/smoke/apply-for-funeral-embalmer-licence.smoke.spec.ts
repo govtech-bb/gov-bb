@@ -84,11 +84,11 @@
  *    for, which 400'd and left a required field impossible to fill. Upload
  *    typed files here; the untyped-file fallback itself is covered by
  *    src/lib/api/files.spec.ts.
- *  - The confirmation step's `nextSteps` copy has no `{polyclinic}`
- *    placeholder, so there is no resolved-catchment name on screen to assert.
- *    Catchment routing still runs — it picks the polyclinic that gets the MDA
- *    email and composes the CaMS programme code — it just isn't surfaced to
- *    the applicant. Don't add a /Polyclinic/ assertion here; it would fail.
+ *  - The confirmation step's `markdownContent` opens with the `{polyclinic}`
+ *    token, so the resolved-catchment name IS on screen. We assert the
+ *    Environmental Health copy rather than the name itself: which polyclinic
+ *    resolves depends on the faker-picked address, so pinning a specific one
+ *    would flake.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
@@ -318,8 +318,9 @@ async function confirmAndSubmit(page: Page): Promise<void> {
     referenceLabel: "Submission ID",
   });
 
-  // No {polyclinic} placeholder on this recipe's confirmation step — assert
-  // the Environmental Health nextSteps copy instead. See the header note.
+  // The confirmation markdown names the resolved polyclinic's Environmental
+  // Health Department — assert that copy, not a specific polyclinic name. See
+  // the header note.
   await expect(page.getByText(/Environmental Health/).first()).toBeVisible();
 }
 
