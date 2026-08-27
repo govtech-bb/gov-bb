@@ -10,7 +10,7 @@ import { hydrateForm, type Resolver } from "../../registry/resolution";
 
 // This recipe leans on FIELD-level behaviours: opening hours are one weekly
 // `opening-hours` field whose format rule reaches the contract through
-// applyFieldOverrides, and three other questions only appear for a particular
+// applyFieldOverrides, and five other questions only appear for a particular
 // answer. A change there would serve the hours with the "Day HH:MM - HH:MM"
 // format unenforced and show the conditional questions to everyone.
 // validate-recipes and recipe-invariants.spec.ts both read the file on disk,
@@ -108,6 +108,27 @@ it.each([
 // Each entry: the step holding the field, the gated field, and the answer that
 // reveals it.
 const GATED_FIELDS: [string, string, Record<string, unknown>][] = [
+  // The applicant's own address splits on country — a parish for Barbados, a
+  // free-text town or district for anywhere else. Ungate either one and the
+  // step asks for both, which is two answers to one question.
+  [
+    "about-you",
+    "parish",
+    {
+      targetFieldId: "your-country",
+      operator: "equal",
+      value: "barbados",
+    },
+  ],
+  [
+    "about-you",
+    "town-district",
+    {
+      targetFieldId: "your-country",
+      operator: "notEqual",
+      value: "barbados",
+    },
+  ],
   [
     "about-applicant",
     "relationship-other",
@@ -166,7 +187,6 @@ it("serves the relationship question as a dropdown, not six radios", async () =>
 // alone would miss a merge that dropped it.
 it.each([
   ["about-you", "your-address-line-2"],
-  ["applicant-details", "applicant-address-line-2"],
   ["about-restaurant", "restaurant-address-line-2"],
   ["location-food-drink-prepared", "other-establishment-address-2"],
 ])("serves %s.%s as optional", async (stepId, fieldId) => {
