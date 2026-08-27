@@ -26,7 +26,9 @@ This applies whether you provide services at a business location, from home, at 
 
 You will need:
 
+-   your current hairdresser licence number (if renewing)
 -   a recent passport-size photograph
+-   scanned copy of national identification card
 -   a medical certificate of fitness from a registered medical practitioner
 
 Note: Your passport-size photograph is valid for 5 years.
@@ -43,8 +45,8 @@ There are 2 ways to apply for a hairdresser licence licence. You can:
 
 1.  **Apply for a licence online.**
     
-    Allow about 5-10 minutes to complete the form.  
-
+    Allow about 5-10 minutes to complete the form.
+    
     <a data-start-link>Start now</a>
     
 2.  **Get a paper application from the polyclinic**<br />
