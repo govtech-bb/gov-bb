@@ -89,7 +89,7 @@
           "ref": "components/last-name"
         },
         {
-          "ref": "components/address",
+          "ref": "components/address-lookup",
           "overrides": {
             "label": "Address line 1",
             "fieldId": "your-address-line-1",
@@ -98,6 +98,12 @@
                 "error": "Enter your address",
                 "value": true
               }
+            },
+            "hint": "Start typing your address and choose it from the list.",
+            "geocodeTargets": {
+              "line2FieldId": "your-address-line-2",
+              "parishFieldId": "parish",
+              "coordinatesFieldId": "your-address-coordinates"
             }
           }
         },
@@ -117,6 +123,21 @@
           "ref": "components/parish"
         },
         {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "your-address-coordinates",
+            "label": "Home address coordinates",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "ui": {
+              "hidden": true
+            }
+          }
+        },
+        {
           "ref": "components/email"
         },
         {
@@ -133,6 +154,29 @@
       "title": "Where is the pool?",
       "elements": [
         {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "pool-same-address",
+            "label": "Is the pool at the address you just gave us?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select an option"
+              }
+            }
+          }
+        },
+        {
           "ref": "components/address-lookup",
           "overrides": {
             "fieldId": "pool-address-line-1",
@@ -148,7 +192,17 @@
               "line2FieldId": "pool-address-line-2",
               "parishFieldId": "pool-parish",
               "coordinatesFieldId": "pool-address-coordinates"
-            }
+            },
+            "behaviours": [
+              {
+                "type": "copyFrom",
+                "operator": "equal",
+                "value": "yes",
+                "targetFieldId": "pool-same-address",
+                "sourceStepId": "your-details",
+                "sourceFieldId": "your-address-line-1"
+              }
+            ]
           }
         },
         {
@@ -160,7 +214,17 @@
               "required": {
                 "value": false
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "copyFrom",
+                "operator": "equal",
+                "value": "yes",
+                "targetFieldId": "pool-same-address",
+                "sourceStepId": "your-details",
+                "sourceFieldId": "your-address-line-2"
+              }
+            ]
           }
         },
         {
@@ -173,7 +237,17 @@
                 "value": true,
                 "error": "Select the parish where the pool is"
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "copyFrom",
+                "operator": "equal",
+                "value": "yes",
+                "targetFieldId": "pool-same-address",
+                "sourceStepId": "your-details",
+                "sourceFieldId": "parish"
+              }
+            ]
           }
         },
         {
@@ -188,7 +262,17 @@
             },
             "ui": {
               "hidden": true
-            }
+            },
+            "behaviours": [
+              {
+                "type": "copyFrom",
+                "operator": "equal",
+                "value": "yes",
+                "targetFieldId": "pool-same-address",
+                "sourceStepId": "your-details",
+                "sourceFieldId": "your-address-coordinates"
+              }
+            ]
           }
         }
       ],
@@ -545,7 +629,7 @@
     }
   ],
   "createdAt": "2026-08-25T00:10:51.219Z",
-  "updatedAt": "2026-08-26T00:00:00.000Z",
+  "updatedAt": "2026-08-26T01:00:00.000Z",
   "catchmentRouting": {
     "coordinatesField": "pool-location.pool-address-coordinates",
     "parishField": "pool-location.pool-parish"

@@ -30,6 +30,9 @@ export interface ClientPrimitive {
   hint?: string;
   defaultValue?: unknown;
   disabled: boolean;
+  /** Set at render time by a matching `copyFrom` mirror (#2507): the value is
+   * derived from another field, so the input is shown but not editable. */
+  readOnly?: boolean;
   hidden: boolean;
   conditionallyHidden: boolean;
   options?: Option[];

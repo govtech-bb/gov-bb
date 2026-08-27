@@ -6,6 +6,10 @@ import {
   FormValues,
 } from "@forms/types";
 import FieldRenderer, { InsetFieldEntry } from "./field-renderer";
+import {
+  applyMirrorReadOnly,
+  useCopyFromMirrors,
+} from "../lib/use-copy-from-mirrors";
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -401,6 +405,12 @@ function ActiveStep({
   navigateToStep,
   completeAndContinue,
 }: ActiveStepProps) {
+  // Fields whose answer is mirrored from another field by a `copyFrom`
+  // behaviour (#2507) — e.g. the pool address while "same address as yours?"
+  // says yes. The hook keeps form state in step with the source; the fields
+  // render read-only because their value is derived, not typed.
+  const mirroredFieldIds = useCopyFromMirrors(form, visibleSteps);
+
   // A field may carry `conditionalLabel` overrides (#2521) that reword it off
   // an earlier answer, so its label — like the step title below — has to
   // recompute when the watched value changes. Only fields that actually carry
@@ -429,12 +439,15 @@ function ActiveStep({
   );
   const currentFields = React.useMemo(
     () =>
-      currentStep.fields.map((field) =>
-        resolvedLabels[field.id]
-          ? { ...field, label: resolvedLabels[field.id] }
-          : field,
+      applyMirrorReadOnly(
+        currentStep.fields.map((field) =>
+          resolvedLabels[field.id]
+            ? { ...field, label: resolvedLabels[field.id] }
+            : field,
+        ),
+        mirroredFieldIds,
       ),
-    [currentStep, resolvedLabels],
+    [currentStep, resolvedLabels, mirroredFieldIds],
   );
 
   // #801: distinguish repeat instances beyond the first. undefined for base

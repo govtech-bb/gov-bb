@@ -171,6 +171,51 @@ export const sharedFieldsBehaviourSchema = z.object({
 });
 export type SharedFieldsBehaviour = z.infer<typeof sharedFieldsBehaviourSchema>;
 
+/**
+ * Mirror another field's answer into this one while a condition holds (#2507).
+ *
+ * The classic case is a "same address as yours?" shortcut: the premises address
+ * has to carry a real value (catchment routing reads it, and the MDA email
+ * prints it), but the applicant should not type the same address twice. When the
+ * gate matches, this field's value is DERIVED from `sourceFieldId` instead of
+ * from what the applicant typed.
+ *
+ * The condition vocabulary is exactly `fieldConditionalOn`'s — `targetFieldId`,
+ * optional `targetStepId`, `operator`, optional `transform`, `value` (always
+ * lowercased + kebab-cased to match the watched field's option value). Like
+ * `fieldConditionalOn` and `optionalIf` this is FIELD-level: it lives in the
+ * `behaviours` array inside an element's `overrides`, on the field being
+ * populated — never on the source and never on the step.
+ *
+ * `sourceStepId` is required, unlike the condition's `targetStepId`: a mirror
+ * whose source silently resolved to the field's own step would copy a blank and
+ * fail as quietly as the bug this exists to fix.
+ *
+ * It is a DERIVATION, not a one-shot write: the value is recomputed from the
+ * source every time (see `resolveCopyFrom` in @govtech-bb/form-conditions), so
+ * editing the source after the gate matched cannot leave a stale copy behind.
+ * The mirrored field renders read-only while the gate holds, so the applicant is
+ * never invited to edit a value that is about to be recomputed.
+ */
+export const copyFromBehaviourSchema = z.object({
+  type: z.literal("copyFrom"),
+  // Targets name a fieldId/stepId, so they inherit the kebab-case id rule.
+  targetFieldId: kebabIdSchema,
+  targetStepId: kebabIdSchema.optional(),
+  operator: equalityOperationsSchema,
+  transform: durationTransformSchema.optional(),
+  value: z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.string()),
+    z.array(z.number()),
+  ]),
+  sourceStepId: kebabIdSchema,
+  sourceFieldId: kebabIdSchema,
+});
+export type CopyFromBehaviour = z.infer<typeof copyFromBehaviourSchema>;
+
 export const behaviourSchema = z.discriminatedUnion("type", [
   fieldConditionalOnBehaviourSchema,
   optionalIfBehaviourSchema,
@@ -178,5 +223,6 @@ export const behaviourSchema = z.discriminatedUnion("type", [
   repeatableBehaviourSchema,
   fieldArrayBehaviourSchema,
   sharedFieldsBehaviourSchema,
+  copyFromBehaviourSchema,
 ]);
 export type Behaviour = z.infer<typeof behaviourSchema>;

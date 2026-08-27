@@ -63,20 +63,16 @@
  *    one of its cases.
  *  - Applicant name / parish / email carry no `fieldId` override in the recipe,
  *    so they keep their component defaults (`first-name`, `parish`, `email`).
- *  - The APPLICANT address is a plain `components/address` — it takes free-text
- *    faker data and nothing routes on it.
- *  - The POOL address on `pool-location` is the address-lookup (geocoder) field,
- *    so it cannot take a free-text faker address: the geocoder must return a
- *    real Barbados match to populate the hidden coordinates the catchment router
- *    reads (`catchmentRouting.coordinatesField` =
- *    `pool-location.pool-address-coordinates`). We faker-pick from a pool of
- *    known-geocodable locations, select the first suggestion, then assert the
- *    coordinates filled.
- *  - Picking a suggestion also fills `pool-address-line-2` and `pool-parish`.
- *    Line 2 is optional here (the recipe sets `required: false`), but we
- *    overwrite it with faker data so the submitted record is deterministic;
- *    `pool-parish` is asserted rather than overwritten, since that value is the
- *    catchment router's fallback.
+ *  - BOTH addresses are address-lookup (geocoder) fields, so neither takes a
+ *    free-text faker address — each must return a real Barbados match. The
+ *    applicant's is geocoded because the pool address MIRRORS it on the "same
+ *    address" branch (see below), and the catchment routes on the mirrored
+ *    coordinate. Both walks faker-pick from a pool of known-geocodable
+ *    locations and select the first suggestion.
+ *  - Picking a suggestion also fills that address's line 2 and parish. Line 2 is
+ *    optional (the recipe sets `required: false`), but the "no" walk overwrites
+ *    the pool's with faker data so the submitted record is deterministic; parish
+ *    is asserted rather than overwritten, since it is the router's fallback.
  *  - The applicant phone is `components/mobile-telephone` — `mobile-telephone`,
  *    not `phone-number`. It is what the webhook maps applicant phone from
  *    (`your-details.mobile-telephone`). It validates with libphonenumber-js, so
@@ -86,15 +82,20 @@
  *    what the landing page promises citizens ("the Environmental Health
  *    Department associated with the location of the swimming pool"). Up to #2405
  *    it routed on the applicant's home address instead. The address has to sit
- *    on its own non-repeatable step, unconditionally, because `readPath`
+ *    on its own NON-REPEATABLE step, because `readPath`
  *    (`processors/webhook-mapping.ts`) returns null for a repeatable step's
- *    array and `catchmentRoutingSchema` takes ONE path with no fallback chain —
- *    so an address nested in `pool-details`, or hidden behind a "same as your
- *    address?" gate, resolves to nothing and the MDA email fails with
- *    NO_RECIPIENT. This is the same shape every other catchment-routed recipe
- *    uses (hotel, restaurant, guest property): one unconditional geocoded
- *    premises address on a plain step. Do not move it back inside the
- *    repeatable step without changing the platform first.
+ *    array — an address nested in `pool-details` resolves to nothing and the MDA
+ *    email fails with NO_RECIPIENT. Do not move it back inside the repeatable
+ *    step without changing the platform first.
+ *  - The "Is the pool at the address you just gave us?" gate is what makes the
+ *    address survive being conditional: `catchmentRoutingSchema` takes ONE path
+ *    with no fallback chain, so an empty routing field cannot fall back to
+ *    another. Instead the four pool address fields carry a `copyFrom` behaviour
+ *    that MIRRORS the applicant's answers while the gate says "yes" — so the
+ *    routing field always holds a real value. The mirror is re-derived (see
+ *    `resolveCopyFrom`), not written once, so editing the applicant address
+ *    afterwards cannot leave a stale premises address behind; mirrored fields
+ *    render read-only. The "yes" walk asserts exactly this.
  *  - The confirmation screen's "What happens next" copy is asserted. It lives in
  *    `markdownContent`, which `hydrateStep` (apps/api/src/registry/resolution.ts)
  *    carries into the served contract; `nextSteps` — where the #2451 rebuild put
@@ -123,21 +124,6 @@ import {
 import { TEST_PNG } from "../helpers/test-data";
 
 export const FORM_ID = "apply-for-swimming-pool-licence";
-
-/** Parish <select> option values (slugs) from components/parish. */
-const PARISH_VALUES = [
-  "christ-church",
-  "st-andrew",
-  "st-george",
-  "st-james",
-  "st-john",
-  "st-joseph",
-  "st-lucy",
-  "st-michael",
-  "st-peter",
-  "st-philip",
-  "st-thomas",
-] as const;
 
 /**
  * Real, geocodable Barbados locations. A free-text faker address won't resolve,
@@ -180,10 +166,10 @@ export function buildData() {
     firstName: faker.person.firstName(),
     middleName: faker.person.middleName(),
     lastName: faker.person.lastName(),
-    // The applicant address is plain text — nothing routes on it.
-    applicantAddress: faker.location.streetAddress(),
+    // Geocodable: the pool address mirrors this one on the "same address"
+    // branch, and the catchment routes on the mirrored coordinate.
+    applicantAddress: faker.helpers.arrayElement(GEOCODABLE_ADDRESSES),
     addressLine2: faker.location.street(),
-    applicantParish: faker.helpers.arrayElement(PARISH_VALUES),
     // Goes to the monitored test inbox so a real run is verifiable end-to-end.
     email: "testing@govtech.bb",
     phone: bbMobileNumber(),
@@ -238,11 +224,21 @@ export async function fillYourDetails(
   await fillField(page, step, "first-name", data.firstName);
   await fillField(page, step, "middle-name", data.middleName);
   await fillField(page, step, "last-name", data.lastName);
-  // A plain address, not the geocoder — nothing routes on where the applicant
-  // lives, so free-text faker data is fine here.
-  await fillField(page, step, "your-address-line-1", data.applicantAddress);
+  // Geocoded, because the pool address MIRRORS this one when the applicant says
+  // the pool is at their address (`copyFrom`) — and the catchment routes on the
+  // mirrored coordinate. A free-text address here would leave the mirror with
+  // nothing to copy, so the geocoder has to resolve.
+  await fillGeocodedAddress(
+    page,
+    step,
+    {
+      lineFieldId: "your-address-line-1",
+      coordinatesFieldId: "your-address-coordinates",
+    },
+    data.applicantAddress,
+  );
   await fillField(page, step, "your-address-line-2", data.addressLine2);
-  await selectDropdown(page, step, "parish", data.applicantParish);
+  await expect(page.locator(`select[id="${step}_parish"]`)).not.toHaveValue("");
   await fillField(page, step, "email", data.email);
   // `mobile-telephone`, not `phone-number` — this is what the webhook maps
   // applicant phone from. `work-telephone` beside it is optional; left empty.
@@ -251,17 +247,48 @@ export async function fillYourDetails(
 }
 
 /**
- * Step 3 — where the pool is. This is the step the catchment routes on, so the
- * geocoder MUST resolve: the helper asserts the hidden coordinates filled rather
- * than soft-skipping, because an empty one means the submission reaches no
- * polyclinic at all.
+ * Step 3 — where the pool is. This is the step the catchment routes on, so a
+ * coordinate MUST end up in `pool-address-coordinates` on both branches; the
+ * assertions below are the point of this step, not decoration.
+ *
+ * `sameAddress: "yes"` exercises the `copyFrom` mirrors: the four pool address
+ * fields are populated from `your-details` and render read-only. `"no"` asks for
+ * the pool's own address through the geocoder.
  */
 export async function fillPoolLocation(
   page: Page,
   data: ReturnType<typeof buildData>,
+  sameAddress: "yes" | "no",
 ): Promise<string> {
   const step = expectStep(page, "pool-location");
   await expect(page.locator("h1")).toContainText("Where is the pool");
+  const coordinatesField = page.locator(
+    `input[id="${step}_pool-address-coordinates"]`,
+  );
+
+  await selectRadio(page, step, "pool-same-address", sameAddress);
+
+  if (sameAddress === "yes") {
+    // The mirror is what this branch is testing: the pool address must carry the
+    // applicant's answers, and the coordinate must be a real one — an empty
+    // mirror routes the submission to no polyclinic at all.
+    const line1 = page.locator(`input[id="${step}_pool-address-line-1"]`);
+    await expect(line1).toHaveValue(data.applicantAddress, {
+      timeout: STEP_TIMEOUT,
+    });
+    // Read-only, because the value is derived: offering an edit would be a lie.
+    await expect(line1).toHaveAttribute("readonly", "");
+    await expect(
+      page.locator(`select[id="${step}_pool-parish"]`),
+    ).not.toHaveValue("");
+    await expect(
+      coordinatesField,
+      "the copyFrom mirror did not carry the applicant coordinates across",
+    ).toHaveValue(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/, { timeout: STEP_TIMEOUT });
+    await advance(page, step);
+    return (await coordinatesField.inputValue()).trim();
+  }
+
   const coordinates = await fillGeocodedAddress(
     page,
     step,
@@ -425,7 +452,9 @@ test.describe("Swimming Pool Licence — Live Smoke", () => {
     await openForm(page);
     await fillAboutApplication(page, "new");
     await fillYourDetails(page, data);
-    const coordinates = await fillPoolLocation(page, data);
+    // "yes" — the pool is at the applicant's address, so the four pool address
+    // fields are mirrored from `your-details` by `copyFrom`.
+    const coordinates = await fillPoolLocation(page, data, "yes");
     await fillPoolDetails(page, data, {
       ownerType: "business-owner",
       poolType: "swimming",
@@ -462,10 +491,10 @@ test.describe("Swimming Pool Licence — Live Smoke", () => {
 
     await openForm(page);
     await fillAboutApplication(page, "renewal");
-    // A free-text applicant address that would geocode to nothing — proof the
-    // catchment is resolved from the pool's location and not from this one.
     await fillYourDetails(page, data);
-    const coordinates = await fillPoolLocation(page, data);
+    // "no" — the pool is somewhere else, so its own address is geocoded and the
+    // mirror stays out of the way.
+    const coordinates = await fillPoolLocation(page, data, "no");
     // "manager" reveals the connection question and "other" the usage
     // description — both inline on the one pool step.
     await fillPoolDetails(page, data, {
