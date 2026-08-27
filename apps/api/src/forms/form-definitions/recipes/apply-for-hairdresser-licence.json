@@ -1,31 +1,30 @@
 {
-  "formId": "funeral-directors-licence-application",
-  "title": "Apply to Environmental Health for a Funeral Directors Licence",
-  "description": "Use this service to apply for a funeral directors licence.",
+  "formId": "apply-for-hairdresser-licence",
+  "title": "Apply to Environmental Health for a Hairdressers Licence",
+  "description": "Apply for a hairdresser licence in Barbados",
   "processors": [
     {
       "type": "email",
       "config": {
         "recipientField": "personal-details.email",
-        "subject": "Your funeral directors licence application has been received"
+        "subject": "Your hairdresser licence application has been received"
       }
     },
     {
       "type": "email",
       "config": {
         "recipientField": "catchment.mdaEmail",
-        "subject": "A new funeral directors licence application has been received"
+        "subject": "A new hairdresser licence application has been received"
       }
     },
     {
       "type": "webhook",
       "config": {
         "method": "POST",
-        "signatureHeader": "X-Webhook-Signature",
         "mapping": {
-          "programmeCode": "FUNERAL_DIRECTORS_LICENCE",
+          "programmeCode": "HAIRDRESSER_LICENCE",
           "mdaCode": "MOH",
-          "programmeShortCode": "FDL",
+          "programmeShortCode": "HDL",
           "applicant": {
             "name": [
               "personal-details.first-name",
@@ -40,8 +39,7 @@
             "submission-confirmation"
           ],
           "groupByStep": true
-        },
-        "timeoutMs": 10000
+        }
       }
     }
   ],
@@ -186,7 +184,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "fieldId": "workplace-locations",
-            "label": "Where do you plan to work as a funeral director?",
+            "label": "Where do you plan to work as a hairdresser?",
             "hint": "Select all that apply.",
             "validations": {
               "required": {
@@ -196,8 +194,8 @@
             },
             "options": [
               {
-                "label": "At a funeral establishment",
-                "value": "at-funeral-establishment"
+                "label": "At a salon",
+                "value": "at-salon"
               },
               {
                 "label": "From home",
@@ -217,16 +215,16 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "What is the name of the funeral establishment?",
-            "fieldId": "funeral-establishment-name",
+            "fieldId": "salon-name",
+            "label": "What is the name of the salon?",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "value": [
-                  "at-funeral-establishment"
-                ],
+                "targetFieldId": "workplace-locations",
                 "operator": "in",
-                "targetFieldId": "workplace-locations"
+                "value": [
+                  "at-salon"
+                ]
               }
             ]
           }
@@ -234,16 +232,16 @@
         {
           "ref": "components/address",
           "overrides": {
+            "fieldId": "salon-address-line-1",
             "label": "Address line 1",
-            "fieldId": "funeral-establishment-address-line-1",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "value": [
-                  "at-funeral-establishment"
-                ],
+                "targetFieldId": "workplace-locations",
                 "operator": "in",
-                "targetFieldId": "workplace-locations"
+                "value": [
+                  "at-salon"
+                ]
               }
             ]
           }
@@ -251,16 +249,16 @@
         {
           "ref": "components/address",
           "overrides": {
+            "fieldId": "salon-address-line-2",
             "label": "Address line 2",
-            "fieldId": "funeral-establishment-address-line-2",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "value": [
-                  "at-funeral-establishment"
-                ],
+                "targetFieldId": "workplace-locations",
                 "operator": "in",
-                "targetFieldId": "workplace-locations"
+                "value": [
+                  "at-salon"
+                ]
               }
             ],
             "validations": {
@@ -273,16 +271,16 @@
         {
           "ref": "components/parish",
           "overrides": {
+            "fieldId": "salon-parish",
             "label": "Parish",
-            "fieldId": "funeral-establishment-parish",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "value": [
-                  "at-funeral-establishment"
-                ],
+                "targetFieldId": "workplace-locations",
                 "operator": "in",
-                "targetFieldId": "workplace-locations"
+                "value": [
+                  "at-salon"
+                ]
               }
             ]
           }
@@ -316,11 +314,7 @@
           "overrides": {
             "fieldId": "passport-photo",
             "label": "Upload your passport-size photographs.",
-            "hint": "These photographs should have been taken recently.",
             "validations": {
-              "required": {
-                "value": true
-              },
               "fileTypes": {
                 "error": "Upload a passport-size photograph in JPEG, PNG or GIF format",
                 "value": [
@@ -332,22 +326,22 @@
               "itemMaxSize": {
                 "error": "File must be 5 MB or smaller",
                 "value": 5242880
+              },
+              "required": {
+                "value": true
               }
-            }
+            },
+            "hint": "These photographs should have been taken recently."
           }
         },
         {
           "ref": "components/upload-document",
           "overrides": {
-            "fieldId": "upload-scanned-id",
-            "label": "Upload scanned copy of your National ID",
+            "fieldId": "medical-certificate",
+            "label": "Upload your medical certificate of fitness.",
             "validations": {
-              "required": {
-                "value": true,
-                "error": "National ID is required"
-              },
               "fileTypes": {
-                "error": "Upload your National ID in PDF, JPEG or PNG format",
+                "error": "Upload your medical certificate in PDF, JPEG or PNG format",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
@@ -357,6 +351,10 @@
               "itemMaxSize": {
                 "error": "File must be 5 MB or smaller",
                 "value": 5242880
+              },
+              "required": {
+                "error": "Your medical certificate is required",
+                "value": true
               }
             }
           }
@@ -403,12 +401,12 @@
       "behaviours": [],
       "nextSteps": [
         {
-          "title": "Your application for a funeral directors licence has been submitted to Environmental Health.",
+          "title": "Your application for a hairdresser licence has been submitted to Environmental Health.",
           "content": "Environmental Health will review your application. They may contact you if they need more information. They will tell you the result and what to do next if your application is approved."
         }
       ]
     }
   ],
-  "createdAt": "2026-08-25T14:05:00.922Z",
-  "updatedAt": "2026-08-25T15:12:48.462Z"
+  "createdAt": "2026-08-19T19:09:04.486Z",
+  "updatedAt": "2026-08-26T00:00:00.000Z"
 }

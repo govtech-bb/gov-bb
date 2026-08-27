@@ -1,5 +1,5 @@
 {
-  "formId": "register-hair-beauty-business",
+  "formId": "apply-for-hair-salon-licence",
   "title": "Apply to Environmental Health for a hairdressing or beauty business licence",
   "description": "Use this service to register a business that provides hairdressing, barbering, beauty services, manicures or pedicures.",
   "processors": [
@@ -419,5 +419,5 @@
     }
   ],
   "createdAt": "2026-08-20T17:42:48.875Z",
-  "updatedAt": "2026-08-25T18:45:00.000Z"
+  "updatedAt": "2026-08-26T00:00:00.000Z"
 }

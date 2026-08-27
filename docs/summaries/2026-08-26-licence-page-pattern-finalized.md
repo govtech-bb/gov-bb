@@ -76,7 +76,7 @@ the new table rows were hand-padded to the existing column widths instead.
 
 - Four shipped licence pages still close with `## Need assistance`
   (`apply-for-swimming-pool-licence.md`, `apply-for-hotel-licence.md`,
-  `funeral-establishment-licence-application/index.md`,
+  `apply-for-funeral-establishment-licence/index.md`,
   `apply-to-buy-nhc-land-or-property.md`). Deliberately out of scope here —
   renaming published headings is a content-designer call.
 - The three EH pages' `###` route titles need reconciling with the new bold rule.

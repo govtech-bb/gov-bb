@@ -1,5 +1,5 @@
 {
-  "formId": "funeral-establishment-licence-application",
+  "formId": "apply-for-funeral-establishment-licence",
   "title": "Apply to Environmental Health for a Funeral Establishment Licence",
   "description": "Use this service to register a funeral establishment.",
   "processors": [
@@ -23,9 +23,9 @@
         "method": "POST",
         "signatureHeader": "X-Webhook-Signature",
         "mapping": {
-          "programmeCode": "FUNERAL_ESTABLISHMENT_LICENCE",
+          "programmeCode": "FUNERAL_HOME",
           "mdaCode": "MOH",
-          "programmeShortCode": "FEL",
+          "programmeShortCode": "FHM",
           "applicant": {
             "name": [
               "about-the-applicant.first-name",
@@ -335,5 +335,5 @@
     }
   ],
   "createdAt": "2026-08-25T00:45:35.451Z",
-  "updatedAt": "2026-08-25T18:45:00.000Z"
+  "updatedAt": "2026-08-26T00:00:00.000Z"
 }

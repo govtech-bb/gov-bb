@@ -1,5 +1,5 @@
 {
-  "formId": "barraks-lodging-environmental-health",
+  "formId": "apply-for-lodging-barracks-licence",
   "title": "Apply for a barracks or lodging licence with Environmental Health",
   "description": "Register a lodging house or barracks with Environmental Health",
   "processors": [
@@ -8,6 +8,33 @@
       "config": {
         "subject": "Your application to register a guest property has been received",
         "recipientField": "your-details.applicant-email"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "method": "POST",
+        "signatureHeader": "X-Webhook-Signature",
+        "mapping": {
+          "programmeCode": "LODGING_BARRACKS_LICENCE",
+          "mdaCode": "MOH",
+          "programmeShortCode": "LBL",
+          "applicant": {
+            "name": [
+              "your-details.applicant-first-name",
+              "your-details.applicant-last-name"
+            ],
+            "email": "your-details.applicant-email",
+            "phone": "your-details.applicant-contact-number"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        },
+        "timeoutMs": 10000
       }
     }
   ],
@@ -833,5 +860,5 @@
     }
   ],
   "createdAt": "2026-08-24T23:54:14.187Z",
-  "updatedAt": "2026-08-25T00:04:17.110Z"
+  "updatedAt": "2026-08-26T00:00:00.000Z"
 }

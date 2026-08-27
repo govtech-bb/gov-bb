@@ -6,7 +6,7 @@ description: >-
 stage: alpha
 publish_date: '2026-08-24'
 visibility: preview
-form_id: register-hair-beauty-business
+form_id: apply-for-hair-salon-licence
 category: business-trade
 ---
 Use this service to apply for or renew a hairdressing salon licence.

@@ -5,7 +5,7 @@ category: business-trade
 stage: alpha
 publish_date: '2026-08-25'
 visibility: preview
-form_id: funeral-establishment-licence-application
+form_id: apply-for-funeral-establishment-licence
 ---
 ## Who is this licence for
 

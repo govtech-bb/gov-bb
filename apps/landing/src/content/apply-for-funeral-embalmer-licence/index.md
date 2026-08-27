@@ -4,7 +4,7 @@ category: business-trade
 stage: alpha
 publish_date: '2026-08-25'
 visibility: preview
-form_id: funeral-embalmer-licence-application
+form_id: apply-for-funeral-embalmer-licence
 ---
 Use this service to apply for an Embalmer Licence from Environmental Health.
 

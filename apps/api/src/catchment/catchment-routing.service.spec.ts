@@ -284,7 +284,7 @@ describe("programme codes are unchanged by composition (golden)", () => {
       "Sir Winston Scott Polyclinic": "HOTEL_LICENCE_WINSTON_SCOTT",
       "St. Philip Polyclinic": "HOTEL_LICENCE_ST_PHILIP",
     },
-    "register-hair-beauty-business": {
+    "apply-for-hair-salon-licence": {
       "Branford Taitt Polyclinic": "HAIR_BEAUTY_BUSINESS_BRANFORD_TAITT",
       "David Thompson Health & Social Services Complex":
         "HAIR_BEAUTY_BUSINESS_DAVID_THOMPSON",
@@ -294,7 +294,7 @@ describe("programme codes are unchanged by composition (golden)", () => {
       "Sir Winston Scott Polyclinic": "HAIR_BEAUTY_BUSINESS_WINSTON_SCOTT",
       "St. Philip Polyclinic": "HAIR_BEAUTY_BUSINESS_ST_PHILIP",
     },
-    "hairdresser-licence-application": {
+    "apply-for-hairdresser-licence": {
       "Branford Taitt Polyclinic": "HAIRDRESSER_LICENCE_BRANFORD_TAITT",
       "David Thompson Health & Social Services Complex":
         "HAIRDRESSER_LICENCE_DAVID_THOMPSON",
@@ -324,38 +324,35 @@ describe("programme codes are unchanged by composition (golden)", () => {
       "Sir Winston Scott Polyclinic": "GUEST_PROPERTY_WINSTON_SCOTT",
       "St. Philip Polyclinic": "GUEST_PROPERTY_ST_PHILIP",
     },
-    "funeral-establishment-licence-application": {
-      "Branford Taitt Polyclinic":
-        "FUNERAL_ESTABLISHMENT_LICENCE_BRANFORD_TAITT",
+    "apply-for-funeral-establishment-licence": {
+      "Branford Taitt Polyclinic": "FUNERAL_HOME_BRANFORD_TAITT",
       "David Thompson Health & Social Services Complex":
-        "FUNERAL_ESTABLISHMENT_LICENCE_DAVID_THOMPSON",
-      "Eunice Gibson Polyclinic": "FUNERAL_ESTABLISHMENT_LICENCE_EUNICE_GIBSON",
-      "Maurice Byer Polyclinic": "FUNERAL_ESTABLISHMENT_LICENCE_MAURICE_BYER",
-      "Randal Phillips Polyclinic":
-        "FUNERAL_ESTABLISHMENT_LICENCE_RANDAL_PHILLIPS",
-      "Sir Winston Scott Polyclinic":
-        "FUNERAL_ESTABLISHMENT_LICENCE_WINSTON_SCOTT",
-      "St. Philip Polyclinic": "FUNERAL_ESTABLISHMENT_LICENCE_ST_PHILIP",
+        "FUNERAL_HOME_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "FUNERAL_HOME_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "FUNERAL_HOME_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "FUNERAL_HOME_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "FUNERAL_HOME_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "FUNERAL_HOME_ST_PHILIP",
     },
-    "funeral-directors-licence-application": {
-      "Branford Taitt Polyclinic": "FUNERAL_DIRECTORS_LICENCE_BRANFORD_TAITT",
+    "apply-for-funeral-director-licence": {
+      "Branford Taitt Polyclinic": "FUNERAL_DIRECTOR_BRANFORD_TAITT",
       "David Thompson Health & Social Services Complex":
-        "FUNERAL_DIRECTORS_LICENCE_DAVID_THOMPSON",
-      "Eunice Gibson Polyclinic": "FUNERAL_DIRECTORS_LICENCE_EUNICE_GIBSON",
-      "Maurice Byer Polyclinic": "FUNERAL_DIRECTORS_LICENCE_MAURICE_BYER",
-      "Randal Phillips Polyclinic": "FUNERAL_DIRECTORS_LICENCE_RANDAL_PHILLIPS",
-      "Sir Winston Scott Polyclinic": "FUNERAL_DIRECTORS_LICENCE_WINSTON_SCOTT",
-      "St. Philip Polyclinic": "FUNERAL_DIRECTORS_LICENCE_ST_PHILIP",
+        "FUNERAL_DIRECTOR_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "FUNERAL_DIRECTOR_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "FUNERAL_DIRECTOR_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "FUNERAL_DIRECTOR_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "FUNERAL_DIRECTOR_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "FUNERAL_DIRECTOR_ST_PHILIP",
     },
-    "funeral-embalmer-licence-application": {
-      "Branford Taitt Polyclinic": "EMBALMER_LICENCE_BRANFORD_TAITT",
+    "apply-for-funeral-embalmer-licence": {
+      "Branford Taitt Polyclinic": "FUNERAL_EMBALMER_BRANFORD_TAITT",
       "David Thompson Health & Social Services Complex":
-        "EMBALMER_LICENCE_DAVID_THOMPSON",
-      "Eunice Gibson Polyclinic": "EMBALMER_LICENCE_EUNICE_GIBSON",
-      "Maurice Byer Polyclinic": "EMBALMER_LICENCE_MAURICE_BYER",
-      "Randal Phillips Polyclinic": "EMBALMER_LICENCE_RANDAL_PHILLIPS",
-      "Sir Winston Scott Polyclinic": "EMBALMER_LICENCE_WINSTON_SCOTT",
-      "St. Philip Polyclinic": "EMBALMER_LICENCE_ST_PHILIP",
+        "FUNERAL_EMBALMER_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "FUNERAL_EMBALMER_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "FUNERAL_EMBALMER_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "FUNERAL_EMBALMER_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "FUNERAL_EMBALMER_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "FUNERAL_EMBALMER_ST_PHILIP",
     },
   };
 

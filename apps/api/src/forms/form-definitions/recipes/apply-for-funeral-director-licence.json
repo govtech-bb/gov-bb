@@ -1,20 +1,20 @@
 {
-  "formId": "funeral-embalmer-licence-application",
-  "title": "Apply to Environmental Health for an Embalmer Licence",
-  "description": "Use this service to apply for an embalmer licence.",
+  "formId": "apply-for-funeral-director-licence",
+  "title": "Apply to Environmental Health for a Funeral Directors Licence",
+  "description": "Use this service to apply for a funeral directors licence.",
   "processors": [
     {
       "type": "email",
       "config": {
         "recipientField": "personal-details.email",
-        "subject": "Your embalmer licence application has been received"
+        "subject": "Your funeral directors licence application has been received"
       }
     },
     {
       "type": "email",
       "config": {
         "recipientField": "catchment.mdaEmail",
-        "subject": "A new embalmer licence application has been received"
+        "subject": "A new funeral directors licence application has been received"
       }
     },
     {
@@ -23,9 +23,9 @@
         "method": "POST",
         "signatureHeader": "X-Webhook-Signature",
         "mapping": {
-          "programmeCode": "EMBALMER_LICENCE",
+          "programmeCode": "FUNERAL_DIRECTOR",
           "mdaCode": "MOH",
-          "programmeShortCode": "EMB",
+          "programmeShortCode": "FDR",
           "applicant": {
             "name": [
               "personal-details.first-name",
@@ -186,7 +186,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "fieldId": "workplace-locations",
-            "label": "Where do you plan to work as an embalmer?",
+            "label": "Where do you plan to work as a funeral director?",
             "hint": "Select all that apply.",
             "validations": {
               "required": {
@@ -197,11 +197,19 @@
             "options": [
               {
                 "label": "At a funeral establishment",
-                "value": "one-funeral-establishment"
+                "value": "at-funeral-establishment"
               },
               {
-                "label": "At multiple funeral establishments",
-                "value": "multiple-establishments"
+                "label": "From home",
+                "value": "from-home"
+              },
+              {
+                "label": "At different places for clients",
+                "value": "different-places"
+              },
+              {
+                "label": "Somewhere else",
+                "value": "somewhere-else"
               }
             ]
           }
@@ -209,17 +217,16 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "funeral-establishment-name",
             "label": "What is the name of the funeral establishment?",
+            "fieldId": "funeral-establishment-name",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "workplace-locations",
-                "operator": "in",
                 "value": [
-                  "one-funeral-establishment"
+                  "at-funeral-establishment"
                 ],
-                "targetStepId": "workplace-details"
+                "operator": "in",
+                "targetFieldId": "workplace-locations"
               }
             ]
           }
@@ -227,17 +234,16 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "funeral-establishment-address-line-1",
             "label": "Address line 1",
+            "fieldId": "funeral-establishment-address-line-1",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "workplace-locations",
-                "operator": "in",
                 "value": [
-                  "one-funeral-establishment"
+                  "at-funeral-establishment"
                 ],
-                "targetStepId": "workplace-details"
+                "operator": "in",
+                "targetFieldId": "workplace-locations"
               }
             ]
           }
@@ -245,40 +251,55 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "funeral-establishment-address-line-2",
             "label": "Address line 2",
+            "fieldId": "funeral-establishment-address-line-2",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": [
+                  "at-funeral-establishment"
+                ],
+                "operator": "in",
+                "targetFieldId": "workplace-locations"
+              }
+            ],
             "validations": {
               "required": {
                 "value": false
               }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "workplace-locations",
-                "operator": "in",
-                "value": [
-                  "one-funeral-establishment"
-                ],
-                "targetStepId": "workplace-details"
-              }
-            ]
+            }
           }
         },
         {
           "ref": "components/parish",
           "overrides": {
-            "fieldId": "funeral-establishment-parish",
             "label": "Parish",
+            "fieldId": "funeral-establishment-parish",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "value": [
+                  "at-funeral-establishment"
+                ],
+                "operator": "in",
+                "targetFieldId": "workplace-locations"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "somewhere-else",
+            "label": "Where else do you plan to work?",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "workplace-locations",
                 "operator": "in",
                 "value": [
-                  "one-funeral-establishment"
-                ],
-                "targetStepId": "workplace-details"
+                  "somewhere-else"
+                ]
               }
             ]
           }
@@ -318,77 +339,26 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "fieldId": "embalmer-qualification",
-            "label": "Upload your embalmer qualification",
+            "fieldId": "upload-scanned-id",
+            "label": "Upload scanned copy of your National ID",
             "validations": {
               "required": {
                 "value": true,
-                "error": "Upload your embalmer qualification, or use a reference letter instead"
+                "error": "National ID is required"
               },
               "fileTypes": {
+                "error": "Upload your National ID in PDF, JPEG or PNG format",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
                   "image/png"
-                ],
-                "error": "Upload your embalmer qualification in PDF, JPEG or PNG format"
+                ]
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "File must be 5 MB or smaller"
+                "error": "File must be 5 MB or smaller",
+                "value": 5242880
               }
-            },
-            "behaviours": [
-              {
-                "type": "optionalIf",
-                "targetStepId": "documents",
-                "targetFieldId": "use-reference-letter",
-                "operator": "equal",
-                "value": true
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/show-hide",
-          "overrides": {
-            "fieldId": "use-reference-letter",
-            "label": "Use reference letter instead"
-          }
-        },
-        {
-          "ref": "components/upload-document",
-          "overrides": {
-            "fieldId": "embalmer-evidence",
-            "label": "Upload letter of embalmer work experience",
-            "hint": "If you have been engaged in the practice of embalming, prior to the regulations coming into effect in 1984, you will need to evidence you have been practicing for a period of more than five (5) years, or have worked under the direct supervision of an approved embalmer for more than three (3) years.",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Upload your letter of embalmer work experience"
-              },
-              "fileTypes": {
-                "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png"
-                ],
-                "error": "Upload your letter of embalmer work experience in PDF, JPEG or PNG format"
-              },
-              "itemMaxSize": {
-                "value": 5242880,
-                "error": "File must be 5 MB or smaller"
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetStepId": "documents",
-                "targetFieldId": "use-reference-letter",
-                "operator": "equal",
-                "value": true
-              }
-            ]
+            }
           }
         }
       ],
@@ -433,12 +403,12 @@
       "behaviours": [],
       "nextSteps": [
         {
-          "title": "Your application for an embalmer licence has been submitted to Environmental Health.",
+          "title": "Your application for a funeral directors licence has been submitted to Environmental Health.",
           "content": "Environmental Health will review your application. They may contact you if they need more information. They will tell you the result and what to do next if your application is approved."
         }
       ]
     }
   ],
-  "createdAt": "2026-08-25T14:05:29.888Z",
-  "updatedAt": "2026-08-25T18:30:00.000Z"
+  "createdAt": "2026-08-25T14:05:00.922Z",
+  "updatedAt": "2026-08-26T00:00:00.000Z"
 }

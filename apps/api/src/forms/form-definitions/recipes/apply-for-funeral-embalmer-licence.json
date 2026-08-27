@@ -1,30 +1,31 @@
 {
-  "formId": "hairdresser-licence-application",
-  "title": "Apply to Environmental Health for a Hairdressers Licence",
-  "description": "Apply for a hairdresser licence in Barbados",
+  "formId": "apply-for-funeral-embalmer-licence",
+  "title": "Apply to Environmental Health for an Embalmer Licence",
+  "description": "Use this service to apply for an embalmer licence.",
   "processors": [
     {
       "type": "email",
       "config": {
         "recipientField": "personal-details.email",
-        "subject": "Your hairdresser licence application has been received"
+        "subject": "Your embalmer licence application has been received"
       }
     },
     {
       "type": "email",
       "config": {
         "recipientField": "catchment.mdaEmail",
-        "subject": "A new hairdresser licence application has been received"
+        "subject": "A new embalmer licence application has been received"
       }
     },
     {
       "type": "webhook",
       "config": {
         "method": "POST",
+        "signatureHeader": "X-Webhook-Signature",
         "mapping": {
-          "programmeCode": "HAIRDRESSER_LICENCE",
+          "programmeCode": "FUNERAL_EMBALMER",
           "mdaCode": "MOH",
-          "programmeShortCode": "HDL",
+          "programmeShortCode": "FER",
           "applicant": {
             "name": [
               "personal-details.first-name",
@@ -39,7 +40,8 @@
             "submission-confirmation"
           ],
           "groupByStep": true
-        }
+        },
+        "timeoutMs": 10000
       }
     }
   ],
@@ -184,7 +186,7 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "fieldId": "workplace-locations",
-            "label": "Where do you plan to work as a hairdresser?",
+            "label": "Where do you plan to work as an embalmer?",
             "hint": "Select all that apply.",
             "validations": {
               "required": {
@@ -194,20 +196,12 @@
             },
             "options": [
               {
-                "label": "At a salon",
-                "value": "at-salon"
+                "label": "At a funeral establishment",
+                "value": "one-funeral-establishment"
               },
               {
-                "label": "From home",
-                "value": "from-home"
-              },
-              {
-                "label": "At different places for clients",
-                "value": "different-places"
-              },
-              {
-                "label": "Somewhere else",
-                "value": "somewhere-else"
+                "label": "At multiple funeral establishments",
+                "value": "multiple-establishments"
               }
             ]
           }
@@ -215,16 +209,17 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "salon-name",
-            "label": "What is the name of the salon?",
+            "fieldId": "funeral-establishment-name",
+            "label": "What is the name of the funeral establishment?",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "workplace-locations",
                 "operator": "in",
                 "value": [
-                  "at-salon"
-                ]
+                  "one-funeral-establishment"
+                ],
+                "targetStepId": "workplace-details"
               }
             ]
           }
@@ -232,7 +227,7 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "salon-address-line-1",
+            "fieldId": "funeral-establishment-address-line-1",
             "label": "Address line 1",
             "behaviours": [
               {
@@ -240,8 +235,9 @@
                 "targetFieldId": "workplace-locations",
                 "operator": "in",
                 "value": [
-                  "at-salon"
-                ]
+                  "one-funeral-establishment"
+                ],
+                "targetStepId": "workplace-details"
               }
             ]
           }
@@ -249,29 +245,30 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "salon-address-line-2",
+            "fieldId": "funeral-establishment-address-line-2",
             "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "workplace-locations",
                 "operator": "in",
                 "value": [
-                  "at-salon"
-                ]
+                  "one-funeral-establishment"
+                ],
+                "targetStepId": "workplace-details"
               }
-            ],
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
+            ]
           }
         },
         {
           "ref": "components/parish",
           "overrides": {
-            "fieldId": "salon-parish",
+            "fieldId": "funeral-establishment-parish",
             "label": "Parish",
             "behaviours": [
               {
@@ -279,25 +276,9 @@
                 "targetFieldId": "workplace-locations",
                 "operator": "in",
                 "value": [
-                  "at-salon"
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "somewhere-else",
-            "label": "Where else do you plan to work?",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "workplace-locations",
-                "operator": "in",
-                "value": [
-                  "somewhere-else"
-                ]
+                  "one-funeral-establishment"
+                ],
+                "targetStepId": "workplace-details"
               }
             ]
           }
@@ -314,7 +295,11 @@
           "overrides": {
             "fieldId": "passport-photo",
             "label": "Upload your passport-size photographs.",
+            "hint": "These photographs should have been taken recently.",
             "validations": {
+              "required": {
+                "value": true
+              },
               "fileTypes": {
                 "error": "Upload a passport-size photograph in JPEG, PNG or GIF format",
                 "value": [
@@ -326,37 +311,84 @@
               "itemMaxSize": {
                 "error": "File must be 5 MB or smaller",
                 "value": 5242880
-              },
-              "required": {
-                "value": true
               }
-            },
-            "hint": "These photographs should have been taken recently."
+            }
           }
         },
         {
           "ref": "components/upload-document",
           "overrides": {
-            "fieldId": "medical-certificate",
-            "label": "Upload your medical certificate of fitness.",
+            "fieldId": "embalmer-qualification",
+            "label": "Upload your embalmer qualification",
             "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload your embalmer qualification, or use a reference letter instead"
+              },
               "fileTypes": {
-                "error": "Upload your medical certificate in PDF, JPEG or PNG format",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
                   "image/png"
-                ]
+                ],
+                "error": "Upload your embalmer qualification in PDF, JPEG or PNG format"
               },
               "itemMaxSize": {
-                "error": "File must be 5 MB or smaller",
-                "value": 5242880
-              },
-              "required": {
-                "error": "Your medical certificate is required",
+                "value": 5242880,
+                "error": "File must be 5 MB or smaller"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetStepId": "documents",
+                "targetFieldId": "use-reference-letter",
+                "operator": "equal",
                 "value": true
               }
-            }
+            ]
+          }
+        },
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "fieldId": "use-reference-letter",
+            "label": "Use reference letter instead"
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "embalmer-evidence",
+            "label": "Upload letter of embalmer work experience",
+            "hint": "If you have been engaged in the practice of embalming, prior to the regulations coming into effect in 1984, you will need to evidence you have been practicing for a period of more than five (5) years, or have worked under the direct supervision of an approved embalmer for more than three (3) years.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload your letter of embalmer work experience"
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "Upload your letter of embalmer work experience in PDF, JPEG or PNG format"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "File must be 5 MB or smaller"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "documents",
+                "targetFieldId": "use-reference-letter",
+                "operator": "equal",
+                "value": true
+              }
+            ]
           }
         }
       ],
@@ -401,12 +433,12 @@
       "behaviours": [],
       "nextSteps": [
         {
-          "title": "Your application for a hairdresser licence has been submitted to Environmental Health.",
+          "title": "Your application for an embalmer licence has been submitted to Environmental Health.",
           "content": "Environmental Health will review your application. They may contact you if they need more information. They will tell you the result and what to do next if your application is approved."
         }
       ]
     }
   ],
-  "createdAt": "2026-08-19T19:09:04.486Z",
-  "updatedAt": "2026-08-24T18:37:12.536Z"
+  "createdAt": "2026-08-25T14:05:29.888Z",
+  "updatedAt": "2026-08-26T00:00:00.000Z"
 }

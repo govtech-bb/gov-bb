@@ -1,9 +1,9 @@
 /**
- * funeral-establishment-licence-application.smoke.spec.ts
+ * apply-for-funeral-establishment-licence.smoke.spec.ts
  *
  * Live, on-demand smoke test for the Funeral Establishment Licence service
- * (formId `funeral-establishment-licence-application`, programme
- * `FUNERAL_ESTABLISHMENT_LICENCE`).
+ * (formId `apply-for-funeral-establishment-licence`, programme
+ * `FUNERAL_HOME`).
  *
  * Drives the REAL form, fills every step with valid @faker-js/faker data,
  * SUBMITS FOR REAL, and asserts the confirmation screen is reached with a
@@ -78,7 +78,7 @@ import {
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
-export const FORM_ID = "funeral-establishment-licence-application";
+export const FORM_ID = "apply-for-funeral-establishment-licence";
 
 /**
  * Real, geocodable Barbados locations. A free-text faker address won't resolve,

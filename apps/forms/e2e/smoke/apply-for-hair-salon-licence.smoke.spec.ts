@@ -1,8 +1,8 @@
 /**
- * register-hair-beauty-business.smoke.spec.ts
+ * apply-for-hair-salon-licence.smoke.spec.ts
  *
  * Live, on-demand smoke test for the hairdressing / beauty business licence
- * service (formId `register-hair-beauty-business`, programme
+ * service (formId `apply-for-hair-salon-licence`, programme
  * `HAIR_BEAUTY_BUSINESS`).
  *
  * Drives the REAL form, fills every step with valid @faker-js/faker data,
@@ -16,7 +16,7 @@
  * Run on demand (from the repo root):
  *   SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb PREVIEW_TOKEN=… \
  *     pnpm --filter @govtech-bb/forms exec playwright test \
- *     --config playwright.smoke.config.ts register-hair-beauty-business
+ *     --config playwright.smoke.config.ts apply-for-hair-salon-licence
  *
  * Useful env overrides:
  *   SMOKE_BASE_URL   target environment. REQUIRED — playwright.smoke.config.ts
@@ -82,7 +82,7 @@ import {
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
-export const FORM_ID = "register-hair-beauty-business";
+export const FORM_ID = "apply-for-hair-salon-licence";
 
 /**
  * Real, geocodable Barbados locations. A free-text faker address won't resolve,

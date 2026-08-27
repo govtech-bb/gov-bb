@@ -1,5 +1,5 @@
 {
-  "formId": "environmental-health-offensive-trade-licence",
+  "formId": "apply-for-offensive-waste-licence",
   "title": "Apply for a offensive trade licence with Environmental Health",
   "description": "Apply for or renew a licence to carry out work that may produce fumes or strong smells.",
   "processors": [
@@ -8,6 +8,33 @@
       "config": {
         "subject": "Application received: Environmental Health licence for work that may cause fumes or strong smells",
         "recipientField": "your-details.email"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "method": "POST",
+        "signatureHeader": "X-Webhook-Signature",
+        "mapping": {
+          "programmeCode": "OFFENSIVE_WASTE",
+          "mdaCode": "MOH",
+          "programmeShortCode": "OWS",
+          "applicant": {
+            "name": [
+              "your-details.first-name",
+              "your-details.last-name"
+            ],
+            "email": "your-details.email",
+            "phone": "your-details.telephone-number"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        },
+        "timeoutMs": 10000
       }
     }
   ],
@@ -490,5 +517,5 @@
     }
   ],
   "createdAt": "2026-08-24T19:33:15.101Z",
-  "updatedAt": "2026-08-24T23:35:40.164Z"
+  "updatedAt": "2026-08-26T00:00:00.000Z"
 }
