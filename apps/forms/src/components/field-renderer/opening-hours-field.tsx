@@ -49,21 +49,6 @@ export type WeekHours = Record<OpeningHoursDay, HoursSet[]>;
 /** Mirrors the old per-day fieldArray cap (split shifts rarely need more). */
 const MAX_SETS_PER_DAY = 3;
 
-/** The stored shape of "Open 24 hours": one full-day set. 23:59 rather than a
- * wrapped-around 00:00 - 00:00, which the recipe's format rule accepts but
- * means nothing (#2358). */
-const OPEN_24_HOURS_SET: HoursSet = { start: "00:00", end: "23:59" };
-
-/** True when a day's sets are exactly the 24-hours sentinel — how the
- * checkbox state is recovered from the stored value on remount. */
-export function isOpen24Hours(sets: HoursSet[]): boolean {
-  return (
-    sets.length === 1 &&
-    sets[0].start === OPEN_24_HOURS_SET.start &&
-    sets[0].end === OPEN_24_HOURS_SET.end
-  );
-}
-
 // One stored entry: "Monday 09:00 - 17:00". Halves are optional so a set
 // that is added but not yet completed still round-trips through form state;
 // the registry component's pattern rule rejects those partial entries on
@@ -116,8 +101,10 @@ export function weekdaysShareHours(week: WeekHours): boolean {
 
 /**
  * Weekly opening-hours grid (#2358): one row per day (or one combined
- * Monday–Friday row), native time pickers per set of hours, an "Open 24
- * hours" checkbox per row, and "Not open" for days with nothing. A proper
+ * Monday–Friday row), native time pickers per set of hours, and "Not open"
+ * for days with nothing. Open-24-hours is hint guidance (enter 12:00 AM to
+ * 11:59 PM), not a control — the format rule rejects an equal open and
+ * close, so "00:00 - 00:00" cannot stand in for it. A proper
  * component (not a render function like its siblings) because add/remove
  * move focus and feed a polite status region, which needs refs and state.
  */
@@ -188,16 +175,6 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
     setSameWeekdayHours(checked);
   };
 
-  const toggle24Hours = (row: DayRow, checked: boolean) => {
-    if (checked) {
-      setStatus(`${row.label} is now open 24 hours.`);
-      commitRow(row, [{ ...OPEN_24_HOURS_SET }]);
-    } else {
-      setStatus(`${row.label} is no longer open 24 hours.`);
-      commitRow(row, []);
-    }
-  };
-
   const addHours = (row: DayRow) => {
     const count = rowSets(row).length;
     pendingFocus.current = `${row.key}-${count}-start`;
@@ -255,10 +232,15 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
           step={field.step}
           disabled={field.disabled}
           onBlur={f.handleBlur}
-          // Only the half the applicant still has to fill is marked invalid,
-          // so a format error doesn't paint completed times red.
+          // Only the halves the applicant still has to fix are marked
+          // invalid — an empty picker, or both when open equals close — so
+          // a format error doesn't paint valid times red.
           aria-invalid={
-            invalid && rowSets(row)[index][half] === "" ? true : undefined
+            invalid &&
+            (rowSets(row)[index][half] === "" ||
+              rowSets(row)[index].start === rowSets(row)[index].end)
+              ? true
+              : undefined
           }
           aria-label={`${row.label} ${halfName} time${setSuffix}`}
           onChange={(e) => updateHours(row, index, half, e.target.value)}
@@ -308,12 +290,11 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
       <div className="opening-hours__week">
         {rows.map((row) => {
           const sets = rowSets(row);
-          const open24 = isOpen24Hours(sets);
           return (
             <div key={row.key} className="opening-hours__day">
               <span className="opening-hours__day-name">{row.label}</span>
               <div className="opening-hours__sets">
-                {open24 ? null : sets.length === 0 ? (
+                {sets.length === 0 ? (
                   <span className="opening-hours__not-open">Not open</span>
                 ) : (
                   sets.map((_, index) => (
@@ -337,27 +318,8 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
                     </div>
                   ))
                 )}
-                <div className="govbb-checkbox-item opening-hours__24h">
-                  <input
-                    type="checkbox"
-                    id={`${field.id}-${row.key}-open-24-hours`}
-                    className="govbb-checkbox"
-                    checked={open24}
-                    disabled={field.disabled}
-                    onChange={(e) => toggle24Hours(row, e.target.checked)}
-                  />
-                  <label
-                    className="govbb-checkbox-item__label"
-                    htmlFor={`${field.id}-${row.key}-open-24-hours`}
-                  >
-                    Open 24 hours{" "}
-                    <span className="govbb-visually-hidden">
-                      on {row.label}
-                    </span>
-                  </label>
-                </div>
               </div>
-              {!open24 && sets.length < MAX_SETS_PER_DAY && (
+              {sets.length < MAX_SETS_PER_DAY && (
                 <button
                   type="button"
                   className="govbb-btn--tertiary opening-hours__add"

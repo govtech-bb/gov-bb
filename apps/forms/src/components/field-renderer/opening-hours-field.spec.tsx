@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { axe } from "jest-axe";
 import {
   OpeningHoursField,
-  isOpen24Hours,
   parseOpeningHours,
   serializeOpeningHours,
   weekdaysShareHours,
@@ -74,19 +73,7 @@ describe("parseOpeningHours / serializeOpeningHours", () => {
   });
 });
 
-describe("isOpen24Hours / weekdaysShareHours", () => {
-  it("recognises only the exact full-day sentinel", () => {
-    expect(isOpen24Hours([{ start: "00:00", end: "23:59" }])).toBe(true);
-    expect(isOpen24Hours([{ start: "00:00", end: "23:00" }])).toBe(false);
-    expect(isOpen24Hours([])).toBe(false);
-    expect(
-      isOpen24Hours([
-        { start: "00:00", end: "23:59" },
-        { start: "00:00", end: "23:59" },
-      ]),
-    ).toBe(false);
-  });
-
+describe("weekdaysShareHours", () => {
   it("recognises shared weekday hours, ignoring the weekend", () => {
     const shared = parseOpeningHours([
       "Monday 09:00 - 17:00",
@@ -195,47 +182,6 @@ describe("OpeningHoursField", () => {
     expect(screen.getByLabelText("Thursday opening time")).toHaveFocus();
   });
 
-  describe("open 24 hours", () => {
-    it("stores the full-day sentinel and hides the pickers when ticked", async () => {
-      const user = userEvent.setup();
-      render(<Harness initial={["Monday 09:00 - 17:00"]} />);
-
-      await user.click(
-        screen.getByRole("checkbox", { name: "Open 24 hours on Monday" }),
-      );
-      expect(committed).toEqual(["Monday 00:00 - 23:59"]);
-      expect(
-        screen.queryByLabelText("Monday opening time"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "Add hours for Monday" }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("recovers the checked state from a stored full-day value", () => {
-      render(<Harness initial={["Sunday 00:00 - 23:59"]} />);
-      expect(
-        screen.getByRole("checkbox", { name: "Open 24 hours on Sunday" }),
-      ).toBeChecked();
-      // A full-day sentinel is neither "Not open" nor an editable set.
-      expect(screen.getAllByText("Not open")).toHaveLength(6);
-      expect(
-        screen.queryByLabelText("Sunday opening time"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("returns the day to Not open when unticked", async () => {
-      const user = userEvent.setup();
-      render(<Harness initial={["Sunday 00:00 - 23:59"]} />);
-
-      await user.click(
-        screen.getByRole("checkbox", { name: "Open 24 hours on Sunday" }),
-      );
-      expect(committed).toEqual([]);
-      expect(screen.getAllByText("Not open")).toHaveLength(7);
-    });
-  });
-
   describe("same hours every weekday", () => {
     const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
     const tickBox = async (user: ReturnType<typeof userEvent.setup>) =>
@@ -295,19 +241,6 @@ describe("OpeningHoursField", () => {
         "09:00",
       );
     });
-
-    it("marks the combined row open 24 hours across all five days", async () => {
-      const user = userEvent.setup();
-      render(<Harness />);
-
-      await tickBox(user);
-      await user.click(
-        screen.getByRole("checkbox", {
-          name: "Open 24 hours on Monday to Friday",
-        }),
-      );
-      expect(committed).toEqual(WEEKDAYS.map((day) => `${day} 00:00 - 23:59`));
-    });
   });
 
   it("has no axe violations, empty and populated", async () => {
@@ -320,7 +253,7 @@ describe("OpeningHoursField", () => {
         initial={[
           "Monday 09:00 - 17:00",
           "Monday 18:00 - 22:00",
-          "Sunday 00:00 - 23:59",
+          "Sunday 10:00 - 14:00",
         ]}
       />,
     );

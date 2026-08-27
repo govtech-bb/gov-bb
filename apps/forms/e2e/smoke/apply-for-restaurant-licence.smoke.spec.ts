@@ -48,10 +48,11 @@
  *    until "Add hours for <Day>" adds a set of native time pickers (up to
  *    three sets a day). The pickers are reached by aria-label — "<Day>
  *    opening time" / "<Day> closing time", suffixed ", set N" once a day
- *    holds more than one set. Each row also offers an "Open 24 hours on
- *    <Day>" checkbox (stores the 00:00 - 23:59 full-day sentinel), and a
- *    top toggle collapses Monday-Friday into one shared row. The submitted
- *    value is one string array of "<Day> HH:MM - HH:MM" entries.
+ *    holds more than one set. A top toggle collapses Monday-Friday into one
+ *    shared row; a 24-hour day is entered as 00:00 - 23:59 (the hint says
+ *    12:00 AM to 11:59 PM) since the format rule rejects an equal open and
+ *    close. The submitted value is one string array of "<Day> HH:MM - HH:MM"
+ *    entries.
  *  - `your-telephone` is likewise a `fieldArray` (min 1, max 4). Row 0 keeps the
  *    plain `${stepId}_your-telephone` id — only rows 1+ are index-suffixed — so
  *    one `fillField` is enough and the "Add another" button is left alone.
@@ -362,9 +363,8 @@ export async function fillAboutTheRestaurant(
 /**
  * Step 5 — opening hours. One weekly field: for each day with hours, click
  * "Add hours for <Day>" and set both pickers; a day left alone stays
- * "Not open". `hoursByDay` values are "HH:MM - HH:MM" strings, one per set,
- * or the literal "24 hours" to tick that day's "Open 24 hours" checkbox.
- * Sets are added one at a time because a day's picker labels gain a
+ * "Not open". `hoursByDay` values are "HH:MM - HH:MM" strings, one per set
+ * (a 24-hour day is "00:00 - 23:59"). Sets are added one at a time because a day's picker labels gain a
  * ", set N" suffix the moment it holds more than one set.
  */
 export async function fillOpeningHours(
@@ -376,12 +376,6 @@ export async function fillOpeningHours(
 
   for (const [day, sets] of Object.entries(hoursByDay)) {
     for (let i = 0; i < sets.length; i++) {
-      if (sets[i] === "24 hours") {
-        await page
-          .getByRole("checkbox", { name: `Open 24 hours on ${day}` })
-          .check();
-        continue;
-      }
       await page.getByRole("button", { name: `Add hours for ${day}` }).click();
       const suffix = sets.length > 1 && i > 0 ? `, set ${i + 1}` : "";
       const [start, end] = sets[i].split(" - ");

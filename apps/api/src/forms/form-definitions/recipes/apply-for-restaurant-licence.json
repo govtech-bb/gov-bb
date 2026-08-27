@@ -509,7 +509,7 @@
           "overrides": {
             "fieldId": "opening-hours",
             "label": "When is the restaurant open?",
-            "hint": "Select \"Add hours\" for each day the restaurant is open. Add a second set of hours to a day when you close and reopen, for example between lunch and dinner. Tick \"Open 24 hours\" for a day when you never close."
+            "hint": "Select \"Add hours\" for each day the restaurant is open. Add a second set of hours to a day when you close and reopen, for example between lunch and dinner. Open 24 hours? Enter 12:00 AM to 11:59 PM."
           }
         }
       ]

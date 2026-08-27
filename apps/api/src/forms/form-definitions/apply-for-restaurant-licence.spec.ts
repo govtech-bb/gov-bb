@@ -83,7 +83,9 @@ it.each([
   [["Monday 09:00 - 17:00"], true],
   [["Monday 11:00 - 15:00", "Monday 18:00 - 22:00"], true], // a second set of hours
   [["Friday 18:00 - 02:00"], true], // overnight service is a real answer
-  [["Monday 00:00 - 23:59"], true], // the "Open 24 hours" checkbox's sentinel
+  [["Monday 00:00 - 23:59"], true], // open 24 hours, as the hint instructs
+  [["Monday 00:00 - 00:00"], false], // the meaningless non-answer #2358 called out
+  [["Monday 09:00 - 09:00"], false], // an equal open and close is never an answer
   [["Monday 09:00 -"], false], // added but never completed
   [["Monday 11:00 - 15:00", "Monday 18:00 -"], false], // ...which is still checked
   [["Monday 9am to 5pm"], false],

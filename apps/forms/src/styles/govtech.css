@@ -280,9 +280,9 @@
 
 /* ---- Opening hours weekly grid (#2358) ------------------------------------
    One row per day: day name | sets of hours (or "Not open") | Add hours.
-   Each set is two native time pickers, each row also offers "Open 24 hours",
-   and Monday-Friday can collapse into one shared row. Colour, spacing and
-   type all come from the design-system tokens. */
+   Each set is two native time pickers, and Monday-Friday can collapse into
+   one shared row. Colour, spacing and type all come from the design-system
+   tokens. */
 .opening-hours {
   /* The height of a single-line control row ("Not open", the Add hours
      button) that day names centre against. */
@@ -346,19 +346,6 @@
 
 .opening-hours__set input[type="time"] {
   width: 10rem;
-}
-
-/* The per-row "Open 24 hours" checkbox, kept small under the hours. When a
-   row is open 24 hours the checked box is the row's whole content and centres
-   against the day name like "Not open" does. */
-.opening-hours__24h {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-
-.opening-hours__24h:only-child {
-  min-height: var(--oh-control-height);
 }
 
 /* On small screens each day stacks: name, its sets of hours, then the Add
