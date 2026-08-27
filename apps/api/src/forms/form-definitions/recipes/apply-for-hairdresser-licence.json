@@ -2,58 +2,11 @@
   "formId": "apply-for-hairdresser-licence",
   "title": "Apply to Environmental Health for a Hairdressers Licence",
   "description": "Apply for a hairdresser licence in Barbados",
-  "processors": [
-    {
-      "type": "email",
-      "config": {
-        "recipientField": "personal-details.email",
-        "subject": "Your hairdresser licence application has been received"
-      }
-    },
-    {
-      "type": "email",
-      "config": {
-        "recipientField": "catchment.mdaEmail",
-        "subject": "A new hairdresser licence application has been received"
-      }
-    },
-    {
-      "type": "webhook",
-      "config": {
-        "method": "POST",
-        "mapping": {
-          "programmeCode": "HAIRDRESSER_LICENCE",
-          "mdaCode": "MOH",
-          "programmeShortCode": "HDL",
-          "applicant": {
-            "name": [
-              "personal-details.first-name",
-              "personal-details.last-name"
-            ],
-            "email": "personal-details.email",
-            "phone": "personal-details.phone-number"
-          },
-          "excludeSteps": [
-            "check-your-answers",
-            "declaration",
-            "submission-confirmation"
-          ],
-          "groupByStep": true
-        }
-      }
-    }
-  ],
-  "meta": {
-    "visibility": "preview"
-  },
-  "catchmentRouting": {
-    "coordinatesField": "personal-details.address-coordinates",
-    "parishField": "personal-details.home-parish"
-  },
   "steps": [
     {
       "stepId": "personal-details",
       "title": "Tell us about yourself",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/first-name",
@@ -82,6 +35,18 @@
             "validations": {
               "required": {
                 "error": "Enter your last name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "fieldId": "national-id-number",
+            "validations": {
+              "required": {
+                "error": "Enter your national ID number",
                 "value": true
               }
             }
@@ -144,13 +109,18 @@
               "hidden": true
             }
           }
-        },
+        }
+      ]
+    },
+    {
+      "stepId": "contact-details",
+      "title": "Contact details",
+      "behaviours": [],
+      "elements": [
         {
           "ref": "components/email",
           "overrides": {
             "fieldId": "email",
-            "label": "What is your email address?",
-            "hint": "We will use this to contact you about your application.",
             "validations": {
               "required": {
                 "error": "Enter your email address",
@@ -163,8 +133,6 @@
           "ref": "components/telephone",
           "overrides": {
             "fieldId": "phone-number",
-            "label": "What is your phone number?",
-            "hint": "You can enter a Barbados or international number.",
             "validations": {
               "required": {
                 "error": "Enter your phone number",
@@ -173,12 +141,12 @@
             }
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "workplace-details",
       "title": "Tell us where you plan to work",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/generic-checkbox",
@@ -251,6 +219,11 @@
           "overrides": {
             "fieldId": "salon-address-line-2",
             "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -260,12 +233,7 @@
                   "at-salon"
                 ]
               }
-            ],
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
+            ]
           }
         },
         {
@@ -302,19 +270,23 @@
             ]
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "documents",
       "title": "Add your documents",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/upload-document",
           "overrides": {
             "fieldId": "passport-photo",
             "label": "Upload your passport-size photographs.",
+            "hint": "These photographs should have been taken recently.",
             "validations": {
+              "required": {
+                "value": true
+              },
               "fileTypes": {
                 "error": "Upload a passport-size photograph in JPEG, PNG or GIF format",
                 "value": [
@@ -326,12 +298,8 @@
               "itemMaxSize": {
                 "error": "File must be 5 MB or smaller",
                 "value": 5242880
-              },
-              "required": {
-                "value": true
               }
-            },
-            "hint": "These photographs should have been taken recently."
+            }
           }
         },
         {
@@ -340,6 +308,10 @@
             "fieldId": "medical-certificate",
             "label": "Upload your medical certificate of fitness.",
             "validations": {
+              "required": {
+                "error": "Your medical certificate is required",
+                "value": true
+              },
               "fileTypes": {
                 "error": "Upload your medical certificate in PDF, JPEG or PNG format",
                 "value": [
@@ -351,26 +323,22 @@
               "itemMaxSize": {
                 "error": "File must be 5 MB or smaller",
                 "value": 5242880
-              },
-              "required": {
-                "error": "Your medical certificate is required",
-                "value": true
               }
             }
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "check-your-answers",
       "title": "Check your answers",
-      "elements": [],
-      "behaviours": []
+      "behaviours": [],
+      "elements": []
     },
     {
       "stepId": "declaration",
       "title": "Confirm and submit your application",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/confirmation",
@@ -385,23 +353,72 @@
             },
             "options": [
               {
-                "label": "I confirm that the information in this application is true and correct to the best of my knowledge.",
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
                 "value": "confirmed"
               }
             ]
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "submission-confirmation",
       "title": "Application submitted",
-      "elements": [],
       "behaviours": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- Your application goes to the Environmental Health Service associated with your location. If additional information or documentation is required, you will be contacted by an Environmental Health Officer.\n\n**Obtaining your licence:**\n\n- If your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n- Branford Taitt Polyclinic - [536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)\n- David Thompson Health and Social Services Complex - [536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)\n- Eunice Gibson Polyclinic - [536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)\n- Maurice Byer Polyclinic - [536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)\n- Randall Phillips Polyclinic - [536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)\n- St. Phillip Polyclinic - [536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)\n- Winston Scott Polyclinic - [536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)"
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- Your application goes to the Environmental Health Service associated with your location. If additional information or documentation is required, you will be contacted by an Environmental Health Officer.\n\n**Obtaining your licence:**\n\n- If your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n- Branford Taitt Polyclinic - [536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)\n- David Thompson Health and Social Services Complex - [536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)\n- Eunice Gibson Polyclinic - [536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)\n- Maurice Byer Polyclinic - [536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)\n- Randall Phillips Polyclinic - [536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)\n- St. Phillip Polyclinic - [536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)\n- Winston Scott Polyclinic - [536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)",
+      "elements": []
+    }
+  ],
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "contact-details.email",
+        "subject": "Your hairdresser licence application has been received"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "catchment.mdaEmail",
+        "subject": "A new hairdresser licence application has been received"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "method": "POST",
+        "signatureHeader": "X-Webhook-Signature",
+        "mapping": {
+          "programmeCode": "HAIRDRESSER_LICENCE",
+          "mdaCode": "MOH",
+          "programmeShortCode": "HDL",
+          "applicant": {
+            "name": [
+              "personal-details.first-name",
+              "personal-details.last-name"
+            ],
+            "email": "contact-details.email",
+            "phone": "contact-details.phone-number"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        },
+        "timeoutMs": 10000
+      }
     }
   ],
   "createdAt": "2026-08-19T19:09:04.486Z",
-  "updatedAt": "2026-08-27T20:26:20.773Z"
+  "updatedAt": "2026-08-27T22:02:03.859Z",
+  "meta": {
+    "visibility": "preview"
+  },
+  "catchmentRouting": {
+    "coordinatesField": "personal-details.address-coordinates",
+    "parishField": "personal-details.home-parish"
+  }
 }
