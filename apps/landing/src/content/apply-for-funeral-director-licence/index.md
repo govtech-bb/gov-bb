@@ -29,7 +29,7 @@ Read the [Health Services (Embalmers and Funeral Directors) Regulations 1984](ht
 You may need to provide:
 
 -   your current funeral directors licence number (if renewing)
--   a scanned copy of your ID
+-   a scanned copy of your Barbados National Identification card
 -   a passport sized photograph
 -   a letter evidencing you have been engaged in the business of funeral directing under the direct supervision of a licensed funeral director for over two (2) years or have been working in a funeral director's office for over three (3) years, if you were engaged in the business prior to the regulations coming into operation in 1984
 
