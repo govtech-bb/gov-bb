@@ -35,14 +35,16 @@
  *  - This form has NO step gates — every step is in the journey on every run.
  *    Both branches are inline field reveals on `business-details`, so the two
  *    tests differ only in what they answer there.
- *  - The premises-type select has NO `fieldId` override in the recipe, so it
- *    keeps `components/generic-select`'s default fieldId — the field is
- *    addressed as `generic-select`, and the recipe's own conditional targets
- *    that name. Addressed here as `generic-select` deliberately; if the recipe
- *    is ever given a real fieldId (e.g. `premises-type`), this spec and the
- *    conditional both need updating together.
- *  - "vehicle" reveals `vehicle-licence`; "renew" on `new-or-renew` reveals
- *    `licence-reference-number`. The second test takes both.
+ *  - The premises-type select is `business-location-type`. It used to carry no
+ *    `fieldId` override at all and answered to `components/generic-select`'s
+ *    default (`generic-select`); the 2026-08-27 publish gave it a real name and
+ *    retargeted the conditionals that read it.
+ *  - `business-location-type` now drives the WHOLE business address block:
+ *    "building" reveals `business-address-line-1` / `-line-2` / `-parish` /
+ *    `-postcode`, and "vehicle" reveals `vehicle-licence` instead. The two
+ *    tests take opposite sides, so only the building branch geocodes.
+ *  - "renew" on `new-or-renew` reveals `licence-reference-number`. The second
+ *    test takes it alongside the vehicle branch.
  *  - The business address is an address-lookup (geocoder) field, so it cannot
  *    take a free-text faker address — the geocoder must return a real Barbados
  *    match to populate the hidden coordinates the catchment router reads
@@ -52,7 +54,8 @@
  *    `business-address-coordinates` filled.
  *  - `business-address-postcode` is `components/postcode`: pattern-only
  *    (`^[Bb]{2} ?\d{5}$`), no required rule — so it must either be blank or a
- *    real-shaped postcode. We fill a valid one.
+ *    real-shaped postcode. We fill a valid one on the building branch; on the
+ *    vehicle branch it is not on screen at all.
  *  - `owner-address-line-1` is `components/address` (required, minLength 5) and
  *    is NOT geocoded — plain faker street addresses are fine there.
  *  - `male-staff-count` / `female-staff-count` inherit
@@ -62,11 +65,19 @@
  *    `components/upload-document` (which ships NO validations) declaring
  *    `required` explicitly, alongside `fileTypes` + `itemMaxSize`. Both file
  *    fields accept PNG, so the uploads below are unaffected.
- *  - UNLIKE apply-for-hotel-licence, this recipe's confirmation step uses
- *    generic `nextSteps` copy and no `{polyclinic}` placeholder, so there is no
- *    resolved-catchment name on the confirmation screen to assert. Catchment
- *    routing still runs (it drives the MDA email), it just isn't surfaced to
- *    the applicant. Don't add a /Polyclinic/ assertion here; it would fail.
+ *  - The confirmation step's `markdownContent` DOES open with the
+ *    `{polyclinic}` token (added in #2550), but don't pin a polyclinic name:
+ *    which one resolves depends on the faker-picked address, and the copy's
+ *    Contact section lists all seven by name regardless, so a /Polyclinic/
+ *    match proves nothing. We assert the stable Environmental Health copy.
+ *  - CAVEAT on the vehicle branch: `catchmentRouting` reads
+ *    `business-details.business-address-coordinates` and
+ *    `business-details.business-address-parish`, and BOTH now live behind the
+ *    "building" gate — a vehicle-based business answers neither, so catchment
+ *    cannot resolve and `{polyclinic}` falls back to "your local polyclinic".
+ *    That also means the MDA copy of the application has no polyclinic to go
+ *    to. Deliberately NOT asserted either way here: the fallback is a product
+ *    gap to fix in the recipe, not behaviour worth pinning in a test.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
@@ -223,9 +234,7 @@ export async function fillBusinessDetails(
   // ─── Premises type — "vehicle" reveals the vehicle licence inline ──────────
   const vehicleLicence = page.locator(`[id="${step}_vehicle-licence"]`);
   await expect(vehicleLicence).toBeHidden();
-  // Addressed as `generic-select`: the recipe gives this element no fieldId
-  // override, so it keeps the component default. See the header note.
-  await selectDropdown(page, step, "generic-select", premisesType);
+  await selectDropdown(page, step, "business-location-type", premisesType);
   if (premisesType === "vehicle") {
     await expect(vehicleLicence).toBeVisible({ timeout: STEP_TIMEOUT });
     await vehicleLicence.fill(data.vehicleLicence);
@@ -233,24 +242,41 @@ export async function fillBusinessDetails(
     await expect(vehicleLicence).toBeHidden();
   }
 
-  await fillGeocodedBusinessAddress(page, step, data.businessAddress);
-  await fillField(
-    page,
-    step,
-    "business-address-line-2",
-    data.businessAddressLine2,
+  // ─── The address block rides the same gate — "building" only ──────────────
+  const addressLine1 = page.locator(
+    `input[id="${step}_business-address-line-1"]`,
   );
-  // The geocoder fills parish from the picked suggestion; assert rather than
-  // overwrite, since that value is the catchment router's fallback.
-  await expect(
-    page.locator(`select[id="${step}_business-address-parish"]`),
-  ).not.toHaveValue("");
-  await fillField(
-    page,
-    step,
-    "business-address-postcode",
-    data.businessPostcode,
-  );
+  if (premisesType === "building") {
+    await expect(addressLine1).toBeVisible({ timeout: STEP_TIMEOUT });
+    await fillGeocodedBusinessAddress(page, step, data.businessAddress);
+    await fillField(
+      page,
+      step,
+      "business-address-line-2",
+      data.businessAddressLine2,
+    );
+    // The geocoder fills parish from the picked suggestion; assert rather than
+    // overwrite, since that value is the catchment router's fallback.
+    await expect(
+      page.locator(`select[id="${step}_business-address-parish"]`),
+    ).not.toHaveValue("");
+    await fillField(
+      page,
+      step,
+      "business-address-postcode",
+      data.businessPostcode,
+    );
+  } else {
+    // A vehicle has no premises address to give — see the catchment caveat in
+    // the header note.
+    await expect(addressLine1).toBeHidden();
+    await expect(
+      page.locator(`select[id="${step}_business-address-parish"]`),
+    ).toBeHidden();
+    await expect(
+      page.locator(`input[id="${step}_business-address-postcode"]`),
+    ).toBeHidden();
+  }
 
   // ─── New or renew — "renew" reveals the existing licence reference ─────────
   const licenceReference = page.locator(
@@ -279,8 +305,7 @@ export async function fillOwnerDetails(
   await fillField(page, step, "owner-address-line-1", data.ownerAddressLine1);
   await fillField(page, step, "owner-address-line-2", data.ownerAddressLine2);
   await fillField(page, step, "owner-city-town", data.ownerCityTown);
-  // `owner-post-zip-coode` — fieldId spelled that way in the recipe (sic).
-  await fillField(page, step, "owner-post-zip-coode", data.ownerPostZipCode);
+  await fillField(page, step, "owner-post-zip-code", data.ownerPostZipCode);
   // `components/country` carries no fieldId override, so it keeps the default.
   await selectDropdown(page, step, "country", "barbados");
   await advance(page, step);
@@ -391,6 +416,8 @@ test.describe("Register Hair & Beauty Business — Live Smoke", () => {
     await expect(
       page.getByText(data.licenceReferenceNumber).first(),
     ).toBeVisible();
+    // ...and the gated-away business address did not.
+    await expect(page.getByText(data.businessPostcode)).toHaveCount(0);
     if (process.env.SMOKE_HOLD_CYA) await page.pause();
     await advance(page, step);
 
