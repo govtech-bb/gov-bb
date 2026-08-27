@@ -7,7 +7,7 @@ visibility: preview
 form_id: apply-for-food-business-licence
 category: business-trade
 ---
-Use this service to apply for or renew a Food Business Licence from Environmental Health.
+Use this service to apply for or renew a food business licence with the Environmental Health Department.
 
 ## Who is this licence for
 
@@ -21,9 +21,9 @@ You need a food business licence if you operate a food business before you start
 
 Read [The Health Services (Food Hygiene) Regulations, 1969](https://oag.gov.bb/attachments/Health%20Services%20\(Food%20Hygiene\)%20Regulations,%201969%20Cap44'M.PDF) for the full legal requirements.
 
-You will require a different licence if you own a:
+You will require a different licence if you own:
 
--   Restaurant
+-   Restaurants
 -   Caterers
 -   Bakers
 
@@ -41,7 +41,7 @@ You may need to provide:
 
 **Everyone who handles food** needs a valid medical certificate from a registered doctor. Medical certificates expire on 31 December each year, and should be renewed before the first working day in January each year. You can upload the certificates with your application or provide them at the inspection.
 
-Read the [(Health Services (Restaurants) Regulations, 1969)](https://oag.gov.bb/attachments/Health%20Services%20\(Restaurants\)%20Regulations,%201969%20Cap44'Z.PDF) for the full legal requirements.
+Read the [Health Services (Restaurants) Regulations, 1969](https://oag.gov.bb/attachments/Health%20Services%20\(Restaurants\)%20Regulations,%201969%20Cap44'Z.PDF) for the full legal requirements.
 
 ## When to apply
 
