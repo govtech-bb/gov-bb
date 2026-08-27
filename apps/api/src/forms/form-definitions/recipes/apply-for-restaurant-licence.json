@@ -7,60 +7,11 @@
     "telephoneNumber": "+1 (246) 536-3800",
     "email": "info@health.gov.bb"
   },
-  "processors": [
-    {
-      "type": "email",
-      "config": {
-        "recipientField": "about-you.your-email",
-        "subject": "Your restaurant licence application has been received"
-      }
-    },
-    {
-      "type": "email",
-      "config": {
-        "recipientField": "catchment.mdaEmail",
-        "subject": "A new restaurant licence application has been received"
-      }
-    },
-    {
-      "type": "webhook",
-      "config": {
-        "method": "POST",
-        "signatureHeader": "X-Webhook-Signature",
-        "mapping": {
-          "programmeCode": "RESTAURANT_LICENCE",
-          "mdaCode": "MOH",
-          "programmeShortCode": "RSL",
-          "applicant": {
-            "name": [
-              "about-you.your-first-name",
-              "about-you.your-last-name"
-            ],
-            "email": "about-you.your-email",
-            "phone": "about-you.your-telephone"
-          },
-          "excludeSteps": [
-            "check-your-answers",
-            "declaration",
-            "submission-confirmation"
-          ],
-          "groupByStep": true
-        },
-        "timeoutMs": 10000
-      }
-    }
-  ],
-  "catchmentRouting": {
-    "coordinatesField": "about-restaurant.restaurant-address-coordinates",
-    "parishField": "about-restaurant.restaurant-parish"
-  },
-  "meta": {
-    "visibility": "preview"
-  },
   "steps": [
     {
       "stepId": "about-you",
       "title": "About you",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/generic-radio",
@@ -160,12 +111,20 @@
             "fieldId": "your-country"
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "applicant-details",
       "title": "Applicant details",
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetFieldId": "completing-for",
+          "targetStepId": "about-you",
+          "operator": "equal",
+          "value": "someone-else"
+        }
+      ],
       "elements": [
         {
           "ref": "components/generic-radio",
@@ -256,20 +215,12 @@
             "fieldId": "applicant-country"
           }
         }
-      ],
-      "behaviours": [
-        {
-          "type": "stepConditionalOn",
-          "targetFieldId": "completing-for",
-          "targetStepId": "about-you",
-          "operator": "equal",
-          "value": "someone-else"
-        }
       ]
     },
     {
       "stepId": "about-applicant",
       "title": "About the application",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/generic-select",
@@ -353,13 +304,38 @@
               }
             ]
           }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "current-restaurant-licence-number",
+            "label": "Current restaurant licence number",
+            "validations": {
+              "required": {
+                "error": "Enter your current restaurant licence number",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "about-applicant",
+                "operator": "equal",
+                "value": "renewal"
+              }
+            ],
+            "ui": {
+              "width": "short"
+            }
+          }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "about-restaurant",
       "title": "About the restaurant",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/generic-text",
@@ -521,12 +497,12 @@
             ]
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "opening-hours",
       "title": "Opening hours",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/generic-checkbox",
@@ -930,12 +906,12 @@
             }
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "food-preparation",
       "title": "Where are food and drink prepared",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/generic-checkbox",
@@ -968,32 +944,49 @@
             ]
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "location-food-drink-prepared",
       "title": "What locations are your food and drink prepared at",
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 5,
+          "instanceLabel": "establishment address"
+        },
+        {
+          "type": "stepConditionalOn",
+          "targetFieldId": "food-prep-location",
+          "targetStepId": "food-preparation",
+          "operator": "in",
+          "value": [
+            "commercial-kitchen",
+            "another-location"
+          ]
+        }
+      ],
       "elements": [
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Establishment name",
-            "fieldId": "other-establishment-name"
+            "fieldId": "other-establishment-name",
+            "label": "Establishment name"
           }
         },
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address Line 1",
-            "fieldId": "other-establishment-address-1"
+            "fieldId": "other-establishment-address-1",
+            "label": "Address Line 1"
           }
         },
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 2",
             "fieldId": "other-establishment-address-2",
+            "label": "Address line 2",
             "validations": {
               "required": {
                 "value": false
@@ -1007,29 +1000,12 @@
             "fieldId": "other-establishment-parish"
           }
         }
-      ],
-      "behaviours": [
-        {
-          "type": "repeatable",
-          "min": 1,
-          "max": 5,
-          "instanceLabel": "establishment address"
-        },
-        {
-          "type": "stepConditionalOn",
-          "targetStepId": "food-preparation",
-          "targetFieldId": "food-prep-location",
-          "operator": "in",
-          "value": [
-            "commercial-kitchen",
-            "another-location"
-          ]
-        }
       ]
     },
     {
       "stepId": "people-working-at-the-food-business",
       "title": "People working at the food business",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/generic-number",
@@ -1065,20 +1041,20 @@
             "hint": "The list must give each person's name and address. PDF, JPG or PNG, up to 5MB.",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Upload a list of your staff."
+                "error": "Upload a list of your staff.",
+                "value": true
               },
               "fileTypes": {
+                "error": "The staff list must be a PDF, JPG or PNG.",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
                   "image/png"
-                ],
-                "error": "The staff list must be a PDF, JPG or PNG."
+                ]
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "The staff list must be smaller than 5MB."
+                "error": "The staff list must be smaller than 5MB.",
+                "value": 5242880
               }
             }
           }
@@ -1091,26 +1067,26 @@
             "hint": "You can upload more than one file. PDF, JPG or PNG, up to 5MB each. If you do not have them now, you can bring them to the inspection.",
             "validations": {
               "fileTypes": {
+                "error": "Each medical certificate must be a PDF, JPG or PNG.",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
                   "image/png"
-                ],
-                "error": "Each medical certificate must be a PDF, JPG or PNG."
+                ]
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "Each medical certificate must be smaller than 5MB."
+                "error": "Each medical certificate must be smaller than 5MB.",
+                "value": 5242880
               }
             }
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "floor-plan",
       "title": "Upload floor plan",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/upload-document",
@@ -1120,16 +1096,16 @@
             "hint": "A drawing of the layout. PDF, JPG or PNG, up to 5MB.",
             "validations": {
               "fileTypes": {
+                "error": "The floor plan must be a PDF, JPG or PNG.",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
                   "image/png"
-                ],
-                "error": "The floor plan must be a PDF, JPG or PNG."
+                ]
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "The floor plan must be smaller than 5MB."
+                "error": "The floor plan must be smaller than 5MB.",
+                "value": 5242880
               }
             }
           }
@@ -1142,12 +1118,16 @@
             "hint": "This is the building plan submitted to the Planning and Development Department",
             "validations": {
               "fileTypes": {
-                "value": ["application/pdf", "image/jpeg", "image/png"],
-                "error": "Upload a PDF, JPG or PNG"
+                "error": "Upload a PDF, JPG or PNG",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "Each file must be 5 MB or smaller"
+                "error": "Each file must be 5 MB or smaller",
+                "value": 5242880
               }
             }
           }
@@ -1175,19 +1155,19 @@
             ]
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "check-your-answers",
       "title": "Check your answers",
       "description": "Review all the information you have provided before submitting your application.",
-      "elements": [],
-      "behaviours": []
+      "behaviours": [],
+      "elements": []
     },
     {
       "stepId": "declaration",
       "title": "Declaration",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/confirmation",
@@ -1208,22 +1188,71 @@
             ]
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "submission-confirmation",
       "title": "Application submitted",
-      "elements": [],
       "behaviours": [],
       "nextSteps": [
         {
           "title": "What happens next",
           "content": "Environmental Health will review your application. They may contact you if they need more information or need to arrange an inspection. They will contact you with the result. If your application is approved, they will tell you what to do next to get your licence."
         }
-      ]
+      ],
+      "elements": []
+    }
+  ],
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "about-you.your-email",
+        "subject": "Your restaurant licence application has been received"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "catchment.mdaEmail",
+        "subject": "A new restaurant licence application has been received"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "method": "POST",
+        "signatureHeader": "X-Webhook-Signature",
+        "mapping": {
+          "programmeCode": "RESTAURANT_LICENCE",
+          "mdaCode": "MOH",
+          "programmeShortCode": "RSL",
+          "applicant": {
+            "name": [
+              "about-you.your-first-name",
+              "about-you.your-last-name"
+            ],
+            "email": "about-you.your-email",
+            "phone": "about-you.your-telephone"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        },
+        "timeoutMs": 10000
+      }
     }
   ],
   "createdAt": "2026-08-18T19:36:35.003Z",
-  "updatedAt": "2026-08-22T23:41:19.114Z"
+  "updatedAt": "2026-08-27T02:22:44.693Z",
+  "meta": {
+    "visibility": "preview"
+  },
+  "catchmentRouting": {
+    "coordinatesField": "about-restaurant.restaurant-address-coordinates",
+    "parishField": "about-restaurant.restaurant-parish"
+  }
 }
