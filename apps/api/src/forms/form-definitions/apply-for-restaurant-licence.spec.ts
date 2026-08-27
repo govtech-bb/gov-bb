@@ -72,13 +72,13 @@ it("requires hours for at least one day", async () => {
   expect(field, "opening-hours is missing").toBeDefined();
 
   const errors = validateField(field as unknown as Primitive, [], {});
-  expect(errors).toEqual(["Add opening hours for at least one day"]);
+  expect(errors).toEqual(["Add hours for at least one day"]);
 
   // A blank-entry array is no answer either: required must reject it, or a
   // non-renderer client (chat, direct POST) could submit zero hours as
   // "open". Pins the all-blank-array guard in @govtech-bb/form-validation.
   const blankErrors = validateField(field as unknown as Primitive, [""], {});
-  expect(blankErrors).toEqual(["Add opening hours for at least one day"]);
+  expect(blankErrors).toEqual(["Add hours for at least one day"]);
 });
 
 // The renderer composes each entry from two native time pickers, so the
