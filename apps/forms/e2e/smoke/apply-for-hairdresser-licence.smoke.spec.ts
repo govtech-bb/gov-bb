@@ -65,8 +65,14 @@
  *    match proves nothing here, because the copy's Contact section lists all
  *    seven by name regardless. What does prove resolution ran is the ABSENCE of
  *    the generic "your local polyclinic" fallback.
- *  - There is no National Registration Number on this form, so no Maskito-masked
- *    field to type digit-by-digit.
+ *  - `national-id-number` (`components/national-id-number`) is REQUIRED here and
+ *    carries a Maskito hard mask (`999999-9999`). Type the ten raw digits and
+ *    let the mask insert the dash — a `fill()` of the formatted string fights
+ *    the mask. Same idiom as nhc-land-property-application.
+ *  - Email and phone live on their own `contact-details` step, not on
+ *    `personal-details`. They lost their recipe label/hint overrides in the
+ *    same publish and now render `components/email` / `components/telephone`
+ *    defaults; this spec addresses both by id, so the copy is not pinned here.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
@@ -131,6 +137,18 @@ function bbMobileNumber(): string {
   return `246 ${faker.helpers.arrayElement(BB_MOBILE_EXCHANGES)} ${faker.string.numeric(4)}`;
 }
 
+/**
+ * Ten raw digits in National ID shape (YYMMDD + 4). Typed digit-by-digit so
+ * Maskito inserts the dash and the value matches `^\d{6}-\d{4}$`.
+ */
+function nationalIdDigits(): string {
+  const dob = faker.date.birthdate({ min: 21, max: 70, mode: "age" });
+  const yy = String(dob.getFullYear()).slice(-2);
+  const mm = String(dob.getMonth() + 1).padStart(2, "0");
+  const dd = String(dob.getDate()).padStart(2, "0");
+  return `${yy}${mm}${dd}${faker.string.numeric(4)}`;
+}
+
 /** Build a complete, valid set of answers for either branch. */
 export function buildData() {
   if (process.env.FAKER_SEED) faker.seed(Number(process.env.FAKER_SEED));
@@ -139,6 +157,7 @@ export function buildData() {
     firstName: faker.person.firstName(),
     middleName: faker.person.middleName(),
     lastName: faker.person.lastName(),
+    nationalIdDigits: nationalIdDigits(),
     address: faker.helpers.arrayElement(GEOCODABLE_ADDRESSES),
     addressLine2: faker.location.street(),
     // Goes to the monitored test inbox so a real run is verifiable end-to-end.
@@ -180,6 +199,23 @@ async function checkOption(
   await page
     .locator(`input[type=checkbox][id="${stepId}_${suffix}-${optionValue}"]`)
     .check();
+}
+
+/**
+ * Fill the Maskito-masked National ID: type the ten raw digits so the mask
+ * inserts the dash, then assert the formatted shape actually landed.
+ */
+async function fillMaskedNationalId(
+  page: Page,
+  stepId: string,
+  suffix: string,
+  digits: string,
+): Promise<void> {
+  const input = page.locator(`input[id="${stepId}_${suffix}"]`);
+  await input.pressSequentially(digits);
+  await expect(input, "Maskito did not format the National ID").toHaveValue(
+    /^\d{6}-\d{4}$/,
+  );
 }
 
 /**
@@ -227,6 +263,12 @@ export async function fillPersonalDetails(
   await fillField(page, step, "first-name", data.firstName);
   await fillField(page, step, "middle-name", data.middleName);
   await fillField(page, step, "last-name", data.lastName);
+  await fillMaskedNationalId(
+    page,
+    step,
+    "national-id-number",
+    data.nationalIdDigits,
+  );
   await fillGeocodedAddress(page, step, data.address);
   // Line 2 is optional here (the recipe overrides required:false), but fill
   // it explicitly rather than rely on whatever line 2 the picked suggestion
@@ -237,6 +279,16 @@ export async function fillPersonalDetails(
   await expect(
     page.locator(`select[id="${step}_home-parish"]`),
   ).not.toHaveValue("");
+  await advance(page, step);
+}
+
+/** Step 2 — email and phone, split out of `personal-details` on 2026-08-27. */
+export async function fillContactDetails(
+  page: Page,
+  data: ReturnType<typeof buildData>,
+): Promise<void> {
+  const step = expectStep(page, "contact-details");
+  await expect(page.locator("h1")).toContainText("Contact details");
   await fillField(page, step, "email", data.email);
   await fillField(page, step, "phone-number", data.phone);
   await advance(page, step);
@@ -290,6 +342,7 @@ test.describe("Hairdresser Licence Application — Live Smoke", () => {
 
     await openForm(page);
     await fillPersonalDetails(page, data);
+    await fillContactDetails(page, data);
 
     // ─── Workplace details — two independent inline reveals ──────────────────
     let step = expectStep(page, "workplace-details");
@@ -341,6 +394,7 @@ test.describe("Hairdresser Licence Application — Live Smoke", () => {
 
     await openForm(page);
     await fillPersonalDetails(page, data);
+    await fillContactDetails(page, data);
 
     // ─── Workplace details — "from-home" alone triggers neither inline reveal ─
     let step = expectStep(page, "workplace-details");
