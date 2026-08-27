@@ -59,7 +59,6 @@ There are 2 ways to apply for a restaurant licence. You can:
     
     You must complete it by hand and submit the application to the polyclinic associated with the district where the restaurant is located. If you require further information or assistance, contact the polyclinic - information can be found at the bottom of this page.
     
-
 ## Cost
 
 There is neither a cost to apply, nor to receive your licence.
