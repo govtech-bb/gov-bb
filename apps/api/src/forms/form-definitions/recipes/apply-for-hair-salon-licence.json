@@ -2,65 +2,17 @@
   "formId": "apply-for-hair-salon-licence",
   "title": "Apply to Environmental Health for a hairdressing or beauty business licence",
   "description": "Use this service to register a business that provides hairdressing, barbering, beauty services, manicures or pedicures.",
-  "processors": [
-    {
-      "type": "email",
-      "config": {
-        "subject": "Your hair or beauty business registration application has been received",
-        "recipientField": "contact-details.email"
-      }
-    },
-    {
-      "type": "email",
-      "config": {
-        "subject": "A new hair or beauty business registration application has been received",
-        "recipientField": "catchment.mdaEmail"
-      }
-    },
-    {
-      "type": "webhook",
-      "config": {
-        "method": "POST",
-        "mapping": {
-          "mdaCode": "MOH",
-          "applicant": {
-            "name": [
-              "owner-details.owner-name"
-            ],
-            "email": "contact-details.email",
-            "phone": "contact-details.telephone"
-          },
-          "groupByStep": true,
-          "excludeSteps": [
-            "check-your-answers",
-            "declaration",
-            "submission-confirmation"
-          ],
-          "programmeCode": "HAIR_SALON_LICENCE",
-          "programmeShortCode": "HSL"
-        },
-        "timeoutMs": 10000,
-        "signatureHeader": "X-Webhook-Signature"
-      }
-    }
-  ],
-  "meta": {
-    "visibility": "preview"
-  },
-  "catchmentRouting": {
-    "parishField": "business-details.business-address-parish",
-    "coordinatesField": "business-details.business-address-coordinates"
-  },
   "steps": [
     {
       "stepId": "business-details",
       "title": "Business details",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Business name",
             "fieldId": "business-name",
+            "label": "Business name",
             "validations": {
               "required": {
                 "error": "Enter the business name",
@@ -72,7 +24,14 @@
         {
           "ref": "components/generic-select",
           "overrides": {
+            "fieldId": "business-location-type",
             "label": "Where will the hairdressing services be provided from?",
+            "validations": {
+              "required": {
+                "error": "Select where the hairdressing services will be provided from",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "A fixed building or property",
@@ -88,28 +47,35 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "ui": {
-              "width": "short"
-            },
-            "hint": "The registration number of the vehicle",
-            "label": "Vehicle registration number",
             "fieldId": "vehicle-licence",
+            "label": "Vehicle registration number",
+            "hint": "The registration number of the vehicle",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "value": "vehicle",
+                "targetFieldId": "business-location-type",
                 "operator": "equal",
-                "targetStepId": "business-details",
-                "targetFieldId": "generic-select"
+                "value": "vehicle"
               }
-            ]
+            ],
+            "ui": {
+              "width": "short"
+            }
           }
         },
         {
           "ref": "components/address-lookup",
           "overrides": {
-            "label": "Address line 1",
             "fieldId": "business-address-line-1",
+            "label": "Address line 1",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "business-location-type",
+                "operator": "equal",
+                "value": "building"
+              }
+            ],
             "geocodeTargets": {
               "line2FieldId": "business-address-line-2",
               "parishFieldId": "business-address-parish",
@@ -120,47 +86,77 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 2",
             "fieldId": "business-address-line-2",
+            "label": "Address line 2",
             "validations": {
               "required": {
                 "value": false
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "business-location-type",
+                "operator": "equal",
+                "value": "building"
+              }
+            ]
           }
         },
         {
           "ref": "components/parish",
           "overrides": {
-            "fieldId": "business-address-parish"
+            "fieldId": "business-address-parish",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "business-location-type",
+                "operator": "equal",
+                "value": "building"
+              }
+            ]
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "ui": {
-              "hidden": true
-            },
-            "label": "Business address coordinates",
             "fieldId": "business-address-coordinates",
+            "label": "Business address coordinates",
             "validations": {
               "required": {
                 "value": false
               }
+            },
+            "ui": {
+              "hidden": true
             }
           }
         },
         {
           "ref": "components/postcode",
           "overrides": {
-            "fieldId": "business-address-postcode"
+            "fieldId": "business-address-postcode",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "business-location-type",
+                "operator": "equal",
+                "value": "building"
+              }
+            ]
           }
         },
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "What are you applying to do",
             "fieldId": "new-or-renew",
+            "label": "What are you applying to do?",
+            "validations": {
+              "required": {
+                "error": "Select whether you are applying for a new licence or renewing",
+                "value": true
+              }
+            },
             "options": [
               {
                 "label": "Apply for a hairdressing salon licence for the first time",
@@ -176,37 +172,36 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "hint": "Enter the number shown on your current licence or Environmental Health correspondence",
-            "label": "Licence or reference number",
             "fieldId": "licence-reference-number",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "value": "renew",
-                "operator": "equal",
-                "targetStepId": "business-details",
-                "targetFieldId": "new-or-renew"
-              }
-            ],
+            "label": "Licence or reference number",
+            "hint": "Enter the number shown on your current licence or Environmental Health correspondence",
             "validations": {
               "required": {
                 "value": false
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "new-or-renew",
+                "operator": "equal",
+                "value": "renew"
+              }
+            ]
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "owner-details",
       "title": "Owner or operator details",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/name",
           "overrides": {
-            "label": "Name of owner or operator",
             "fieldId": "owner-name",
+            "label": "Name of owner or operator",
             "validations": {
               "required": {
                 "error": "Enter the name of the owner or operator",
@@ -218,15 +213,15 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 1",
-            "fieldId": "owner-address-line-1"
+            "fieldId": "owner-address-line-1",
+            "label": "Address line 1"
           }
         },
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 2",
             "fieldId": "owner-address-line-2",
+            "label": "Address line 2",
             "validations": {
               "required": {
                 "value": false
@@ -237,8 +232,8 @@
         {
           "ref": "components/town",
           "overrides": {
-            "label": "Parish / City / Town",
             "fieldId": "owner-city-town",
+            "label": "Parish / City / Town",
             "validations": {
               "required": {
                 "value": true
@@ -249,27 +244,27 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "ui": {
-              "width": "short"
-            },
+            "fieldId": "owner-post-zip-code",
             "label": "Postcode / Zip code",
-            "fieldId": "owner-post-zip-coode",
             "validations": {
               "required": {
                 "value": false
               }
+            },
+            "ui": {
+              "width": "short"
             }
           }
         },
         {
           "ref": "components/country"
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "contact-details",
       "title": "Your contact details",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/email",
@@ -294,38 +289,40 @@
             }
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "information-upload",
       "title": "Upload documents",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/generic-number",
           "overrides": {
-            "label": "Number of male staff",
-            "fieldId": "male-staff-count"
+            "fieldId": "male-staff-count",
+            "label": "Number of male staff"
           }
         },
         {
           "ref": "components/generic-number",
           "overrides": {
-            "label": "Number of female staff",
-            "fieldId": "female-staff-count"
+            "fieldId": "female-staff-count",
+            "label": "Number of female staff"
           }
         },
         {
           "ref": "components/upload-document",
           "overrides": {
-            "label": "Upload a list of hairdressing / beautician staff",
             "fieldId": "staff-list",
+            "label": "Upload a list of hairdressing / beautician staff",
+            "hint": "The list must give each person's name and gender. PDF, JPG or PNG, up to 5MB.",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Upload the list of hairdressing or beautician staff"
+                "error": "Upload the list of hairdressing or beautician staff",
+                "value": true
               },
               "fileTypes": {
+                "error": "Upload the staff list as a PDF, image, Word or Excel file",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
@@ -334,12 +331,11 @@
                   ".docx",
                   ".xls",
                   ".xlsx"
-                ],
-                "error": "Upload the staff list as a PDF, image, Word or Excel file"
+                ]
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "File must be 5 MB or smaller"
+                "error": "File must be 5 MB or smaller",
+                "value": 5242880
               }
             }
           }
@@ -347,72 +343,120 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "hint": "These are the medical certificates for all hairdressers or beauticians working in the salon. These can be shown during inspection.",
-            "label": "Upload medical certificates",
             "fieldId": "medical-certs",
+            "label": "Upload medical certificates",
+            "hint": "These are the medical certificates for all hairdressers or beauticians working in the salon. These can be shown during inspection.",
             "validations": {
               "required": {
                 "value": false
               },
               "fileTypes": {
+                "error": "Upload the medical certificates in PDF, JPEG or PNG format",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
                   "image/png"
-                ],
-                "error": "Upload the medical certificates in PDF, JPEG or PNG format"
+                ]
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "File must be 5 MB or smaller"
+                "error": "File must be 5 MB or smaller",
+                "value": 5242880
               }
             }
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "check-your-answers",
       "title": "Check your answers",
       "description": "Review all the information you have provided before submitting your application.",
-      "elements": [],
-      "behaviours": []
+      "behaviours": [],
+      "elements": []
     },
     {
       "stepId": "declaration",
       "title": "Declaration",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/confirmation",
           "overrides": {
-            "label": "Declaration",
             "fieldId": "declaration-confirmed",
-            "options": [
-              {
-                "label": "I confirm that the information provided is true and correct.",
-                "value": "confirmed"
-              }
-            ],
+            "label": "Declaration",
             "validations": {
               "required": {
                 "error": "You must confirm the declaration to continue",
                 "value": true
               }
-            }
+            },
+            "options": [
+              {
+                "label": "I confirm that the information in this application is true and correct to the best of my knowledge.",
+                "value": "confirmed"
+              }
+            ]
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "submission-confirmation",
       "title": "Application submitted",
-      "elements": [],
       "behaviours": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\nEnvironmental Health will review your application and inspect the business.\n\nDuring the inspection, you will need to show:\n\n- your cleaning schedule of the premises and equipment\n- the cleaning and sanitation process of the equipment including towels\n- facilities with hot and cold water\n- any staff medical certificates you did not upload\n\nIf you provide services from a vehicle, Environmental Health will need to arrange an inspection of the vehicle.\n\n**Obtaining your licence:**\n\n- If your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n- Branford Taitt Polyclinic - [536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)\n- David Thompson Health and Social Services Complex - [536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)\n- Eunice Gibson Polyclinic - [536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)\n- Maurice Byer Polyclinic - [536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)\n- Randall Phillips Polyclinic - [536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)\n- St. Phillip Polyclinic - [536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)\n- Winston Scott Polyclinic - [536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)"
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\nEnvironmental Health will review your application and inspect the business.\n\nDuring the inspection, you will need to show:\n\n-   your cleaning schedule of the premises and equipment\n-   the cleaning and sanitation process of the equipment including towels\n-   facilities with hot and cold water\n-   any staff medical certificates you did not upload\n\n<br />\n\nIf you provide services from a vehicle, Environmental Health will need to arrange an inspection of the vehicle.\n\n**Obtaining your licence:**\n\n-   If your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n-   Branford Taitt Polyclinic - [536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)\n-   David Thompson Health and Social Services Complex - [536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)\n-   Eunice Gibson Polyclinic - [536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)\n-   Maurice Byer Polyclinic - [536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)\n-   Randall Phillips Polyclinic - [536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)\n-   St. Phillip Polyclinic - [536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)\n-   Winston Scott Polyclinic - [536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)",
+      "elements": []
+    }
+  ],
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "contact-details.email",
+        "subject": "Your hair or beauty business registration application has been received"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "catchment.mdaEmail",
+        "subject": "A new hair or beauty business registration application has been received"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "method": "POST",
+        "signatureHeader": "X-Webhook-Signature",
+        "mapping": {
+          "programmeCode": "HAIR_SALON_LICENCE",
+          "mdaCode": "MOH",
+          "programmeShortCode": "HSL",
+          "applicant": {
+            "name": [
+              "owner-details.owner-name"
+            ],
+            "email": "contact-details.email",
+            "phone": "contact-details.telephone"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        },
+        "timeoutMs": 10000
+      }
     }
   ],
   "createdAt": "2026-08-20T17:42:48.875Z",
-  "updatedAt": "2026-08-27T00:00:00.000Z"
+  "updatedAt": "2026-08-27T22:25:13.176Z",
+  "meta": {
+    "visibility": "preview"
+  },
+  "catchmentRouting": {
+    "coordinatesField": "business-details.business-address-coordinates",
+    "parishField": "business-details.business-address-parish"
+  }
 }
