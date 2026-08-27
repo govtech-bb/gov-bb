@@ -7,7 +7,7 @@ category: business-trade
 stage: alpha
 publish_date: '2026-08-25'
 visibility: preview
-form_id: waste-vehicle-licence-application
+form_id: apply-for-offensive-matter-licence
 ---
 Use this service to apply for or renew a licence to move human waste, rotting animal or plant waste, or other waste that could harm people’s health.
 

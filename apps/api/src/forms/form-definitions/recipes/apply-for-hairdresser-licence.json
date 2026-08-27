@@ -1,5 +1,5 @@
 {
-  "formId": "hairdresser-licence-application",
+  "formId": "apply-for-hairdresser-licence",
   "title": "Apply to Environmental Health for a Hairdressers Licence",
   "description": "Apply for a hairdresser licence in Barbados",
   "processors": [
@@ -408,5 +408,5 @@
     }
   ],
   "createdAt": "2026-08-19T19:09:04.486Z",
-  "updatedAt": "2026-08-24T18:37:12.536Z"
+  "updatedAt": "2026-08-26T00:00:00.000Z"
 }

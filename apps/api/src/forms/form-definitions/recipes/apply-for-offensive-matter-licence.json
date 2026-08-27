@@ -1,5 +1,5 @@
 {
-  "formId": "waste-vehicle-licence-application",
+  "formId": "apply-for-offensive-matter-licence",
   "title": "Apply for a offensive matter licence with Environmental Health",
   "description": "Apply for a new licence or renew your existing licence to operate a vehicle for moving human or rotting waste.",
   "processors": [
@@ -8,6 +8,33 @@
       "config": {
         "subject": "Application received: licence to move human or rotting waste",
         "recipientField": "personal-and-contact-details.applicant-email"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "method": "POST",
+        "signatureHeader": "X-Webhook-Signature",
+        "mapping": {
+          "programmeCode": "OFFENSIVE_MATTER_LICENCE",
+          "mdaCode": "MOH",
+          "programmeShortCode": "OMT",
+          "applicant": {
+            "name": [
+              "personal-and-contact-details.applicant-first-name",
+              "personal-and-contact-details.applicant-last-name"
+            ],
+            "email": "personal-and-contact-details.applicant-email",
+            "phone": "personal-and-contact-details.applicant-mobile-number"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        },
+        "timeoutMs": 10000
       }
     }
   ],
@@ -353,5 +380,5 @@
     }
   ],
   "createdAt": "2026-08-24T19:13:52.779Z",
-  "updatedAt": "2026-08-24T23:36:26.386Z"
+  "updatedAt": "2026-08-26T00:00:00.000Z"
 }

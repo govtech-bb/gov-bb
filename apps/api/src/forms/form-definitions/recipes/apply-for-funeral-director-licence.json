@@ -1,5 +1,5 @@
 {
-  "formId": "funeral-directors-licence-application",
+  "formId": "apply-for-funeral-director-licence",
   "title": "Apply to Environmental Health for a Funeral Directors Licence",
   "description": "Use this service to apply for a funeral directors licence.",
   "processors": [
@@ -23,7 +23,7 @@
         "method": "POST",
         "signatureHeader": "X-Webhook-Signature",
         "mapping": {
-          "programmeCode": "FUNERAL_DIRECTORS_LICENCE",
+          "programmeCode": "FUNERAL_DIRECTOR_LICENCE",
           "mdaCode": "MOH",
           "programmeShortCode": "FDL",
           "applicant": {
@@ -410,5 +410,5 @@
     }
   ],
   "createdAt": "2026-08-25T14:05:00.922Z",
-  "updatedAt": "2026-08-25T15:12:48.462Z"
+  "updatedAt": "2026-08-26T00:00:00.000Z"
 }

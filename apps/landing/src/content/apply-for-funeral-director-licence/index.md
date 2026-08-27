@@ -7,7 +7,7 @@ category: business-trade
 stage: alpha
 publish_date: '2026-08-25'
 visibility: preview
-form_id: funeral-directors-licence-application
+form_id: apply-for-funeral-director-licence
 ---
 Use this service to apply for a Funeral Directors Licence from Environmental Health.
 

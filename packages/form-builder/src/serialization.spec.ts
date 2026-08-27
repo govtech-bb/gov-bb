@@ -869,7 +869,7 @@ describe("mdaContactId serialization", () => {
  * the author never reopened. The validation editor only converts what the
  * author actually retypes, so without normalisation here a legacy string
  * survives a full open → Deploy round-trip and fails the recipe schema in CI.
- * That is exactly how `register-hair-beauty-business` shipped
+ * That is exactly how `apply-for-hair-salon-licence` shipped
  * `itemMaxSize: "5242880"` and turned main red.
  */
 describe("serializeRecipeDraft normalises off-shape rule values (#2384)", () => {

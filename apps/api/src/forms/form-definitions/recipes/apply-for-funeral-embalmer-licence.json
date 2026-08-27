@@ -1,5 +1,5 @@
 {
-  "formId": "funeral-embalmer-licence-application",
+  "formId": "apply-for-funeral-embalmer-licence",
   "title": "Apply to Environmental Health for an Embalmer Licence",
   "description": "Use this service to apply for an embalmer licence.",
   "processors": [
@@ -23,9 +23,9 @@
         "method": "POST",
         "signatureHeader": "X-Webhook-Signature",
         "mapping": {
-          "programmeCode": "EMBALMER_LICENCE",
+          "programmeCode": "FUNERAL_EMBALMER_LICENCE",
           "mdaCode": "MOH",
-          "programmeShortCode": "EMB",
+          "programmeShortCode": "FEL",
           "applicant": {
             "name": [
               "personal-details.first-name",
@@ -440,5 +440,5 @@
     }
   ],
   "createdAt": "2026-08-25T14:05:29.888Z",
-  "updatedAt": "2026-08-25T18:30:00.000Z"
+  "updatedAt": "2026-08-26T00:00:00.000Z"
 }

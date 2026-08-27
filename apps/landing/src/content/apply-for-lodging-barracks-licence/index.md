@@ -7,7 +7,7 @@ category: business-trade
 stage: alpha
 publish_date: '2026-08-25'
 visibility: draft
-form_id: barraks-lodging-environmental-health
+form_id: apply-for-lodging-barracks-licence
 ---
 Use this service to apply to register a property as a lodging house or barracks with Environmental Health.
 

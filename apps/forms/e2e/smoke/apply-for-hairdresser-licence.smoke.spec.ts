@@ -1,8 +1,8 @@
 /**
- * hairdresser-licence-application.smoke.spec.ts
+ * apply-for-hairdresser-licence.smoke.spec.ts
  *
  * Live, on-demand smoke test for the Hairdresser Licence service
- * (formId `hairdresser-licence-application`, programme `HAIRDRESSER_LICENCE`).
+ * (formId `apply-for-hairdresser-licence`, programme `HAIRDRESSER_LICENCE`).
  *
  * Drives the REAL form, fills every step with valid @faker-js/faker data,
  * SUBMITS FOR REAL, and asserts the confirmation screen is reached with a
@@ -15,7 +15,7 @@
  * Run on demand (from the repo root):
  *   SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb PREVIEW_TOKEN=… \
  *     pnpm --filter @govtech-bb/forms exec playwright test \
- *     --config playwright.smoke.config.ts hairdresser-licence-application
+ *     --config playwright.smoke.config.ts apply-for-hairdresser-licence
  *
  * Useful env overrides:
  *   SMOKE_BASE_URL   target environment. REQUIRED — playwright.smoke.config.ts
@@ -80,7 +80,7 @@ import {
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
-export const FORM_ID = "hairdresser-licence-application";
+export const FORM_ID = "apply-for-hairdresser-licence";
 
 /** Parish <select> option values (slugs) from components/parish. */
 const PARISH_VALUES = [

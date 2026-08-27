@@ -7,7 +7,7 @@ category: business-trade
 stage: alpha
 publish_date: '2026-08-24'
 visibility: preview
-form_id: hairdresser-licence-application
+form_id: apply-for-hairdresser-licence
 ---
 Use this service to apply for or renew a Hairdressing Licence from Environmental Health.
 
