@@ -52,7 +52,6 @@ There are 2 ways to apply for a hairdresser licence licence. You can:
 2.  **Get a paper application from the polyclinic**<br />
     You must complete it by hand and submit the application to the polyclinic associated with the district where your personal address is located. If you require further information or assistance, contact a polyclinic - information can be found at the bottom of this page.
     
-
 ## Cost
 
 There is neither a cost to apply, nor to receive your licence.
