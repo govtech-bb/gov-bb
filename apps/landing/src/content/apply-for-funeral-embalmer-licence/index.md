@@ -17,7 +17,7 @@ You need a licence if you conduct embalming services in Barbados.
 You must:
 
 -   your current embalmer licence number (if renewing)
--   a scanned copy of your ID
+-   have a valid form of identification
 -   a passport sized photograph
 -   your qualification in embalming from an institution of embalming approved by the chief medical officer; or
 -   letter evidencing your engagement in the practice of embalming for a period of more than five (5) years, or having worked under the direct supervision of an approved embalmer for more than three (3) years, if you were engaged in the business prior to the regulations coming into operation in 1984
@@ -27,7 +27,7 @@ Read the [Health Services (Embalmers and Funeral Directors) Regulations 1984](ht
 You may need to provide:
 
 -   your current embalmer’s licence number (if renewing)
--   a scanned copy of your ID
+-   a scanned copy of your Barbados National Identification card
 -   a passport sized photograph
 -   letter evidencing your engagement in the practice of embalming for a period of more than five (5) years, or having worked under the direct supervision of an approved embalmer for more than three (3) years, if you were engaged in the business prior to the regulations coming into operation in 1984
 
