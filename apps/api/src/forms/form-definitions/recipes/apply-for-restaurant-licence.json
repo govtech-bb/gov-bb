@@ -14,29 +14,6 @@
       "behaviours": [],
       "elements": [
         {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "completing-for",
-            "label": "Are you completing this application for yourself or someone else?",
-            "validations": {
-              "required": {
-                "error": "Select an option",
-                "value": true
-              }
-            },
-            "options": [
-              {
-                "label": "Myself",
-                "value": "myself"
-              },
-              {
-                "label": "Someone else or a business or organisation",
-                "value": "someone-else"
-              }
-            ]
-          }
-        },
-        {
           "ref": "components/first-name",
           "overrides": {
             "fieldId": "your-first-name",
@@ -100,119 +77,50 @@
           }
         },
         {
-          "ref": "components/parish",
-          "overrides": {
-            "fieldId": "your-parish"
-          }
-        },
-        {
           "ref": "components/country",
           "overrides": {
             "fieldId": "your-country"
           }
-        }
-      ]
-    },
-    {
-      "stepId": "applicant-details",
-      "title": "Applicant details",
-      "behaviours": [
+        },
         {
-          "type": "stepConditionalOn",
-          "targetFieldId": "completing-for",
-          "targetStepId": "about-you",
-          "operator": "equal",
-          "value": "someone-else"
-        }
-      ],
-      "elements": [
-        {
-          "ref": "components/generic-radio",
+          "ref": "components/parish",
           "overrides": {
-            "fieldId": "applicant-type",
-            "label": "Who is applying for the restaurant licence?",
+            "fieldId": "parish",
             "validations": {
               "required": {
-                "error": "Select an option",
                 "value": true
               }
             },
-            "options": [
+            "behaviours": [
               {
-                "label": "An individual",
-                "value": "individual"
-              },
-              {
-                "label": "A business or organisation",
-                "value": "business"
+                "type": "fieldConditionalOn",
+                "targetFieldId": "your-country",
+                "targetStepId": "about-you",
+                "operator": "equal",
+                "value": "barbados"
               }
             ]
           }
         },
         {
-          "ref": "components/first-name",
+          "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "applicant-first-name",
-            "label": "First name"
-          }
-        },
-        {
-          "ref": "components/middle-name",
-          "overrides": {
-            "fieldId": "applicant-middle-name",
-            "label": "Middle name(s)"
-          }
-        },
-        {
-          "ref": "components/last-name",
-          "overrides": {
-            "fieldId": "applicant-last-name",
-            "label": "Last name"
-          }
-        },
-        {
-          "ref": "components/telephone",
-          "overrides": {
-            "fieldId": "applicant-telephone",
-            "label": "Telephone number"
-          }
-        },
-        {
-          "ref": "components/email",
-          "overrides": {
-            "fieldId": "applicant-email",
-            "label": "Email address"
-          }
-        },
-        {
-          "ref": "components/address",
-          "overrides": {
-            "fieldId": "applicant-address-line-1",
-            "label": "Address line 1"
-          }
-        },
-        {
-          "ref": "components/address",
-          "overrides": {
-            "fieldId": "applicant-address-line-2",
-            "label": "Address line 2",
+            "fieldId": "town-district",
+            "label": "Town / District",
             "validations": {
               "required": {
                 "value": false
               }
-            }
-          }
-        },
-        {
-          "ref": "components/parish",
-          "overrides": {
-            "fieldId": "applicant-parish"
-          }
-        },
-        {
-          "ref": "components/country",
-          "overrides": {
-            "fieldId": "applicant-country"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "your-country",
+                "targetStepId": "about-you",
+                "operator": "notEqual",
+                "value": "barbados"
+              }
+            ]
           }
         }
       ]
@@ -354,7 +262,7 @@
           "ref": "components/generic-radio",
           "overrides": {
             "fieldId": "restaurant-already-open",
-            "label": "Is the restaurant already open?",
+            "label": "Is the restaurant already open for business?",
             "validations": {
               "required": {
                 "error": "Select an option",
@@ -377,7 +285,7 @@
           "ref": "components/generic-date",
           "overrides": {
             "fieldId": "restaurant-expected-start-date",
-            "label": "What date do you expect the restaurant to start?",
+            "label": "What date do you expect the restaurant to start operations?",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -560,6 +468,7 @@
           "type": "repeatable",
           "min": 1,
           "max": 5,
+          "addAnotherLabel": "Add another location?",
           "instanceLabel": "establishment address"
         },
         {
@@ -644,7 +553,7 @@
           "overrides": {
             "fieldId": "staff-list-upload",
             "label": "Upload a list of your staff",
-            "hint": "The list must give each person's name and address. PDF, JPG or PNG, up to 5MB.",
+            "hint": "The list must give each person's name and gender. PDF, JPG or PNG, up to 5MB.",
             "validations": {
               "required": {
                 "error": "Upload a list of your staff.",
@@ -848,7 +757,7 @@
     }
   ],
   "createdAt": "2026-08-18T19:36:35.003Z",
-  "updatedAt": "2026-08-27T02:22:44.693Z",
+  "updatedAt": "2026-08-27T21:37:37.069Z",
   "meta": {
     "visibility": "preview"
   },

@@ -33,15 +33,19 @@
  *   FAKER_SEED       fix faker's RNG for a reproducible data set.
  *
  * Form-specific notes:
- *  - Two STEP gates and five inline reveals, split across the two tests:
- *      · `completing-for` = "someone-else" puts the whole `applicant-details`
- *        step into the journey (stepConditionalOn); "myself" skips it.
+ *  - One STEP gate and six inline reveals, split across the two tests:
  *      · `food-prep-location` including "commercial-kitchen" or
  *        "another-location" puts the repeatable `location-food-drink-prepared`
  *        step into the journey (stepConditionalOn, `in`).
+ *      · `your-country` splits the applicant's own address in two: "barbados"
+ *        reveals the required `parish` dropdown, anything else reveals the
+ *        optional free-text `town-district`. The two are mutually exclusive,
+ *        so the tests take opposite sides of it.
  *      · `relationship-to-restaurant` = "something-else" reveals
- *        `relationship-other`; `property-use` = "something-else" reveals
- *        `property-use-other`; `restaurant-already-open` = "no" reveals
+ *        `relationship-other`; `application-type` = "renewal" reveals
+ *        `current-restaurant-licence-number`; `property-use` =
+ *        "something-else" reveals `property-use-other`;
+ *        `restaurant-already-open` = "no" reveals
  *        `restaurant-expected-start-date`; the `building-plan-number` show-hide
  *        reveals `tracking-number-instead`.
  *  - `opening-hours` is one weekly field: seven day rows, each "Not open"
@@ -175,17 +179,12 @@ export function buildData() {
     yourAddressLine1: faker.location.streetAddress(),
     yourAddressLine2: faker.location.street(),
     yourParish: faker.helpers.arrayElement(PARISH_VALUES),
-
-    applicantFirstName: faker.person.firstName(),
-    applicantMiddleName: faker.person.middleName(),
-    applicantLastName: faker.person.lastName(),
-    applicantTelephone: bbMobileNumber(),
-    applicantEmail: "testing@govtech.bb",
-    applicantAddressLine1: faker.location.streetAddress(),
-    applicantAddressLine2: faker.location.street(),
-    applicantParish: faker.helpers.arrayElement(PARISH_VALUES),
+    // Only asked when `your-country` is NOT Barbados. Prefixed so the branch
+    // that never asks it can assert the value is absent from the review.
+    yourTownDistrict: `Smoke Test District ${faker.string.alpha(5)}`,
 
     relationshipOther: "Family member helping with the application",
+    currentLicenceNumber: `RL-${faker.string.numeric(6)}`,
     // Timestamped so the resulting submission is easy to find in the target env.
     restaurantName: `Smoke Test Restaurant ${new Date().toISOString()}`,
     expectedStart: faker.date.soon({ days: 90 }),
@@ -216,17 +215,18 @@ export async function openForm(page: Page): Promise<void> {
 }
 
 /**
- * Step 1 — the person filling the form in. "someone-else" is what puts the
- * `applicant-details` step into the journey.
+ * Step 1 — the person filling the form in. `your-country` decides which of the
+ * two mutually exclusive address questions is asked: Barbados gets the required
+ * `parish` dropdown, anywhere else gets the optional `town-district` free text.
+ * Pass a country slug from `components/country` (e.g. "barbados").
  */
 export async function fillAboutYou(
   page: Page,
   data: ReturnType<typeof buildData>,
-  completingFor: "myself" | "someone-else",
+  country: string,
 ): Promise<void> {
   const step = expectStep(page, "about-you");
   await expect(page.locator("h1")).toContainText("About you");
-  await selectRadio(page, step, "completing-for", completingFor);
   await fillField(page, step, "your-first-name", data.yourFirstName);
   await fillField(page, step, "your-middle-name", data.yourMiddleName);
   await fillField(page, step, "your-last-name", data.yourLastName);
@@ -235,48 +235,29 @@ export async function fillAboutYou(
   await fillField(page, step, "your-email", data.yourEmail);
   await fillField(page, step, "your-address-line-1", data.yourAddressLine1);
   await fillField(page, step, "your-address-line-2", data.yourAddressLine2);
-  await selectDropdown(page, step, "your-parish", data.yourParish);
-  await selectDropdown(page, step, "your-country", "barbados");
+
+  // Country comes first here — it is the gate the parish / town-district pair
+  // reads, and only one of the two is ever on screen.
+  await selectDropdown(page, step, "your-country", country);
+  const parish = page.locator(`select[id="${step}_parish"]`);
+  const townDistrict = page.locator(`[id="${step}_town-district"]`);
+  if (country === "barbados") {
+    await expect(parish).toBeVisible({ timeout: STEP_TIMEOUT });
+    await expect(townDistrict).toBeHidden();
+    await selectDropdown(page, step, "parish", data.yourParish);
+  } else {
+    await expect(townDistrict).toBeVisible({ timeout: STEP_TIMEOUT });
+    await expect(parish).toBeHidden();
+    await townDistrict.fill(data.yourTownDistrict);
+  }
+
   await advance(page, step);
 }
 
-/** Step 2 — the applicant. Only in the journey when step 1 said "someone else". */
-export async function fillApplicantDetails(
-  page: Page,
-  data: ReturnType<typeof buildData>,
-  applicantType: "individual" | "business",
-): Promise<void> {
-  const step = expectStep(page, "applicant-details");
-  await expect(page.locator("h1")).toContainText("Applicant details");
-  await selectRadio(page, step, "applicant-type", applicantType);
-  await fillField(page, step, "applicant-first-name", data.applicantFirstName);
-  await fillField(
-    page,
-    step,
-    "applicant-middle-name",
-    data.applicantMiddleName,
-  );
-  await fillField(page, step, "applicant-last-name", data.applicantLastName);
-  await fillField(page, step, "applicant-telephone", data.applicantTelephone);
-  await fillField(page, step, "applicant-email", data.applicantEmail);
-  await fillField(
-    page,
-    step,
-    "applicant-address-line-1",
-    data.applicantAddressLine1,
-  );
-  await fillField(
-    page,
-    step,
-    "applicant-address-line-2",
-    data.applicantAddressLine2,
-  );
-  await selectDropdown(page, step, "applicant-parish", data.applicantParish);
-  await selectDropdown(page, step, "applicant-country", "barbados");
-  await advance(page, step);
-}
-
-/** Step 3 — the application itself. "something-else" reveals the free text. */
+/**
+ * Step 2 — the application itself. "something-else" reveals the free text, and
+ * "renewal" reveals the required current licence number.
+ */
 export async function fillAboutTheApplication(
   page: Page,
   data: ReturnType<typeof buildData>,
@@ -296,11 +277,22 @@ export async function fillAboutTheApplication(
     await expect(relationshipOther).toBeHidden();
   }
 
+  const licenceNumber = page.locator(
+    `[id="${step}_current-restaurant-licence-number"]`,
+  );
+  await expect(licenceNumber).toBeHidden();
   await selectRadio(page, step, "application-type", applicationType);
+  if (applicationType === "renewal") {
+    await expect(licenceNumber).toBeVisible({ timeout: STEP_TIMEOUT });
+    await licenceNumber.fill(data.currentLicenceNumber);
+  } else {
+    await expect(licenceNumber).toBeHidden();
+  }
+
   await advance(page, step);
 }
 
-/** Step 4 — the restaurant, including the geocoded address. */
+/** Step 3 — the restaurant, including the geocoded address. */
 export async function fillAboutTheRestaurant(
   page: Page,
   data: ReturnType<typeof buildData>,
@@ -361,7 +353,7 @@ export async function fillAboutTheRestaurant(
 }
 
 /**
- * Step 5 — opening hours. One weekly field: for each day with hours, click
+ * Step 4 — opening hours. One weekly field: for each day with hours, click
  * "Add hours for <Day>" and set both pickers; a day left alone stays
  * "Not open". `hoursByDay` values are "HH:MM - HH:MM" strings, one per set
  * (a 24-hour day is "00:00 - 23:59"). Sets are added one at a time because a day's picker labels gain a
@@ -392,7 +384,7 @@ export async function fillOpeningHours(
 }
 
 /**
- * Step 6 — where food is prepared. Ticking "commercial-kitchen" or
+ * Step 5 — where food is prepared. Ticking "commercial-kitchen" or
  * "another-location" is what puts the repeatable step into the journey.
  */
 export async function fillFoodPreparation(
@@ -412,8 +404,8 @@ export async function fillFoodPreparation(
 }
 
 /**
- * Step 7 — the repeatable `location-food-drink-prepared`. Only in the journey
- * when step 6 named an off-site kitchen. One establishment, then "no".
+ * Step 6 — the repeatable `location-food-drink-prepared`. Only in the journey
+ * when step 5 named an off-site kitchen. One establishment, then "no".
  */
 export async function fillOtherEstablishment(
   page: Page,
@@ -448,7 +440,7 @@ export async function fillOtherEstablishment(
   await advance(page, step);
 }
 
-/** Step 8 — staff counts and the staff-list / medical-certificate uploads. */
+/** Step 7 — staff counts and the staff-list / medical-certificate uploads. */
 export async function fillPeopleWorkingAtTheFoodBusiness(
   page: Page,
   data: ReturnType<typeof buildData>,
@@ -474,7 +466,7 @@ export async function fillPeopleWorkingAtTheFoodBusiness(
 }
 
 /**
- * Step 9 — plans. Everything here is optional, but opening the
+ * Step 8 — plans. Everything here is optional, but opening the
  * `building-plan-number` disclosure reveals a REQUIRED tracking number, so the
  * two tests take opposite sides of it.
  */
@@ -544,8 +536,8 @@ test.describe("Apply for a Restaurant Licence — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
-    // "Myself" keeps `applicant-details` out of the journey.
-    await fillAboutYou(page, data, "myself");
+    // Barbados asks for a parish and keeps `town-district` off the step.
+    await fillAboutYou(page, data, "barbados");
     await fillAboutTheApplication(page, data, "owner", "first-time");
     await fillAboutTheRestaurant(page, data, "yes", "owned");
     await fillOpeningHours(page, {
@@ -565,10 +557,12 @@ test.describe("Apply for a Restaurant Licence — Live Smoke", () => {
     await expect(page.locator("h1")).toContainText("Check your answers");
     await expect(page.getByText(data.restaurantName).first()).toBeVisible();
     await expect(page.getByText("09:00 - 17:00").first()).toBeVisible();
-    // None of the "something else" free texts were asked on this branch.
+    // None of the gated free texts were asked on this branch.
     await expect(page.getByText(data.relationshipOther)).toHaveCount(0);
     await expect(page.getByText(data.propertyUseOther)).toHaveCount(0);
     await expect(page.getByText(data.trackingNumber)).toHaveCount(0);
+    await expect(page.getByText(data.currentLicenceNumber)).toHaveCount(0);
+    await expect(page.getByText(data.yourTownDistrict)).toHaveCount(0);
     // SMOKE_HOLD_CYA=1 pauses a headed run here so the review screen can be
     // inspected before anything is submitted (matches the sibling specs).
     if (process.env.SMOKE_HOLD_CYA) await page.pause();
@@ -579,7 +573,7 @@ test.describe("Apply for a Restaurant Licence — Live Smoke", () => {
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 
-  test("submits a renewal on someone else's behalf, with per-day hours and an off-site kitchen", async ({
+  test("submits a renewal from an overseas applicant, with per-day hours and an off-site kitchen", async ({
     page,
   }) => {
     const data = buildData();
@@ -587,8 +581,8 @@ test.describe("Apply for a Restaurant Licence — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
-    await fillAboutYou(page, data, "someone-else");
-    await fillApplicantDetails(page, data, "individual");
+    // A non-Barbados country swaps the parish dropdown for `town-district`.
+    await fillAboutYou(page, data, "trinidad-and-tobago");
     await fillAboutTheApplication(page, data, "something-else", "renewal");
     await fillAboutTheRestaurant(page, data, "no", "something-else");
     await fillOpeningHours(page, {
@@ -603,7 +597,10 @@ test.describe("Apply for a Restaurant Licence — Live Smoke", () => {
     const step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
     // The gated step and every inline reveal made it into the review.
-    await expect(page.getByText(data.applicantLastName).first()).toBeVisible();
+    await expect(page.getByText(data.yourTownDistrict).first()).toBeVisible();
+    await expect(
+      page.getByText(data.currentLicenceNumber).first(),
+    ).toBeVisible();
     await expect(page.getByText(data.relationshipOther).first()).toBeVisible();
     await expect(page.getByText(data.propertyUseOther).first()).toBeVisible();
     await expect(
