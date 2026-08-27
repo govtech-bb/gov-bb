@@ -57,7 +57,7 @@ There are 2 ways to apply for a food business licence. You can:
     <a data-start-link>Start now</a>
     
 2.  **Get a paper application from the polyclinic**<br />
-    You must complete it by hand and submit the application to the polyclinic associated with the district where the pool is located. If you require further information or assistance, contact the polyclinic - information can be found at the bottom of this page.
+    You must complete it by hand and submit the application to the polyclinic associated with the district where the food business is located. If you require further information or assistance, contact the polyclinic - information can be found at the bottom of this page.
     
 
 ## Cost
@@ -80,7 +80,7 @@ If you need help, contact the relevant Environmental Health Service office.
 -   Branford Taitt Polyclinic - 536-3700, [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)
 -   David Thompson Health and Social Services Complex - 536-4453, [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)
 -   Eunice Gibson Polyclinic - 536-4033, [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)
--   Maurice Byer Polyclinic - 5363214, [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)
+-   Maurice Byer Polyclinic - 536-3214, [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)
 -   Randall Phillips Polyclinic - 536-4338, [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)
 -   St. Phillip Polyclinic - 536-1240, [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)
 -   Winston Scott Polyclinic - 536-3476, [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)
