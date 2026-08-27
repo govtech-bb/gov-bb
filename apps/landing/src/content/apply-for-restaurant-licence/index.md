@@ -7,7 +7,7 @@ publish_date: '2026-08-27'
 visibility: preview
 form_id: apply-for-restaurant-licence
 ---
-Use this service to apply for or renew a restaurant licence from Environmental Health.
+Use this service to apply for or renew a restaurant licence with the Environmental Health Department.
 
 ## Who is this licence for
 
@@ -18,7 +18,7 @@ A restaurant is defined as:
 -   premises where any food or drink whatever is sold to any person for consumption on the premises; or
 -   a catering establishment where food or drink is sold for consumption elsewhere than on the premises
 
-Read the [(Health Services (Restaurants) Regulations, 1969)](https://oag.gov.bb/attachments/Health%20Services%20\(Restaurants\)%20Regulations,%201969%20Cap44'Z.PDF) for the full legal requirements.
+Read the [Health Services (Restaurants) Regulations, 1969](https://oag.gov.bb/attachments/Health%20Services%20\(Restaurants\)%20Regulations,%201969%20Cap44'Z.PDF) for the full legal requirements.
 
 You may require a different licence if you own:
 
@@ -30,7 +30,7 @@ You may require a different licence if you own:
 You may need to provide:
 
 -   your current restaurant licence number (if renewing)
--   a document listing your staff, giving each person's name (staff list)
+-   a document listing your staff, giving each person's name and gender (staff list)
 -   details about other places where food or drink is prepared
 -   medical certificates for your staff, which can be uploaded with your application or provided at inspection
 -   Floor plan layout drawn to scale with your application, showing the size of the different areas and where they are (if applicable).
@@ -59,6 +59,7 @@ There are 2 ways to apply for a restaurant licence. You can:
     
     You must complete it by hand and submit the application to the polyclinic associated with the district where the restaurant is located. If you require further information or assistance, contact the polyclinic - information can be found at the bottom of this page.
     
+
 ## Cost
 
 There is neither a cost to apply, nor to receive your licence.
