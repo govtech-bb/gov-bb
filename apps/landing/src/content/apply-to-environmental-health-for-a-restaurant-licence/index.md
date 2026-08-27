@@ -33,13 +33,11 @@ You may need to provide:
 -   a document listing your staff, giving each person's name (staff list)
 -   details about other places where food or drink is prepared
 -   medical certificates for your staff, which can be uploaded with your application or provided at inspection
--   Floor plan layout drawn to scale with your application, showing the size of the different areas and where they are (if applicable).  
+-   Floor plan layout drawn to scale with your application, showing the size of the different areas and where they are (if applicable).
 
 **Renewing** - you only need to submit a new floor layout if you have made structural changes to the restaurant since your previous licence was obtained.
 
-**New Restaurants**
-
-If this is a new restaurant, you should have applied to the Planning and Development Department for approval of your restaurant plans (this department was previously called Town and Country Planning).
+**New Restaurants** - If this is a new restaurant, you should have applied to the Planning and Development Department for approval of your restaurant plans (this department was previously called Town and Country Planning).
 
 **All staff** within the restaurant need a valid medical certificate from a registered doctor. Medical certificates expire on 31 December each year, and should be renewed before the first working day in January each year. You can upload the certificates with your application or provide them at the inspection.
 
@@ -56,11 +54,11 @@ There are 2 ways to apply for a restaurant licence. You can:
     Allow about 15 minutes to complete the form.
     
     <a data-start-link>Start now</a>
-
+    
 2.  **Get a paper application from the polyclinic**
     
     You must complete it by hand and submit the application to the polyclinic associated with the district where the restaurant is located. If you require further information or assistance, contact the polyclinic - information can be found at the bottom of this page.
-
+    
 ## Cost
 
 There is neither a cost to apply, nor to receive your licence.
