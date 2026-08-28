@@ -68,6 +68,9 @@ There is neither a cost to apply, nor to receive your licence.
 -   Environmental Health will review your application and an officer will be assigned to your case.
 -   They must inspect the restaurant before they can issue a licence. More than one visit may be required before the issuing of a licence.
 -   If there are any contraventions of the health services restaurant regulations, you will be given instructions to rectify them within a specified time period. Until the contraventions are rectified, you will be unable to get your application approved. Failure to comply may result in receiving recommendations to cancel the licence, close the establishment, or be subject to prosecution.
+
+**Obtaining your licence:**
+
 -   If your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.
 
 Once you receive your licence, it must be displayed in the establishment.
