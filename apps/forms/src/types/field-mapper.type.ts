@@ -1,6 +1,5 @@
 import {
   Behaviour,
-  CatchmentRouting,
   ConditionalLabel,
   ConditionalTitle,
   ContactDetails,
@@ -74,7 +73,6 @@ export interface ClientServiceContract {
   description?: string;
   contactDetails?: ContactDetails;
   closingDateTime?: DateTimeFormat;
-  catchmentRouting?: CatchmentRouting;
   steps: ClientFormStep[];
   createdAt: DateTimeFormat;
   updatedAt: DateTimeFormat;

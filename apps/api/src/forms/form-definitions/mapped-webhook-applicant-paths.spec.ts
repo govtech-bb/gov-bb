@@ -27,6 +27,11 @@ interface MappedRecipe {
   routingPaths: string[];
   /** `"stepId.fieldId"` of every coordinate field an address lookup writes. */
   geocodedCoordinateFields: string[];
+  /** The hydrated `catchmentRouting.parishField` element, when the recipe routes. */
+  parishElement?: {
+    behaviours?: { type: string }[];
+    validations?: { required?: { value?: boolean } };
+  };
   fieldIdsByStep: Map<string, Set<string>>;
 }
 
@@ -65,6 +70,19 @@ async function mappedRecipes(): Promise<MappedRecipe[]> {
           .filter((id): id is string => Boolean(id))
           .map((id) => `${step.stepId}.${id}`),
       ),
+      parishElement: routing
+        ? (hydrated.steps
+            .find(
+              (step) =>
+                step.stepId ===
+                routing.parishField.slice(0, routing.parishField.indexOf(".")),
+            )
+            ?.elements.find(
+              (e) =>
+                (e as { fieldId?: string }).fieldId ===
+                routing.parishField.slice(routing.parishField.indexOf(".") + 1),
+            ) as MappedRecipe["parishElement"])
+        : undefined,
       fieldIdsByStep: new Map(
         hydrated.steps.map((step) => [
           step.stepId,
@@ -138,4 +156,31 @@ it("has an address lookup writing each catchmentRouting coordinate field", async
     );
 
   expect(orphaned).toEqual([]);
+});
+
+// The polyclinic name, the CMS programme code and the MDA inbox all come from
+// the resolved catchment, and the parish is the only field the citizen is
+// guaranteed to be able to answer — the coordinate is written by an address
+// lookup, which a free-typed address or a /geocode outage skips. So a routed
+// recipe whose parish field is gated behind an answer has a branch that routes
+// nowhere: `apply-for-hair-salon-licence` hid it behind the "building" branch,
+// and every vehicle-based application landed on "your local polyclinic" with no
+// polyclinic to send the MDA copy to.
+it("keeps every catchmentRouting parish field unconditional and required", async () => {
+  const routed = (await mappedRecipes()).filter(
+    (r) => r.routingPaths.length > 0,
+  );
+  expect(routed.length).toBeGreaterThan(0);
+
+  const ungated = routed
+    .filter((r) => {
+      const gated = (r.parishElement?.behaviours ?? []).some(
+        (b) => b.type === "fieldConditionalOn",
+      );
+      const required = r.parishElement?.validations?.required?.value !== false;
+      return gated || !required;
+    })
+    .map((r) => `${r.formId}: ${r.routingPaths[1]}`);
+
+  expect(ungated).toEqual([]);
 });

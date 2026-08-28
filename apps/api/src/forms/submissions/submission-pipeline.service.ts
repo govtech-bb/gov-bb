@@ -102,6 +102,19 @@ export class SubmissionPipelineService {
     return { draft, contract, auditTrail, normalizedValues };
   }
 
+  /**
+   * The submittable contract for a form, with no submission attached. Public so
+   * the idempotency-replay path can re-derive the resolved polyclinic from the
+   * stored submission's values — it never runs the pipeline, so it has no
+   * contract of its own.
+   */
+  async resolveContract(
+    formId: string,
+    bypassVisibility = false,
+  ): Promise<ServiceContract> {
+    return this.resolveSubmittableContract({ formId, bypassVisibility });
+  }
+
   private async resolveDraftAndContract(
     dto: SubmitDto,
   ): Promise<{ draft: FormDraftEntity | null; contract: ServiceContract }> {
