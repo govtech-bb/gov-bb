@@ -19,8 +19,13 @@ You must register with Environmental Health if you provide any of these services
 -   beauty services
 -   manicures
 -   pedicures
+-   hair braiding
 
-This applies whether you provide services at a business location, from home, at clients' locations or from a vehicle. At-home hairdressers, including hair braiders.
+This applies whether you provide services:
+
+-   at a business location
+-   from home (for example, at-home hairdressers)
+-   at clients' locations or from a vehicle
 
 ## Before you start
 
@@ -41,7 +46,7 @@ Your licence expires on December 31st each year. You need to renew it by the fir
 
 ## Complete the form
 
-There are 2 ways to apply for a hairdresser licence licence. You can:
+There are 2 ways to apply for a hairdresser licence. You can:
 
 1.  **Apply for a licence online.**
     
