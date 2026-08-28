@@ -109,8 +109,8 @@ interface RoutedRecipe {
   parishField: string;
   /** The parish field the address lookup writing this coordinate populates. */
   lookupParishField?: string;
-  /** Whether the coordinate's step is repeatable (values would be an array). */
-  coordinateStepIsRepeatable: boolean;
+  /** Step-level behaviours on either routing field's step, by step id. */
+  routingStepBehaviours: { stepId: string; types: string[] }[];
 }
 
 async function routedRecipes(): Promise<RoutedRecipe[]> {
@@ -164,16 +164,21 @@ async function routedRecipes(): Promise<RoutedRecipe[]> {
       }
     }
 
+    const parishStepId = routing.parishField.split(".")[0];
     routed.push({
       formId: recipe.formId,
       mapping,
       coordinatesField: routing.coordinatesField,
       parishField: routing.parishField,
       lookupParishField,
-      coordinateStepIsRepeatable: (
-        hydrated.steps.find((s) => s.stepId === coordinateStepId)?.behaviours ??
-        []
-      ).some((b) => b.type === "repeatable"),
+      routingStepBehaviours: [...new Set([coordinateStepId, parishStepId])].map(
+        (stepId) => ({
+          stepId,
+          types: (
+            hydrated.steps.find((s) => s.stepId === stepId)?.behaviours ?? []
+          ).map((b) => b.type),
+        }),
+      ),
     });
   }
 
@@ -272,15 +277,31 @@ describe("every catchment-routed form sends the CMS a coordinate", () => {
     expect(mismatched).toEqual([]);
   });
 
-  // Both `catchmentRouting` paths are read with a two-level `stepId.fieldId`
-  // lookup that refuses an array, so a repeatable routing step resolves nothing,
-  // the fill has nothing to write to, and the coordinate guard rejects EVERY
-  // submission of that form. Cheaper to catch here than in a live outage.
-  it("keeps the routing fields out of repeatable steps", async () => {
-    const repeatable = (await routedRecipes())
-      .filter((r) => r.coordinateStepIsRepeatable)
-      .map((r) => `${r.formId}: ${r.coordinatesField} is on a repeatable step`);
+  // Neither routing field may sit on a step the citizen can miss or repeat:
+  //
+  //  - `repeatable` — both paths are read with a two-level `stepId.fieldId`
+  //    lookup that refuses an array, so nothing resolves, the fill has nothing
+  //    to write to, and the coordinate guard rejects EVERY submission.
+  //  - `stepConditionalOn` — a step the citizen's earlier answer skipped lands
+  //    in `hiddenStepIds`, and `normalizeForStorage` drops it whole. That branch
+  //    of the form then has no parish to fill from and is rejected, while the
+  //    other branch works — the same one-branch-routes-nowhere shape that hid in
+  //    `apply-for-hair-salon-licence` until #2569, one level up from the field.
+  //
+  // Cheaper to catch here than in a live outage.
+  const FORBIDDEN_STEP_BEHAVIOURS = ["repeatable", "stepConditionalOn"];
 
-    expect(repeatable).toEqual([]);
+  it("keeps the routing fields on a step every applicant reaches exactly once", async () => {
+    const offending = (await routedRecipes()).flatMap((r) =>
+      r.routingStepBehaviours.flatMap((step) =>
+        step.types
+          .filter((type) => FORBIDDEN_STEP_BEHAVIOURS.includes(type))
+          .map(
+            (type) => `${r.formId}: routing step "${step.stepId}" is ${type}`,
+          ),
+      ),
+    );
+
+    expect(offending).toEqual([]);
   });
 });

@@ -324,6 +324,22 @@ describe("SubmissionsService", () => {
       expect(result.resolvedPolyclinic).toBe("Randal Phillips Polyclinic");
     });
 
+    // A replay must never fail because the ROUTING lookup failed — the API has
+    // already accepted that submission. Degrade to the generic confirmation copy
+    // and warn, rather than turning a refresh into an error.
+    it("still replays when the recipe can no longer be resolved", async () => {
+      const existing = makeEntity({ status: FormSubmissionStatus.SUBMITTED });
+      const { pipeline, service } = makeMocks({ existingEntity: existing });
+      pipeline.resolveContract = vi
+        .fn()
+        .mockRejectedValue(new Error("recipe gone"));
+
+      const result = await service.submit(BASE_DTO);
+
+      expect(result.outcome).toBe("duplicate");
+      expect(result.resolvedPolyclinic).toBeUndefined();
+    });
+
     it('returns outcome "in_progress" when key exists with PROCESSING status', async () => {
       const existing = makeEntity({ status: FormSubmissionStatus.PROCESSING });
       const { pipeline, service } = makeMocks({ existingEntity: existing });

@@ -333,6 +333,13 @@ export class EmailBodyBuilder {
 
     const fields = step.elements
       .filter((el) => !SKIP_TYPES.has(el.htmlType))
+      // `ui.hidden` fields are machine-written and were never shown to the
+      // applicant — in production that is the geocoded routing coordinate. They
+      // carry data the CMS payload needs, but printing
+      // "Address coordinates: 13.09,-59.57" shows the citizen and the polyclinic
+      // a row neither asked for and neither can act on. check-your-answers
+      // already filters them the same way (review.tsx).
+      .filter((el) => !el.ui?.hidden)
       .filter((el) =>
         activeFieldIds === undefined
           ? true

@@ -759,6 +759,50 @@ describe("EmailBodyBuilder", () => {
       );
     });
 
+    // A `ui.hidden` field is machine-written and has no label worth reading —
+    // the geocoded routing coordinate is the only one in production. It carries
+    // data (the CMS payload needs it) but the applicant was never shown it, and
+    // check-your-answers filters it out (review.tsx), so an email that prints
+    // "Address coordinates: 13.09,-59.57" shows the citizen and the polyclinic a
+    // row neither asked for and neither can act on.
+    it("omits ui.hidden fields such as the geocoded routing coordinate", async () => {
+      const contract = makeContract();
+      contract.steps[0].elements.push({
+        fieldId: "addressCoordinates",
+        label: "Address coordinates",
+        htmlType: "text",
+        ui: { hidden: true },
+      });
+      const payload = makePayload();
+      (payload.values.personal as Record<string, unknown>).addressCoordinates =
+        "13.097442,-59.575067";
+      payload.meta.activeFieldIds["personal"] = [
+        "firstName",
+        "lastName",
+        "gender",
+        "interests",
+        "country",
+        "languages",
+        "dob",
+        "addressCoordinates",
+      ];
+
+      formSvc = makeFormDefinitionsService(contract);
+      builder = new EmailBodyBuilder(formSvc, makeConfig());
+
+      const ctx = await builder.build(payload);
+      const personal = ctx.sections.find(
+        (s) => s.title === "Personal Information",
+      );
+
+      expect(personal?.fields.map((f) => f.label)).not.toContain(
+        "Address coordinates",
+      );
+      expect(personal?.fields.map((f) => f.value)).not.toContain(
+        "13.097442,-59.575067",
+      );
+    });
+
     it("omits fields listed in hiddenFieldIds", async () => {
       const payload = makePayload();
       payload.meta.hiddenFieldIds = { personal: ["lastName"] };

@@ -90,6 +90,44 @@ describe("fillParishRoutingCoordinate", () => {
     expect(fillParishRoutingCoordinate(unknown, routing)).toEqual(unknown);
   });
 
+  // The defences behind the guards: `catchmentRouting`'s schema requires both
+  // paths, and `catchment-coordinate-to-cams.spec.ts` refuses a routing field on
+  // a repeatable step — so these shapes should never reach production. Pinned
+  // anyway, because a defence nobody has run is a guess: each must leave the
+  // values untouched so the submit guard rejects, never half-write a coordinate
+  // onto the wrong shape.
+  it("leaves a repeatable routing step untouched (values are an array)", () => {
+    const values = {
+      "event-details": [{ "event-parish": "st-michael" }],
+    };
+
+    expect(fillParishRoutingCoordinate(values, routing)).toEqual(values);
+  });
+
+  it("leaves the values untouched when a routing path names no field", () => {
+    const values = { "event-details": { "event-parish": "st-michael" } };
+
+    expect(
+      fillParishRoutingCoordinate(values, {
+        coordinatesField: "event-details",
+        parishField: "event-details",
+      }),
+    ).toEqual(values);
+  });
+
+  it("writes onto a step that is absent from the values entirely", () => {
+    const values = { elsewhere: { "event-parish": "st-michael" } };
+
+    const out = fillParishRoutingCoordinate(values, {
+      coordinatesField: "event-details.event-address-coordinates",
+      parishField: "elsewhere.event-parish",
+    });
+
+    expect(out["event-details"]).toEqual({
+      "event-address-coordinates": PARISH_ROUTING_POINTS["st-michael"],
+    });
+  });
+
   it("does not mutate the input", () => {
     const values = { "event-details": { "event-parish": "st-michael" } };
 
