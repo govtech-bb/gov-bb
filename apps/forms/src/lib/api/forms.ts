@@ -40,6 +40,28 @@ export class FormFetchError extends Error {
   }
 }
 
+/**
+ * Thrown when the API rejects a request with field-level validation errors
+ * (`422` carrying `meta.errors`, keyed `{ stepId: { fieldId: string[] } }`).
+ *
+ * A subclass rather than a flag so a caller that only knows about
+ * `FormFetchError` keeps its existing behaviour, while the submit flow can
+ * recognise "the server told us which answers are wrong" and put those messages
+ * back on the fields instead of rendering the generic failure panel. Without it
+ * the bundle was discarded at the fetch boundary and a 422 that named the exact
+ * offending field surfaced as "Something went wrong" (see #1257).
+ */
+export class FormValidationError extends FormFetchError {
+  constructor(
+    message: string,
+    status: number,
+    public readonly errors: unknown,
+  ) {
+    super(message, status);
+    this.name = "FormValidationError";
+  }
+}
+
 interface ResponseErrorMessages {
   not_found?: string;
 }
@@ -73,6 +95,15 @@ const makeFetch = async <T extends ApiResponse>(
   }
 
   if (!response.ok) {
+    // Read the failure body before deciding what to throw: the API's global
+    // exception filter puts a validation bundle on `meta.errors`, and the submit
+    // flow needs it to attach the messages to the fields they belong to. An
+    // unreadable body (a gateway HTML page, an empty 502) must still produce the
+    // plain FormFetchError below rather than an unhandled parse error.
+    const failureBody = (await response.json().catch(() => undefined)) as
+      | { message?: string; meta?: { errors?: unknown } }
+      | undefined;
+
     let message: string;
 
     switch (response.status) {
@@ -81,6 +112,15 @@ const makeFetch = async <T extends ApiResponse>(
         break;
       default:
         message = `Failed to load form (HTTP ${response.status}).`;
+    }
+
+    const fieldErrors = failureBody?.meta?.errors;
+    if (fieldErrors !== undefined) {
+      throw new FormValidationError(
+        failureBody?.message ?? message,
+        response.status,
+        fieldErrors,
+      );
     }
     throw new FormFetchError(message, response.status);
   }

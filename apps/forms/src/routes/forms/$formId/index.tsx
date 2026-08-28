@@ -35,8 +35,13 @@ import {
   clearFormStartTime,
 } from "../../../lib/session-storage";
 import { elapsedSeconds } from "../../../lib/submit-duration";
-import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
+import {
+  formatDataForSubmission,
+  postFormSubmission,
+  FormValidationError,
+} from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
+import { resolveServerFieldErrors } from "../../../lib/server-field-errors";
 import { formCategory } from "../../../lib/form-category";
 import {
   resolveSubmissionOutcome,
@@ -275,7 +280,42 @@ function FormView() {
       let response;
       try {
         response = await postFormSubmission(formMeta, formattedData, preview);
-      } catch {
+      } catch (error) {
+        // The server told us which answers it rejected (422 + meta.errors).
+        // Put those messages back on the fields they name and return the
+        // citizen to the step holding the first one, so they can see and fix
+        // it — rather than the generic failure panel and a retry that would
+        // fail identically (#1257). A bundle nothing maps to (a renamed field,
+        // a repeatable step's per-instance shape) falls through to the panel:
+        // no feedback at all is worse than imprecise feedback.
+        if (error instanceof FormValidationError) {
+          const { byFieldId, stepId } = resolveServerFieldErrors(
+            error.errors,
+            visibleSteps,
+          );
+          if (stepId) {
+            for (const [fieldId, messages] of Object.entries(byFieldId)) {
+              form.setFieldMeta(fieldId, (prev) => ({
+                ...prev,
+                isValid: false,
+                errors: messages,
+                errorMap: { ...prev.errorMap, onServer: messages[0] },
+              }));
+            }
+            trackEvent("form-submit-error", {
+              form: formMeta.formId,
+              category: formCategory(formMeta.formId),
+              errors: "validation",
+            });
+            void navigate({
+              search: (prev: Record<string, unknown>) => ({
+                ...prev,
+                step: stepId,
+              }),
+            });
+            return;
+          }
+        }
         trackEvent("form-submit-error", {
           form: formMeta.formId,
           category: formCategory(formMeta.formId),
