@@ -38,8 +38,9 @@
  *    Unlike apply-for-hairdresser-licence, which gates the whole
  *    `workplace-details` step behind a separate `workplace-known` step, that
  *    gating step does not exist here, so the journey is always
- *    personal-details → workplace-details → documents → check-your-answers →
- *    declaration → submission-confirmation. One test covers the whole form.
+ *    personal-details → contact-details → workplace-details → documents →
+ *    check-your-answers → declaration → submission-confirmation. One test
+ *    covers the whole form.
  *  - `workplace-details` does carry ELEMENT-level reveals, on the individual
  *    fields (`overrides.behaviours`, not the step's):
  *    `funeral-establishment-name`, `-address-line-1`, `-address-line-2` and
@@ -63,9 +64,23 @@
  *    `personal-details.address-coordinates`). We faker-pick from a pool of
  *    known-geocodable locations, select the first suggestion, then assert
  *    `address-coordinates` filled.
+ *  - Email and phone live on their own `contact-details` step ("How can we
+ *    contact you?"), split out of `personal-details` in the 2026-08-28
+ *    publish — same shape as apply-for-hairdresser-licence. The recipe's
+ *    processors read `contact-details.email` / `.phone-number`, so filling
+ *    them on the wrong step would silently break the applicant's copy of the
+ *    confirmation email.
  *  - `phone-number` is `components/telephone`, whose `phone` rule runs
  *    libphonenumber-js `.isValid()` — a random `246 NNN NNNN` is rejected, the
  *    exchange has to be a real assignable one.
+ *  - `national-id-number` (`components/national-id-number`) is REQUIRED on
+ *    `personal-details` and carries a Maskito hard mask (`999999-9999`). Type
+ *    the ten raw digits and let the mask insert the dash — a `fill()` of the
+ *    formatted string fights the mask. Same idiom as
+ *    apply-for-hairdresser-licence.
+ *  - `documents` opens with `upload-id` ("Upload national ID card"), a
+ *    required single-file upload added in the same publish as the
+ *    `national-id-number` field.
  *  - `documents` no longer carries a medical certificate — it now covers the
  *    statutory eligibility evidence (#2475): `passport-photo` is a required
  *    single-file upload; `embalmer-qualification` (`components/generic-file`)
@@ -76,7 +91,7 @@
  *    regulations. This test opens the disclosure and uploads both files, so
  *    the reveal itself is asserted (hidden → toggle → visible), not just the
  *    happy path.
- *  - All three uploads are `components/upload-document` declaring
+ *  - All four uploads are `components/upload-document` declaring
  *    `fileTypes` + `itemMaxSize`, so each picker carries a real `accept` and
  *    only the listed formats reach presign. The two evidence uploads were
  *    briefly `components/generic-file` with no `fileTypes` at all — an
@@ -155,6 +170,18 @@ function bbMobileNumber(): string {
   return `246 ${faker.helpers.arrayElement(BB_MOBILE_EXCHANGES)} ${faker.string.numeric(4)}`;
 }
 
+/**
+ * Ten raw digits in National ID shape (YYMMDD + 4). Typed digit-by-digit so
+ * Maskito inserts the dash and the value matches `^\d{6}-\d{4}$`.
+ */
+function nationalIdDigits(): string {
+  const dob = faker.date.birthdate({ min: 21, max: 70, mode: "age" });
+  const yy = String(dob.getFullYear()).slice(-2);
+  const mm = String(dob.getMonth() + 1).padStart(2, "0");
+  const dd = String(dob.getDate()).padStart(2, "0");
+  return `${yy}${mm}${dd}${faker.string.numeric(4)}`;
+}
+
 /** Build a complete, valid set of answers for the single journey. */
 export function buildData() {
   if (process.env.FAKER_SEED) faker.seed(Number(process.env.FAKER_SEED));
@@ -163,6 +190,7 @@ export function buildData() {
     firstName: faker.person.firstName(),
     middleName: faker.person.middleName(),
     lastName: faker.person.lastName(),
+    nationalIdDigits: nationalIdDigits(),
     address: faker.helpers.arrayElement(GEOCODABLE_ADDRESSES),
     // Goes to the monitored test inbox so a real run is verifiable end-to-end.
     email: "testing@govtech.bb",
@@ -187,6 +215,22 @@ export async function openForm(page: Page): Promise<void> {
   });
 }
 
+/**
+ * Fill the Maskito-masked National ID: type the ten raw digits so the mask
+ * inserts the dash, then assert the formatted shape actually landed.
+ */
+async function fillMaskedNationalId(
+  page: Page,
+  stepId: string,
+  digits: string,
+): Promise<void> {
+  const input = page.locator(`input[id="${stepId}_national-id-number"]`);
+  await input.pressSequentially(digits);
+  await expect(input, "Maskito did not format the National ID").toHaveValue(
+    /^\d{6}-\d{4}$/,
+  );
+}
+
 /** Step 1 — the applicant. */
 export async function fillPersonalDetails(
   page: Page,
@@ -197,6 +241,7 @@ export async function fillPersonalDetails(
   await fillField(page, step, "first-name", data.firstName);
   await fillField(page, step, "middle-name", data.middleName);
   await fillField(page, step, "last-name", data.lastName);
+  await fillMaskedNationalId(page, step, data.nationalIdDigits);
   await fillGeocodedAddress(
     page,
     step,
@@ -214,6 +259,16 @@ export async function fillPersonalDetails(
   await expect(
     page.locator(`select[id="${step}_home-parish"]`),
   ).not.toHaveValue("");
+  await advance(page, step);
+}
+
+/** Step 2 — email and phone, split out of `personal-details`. */
+export async function fillContactDetails(
+  page: Page,
+  data: ReturnType<typeof buildData>,
+): Promise<void> {
+  const step = expectStep(page, "contact-details");
+  await expect(page.locator("h1")).toContainText("How can we contact you");
   await fillField(page, step, "email", data.email);
   await fillField(page, step, "phone-number", data.phone);
   await advance(page, step);
@@ -274,6 +329,11 @@ export async function fillWorkplaceDetails(
 export async function fillDocuments(page: Page): Promise<void> {
   const step = expectStep(page, "documents");
   await expect(page.locator("h1")).toContainText("Add your documents");
+  await uploadOne(page, step, "upload-id", {
+    name: "national-id-card.png",
+    mimeType: TEST_PNG.mimeType,
+    buffer: TEST_PNG.buffer,
+  });
   await uploadOne(page, step, "passport-photo", {
     name: "passport-photo.png",
     mimeType: TEST_PNG.mimeType,
@@ -334,6 +394,7 @@ test.describe("Funeral Embalmer Licence Application — Live Smoke", () => {
 
     await openForm(page);
     await fillPersonalDetails(page, data);
+    await fillContactDetails(page, data);
     await fillWorkplaceDetails(page, data);
     await fillDocuments(page);
 

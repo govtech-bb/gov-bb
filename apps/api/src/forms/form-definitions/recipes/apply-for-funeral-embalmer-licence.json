@@ -2,60 +2,11 @@
   "formId": "apply-for-funeral-embalmer-licence",
   "title": "Apply to Environmental Health for an Embalmer Licence",
   "description": "Use this service to apply for an embalmer licence.",
-  "processors": [
-    {
-      "type": "email",
-      "config": {
-        "recipientField": "personal-details.email",
-        "subject": "Your embalmer licence application has been received"
-      }
-    },
-    {
-      "type": "email",
-      "config": {
-        "recipientField": "catchment.mdaEmail",
-        "subject": "A new embalmer licence application has been received"
-      }
-    },
-    {
-      "type": "webhook",
-      "config": {
-        "method": "POST",
-        "signatureHeader": "X-Webhook-Signature",
-        "mapping": {
-          "programmeCode": "FUNERAL_EMBALMER_LICENCE",
-          "mdaCode": "MOH",
-          "programmeShortCode": "FEL",
-          "applicant": {
-            "name": [
-              "personal-details.first-name",
-              "personal-details.last-name"
-            ],
-            "email": "personal-details.email",
-            "phone": "personal-details.phone-number"
-          },
-          "excludeSteps": [
-            "check-your-answers",
-            "declaration",
-            "submission-confirmation"
-          ],
-          "groupByStep": true
-        },
-        "timeoutMs": 10000
-      }
-    }
-  ],
-  "meta": {
-    "visibility": "preview"
-  },
-  "catchmentRouting": {
-    "coordinatesField": "personal-details.address-coordinates",
-    "parishField": "personal-details.home-parish"
-  },
   "steps": [
     {
       "stepId": "personal-details",
       "title": "Tell us about yourself",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/first-name",
@@ -84,6 +35,17 @@
             "validations": {
               "required": {
                 "error": "Enter your last name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "validations": {
+              "required": {
+                "error": "Add your National ID number",
                 "value": true
               }
             }
@@ -146,7 +108,14 @@
               "hidden": true
             }
           }
-        },
+        }
+      ]
+    },
+    {
+      "stepId": "contact-details",
+      "title": "How can we contact you?",
+      "behaviours": [],
+      "elements": [
         {
           "ref": "components/email",
           "overrides": {
@@ -175,12 +144,12 @@
             }
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "workplace-details",
       "title": "Tell us where you plan to work",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/generic-checkbox",
@@ -215,11 +184,11 @@
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "workplace-locations",
+                "targetStepId": "workplace-details",
                 "operator": "in",
                 "value": [
                   "one-funeral-establishment"
-                ],
-                "targetStepId": "workplace-details"
+                ]
               }
             ]
           }
@@ -233,11 +202,11 @@
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "workplace-locations",
+                "targetStepId": "workplace-details",
                 "operator": "in",
                 "value": [
                   "one-funeral-establishment"
-                ],
-                "targetStepId": "workplace-details"
+                ]
               }
             ]
           }
@@ -256,11 +225,11 @@
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "workplace-locations",
+                "targetStepId": "workplace-details",
                 "operator": "in",
                 "value": [
                   "one-funeral-establishment"
-                ],
-                "targetStepId": "workplace-details"
+                ]
               }
             ]
           }
@@ -274,22 +243,47 @@
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "workplace-locations",
+                "targetStepId": "workplace-details",
                 "operator": "in",
                 "value": [
                   "one-funeral-establishment"
-                ],
-                "targetStepId": "workplace-details"
+                ]
               }
             ]
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "documents",
       "title": "Add your documents",
+      "behaviours": [],
       "elements": [
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "upload-id",
+            "label": "Upload national ID card",
+            "validations": {
+              "required": {
+                "error": "You must upload a scanned copy of your national ID card",
+                "value": true
+              },
+              "fileTypes": {
+                "error": "Upload your national ID card in PDF, JPEG or PNG format",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "File must be 5 MB or smaller",
+                "value": 5242880
+              }
+            }
+          }
+        },
         {
           "ref": "components/upload-document",
           "overrides": {
@@ -322,27 +316,27 @@
             "label": "Upload your embalmer qualification",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Upload your embalmer qualification, or use a reference letter instead"
+                "error": "Upload your embalmer qualification, or use a reference letter instead",
+                "value": true
               },
               "fileTypes": {
+                "error": "Upload your embalmer qualification in PDF, JPEG or PNG format",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
                   "image/png"
-                ],
-                "error": "Upload your embalmer qualification in PDF, JPEG or PNG format"
+                ]
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "File must be 5 MB or smaller"
+                "error": "File must be 5 MB or smaller",
+                "value": 5242880
               }
             },
             "behaviours": [
               {
                 "type": "optionalIf",
-                "targetStepId": "documents",
                 "targetFieldId": "use-reference-letter",
+                "targetStepId": "documents",
                 "operator": "equal",
                 "value": true
               }
@@ -364,45 +358,45 @@
             "hint": "If you have been engaged in the practice of embalming, prior to the regulations coming into effect in 1984, you will need to evidence you have been practicing for a period of more than five (5) years, or have worked under the direct supervision of an approved embalmer for more than three (3) years.",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Upload your letter of embalmer work experience"
+                "error": "Upload your letter of embalmer work experience",
+                "value": true
               },
               "fileTypes": {
+                "error": "Upload your letter of embalmer work experience in PDF, JPEG or PNG format",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
                   "image/png"
-                ],
-                "error": "Upload your letter of embalmer work experience in PDF, JPEG or PNG format"
+                ]
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "File must be 5 MB or smaller"
+                "error": "File must be 5 MB or smaller",
+                "value": 5242880
               }
             },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetStepId": "documents",
                 "targetFieldId": "use-reference-letter",
+                "targetStepId": "documents",
                 "operator": "equal",
                 "value": true
               }
             ]
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "check-your-answers",
       "title": "Check your answers",
-      "elements": [],
-      "behaviours": []
+      "behaviours": [],
+      "elements": []
     },
     {
       "stepId": "declaration",
       "title": "Confirm and submit your application",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/confirmation",
@@ -423,17 +417,66 @@
             ]
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "submission-confirmation",
       "title": "Application submitted",
-      "elements": [],
       "behaviours": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- Your application goes to the Environmental Health Service associated with your location. If additional information or documentation is required, you will be contacted by an Environmental Health Officer.\n\n**Obtaining your licence:**\n\n- If your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n- Branford Taitt Polyclinic - [536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)\n- David Thompson Health and Social Services Complex - [536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)\n- Eunice Gibson Polyclinic - [536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)\n- Maurice Byer Polyclinic - [536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)\n- Randall Phillips Polyclinic - [536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)\n- St. Phillip Polyclinic - [536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)\n- Winston Scott Polyclinic - [536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)"
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- Your application goes to the Environmental Health Service associated with your location. If additional information or documentation is required, you will be contacted by an Environmental Health Officer.\n\n**Obtaining your licence:**\n\n- If your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n- Branford Taitt Polyclinic - [536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)\n- David Thompson Health and Social Services Complex - [536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)\n- Eunice Gibson Polyclinic - [536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)\n- Maurice Byer Polyclinic - [536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)\n- Randall Phillips Polyclinic - [536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)\n- St. Phillip Polyclinic - [536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)\n- Winston Scott Polyclinic - [536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)",
+      "elements": []
+    }
+  ],
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "contact-details.email",
+        "subject": "Your embalmer licence application has been received"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "catchment.mdaEmail",
+        "subject": "A new embalmer licence application has been received"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "method": "POST",
+        "signatureHeader": "X-Webhook-Signature",
+        "mapping": {
+          "programmeCode": "FUNERAL_EMBALMER_LICENCE",
+          "mdaCode": "MOH",
+          "programmeShortCode": "FEL",
+          "applicant": {
+            "name": [
+              "personal-details.first-name",
+              "personal-details.last-name"
+            ],
+            "email": "contact-details.email",
+            "phone": "contact-details.phone-number"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        },
+        "timeoutMs": 10000
+      }
     }
   ],
   "createdAt": "2026-08-25T14:05:29.888Z",
-  "updatedAt": "2026-08-27T00:00:00.000Z"
+  "updatedAt": "2026-08-28T03:11:19.534Z",
+  "meta": {
+    "visibility": "preview"
+  },
+  "catchmentRouting": {
+    "coordinatesField": "personal-details.address-coordinates",
+    "parishField": "personal-details.home-parish"
+  }
 }
