@@ -94,6 +94,17 @@ export function AddressLookupField({
   const update = (next: string) => {
     setQuery(next);
     commitChange(next);
+    // The coordinate belongs to the suggestion that was picked, and the
+    // applicant cannot see it (it is a `ui.hidden` field), so editing the
+    // address by hand would otherwise send the CMS a precise coordinate for an
+    // address that is no longer on screen — and route the application to the
+    // polyclinic serving the OLD one. Drop it and let the server fill the
+    // coordinate from the parish instead. The parish and line 2 stay: both are
+    // visible fields the applicant can correct themselves.
+    const coordinatesFieldId = field.geocodeTargets?.coordinatesFieldId;
+    if (coordinatesFieldId) {
+      form.setFieldValue(siblingId(coordinatesFieldId), "");
+    }
   };
 
   const select = (result: GeocodeResult) => {
