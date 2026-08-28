@@ -1081,6 +1081,34 @@ describe("SubmissionsService", () => {
       expect(txRepo.create).not.toHaveBeenCalled();
     });
 
+    // A value that is not a "lat,lng" pair is unusable to the point-in-polygon,
+    // so it must not satisfy the guard just by being non-empty — that would send
+    // the CMS junk and resolve no polyclinic.
+    it("rejects a malformed coordinate the parish cannot rescue", async () => {
+      const { pipeline, service, txRepo } = makeMocks({
+        catchmentRouting: makeCatchmentRouting(() => null),
+      });
+      pipeline.run = vi.fn().mockResolvedValue({
+        draft: null,
+        contract: {
+          processors: [],
+          catchmentRouting: {
+            coordinatesField: "event-details.event-address-coordinates",
+            parishField: "event-details.event-parish",
+          },
+        },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {
+          "event-details": { "event-address-coordinates": "not-a-coordinate" },
+        },
+      });
+
+      await expect(service.submit(BASE_DTO)).rejects.toMatchObject({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+      });
+      expect(txRepo.create).not.toHaveBeenCalled();
+    });
+
     it("does not reject a form that declares no catchmentRouting", async () => {
       const { service } = makeMocks();
 

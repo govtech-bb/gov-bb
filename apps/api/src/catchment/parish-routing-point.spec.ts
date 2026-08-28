@@ -3,6 +3,7 @@ import { PARISH_DEFAULTS } from "./polyclinic-routing";
 import {
   PARISH_ROUTING_POINTS,
   fillParishRoutingCoordinate,
+  isRoutingCoordinate,
 } from "./parish-routing-point";
 
 const routing = {
@@ -57,6 +58,30 @@ describe("fillParishRoutingCoordinate", () => {
     ).toBe(PARISH_ROUTING_POINTS["st-philip"]);
   });
 
+  // The coordinate field is `ui.hidden` and only ever written by an address
+  // lookup, so a value that is not a "lat,lng" pair is not an answer worth
+  // keeping — it is unusable to the point-in-polygon and would otherwise BLOCK
+  // the parish fill, sending the CMS junk and resolving no polyclinic.
+  it.each(["not-a-coordinate", "13.1132", "13.1132,", "abc,def", "13,-59"])(
+    "replaces the malformed coordinate %j from the parish",
+    (malformed) => {
+      const values = {
+        "event-details": {
+          "event-parish": "st-philip",
+          "event-address-coordinates": malformed,
+        },
+      };
+
+      const out = fillParishRoutingCoordinate(values, routing);
+
+      expect(
+        (out["event-details"] as Record<string, unknown>)[
+          "event-address-coordinates"
+        ],
+      ).toBe(PARISH_ROUTING_POINTS["st-philip"]);
+    },
+  );
+
   it("returns the values unchanged when the parish is missing or unrecognised", () => {
     const missing = { "event-details": {} };
     const unknown = { "event-details": { "event-parish": "atlantis" } };
@@ -82,6 +107,34 @@ describe("fillParishRoutingCoordinate", () => {
     expect(Object.keys(PARISH_ROUTING_POINTS).sort()).toEqual(
       Object.keys(PARISH_DEFAULTS).sort(),
     );
+  });
+});
+
+describe("isRoutingCoordinate", () => {
+  it.each(["13.1132,-59.5988", "-13.1132,-59.5988", "13.097442,-59.575067"])(
+    "accepts the %j pair the geocoder and the parish table both write",
+    (value) => {
+      expect(isRoutingCoordinate(value)).toBe(true);
+    },
+  );
+
+  it.each(["", "   ", "13.1132", "13,-59", "abc,def", "13.1,-59.6,7"])(
+    "rejects %j",
+    (value) => {
+      expect(isRoutingCoordinate(value)).toBe(false);
+    },
+  );
+
+  it("rejects a non-string", () => {
+    expect(isRoutingCoordinate(undefined)).toBe(false);
+    expect(isRoutingCoordinate(null)).toBe(false);
+    expect(isRoutingCoordinate(13.1)).toBe(false);
+  });
+
+  it("accepts every point in the parish table", () => {
+    for (const point of Object.values(PARISH_ROUTING_POINTS)) {
+      expect(isRoutingCoordinate(point)).toBe(true);
+    }
   });
 });
 

@@ -39,6 +39,22 @@ export const PARISH_ROUTING_POINTS: Record<string, string> = {
   "st-michael": "13.097442,-59.575067", // Sir Winston Scott Polyclinic
 };
 
+/**
+ * A usable routing coordinate: the `"lat,lng"` decimal pair the geocoder writes
+ * and {@link PARISH_ROUTING_POINTS} holds, and the only shape
+ * `CatchmentRoutingService.pointHit` can parse.
+ *
+ * Anything else in the field is not an answer worth keeping. The field is
+ * `ui.hidden` and written only by an address lookup's `geocodeTargets`, so a
+ * malformed value cannot have come from the applicant — and treating it as
+ * present would block the parish fill, send the CMS junk, and resolve no
+ * polyclinic. Integer pairs are rejected too: the geocoder never emits one, and
+ * a bare `"13,-59"` is far likelier to be a stray value than a real location.
+ */
+export function isRoutingCoordinate(value: unknown): boolean {
+  return typeof value === "string" && /^-?\d+\.\d+,-?\d+\.\d+$/.test(value);
+}
+
 /** Read a `"stepId.fieldId"` path out of the step-nested submission values. */
 function readPath(values: SubmissionValues, path: string): unknown {
   const dot = path.indexOf(".");
@@ -53,8 +69,10 @@ function readPath(values: SubmissionValues, path: string): unknown {
  *
  * When the coordinate field is empty but the parish field holds a known parish,
  * write that parish's routing point into the coordinate field. A real geocoded
- * coordinate is left untouched. No recognised parish → unchanged, and the
- * caller rejects the submission rather than routing it nowhere.
+ * coordinate is left untouched — "real" meaning it passes
+ * {@link isRoutingCoordinate}, so a blank or malformed value is treated as
+ * absent rather than blocking the fill. No recognised parish → unchanged, and
+ * the caller rejects the submission rather than routing it nowhere.
  *
  * Runs server-side, on the normalized values, so the filled coordinate is
  * persisted and reaches the CMS webhook. It lived in `apps/forms` first (#2152)
@@ -67,8 +85,9 @@ export function fillParishRoutingCoordinate(
   values: SubmissionValues,
   routing: CatchmentRouting,
 ): SubmissionValues {
-  const existing = readPath(values, routing.coordinatesField);
-  if (typeof existing === "string" && existing.trim() !== "") return values;
+  if (isRoutingCoordinate(readPath(values, routing.coordinatesField))) {
+    return values;
+  }
 
   const parish = readPath(values, routing.parishField);
   const point =

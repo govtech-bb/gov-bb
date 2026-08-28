@@ -9,7 +9,10 @@ import { AppError } from "@/common/errors";
 import { isFormClosed } from "@govtech-bb/form-types";
 import { ExpressionsService } from "@/expressions/expressions.service";
 import { CatchmentRoutingService } from "@/catchment/catchment-routing.service";
-import { fillParishRoutingCoordinate } from "@/catchment/parish-routing-point";
+import {
+  fillParishRoutingCoordinate,
+  isRoutingCoordinate,
+} from "@/catchment/parish-routing-point";
 import { FormSubmissionRepository } from "./form-submission.repository";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { ProcessorFactory } from "./processors/processor-factory.service";
@@ -101,7 +104,9 @@ export class SubmissionsService {
 
     if (
       contract.catchmentRouting &&
-      !readPath(normalizedValues, contract.catchmentRouting.coordinatesField)
+      !isRoutingCoordinate(
+        readPath(normalizedValues, contract.catchmentRouting.coordinatesField),
+      )
     ) {
       const { parishField } = contract.catchmentRouting;
       const dot = parishField.indexOf(".");
