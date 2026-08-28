@@ -270,7 +270,7 @@
                 "value": true
               },
               "fileTypes": {
-                "error": "Upload your ID card",
+                "error": "Upload your national ID card in PDF, JPEG or PNG format",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
