@@ -14,7 +14,7 @@
             "fieldId": "first-name",
             "validations": {
               "required": {
-                "error": "Enter your first name",
+                "error": "First name is required",
                 "value": true
               }
             }
@@ -34,7 +34,7 @@
             "fieldId": "last-name",
             "validations": {
               "required": {
-                "error": "Enter your last name",
+                "error": "Last name is required",
                 "value": true
               }
             }
@@ -46,7 +46,7 @@
             "fieldId": "national-id-number",
             "validations": {
               "required": {
-                "error": "Enter your national ID number",
+                "error": "National ID number is required",
                 "value": true
               }
             }
@@ -59,7 +59,7 @@
             "label": "Address line 1",
             "validations": {
               "required": {
-                "error": "Enter your address",
+                "error": "Address line 1 is required",
                 "value": true
               }
             },
@@ -89,7 +89,7 @@
             "label": "Parish",
             "validations": {
               "required": {
-                "error": "Select your parish",
+                "error": "Parish is required",
                 "value": true
               }
             }
@@ -123,7 +123,7 @@
             "fieldId": "email",
             "validations": {
               "required": {
-                "error": "Enter your email address",
+                "error": "Email is required",
                 "value": true
               }
             }
@@ -135,7 +135,7 @@
             "fieldId": "phone-number",
             "validations": {
               "required": {
-                "error": "Enter your phone number",
+                "error": "Phone number is required",
                 "value": true
               }
             }
@@ -156,7 +156,7 @@
             "hint": "Select all that apply.",
             "validations": {
               "required": {
-                "error": "Select at least one workplace option",
+                "error": "Workplace locations is required",
                 "value": true
               }
             },
@@ -285,6 +285,7 @@
             "hint": "These photographs should have been taken recently.",
             "validations": {
               "required": {
+                "error": "Passport photo is required",
                 "value": true
               },
               "fileTypes": {
@@ -309,7 +310,7 @@
             "label": "Upload your medical certificate of fitness.",
             "validations": {
               "required": {
-                "error": "Your medical certificate is required",
+                "error": "Medical certificate is required",
                 "value": true
               },
               "fileTypes": {
@@ -413,7 +414,7 @@
     }
   ],
   "createdAt": "2026-08-19T19:09:04.486Z",
-  "updatedAt": "2026-08-27T22:02:03.859Z",
+  "updatedAt": "2026-08-28T03:00:57.264Z",
   "meta": {
     "visibility": "preview"
   },
