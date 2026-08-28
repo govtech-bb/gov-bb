@@ -59,7 +59,7 @@ There is neither a cost to apply, nor to receive your licence.
 
 Submitting an application does not mean that a swimming pool licence has been granted.
 
-## Need assistance
+## Contact
 
 If you need help, contact the Environmental Health Service office for your area.
 
