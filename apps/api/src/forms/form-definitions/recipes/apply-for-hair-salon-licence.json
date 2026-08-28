@@ -68,14 +68,6 @@
           "overrides": {
             "fieldId": "business-address-line-1",
             "label": "Address line 1",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "business-location-type",
-                "operator": "equal",
-                "value": "building"
-              }
-            ],
             "geocodeTargets": {
               "line2FieldId": "business-address-line-2",
               "parishFieldId": "business-address-parish",
@@ -92,29 +84,13 @@
               "required": {
                 "value": false
               }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "business-location-type",
-                "operator": "equal",
-                "value": "building"
-              }
-            ]
+            }
           }
         },
         {
           "ref": "components/parish",
           "overrides": {
-            "fieldId": "business-address-parish",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "business-location-type",
-                "operator": "equal",
-                "value": "building"
-              }
-            ]
+            "fieldId": "business-address-parish"
           }
         },
         {
@@ -135,15 +111,7 @@
         {
           "ref": "components/postcode",
           "overrides": {
-            "fieldId": "business-address-postcode",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "business-location-type",
-                "operator": "equal",
-                "value": "building"
-              }
-            ]
+            "fieldId": "business-address-postcode"
           }
         },
         {
@@ -451,7 +419,7 @@
     }
   ],
   "createdAt": "2026-08-20T17:42:48.875Z",
-  "updatedAt": "2026-08-27T22:25:13.176Z",
+  "updatedAt": "2026-08-28T03:24:59.777Z",
   "meta": {
     "visibility": "preview"
   },
