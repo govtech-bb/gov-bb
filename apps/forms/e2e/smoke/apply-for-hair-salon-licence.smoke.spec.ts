@@ -39,10 +39,14 @@
  *    `fieldId` override at all and answered to `components/generic-select`'s
  *    default (`generic-select`); the 2026-08-27 publish gave it a real name and
  *    retargeted the conditionals that read it.
- *  - `business-location-type` now drives the WHOLE business address block:
- *    "building" reveals `business-address-line-1` / `-line-2` / `-parish` /
- *    `-postcode`, and "vehicle" reveals `vehicle-licence` instead. The two
- *    tests take opposite sides, so only the building branch geocodes.
+ *  - `business-location-type` reveals `vehicle-licence` on "vehicle", and
+ *    nothing else. The business address block used to ride the same gate
+ *    ("building" only); the 2026-08-28 publish UNGATED it, so
+ *    `business-address-line-1` / `-line-2` / `-parish` / `-postcode` are asked
+ *    on both branches now and both tests geocode. Line 1 and parish carry no
+ *    `required` override, so they inherit required:true from
+ *    `components/address` / `components/parish` — a branch that skips them no
+ *    longer advances.
  *  - "renew" on `new-or-renew` reveals `licence-reference-number`. The second
  *    test takes it alongside the vehicle branch.
  *  - The business address is an address-lookup (geocoder) field, so it cannot
@@ -54,8 +58,7 @@
  *    `business-address-coordinates` filled.
  *  - `business-address-postcode` is `components/postcode`: pattern-only
  *    (`^[Bb]{2} ?\d{5}$`), no required rule — so it must either be blank or a
- *    real-shaped postcode. We fill a valid one on the building branch; on the
- *    vehicle branch it is not on screen at all.
+ *    real-shaped postcode. We fill a valid one on both branches.
  *  - `owner-address-line-1` is `components/address` (required, minLength 5) and
  *    is NOT geocoded — plain faker street addresses are fine there.
  *  - `male-staff-count` / `female-staff-count` inherit
@@ -70,14 +73,15 @@
  *    which one resolves depends on the faker-picked address, and the copy's
  *    Contact section lists all seven by name regardless, so a /Polyclinic/
  *    match proves nothing. We assert the stable Environmental Health copy.
- *  - CAVEAT on the vehicle branch: `catchmentRouting` reads
+ *  - The vehicle-branch catchment gap is FIXED, and this spec is its
+ *    regression test. `catchmentRouting` reads
  *    `business-details.business-address-coordinates` and
- *    `business-details.business-address-parish`, and BOTH now live behind the
- *    "building" gate — a vehicle-based business answers neither, so catchment
- *    cannot resolve and `{polyclinic}` falls back to "your local polyclinic".
- *    That also means the MDA copy of the application has no polyclinic to go
- *    to. Deliberately NOT asserted either way here: the fallback is a product
- *    gap to fix in the recipe, not behaviour worth pinning in a test.
+ *    `business-details.business-address-parish`; both used to sit behind the
+ *    "building" gate, so a vehicle-based business answered neither, catchment
+ *    could not resolve, `{polyclinic}` fell back to "your local polyclinic",
+ *    and the MDA copy of the application had no polyclinic to go to. Ungating
+ *    the address block closed that — so both branches now assert the generic
+ *    fallback is ABSENT from the confirmation.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
@@ -242,41 +246,29 @@ export async function fillBusinessDetails(
     await expect(vehicleLicence).toBeHidden();
   }
 
-  // ─── The address block rides the same gate — "building" only ──────────────
+  // ─── The address block — ungated, so asked on BOTH branches ───────────────
   const addressLine1 = page.locator(
     `input[id="${step}_business-address-line-1"]`,
   );
-  if (premisesType === "building") {
-    await expect(addressLine1).toBeVisible({ timeout: STEP_TIMEOUT });
-    await fillGeocodedBusinessAddress(page, step, data.businessAddress);
-    await fillField(
-      page,
-      step,
-      "business-address-line-2",
-      data.businessAddressLine2,
-    );
-    // The geocoder fills parish from the picked suggestion; assert rather than
-    // overwrite, since that value is the catchment router's fallback.
-    await expect(
-      page.locator(`select[id="${step}_business-address-parish"]`),
-    ).not.toHaveValue("");
-    await fillField(
-      page,
-      step,
-      "business-address-postcode",
-      data.businessPostcode,
-    );
-  } else {
-    // A vehicle has no premises address to give — see the catchment caveat in
-    // the header note.
-    await expect(addressLine1).toBeHidden();
-    await expect(
-      page.locator(`select[id="${step}_business-address-parish"]`),
-    ).toBeHidden();
-    await expect(
-      page.locator(`input[id="${step}_business-address-postcode"]`),
-    ).toBeHidden();
-  }
+  await expect(addressLine1).toBeVisible({ timeout: STEP_TIMEOUT });
+  await fillGeocodedBusinessAddress(page, step, data.businessAddress);
+  await fillField(
+    page,
+    step,
+    "business-address-line-2",
+    data.businessAddressLine2,
+  );
+  // The geocoder fills parish from the picked suggestion; assert rather than
+  // overwrite, since that value is the catchment router's fallback.
+  await expect(
+    page.locator(`select[id="${step}_business-address-parish"]`),
+  ).not.toHaveValue("");
+  await fillField(
+    page,
+    step,
+    "business-address-postcode",
+    data.businessPostcode,
+  );
 
   // ─── New or renew — "renew" reveals the existing licence reference ─────────
   const licenceReference = page.locator(
@@ -302,6 +294,24 @@ export async function fillOwnerDetails(
   const step = expectStep(page, "owner-details");
   await expect(page.locator("h1")).toContainText("Owner or operator details");
   await fillField(page, step, "owner-name", data.ownerName);
+
+  // ─── "Same as the business" hides the whole owner address block ───────────
+  // Added by the same publish that ungated the business address. Toggle it to
+  // prove the reveal, then leave it unticked so a real owner address is sent.
+  // Checkbox ids are `${stepId}_${fieldId}-${optionValue}`, and this field's
+  // single option repeats the fieldId — hence the doubled segment.
+  const sameAsBusiness = page.locator(
+    `input[type=checkbox][id="${step}_owner-address-same-as-business-owner-address-same-as-business"]`,
+  );
+  const ownerAddressLine1 = page.locator(
+    `input[id="${step}_owner-address-line-1"]`,
+  );
+  await expect(ownerAddressLine1).toBeVisible();
+  await sameAsBusiness.check();
+  await expect(ownerAddressLine1).toBeHidden({ timeout: STEP_TIMEOUT });
+  await sameAsBusiness.uncheck();
+  await expect(ownerAddressLine1).toBeVisible({ timeout: STEP_TIMEOUT });
+
   await fillField(page, step, "owner-address-line-1", data.ownerAddressLine1);
   await fillField(page, step, "owner-address-line-2", data.ownerAddressLine2);
   await fillField(page, step, "owner-city-town", data.ownerCityTown);
@@ -362,9 +372,14 @@ async function confirmAndSubmit(page: Page): Promise<void> {
     referenceLabel: "Submission ID",
   });
 
-  // No {polyclinic} placeholder on this recipe's confirmation step — assert the
-  // Environmental Health nextSteps copy instead. See the header note.
+  // The confirmation markdown DOES open with the {polyclinic} token, so the
+  // resolved-catchment name is on screen. Don't pin a name — which polyclinic
+  // resolves depends on the faker-picked address. Assert the stable
+  // Environmental Health copy, plus the ABSENCE of the generic fallback: that
+  // is what proves catchment resolved, and on the vehicle branch it only holds
+  // because the address block was ungated. See the header note.
   await expect(page.getByText(/Environmental Health/).first()).toBeVisible();
+  await expect(page.getByText("your local polyclinic")).toHaveCount(0);
 }
 
 test.describe("Register Hair & Beauty Business — Live Smoke", () => {
@@ -416,8 +431,9 @@ test.describe("Register Hair & Beauty Business — Live Smoke", () => {
     await expect(
       page.getByText(data.licenceReferenceNumber).first(),
     ).toBeVisible();
-    // ...and the gated-away business address did not.
-    await expect(page.getByText(data.businessPostcode)).toHaveCount(0);
+    // ...and so did the business address, which this branch used to be gated
+    // out of entirely — the inverse of what this test asserted before.
+    await expect(page.getByText(data.businessPostcode).first()).toBeVisible();
     if (process.env.SMOKE_HOLD_CYA) await page.pause();
     await advance(page, step);
 
