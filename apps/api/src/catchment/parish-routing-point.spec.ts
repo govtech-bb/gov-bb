@@ -146,10 +146,21 @@ describe("fillParishRoutingCoordinate", () => {
       Object.keys(PARISH_DEFAULTS).sort(),
     );
   });
+
+  // Each point is its own parish's centre, so no two parishes share one. They
+  // used to: the table held one point per polyclinic, which put the CMS map pin
+  // on the clinic building rather than in the parish the applicant named.
+  // Sharing a point again would mean the table had gone back to naming
+  // catchments instead of parishes.
+  it("gives every parish its own distinct centre", () => {
+    const points = Object.values(PARISH_ROUTING_POINTS);
+
+    expect(new Set(points).size).toBe(points.length);
+  });
 });
 
 describe("isRoutingCoordinate", () => {
-  it.each(["13.1132,-59.5988", "-13.1132,-59.5988", "13.097442,-59.575067"])(
+  it.each(["13.1132,-59.5988", "-13.1132,-59.5988", "13.117036,-59.600524"])(
     "accepts the %j pair the geocoder and the parish table both write",
     (value) => {
       expect(isRoutingCoordinate(value)).toBe(true);

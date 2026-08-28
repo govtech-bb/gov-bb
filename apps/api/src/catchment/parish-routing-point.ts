@@ -13,30 +13,44 @@ import type {
  * coordinate, `catchment.mdaEmail` finds no inbox, and the confirmation page
  * shows the generic "your local polyclinic".
  *
- * Each value here is a point that sits **inside the catchment the parish is
- * assigned to** in {@link PARISH_DEFAULTS}, so the point-in-polygon resolves it
- * to exactly that polyclinic — the filled coordinate and the parish fallback can
- * never disagree. `parish-routing-point.spec.ts` asserts that for every parish.
+ * Each value is the **centre of the parish itself**, not the polyclinic that
+ * serves it. The filled coordinate is persisted and reaches the CMS, where a
+ * case reviewer opens it on a map — and a pin sitting on the polyclinic reads
+ * as "the premises is at the clinic", which is worse than a vague pin because
+ * it looks precise. A parish centre reads as what it is: somewhere in this
+ * parish, location not captured.
  *
- * These are catchment-interior points, not raw geographic parish centres: a
- * parish centroid can fall in a neighbouring catchment, which would contradict
- * "route by parish". Parishes that share a catchment therefore share a point.
+ * Every point must also sit **inside the catchment the parish is assigned to**
+ * in {@link PARISH_DEFAULTS}, so the point-in-polygon resolves it to exactly
+ * that polyclinic — the filled coordinate and the parish fallback can never
+ * disagree. `parish-routing-point.spec.ts` asserts that for every parish.
+ *
+ * Those two requirements conflict for two parishes, because the catchment
+ * boundaries do not follow parish lines: the true centroid of St George falls
+ * in the St. Philip catchment, and the true centroid of Christ Church falls in
+ * Sir Winston Scott's. Both are nudged to the nearest point that is still
+ * inside the parish and inside the right catchment (1.4 km and 0.2 km
+ * respectively). The other nine are exact parish centroids.
+ *
+ * Derived from the OSM parish boundaries: area-weighted centroid of each
+ * parish's largest polygon, then constrained against
+ * `polyclinic-catchments.geojson` as above.
  *
  * Format is `"lat,lng"` — the exact shape the geocoder writes and
  * `CatchmentRoutingService.pointHit` parses.
  */
 export const PARISH_ROUTING_POINTS: Record<string, string> = {
-  "st-lucy": "13.260239,-59.605645", // Maurice Byer Polyclinic
-  "st-peter": "13.260239,-59.605645", // Maurice Byer Polyclinic
-  "st-andrew": "13.260239,-59.605645", // Maurice Byer Polyclinic
-  "st-james": "13.260239,-59.605645", // Maurice Byer Polyclinic
-  "st-thomas": "13.169582,-59.596312", // Eunice Gibson Polyclinic
-  "st-joseph": "13.177104,-59.523270", // David Thompson Complex
-  "st-john": "13.177104,-59.523270", // David Thompson Complex
-  "st-george": "13.177104,-59.523270", // David Thompson Complex
-  "st-philip": "13.136724,-59.464209", // St. Philip Polyclinic
-  "christ-church": "13.082379,-59.515803", // Randal Phillips Polyclinic
-  "st-michael": "13.097442,-59.575067", // Sir Winston Scott Polyclinic
+  "st-lucy": "13.304148,-59.617800", // parish centroid
+  "st-peter": "13.261630,-59.614991", // parish centroid
+  "st-andrew": "13.244468,-59.577203", // parish centroid
+  "st-james": "13.192824,-59.622727", // parish centroid
+  "st-thomas": "13.178249,-59.588388", // parish centroid
+  "st-joseph": "13.204067,-59.546074", // parish centroid
+  "st-john": "13.174489,-59.501041", // parish centroid
+  "st-george": "13.148487,-59.552524", // centroid nudged 1.4km into the David Thompson catchment
+  "st-philip": "13.129708,-59.464187", // parish centroid
+  "christ-church": "13.082879,-59.529742", // centroid nudged 0.2km into the Randal Phillips catchment
+  "st-michael": "13.117036,-59.600524", // parish centroid
 };
 
 /**
