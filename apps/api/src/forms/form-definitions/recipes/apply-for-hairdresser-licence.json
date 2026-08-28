@@ -285,6 +285,7 @@
             "hint": "These photographs should have been taken recently.",
             "validations": {
               "required": {
+                "error": "Your passport photos are required",
                 "value": true
               },
               "fileTypes": {
@@ -413,7 +414,7 @@
     }
   ],
   "createdAt": "2026-08-19T19:09:04.486Z",
-  "updatedAt": "2026-08-27T22:02:03.859Z",
+  "updatedAt": "2026-08-28T03:04:40.777Z",
   "meta": {
     "visibility": "preview"
   },
