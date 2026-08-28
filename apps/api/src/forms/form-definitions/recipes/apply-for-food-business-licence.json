@@ -867,6 +867,10 @@
               "required": {
                 "error": "Enter the number of male staff",
                 "value": true
+              },
+              "min": {
+                "error": "Enter a number of 0 or more",
+                "value": 0
               }
             }
           }
@@ -880,6 +884,10 @@
               "required": {
                 "error": "Enter the number of female staff",
                 "value": true
+              },
+              "min": {
+                "error": "Enter a number of 0 or more",
+                "value": 0
               }
             }
           }
@@ -1053,7 +1061,7 @@
     }
   ],
   "createdAt": "2026-08-18T20:19:05.878Z",
-  "updatedAt": "2026-08-27T20:09:59.614Z",
+  "updatedAt": "2026-08-28T03:15:45.014Z",
   "meta": {
     "visibility": "preview"
   },
