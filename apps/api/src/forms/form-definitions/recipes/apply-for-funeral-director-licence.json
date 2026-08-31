@@ -41,6 +41,18 @@
           }
         },
         {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "fieldId": "national-id-number",
+            "validations": {
+              "required": {
+                "error": "Enter your National ID number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
           "ref": "components/address-lookup",
           "overrides": {
             "fieldId": "address-line-1",
@@ -97,7 +109,14 @@
               "hidden": true
             }
           }
-        },
+        }
+      ]
+    },
+    {
+      "stepId": "contact-details",
+      "title": "How can we contact you?",
+      "behaviours": [],
+      "elements": [
         {
           "ref": "components/email",
           "overrides": {
@@ -380,7 +399,7 @@
     {
       "type": "email",
       "config": {
-        "recipientField": "personal-details.email",
+        "recipientField": "contact-details.email",
         "subject": "Your funeral directors licence application has been received"
       }
     },
@@ -405,8 +424,8 @@
               "personal-details.first-name",
               "personal-details.last-name"
             ],
-            "email": "personal-details.email",
-            "phone": "personal-details.phone-number"
+            "email": "contact-details.email",
+            "phone": "contact-details.phone-number"
           },
           "excludeSteps": [
             "check-your-answers",
@@ -420,7 +439,7 @@
     }
   ],
   "createdAt": "2026-08-25T14:05:00.922Z",
-  "updatedAt": "2026-08-31T22:02:58.527Z",
+  "updatedAt": "2026-08-31T22:12:24.863Z",
   "meta": {
     "visibility": "preview"
   },
