@@ -2,60 +2,11 @@
   "formId": "apply-for-funeral-director-licence",
   "title": "Apply to Environmental Health for a Funeral Directors Licence",
   "description": "Use this service to apply for a funeral directors licence.",
-  "processors": [
-    {
-      "type": "email",
-      "config": {
-        "recipientField": "personal-details.email",
-        "subject": "Your funeral directors licence application has been received"
-      }
-    },
-    {
-      "type": "email",
-      "config": {
-        "recipientField": "catchment.mdaEmail",
-        "subject": "A new funeral directors licence application has been received"
-      }
-    },
-    {
-      "type": "webhook",
-      "config": {
-        "method": "POST",
-        "signatureHeader": "X-Webhook-Signature",
-        "mapping": {
-          "programmeCode": "FUNERAL_DIRECTOR_LICENCE",
-          "mdaCode": "MOH",
-          "programmeShortCode": "FDL",
-          "applicant": {
-            "name": [
-              "personal-details.first-name",
-              "personal-details.last-name"
-            ],
-            "email": "personal-details.email",
-            "phone": "personal-details.phone-number"
-          },
-          "excludeSteps": [
-            "check-your-answers",
-            "declaration",
-            "submission-confirmation"
-          ],
-          "groupByStep": true
-        },
-        "timeoutMs": 10000
-      }
-    }
-  ],
-  "meta": {
-    "visibility": "preview"
-  },
-  "catchmentRouting": {
-    "coordinatesField": "personal-details.address-coordinates",
-    "parishField": "personal-details.home-parish"
-  },
   "steps": [
     {
       "stepId": "personal-details",
       "title": "Tell us about yourself",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/first-name",
@@ -84,6 +35,18 @@
             "validations": {
               "required": {
                 "error": "Enter your last name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "fieldId": "national-id-number",
+            "validations": {
+              "required": {
+                "error": "Enter your National ID number",
                 "value": true
               }
             }
@@ -146,7 +109,14 @@
               "hidden": true
             }
           }
-        },
+        }
+      ]
+    },
+    {
+      "stepId": "contact-details",
+      "title": "How can we contact you?",
+      "behaviours": [],
+      "elements": [
         {
           "ref": "components/email",
           "overrides": {
@@ -175,12 +145,12 @@
             }
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "workplace-details",
       "title": "Tell us where you plan to work",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/generic-checkbox",
@@ -217,16 +187,16 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "What is the name of the funeral establishment?",
             "fieldId": "funeral-establishment-name",
+            "label": "What is the name of the funeral establishment?",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
+                "targetFieldId": "workplace-locations",
+                "operator": "in",
                 "value": [
                   "at-funeral-establishment"
-                ],
-                "operator": "in",
-                "targetFieldId": "workplace-locations"
+                ]
               }
             ]
           }
@@ -234,16 +204,16 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 1",
             "fieldId": "funeral-establishment-address-line-1",
+            "label": "Address line 1",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
+                "targetFieldId": "workplace-locations",
+                "operator": "in",
                 "value": [
                   "at-funeral-establishment"
-                ],
-                "operator": "in",
-                "targetFieldId": "workplace-locations"
+                ]
               }
             ]
           }
@@ -251,38 +221,38 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 2",
             "fieldId": "funeral-establishment-address-line-2",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "value": [
-                  "at-funeral-establishment"
-                ],
-                "operator": "in",
-                "targetFieldId": "workplace-locations"
-              }
-            ],
+            "label": "Address line 2",
             "validations": {
               "required": {
                 "value": false
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "workplace-locations",
+                "operator": "in",
+                "value": [
+                  "at-funeral-establishment"
+                ]
+              }
+            ]
           }
         },
         {
           "ref": "components/parish",
           "overrides": {
-            "label": "Parish",
             "fieldId": "funeral-establishment-parish",
+            "label": "Parish",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
+                "targetFieldId": "workplace-locations",
+                "operator": "in",
                 "value": [
                   "at-funeral-establishment"
-                ],
-                "operator": "in",
-                "targetFieldId": "workplace-locations"
+                ]
               }
             ]
           }
@@ -304,19 +274,19 @@
             ]
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "documents",
       "title": "Add your documents",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/upload-document",
           "overrides": {
             "fieldId": "passport-photo",
-            "label": "Upload your passport-size photographs.",
-            "hint": "These photographs should have been taken recently.",
+            "label": "Upload your passport-size photograph",
+            "hint": "This photograph should have been taken recently.",
             "validations": {
               "required": {
                 "value": true
@@ -343,8 +313,8 @@
             "label": "Upload scanned copy of your National ID",
             "validations": {
               "required": {
-                "value": true,
-                "error": "National ID is required"
+                "error": "National ID is required",
+                "value": true
               },
               "fileTypes": {
                 "error": "Upload your National ID in PDF, JPEG or PNG format",
@@ -360,19 +330,41 @@
               }
             }
           }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "letter-evidencing",
+            "label": "Upload letter of evidence",
+            "hint": "If you have been engaged in the business of funeral directing under the direct supervision of a licence funeral director for over two years or have been working in a funeral director's office for over three years, prior to the regulations coming into operation in 1984, you need to provide a letter of evidence.",
+            "validations": {
+              "fileTypes": {
+                "error": "Upload your letter of evidence in PDF, JPEG or PNG format",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "File must be 5 MB or smaller",
+                "value": 5242880
+              }
+            }
+          }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "check-your-answers",
       "title": "Check your answers",
-      "elements": [],
-      "behaviours": []
+      "behaviours": [],
+      "elements": []
     },
     {
       "stepId": "declaration",
       "title": "Confirm and submit your application",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/confirmation",
@@ -393,17 +385,66 @@
             ]
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "submission-confirmation",
       "title": "Application submitted",
-      "elements": [],
       "behaviours": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\nYour application goes to the Environmental Health Service associated with your location. If additional information or documentation is required, you will be contacted by an Environmental Health Officer.\n\n**Obtaining your licence:**\n\nIf your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n- Branford Taitt Polyclinic - [536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)\n- David Thompson Health and Social Services Complex - [536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)\n- Eunice Gibson Polyclinic - [536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)\n- Maurice Byer Polyclinic - [536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)\n- Randall Phillips Polyclinic - [536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)\n- St. Phillip Polyclinic - [536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)\n- Winston Scott Polyclinic - [536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)"
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\nYour application goes to the Environmental Health Service associated with your location. If additional information or documentation is required, you will be contacted by an Environmental Health Officer.\n\n**Obtaining your licence:**\n\nIf your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n- Branford Taitt Polyclinic - [536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)\n- David Thompson Health and Social Services Complex - [536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)\n- Eunice Gibson Polyclinic - [536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)\n- Maurice Byer Polyclinic - [536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)\n- Randall Phillips Polyclinic - [536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)\n- St. Phillip Polyclinic - [536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)\n- Winston Scott Polyclinic - [536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)",
+      "elements": []
+    }
+  ],
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "contact-details.email",
+        "subject": "Your funeral directors licence application has been received"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "catchment.mdaEmail",
+        "subject": "A new funeral directors licence application has been received"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "method": "POST",
+        "signatureHeader": "X-Webhook-Signature",
+        "mapping": {
+          "programmeCode": "FUNERAL_DIRECTOR_LICENCE",
+          "mdaCode": "MOH",
+          "programmeShortCode": "FDL",
+          "applicant": {
+            "name": [
+              "personal-details.first-name",
+              "personal-details.last-name"
+            ],
+            "email": "contact-details.email",
+            "phone": "contact-details.phone-number"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        },
+        "timeoutMs": 10000
+      }
     }
   ],
   "createdAt": "2026-08-25T14:05:00.922Z",
-  "updatedAt": "2026-08-27T00:00:00.000Z"
+  "updatedAt": "2026-08-31T22:12:24.863Z",
+  "meta": {
+    "visibility": "preview"
+  },
+  "catchmentRouting": {
+    "coordinatesField": "personal-details.address-coordinates",
+    "parishField": "personal-details.home-parish"
+  }
 }
