@@ -3,21 +3,19 @@ title: Apply for a funeral establishment licence
 description: Apply for a licence to operate a funeral establishment in Barbados.
 category: business-trade
 stage: alpha
-publish_date: '2026-08-27'
+publish_date: '2026-08-31'
 visibility: preview
 form_id: apply-for-funeral-establishment-licence
 ---
-Use this service to apply for or renew a funeral establishment licence.
+Use this service to apply for or renew a funeral establishment licence with the Environmental Health Department.
 
 ## Who is this licence for
 
-Owners of a funeral establishment needing to obtain or renew a funeral establishment licence
+Owners of a funeral establishment needing to obtain or renew a funeral establishment licence.
 
 If your business is not licensed, Environmental Health will contact you and inform you that you need to apply. They may issue a notice if an application is not made.
 
 ## Before you start
-
-Use this service to apply for a new funeral establishment licence or to renew your licence.
 
 You will need:
 
@@ -39,7 +37,7 @@ There are 2 ways to apply for a funeral establishment licence. You can:
 1.  **Apply for a licence online.**
     
     Allow about 15 minutes to complete the form.
-
+    
     <a data-start-link>Start now</a>
     
 2.  **Get a paper application from the polyclinic**<br />
