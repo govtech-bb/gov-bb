@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { toMinutes } from '../-lib/opening-hours'
 import { pharmacySlug } from '../-lib/pharmacy-slug'
+import { ACTIVE_PPP } from './active-ppp'
 import { PHARMACIES, WEEKDAYS } from './pharmacies'
+
+/** Local 7 digits — the join key between the register and the PPP list. */
+const localNumber = (tel: string) => tel.replace(/\D/g, '').slice(-7)
 
 // Integrity checks the type system can't express — these keep holding when
 // the dataset is regenerated from a newer Drug Service register.
@@ -45,6 +49,43 @@ describe('pharmacy dataset', () => {
     expect(randalPhillips?.hours?.mon).toEqual([
       { opens: '07:30', closes: '16:30' },
     ])
+  })
+
+  // The generator is wired into no nx target, so this is where the record
+  // types are actually held to the Active PPP list.
+  it('agrees with the Active PPP list, both ways round', () => {
+    const listed = new Set(
+      ACTIVE_PPP.flatMap((entry) => entry.tel.map(localNumber)),
+    )
+    const subsidised = PHARMACIES.filter((p) => p.type === 'private-sbs')
+
+    // No record claims the subsidy without being on the list.
+    expect(
+      subsidised
+        .filter((p) => !listed.has(localNumber(p.phone)))
+        .map((p) => p.name),
+    ).toEqual([])
+
+    // And no list entry goes unrepresented, so a refresh cannot drop a
+    // participating pharmacy silently.
+    const claimed = new Set(subsidised.map((p) => localNumber(p.phone)))
+    expect(
+      ACTIVE_PPP.filter(
+        (entry) => !entry.tel.some((tel) => claimed.has(localNumber(tel))),
+      ).map((entry) => entry.name),
+    ).toEqual([])
+
+    expect(subsidised).toHaveLength(ACTIVE_PPP.length)
+  })
+
+  it('keeps the reviewed non-participating pharmacies at full price', () => {
+    for (const name of [
+      'SWM Pharmacy',
+      'DASAE Pharmacy (Sparman Clinic)',
+      'Market Hill Dispensary',
+    ]) {
+      expect(PHARMACIES.find((p) => p.name === name)?.type).toBe('private')
+    }
   })
 
   it.each(PHARMACIES.map((p) => [p.name, p] as const))(

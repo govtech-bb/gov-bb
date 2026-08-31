@@ -16,7 +16,7 @@ import {
   SLIP_COLOURS,
   SLIP_LABELS,
 } from '../-lib/slips'
-import { CheckIcon, CrossIcon, DashIcon } from './icons'
+import { CheckIcon, CrossIcon } from './icons'
 
 const SWATCH_CLASSES = {
   white: 'bg-white-00 border-grey-00',
@@ -25,12 +25,7 @@ const SWATCH_CLASSES = {
 } satisfies Record<SlipColour, string>
 
 function slipDescription(pharmacy: Pharmacy, slip: SlipColour): string {
-  const accepted = acceptsSlip(pharmacy, slip)
-  if (accepted === null) {
-    // The page states the unconfirmed status once, up top — rows stay short.
-    return 'Not confirmed.'
-  }
-  if (accepted) {
+  if (acceptsSlip(pharmacy, slip)) {
     if (pharmacy.type === 'government') {
       // QEH-issued slips are filled at government pharmacies for selected
       // medications only — see the slip colours page.
@@ -48,24 +43,17 @@ function slipDescription(pharmacy: Pharmacy, slip: SlipColour): string {
 }
 
 function SlipRow({ pharmacy, slip }: { pharmacy: Pharmacy; slip: SlipColour }) {
-  const accepted = acceptsSlip(pharmacy, slip)
-  const mark =
-    accepted === null ? (
-      <span className="text-mid-grey-00">
-        <DashIcon />
-        <span className="sr-only">Not confirmed</span>
-      </span>
-    ) : accepted ? (
-      <span className="text-green-00">
-        <CheckIcon />
-        <span className="sr-only">Accepted</span>
-      </span>
-    ) : (
-      <span className="text-red-00">
-        <CrossIcon />
-        <span className="sr-only">Not accepted</span>
-      </span>
-    )
+  const mark = acceptsSlip(pharmacy, slip) ? (
+    <span className="text-green-00">
+      <CheckIcon />
+      <span className="sr-only">Accepted</span>
+    </span>
+  ) : (
+    <span className="text-red-00">
+      <CrossIcon />
+      <span className="sr-only">Not accepted</span>
+    </span>
+  )
 
   return (
     <li className="flex items-start gap-s rounded-lg border border-grey-00 bg-white-00 p-s">

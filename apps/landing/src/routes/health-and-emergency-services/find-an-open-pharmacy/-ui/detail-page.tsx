@@ -15,7 +15,6 @@ import type { Pharmacy } from '../-data/pharmacies'
 import {
   PHARMACIES_LAST_UPDATED,
   PHARMACIES_NEXT_REVIEW,
-  REGISTER_VERIFIED,
 } from '../-data/pharmacies'
 import { barbadosWallClock } from '../-lib/opening-hours'
 import {
@@ -27,7 +26,12 @@ import {
 import { Caveat } from './caveat'
 import { MapPinIcon } from './icons'
 import { SlipsAccepted } from './slips-accepted'
-import { CostChip, StatusLine, StatusSkeleton } from './status-pill'
+import {
+  CostChip,
+  StatusLine,
+  StatusSkeleton,
+  provenanceNote,
+} from './status-pill'
 import { WeeklyHoursRows } from './weekly-hours'
 
 export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
@@ -68,10 +72,10 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
         </Text>
       </div>
 
-      {pharmacy.type === 'unconfirmed' && (
+      {pharmacy.type === 'private' && (
         <Caveat>
-          This pharmacy has not been confirmed with the Drug Service — call to
-          check prices and hours before you travel.
+          This pharmacy is not on the Drug Service list of participating
+          pharmacies, so you pay the full price for your medication.
         </Caveat>
       )}
 
@@ -90,8 +94,7 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
       {!pharmacy.phone && (
         <Text as="p">
           No number listed. Call the Drug Service on{' '}
-          <Link href={telHref(DRUG_SERVICE_PHONE)}>{DRUG_SERVICE_PHONE}</Link>
-          .
+          <Link href={telHref(DRUG_SERVICE_PHONE)}>{DRUG_SERVICE_PHONE}</Link>.
         </Text>
       )}
 
@@ -145,11 +148,8 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
           </Caveat>
         )}
         <Text as="p" className="text-mid-grey-00" size="body-sm">
-          {pharmacy.type === 'unconfirmed'
-            ? 'Drawn from a wider public pharmacy list. '
-            : `Confirmed with the Drug Service, ${REGISTER_VERIFIED}. `}
-          Opening hours and Drug Service participation can change — call ahead
-          to confirm.
+          {provenanceNote(pharmacy)} Opening hours and Drug Service
+          participation can change — call ahead to confirm.
         </Text>
       </section>
     </div>

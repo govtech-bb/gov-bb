@@ -6,8 +6,12 @@
  */
 
 import { Text } from '@govtech-bb/react'
-import type { Pharmacy } from '../-data/pharmacies'
-import { WEEKDAYS } from '../-data/pharmacies'
+import type { Pharmacy, PharmacyType } from '../-data/pharmacies'
+import {
+  PPP_LIST_UPDATED,
+  REGISTER_VERIFIED,
+  WEEKDAYS,
+} from '../-data/pharmacies'
 import {
   barbadosWallClock,
   formatTime,
@@ -127,11 +131,22 @@ const COST_TAGS = {
     label: 'Small fee — private pharmacy',
     className: 'bg-teal-10 text-teal-00',
   },
-  unconfirmed: {
-    label: 'Subsidy not confirmed — call to check',
+  private: {
+    label: 'Full price — not in the subsidy',
     className: 'bg-grey-00 text-mid-grey-00',
   },
 } as const
+
+/** Where the record came from, and how fresh it is. */
+const PROVENANCE = {
+  government: `Confirmed with the Drug Service register, ${REGISTER_VERIFIED}.`,
+  'private-sbs': `On the Drug Service Active PPP list, ${PPP_LIST_UPDATED}.`,
+  private: 'Not on the Drug Service list of participating pharmacies.',
+} satisfies Record<PharmacyType, string>
+
+export function provenanceNote(pharmacy: Pharmacy): string {
+  return PROVENANCE[pharmacy.type]
+}
 
 export function CostChip({ pharmacy }: { pharmacy: Pharmacy }) {
   const cost = COST_TAGS[pharmacy.type]

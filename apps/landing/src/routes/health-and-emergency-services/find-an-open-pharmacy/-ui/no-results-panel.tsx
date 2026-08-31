@@ -23,10 +23,12 @@ export function NoResultsPanel({
   now: Date | null
   dispatch: (action: FilterAction) => void
 }) {
-  const relaxed = (overrides: Partial<FilterState>) =>
-    PHARMACIES.filter((pharmacy) =>
-      matchesFilters(pharmacy, { ...filters, ...overrides }, now),
+  const relaxed = (overrides: Partial<FilterState>) => {
+    const relaxedFilters = { ...filters, ...overrides }
+    return PHARMACIES.filter((pharmacy) =>
+      matchesFilters(pharmacy, relaxedFilters, now),
     )
+  }
 
   const hatches: {
     key: string
@@ -93,12 +95,12 @@ export function NoResultsPanel({
   }
 
   if (filters.subsidisedOnly) {
-    const includingUnconfirmed = relaxed({ subsidisedOnly: false })
-    if (includingUnconfirmed.length > 0) {
+    const includingFullPrice = relaxed({ subsidisedOnly: false })
+    if (includingFullPrice.length > 0) {
       hatches.push({
         key: 'subsidised',
-        label: 'Include pharmacies not confirmed in the subsidy',
-        caption: `${includingUnconfirmed.length} of the ${PHARMACY_COUNT} pharmacies would match — their subsidy status is not confirmed, so call to check.`,
+        label: 'Include pharmacies outside the subsidy',
+        caption: `${includingFullPrice.length} of the ${PHARMACY_COUNT} pharmacies would match — they are not in the subsidy, so you pay the full price.`,
         action: { type: 'set-subsidised-only', value: false },
       })
     }
@@ -173,7 +175,7 @@ function noResultsReason(filters: FilterState): string {
   }
   sentence += filters.openNow ? ' are open right now.' : ' were found.'
   if (filters.subsidisedOnly && filters.type !== 'government') {
-    sentence += ' Pharmacies not confirmed in the subsidy were hidden.'
+    sentence += ' Pharmacies outside the subsidy were hidden.'
   }
   return sentence
 }

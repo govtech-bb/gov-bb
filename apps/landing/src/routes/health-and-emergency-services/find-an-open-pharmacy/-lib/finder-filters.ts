@@ -129,12 +129,11 @@ export function matchesFilters(
   if (f.type === 'private-sbs' && pharmacy.type !== 'private-sbs') {
     return false
   }
-  // A slip filter shows only pharmacies that definitely accept that slip —
-  // unknown (unconfirmed) is not good enough to send someone travelling.
-  if (f.slip !== 'any' && acceptsSlip(pharmacy, f.slip) !== true) {
+  // A slip filter shows only pharmacies that accept that slip.
+  if (f.slip !== 'any' && !acceptsSlip(pharmacy, f.slip)) {
     return false
   }
-  if (f.subsidisedOnly && pharmacy.type === 'unconfirmed') {
+  if (f.subsidisedOnly && pharmacy.type === 'private') {
     return false
   }
   if (f.openNow && now && pharmacyStatus(pharmacy, now)?.open !== true) {
@@ -157,13 +156,13 @@ export function matchesFilters(
 const TYPE_ORDER = {
   government: 0,
   'private-sbs': 1,
-  unconfirmed: 2,
+  private: 2,
 } satisfies Record<PharmacyType, number>
 
 const FACILITY_GROUP_ORDER = {
   government: 0,
   'private-sbs': 1,
-  unconfirmed: 1,
+  private: 1,
 } satisfies Record<PharmacyType, number>
 
 /**

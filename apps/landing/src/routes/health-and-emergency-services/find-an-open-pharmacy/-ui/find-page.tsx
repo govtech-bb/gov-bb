@@ -50,12 +50,12 @@ export function FindOpenPharmacyPage() {
           Where this information comes from
         </Heading>
         <Text as="p" className="text-mid-grey-00">
-          Government and Drug Service pharmacies come from the Drug Service
-          register, verified May 2026. Pharmacies marked “Subsidy not
-          confirmed” are drawn from a wider public pharmacy list and have not
-          been confirmed with the Drug Service — they may still offer
-          subsidised medication, so call to check. Opening hours and Drug
-          Service participation can change — call ahead to confirm.
+          Government pharmacies come from the Drug Service register, verified
+          May 2026. Pharmacies marked “Small fee” are on the Drug Service
+          Active PPP list, supplied August 2026. Pharmacies marked “Full
+          price” are not on that list, so the Drug Service subsidy does not
+          apply there. Opening hours and Drug Service participation can change
+          — call ahead to confirm.
         </Text>
       </aside>
 
