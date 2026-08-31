@@ -416,6 +416,64 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     expect(result.steps[0].markdownContent).toBeUndefined();
   });
 
+  it("conditionalMarkdown on a confirmation step survives round-trip (#2068)", () => {
+    // No builder editor for it yet, so it must be carried through untouched —
+    // otherwise a republish strips the segments and the served body renders
+    // its `{token}`s unfilled.
+    const conditionalMarkdown = [
+      {
+        token: "inspection",
+        default: "An officer may arrange an inspection.",
+        variants: [
+          {
+            targetStepId: "food-safety",
+            targetFieldId: "has-food-licence",
+            operator: "equal" as const,
+            value: "no",
+            content: "An officer will inspect your set-up.",
+          },
+        ],
+      },
+    ];
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "submission-confirmation",
+          title: "Application submitted",
+          fields: [],
+          behaviours: [],
+          markdownContent: "Lead.\n\n{inspection}",
+          conditionalMarkdown,
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft);
+    expect(recipe.steps[0].conditionalMarkdown).toEqual(conditionalMarkdown);
+
+    const result = deserializeRecipe(recipe);
+    expect(result.steps[0].conditionalMarkdown).toEqual(conditionalMarkdown);
+  });
+
+  it("absent conditionalMarkdown on a step is not forwarded (#2068)", () => {
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "submission-confirmation",
+          title: "Application submitted",
+          fields: [],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft);
+    expect(Object.keys(recipe.steps[0])).not.toContain("conditionalMarkdown");
+
+    const result = deserializeRecipe(recipe);
+    expect(result.steps[0].conditionalMarkdown).toBeUndefined();
+  });
+
   it("nextSteps on a confirmation step are carried through untouched (#1292)", () => {
     const nextSteps = [
       {

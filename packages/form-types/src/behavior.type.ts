@@ -121,6 +121,48 @@ export const conditionalLabelSchema = z.object({
 });
 export type ConditionalLabel = z.infer<typeof conditionalLabelSchema>;
 
+// One conditionally-authored passage of confirmation markdown (#2068). Unlike
+// `conditionalTitle`/`conditionalLabel` — which swap a whole short string — a
+// confirmation body needs SEVERAL independent passages to vary at once (the
+// inspection wording off one answer, an officer-request paragraph off another).
+// First-match-wins over the whole body would force one full copy of the ~30-line
+// body per combination, so a segment instead names a `{token}` that the step's
+// `markdownContent` carries inline, and only that token's text varies.
+//
+// The first variant whose condition matches supplies the token's text;
+// `default` is the fallback when none do. An empty-string `default` drops the
+// passage entirely (markdown collapses the blank lines), which is how a
+// paragraph is shown to one cohort and omitted for another.
+export const conditionalMarkdownVariantSchema = z.object({
+  targetFieldId: kebabIdSchema,
+  targetStepId: kebabIdSchema.optional(),
+  operator: equalityOperationsSchema,
+  transform: durationTransformSchema.optional(),
+  value: z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.string()),
+    z.array(z.number()),
+  ]),
+  content: z.string(),
+});
+export type ConditionalMarkdownVariant = z.infer<
+  typeof conditionalMarkdownVariantSchema
+>;
+
+export const conditionalMarkdownSchema = z.object({
+  // The placeholder this segment fills, written `{token}` in `markdownContent`.
+  // camelCase to match the substitution tokens the confirmation interpolator
+  // already owns (`{polyclinic}`, `{landingUrl}`). Segments are substituted
+  // BEFORE those, so a segment must not reuse one of their names — it would
+  // shadow the built-in silently. Segment text may itself contain them.
+  token: z.string().regex(/^[a-z][a-zA-Z0-9]*$/),
+  default: z.string(),
+  variants: z.array(conditionalMarkdownVariantSchema).min(1),
+});
+export type ConditionalMarkdown = z.infer<typeof conditionalMarkdownSchema>;
+
 export const stepConditionalOnBehaviourSchema = z.object({
   type: z.literal("stepConditionalOn"),
   targetFieldId: kebabIdSchema,

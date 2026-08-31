@@ -87,6 +87,9 @@ export function serializeRecipeDraft(
         ...(stepDraft.nextSteps !== undefined
           ? { nextSteps: stepDraft.nextSteps }
           : {}),
+        ...(stepDraft.conditionalMarkdown !== undefined
+          ? { conditionalMarkdown: stepDraft.conditionalMarkdown }
+          : {}),
       };
 
       return step;
@@ -201,6 +204,9 @@ export function deserializeRecipe(
           : {}),
         ...(recipeStep.nextSteps !== undefined
           ? { nextSteps: recipeStep.nextSteps }
+          : {}),
+        ...(recipeStep.conditionalMarkdown !== undefined
+          ? { conditionalMarkdown: recipeStep.conditionalMarkdown }
           : {}),
       };
     },

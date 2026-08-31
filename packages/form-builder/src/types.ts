@@ -33,6 +33,10 @@ export interface RecipeStepDraft {
   // the builder, while nextSteps is carried through untouched (no editor yet).
   markdownContent?: string;
   nextSteps?: FormStep["nextSteps"];
+  // Per-answer passages inside `markdownContent` (#2068). No editor yet, so it
+  // is carried through untouched like `nextSteps` — without that a republish
+  // would strip the segments and leave every `{token}` in the body unfilled.
+  conditionalMarkdown?: FormStep["conditionalMarkdown"];
 }
 
 // Editor-only id mirrors RecipeFieldDraft.id: minted on deserialize, stripped on

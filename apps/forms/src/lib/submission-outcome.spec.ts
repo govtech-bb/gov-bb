@@ -90,6 +90,38 @@ describe("resolveSubmissionOutcome", () => {
     expect(outcome.subState?.polyclinic).toBeUndefined();
   });
 
+  it("commits the caller's resolved confirmation markdown (#2068)", () => {
+    // Resolved at submit because `clearFormState` drops the answers on success;
+    // persisting it here is what lets a refresh keep the right branch.
+    const outcome = resolveSubmissionOutcome(
+      response("submitted"),
+      "An officer **will** inspect your set-up.",
+    );
+    expect(outcome.subState?.resolvedMarkdown).toBe(
+      "An officer **will** inspect your set-up.",
+    );
+  });
+
+  it("commits the resolved markdown on the payment path too", () => {
+    const outcome = resolveSubmissionOutcome(
+      response("pending_payment", {
+        deferred: {
+          amount: 100,
+          paymentUrl: "https://pay.example.com",
+          paymentId: "pay-001",
+          description: "Application fee",
+        },
+      }),
+      "Resolved body.",
+    );
+    expect(outcome.subState?.resolvedMarkdown).toBe("Resolved body.");
+  });
+
+  it("leaves resolvedMarkdown undefined when the caller resolves none", () => {
+    const outcome = resolveSubmissionOutcome(response("submitted"));
+    expect(outcome.subState?.resolvedMarkdown).toBeUndefined();
+  });
+
   it("maps 'pending_payment' with deferred meta to a payment state and success event", () => {
     const outcome = resolveSubmissionOutcome(
       response("pending_payment", {
