@@ -22,7 +22,6 @@ You will need:
 -   the dimensions of your preparation room
 -   maximum number of bodies that can be stored
 -   a list of embalmers who work at your establishment, giving each person's name and gender (staff list)
--   proof that all embalmers and directors have current licences (these will be validated)
 
 Read the [Health Services (Embalmers and Funeral Directors) Regulations 1984](https://oag.gov.bb/attachments/Health%20Services%20\(Embalmers%20and%20Funeral%20Directors\)%20Regulations,%201984%20Cap44'L.PDF) for the full legal requirements.
 
@@ -58,6 +57,7 @@ There is neither a cost to apply, nor to receive your licence.
 
 -   processes for the cleaning and sanitation of equipment and premises
 -   ventilation
+-   proof that all embalmers and directors have current licences
 
 **Obtaining your licence:**
 
