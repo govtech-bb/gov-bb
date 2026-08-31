@@ -109,15 +109,15 @@ describe('compareForSort', () => {
     ).toEqual(['Government clinic', 'Private pharmacy'])
   })
 
-  it('keeps confirmed and unconfirmed private pharmacies in one group', () => {
+  it('keeps participating and full-price private pharmacies in one group', () => {
     const government = pharmacy('Zulu clinic', 'government')
-    const confirmedPrivate = pharmacy('Zulu private', 'private-sbs')
-    const unconfirmedPrivate = pharmacy('Alpha private', 'unconfirmed')
+    const participating = pharmacy('Zulu private', 'private-sbs')
+    const fullPrice = pharmacy('Alpha private', 'private')
 
     expect(
-      [unconfirmedPrivate, confirmedPrivate, government]
+      [fullPrice, participating, government]
         .sort((a, b) => compareForSort(a, b, null, null))
         .map((entry) => entry.type),
-    ).toEqual(['government', 'private-sbs', 'unconfirmed'])
+    ).toEqual(['government', 'private-sbs', 'private'])
   })
 })

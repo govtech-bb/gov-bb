@@ -12,7 +12,6 @@
 
 import { Heading, Link, LinkButton, Text } from '@govtech-bb/react'
 import type { Pharmacy } from '../-data/pharmacies'
-import { REGISTER_VERIFIED } from '../-data/pharmacies'
 import { weeklyHoursSummary } from '../-lib/opening-hours'
 import { formatDistanceKm } from '../-lib/pharmacy-distance'
 import {
@@ -24,7 +23,12 @@ import {
 } from '../-lib/routes'
 import { Caveat } from './caveat'
 import { ClockIcon, MapPinIcon } from './icons'
-import { CostChip, StatusLine, StatusSkeleton } from './status-pill'
+import {
+  CostChip,
+  StatusLine,
+  StatusSkeleton,
+  provenanceNote,
+} from './status-pill'
 
 export function PharmacyCard({
   pharmacy,
@@ -48,7 +52,11 @@ export function PharmacyCard({
     >
       {/* Reserved height so the post-mount status line causes no layout shift. */}
       <div className="min-h-5">
-        {now ? <StatusLine now={now} pharmacy={pharmacy} /> : <StatusSkeleton />}
+        {now ? (
+          <StatusLine now={now} pharmacy={pharmacy} />
+        ) : (
+          <StatusSkeleton />
+        )}
       </div>
 
       <Heading as="h3" size="h4">
@@ -88,8 +96,8 @@ export function PharmacyCard({
 
       {pharmacy.type === 'private-sbs' && (
         <Caveat tone="coverage">
-          Yellow or green (GEHP) prescriptions are not covered here — you
-          would pay full price.
+          Yellow or green (GEHP) prescriptions are not covered here — you would
+          pay full price.
         </Caveat>
       )}
 
@@ -125,16 +133,12 @@ export function PharmacyCard({
         ) : (
           <Text as="p" className="text-mid-grey-00" size="body-sm">
             No number listed. Call the Drug Service on{' '}
-            <Link href={telHref(DRUG_SERVICE_PHONE)}>
-              {DRUG_SERVICE_PHONE}
-            </Link>
+            <Link href={telHref(DRUG_SERVICE_PHONE)}>{DRUG_SERVICE_PHONE}</Link>
             .
           </Text>
         )}
         <Text as="p" className="font-medium text-mid-grey-00" size="body-sm">
-          {pharmacy.type === 'unconfirmed'
-            ? 'Not confirmed with the Drug Service — call to check.'
-            : `Confirmed with the Drug Service, ${REGISTER_VERIFIED}.`}
+          {provenanceNote(pharmacy)}
         </Text>
       </div>
     </li>

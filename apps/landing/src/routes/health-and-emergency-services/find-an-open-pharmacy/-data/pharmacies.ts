@@ -7,10 +7,11 @@
  * GENERATED from the GovTech pharmacy prototype dataset (23 July 2026), with
  * subsequent Drug Service review amendments — do not hand-edit records;
  * regenerate via the conversion script instead.
- * Provenance: government and Drug Service pharmacies come from the Drug
- * Service register, verified May 2026; 'unconfirmed' entries are drawn from
- * a wider public pharmacy list and have NOT been confirmed with the Drug
- * Service. Known conflicts are flagged in each record's notes. Keep
+ * Provenance: 'private-sbs' is membership of the Drug Service Active PPP list
+ * (supplied 31 August 2026, transcribed in -data/active-ppp.ts); a private
+ * pharmacy absent from that list is 'private' and charges full price.
+ * Government dispensaries come from the Drug Service register, verified May
+ * 2026. Known conflicts are flagged in each record's notes. Keep
  * META.visibility 'preview' until the Drug Service signs the data off.
  */
 
@@ -68,11 +69,12 @@ export interface LatLon {
 
 /**
  * What the visit costs — the reader's decision variable.
- * government = free polyclinic dispensary; private-sbs = private pharmacy in
- * the Drug Service subsidy (small dispensing fee); unconfirmed = not on the
- * confirmed subsidy list (full price until confirmed otherwise).
+ * government = free polyclinic dispensary; private-sbs = participating
+ * private pharmacy, on the Drug Service Active PPP list (small dispensing
+ * fee); private = a private pharmacy that is not on that list, so the patient
+ * pays the full price.
  */
-export type PharmacyType = 'government' | 'private-sbs' | 'unconfirmed'
+export type PharmacyType = 'government' | 'private-sbs' | 'private'
 
 export interface Pharmacy {
   name: string
@@ -97,10 +99,12 @@ export interface Pharmacy {
   whatsapp?: string
 }
 
-export const PHARMACIES_LAST_UPDATED = '2026-08-25'
+export const PHARMACIES_LAST_UPDATED = '2026-08-31'
 export const PHARMACIES_NEXT_REVIEW = '2027-01-01'
-/** When the Drug Service register was last verified (shown per card). */
+/** When the Drug Service register of government dispensaries was verified. */
 export const REGISTER_VERIFIED = 'May 2026'
+/** When the Drug Service supplied the Active PPP list. */
+export const PPP_LIST_UPDATED = 'August 2026'
 
 export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   {
@@ -328,7 +332,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     type: 'private-sbs',
     parish: 'Christ Church',
     address: 'Lanterns Mall, Christ Church',
-    phone: '(246) 271-3784',
+    phone: '(246) 271-0346',
     hours: {
       mon: [{ opens: '08:00', closes: '20:00' }],
       tue: [{ opens: '08:00', closes: '20:00' }],
@@ -347,7 +351,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     type: 'private-sbs',
     parish: 'Christ Church',
     address: "Sheraton Centre, Sargeant's Village, Christ Church",
-    phone: '(246) 271-3784',
+    phone: '(246) 436-1231',
     hours: {
       mon: [{ opens: '09:00', closes: '20:00' }],
       tue: [{ opens: '09:00', closes: '20:00' }],
@@ -404,7 +408,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Wildey, St. Michael',
-    phone: '(246) 271-3784',
+    phone: '(246) 826-1127',
     hours: {
       mon: [{ opens: '08:00', closes: '20:00' }],
       tue: [{ opens: '08:00', closes: '20:00' }],
@@ -442,7 +446,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     type: 'private-sbs',
     parish: 'St. George',
     address: 'Boarded Hall, St. George',
-    phone: '(246) 271-3784',
+    phone: '(246) 422-4156',
     hours: {
       mon: [{ opens: '08:00', closes: '20:00' }],
       tue: [{ opens: '08:00', closes: '20:00' }],
@@ -476,7 +480,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'DASAE Pharmacy (Sparman Clinic)',
-    type: 'private-sbs',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Belleville, St. Michael',
     phone: '(246) 624-3278',
@@ -514,15 +518,6 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     coords: { lat: 13.249397, lon: -59.643499 },
   },
   {
-    name: 'Rx Plus Pharmacy',
-    type: 'private-sbs',
-    parish: 'St. Peter',
-    address: 'Singh Medical Centre, Queen Street, Speightstown, St. Peter',
-    phone: '(246) 422-7636',
-    routes: 'Route 1B from Bridgetown northbound',
-    coords: { lat: 13.249159, lon: -59.643444 },
-  },
-  {
     name: 'Felimar Plus Pharmacy',
     type: 'private-sbs',
     parish: 'St. James',
@@ -553,17 +548,6 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     coords: { lat: 13.079943, lon: -59.538333 },
   },
   {
-    name: "Connolly's Pharmacy",
-    type: 'private-sbs',
-    parish: 'St. Philip',
-    address: 'Emerald City Supermarket, Six Roads, St. Philip',
-    phone: '(246) 423-4937',
-    notes:
-      "DATA CONFLICT: a Barbados business directory lists Connolly's at Hadley House, Lower Broad Street, Bridgetown — a different parish. Verify with the Drug Service.",
-    routes: 'Route 10 from Bridgetown',
-    coords: { lat: 13.113997, lon: -59.474283 },
-  },
-  {
     name: 'Cosmopolitan Pharmacy',
     type: 'private-sbs',
     parish: 'St. Philip',
@@ -574,7 +558,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'Market Hill Dispensary',
-    type: 'private-sbs',
+    type: 'private',
     parish: 'St. George',
     address: 'Bridge Cot, St. George',
     phone: '(246) 437-9909',
@@ -583,7 +567,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'SWM Pharmacy',
-    type: 'private-sbs',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Bank Hall Plaza, Hill Road, Bank Hall, St. Michael',
     phone: '(246) 429-7378',
@@ -595,7 +579,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Ivy Medical Clinic, Ivy May Road, St. Michael',
-    phone: '(246) 429-8762',
+    phone: '(246) 431-8762',
     routes: 'Routes 11, 12 from Bridgetown',
     coords: { lat: 13.117282, lon: -59.599367 },
   },
@@ -673,7 +657,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Wildey Mall, Wildey, St. Michael',
-    phone: '(246) 426-6387',
+    phone: '(246) 828-4897',
     hours: {
       mon: [{ opens: '08:30', closes: '15:30' }],
       tue: [{ opens: '08:30', closes: '15:30' }],
@@ -815,7 +799,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     type: 'private-sbs',
     parish: 'St. Michael',
     address: '36A Pine Road, St. Michael',
-    phone: '(246) 427-8143',
+    phone: '(246) 430-0675',
     hours: {
       mon: [{ opens: '08:00', closes: '18:00' }],
       tue: [{ opens: '08:00', closes: '18:00' }],
@@ -830,7 +814,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'Ace Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Pine Housing Estate, St. Michael',
     phone: '(246) 228-2026',
@@ -840,7 +824,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'Bayside Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Mall Internationale, Haggatt Hall, St. Michael',
     phone: '(246) 228-2255',
@@ -848,7 +832,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'C S Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Trident House, Broad Street, Bridgetown',
     phone: '(246) 427-2047',
@@ -856,15 +840,15 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'Collins Limited',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Broad Street, Bridgetown',
-    phone: '(246) 426-4515',
+    phone: '(246) 426-4246',
     coords: { lat: 13.100006, lon: -59.616987 },
   },
   {
     name: 'Delaware Dispensary',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Jemmotts Lane, St. Michael',
     phone: '(246) 429-7430',
@@ -872,15 +856,15 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'Eagle Hall Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Eagle Hall, St. Michael',
-    phone: '',
+    phone: '(246) 427-2828',
     coords: { lat: 13.111866, lon: -59.61516 },
   },
   {
     name: 'Elgar Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. James',
     address: '7 Thorpes, St. James',
     phone: '(246) 438-5693',
@@ -888,7 +872,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'Family Health Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Warrens Industrial Park, St. Michael',
     phone: '(246) 421-8245',
@@ -896,7 +880,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'Flanders Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: '5 Ricketts Street, Bridgetown',
     phone: '(246) 426-7198',
@@ -904,7 +888,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'Friendship Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: '23 Baxters Road, St. Michael',
     phone: '(246) 438-9218',
@@ -914,7 +898,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'Grants Pharmacy & Cosmetique',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Fairchild Street, Bridgetown',
     phone: '(246) 228-0496',
@@ -922,15 +906,15 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'Maxwell Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'Christ Church',
     address: 'Maxwell, Christ Church',
-    phone: '',
+    phone: '(246) 420-2775',
     coords: { lat: 13.070873, lon: -59.563742 },
   },
   {
     name: 'Medic Aid Dispensary',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Corner Wavell Ave & Black Rock Main Rd, St. Michael',
     phone: '(246) 425-9999',
@@ -938,15 +922,15 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'Neighbourhood Care Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Rock Dundo, Cave Hill, St. Michael',
-    phone: '',
+    phone: '(246) 624-5160',
     coords: { lat: 13.136058, lon: -59.626065 },
   },
   {
     name: 'Pharm-N-Care Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'Christ Church',
     address: 'Unit 3, Emperors Court, Worthing, Christ Church',
     phone: '(246) 426-2601',
@@ -956,7 +940,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'The Pharmacy Shoppe',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Thomas',
     address: 'Welchman Hall, St. Thomas',
     phone: '(246) 438-5926',
@@ -964,7 +948,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'Pharmacy World Inc',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Peterkin Road, Bank Hall, St. Michael',
     phone: '(246) 429-0334',
@@ -974,7 +958,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'Station Hill Medical Complex Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Peter',
     address: 'Godding Road, Station Hill, St. Peter',
     phone: '',
@@ -982,7 +966,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'JillAnDeeHLP — Island-wide Delivery',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'All parishes',
     address: 'Island-wide delivery service',
     phone: '(246) 264-6768',
@@ -990,317 +974,278 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: '1 - Stop Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'George Saint Belleville, St. Michael',
     phone: '(246) 426-8771',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.097735, lon: -59.603193 },
   },
   {
     name: 'Alpha Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Sunny Side Complex, Black Rock, St. Michael',
     phone: '(246) 426-3499',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.099174, lon: -59.611161 },
   },
   {
     name: 'Apothec Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'Christ Church',
     address: 'Worthing, Christ Church',
     phone: '(246) 436-6337',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.070991, lon: -59.580453 },
   },
   {
     name: 'Avis Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. James',
     address: '28 Thorpes Main Road, St. James',
     phone: '(246) 438-4444',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.151059, lon: -59.623756 },
   },
   {
     name: 'Belleville Dispensary',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Corner George St & 3rd Avenue, St. Michael',
     phone: '(246) 429-5616',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.101584, lon: -59.611308 },
   },
   {
     name: 'Brittons Hill Dispensary',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Corner Flagstaff & Brittons New Road, St. Michael',
     phone: '(246) 429-5461',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.10155, lon: -59.611341 },
   },
   {
     name: 'Callies Pharmacy — Garrison',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Brigade House Garrison, St. Michael',
-    phone: '(246) 429-9346',
+    phone: '',
     notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+      'From a Barbados business directory — location approximate. The number listed for this branch was the Cottage Plantation one, so it has been dropped rather than ring the wrong pharmacy.',
     coords: { lat: 13.101481, lon: -59.611396 },
   },
   {
     name: 'Carledon Drug Emporium Inc',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Lr Bay St, St. Michael',
     phone: '(246) 228-2476',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.101387, lon: -59.611467 },
   },
   {
     name: 'Carlton Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Carlton Complex, Black Rock Main Road, St. Michael',
     phone: '(246) 425-1604',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.101257, lon: -59.61156 },
   },
   {
     name: "Cave's Pharmacy",
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'Christ Church',
     address: 'Worthing Plaza, Christ Church',
     phone: '(246) 435-7460',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.070723, lon: -59.579373 },
   },
   {
     name: "Crayton's Pharmacy",
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'Christ Church',
     address: 'Gall Hill Medical Centre, Christ Church',
     phone: '(246) 428-3497',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.070256, lon: -59.54074 },
   },
   {
     name: 'DNK Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Wildey Main Road, St. Michael',
     phone: '(246) 427-7070',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.093217, lon: -59.592847 },
   },
   {
     name: 'E C Gill Drugstore',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Marhill St, St. Michael',
     phone: '(246) 426-2454',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.097549, lon: -59.613494 },
   },
   {
     name: 'Eastern Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Philip',
     address: 'Church Village, St. Philip',
     phone: '(246) 423-4449',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.138901, lon: -59.488371 },
   },
   {
     name: 'Elbethel Pharmacy — 2nd Avenue',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: '2nd Avenue, Belleville, St. Michael',
     phone: '(246) 437-9261',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.099119, lon: -59.611222 },
   },
   {
-    name: 'Felimar Drug Mart',
-    type: 'unconfirmed',
-    parish: 'St. James',
-    address: 'Jordans Complex Fitts Vlge, St. James',
-    phone: '(246) 417-5685',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
-    coords: { lat: 13.17917, lon: -59.635632 },
-  },
-  {
     name: 'Forde C B Pharmacy Ltd',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Shoppers Centre Black Rock, St. Michael',
     phone: '(246) 425-9654',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.0988, lon: -59.611047 },
   },
   {
     name: "Gill Shirley S (Gill's Pharmacy)",
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Chapel St Nr Tudor St',
     phone: '(246) 427-2654',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.097926, lon: -59.609707 },
   },
   {
     name: 'Griffiths Reliance Pharmacy Ltd',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: "Lr Dayrell's Road, St. Michael",
     phone: '(246) 426-0438',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.097918, lon: -59.609191 },
   },
   {
     name: 'Grosvenor Pharmacy Inc',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Beckles Road, St. Michael',
     phone: '(246) 436-6842',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.087087, lon: -59.604372 },
   },
   {
     name: 'Hastings Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'Christ Church',
     address: 'Skyway Plaza, Christ Church',
     phone: '(246) 429-8932',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.074388, lon: -59.596224 },
   },
   {
     name: 'Health Care Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: '101 Devlind Lr Black Rock Tel/Fax, St. Michael',
     phone: '(246) 425-2273',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.100699, lon: -59.60721 },
   },
   {
     name: "Henley's Pharmacy",
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. George',
     address: 'Charles Rowe Bridge, St. George, Froster Hall',
     phone: '(246) 436-7417',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.130525, lon: -59.550329 },
   },
   {
     name: 'Heritage Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Spooners Hill, St. Michael',
     phone: '(246) 425-3159',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.122228, lon: -59.609911 },
   },
   {
     name: 'Imperial Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Bethesda Black Rock, St. Michael',
     phone: '(246) 436-1744',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.102518, lon: -59.610162 },
   },
   {
     name: 'Jems Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. James',
     address: 'Jamestown Clinic Holetown, St. James',
     phone: '(246) 432-6997',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.181214, lon: -59.634549 },
   },
   {
     name: "Joe's Pharmacy",
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'Christ Church',
     address: 'Oistins Main Road, Christ Church',
-    phone: '(246) 428-6025',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    phone: '(246) 271-8990',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.065204, lon: -59.544351 },
   },
   {
     name: 'Jones A P & Co Ltd',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Drug Store 8 High Street, St. Michael',
     phone: '(246) 426-3241',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.101667, lon: -59.611318 },
   },
   {
     name: 'K C B Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Brittons New Road Brittons Hill, St. Michael',
     phone: '(246) 426-7456',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.085751, lon: -59.591351 },
   },
   {
     name: "K O D's Pharmacy",
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Fontabelle, St. Michael',
     phone: '(246) 228-5087',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.106023, lon: -59.62467 },
   },
   {
     name: 'Maranatha Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Rock Dundo Medical Clinic White Main Road St Michael Tel/Fax',
     phone: '(246) 271-5736',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.099622, lon: -59.611827 },
   },
   {
     name: 'Maycare Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Philip',
     address: 'Emerald City Supermarket, Six Roads, St. Philip',
     phone: '(246) 423-4937',
@@ -1310,222 +1255,200 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
   },
   {
     name: 'Mayfield Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Mayfield Medical Centre, 4th Avenue Belleville, St. Michael',
     phone: '(246) 427-6066',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.094231, lon: -59.603082 },
   },
   {
     name: "Neil's Pharmacy",
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Aberfoyle Black Rock, St. Michael',
     phone: '(246) 427-5762',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.098741, lon: -59.611061 },
   },
   {
     name: "O'Hana Pharmacy",
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Peter',
     address: 'Gills Terr Speightstown, St. Peter',
     phone: '(246) 422-1800',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.250727, lon: -59.641291 },
   },
   {
     name: "Pearson's Pharmacies",
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Upper Collymore Rock Road, St. Michael',
     phone: '(246) 427-5521',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.097887, lon: -59.609592 },
   },
   {
     name: 'Pharmaco',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Peter',
     address: 'Church St Speightstown, St. Peter',
     phone: '(246) 422-1908',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.250617, lon: -59.640794 },
   },
   {
     name: 'Pickwick Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Peterkin Road Bank Hall, St. Michael',
     phone: '(246) 430-9594',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.110587, lon: -59.613429 },
   },
   {
     name: 'Pine Dispensary Inc',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Pine Medical Centre 3rd Avenue Belleville, St. Michael',
     phone: '(246) 436-8678',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.09825, lon: -59.608056 },
   },
   {
     name: 'Prescription Specialist Pharmacy The',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: '4th Avenue Belleville, St. Michael',
     phone: '(246) 437-3684',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.09502, lon: -59.601459 },
   },
   {
     name: 'Prescriptions Plus Inc',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Canary Lane Mall, St George Street, St. Michael',
     phone: '(246) 435-7587',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.097115, lon: -59.616704 },
   },
   {
     name: 'River Road Dispensary',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Glendor House River Road, St. Michael',
     phone: '(246) 429-4240',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.100779, lon: -59.607199 },
   },
   {
     name: 'Rock Dundo Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Cave Hill, St. Michael',
     phone: '(246) 425-1088',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.135653, lon: -59.627371 },
   },
   {
     name: 'Roebuck Pharmacy Ltd',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: '121 Roebuck, St. Michael',
     phone: '(246) 436-6101',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.103757, lon: -59.606956 },
   },
   {
     name: 'S E Well Care Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'ARS Medicare 6th Avenue Belleville, St. Michael',
     phone: '(246) 436-1099',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.102913, lon: -59.60927 },
   },
   {
     name: 'S K Total Health Pharmacy Inc',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'Christ Church',
     address: "Rendezvous Court R'vous, Christ Church",
     phone: '(246) 436-0140',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.071846, lon: -59.539509 },
   },
   {
     name: 'Standard Pharmacy Ltd',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Corner of Fairfield Road Tweedside Road, St. Michael',
     phone: '(246) 429-3298',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.102549, lon: -59.610225 },
   },
   {
     name: 'Total Care Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: '23 Baxters Road Opp Jordans Supermarket, St. Michael',
     phone: '(246) 436-5241',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.102003, lon: -59.611109 },
   },
   {
     name: 'Walkers H C Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: '47 Tudor St',
     phone: '(246) 426-3707',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.101937, lon: -59.618601 },
   },
   {
     name: 'Weekes L A Drug Store',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Carlton Black Rock Main Road, St. Michael',
     phone: '(246) 425-1046',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.100388, lon: -59.612247 },
   },
   {
     name: 'Welches Dispensary',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'Christ Church',
     address: 'Welches, Christ Church',
     phone: '(246) 428-1206',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.065187, lon: -59.549856 },
   },
   {
     name: 'Whole Health Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Peter',
     address: 'Queen Saint Speightstown, St. Peter',
     phone: '(246) 422-5207',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.249468, lon: -59.64362 },
   },
   {
     name: "Worrell's Pharmacy Inc",
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Wildey Shopping Plaza, St. Michael',
     phone: '(246) 427-5468',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.09877, lon: -59.611737 },
   },
   {
     name: 'Worthing Pharmacy',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'Christ Church',
     address: 'Worthing, Christ Church',
     phone: '(246) 435-7041',
-    notes:
-      'From a Barbados business directory — location approximate and subsidy status not confirmed with the Drug Service.',
+    notes: 'From a Barbados business directory — location approximate.',
     coords: { lat: 13.071095, lon: -59.581476 },
   },
   {
@@ -1533,7 +1456,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Warrens SuperCentre, St. Michael',
-    phone: '',
+    phone: '(246) 417-5232',
     notes:
       'Massy Stores pharmacy (formerly Knights) — on the Drug Service subsidised list; pharmacy hours unconfirmed — call to confirm.',
     coords: { lat: 13.140182, lon: -59.60768 },
@@ -1543,7 +1466,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Sky Mall, Haggatt Hall, St. Michael',
-    phone: '',
+    phone: '(246) 434-1023',
     notes:
       'Massy Stores pharmacy (formerly Knights) — on the Drug Service subsidised list; pharmacy hours unconfirmed — call to confirm.',
     coords: { lat: 13.106699, lon: -59.577748 },
@@ -1553,7 +1476,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     type: 'private-sbs',
     parish: 'St. James',
     address: 'Sunset Crest, Holetown, St. James',
-    phone: '',
+    phone: '(246) 432-1290',
     notes:
       'Massy Stores pharmacy (formerly Knights) — on the Drug Service subsidised list; pharmacy hours unconfirmed — call to confirm.',
     coords: { lat: 13.185508, lon: -59.637305 },
@@ -1563,7 +1486,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     type: 'private-sbs',
     parish: 'St. Philip',
     address: 'Six Roads, St. Philip',
-    phone: '',
+    phone: '(246) 423-3700',
     notes:
       'Massy Stores pharmacy (formerly Knights) — on the Drug Service subsidised list; pharmacy hours unconfirmed — call to confirm.',
     coords: { lat: 13.117812, lon: -59.477786 },
@@ -1573,7 +1496,7 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     type: 'private-sbs',
     parish: 'Christ Church',
     address: 'Rendezvous Road, Worthing, Christ Church',
-    phone: '',
+    phone: '(246) 435-0020',
     notes:
       'Massy Stores pharmacy (formerly Knights) — on the Drug Service subsidised list; pharmacy hours unconfirmed — call to confirm.',
     coords: { lat: 13.073487, lon: -59.581698 },
@@ -1583,71 +1506,32 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     type: 'private-sbs',
     parish: 'Christ Church',
     address: 'Oistins, Christ Church',
-    phone: '',
+    phone: '(246) 428-6057',
     notes:
       'Massy Stores pharmacy (formerly Knights) — on the Drug Service subsidised list; pharmacy hours unconfirmed — call to confirm.',
     coords: { lat: 13.063301, lon: -59.542029 },
   },
   {
     name: 'Roundhay Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'One Accord Plaza, Warrens Industrial Park, St. Michael',
-    phone: '',
-    notes:
-      'Warrens Healthcare complex. Subsidy status not confirmed with the Drug Service.',
+    phone: '(246) 537-7863',
+    notes: 'Warrens Healthcare complex.',
     coords: { lat: 13.144871, lon: -59.604204 },
   },
   {
-    name: 'iMart Pharmacy — Carlton Complex',
-    type: 'private-sbs',
-    parish: 'St. Michael',
-    address: 'Carlton Complex, Black Rock, St. Michael',
-    phone: '(246) 271-3784',
-    hours: {
-      mon: [{ opens: '08:00', closes: '17:00' }],
-      tue: [{ opens: '08:00', closes: '17:00' }],
-      wed: [{ opens: '08:00', closes: '17:00' }],
-      thu: [{ opens: '08:00', closes: '17:00' }],
-      fri: [{ opens: '08:00', closes: '17:00' }],
-      sat: [{ opens: '08:00', closes: '17:00' }],
-      sun: [],
-    },
-    notes: 'iMart Pharmacy Express, Carlton Complex. Hours per iMart.',
-    coords: { lat: 13.122828, lon: -59.625611 },
-  },
-  {
-    name: 'iMart Pharmacy — Sunset Crest Service Station',
-    type: 'private-sbs',
-    parish: 'St. James',
-    address: 'Sunset Crest Service Station, Holetown, St. James',
-    phone: '(246) 271-3784',
-    hours: {
-      mon: [{ opens: '09:00', closes: '18:00' }],
-      tue: [{ opens: '09:00', closes: '18:00' }],
-      wed: [{ opens: '09:00', closes: '18:00' }],
-      thu: [{ opens: '09:00', closes: '18:00' }],
-      fri: [{ opens: '09:00', closes: '18:00' }],
-      sat: [{ opens: '09:00', closes: '18:00' }],
-      sun: [],
-    },
-    notes:
-      'iMart Pharmacy Express, Sunset Crest Service Station. Hours per iMart.',
-    coords: { lat: 13.177244, lon: -59.638809 },
-  },
-  {
     name: 'Elbethel Pharmacy — 6th Avenue',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Corner 6th Avenue, Belleville, St. Michael',
     phone: '(246) 622-1405',
-    notes:
-      'Second Elbethel branch (Lloyd A Burrowes). Subsidy status not confirmed with the Drug Service.',
+    notes: 'Second Elbethel branch (Lloyd A Burrowes).',
     coords: { lat: 13.096861, lon: -59.602114 },
   },
   {
     name: 'Aqua Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'Christ Church',
     address: 'Coral Sands Complex, Worthing, Christ Church',
     phone: '(246) 622-2782',
@@ -1660,37 +1544,34 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
       sat: [{ opens: '09:00', closes: '14:00' }],
       sun: [],
     },
-    notes:
-      'Hours per Aqua Pharmacy. Subsidy status not confirmed with the Drug Service.',
+    notes: 'Hours per Aqua Pharmacy.',
     coords: { lat: 13.070148, lon: -59.579202 },
   },
   {
     name: 'BetterLife Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address: 'Building 2, 1 Friendship Drive, Green Hill, St. Michael',
     phone: '(246) 571-3788',
-    notes: 'Subsidy status not confirmed with the Drug Service.',
     coords: { lat: 13.13687, lon: -59.605941 },
   },
   {
     name: 'Get Well Pharmacy',
-    type: 'unconfirmed',
+    type: 'private-sbs',
     parish: 'St. Michael',
     address:
       'Windsor Medical Centre, cnr Government Hill & Pine Plantation Rd, St. Michael',
     phone: '(246) 622-4171',
     notes:
-      'Retail counter at Windsor Medical Centre (also Wildey Industrial Estate). Confirm address and hours by phone. Subsidy status not confirmed with the Drug Service.',
+      'Retail counter at Windsor Medical Centre (also Wildey Industrial Estate). Confirm address and hours by phone.',
     coords: { lat: 13.101385, lon: -59.591569 },
   },
   {
     name: 'City Pharmacy Inc',
-    type: 'unconfirmed',
+    type: 'private',
     parish: 'St. Michael',
     address: 'Marhill Street, Bridgetown, St. Michael',
     phone: '(246) 426-2454',
-    notes: 'Subsidy status not confirmed with the Drug Service.',
     coords: { lat: 13.097765, lon: -59.613279 },
   },
   {
@@ -1702,6 +1583,252 @@ export const PHARMACIES: ReadonlyArray<Pharmacy> = [
     notes:
       'Massy Stores pharmacy (formerly Knights) — on the Drug Service subsidised list. Phone is the store line; pharmacy hours unconfirmed — call to confirm.',
     coords: { lat: 13.086209, lon: -59.501558 },
+  },
+  {
+    name: 'Advanced Care Pharmacy',
+    type: 'private-sbs',
+    parish: 'Christ Church',
+    address: 'Harts Gap, Hastings, Christ Church',
+    phone: '(246) 228-6453',
+  },
+  {
+    name: 'Allington Pharmacy',
+    type: 'private-sbs',
+    parish: 'St. Michael',
+    address: 'Canewood Business Centre, Canewood, St. Michael',
+    phone: '(246) 622-2070',
+  },
+  {
+    name: 'Avida Pharmacy',
+    type: 'private-sbs',
+    parish: 'Christ Church',
+    address: 'Ellerton Building, Welches, Christ Church',
+    phone: '(246) 537-0294',
+  },
+  {
+    name: 'Bato’s Pharmacy',
+    type: 'private-sbs',
+    parish: 'St. Michael',
+    address: 'King Street, Bridgetown, St. Michael',
+    phone: '(246) 426-1699',
+  },
+  {
+    name: 'Belmont Pharmacy',
+    type: 'private-sbs',
+    parish: 'St. Michael',
+    address: 'Belmont Road, St. Michael',
+    phone: '(246) 241-6203',
+  },
+  {
+    name: 'Beyond Pharmacy',
+    type: 'private-sbs',
+    parish: 'St. Thomas',
+    address: '11 Dunscombe, St. Thomas',
+    phone: '(246) 571-7640',
+  },
+  {
+    name: 'Drugmart',
+    type: 'private-sbs',
+    parish: 'St. George',
+    address: 'Salters, St. George',
+    phone: '(246) 622-4088',
+  },
+  {
+    name: 'Elbethel Pharmacy — Prerogative',
+    type: 'private-sbs',
+    parish: 'St. George',
+    address: 'Prerogative, St. George',
+    phone: '(246) 233-2141',
+  },
+  {
+    name: 'Elgar Pharmacy — Market Hill',
+    type: 'private-sbs',
+    parish: 'St. George',
+    address: 'Market Hill, St. George',
+    phone: '(246) 435-4919',
+  },
+  {
+    name: 'Elitecare Pharmacy',
+    type: 'private-sbs',
+    parish: 'St. George',
+    address: 'Salters Market, Salters, St. George',
+    phone: '(246) 622-1923',
+  },
+  {
+    name: 'Enterprise Pharmacy',
+    type: 'private-sbs',
+    parish: 'Christ Church',
+    address: 'Enterprise Drive, Christ Church',
+    phone: '(246) 546-6979',
+  },
+  {
+    name: 'Habibi Pharmacy',
+    type: 'private-sbs',
+    parish: 'St. Michael',
+    address: 'Riverside Medical Clinic, River Road, St. Michael',
+    phone: '(246) 826-6622',
+  },
+  {
+    name: 'Health Care Pharmacy — Westbury Road',
+    type: 'private-sbs',
+    parish: 'St. Michael',
+    address: 'Cnr Westbury Road & St. Leonards Ave, St. Michael',
+    phone: '(246) 434-0754',
+  },
+  {
+    name: 'Health-Sync Pharmacy',
+    type: 'private-sbs',
+    parish: 'Christ Church',
+    address: '23 Maxwell Main Rd, Christ Church',
+    phone: '(246) 258-3639',
+  },
+  {
+    name: 'Heritage Pharmacy — Kendal Hill',
+    type: 'private-sbs',
+    parish: 'Christ Church',
+    address: 'Kendal Hill, Christ Church',
+    phone: '(246) 622-2321',
+  },
+  {
+    name: 'Jems Pharmacy — Four Roads',
+    type: 'private-sbs',
+    parish: 'St. Philip',
+    address: 'Four Roads Medical Clinic, Four Roads, St. Philip',
+    phone: '(246) 537-0231',
+  },
+  {
+    name: 'J & J Pharma-C',
+    type: 'private-sbs',
+    parish: 'St. Thomas',
+    address: '#1 Cnr Sharon & Arthur Seat, St. Thomas',
+    phone: '(246) 537-2099',
+  },
+  {
+    name: 'Massy Pharmacy — Sargeants Village',
+    type: 'private-sbs',
+    parish: 'Christ Church',
+    address: 'Sargeants Village, Christ Church',
+    phone: '(246) 429-7107',
+  },
+  {
+    name: 'Medshop Pharmacy',
+    type: 'private-sbs',
+    parish: 'St. Michael',
+    address: '“Hammersmith House” 3rd Ave Belleville, St. Michael',
+    phone: '(246) 622-4041',
+  },
+  {
+    name: 'Medpro Pharmacy',
+    type: 'private-sbs',
+    parish: 'St. George',
+    address: 'Prerogative House, Wilkinson Road, Prerogative, St. George',
+    phone: '(246) 285-0772',
+  },
+  {
+    name: 'Neighbourhood Care Pharmacy — Bank Hall',
+    type: 'private-sbs',
+    parish: 'St. Michael',
+    address: 'Bank Hall Medical Clinic, Bank Hall, St. Michael',
+    phone: '(246) 427-0317',
+  },
+  {
+    name: 'Nutripharm Services Inc',
+    type: 'private-sbs',
+    parish: 'St. Philip',
+    address: 'Blades Hill, St. Philip',
+    phone: '(246) 271-2653',
+  },
+  {
+    name: 'Phillips Pharmacy',
+    type: 'private-sbs',
+    parish: 'St. James',
+    address: '287 Crystal Heights, St. James',
+    phone: '(246) 232-9069',
+  },
+  {
+    name: 'Prescriptions Online',
+    type: 'private-sbs',
+    parish: 'St. John',
+    address: 'Venture #3, St. John',
+    phone: '(246) 433-2048',
+  },
+  {
+    name: 'Price Drug Mart',
+    type: 'private-sbs',
+    parish: 'St. Michael',
+    address: '2nd Ave Godding Rd, Station Hill, St. Michael',
+    phone: '(246) 824-1215',
+  },
+  {
+    name: 'Rosegate Pharmacy',
+    type: 'private-sbs',
+    parish: 'St. John',
+    address: 'RoseGate Medical Centre, Rosegate, St. John',
+    phone: '(246) 271-2745',
+  },
+  {
+    name: 'Strathclyde Pharmacy & Health Shop',
+    type: 'private-sbs',
+    parish: 'St. Michael',
+    address: 'Peterkin Rd, Bank Hall, St. Michael',
+    phone: '(246) 622-1970',
+  },
+  {
+    name: 'TDL Pharmacy',
+    type: 'private-sbs',
+    parish: 'Christ Church',
+    address: 'No.3 W H Golden Plaza, Montrose, Christ Church',
+    phone: '(246) 537-0057',
+  },
+  {
+    name: 'The Pharmacy Hub',
+    type: 'private-sbs',
+    parish: 'St. Michael',
+    address: 'Spry Street, Bridgetown, St. Michael',
+    phone: '(246) 436-0172',
+  },
+  {
+    name: 'Total Care Pharmacy — Emerald City',
+    type: 'private-sbs',
+    parish: 'St. Philip',
+    address: 'Emerald City Supermarket, Six Roads, St. Philip',
+    phone: '(246) 423-1213',
+    coords: { lat: 13.113997, lon: -59.474283 },
+  },
+  {
+    name: 'Unique Pharmacy',
+    type: 'private-sbs',
+    parish: 'St. Philip',
+    address: 'Ocean View Medical, St. Martins, St. Philip',
+    phone: '(246) 622-1797',
+  },
+  {
+    name: 'Vitalpharm Pharmacy',
+    type: 'private-sbs',
+    parish: 'St. Michael',
+    address: '4th Ave Belleville, St. Michael',
+    phone: '(246) 627-9238',
+  },
+  {
+    name: 'We Care Pharmacy',
+    type: 'private-sbs',
+    parish: 'Christ Church',
+    address: 'Pilgrim Road, Christ Church',
+    phone: '(246) 538-2273',
+  },
+  {
+    name: 'Welches Pharmacy',
+    type: 'private-sbs',
+    parish: 'St. Michael',
+    address: '#43 Kingston Terrace, Welches, St. Michael',
+    phone: '(246) 538-0141',
+  },
+  {
+    name: 'Wellhouse Dispensary',
+    type: 'private-sbs',
+    parish: 'St. Philip',
+    address: 'Wellhouse Corner, Wellhouse, St. Philip',
+    phone: '(246) 423-3896',
   },
 ]
 

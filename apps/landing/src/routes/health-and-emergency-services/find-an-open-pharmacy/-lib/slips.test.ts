@@ -26,11 +26,11 @@ describe('acceptsSlip', () => {
     expect(acceptsSlip(priv, 'green')).toBe(false)
   })
 
-  it('is unknown for unconfirmed pharmacies', () => {
-    const unc = pharmacy({ type: 'unconfirmed' })
-    expect(acceptsSlip(unc, 'white')).toBeNull()
-    expect(acceptsSlip(unc, 'yellow')).toBeNull()
-    expect(acceptsSlip(unc, 'green')).toBeNull()
+  it('private pharmacies outside the subsidy accept none of them', () => {
+    const priv = pharmacy({ type: 'private' })
+    expect(acceptsSlip(priv, 'white')).toBe(false)
+    expect(acceptsSlip(priv, 'yellow')).toBe(false)
+    expect(acceptsSlip(priv, 'green')).toBe(false)
   })
 })
 

@@ -101,25 +101,6 @@ export function CrossIcon() {
   );
 }
 
-export function DashIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-4 shrink-0"
-      fill="none"
-      focusable="false"
-      viewBox="0 0 24 24"
-    >
-      <path
-        d="M6 12h12"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="2.5"
-      />
-    </svg>
-  );
-}
-
 export function LocationIcon() {
   return (
     <svg

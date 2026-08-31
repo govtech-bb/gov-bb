@@ -232,8 +232,8 @@ export function PharmacyFinder() {
                   </>
                 ) : (
                   <>
-                    Showing all pharmacies, including those not confirmed in
-                    the subsidy.{' '}
+                    Showing all pharmacies, including those outside the
+                    subsidy.{' '}
                     <button
                       className="underline"
                       onClick={() =>
