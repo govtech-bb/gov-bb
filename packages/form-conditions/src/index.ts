@@ -19,7 +19,10 @@ export type { ConditionCriteria } from "./internals";
 // Shared confirmation-markdown token interpolation, consumed by both the
 // confirmation page (apps/forms) and the applicant email (apps/api) so the two
 // surfaces can't drift (#2201).
-export { interpolateConfirmationMarkdown } from "./confirmation-markdown";
+export {
+  interpolateConfirmationMarkdown,
+  resolveConditionalMarkdown,
+} from "./confirmation-markdown";
 export type { ConfirmationTokens } from "./confirmation-markdown";
 
 /**

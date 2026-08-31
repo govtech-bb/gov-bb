@@ -18,6 +18,7 @@ import {
   resolveFieldLabel,
   resolveStepTitle,
   interpolateConfirmationMarkdown,
+  resolveConditionalMarkdown,
   type StepScopedValues,
 } from "@govtech-bb/form-conditions";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
@@ -222,9 +223,18 @@ export class EmailBodyBuilder {
     // It's the same markdown the live confirmation page renders; parsing it
     // synchronously (marked.parse returns a string when async isn't enabled)
     // keeps the email copy in step with the page.
-    const rawMarkdown = contract.steps.find(
+    const confirmationStep = contract.steps.find(
       (s) => s.stepId === "submission-confirmation",
-    )?.markdownContent;
+    );
+    // Fill any per-answer passages the body declares (#2068) — the inspection
+    // wording, an organiser-only officer-request paragraph — from the submitted
+    // values, using the same resolver the confirmation page resolves with, so
+    // the branch in this email matches the branch on screen. Runs before token
+    // interpolation below so a conditional passage may itself carry
+    // `{polyclinic}` / `{landingUrl}`.
+    const rawMarkdown = confirmationStep
+      ? resolveConditionalMarkdown(confirmationStep, values as StepScopedValues)
+      : undefined;
     // Substitute the resolved polyclinic into the `{polyclinic}` token so the
     // email names the polyclinic the request went to, and the landing origin
     // into `{landingUrl}` so an authored link to a service page is absolute —

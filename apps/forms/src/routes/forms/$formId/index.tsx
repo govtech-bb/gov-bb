@@ -42,6 +42,8 @@ import {
 } from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
 import { resolveServerFieldErrors } from "../../../lib/server-field-errors";
+import { resolveConditionalMarkdown } from "@govtech-bb/form-conditions";
+import { buildStepScopedValues } from "../../../lib/form-builder/helpers/value-tree";
 import { formCategory } from "../../../lib/form-category";
 import {
   resolveSubmissionOutcome,
@@ -330,7 +332,26 @@ function FormView() {
         return;
       }
 
-      const { subState, event } = resolveSubmissionOutcome(response);
+      // Fill the confirmation body's per-answer passages (#2068) NOW, while the
+      // answers are still in the form store: `clearFormState` below drops the
+      // draft on success, so a refresh on the confirmation step would otherwise
+      // have no values to branch on and would fall back to the neutral passage
+      // while the applicant's email showed the real one. Persisted with the rest
+      // of the outcome, so it survives the reload.
+      const confirmationStep = formMeta.steps.find(
+        (step) => step.stepId === "submission-confirmation",
+      );
+      const resolvedMarkdown = confirmationStep
+        ? resolveConditionalMarkdown(
+            confirmationStep,
+            buildStepScopedValues(values as Record<string, unknown>),
+          )
+        : undefined;
+
+      const { subState, event } = resolveSubmissionOutcome(
+        response,
+        resolvedMarkdown,
+      );
       if (subState) {
         setSubmissionState(subState);
       }

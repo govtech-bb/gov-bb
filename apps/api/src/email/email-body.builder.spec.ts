@@ -305,6 +305,130 @@ describe("EmailBodyBuilder", () => {
       expect(ctx.markdownHtml).toContain("We will review your request.");
     });
 
+    describe("conditional confirmation passages (#2068)", () => {
+      const conditionalMarkdown = [
+        {
+          token: "inspection",
+          default: "An officer **may** arrange an inspection.",
+          variants: [
+            {
+              targetStepId: "food-safety",
+              targetFieldId: "has-food-licence",
+              operator: "equal" as const,
+              value: "no",
+              content: "An officer **will** inspect your set-up.",
+            },
+          ],
+        },
+        {
+          token: "officerRequest",
+          default: "",
+          variants: [
+            {
+              targetStepId: "event-organiser",
+              targetFieldId: "is-organiser",
+              operator: "equal" as const,
+              value: "yes",
+              content: "We have requested an officer to attend.",
+            },
+          ],
+        },
+      ];
+
+      const buildFor = async (hasFoodLicence: string, isOrganiser: string) => {
+        const base = makeContract();
+        const contract = makeContract({
+          steps: [
+            ...base.steps,
+            {
+              stepId: "submission-confirmation",
+              title: "Application submitted",
+              elements: [],
+              markdownContent: "Lead.\n\n{inspection}\n\n{officerRequest}",
+              conditionalMarkdown,
+            },
+          ] as unknown as ServiceContract["steps"],
+        });
+        builder = new EmailBodyBuilder(
+          makeFormDefinitionsService(contract),
+          makeConfig(),
+        );
+        const payload = makePayload();
+        return builder.build({
+          ...payload,
+          values: {
+            ...payload.values,
+            "food-safety": { "has-food-licence": hasFoodLicence },
+            "event-organiser": { "is-organiser": isOrganiser },
+          },
+        } as SubmissionCreatedEvent);
+      };
+
+      // The has-food-licence x is-organiser matrix, on the email surface. The
+      // confirmation page is covered by the same matrix in the forms app.
+      it.each([
+        ["no", "yes", true, true],
+        ["no", "no", true, false],
+        ["yes", "yes", false, true],
+        ["yes", "no", false, false],
+      ] as const)(
+        "has-food-licence=%s is-organiser=%s -> will-inspect=%s officer-requested=%s",
+        async (hasFoodLicence, isOrganiser, willInspect, officerRequested) => {
+          const ctx = await buildFor(hasFoodLicence, isOrganiser);
+          const html = ctx.markdownHtml ?? "";
+
+          expect(html).toContain(
+            willInspect
+              ? "will</strong> inspect your set-up."
+              : "may</strong> arrange an inspection.",
+          );
+          expect(html).not.toContain(
+            willInspect
+              ? "may</strong> arrange an inspection."
+              : "will</strong> inspect your set-up.",
+          );
+
+          expect(html.includes("We have requested an officer to attend.")).toBe(
+            officerRequested,
+          );
+
+          // A token must never survive to the applicant's inbox.
+          expect(html).not.toContain("{inspection}");
+          expect(html).not.toContain("{officerRequest}");
+        },
+      );
+
+      it("falls back to the neutral passages when the answers are absent", async () => {
+        const base = makeContract();
+        const contract = makeContract({
+          steps: [
+            ...base.steps,
+            {
+              stepId: "submission-confirmation",
+              title: "Application submitted",
+              elements: [],
+              markdownContent: "Lead.\n\n{inspection}\n\n{officerRequest}",
+              conditionalMarkdown,
+            },
+          ] as unknown as ServiceContract["steps"],
+        });
+        builder = new EmailBodyBuilder(
+          makeFormDefinitionsService(contract),
+          makeConfig(),
+        );
+
+        const ctx = await builder.build(makePayload());
+
+        expect(ctx.markdownHtml).toContain(
+          "may</strong> arrange an inspection.",
+        );
+        expect(ctx.markdownHtml).not.toContain(
+          "We have requested an officer to attend.",
+        );
+        expect(ctx.markdownHtml).not.toContain("{inspection}");
+      });
+    });
+
     it("substitutes the resolved polyclinic into the {polyclinic} token", async () => {
       const base = makeContract();
       const contract = makeContract({

@@ -41,6 +41,7 @@ import { buildValidationErrorPayload } from "./validation-error-event";
 import { stepCompleteEventName } from "./step-events";
 import { StatusBanner } from "@govtech-bb/react";
 import {
+  resolveConditionalMarkdown,
   resolveFieldLabel,
   resolveStepTitle,
 } from "@govtech-bb/form-conditions";
@@ -699,7 +700,16 @@ function ActiveStep({
           stepTitle={resolvedStepTitle}
           processingMessage={currentStep.description}
           nextSteps={currentStep.nextSteps}
-          markdownContent={currentStep.markdownContent}
+          // The branch resolved at submit, when the answers were still live
+          // (#2068). Falling back to a defaults-only resolution rather than the
+          // raw `markdownContent` matters: a state persisted before this shipped
+          // — or the error paths, which commit no resolution — would otherwise
+          // render a literal `{token}`. For a step with no conditional passages
+          // this is `markdownContent` unchanged.
+          markdownContent={
+            submissionState?.resolvedMarkdown ??
+            resolveConditionalMarkdown(currentStep, {})
+          }
           hideReferenceNumber={currentStep.hideReferenceNumber}
           contactDetails={formMeta.contactDetails}
           onTryAgain={() => navigateToStep("check-your-answers")}

@@ -89,7 +89,11 @@ vi.mock("./review", () => ({
 
 vi.mock("./submission-confirmation", () => ({
   __esModule: true,
-  default: () => <div data-testid="submission-confirmation" />,
+  default: (props: { markdownContent?: string }) => (
+    <div data-testid="submission-confirmation">
+      <span data-testid="confirmation-markdown">{props.markdownContent}</span>
+    </div>
+  ),
 }));
 
 vi.mock("./applicant-name-display", () => ({
@@ -1618,5 +1622,58 @@ describe("FormRenderer", () => {
     expect(heading).toContainElement(caption);
     // No em-dash suffix in the labelled case — the caption carries the marker.
     expect(heading.textContent).not.toContain("—");
+  });
+});
+
+describe("FormRenderer — conditional confirmation markdown (#2068)", () => {
+  const confirmationStep = () => ({
+    ...makeStep("submission-confirmation"),
+    markdownContent: "Lead.\n\n{inspection}",
+    conditionalMarkdown: [
+      {
+        token: "inspection",
+        default: "An officer may arrange an inspection.",
+        variants: [
+          {
+            targetStepId: "food-safety",
+            targetFieldId: "has-food-licence",
+            operator: "equal" as const,
+            value: "no",
+            content: "An officer will inspect your set-up.",
+          },
+        ],
+      },
+    ],
+  });
+
+  const renderConfirmation = (submissionState: Record<string, unknown>) => {
+    const step = confirmationStep();
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta({ steps: [step] }) as any}
+        stepId="submission-confirmation"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={submissionState as any}
+      />,
+    );
+    return screen.getByTestId("confirmation-markdown");
+  };
+
+  it("renders the branch resolved at submit", () => {
+    const node = renderConfirmation({
+      ...mockSubmissionState,
+      resolvedMarkdown: "Lead.\n\nAn officer will inspect your set-up.",
+    });
+    expect(node).toHaveTextContent("An officer will inspect your set-up.");
+  });
+
+  it("falls back to the default passage rather than a literal token", () => {
+    // A state persisted before this shipped, or an error path that commits no
+    // resolution. Rendering `{inspection}` at a citizen would be the failure.
+    const node = renderConfirmation(mockSubmissionState);
+    expect(node).toHaveTextContent("An officer may arrange an inspection.");
+    expect(node).not.toHaveTextContent("{inspection}");
   });
 });

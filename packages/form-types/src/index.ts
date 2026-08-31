@@ -84,6 +84,8 @@ export {
   durationTransformSchema,
   conditionalTitleSchema,
   conditionalLabelSchema,
+  conditionalMarkdownSchema,
+  conditionalMarkdownVariantSchema,
 } from "./behavior.type";
 
 export type {
@@ -98,6 +100,8 @@ export type {
   DurationTransform,
   ConditionalTitle,
   ConditionalLabel,
+  ConditionalMarkdown,
+  ConditionalMarkdownVariant,
 } from "./behavior.type";
 
 export type { Block } from "./block.type";
