@@ -473,7 +473,8 @@
           "programmeShortCode": "HSL",
           "applicant": {
             "name": [
-              "owner-details.owner-name"
+              "owner-details.first-name",
+              "owner-details.last-name"
             ],
             "email": "contact-details.email",
             "phone": "contact-details.telephone"
