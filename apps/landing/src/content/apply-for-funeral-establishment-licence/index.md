@@ -3,28 +3,25 @@ title: Apply for a funeral establishment licence
 description: Apply for a licence to operate a funeral establishment in Barbados.
 category: business-trade
 stage: alpha
-publish_date: '2026-08-27'
+publish_date: '2026-08-31'
 visibility: preview
 form_id: apply-for-funeral-establishment-licence
 ---
-Use this service to apply for or renew a funeral establishment licence.
+Use this service to apply for or renew a funeral establishment licence with the Environmental Health Department.
 
 ## Who is this licence for
 
-Owners of a funeral establishment needing to obtain or renew a funeral establishment licence
+Owners of a funeral establishment needing to obtain or renew a funeral establishment licence.
 
 If your business is not licensed, Environmental Health will contact you and inform you that you need to apply. They may issue a notice if an application is not made.
 
 ## Before you start
-
-Use this service to apply for a new funeral establishment licence or to renew your licence.
 
 You will need:
 
 -   the dimensions of your preparation room
 -   maximum number of bodies that can be stored
 -   a list of embalmers who work at your establishment, giving each person's name and gender (staff list)
--   proof that all embalmers and directors have current licences (these will be validated)
 
 Read the [Health Services (Embalmers and Funeral Directors) Regulations 1984](https://oag.gov.bb/attachments/Health%20Services%20\(Embalmers%20and%20Funeral%20Directors\)%20Regulations,%201984%20Cap44'L.PDF) for the full legal requirements.
 
@@ -39,7 +36,7 @@ There are 2 ways to apply for a funeral establishment licence. You can:
 1.  **Apply for a licence online.**
     
     Allow about 15 minutes to complete the form.
-
+    
     <a data-start-link>Start now</a>
     
 2.  **Get a paper application from the polyclinic**<br />
@@ -60,6 +57,7 @@ There is neither a cost to apply, nor to receive your licence.
 
 -   processes for the cleaning and sanitation of equipment and premises
 -   ventilation
+-   proof that all embalmers and directors have current licences
 
 **Obtaining your licence:**
 
