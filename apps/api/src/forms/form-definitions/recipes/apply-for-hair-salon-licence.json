@@ -168,14 +168,21 @@
         {
           "ref": "components/name",
           "overrides": {
-            "fieldId": "owner-name",
-            "label": "Name of owner or operator",
+            "fieldId": "first-name",
+            "label": "First name of owner or operator",
             "validations": {
               "required": {
                 "error": "Enter the name of the owner or operator",
                 "value": true
               }
             }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "last-name",
+            "label": "Last name of owner or operator"
           }
         },
         {
@@ -483,7 +490,7 @@
     }
   ],
   "createdAt": "2026-08-20T17:42:48.875Z",
-  "updatedAt": "2026-08-28T03:34:22.453Z",
+  "updatedAt": "2026-08-31T21:51:22.270Z",
   "meta": {
     "visibility": "preview"
   },
