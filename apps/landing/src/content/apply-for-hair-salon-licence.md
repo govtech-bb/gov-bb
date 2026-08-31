@@ -4,7 +4,7 @@ description: >-
   Register a new hair, beauty, manicure or pedicure business, or renew your
   existing registration with Environmental Health.
 stage: alpha
-publish_date: '2026-08-27'
+publish_date: '2026-08-31'
 visibility: preview
 form_id: apply-for-hair-salon-licence
 category: business-trade
@@ -19,10 +19,15 @@ You must apply for a hairdressing salon licence if your business provides any of
 -   beauty services
 -   manicures
 -   pedicures
+-   hair braiding
 
 Anyone providing these services also needs their own personal hairdressers licence. The business licence does not give the owner or staff a licence.
 
-This applies whether you provide services at a business location, from home, at clients' locations or from a vehicle. At-home hairdressers, including hair braiders, must also apply.
+This applies whether you provide services:
+
+-   at a business location
+-   from home (for example, at-home hairdressers)
+-   at clients' locations or from a vehicle
 
 If your business is not licensed, Environmental Health will contact you and inform you that you need to apply. They may issue a notice if an application is not made.
 
@@ -52,7 +57,7 @@ There are 2 ways to apply for a hairdressing salon licence. You can:
 1.  **Apply for a licence online.**
     
     Allow about 15 minutes to complete the form.
-
+    
     <a data-start-link>Start now</a>
     
 2.  **Get a paper application from the polyclinic**<br />
