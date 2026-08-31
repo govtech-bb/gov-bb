@@ -288,10 +288,11 @@
           "ref": "components/upload-document",
           "overrides": {
             "fieldId": "passport-photo",
-            "label": "Upload your passport-size photographs.",
-            "hint": "These photographs should have been taken recently.",
+            "label": "Upload your passport-size photograph.",
+            "hint": "This photograph should have been taken recently.",
             "validations": {
               "required": {
+                "error": "You must upload a scanned copy of your passport-size photograph",
                 "value": true
               },
               "fileTypes": {
@@ -471,7 +472,7 @@
     }
   ],
   "createdAt": "2026-08-25T14:05:29.888Z",
-  "updatedAt": "2026-08-28T03:11:19.534Z",
+  "updatedAt": "2026-08-31T22:17:13.878Z",
   "meta": {
     "visibility": "preview"
   },
