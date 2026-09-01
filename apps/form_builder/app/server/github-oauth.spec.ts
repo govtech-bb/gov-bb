@@ -6,7 +6,7 @@ import {
   userIsTeamMember,
 } from "./github-oauth";
 
-type FetchMock = Mock<Promise<Response>, [RequestInfo | URL, RequestInit?]>;
+type FetchMock = Mock<typeof fetch>;
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -25,8 +25,8 @@ describe("github-oauth helpers", () => {
   let fetchMock: FetchMock;
 
   beforeEach(() => {
-    fetchMock = vi.fn() as unknown as FetchMock;
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    fetchMock = vi.fn<typeof fetch>();
+    globalThis.fetch = fetchMock;
   });
 
   afterEach(() => {

@@ -22,11 +22,11 @@ vi.mock("../../server/ai-builder/convert", () => ({
 }));
 
 // Stub global fetch for the direct browser → S3 PUT. jsdom (the test env) ships
-// neither fetch nor Response, so install a plain mock and a duck-typed fake
-// response — the sidebar only reads `.ok` off the result.
-const okResponse = { ok: true, status: 200 } as unknown as Response;
+// neither fetch nor Response, so stub the global with a plain mock and a
+// duck-typed fake response — the sidebar only reads `.ok` off the result.
+const okResponse = { ok: true, status: 200 };
 const fetchSpy = vi.fn(async () => okResponse);
-(globalThis as unknown as { fetch: typeof fetch }).fetch = fetchSpy as unknown as typeof fetch;
+vi.stubGlobal("fetch", fetchSpy);
 
 beforeEach(() => {
   startEditRecipe.mockReset();

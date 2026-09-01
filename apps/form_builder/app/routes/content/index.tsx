@@ -23,7 +23,7 @@ import {
   linkableForms,
   type ViewLevel,
 } from "./-lib";
-import type { ContentPageSummary, OpenContentPR } from "./-server";
+import type { ContentPageSummary, ContentReviewClaim } from "./-server";
 import { useContentList } from "./-use-content-list";
 import { ErrorBanner } from "./-modals";
 import { usePersistedState } from "./-use-persisted";
@@ -111,27 +111,31 @@ interface ServiceRow {
   slots: PageSlot[];
 }
 
-/** Opens the PR in a new tab from inside a row that is itself a Link. */
-function PrBadge({ pr }: { pr: OpenContentPR }) {
-  const openPr = (e: React.SyntheticEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    window.open(pr.prUrl, "_blank", "noopener");
-  };
+function reviewLabel(pr: ContentReviewClaim): string {
+  if (pr.changeType === "removed") return "Removal in review";
+  if (pr.changeType === "renamed") return "Rename in review";
+  if (!pr.writable) return "Review in GitHub";
+  return "In review";
+}
+
+function PrBadge({
+  pr,
+  showNumber,
+}: {
+  pr: ContentReviewClaim;
+  showNumber: boolean;
+}) {
   return (
-    <span
+    <a
+      href={pr.prUrl}
+      target="_blank"
+      rel="noopener noreferrer"
       className={`${s.badge} ${s.badgePr} ${s.badgeClickable}`}
-      role="link"
-      tabIndex={0}
-      title={`Open pull request #${pr.prNumber}`}
-      onClick={openPr}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") openPr(e);
-      }}
+      aria-label={`Open pull request #${pr.prNumber}: ${reviewLabel(pr)}`}
     >
-      <GitPullRequestIcon size={11} style={{ marginRight: 3 }} />
-      In review
-    </span>
+      <GitPullRequestIcon size={11} aria-hidden="true" />
+      {showNumber ? `PR #${pr.prNumber}` : reviewLabel(pr)}
+    </a>
   );
 }
 
@@ -162,6 +166,14 @@ function ContentHome() {
         continue;
       }
       const slot = byForm.get(p.formId) ?? {};
+      const occupied = isStartPage(p.path) ? slot.start : slot.entry;
+      if (occupied) {
+        // Bad or transitional data can contain two files for the same service
+        // slot. Keep the extra path reachable as its own row instead of
+        // silently replacing whichever file was encountered first.
+        noForm.push(p);
+        continue;
+      }
       if (isStartPage(p.path)) slot.start = p;
       else slot.entry = p;
       byForm.set(p.formId, slot);
@@ -221,7 +233,7 @@ function ContentHome() {
         title: p.title || p.path.slice(CONTENT_ROOT.length),
         category: p.category,
         hasForm: false,
-        searchText: `${p.title} ${p.path}`.toLowerCase(),
+        searchText: `${p.title} ${p.formId} ${p.path}`.toLowerCase(),
         slots: [{ label: "Page", page: p }],
       }),
     );
@@ -231,7 +243,8 @@ function ContentHome() {
     );
   }, [forms, byForm, noForm]);
 
-  const hasPR = (p?: ContentPageSummary) => !!p && list.openPRs.has(p.path);
+  const hasPR = (p?: ContentPageSummary) =>
+    !!p && (list.openPRs.get(p.path)?.length ?? 0) > 0;
 
   function matchesStatus(row: ServiceRow): boolean {
     switch (statusFilter) {
@@ -272,6 +285,9 @@ function ContentHome() {
     [rows],
   );
 
+  // `useEffect` starts the request after the first paint, so `pages === null`
+  // is the reliable initial loading signal. The explicit error branch below
+  // still wins once loading fails.
   const loading = list.pages === null;
   const formRowsAll = rows.filter((r) => r.hasForm);
   const linkedCount = formRowsAll.filter((r) =>
@@ -280,8 +296,9 @@ function ContentHome() {
   const missingCount = formRowsAll.filter((r) =>
     r.slots.some((sl) => !sl.page),
   ).length;
-  const openPRCount = new Set([...list.openPRs.values()].map((p) => p.prNumber))
-    .size;
+  const openPRCount = new Set(
+    [...list.openPRs.values()].flat().map((claim) => claim.prNumber),
+  ).size;
 
   const toggle = (slug: string) =>
     setCollapsedList((cur) =>
@@ -290,26 +307,48 @@ function ContentHome() {
 
   function chip(slot: PageSlot) {
     if (slot.page) {
-      const pr = list.openPRs.get(slot.page.path);
+      const claims = list.openPRs.get(slot.page.path) ?? [];
+      const editable =
+        claims.length === 0 || (claims.length === 1 && claims[0].writable);
       const status =
         VISIBILITY_WORD[slot.page.visibility as ViewLevel] ?? "Live";
       const dot = STATUS_DOT[slot.page.visibility] ?? "dotLive";
       return (
-        <Link
-          key={slot.label}
-          to="/content/edit"
-          search={{ path: slot.page.path }}
-          className={`${s.chip} ${s.chipFilled}`}
-          title={slot.page.path.slice(CONTENT_ROOT.length)}
-        >
-          <PencilEdit02Icon size={13} />
-          {slot.label}
-          <span className={s.chipStatus}>
-            <span className={`${s.dot} ${s[dot]}`} />
-            {status}
-          </span>
-          {pr && <PrBadge pr={pr} />}
-        </Link>
+        <span key={slot.label} className={s.pageActions}>
+          {editable ? (
+            <Link
+              to="/content/edit"
+              search={{ path: slot.page.path }}
+              className={`${s.chip} ${s.chipFilled}`}
+              title={slot.page.path.slice(CONTENT_ROOT.length)}
+            >
+              <PencilEdit02Icon size={13} aria-hidden="true" />
+              {slot.label}
+              <span className={s.chipStatus}>
+                <span className={`${s.dot} ${s[dot]}`} aria-hidden="true" />
+                {status}
+              </span>
+            </Link>
+          ) : (
+            <span
+              className={`${s.chip} ${s.chipFilled} ${s.chipReadOnly}`}
+              title={slot.page.path.slice(CONTENT_ROOT.length)}
+            >
+              {slot.label}
+              <span className={s.chipStatus}>{status}</span>
+            </span>
+          )}
+          {claims.length > 1 && (
+            <span className={`${s.badge} ${s.badgeDraft}`}>Multiple PRs</span>
+          )}
+          {claims.map((claim) => (
+            <PrBadge
+              key={`${claim.prNumber}:${claim.path}:${claim.previousPath ?? ""}`}
+              pr={claim}
+              showNumber={claims.length > 1}
+            />
+          ))}
+        </span>
       );
     }
     return (
@@ -320,7 +359,7 @@ function ContentHome() {
         className={`${s.chip} ${s.chipMissing}`}
         title={`Create the ${slot.label.toLowerCase()} for this service`}
       >
-        <PlusSignIcon size={13} />
+        <PlusSignIcon size={13} aria-hidden="true" />
         {slot.label}
       </Link>
     );
@@ -368,7 +407,14 @@ function ContentHome() {
             <RefreshIcon size={15} />
             {list.loading ? "Refreshing…" : "Refresh"}
           </button>
-          <Link to="/content/edit" className={s.primaryBtn}>
+          <Link
+            to="/content/edit"
+            className={s.primaryBtn}
+            aria-disabled={list.loading || Boolean(list.loadError)}
+            onClick={(event) => {
+              if (list.loading || list.loadError) event.preventDefault();
+            }}
+          >
             <PlusSignIcon size={15} />
             New page
           </Link>
@@ -412,7 +458,9 @@ function ContentHome() {
                 <GitPullRequestIcon size={18} />
               </span>
               <span>
-                <div className={s.statValue}>{openPRCount}</div>
+                <div className={s.statValue}>
+                  {list.reviewSnapshot.complete ? openPRCount : "—"}
+                </div>
                 <div className={s.statLabel}>In review</div>
               </span>
             </div>
@@ -421,8 +469,18 @@ function ContentHome() {
 
         <div className={s.filterBar}>
           <div className={s.searchWrap}>
-            <Search01Icon size={15} className={s.searchIcon} />
+            <label className={s.srOnly} htmlFor="content-page-search">
+              Find a page by name
+            </label>
+            <Search01Icon
+              size={15}
+              className={s.searchIcon}
+              aria-hidden="true"
+            />
             <input
+              id="content-page-search"
+              name="content-page-search"
+              type="search"
               className={s.filterInput}
               placeholder="Find a page by name…"
               value={filter}
@@ -458,12 +516,43 @@ function ContentHome() {
         <ErrorBanner
           error={
             list.loadError
-              ? `Couldn’t load existing pages (${list.loadError}). You can still create pages.`
+              ? `Existing pages couldn’t be loaded (${list.loadError}). Refresh before creating or deploying a page.`
               : null
           }
         />
+        {list.reviewError && !list.loadError && (
+          <div className={s.recoveryBanner} role="alert">
+            <span>
+              {list.reviewError} You can keep drafting, but refresh before
+              deploying so an existing PR is not duplicated.
+            </span>
+            <button
+              type="button"
+              className={s.secondaryBtn}
+              onClick={() => list.refetch()}
+              disabled={list.loading}
+            >
+              Retry review check
+            </button>
+          </div>
+        )}
 
-        {loading ? (
+        {list.loadError && list.pages === null ? (
+          <div className={s.emptyState}>
+            <p>
+              Page creation is paused until the current repository inventory can
+              be loaded safely.
+            </p>
+            <button
+              type="button"
+              className={s.secondaryBtn}
+              onClick={() => list.refetch()}
+              disabled={list.loading}
+            >
+              Retry loading pages
+            </button>
+          </div>
+        ) : loading ? (
           <div className="t-skel" aria-busy="true" aria-label="Loading pages">
             <div
               className="t-skel-skeleton is-pulsing"
@@ -506,7 +595,20 @@ function ContentHome() {
             </div>
           </div>
         ) : groups.length === 0 ? (
-          <p className={s.modalNote}>No matching pages.</p>
+          <div className={s.emptyState}>
+            <p>No pages match the current search and filters.</p>
+            <button
+              type="button"
+              className={s.secondaryBtn}
+              onClick={() => {
+                setFilter("");
+                setCategoryFilter("");
+                setStatusFilter("all");
+              }}
+            >
+              Clear filters
+            </button>
+          </div>
         ) : (
           groups.map((g) => {
             const isCollapsed = collapsed.has(g.slug);
