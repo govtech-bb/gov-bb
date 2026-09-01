@@ -87,8 +87,8 @@ export function NoResultsPanel({
     if (anySlip.length > 0) {
       hatches.push({
         key: 'slip',
-        label: 'Show pharmacies for any slip colour',
-        caption: `${anySlip.length} of the ${PHARMACY_COUNT} pharmacies would match — check your slip is accepted before you travel.`,
+        label: 'Show pharmacies for any prescription colour',
+        caption: `${anySlip.length} of the ${PHARMACY_COUNT} pharmacies would match — check your prescription is accepted before you travel.`,
         action: { type: 'set-slip', value: 'any' },
       })
     }
@@ -168,7 +168,7 @@ function noResultsReason(filters: FilterState): string {
     sentence += ` matching “${query}”`
   }
   if (filters.slip !== 'any') {
-    sentence += ` accepting a ${filters.slip} slip`
+    sentence += ` accepting a ${filters.slip} prescription`
   }
   if (filters.parishes.length > 0) {
     sentence += ` in ${listJoin(filters.parishes)}`

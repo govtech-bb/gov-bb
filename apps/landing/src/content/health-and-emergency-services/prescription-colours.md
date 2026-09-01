@@ -10,7 +10,7 @@ publish_date: '2026-05-15'
 category: health-and-emergency-services
 service_type: information
 ---
-In Barbados, prescriptions are written on different coloured slips. The colour of the slip — the paper your doctor or clinic gives you — can help show which pharmacy can fill it. Where you can use your prescription also depends on where it came from.
+Prescriptions in Barbados come on different colours. The colour of your prescription can affect which pharmacy can fill it. Where you can use your prescription also depends on where it came from.
 
 ## Blue prescription
 

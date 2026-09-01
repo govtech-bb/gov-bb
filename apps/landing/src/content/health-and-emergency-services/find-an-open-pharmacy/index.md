@@ -34,9 +34,9 @@ Some pharmacies can lower or remove the cost of your prescription medication thr
 
 ## Prescription colours
 
-Prescriptions in Barbados come on different coloured slips. The colour of your slip can affect which pharmacy can fill it.
+Prescriptions in Barbados come on different colours. The colour of your prescription can affect which pharmacy can fill it.
 
-[Check what the prescription colours mean](/health-and-emergency-services/prescription-slip-colours)
+[Check what the prescription colours mean](/health-and-emergency-services/prescription-colours)
 
 ## Get help
 

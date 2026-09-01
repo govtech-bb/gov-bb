@@ -9,7 +9,7 @@ export const PHARMACY_FIND_HREF = `${PHARMACY_LANDING_HREF}/find`
 // Markdown guidance pages live at category level (the module's $slug route
 // owns every child URL of the service, so content pages cannot nest there).
 export const SLIP_COLOURS_HREF =
-  '/health-and-emergency-services/prescription-slip-colours'
+  '/health-and-emergency-services/prescription-colours'
 
 /** Canonical page for one pharmacy — the URL people share. */
 export function pharmacyDetailHref(name: string): string {

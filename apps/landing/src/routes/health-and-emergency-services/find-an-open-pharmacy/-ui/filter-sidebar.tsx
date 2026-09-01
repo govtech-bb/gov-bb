@@ -60,7 +60,7 @@ export function FilterSidebar({
       ? [
           {
             key: 'slip',
-            label: `${filters.slip.charAt(0).toUpperCase()}${filters.slip.slice(1)} slip`,
+            label: `${filters.slip.charAt(0).toUpperCase()}${filters.slip.slice(1)} prescription`,
             action: { type: 'set-slip', value: 'any' } as FilterAction,
           },
         ]
@@ -180,11 +180,11 @@ export function FilterSidebar({
             </FilterGroup>
 
             <FilterGroup
-              hint="The colour of the slip your doctor gave you. Yellow and green (GEHP) slips are filled at government pharmacies."
-              title="Prescription slip"
+              hint="The colour of the prescription your doctor gave you. Yellow and green (GEHP) prescriptions are filled at government pharmacies."
+              title="Prescription colour"
             >
               <Select
-                label="Slip colour"
+                label="Colour"
                 onChange={(event) =>
                   dispatch({
                     type: 'set-slip',
@@ -198,7 +198,7 @@ export function FilterSidebar({
                 }
                 value={filters.slip}
               >
-                <option value="any">Any slip</option>
+                <option value="any">Any colour</option>
                 <option value="white">White — Drug Service</option>
                 <option value="yellow">Yellow — GEHP</option>
                 <option value="green">Green — GEHP dependant</option>
