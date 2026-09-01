@@ -1,5 +1,5 @@
 ---
-title: Apply for a offensive trade licence with Environmental Health
+title: Apply for an offensive trade licence with Environmental Health
 stage: alpha
 publish_date: '2026-08-25'
 visibility: preview

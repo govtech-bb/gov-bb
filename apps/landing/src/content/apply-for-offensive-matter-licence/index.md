@@ -1,5 +1,5 @@
 ---
-title: Apply for a offensive matter licence with Environmental Health
+title: Apply for an offensive matter licence with Environmental Health
 description: >-
   Apply online to register or renew a licence to move human waste, rotting
   animal or plant waste, or other waste that could harm people’s health.

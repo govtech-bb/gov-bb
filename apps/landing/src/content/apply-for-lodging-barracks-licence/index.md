@@ -6,7 +6,7 @@ description: >-
 category: business-trade
 stage: alpha
 publish_date: '2026-08-25'
-visibility: draft
+visibility: preview
 form_id: apply-for-lodging-barracks-licence
 ---
 
@@ -54,7 +54,7 @@ There are 2 ways to apply for a lodging house or barracks licence. You can:
 
 2. ### Get a paper application from the polyclinic
 
-   You must complete it by hand and submit the application to the polyclinic associated with the district where the pool is located. If you require further information or assistance, contact the polyclinic - information can be found at the bottom of this page.
+   You must complete it by hand and submit the application to the polyclinic associated with the district where the barracks or lodging house is located. If you require further information or assistance, contact the polyclinic - information can be found at the bottom of this page.
 
 ## Cost
 

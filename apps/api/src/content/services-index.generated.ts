@@ -129,7 +129,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     title: "Apply for a barracks or lodging licence with Environmental Health",
     category: "business-trade",
     formId: "apply-for-lodging-barracks-licence",
-    visibility: "draft",
+    visibility: "preview",
   },
   {
     slug: "apply-for-multiple-birth-benefit",
@@ -140,14 +140,14 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-offensive-matter-licence",
-    title: "Apply for a offensive matter licence with Environmental Health",
+    title: "Apply for an offensive matter licence with Environmental Health",
     category: "business-trade",
     formId: "apply-for-offensive-matter-licence",
     visibility: "preview",
   },
   {
     slug: "apply-for-offensive-waste-licence",
-    title: "Apply for a offensive trade licence with Environmental Health",
+    title: "Apply for an offensive trade licence with Environmental Health",
     category: "business-trade",
     formId: "apply-for-offensive-waste-licence",
     visibility: "preview",
