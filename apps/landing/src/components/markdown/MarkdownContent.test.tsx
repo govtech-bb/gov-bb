@@ -55,6 +55,17 @@ describe('MarkdownBody', () => {
     expect(table).toContain('<th class="govbb-table__header" scope="row">')
   })
 
+  it('renders authored notice, action and details components', async () => {
+    const html = await renderBody(
+      ':::notice\nImportant information.\n:::\n\n:::actions\n::action[Continue]{href="/next"}\n:::\n\n:::details{summary="What you need"}\nBring identification.\n:::',
+    )
+
+    expect(html).toContain('Important information.')
+    expect(html).toContain('href="/next"')
+    expect(html).toContain('<details class="govbb-show-hide">')
+    expect(html).toContain('What you need')
+  })
+
   it('leaves prose tags bare for govbb-prose to style', async () => {
     const html = await renderBody('## Heading\n\ntext\n\n- one\n- two')
 

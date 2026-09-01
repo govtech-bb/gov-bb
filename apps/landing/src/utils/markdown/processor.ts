@@ -1,12 +1,15 @@
 import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkGfm from 'remark-gfm'
+import remarkDirective from 'remark-directive'
 import remarkRehype from 'remark-rehype'
 import rehypeRaw from 'rehype-raw'
 import rehypeSlug from 'rehype-slug'
 import rehypeAutolinkHeadings from 'rehype-autolink-headings'
 import type { Root } from 'hast'
-import { sanitizeUrls, tableScopes } from './plugins'
+import componentDirectives from './plugins/componentDirectives'
+import sanitizeUrls from './plugins/sanitizeUrls'
+import tableScopes from './plugins/tableScopes'
 
 type ProcessedMarkdown = {
   hast: Root
@@ -18,6 +21,8 @@ export async function processMarkdown(
   const processor = unified()
     .use(remarkParse)
     .use(remarkGfm)
+    .use(remarkDirective)
+    .use(componentDirectives)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
     .use(sanitizeUrls)

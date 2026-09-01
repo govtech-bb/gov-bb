@@ -9,6 +9,7 @@
     "./schemas": "./src/schemas.ts",
     "./form-categories": "./src/form-categories.ts",
     "./load": "./src/load.ts",
+    "./markdown-authoring": "./src/markdown-authoring.ts",
     "./types": "./src/types.ts"
   },
   "dependencies": {
