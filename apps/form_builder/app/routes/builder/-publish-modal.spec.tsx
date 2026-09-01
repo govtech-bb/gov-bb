@@ -4,7 +4,6 @@
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 import { PublishModal } from "./-publish-modal";
-import type { RecipeDraft } from "@govtech-bb/form-builder";
 
 const draft = {
   formId: "passport",

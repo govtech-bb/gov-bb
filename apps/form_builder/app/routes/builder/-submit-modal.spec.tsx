@@ -4,7 +4,6 @@
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 import { SubmitModal } from "./-submit-modal";
-import type { RecipeDraft } from "@govtech-bb/form-builder";
 
 // VITE_FORMS_URL is stubbed by ts-jest-mock-import-meta (see vi.config.ts).
 const draft = {
