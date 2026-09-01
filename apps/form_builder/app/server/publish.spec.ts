@@ -104,7 +104,7 @@ describe("publishRecipe", () => {
   // specifically testing the reuse path.
   function happyFetch() {
     return vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(noOpenPRs()) // GET open PRs — none match
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
@@ -122,7 +122,7 @@ describe("publishRecipe", () => {
 
   it("saves the draft, overwrites the flat recipe in place, and opens a PR", async () => {
     const fetchMock = happyFetch();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     const result = await publishRecipe({
       data: { recipe: RECIPE, description: "Updates passport-renewal" },
@@ -194,7 +194,7 @@ describe("publishRecipe", () => {
       createdAt: committedCreatedAt,
     });
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(noOpenPRs()) // GET open PRs — none match
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
@@ -213,7 +213,7 @@ describe("publishRecipe", () => {
           html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
         }),
       ); // POST pulls
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await publishRecipe({
       data: { recipe: RECIPE, description: "" },
@@ -241,7 +241,7 @@ describe("publishRecipe", () => {
     };
     const committed = JSON.stringify({ ...RECIPE, catchmentRouting });
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(noOpenPRs()) // GET open PRs — none match
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
@@ -260,7 +260,7 @@ describe("publishRecipe", () => {
           html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
         }),
       ); // POST pulls
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     // RECIPE has no catchmentRouting — exactly the draft that dropped it.
     await publishRecipe({
@@ -297,7 +297,7 @@ describe("publishRecipe", () => {
       },
     } as ServiceContractRecipe;
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(noOpenPRs()) // GET open PRs — none match
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
@@ -316,7 +316,7 @@ describe("publishRecipe", () => {
           html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
         }),
       ); // POST pulls
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     (api.post as Mock).mockResolvedValue({ ok: true, data: incoming });
     await publishRecipe({
@@ -336,7 +336,7 @@ describe("publishRecipe", () => {
 
   it("stamps a fresh createdAt on first publish (no existing file)", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(noOpenPRs()) // GET open PRs — none match
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
@@ -350,7 +350,7 @@ describe("publishRecipe", () => {
           html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
         }),
       ); // POST pulls
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await publishRecipe({
       data: { recipe: RECIPE, description: "" },
@@ -373,7 +373,7 @@ describe("publishRecipe", () => {
     // key order and re-deployed in another yields a diff of the changed lines
     // instead of the whole file.
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(noOpenPRs())
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
@@ -384,7 +384,7 @@ describe("publishRecipe", () => {
       .mockResolvedValueOnce(
         jsonResponse(201, { number: 42, html_url: "https://pr/42" }),
       );
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await publishRecipe({
       data: { recipe: RECIPE, description: "" },
@@ -413,8 +413,8 @@ describe("publishRecipe", () => {
       ok: false,
       issues: [{ path: "steps", message: "no steps" }],
     });
-    const fetchMock = vi.fn();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const fetchMock = vi.fn<typeof fetch>();
+    globalThis.fetch = fetchMock;
 
     await expect(
       publishRecipe({
@@ -428,8 +428,8 @@ describe("publishRecipe", () => {
 
   it("surfaces a read-only-lock conflict (409 on the save) and never touches GitHub", async () => {
     (api.put as Mock).mockRejectedValue(new ApiError(409, "conflict"));
-    const fetchMock = vi.fn();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const fetchMock = vi.fn<typeof fetch>();
+    globalThis.fetch = fetchMock;
 
     await expect(
       publishRecipe({
@@ -442,7 +442,7 @@ describe("publishRecipe", () => {
 
   it("deletes the branch when the contents PUT fails", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(noOpenPRs()) // GET open PRs — none match
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
@@ -451,7 +451,7 @@ describe("publishRecipe", () => {
       .mockResolvedValueOnce(jsonResponse(200, { sha: "blob" }))
       .mockResolvedValueOnce(emptyResponse(422)) // PUT fails
       .mockResolvedValueOnce(emptyResponse(204)); // DELETE branch cleanup
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await expect(
       publishRecipe({
@@ -470,7 +470,7 @@ describe("publishRecipe", () => {
   it("uses PUBLISH_BASE_BRANCH for the base ref and PR base when set", async () => {
     process.env.PUBLISH_BASE_BRANCH = "sandbox";
     const fetchMock = happyFetch();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await publishRecipe({
       data: { recipe: RECIPE, description: "" },
@@ -490,7 +490,7 @@ describe("publishRecipe", () => {
 
   it("reuses an already-open Deploy PR for this form: pushes onto its branch and comments, without creating a new branch", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       // GET open PRs — one already open for this exact form
       .mockResolvedValueOnce(
         jsonResponse(200, [
@@ -503,7 +503,7 @@ describe("publishRecipe", () => {
       .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c2" } }))
       // POST a PR comment with the author's description
       .mockResolvedValueOnce(jsonResponse(201, { id: 1 }));
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     const result = await publishRecipe({
       data: { recipe: RECIPE, description: "Bumped a copy typo" },
@@ -562,7 +562,7 @@ describe("publishRecipe", () => {
     };
     const committed = JSON.stringify({ ...RECIPE, catchmentRouting });
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(
         jsonResponse(200, [
           openPR(17, "form-builder/passport-renewal-1699999999999"),
@@ -575,7 +575,7 @@ describe("publishRecipe", () => {
         }),
       ) // GET the recipe on the PR branch (sha + content)
       .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c2" } })); // PUT
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     // RECIPE carries no catchmentRouting — the stale-draft case.
     await publishRecipe({
@@ -599,7 +599,7 @@ describe("publishRecipe", () => {
       title: "Passport",
     };
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       // GET open PRs — only "passport-renewal"'s PR is open, not "passport"'s
       .mockResolvedValueOnce(
         jsonResponse(200, [
@@ -618,7 +618,7 @@ describe("publishRecipe", () => {
           html_url: "https://github.com/govtech-bb/gov-bb/pull/43",
         }),
       ); // POST pulls — its own new PR
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     const result = await publishRecipe({
       data: { recipe: siblingRecipe, description: "" },
@@ -643,7 +643,7 @@ describe("publishRecipe", () => {
 
   it("an open Erase PR for this form does not satisfy the Deploy-PR lookup", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       // GET open PRs — only an Erase PR is open for this form
       .mockResolvedValueOnce(
         jsonResponse(200, [
@@ -662,7 +662,7 @@ describe("publishRecipe", () => {
           html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
         }),
       );
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     const result = await publishRecipe({
       data: { recipe: RECIPE, description: "" },
@@ -678,7 +678,7 @@ describe("publishRecipe", () => {
 
   it("posts no PR comment when the description is empty", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(
         jsonResponse(200, [
           openPR(17, "form-builder/passport-renewal-1699999999999"),
@@ -686,7 +686,7 @@ describe("publishRecipe", () => {
       )
       .mockResolvedValueOnce(jsonResponse(200, { sha: "pr-blob-sha" }))
       .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c2" } }));
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     const result = await publishRecipe({
       // Whitespace-only trims to empty — carries no information a comment
@@ -701,7 +701,7 @@ describe("publishRecipe", () => {
 
   it("resolves the reuse deploy successfully even when the PR comment POST fails", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(
         jsonResponse(200, [
           openPR(17, "form-builder/passport-renewal-1699999999999"),
@@ -710,7 +710,7 @@ describe("publishRecipe", () => {
       .mockResolvedValueOnce(jsonResponse(200, { sha: "pr-blob-sha" }))
       .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c2" } }))
       .mockResolvedValueOnce(jsonResponse(500, { message: "boom" })); // comment POST fails
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const result = await publishRecipe({
@@ -730,7 +730,7 @@ describe("publishRecipe", () => {
 
   it("does not DELETE the existing PR's branch when the reuse-path write fails", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(
         jsonResponse(200, [
           openPR(17, "form-builder/passport-renewal-1699999999999"),
@@ -738,7 +738,7 @@ describe("publishRecipe", () => {
       )
       .mockResolvedValueOnce(jsonResponse(200, { sha: "pr-blob-sha" }))
       .mockResolvedValueOnce(emptyResponse(422)); // PUT fails
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await expect(
       publishRecipe({
@@ -760,7 +760,7 @@ describe("publishRecipe", () => {
 describe("listOpenDeployPRs", () => {
   it("maps open Deploy branches to their formId, dropping Erase and non-Deploy refs", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(
         jsonResponse(200, [
           openPR(17, "form-builder/passport-renewal-1699999999999"),
@@ -768,7 +768,7 @@ describe("listOpenDeployPRs", () => {
           openPR(9, "start-page-some-service-1699999999999"),
         ]),
       );
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     const result = await listOpenDeployPRs({ context: { session: SESSION } });
 
@@ -802,7 +802,7 @@ describe("eraseRecipe", () => {
 
   it("opens a single-commit folder-delete PR on the happy path", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       // listVersions: directory listing on the base branch
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.0.0", "1.1.0"])))
       // get base ref
@@ -830,7 +830,7 @@ describe("eraseRecipe", () => {
           html_url: "https://github.com/govtech-bb/gov-bb/pull/99",
         }),
       );
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     const result = await eraseRecipe({
       data: ERASE,
@@ -938,8 +938,8 @@ describe("eraseRecipe", () => {
 
   it("refuses (no branch, no PR) when the form is disabled", async () => {
     (api.get as Mock).mockResolvedValue(["passport-renewal"]);
-    const fetchMock = vi.fn();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const fetchMock = vi.fn<typeof fetch>();
+    globalThis.fetch = fetchMock;
 
     await expect(
       eraseRecipe({ data: ERASE, context: { session: SESSION } }),
@@ -951,10 +951,10 @@ describe("eraseRecipe", () => {
 
   it("refuses (no branch, no PR) when the folder has no versions to erase", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       // listVersions: empty folder (404 -> [])
       .mockResolvedValueOnce(emptyResponse(404));
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await expect(
       eraseRecipe({ data: ERASE, context: { session: SESSION } }),
@@ -966,7 +966,7 @@ describe("eraseRecipe", () => {
 
   it("cleans up the branch when tree creation fails", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.0.0"])))
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
@@ -979,7 +979,7 @@ describe("eraseRecipe", () => {
       .mockResolvedValueOnce(jsonResponse(422, { message: "boom" }))
       // cleanup DELETE
       .mockResolvedValueOnce(emptyResponse(204));
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await expect(
       eraseRecipe({ data: ERASE, context: { session: SESSION } }),
@@ -994,14 +994,14 @@ describe("eraseRecipe", () => {
 
   it("does not attempt cleanup when branch creation fails", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.0.0"])))
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
       )
       // create branch fails
       .mockResolvedValueOnce(jsonResponse(422, { message: "ref exists" }));
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await expect(
       eraseRecipe({ data: ERASE, context: { session: SESSION } }),
@@ -1014,7 +1014,7 @@ describe("eraseRecipe", () => {
   it("erases on the configured PUBLISH_BASE_BRANCH when set", async () => {
     process.env.PUBLISH_BASE_BRANCH = "sandbox";
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.0.0"])))
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "sandboxsha" } }),
@@ -1032,7 +1032,7 @@ describe("eraseRecipe", () => {
           html_url: "https://github.com/govtech-bb/gov-bb/pull/7",
         }),
       );
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await eraseRecipe({ data: ERASE, context: { session: SESSION } });
 
@@ -1049,7 +1049,7 @@ describe("eraseRecipe", () => {
 
   it("cleans up the branch when PR creation (final step) fails", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.0.0"])))
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
@@ -1067,7 +1067,7 @@ describe("eraseRecipe", () => {
       .mockResolvedValueOnce(jsonResponse(500, { message: "internal" }))
       // cleanup DELETE
       .mockResolvedValueOnce(emptyResponse(204));
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await expect(
       eraseRecipe({ data: ERASE, context: { session: SESSION } }),
@@ -1081,8 +1081,8 @@ describe("eraseRecipe", () => {
   });
 
   it("rejects an empty reason without consulting the disabled index or GitHub", async () => {
-    const fetchMock = vi.fn();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const fetchMock = vi.fn<typeof fetch>();
+    globalThis.fetch = fetchMock;
 
     // The reason is the audit trail for a permanent delete — the server (not
     // just the bypassable client modal) must require it.
@@ -1105,8 +1105,8 @@ describe("formId validation (#293)", () => {
   const TRAVERSAL_ID = "../../../.github/workflows/evil";
 
   it("publishRecipe rejects a traversal formId before any GitHub/API call", async () => {
-    const fetchMock = vi.fn();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const fetchMock = vi.fn<typeof fetch>();
+    globalThis.fetch = fetchMock;
 
     await expect(
       publishRecipe({
@@ -1121,8 +1121,8 @@ describe("formId validation (#293)", () => {
   });
 
   it("eraseRecipe rejects a traversal formId before any GitHub/API call", async () => {
-    const fetchMock = vi.fn();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const fetchMock = vi.fn<typeof fetch>();
+    globalThis.fetch = fetchMock;
 
     await expect(
       eraseRecipe({

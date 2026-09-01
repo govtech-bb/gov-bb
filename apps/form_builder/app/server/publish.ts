@@ -66,14 +66,14 @@ const BUILDER_AUTHORED_RECIPE_FIELDS = new Set([
  */
 function carryUnauthoredFields(
   committed: Record<string, unknown> | undefined,
-  published: object,
+  published: Record<string, unknown>,
 ): Record<string, unknown> {
   if (!committed) return {};
   return Object.fromEntries(
     Object.entries(committed).filter(
       ([key, value]) =>
         !BUILDER_AUTHORED_RECIPE_FIELDS.has(key) &&
-        (published as Record<string, unknown>)[key] === undefined &&
+        published[key] === undefined &&
         value !== undefined,
     ),
   );

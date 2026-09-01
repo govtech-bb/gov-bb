@@ -11,7 +11,7 @@ const draft = {
   title: "Passport Application",
   description: "",
   steps: [],
-} as unknown as RecipeDraft;
+};
 
 function renderModal(
   props: Partial<React.ComponentProps<typeof PublishModal>> = {},
