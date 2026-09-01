@@ -17,7 +17,7 @@ export function WeeklyHoursRows({
   today: Weekday | null
 }) {
   return (
-    <dl className="m-0 flex flex-col divide-y divide-grey-00">
+    <dl className="m-0 flex flex-col divide-y divide-grey-20">
       {WEEKDAYS.map((weekday) => {
         const isToday = weekday === today
         const label = dayHoursLabel(hours[weekday])
@@ -35,7 +35,7 @@ export function WeeklyHoursRows({
             </dt>
             <dd
               className={`m-0 text-right tabular-nums ${
-                !isToday && label === 'Closed' ? 'text-mid-grey-00' : ''
+                !isToday && label === 'Closed' ? 'text-grey-70' : ''
               }`}
             >
               {label}

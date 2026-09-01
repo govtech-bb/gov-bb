@@ -99,9 +99,6 @@ export interface Pharmacy {
 }
 
 export const PHARMACIES_LAST_UPDATED = '2026-08-31'
-export const PHARMACIES_NEXT_REVIEW = '2027-01-01'
-/** When the Drug Service register of government dispensaries was verified. */
-export const REGISTER_VERIFIED = 'May 2026'
 /** When the Drug Service supplied the Active PPP list. */
 export const PPP_LIST_UPDATED = 'August 2026'
 

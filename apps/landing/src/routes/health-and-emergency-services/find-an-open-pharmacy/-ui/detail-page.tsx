@@ -12,10 +12,7 @@ import { Heading, Link, LinkButton, Text } from '@govtech-bb/react'
 import { format, parseISO } from 'date-fns'
 import { useEffect, useState } from 'react'
 import type { Pharmacy } from '../-data/pharmacies'
-import {
-  PHARMACIES_LAST_UPDATED,
-  PHARMACIES_NEXT_REVIEW,
-} from '../-data/pharmacies'
+import { PHARMACIES_LAST_UPDATED } from '../-data/pharmacies'
 import { barbadosWallClock } from '../-lib/opening-hours'
 import {
   DRUG_SERVICE_PHONE,
@@ -48,14 +45,15 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
   const hasPlace = pharmacy.parish !== 'All parishes'
   const whatsapp = whatsappHref(pharmacy)
 
+  const provenance = provenanceNote(pharmacy)
+
   return (
     <div className="mb-l flex max-w-2xl flex-col gap-m">
       <div className="flex flex-col gap-xs">
         <Heading as="h1">{pharmacy.name}</Heading>
-        <div className="border-blue-10 border-b-4 pb-4 text-mid-grey-00">
+        <div className="border-blue-10 border-b-4 pb-4 text-grey-70">
           <Text as="p" size="body-sm">
             Last updated on {format(parseISO(PHARMACIES_LAST_UPDATED), 'PPP')}.
-            Next review: {format(parseISO(PHARMACIES_NEXT_REVIEW), 'PPP')}.
           </Text>
         </div>
         <div className="min-h-5">
@@ -110,7 +108,7 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
           </Caveat>
         )}
         {pharmacy.notes && <Caveat tone="confidence">{pharmacy.notes}</Caveat>}
-        <div className="border-blue-100 border-l-4 bg-blue-10 px-s py-xm">
+        <div className="border-blue-40 border-l-4 bg-blue-10 px-s py-xm">
           <Text as="p">
             <strong>Public holidays:</strong> many pharmacies close or shorten
             their hours on public holidays. Call before you go.
@@ -147,8 +145,8 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
             </Link>
           </Caveat>
         )}
-        <Text as="p" className="text-mid-grey-00" size="body-sm">
-          {provenanceNote(pharmacy)} Opening hours and Drug Service
+        <Text as="p" className="text-grey-70" size="body-sm">
+          {provenance ? `${provenance} ` : null}Opening hours and Drug Service
           participation can change — call ahead to confirm.
         </Text>
       </section>

@@ -43,10 +43,11 @@ export function PharmacyCard({
   printOnly?: boolean
 }) {
   const hasPlace = pharmacy.parish !== 'All parishes'
+  const provenance = provenanceNote(pharmacy)
 
   return (
     <li
-      className={`flex-col gap-3 rounded-lg border border-grey-00 bg-white-00 p-5 ${
+      className={`flex-col gap-3 rounded-lg border border-grey-20 bg-white-00 p-5 ${
         printOnly ? 'hidden print:flex' : 'flex'
       }`}
     >
@@ -65,7 +66,7 @@ export function PharmacyCard({
 
       <CostChip pharmacy={pharmacy} />
 
-      <div className="flex flex-col gap-1 text-mid-grey-00 text-sm">
+      <div className="flex flex-col gap-1 text-grey-70 text-sm">
         <p className="inline-flex items-start gap-2">
           <span className="mt-0.75">
             <MapPinIcon />
@@ -73,7 +74,7 @@ export function PharmacyCard({
           {pharmacy.address}
         </p>
         {distanceKm !== null && (
-          <p className="inline-flex items-start gap-2 font-semibold text-blue-100">
+          <p className="inline-flex items-start gap-2 font-semibold text-blue-40">
             <span className="mt-0.75">
               <MapPinIcon />
             </span>
@@ -131,15 +132,17 @@ export function PharmacyCard({
         {pharmacy.phone ? (
           <p className="hidden print:block">Call {pharmacy.phone}</p>
         ) : (
-          <Text as="p" className="text-mid-grey-00" size="body-sm">
+          <Text as="p" className="text-grey-70" size="body-sm">
             No number listed. Call the Drug Service on{' '}
             <Link href={telHref(DRUG_SERVICE_PHONE)}>{DRUG_SERVICE_PHONE}</Link>
             .
           </Text>
         )}
-        <Text as="p" className="font-medium text-mid-grey-00" size="body-sm">
-          {provenanceNote(pharmacy)}
-        </Text>
+        {provenance && (
+          <Text as="p" className="font-medium text-grey-70" size="body-sm">
+            {provenance}
+          </Text>
+        )}
       </div>
     </li>
   )

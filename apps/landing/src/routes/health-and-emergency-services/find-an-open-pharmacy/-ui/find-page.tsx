@@ -8,10 +8,7 @@
 
 import { Heading, Link, Text } from '@govtech-bb/react'
 import { format, parseISO } from 'date-fns'
-import {
-  PHARMACIES_LAST_UPDATED,
-  PHARMACIES_NEXT_REVIEW,
-} from '../-data/pharmacies'
+import { PHARMACIES_LAST_UPDATED } from '../-data/pharmacies'
 import { DRUG_SERVICE_PHONE, telHref } from '../-lib/routes'
 import { PharmacyFinder } from './pharmacy-finder'
 
@@ -24,15 +21,14 @@ export function FindOpenPharmacyPage() {
     <div className="mb-l flex flex-col gap-m">
       <div className="flex flex-col gap-xs">
         <Heading as="h1">{TITLE}</Heading>
-        <div className="border-blue-10 border-b-4 pb-4 text-mid-grey-00">
+        <div className="border-blue-10 border-b-4 pb-4 text-grey-70">
           <Text as="p" size="body-sm">
             Last updated on {format(parseISO(PHARMACIES_LAST_UPDATED), 'PPP')}.
-            Next review: {format(parseISO(PHARMACIES_NEXT_REVIEW), 'PPP')}.
           </Text>
         </div>
       </div>
 
-      <Text as="p" className="text-mid-grey-00">
+      <Text as="p" className="text-grey-70">
         Pharmacies that give free or cheaper prescription medication across
         Barbados. Government polyclinic pharmacies are free; private
         pharmacies in the Drug Service subsidy charge a small dispensing fee.
@@ -44,12 +40,12 @@ export function FindOpenPharmacyPage() {
 
       <aside
         aria-labelledby="sources-heading"
-        className="flex flex-col gap-xs border-grey-00 border-t pt-m"
+        className="flex flex-col gap-xs border-grey-20 border-t pt-m"
       >
         <Heading as="h2" id="sources-heading" size="h3">
           Where this information comes from
         </Heading>
-        <Text as="p" className="text-mid-grey-00">
+        <Text as="p" className="text-grey-70">
           Government pharmacies come from the Drug Service register, verified
           May 2026. Pharmacies marked “Small fee” are on the Drug Service
           Active PPP list, supplied August 2026. Pharmacies marked “Full
@@ -61,7 +57,7 @@ export function FindOpenPharmacyPage() {
 
       <aside
         aria-labelledby="drug-service-heading"
-        className="flex flex-col gap-xs border-grey-00 border-t pt-m"
+        className="flex flex-col gap-xs border-grey-20 border-t pt-m"
       >
         <Heading as="h2" id="drug-service-heading" size="h3">
           Drug Service
