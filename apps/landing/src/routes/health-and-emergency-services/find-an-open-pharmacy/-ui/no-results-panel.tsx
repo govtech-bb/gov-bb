@@ -129,7 +129,7 @@ export function NoResultsPanel({
   }
 
   return (
-    <div className="flex flex-col gap-s rounded-lg bg-grey-00 p-s">
+    <div className="flex flex-col gap-s rounded-lg bg-grey-20 p-s">
       <Heading as="h3" size="h4">
         No pharmacies match your search
       </Heading>
@@ -138,14 +138,14 @@ export function NoResultsPanel({
         {hatches.map((hatch) => (
           <li key={hatch.key}>
             <button
-              className="flex w-full flex-col gap-xxs rounded-md bg-white-00 p-s text-left outline-offset-2 hover:outline hover:outline-2 hover:outline-green-00"
+              className="flex w-full flex-col gap-xxs rounded-md bg-white-00 p-s text-left outline-offset-2 hover:outline hover:outline-2 hover:outline-green-80"
               onClick={() => dispatch(hatch.action)}
               type="button"
             >
-              <span className="font-semibold text-green-00 underline">
+              <span className="font-semibold text-green-80 underline">
                 {hatch.label}
               </span>
-              <Text as="span" className="text-mid-grey-00" size="body-sm">
+              <Text as="span" className="text-grey-70" size="body-sm">
                 {hatch.caption}
               </Text>
             </button>

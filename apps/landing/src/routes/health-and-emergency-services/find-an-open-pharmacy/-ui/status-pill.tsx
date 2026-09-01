@@ -7,11 +7,7 @@
 
 import { Text } from '@govtech-bb/react'
 import type { Pharmacy, PharmacyType } from '../-data/pharmacies'
-import {
-  PPP_LIST_UPDATED,
-  REGISTER_VERIFIED,
-  WEEKDAYS,
-} from '../-data/pharmacies'
+import { PPP_LIST_UPDATED, WEEKDAYS } from '../-data/pharmacies'
 import {
   barbadosWallClock,
   formatTime,
@@ -40,7 +36,7 @@ export function StatusSkeleton() {
   return (
     <p
       aria-hidden="true"
-      className="h-4 w-44 max-w-full animate-pulse rounded bg-grey-00 motion-reduce:animate-none"
+      className="h-4 w-44 max-w-full animate-pulse rounded bg-grey-20 motion-reduce:animate-none"
     />
   )
 }
@@ -62,8 +58,8 @@ export function StatusLine({
 
   if (status === null) {
     return (
-      <Text as="p" className="font-bold text-mid-grey-00" size="body-sm">
-        <Dot className="bg-mid-grey-00" />
+      <Text as="p" className="font-bold text-grey-70" size="body-sm">
+        <Dot className="bg-grey-70" />
         Hours not confirmed
       </Text>
     )
@@ -75,19 +71,19 @@ export function StatusLine({
     if (minutesLeft <= CLOSING_SOON_MINUTES) {
       return (
         <Text as="p" className="font-bold" size="body-sm">
-          <Dot className="bg-yellow-00" />
+          <Dot className="bg-yellow-80" />
           Closes in {minutesLeft} min{' '}
-          <span className="font-normal text-mid-grey-00">
+          <span className="font-normal text-grey-70">
             at {formatTime(status.closes)}
           </span>
         </Text>
       )
     }
     return (
-      <Text as="p" className="font-bold text-green-00" size="body-sm">
-        <Dot className="bg-green-00" />
+      <Text as="p" className="font-bold text-green-80" size="body-sm">
+        <Dot className="bg-green-80" />
         Open{' '}
-        <span className="font-normal text-mid-grey-00">
+        <span className="font-normal text-grey-70">
           until {formatTime(status.closes)}
         </span>
       </Text>
@@ -110,8 +106,8 @@ export function StatusLine({
   }
 
   return (
-    <Text as="p" className="font-bold text-mid-grey-00" size="body-sm">
-      <Dot className="bg-mid-grey-00" />
+    <Text as="p" className="font-bold text-grey-70" size="body-sm">
+      <Dot className="bg-grey-70" />
       Closed
       {opensPart && <span className="font-normal"> · {opensPart}</span>}
     </Text>
@@ -125,27 +121,26 @@ export function StatusLine({
 const COST_TAGS = {
   government: {
     label: 'Free — government polyclinic',
-    className: 'bg-green-10 text-green-100',
+    className: 'bg-green-10 text-green-80',
   },
   'private-sbs': {
     label: 'Small fee — private pharmacy',
-    className: 'bg-teal-10 text-teal-00',
+    className: 'bg-teal-10 text-teal-80',
   },
   private: {
     label: 'Full price — not in the subsidy',
-    className: 'bg-grey-00 text-mid-grey-00',
+    className: 'bg-grey-20 text-grey-70',
   },
 } as const
 
 /** Where the record came from, and how fresh it is. */
 const PROVENANCE = {
-  government: `Confirmed with the Drug Service register, ${REGISTER_VERIFIED}.`,
   'private-sbs': `On the Drug Service Active PPP list, ${PPP_LIST_UPDATED}.`,
   private: 'Not on the Drug Service list of participating pharmacies.',
-} satisfies Record<PharmacyType, string>
+} satisfies Partial<Record<PharmacyType, string>>
 
-export function provenanceNote(pharmacy: Pharmacy): string {
-  return PROVENANCE[pharmacy.type]
+export function provenanceNote(pharmacy: Pharmacy): string | undefined {
+  return PROVENANCE[pharmacy.type as keyof typeof PROVENANCE]
 }
 
 export function CostChip({ pharmacy }: { pharmacy: Pharmacy }) {

@@ -90,7 +90,7 @@ export function FilterSidebar({
         <button
           aria-controls="pharmacy-filter-panel"
           aria-expanded={filterOpen}
-          className="flex w-full items-center gap-xs border-mid-grey-00 border-b py-3 text-green-00"
+          className="flex w-full items-center gap-xs border-grey-70 border-b py-3 text-green-80"
           onClick={() => setFilterOpen((open) => !open)}
           type="button"
         >
@@ -100,7 +100,7 @@ export function FilterSidebar({
 
         {filterOpen && (
           <div
-            className="flex flex-col gap-xm border-grey-00 border-b bg-grey-00 p-xm"
+            className="flex flex-col gap-xm border-grey-20 border-b bg-grey-20 p-xm"
             id="pharmacy-filter-panel"
           >
             <div className="flex flex-col gap-xs">
@@ -125,7 +125,7 @@ export function FilterSidebar({
                 <Text
                   aria-live="polite"
                   as="p"
-                  className="text-mid-grey-00"
+                  className="text-grey-70"
                   size="body-sm"
                 >
                   {locationStatus}
@@ -240,7 +240,7 @@ export function FilterSidebar({
             <div className="flex flex-wrap items-center gap-xs">
               {tags.map((tag) => (
                 <button
-                  className="inline-flex items-center gap-2 bg-teal-10 p-2.5 font-medium hover:bg-teal-40"
+                  className="inline-flex items-center gap-2 bg-teal-10 p-2.5 font-medium hover:bg-teal-20"
                   key={tag.key}
                   onClick={() => dispatch(tag.action)}
                   type="button"
@@ -252,7 +252,7 @@ export function FilterSidebar({
               ))}
             </div>
             <button
-              className="self-start font-semibold text-red-00 underline"
+              className="self-start font-semibold text-red-80 underline"
               onClick={() => {
                 dispatch({ type: 'clear-all' })
                 onClearLocation()
@@ -281,7 +281,7 @@ function FilterGroup({
 }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="flex w-full flex-col gap-s border-mid-grey-00 border-b pb-s">
+    <div className="flex w-full flex-col gap-s border-grey-70 border-b pb-s">
       <button
         aria-expanded={open}
         className="flex w-full items-center justify-between gap-2.5"
@@ -291,14 +291,14 @@ function FilterGroup({
         <Heading as="h3" size="h4">
           {title}
         </Heading>
-        <span className="text-teal-00">
+        <span className="text-teal-80">
           <Chevron open={open} />
         </span>
       </button>
       {open && (
         <div className="flex flex-col gap-s">
           {hint && (
-            <Text as="p" className="text-mid-grey-00" size="body-sm">
+            <Text as="p" className="text-grey-70" size="body-sm">
               {hint}
             </Text>
           )}

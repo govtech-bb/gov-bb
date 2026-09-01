@@ -19,9 +19,9 @@ import {
 import { CheckIcon, CrossIcon } from './icons'
 
 const SWATCH_CLASSES = {
-  white: 'bg-white-00 border-grey-00',
-  yellow: 'bg-yellow-40 border-yellow-00',
-  green: 'bg-green-10 border-green-00',
+  white: 'bg-white-00 border-grey-20',
+  yellow: 'bg-yellow-20 border-yellow-80',
+  green: 'bg-green-10 border-green-80',
 } satisfies Record<SlipColour, string>
 
 function slipDescription(pharmacy: Pharmacy, slip: SlipColour): string {
@@ -44,19 +44,19 @@ function slipDescription(pharmacy: Pharmacy, slip: SlipColour): string {
 
 function SlipRow({ pharmacy, slip }: { pharmacy: Pharmacy; slip: SlipColour }) {
   const mark = acceptsSlip(pharmacy, slip) ? (
-    <span className="text-green-00">
+    <span className="text-green-80">
       <CheckIcon />
       <span className="sr-only">Accepted</span>
     </span>
   ) : (
-    <span className="text-red-00">
+    <span className="text-red-80">
       <CrossIcon />
       <span className="sr-only">Not accepted</span>
     </span>
   )
 
   return (
-    <li className="flex items-start gap-s rounded-lg border border-grey-00 bg-white-00 p-s">
+    <li className="flex items-start gap-s rounded-lg border border-grey-20 bg-white-00 p-s">
       <span
         aria-hidden="true"
         className={`mt-0.75 h-5 w-8 shrink-0 rounded-sm border ${SWATCH_CLASSES[slip]}`}
@@ -64,7 +64,7 @@ function SlipRow({ pharmacy, slip }: { pharmacy: Pharmacy; slip: SlipColour }) {
       <span className="mt-0.75">{mark}</span>
       <div className="flex flex-col gap-xxs">
         <p className="font-bold">{SLIP_LABELS[slip]}</p>
-        <Text as="p" className="text-mid-grey-00" size="body-sm">
+        <Text as="p" className="text-grey-70" size="body-sm">
           {slipDescription(pharmacy, slip)}
         </Text>
       </div>
@@ -78,7 +78,7 @@ export function SlipsAccepted({ pharmacy }: { pharmacy: Pharmacy }) {
       <Heading as="h2" id="slips-accepted" size="h3">
         Prescriptions accepted
       </Heading>
-      <Text as="p" className="text-mid-grey-00">
+      <Text as="p" className="text-grey-70">
         Check the colour of the prescription your doctor gave you before you travel.{' '}
         <Link href={SLIP_COLOURS_HREF}>What prescription colours mean</Link>
       </Text>

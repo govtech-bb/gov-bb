@@ -179,7 +179,7 @@ export function PharmacyFinder() {
     <section aria-label="Pharmacy finder">
       <Text
         as="p"
-        className="mb-s text-mid-grey-00 print:hidden"
+        className="mb-s text-grey-70 print:hidden"
         size="body-sm"
       >
         <button
@@ -212,7 +212,7 @@ export function PharmacyFinder() {
               <Text as="p" className="mb-xxs font-bold" role="status">
                 {resultCountLabel(visiblePharmacies.length, results.length)}
               </Text>
-              <Text as="p" className="mb-s text-mid-grey-00" size="body-sm">
+              <Text as="p" className="mb-s text-grey-70" size="body-sm">
                 {filters.subsidisedOnly ? (
                   <>
                     Showing pharmacies that give free or cheaper medication.{' '}
@@ -318,9 +318,9 @@ function LoadingResults() {
     <div className="flex flex-col items-center gap-s py-l" role="status">
       <span
         aria-hidden="true"
-        className="size-8 animate-spin rounded-full border-4 border-grey-00 border-t-green-00 motion-reduce:animate-none"
+        className="size-8 animate-spin rounded-full border-4 border-grey-20 border-t-green-80 motion-reduce:animate-none"
       />
-      <Text as="p" className="text-mid-grey-00">
+      <Text as="p" className="text-grey-70">
         Loading pharmacies…
       </Text>
       <noscript>
