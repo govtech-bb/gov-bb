@@ -335,13 +335,6 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
-    slug: "get-food-safety-checks-and-approvals",
-    title: "Get food safety checks and approvals from Environmental Health",
-    category: "business-trade",
-    formId: "food-safety-licence-application",
-    visibility: "preview",
-  },
-  {
     slug: "get-marriage-certificate",
     title: "Get a copy of a marriage certificate",
     category: "family-birth-relationships",
@@ -464,20 +457,6 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     title: "Register for the Seniors' Recreational Activities Programme",
     category: "social-empowerment",
     formId: "seniors-recreational-activities-programme",
-    visibility: "preview",
-  },
-  {
-    slug: "register-guest-property-environmental-health",
-    title: "Register a guest property with Environmental Health",
-    category: "business-trade",
-    formId: "register-guest-property-environmental-health",
-    visibility: "preview",
-  },
-  {
-    slug: "register-personal-care-business",
-    title: "Register a personal care business with Environmental Health",
-    category: "business-trade",
-    formId: "register-personal-care-business",
     visibility: "preview",
   },
   {

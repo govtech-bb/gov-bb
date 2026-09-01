@@ -314,16 +314,6 @@ describe("programme codes are unchanged by composition (golden)", () => {
       "Sir Winston Scott Polyclinic": "SWIMMING_POOL_LICENCE_WINSTON_SCOTT",
       "St. Philip Polyclinic": "SWIMMING_POOL_LICENCE_ST_PHILIP",
     },
-    "register-guest-property-environmental-health": {
-      "Branford Taitt Polyclinic": "GUEST_PROPERTY_BRANFORD_TAITT",
-      "David Thompson Health & Social Services Complex":
-        "GUEST_PROPERTY_DAVID_THOMPSON",
-      "Eunice Gibson Polyclinic": "GUEST_PROPERTY_EUNICE_GIBSON",
-      "Maurice Byer Polyclinic": "GUEST_PROPERTY_MAURICE_BYER",
-      "Randal Phillips Polyclinic": "GUEST_PROPERTY_RANDAL_PHILLIPS",
-      "Sir Winston Scott Polyclinic": "GUEST_PROPERTY_WINSTON_SCOTT",
-      "St. Philip Polyclinic": "GUEST_PROPERTY_ST_PHILIP",
-    },
     "apply-for-funeral-establishment-licence": {
       "Branford Taitt Polyclinic":
         "FUNERAL_ESTABLISHMENT_LICENCE_BRANFORD_TAITT",

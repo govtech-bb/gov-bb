@@ -42,6 +42,7 @@ import { CreateCatchmentContact1785500000000 } from "./migrations/1785500000000-
 import { RenameHotelLicenceFormId1787682865564 } from "./migrations/1787682865564-RenameHotelLicenceFormId";
 import { RenameSwimmingPoolFormId1787769265564 } from "./migrations/1787769265564-RenameSwimmingPoolFormId";
 import { RenameTemporaryRestaurantFormId1787855665564 } from "./migrations/1787855665564-RenameTemporaryRestaurantFormId";
+import { DeleteSupersededEnvironmentalHealthForms1787942065564 } from "./migrations/1787942065564-DeleteSupersededEnvironmentalHealthForms";
 import { RenameEnvironmentalHealthFormIds1788028465564 } from "./migrations/1788028465564-RenameEnvironmentalHealthFormIds";
 
 export const entities = [
@@ -87,6 +88,7 @@ export const migrations = [
   RenameHotelLicenceFormId1787682865564,
   RenameSwimmingPoolFormId1787769265564,
   RenameTemporaryRestaurantFormId1787855665564,
+  DeleteSupersededEnvironmentalHealthForms1787942065564,
   RenameEnvironmentalHealthFormIds1788028465564,
 ];
 
