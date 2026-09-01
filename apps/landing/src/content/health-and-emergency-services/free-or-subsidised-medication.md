@@ -68,9 +68,9 @@ Photocopies are not accepted.
 
 ## Prescription colour
 
-The colour of your prescription slip — the paper your doctor or clinic gives you — can affect which pharmacies can fill it.
+The colour of your prescription can affect which pharmacies can fill it.
 
-[Check what the prescription colours mean](/health-and-emergency-services/prescription-slip-colours)
+[Check what the prescription colours mean](/health-and-emergency-services/prescription-colours)
 
 ## Need help at the pharmacy?
 

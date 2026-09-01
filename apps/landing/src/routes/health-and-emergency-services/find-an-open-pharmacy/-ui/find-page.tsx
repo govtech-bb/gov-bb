@@ -36,7 +36,7 @@ export function FindOpenPharmacyPage() {
         Pharmacies that give free or cheaper prescription medication across
         Barbados. Government polyclinic pharmacies are free; private
         pharmacies in the Drug Service subsidy charge a small dispensing fee.
-        Set your prescription slip colour to hide the pharmacies that cannot
+        Set your prescription colour to hide the pharmacies that cannot
         fill it.
       </Text>
 

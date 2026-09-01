@@ -366,7 +366,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
-    slug: "health-and-emergency-services/prescription-slip-colours",
+    slug: "health-and-emergency-services/prescription-colours",
     title: "What prescription colours mean",
     category: "health-and-emergency-services",
     visibility: "preview",

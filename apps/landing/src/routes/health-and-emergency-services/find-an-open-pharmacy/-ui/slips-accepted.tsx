@@ -1,5 +1,5 @@
 /**
- * "Prescription slips accepted" panel for the detail page.
+ * "Prescriptions accepted" panel for the detail page.
  * One row per slip colour: swatch, accepted/not-accepted mark backed by
  * words, and — for a rejected slip — the nearest pharmacy that takes it.
  */
@@ -76,10 +76,10 @@ export function SlipsAccepted({ pharmacy }: { pharmacy: Pharmacy }) {
   return (
     <section aria-labelledby="slips-accepted" className="flex flex-col gap-s">
       <Heading as="h2" id="slips-accepted" size="h3">
-        Prescription slips accepted
+        Prescriptions accepted
       </Heading>
       <Text as="p" className="text-mid-grey-00">
-        Check the colour of the slip your doctor gave you before you travel.{' '}
+        Check the colour of the prescription your doctor gave you before you travel.{' '}
         <Link href={SLIP_COLOURS_HREF}>What prescription colours mean</Link>
       </Text>
       <ul className="flex list-none flex-col gap-xs p-0">
