@@ -83,6 +83,12 @@ export interface OpenPRHead {
   number: number;
   htmlUrl: string;
   headRef: string;
+  /** Tip used to bind an edit to the exact PR revision it loaded. */
+  headSha?: string;
+  /** A PR from a fork is reviewable but must not be written through this repo. */
+  headRepoFullName?: string;
+  /** Optional flow marker used by callers to distinguish builder-owned PRs. */
+  body?: string;
 }
 
 export interface PutFileOptions {
@@ -219,16 +225,29 @@ export function createPublishClient(repo: GitHubRepo): RecipePublishClient {
         const prs = (await res.json()) as {
           number: number;
           html_url: string;
-          head: { ref: string };
+          head: {
+            ref: string;
+            sha?: string;
+            repo?: { full_name?: string } | null;
+          };
+          body?: string | null;
         }[];
         for (const pr of prs) {
           heads.push({
             number: pr.number,
             htmlUrl: pr.html_url,
             headRef: pr.head.ref,
+            headSha: pr.head.sha,
+            headRepoFullName: pr.head.repo?.full_name,
+            ...(typeof pr.body === "string" ? { body: pr.body } : {}),
           });
         }
         if (prs.length < 100) break;
+        if (page === 5) {
+          throw new Error(
+            "More than 500 open pull requests matched the base branch; the review inventory is incomplete.",
+          );
+        }
       }
       return heads;
     },

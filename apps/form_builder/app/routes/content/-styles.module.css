@@ -67,15 +67,43 @@
 .shell {
   box-sizing: border-box;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   background: var(--el-100);
   color: var(--txt);
   font-family:
-    "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    "Inter",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   font-size: 14px;
   letter-spacing: -0.15px;
+}
+
+.shell :where(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.shell [aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 .shell *,
@@ -289,7 +317,17 @@
   padding: 64px 16px;
   background: rgba(0, 0, 0, 0.35);
 }
+.modalBackdrop {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
 .modal {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 560px;
   max-height: 72vh;
@@ -314,6 +352,7 @@
 .modalBody {
   padding: 12px 20px 20px;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .filterInput {
   width: 100%;
@@ -358,9 +397,7 @@
 }
 .badgeClickable {
   cursor: pointer;
-}
-.badgeClickable:hover {
-  text-decoration: underline;
+  text-decoration: none;
 }
 .badgeForm {
   display: inline-block;
@@ -410,6 +447,9 @@
 }
 .mutedText {
   color: var(--txt-dim);
+}
+.warningText {
+  color: var(--err-tx);
 }
 .modalNote a {
   color: #2563eb;
@@ -465,7 +505,8 @@
   transition: background 0.12s;
 }
 .splitter:hover,
-.splitter:active {
+.splitter:active,
+.splitter:focus-visible {
   background: var(--el-250);
 }
 
@@ -820,8 +861,6 @@
   border-bottom: 1px solid var(--el-200);
 }
 
-
-
 .previewUrl {
   margin-left: auto;
   max-width: 50%;
@@ -956,9 +995,8 @@
   min-width: 0;
   font-size: 14px;
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
 }
 
 .chipRow {
@@ -967,6 +1005,13 @@
   gap: 8px;
   flex-wrap: wrap;
   flex-shrink: 0;
+}
+
+.pageActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .chip {
@@ -990,6 +1035,10 @@
 }
 .chipFilled:hover {
   border-color: var(--el-400);
+}
+.chipReadOnly {
+  cursor: default;
+  opacity: 0.78;
 }
 .chipMissing {
   border-style: dashed;
@@ -1103,6 +1152,45 @@
   color: var(--txt);
   font-size: 13.5px;
   font-family: inherit;
+}
+
+.recoveryBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-block: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--err-bd);
+  border-radius: var(--rad-m);
+  background: var(--err-bg);
+  color: var(--err-tx);
+  line-height: 1.5;
+}
+
+.reviewLinks {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.reviewLinks a {
+  color: inherit;
+  font-weight: 600;
+}
+
+.emptyState {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding-block: 24px;
+  color: var(--txt-dim);
+}
+
+.emptyState p {
+  margin: 0;
+  text-wrap: pretty;
 }
 .homeCount {
   margin: 0 0 16px;
@@ -1240,4 +1328,40 @@
   padding: 10px;
   font-size: 13px;
   color: var(--txt-dim);
+}
+
+@media (max-width: 40rem) {
+  .docHeader,
+  .svcRow,
+  .recoveryBanner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .docHeader,
+  .homeBody {
+    padding-inline: 16px;
+  }
+
+  .headerActions,
+  .chipRow {
+    justify-content: flex-start;
+  }
+
+  .searchWrap,
+  .filterSelect {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .searchWrap .filterInput,
+  .filterSelect {
+    font-size: 16px;
+  }
+}
+
+@media (hover: hover) {
+  .badgeClickable:hover {
+    text-decoration: underline;
+  }
 }

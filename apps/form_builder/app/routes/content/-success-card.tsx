@@ -27,15 +27,16 @@ export function SuccessCard({
         <h2>
           {success.kind === "removed"
             ? "Removal deployed"
-            : success.kind === "updated"
-              ? "Update deployed"
-              : "Page deployed"}
+            : success.updatedExistingPR
+              ? `PR #${success.prNumber} updated`
+              : success.kind === "updated"
+                ? "Update deployed"
+                : "Page deployed"}
         </h2>
         <p>
           {success.updatedExistingPR ? (
             <>
-              Pushed to the already-open PR <strong>#{success.prNumber}</strong>{" "}
-              for this page — no duplicate PR was created.
+              Your changes were added to the existing PR. No new PR was opened.
             </>
           ) : (
             <>
@@ -47,12 +48,17 @@ export function SuccessCard({
         </p>
         <p>
           <a href={success.prUrl} target="_blank" rel="noopener noreferrer">
-            {success.prUrl}
+            View PR #{success.prNumber}
           </a>
         </p>
+        {success.warning && (
+          <p className={s.warningText} role="status">
+            {success.warning}
+          </p>
+        )}
         <p className={s.mutedText}>A reviewer must approve and merge it.</p>
         <button type="button" className={s.primaryBtn} onClick={onBack}>
-          Back to all forms
+          Back to all pages
         </button>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Delete02Icon, Rocket01Icon, SparklesIcon } from "hugeicons-react";
 import { generateContentPage } from "./-ai";
 import { CONTENT_ROOT, VISIBILITY_LEVELS } from "./-lib";
@@ -10,7 +10,11 @@ import s from "./-styles.module.css";
 export function ErrorBanner({ error }: { error: string | null }) {
   if (!error) return null;
   return (
-    <div key={error} className={`${s.errorBanner} t-input is-error is-shaking`}>
+    <div
+      key={error}
+      className={`${s.errorBanner} t-input is-error is-shaking`}
+      role="alert"
+    >
       {error}
     </div>
   );
@@ -30,17 +34,64 @@ function Modal({
   closeDisabled?: boolean;
   children: React.ReactNode;
 }) {
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    const initial =
+      dialog?.querySelector<HTMLElement>("[data-modal-initial-focus]") ??
+      dialog?.querySelector<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex="0"]',
+      );
+    initial?.focus();
+    return () => previous?.focus();
+  }, []);
+
+  const onDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape" && !closeDisabled) {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = [
+      ...(dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex="0"]',
+      ) ?? []),
+    ];
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   return (
-    <div
-      className={`${s.modalOverlay} t-modal-overlay ${cls}`}
-      onClick={() => !closeDisabled && onClose()}
-    >
+    <div className={`${s.modalOverlay} t-modal-overlay ${cls}`}>
+      <button
+        type="button"
+        className={s.modalBackdrop}
+        aria-label="Close dialog"
+        tabIndex={-1}
+        onClick={onClose}
+        disabled={closeDisabled}
+      />
       <div
+        ref={dialogRef}
         className={`${s.modal} t-modal ${cls}`}
-        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onKeyDown={onDialogKeyDown}
       >
         <div className={s.modalHead}>
-          <h2>{title}</h2>
+          <h2 id={titleId}>{title}</h2>
           <button
             type="button"
             className={s.secondaryBtn}
@@ -72,7 +123,12 @@ export function DeleteModal({
   onDelete: () => void;
 }) {
   return (
-    <Modal title="Remove page" cls={cls} onClose={onClose}>
+    <Modal
+      title="Remove page"
+      cls={cls}
+      onClose={onClose}
+      closeDisabled={isDeleting}
+    >
       <p>
         Open a pull request that removes{" "}
         <code>{editPath.slice(CONTENT_ROOT.length)}</code> from the landing
@@ -122,9 +178,16 @@ export function DeployModal({
   const [prDesc, setPrDesc] = useState("");
   return (
     <Modal
-      title={ed.editing ? "Deploy update" : "Deploy page"}
+      title={
+        openPR
+          ? `Update PR #${openPR.prNumber}`
+          : ed.editing
+            ? "Deploy update"
+            : "Deploy page"
+      }
       cls={cls}
       onClose={onClose}
+      closeDisabled={isPublishing}
     >
       <dl className={s.deploySummary}>
         <dt>File</dt>
@@ -148,31 +211,36 @@ export function DeployModal({
           {VISIBILITY_LEVELS.find((v) => v.value === ed.state.visibility)
             ?.label ?? ed.state.visibility}
         </dd>
-        <dt>PR opens against</dt>
+        <dt>{openPR ? "PR targets" : "PR opens against"}</dt>
         <dd>
           <code>{baseBranch}</code>
         </dd>
       </dl>
       {openPR && (
         <p className={s.modalNote}>
-          This page already has open PR{" "}
+          This page is already in review in PR{" "}
           <a href={openPR.prUrl} target="_blank" rel="noopener noreferrer">
             #{openPR.prNumber}
           </a>{" "}
-          — this deploy will push to it instead of opening a new PR.
+          — this update adds a commit there instead of opening a new PR.
         </p>
       )}
       <div className={`${s.field} ${s.subField}`}>
         <label className={s.label} htmlFor="sp-pr-desc">
-          PR description (optional)
+          {openPR ? "Update note (optional)" : "PR description (optional)"}
         </label>
         <textarea
           id="sp-pr-desc"
+          data-modal-initial-focus
           className={s.textarea}
           rows={3}
           value={prDesc}
           onChange={(e) => setPrDesc(e.target.value)}
-          placeholder="What changed and why?"
+          placeholder={
+            openPR
+              ? "What changed in this update? This will be added as a PR comment."
+              : "What changed and why?"
+          }
         />
       </div>
       <ErrorBanner error={ed.error} />
@@ -181,10 +249,16 @@ export function DeployModal({
           type="button"
           className={s.primaryBtn}
           onClick={() => onDeploy(prDesc)}
-          disabled={isPublishing}
+          disabled={isPublishing || !ed.canDeploy}
         >
           <Rocket01Icon size={15} />
-          {isPublishing ? "Opening PR…" : "Deploy"}
+          {isPublishing
+            ? openPR
+              ? "Updating PR…"
+              : "Opening PR…"
+            : openPR
+              ? `Update PR #${openPR.prNumber}`
+              : "Deploy"}
         </button>
         <button
           type="button"
@@ -258,12 +332,12 @@ export function AiModal({
         </label>
         <textarea
           id="sp-ai-prompt"
+          data-modal-initial-focus
           className={s.textarea}
           rows={4}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="e.g. A start page for renewing a driver's licence — takes about 10 minutes, needs the old licence and a debit card."
-          autoFocus
         />
       </div>
       {reply && (
