@@ -45,7 +45,7 @@ Read the [Health Services (Restaurants) Regulations, 1969](https://oag.gov.bb/at
 
 ## When to apply
 
-Your licence lasts for one year. It expires one year after licence issuance. This expiration date is also included on your licence for your reference. Apply to renew it at least 30 days before it expires.
+Your licence lasts for one year. It **expires one year after licence issuance**. This expiration date is also included on your licence for your reference. Apply to renew it at least 30 days before it expires.
 
 ## Complete the form
 
@@ -53,7 +53,8 @@ There are 2 ways to apply for a food business licence. You can:
 
 1.  **Apply for a licence online.**
     
-    Allow about 15 minutes to complete the form.<br />
+    Allow about 15 minutes to complete the form.
+
     <a data-start-link>Start now</a>
     
 2.  **Get a paper application from the polyclinic**<br />
