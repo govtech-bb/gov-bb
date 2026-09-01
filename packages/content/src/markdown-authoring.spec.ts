@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   analyzeMarkdownCompatibility,
   isSafeContentUrl,
+  parseActionDirective,
+  parseDetailsDirective,
+  parseStartLinkMarker,
   serializeLandingComponent,
+  serializeStartLinkMarker,
 } from "./markdown-authoring";
 
 describe("markdown authoring contract", () => {
@@ -34,6 +38,58 @@ describe("markdown authoring contract", () => {
     ).toBe(
       ':::actions\n::action[Continue]{href="/next"}\n::action[Help]{href="/help" variant="secondary"}\n:::',
     );
+  });
+
+  it("uses a context-aware codec for Start link text and attributes", () => {
+    const values = {
+      label: '<script>alert("x")</script> & continue',
+      href: '/apply?next="step"&ready=true',
+    };
+    const marker = serializeStartLinkMarker(values);
+
+    expect(marker).toBe(
+      '<a data-start-link href="/apply?next=&quot;step&quot;&amp;ready=true">&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; continue</a>',
+    );
+    expect(parseStartLinkMarker(marker)).toEqual(values);
+    expect(
+      parseStartLinkMarker(
+        '<a data-start-link href="javascript&#58;alert(1)">Start</a>',
+      ),
+    ).toBeNull();
+    expect(
+      parseStartLinkMarker('<a data-start-link onclick="alert(1)">Start</a>'),
+    ).toBeNull();
+  });
+
+  it("decodes each HTML entity layer exactly once", () => {
+    const marker = "<a data-start-link>A &amp;quot; B</a>";
+    expect(parseStartLinkMarker(marker)).toEqual({
+      label: "A &quot; B",
+      href: "",
+    });
+    expect(serializeStartLinkMarker(parseStartLinkMarker(marker)!)).toBe(
+      marker,
+    );
+  });
+
+  it("strictly parses component directives without unsafe attributes", () => {
+    expect(
+      parseActionDirective(
+        '::action[Get help]{href="/help" variant="secondary"}',
+      ),
+    ).toEqual({ label: "Get help", href: "/help", variant: "secondary" });
+    expect(
+      parseActionDirective('::action[Run]{href="javascript:alert(1)"}'),
+    ).toBeNull();
+    expect(
+      parseActionDirective('::action[Run]{href="/run" onclick="x"}'),
+    ).toBeNull();
+    expect(parseDetailsDirective(':::details{summary="More details"}')).toBe(
+      "More details",
+    );
+    expect(
+      parseDetailsDirective(':::details{summary="More" onclick="x"}'),
+    ).toBeNull();
   });
 
   it("keeps unsupported source out of visual mode", () => {
@@ -82,5 +138,27 @@ describe("markdown authoring contract", () => {
         "landing-page",
       ),
     ).toEqual({ mode: "visual", reasons: [] });
+    expect(
+      analyzeMarkdownCompatibility(
+        '<br onmouseover="alert(1)">',
+        "landing-page",
+      ),
+    ).toMatchObject({ mode: "source-only" });
+  });
+
+  it("handles adversarial HTML and directive input in linear time", () => {
+    const padding = " ".repeat(50_000);
+    const names = "a".repeat(50_000);
+    const markdown = [
+      `<a${padding}!`,
+      `::action[]{{${padding}!`,
+      `:::actions`,
+      `::action[Start]{${names}}`,
+      `:::`,
+    ].join("\n");
+
+    expect(
+      analyzeMarkdownCompatibility(markdown, "landing-page"),
+    ).toMatchObject({ mode: "source-only" });
   });
 });

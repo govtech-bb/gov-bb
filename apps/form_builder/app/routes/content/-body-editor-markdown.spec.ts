@@ -88,6 +88,15 @@ describe("body editor Markdown conversion", () => {
     expect(roundTrip(markdown)).toBe(markdown.replace("\n\n2.", "\n2."));
   });
 
+  it("round-trips encoded Start link values without double decoding", () => {
+    const markdown =
+      '<a data-start-link href="/apply?next=&quot;x&quot;&amp;ready=true">&lt;Start &amp; continue&gt;</a>';
+    const layeredEntity = "<a data-start-link>A &amp;quot; B</a>";
+
+    expect(roundTrip(markdown)).toBe(markdown);
+    expect(roundTrip(layeredEntity)).toBe(layeredEntity);
+  });
+
   it("parses action attributes without allowing an absent href", () => {
     expect(
       parseActionDirective(
@@ -95,5 +104,8 @@ describe("body editor Markdown conversion", () => {
       ),
     ).toEqual({ label: "Get help", href: "/help", variant: "secondary" });
     expect(parseActionDirective("::action[Broken]{}")).toBeNull();
+    expect(
+      parseActionDirective('::action[Broken]{href="javascript:alert(1)"}'),
+    ).toBeNull();
   });
 });

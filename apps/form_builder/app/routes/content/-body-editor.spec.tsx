@@ -1,6 +1,12 @@
 /** @vitest-environment jsdom */
 import "@testing-library/jest-dom/vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { BodyEditor } from "./-body-editor";
@@ -86,6 +92,40 @@ describe("BodyEditor", () => {
       ),
     );
   });
+
+  it.each([["notice", "Notice"] as const, ["details", "Show / hide"] as const])(
+    "keeps HTML-like %s input inert while editing",
+    async (_kind, choice) => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const payload = '<img src=x onerror="alert(1)"><script>alert(1)</script>';
+      render(
+        <BodyEditor
+          id="body"
+          ariaLabel="Page body"
+          value=""
+          onChange={onChange}
+          profile={{ kind: "landing-page", startLinkType: "none" }}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "Insert" }));
+      await user.click(
+        screen.getByRole("menuitem", { name: new RegExp(choice, "i") }),
+      );
+      fireEvent.change(await screen.findByLabelText(/^Content/), {
+        target: { value: payload },
+      });
+
+      expect(document.querySelector("img")).toBeNull();
+      expect(document.querySelector("script")).toBeNull();
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith(
+          expect.stringContaining(payload),
+        ),
+      );
+    },
+  );
 
   it("does not expose landing components in form content", () => {
     render(

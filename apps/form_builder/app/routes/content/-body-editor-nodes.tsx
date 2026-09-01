@@ -1,6 +1,7 @@
 import {
   isSafeContentUrl,
   serializeLandingComponent,
+  serializeStartLinkMarker,
   type LandingAction,
   type LandingComponent,
 } from "@govtech-bb/content/markdown-authoring";
@@ -504,11 +505,7 @@ export class StartLinkNode extends DecoratorBlockNode {
   }
 
   getTextContent(): string {
-    const { label, href } = this.getValues();
-    const hrefAttribute = href
-      ? ` href="${href.replaceAll('"', "&quot;")}"`
-      : "";
-    return `<a data-start-link${hrefAttribute}>${label}</a>`;
+    return serializeStartLinkMarker(this.getValues());
   }
 
   decorate() {

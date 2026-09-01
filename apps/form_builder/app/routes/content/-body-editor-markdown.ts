@@ -1,6 +1,9 @@
 import {
+  parseActionDirective as parseSharedActionDirective,
+  parseDetailsDirective,
+  parseStartLinkMarker,
   serializeLandingComponent,
-  unescapeDirectiveAttribute,
+  serializeStartLinkMarker,
   type LandingAction,
 } from "@govtech-bb/content/markdown-authoring";
 import {
@@ -47,8 +50,8 @@ const DIRECTIVE_END = /^:::\s*$/;
 const NOTICE_START = /^:::notice\s*$/i;
 const ACTIONS_START = /^:::actions\s*$/i;
 const DETAILS_START = /^:::details\{\s*summary="((?:\\.|[^"\\])*)"\s*\}\s*$/i;
-const ACTION_LINE = /^::action\[((?:\\.|[^\]\\])*)\]\{\s*([^}]*)\}\s*$/i;
-const ATTRIBUTE = /([a-z][\w-]*)="((?:\\.|[^"\\])*)"/gi;
+
+export const parseActionDirective = parseSharedActionDirective;
 
 function appendComponent(
   rootNode: ElementNode,
@@ -74,26 +77,6 @@ const NOTICE: MultilineElementTransformer = {
   },
   type: "multiline-element",
 };
-
-function parseAttributes(source: string): Record<string, string> {
-  const attributes: Record<string, string> = {};
-  for (const match of source.matchAll(ATTRIBUTE)) {
-    attributes[match[1].toLowerCase()] = unescapeDirectiveAttribute(match[2]);
-  }
-  return attributes;
-}
-
-export function parseActionDirective(line: string): LandingAction | null {
-  const match = line.match(ACTION_LINE);
-  if (!match) return null;
-  const attributes = parseAttributes(match[2]);
-  if (!attributes.href) return null;
-  return {
-    label: match[1].replace(/\\([\\\]])/g, "$1"),
-    href: attributes.href,
-    variant: attributes.variant === "secondary" ? "secondary" : "primary",
-  };
-}
 
 const ACTIONS: MultilineElementTransformer = {
   dependencies: [LandingComponentNode],
@@ -133,45 +116,24 @@ const DETAILS: MultilineElementTransformer = {
       "";
     appendComponent(rootNode, {
       kind: "details",
-      summary: unescapeDirectiveAttribute(startMatch[1] || "More information"),
+      summary: parseDetailsDirective(startMatch[0]) ?? "More information",
       body: body.trim(),
     });
   },
   type: "multiline-element",
 };
 
-function decodeHtmlAttribute(value: string): string {
-  return value
-    .replaceAll("&quot;", '"')
-    .replaceAll("&amp;", "&")
-    .replaceAll("&lt;", "<")
-    .replaceAll("&gt;", ">");
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
-
 const START_LINK: ElementTransformer = {
   dependencies: [StartLinkNode],
   export: (node) => {
     if (!$isStartLinkNode(node)) return null;
-    const { label, href } = node.getValues();
-    return `<a data-start-link${href ? ` href="${escapeHtml(href)}"` : ""}>${escapeHtml(label)}</a>`;
+    return serializeStartLinkMarker(node.getValues());
   },
-  regExp: /^<a\s+([^>]*\bdata-start-link\b[^>]*)>(.*?)<\/a>\s*$/i,
+  regExp: /^<a[ \t][^>\r\n]*>[^<\r\n]*<\/a>$/i,
   replace: (parentNode, _children, match) => {
-    const href = match[1].match(/\bhref=(?:"([^"]*)"|'([^']*)')/i);
-    parentNode.replace(
-      $createStartLinkNode(
-        decodeHtmlAttribute(match[2] || "Start now"),
-        decodeHtmlAttribute(href?.[1] ?? href?.[2] ?? ""),
-      ),
-    );
+    const marker = parseStartLinkMarker(match[0]);
+    if (!marker) return;
+    parentNode.replace($createStartLinkNode(marker.label, marker.href));
   },
   type: "element",
 };
