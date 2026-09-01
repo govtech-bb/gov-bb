@@ -4,5 +4,6 @@ export * from "./categories";
 export * from "./form-categories";
 export { loadContent, type LoadContentOptions } from "./load";
 export * from "./load-feature-routes";
+export * from "./markdown-authoring";
 export * from "./schemas";
 export * from "./types";

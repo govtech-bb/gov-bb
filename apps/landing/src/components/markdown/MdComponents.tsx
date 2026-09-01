@@ -1,4 +1,10 @@
-import { LinkButton, Table, TableCell, TableHeader } from '@govtech-bb/react'
+import {
+  LinkButton,
+  ShowHide,
+  Table,
+  TableCell,
+  TableHeader,
+} from '@govtech-bb/react'
 import type { ReactNode } from 'react'
 import type { Components } from 'hast-util-to-jsx-runtime'
 import { MarkdownLink } from './MarkdownLink'
@@ -38,9 +44,7 @@ export const markdownComponents: Partial<Components> = {
   thead: ({ node: _node, ...props }) => <thead {...props} />,
   tbody: ({ node: _node, ...props }) => <tbody {...props} />,
   tr: ({ node: _node, ...props }) => <tr {...props} />,
-  th: ({ node: _node, ...props }) => (
-    <TableHeader {...props} />
-  ),
+  th: ({ node: _node, ...props }) => <TableHeader {...props} />,
   td: ({ node: _node, children, ...props }) => {
     const text = extractCellText(children)
 
@@ -81,11 +85,7 @@ export const markdownComponents: Partial<Components> = {
       )
     }
 
-    return (
-      <TableCell {...props}>
-        {children}
-      </TableCell>
-    )
+    return <TableCell {...props}>{children}</TableCell>
   },
   // Curated content palette, authored as `remark-directive` blocks
   // (`:::notice`, `::contact{…}`, …). Valid names/attributes are enforced by
@@ -96,6 +96,20 @@ export const markdownComponents: Partial<Components> = {
   contacts: Contacts,
   contact: Contact,
   muted: Muted,
+  'show-hide': ({
+    node: _node,
+    summary,
+    children,
+    ...props
+  }: {
+    node?: unknown
+    summary?: string
+    children?: ReactNode
+  }) => (
+    <ShowHide summary={summary || 'More information'} {...props}>
+      {children}
+    </ShowHide>
+  ),
   buttons: ({ children }: { children?: ReactNode }) => (
     <div className="flex flex-col gap-s sm:flex-row">{children}</div>
   ),

@@ -324,9 +324,14 @@ export function PageFields({
         Body
       </label>
       <BodyEditor
+        id="sp-body"
+        ariaLabel="Page body"
         value={state.body}
         onChange={(body) => set("body", body)}
-        linkType={state.linkType}
+        profile={{
+          kind: "landing-page",
+          startLinkType: state.linkType,
+        }}
       />
     </div>
   );
