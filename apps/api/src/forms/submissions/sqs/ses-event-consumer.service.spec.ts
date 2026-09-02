@@ -252,7 +252,10 @@ describe("SesEventConsumerService", () => {
       // is what happens on CI) — that mismatch made this test run to the 30s
       // testTimeout and fail the whole suite while passing locally. Driving a
       // real ~10ms timeout keeps the test deterministic across environments.
-      const originalDrain = SesEventConsumerService.DRAIN_TIMEOUT_MS;
+      const drainConfig = SesEventConsumerService as unknown as {
+        DRAIN_TIMEOUT_MS: number;
+      };
+      const originalDrain = drainConfig.DRAIN_TIMEOUT_MS;
       // Give the never-settling loop a release hatch so nothing dangles past
       // the test even after the drain gives up on it.
       let releaseLoop!: () => void;
@@ -260,7 +263,7 @@ describe("SesEventConsumerService", () => {
         releaseLoop = resolve;
       });
       try {
-        (SesEventConsumerService as any).DRAIN_TIMEOUT_MS = 10;
+        drainConfig.DRAIN_TIMEOUT_MS = 10;
         vi.spyOn(service as any, "pollQueue").mockReturnValue(loop);
         const warnSpy = vi
           .spyOn((service as any).logger, "warn")
@@ -271,7 +274,7 @@ describe("SesEventConsumerService", () => {
           expect.stringContaining("drain timed out"),
         );
       } finally {
-        (SesEventConsumerService as any).DRAIN_TIMEOUT_MS = originalDrain;
+        drainConfig.DRAIN_TIMEOUT_MS = originalDrain;
         releaseLoop();
         await Promise.resolve();
       }
