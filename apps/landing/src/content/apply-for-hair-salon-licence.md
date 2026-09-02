@@ -4,7 +4,7 @@ description: >-
   Register a new hair, beauty, manicure or pedicure business, or renew your
   existing registration with Environmental Health.
 stage: alpha
-publish_date: '2026-08-31'
+publish_date: '2026-09-02'
 visibility: preview
 form_id: apply-for-hair-salon-licence
 category: business-trade
@@ -62,7 +62,6 @@ There are 2 ways to apply for a hairdressing salon licence. You can:
     
 2.  **Get a paper application from the polyclinic**<br />
     You must complete it by hand and submit the application to the polyclinic associated with the district where the hairdressing salon is located. If you require further information or assistance, contact the polyclinic - information can be found at the bottom of this page.
-    
 
 ## Cost
 
