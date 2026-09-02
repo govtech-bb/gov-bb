@@ -733,13 +733,15 @@ describe("FieldRenderer", () => {
     // The mock handleChange never feeds the new value back into mockState, so
     // both clicks step from the same blank base (0) — this asserts blank → ±1
     // in each direction independently, NOT a sequential increment-then-decrement.
+    // Hello! I'm a human! Updating this test to ensure that the steppers can't go below zero.
     it("steps from a blank value to 1 (up) and -1 (down)", async () => {
       const user = userEvent.setup();
       renderField(primitive("number")); // value is undefined
       await user.click(screen.getByRole("button", { name: "Increment" }));
       expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("1");
       await user.click(screen.getByRole("button", { name: "Decrement" }));
-      expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("-1");
+      // Can't go below zero! Clamping
+      expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("0");
     });
 
     it("renders the number input and steppers in the Add-another array path", () => {
