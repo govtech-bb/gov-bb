@@ -246,10 +246,15 @@ describe("SesEventConsumerService", () => {
 
     it("resolves even if the loop never settles (drain bounded by timeout)", async () => {
       vi.useFakeTimers();
+      // Give the "never settles on its own" loop an escape hatch so the test
+      // can release it during teardown instead of abandoning a pending promise
+      // that outlives the test and trips vitest's leaked-handle detection.
+      let releaseLoop!: () => void;
+      const loop = new Promise<void>((resolve) => {
+        releaseLoop = resolve;
+      });
       try {
-        vi.spyOn(service as any, "pollQueue").mockReturnValue(
-          new Promise<void>(() => {}),
-        );
+        vi.spyOn(service as any, "pollQueue").mockReturnValue(loop);
         const warnSpy = vi
           .spyOn((service as any).logger, "warn")
           .mockImplementation(() => {});
@@ -261,6 +266,8 @@ describe("SesEventConsumerService", () => {
           expect.stringContaining("drain timed out"),
         );
       } finally {
+        releaseLoop();
+        await Promise.resolve();
         vi.useRealTimers();
       }
     });
