@@ -12,7 +12,7 @@
           "ref": "components/generic-radio",
           "overrides": {
             "fieldId": "completing-for",
-            "label": "Are you completing this application for yourself or someone else?",
+            "label": "Are you applying as an owner of the food business?",
             "validations": {
               "required": {
                 "error": "Select who you are completing the application for.",
@@ -21,12 +21,54 @@
             },
             "options": [
               {
-                "label": "Myself",
-                "value": "myself"
+                "label": "Yes",
+                "value": "yes"
               },
               {
-                "label": "Someone else or a business or organisation",
+                "label": "No, I am applying on behalf of the owner",
                 "value": "someone-else"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/relationship",
+          "overrides": {
+            "fieldId": "food-business-relationship",
+            "label": "What is your relationship to the food business?",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "completing-for",
+                "targetStepId": "about-you",
+                "operator": "equal",
+                "value": "someone-else"
+              }
+            ],
+            "options": [
+              {
+                "label": "Owner",
+                "value": "owner"
+              },
+              {
+                "label": "Co-owner or partner",
+                "value": "co-owner"
+              },
+              {
+                "label": "Director or company officer",
+                "value": "director-co"
+              },
+              {
+                "label": "Manager or operator",
+                "value": "manager-operator"
+              },
+              {
+                "label": "Authorised representative",
+                "value": "rep"
+              },
+              {
+                "label": "Something else",
+                "value": "something-else"
               }
             ]
           }
@@ -64,109 +106,6 @@
               }
             }
           }
-        },
-        {
-          "ref": "components/telephone",
-          "overrides": {
-            "fieldId": "your-telephone",
-            "label": "Telephone number",
-            "hint": "You can enter a Barbados or international number. Add another number if more than one owner should be contactable.",
-            "validations": {
-              "required": {
-                "error": "Enter a telephone number.",
-                "value": true
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldArray",
-                "min": 1,
-                "max": 4,
-                "addAnotherLabel": "Add another telephone number"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/email",
-          "overrides": {
-            "fieldId": "your-email",
-            "label": "Email address",
-            "validations": {
-              "required": {
-                "error": "Enter an email address.",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/content",
-          "overrides": {
-            "fieldId": "your-address-note",
-            "content": "This is your own address. We will use it for any post about this application. You will give the food business address later.",
-            "variant": "text"
-          }
-        },
-        {
-          "ref": "components/address",
-          "overrides": {
-            "fieldId": "your-address-line-1",
-            "label": "Address line 1",
-            "validations": {
-              "required": {
-                "error": "Enter your address.",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/address",
-          "overrides": {
-            "fieldId": "your-address-line-2",
-            "label": "Address line 2",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/town",
-          "overrides": {
-            "fieldId": "your-town",
-            "label": "Town or district"
-          }
-        },
-        {
-          "ref": "components/parish",
-          "overrides": {
-            "fieldId": "your-parish",
-            "label": "Parish",
-            "validations": {
-              "required": {
-                "error": "Select your parish.",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/country",
-          "overrides": {
-            "fieldId": "your-country",
-            "label": "Country",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "your-parish",
-                "operator": "notEqual",
-                "value": "st-michael"
-              }
-            ]
-          }
         }
       ]
     },
@@ -174,154 +113,25 @@
       "stepId": "applicant-details",
       "title": "Applicant details",
       "behaviours": [],
+      "markdownContent": "This is your own address information. We will use it for any post about this application. You will give the food business address later.",
       "elements": [
         {
-          "ref": "components/generic-radio",
+          "ref": "components/email",
           "overrides": {
-            "fieldId": "relationship-to-business",
-            "label": "What is your relationship to the food business?",
-            "validations": {
-              "required": {
-                "error": "Select your relationship to the food business.",
-                "value": true
-              }
-            },
-            "options": [
-              {
-                "label": "Owner",
-                "value": "owner"
-              },
-              {
-                "label": "Co-owner or partner",
-                "value": "co-owner-or-partner"
-              },
-              {
-                "label": "Director or company officer",
-                "value": "director-or-company-officer"
-              },
-              {
-                "label": "Manager or operator",
-                "value": "manager-or-operator"
-              },
-              {
-                "label": "Authorised representative",
-                "value": "authorised-representative"
-              },
-              {
-                "label": "Something else",
-                "value": "something-else"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "other-relationship",
-            "label": "Tell us your relationship to the food business",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "relationship-to-business",
-                "operator": "equal",
-                "value": "something-else"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "applicant-type",
-            "label": "Who is applying for the food business licence?",
-            "validations": {
-              "required": {
-                "error": "Select who is applying for the food business licence.",
-                "value": true
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "completing-for",
-                "targetStepId": "about-you",
-                "operator": "equal",
-                "value": "someone-else"
-              }
-            ],
-            "options": [
-              {
-                "label": "An individual",
-                "value": "individual"
-              },
-              {
-                "label": "A business or organisation",
-                "value": "business-or-organisation"
-              }
-            ]
+            "fieldId": "applicant-email"
           }
         },
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "applicant-telephone",
-            "label": "Telephone number",
-            "validations": {
-              "required": {
-                "error": "Enter the applicant's telephone number.",
-                "value": true
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "applicant-type",
-                "operator": "equal",
-                "value": "individual"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/email",
-          "overrides": {
-            "fieldId": "applicant-email",
-            "label": "Email address",
-            "validations": {
-              "required": {
-                "error": "Enter the applicant's email address.",
-                "value": true
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "applicant-type",
-                "operator": "equal",
-                "value": "individual"
-              }
-            ]
+            "fieldId": "applicant-phone"
           }
         },
         {
           "ref": "components/address",
           "overrides": {
             "fieldId": "applicant-address-line-1",
-            "label": "Address line 1",
-            "validations": {
-              "required": {
-                "error": "Enter the applicant's address.",
-                "value": true
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "applicant-type",
-                "operator": "equal",
-                "value": "individual"
-              }
-            ]
+            "label": "Address line 1"
           }
         },
         {
@@ -333,53 +143,48 @@
               "required": {
                 "value": false
               }
-            },
+            }
+          }
+        },
+        {
+          "ref": "components/town",
+          "overrides": {
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "applicant-type",
-                "operator": "equal",
-                "value": "individual"
+                "targetFieldId": "country",
+                "targetStepId": "applicant-details",
+                "operator": "notEqual",
+                "value": "barbados"
               }
             ]
           }
+        },
+        {
+          "ref": "components/country"
         },
         {
           "ref": "components/parish",
           "overrides": {
             "fieldId": "applicant-parish",
-            "label": "Parish",
-            "validations": {
-              "required": {
-                "error": "Select the applicant's parish.",
-                "value": true
-              }
-            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "applicant-type",
+                "targetFieldId": "country",
+                "targetStepId": "applicant-details",
                 "operator": "equal",
-                "value": "individual"
+                "value": "barbados"
               }
             ]
           }
-        },
-        {
-          "ref": "components/country",
-          "overrides": {
-            "fieldId": "applicant-country",
-            "label": "Country",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "applicant-type",
-                "operator": "equal",
-                "value": "individual"
-              }
-            ]
-          }
-        },
+        }
+      ]
+    },
+    {
+      "stepId": "application-details",
+      "title": "Application details",
+      "behaviours": [],
+      "elements": [
         {
           "ref": "components/generic-radio",
           "overrides": {
@@ -1061,7 +866,7 @@
     }
   ],
   "createdAt": "2026-08-18T20:19:05.878Z",
-  "updatedAt": "2026-08-28T03:15:45.014Z",
+  "updatedAt": "2026-09-02T14:48:45.553Z",
   "meta": {
     "visibility": "preview"
   },
