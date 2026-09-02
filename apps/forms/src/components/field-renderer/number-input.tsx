@@ -21,7 +21,8 @@ export function NumberInput({
   const step = (delta: number) => {
     const current = Number(value);
     const base = value !== "" && Number.isFinite(current) ? current : 0;
-    onChange(String(base + delta));
+    const resolvedValue = base + delta > 0 ? base + delta : 0;
+    onChange(String(resolvedValue));
   };
 
   return (
