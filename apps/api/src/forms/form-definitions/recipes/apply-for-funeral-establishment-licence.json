@@ -69,28 +69,23 @@
           }
         },
         {
-          "ref": "components/email",
-          "overrides": {
-            "fieldId": "email",
-            "validations": {
-              "required": {
-                "error": "Enter your email address",
-                "value": true
-              }
-            }
-          }
+          "ref": "components/parish"
         },
         {
-          "ref": "components/telephone",
-          "overrides": {
-            "fieldId": "telephone",
-            "validations": {
-              "required": {
-                "error": "Enter a valid telephone number",
-                "value": true
-              }
-            }
-          }
+          "ref": "components/postcode"
+        }
+      ]
+    },
+    {
+      "stepId": "contact-details",
+      "title": "Contact details",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/email"
+        },
+        {
+          "ref": "components/telephone"
         }
       ]
     },
@@ -283,7 +278,7 @@
     {
       "type": "email",
       "config": {
-        "recipientField": "about-the-applicant.email",
+        "recipientField": "contact-details.email",
         "subject": "Your funeral establishment licence application has been received"
       }
     },
@@ -308,8 +303,8 @@
               "about-the-applicant.first-name",
               "about-the-applicant.last-name"
             ],
-            "email": "about-the-applicant.email",
-            "phone": "about-the-applicant.telephone"
+            "email": "contact-details.email",
+            "phone": "contact-details.telephone"
           },
           "excludeSteps": [
             "check-your-answers",
@@ -323,7 +318,7 @@
     }
   ],
   "createdAt": "2026-08-25T00:45:35.451Z",
-  "updatedAt": "2026-08-31T22:36:27.192Z",
+  "updatedAt": "2026-09-02T15:10:54.746Z",
   "meta": {
     "visibility": "preview"
   },
