@@ -2,7 +2,7 @@
 title: Apply for an embalmer licence
 category: business-trade
 stage: alpha
-publish_date: '2026-08-27'
+publish_date: '2026-09-02'
 visibility: preview
 form_id: apply-for-funeral-embalmer-licence
 ---
@@ -17,18 +17,16 @@ You need a licence if you conduct embalming services in Barbados.
 You must:
 
 -   your current embalmer licence number (if renewing)
--   have a valid form of identification
+-   a photo or scanned copy of your Barbados National Identification card
 -   a passport sized photograph
 -   your qualification in embalming from an institution of embalming approved by the chief medical officer; or
 -   letter evidencing your engagement in the practice of embalming for a period of more than five (5) years, or having worked under the direct supervision of an approved embalmer for more than three (3) years, if you were engaged in the business prior to the regulations coming into operation in 1984
 
-Read the [Health Services (Embalmers and Funeral Directors) Regulations 1984](https://oag.gov.bb/attachments/Health%20Services%20\(Embalmers%20and%20Funeral%20Directors\)%20Regulations,%201984%20Cap44'L.PDF) for the full legal requirements.
+Read the [Health Services (Embalmers and Funeral Directors) Regulations 1984](https://oag.gov.bb/attachments/Health%20Services%20(Embalmers%20and%20Funeral%20Directors)%20Regulations,%201984%20Cap44'L.PDF) for the full legal requirements.
 
 You may need to provide:
 
 -   your current embalmer’s licence number (if renewing)
--   a scanned copy of your Barbados National Identification card
--   a passport sized photograph
 -   letter evidencing your engagement in the practice of embalming for a period of more than five (5) years, or having worked under the direct supervision of an approved embalmer for more than three (3) years, if you were engaged in the business prior to the regulations coming into operation in 1984
 
 ## When to apply
@@ -40,14 +38,13 @@ Your licence expires on December 31st each year. You need to renew it by the fir
 There are 2 ways to apply for a funeral directors licence. You can:
 
 1.  **Apply for a licence online.**
-    
+
     Allow about 5-10 minutes to complete the form.
-    
+
     <a data-start-link>Start now</a>
-    
+
 2.  **Get a paper application from the polyclinic**<br />
     You must complete it by hand and submit the application to the polyclinic associated with the district where your personal address is located. If you require further information or assistance, contact a polyclinic - information can be found at the bottom of this page.
-    
 
 ## Cost
 
