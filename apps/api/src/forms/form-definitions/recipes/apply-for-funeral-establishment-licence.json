@@ -297,7 +297,7 @@
         "mapping": {
           "programmeCode": "FUNERAL_ESTABLISHMENT_LICENCE",
           "mdaCode": "MOH",
-          "programmeShortCode": "FEM",
+          "programmeShortCode": "FES",
           "applicant": {
             "name": [
               "about-the-applicant.first-name",
