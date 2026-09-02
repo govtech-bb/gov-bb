@@ -336,7 +336,7 @@
           "overrides": {
             "fieldId": "letter-evidencing",
             "label": "Upload letter of evidence",
-            "hint": "If you have been engaged in the business of funeral directing under the direct supervision of a licence funeral director for over two years or have been working in a funeral director's office for over three years, prior to the regulations coming into operation in 1984, you need to provide a letter of evidence.",
+            "hint": "If you have been engaged in the business of funeral directing under the direct supervision of a licence funeral director for over two years or have been working in a funeral director's office for over three years, prior to the regulations coming into operation in 1984, then you need to provide a letter of evidence.",
             "validations": {
               "fileTypes": {
                 "error": "Upload your letter of evidence in PDF, JPEG or PNG format",
@@ -439,7 +439,7 @@
     }
   ],
   "createdAt": "2026-08-25T14:05:00.922Z",
-  "updatedAt": "2026-08-31T22:12:24.863Z",
+  "updatedAt": "2026-09-02T14:55:57.730Z",
   "meta": {
     "visibility": "preview"
   },
