@@ -245,30 +245,38 @@ describe("SesEventConsumerService", () => {
     });
 
     it("resolves even if the loop never settles (drain bounded by timeout)", async () => {
-      vi.useFakeTimers();
-      // Give the "never settles on its own" loop an escape hatch so the test
-      // can release it during teardown instead of abandoning a pending promise
-      // that outlives the test and trips vitest's leaked-handle detection.
+      // Use REAL timers with a tiny drain window rather than fake timers.
+      // The production drain timer is unref'd, and vitest's fake-timer shim
+      // does not reliably advance unref'd timers (it works when the faked
+      // handle is a plain number but hangs when it is a Timeout object, which
+      // is what happens on CI) — that mismatch made this test run to the 30s
+      // testTimeout and fail the whole suite while passing locally. Driving a
+      // real ~10ms timeout keeps the test deterministic across environments.
+      const drainConfig = SesEventConsumerService as unknown as {
+        DRAIN_TIMEOUT_MS: number;
+      };
+      const originalDrain = drainConfig.DRAIN_TIMEOUT_MS;
+      // Give the never-settling loop a release hatch so nothing dangles past
+      // the test even after the drain gives up on it.
       let releaseLoop!: () => void;
       const loop = new Promise<void>((resolve) => {
         releaseLoop = resolve;
       });
       try {
+        drainConfig.DRAIN_TIMEOUT_MS = 10;
         vi.spyOn(service as any, "pollQueue").mockReturnValue(loop);
         const warnSpy = vi
           .spyOn((service as any).logger, "warn")
           .mockImplementation(() => {});
         service.onApplicationBootstrap();
-        const shutdown = service.onApplicationShutdown();
-        await vi.advanceTimersByTimeAsync(30_000);
-        await shutdown;
+        await service.onApplicationShutdown();
         expect(warnSpy).toHaveBeenCalledWith(
           expect.stringContaining("drain timed out"),
         );
       } finally {
+        drainConfig.DRAIN_TIMEOUT_MS = originalDrain;
         releaseLoop();
         await Promise.resolve();
-        vi.useRealTimers();
       }
     });
 
