@@ -28,6 +28,7 @@ export function NumberInput({
   return (
     <div className="govbb-number-input-wrapper">
       <input
+        min={0}
         {...inputProps}
         type="number"
         inputMode="numeric"
@@ -35,7 +36,6 @@ export function NumberInput({
         value={value}
         aria-invalid={invalid}
         onChange={(e) => onChange(e.target.value)}
-        min={0}
       />
       <div className="govbb-number-input__steppers">
         <button
