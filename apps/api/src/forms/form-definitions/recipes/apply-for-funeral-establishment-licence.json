@@ -303,8 +303,8 @@
               "about-the-applicant.first-name",
               "about-the-applicant.last-name"
             ],
-            "email": "about-the-applicant.email",
-            "phone": "about-the-applicant.telephone"
+            "email": "contact-details.email",
+            "phone": "contact-details.telephone"
           },
           "excludeSteps": [
             "check-your-answers",
