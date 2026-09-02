@@ -68,16 +68,25 @@ export class SesEventConsumerService
     this.running = false;
 
     if (this.loop) {
+      const loop = this.loop;
+      // If the drain times out we stop awaiting the loop, but it may still be
+      // running and could reject later. Swallow that so it can never surface as
+      // an unhandled rejection after shutdown (or after a test has finished).
+      loop.catch(() => {});
+
       let timer: ReturnType<typeof setTimeout> | undefined;
       const timeout = new Promise<false>((resolve) => {
         timer = setTimeout(
           () => resolve(false),
           SesEventConsumerService.DRAIN_TIMEOUT_MS,
         );
+        // Don't let the drain timer hold the process (or a test worker) open.
+        timer.unref?.();
       });
 
-      const drained = await Promise.race([this.loop.then(() => true), timeout]);
+      const drained = await Promise.race([loop.then(() => true), timeout]);
       clearTimeout(timer);
+      this.loop = undefined;
 
       if (!drained) {
         this.logger.warn(
