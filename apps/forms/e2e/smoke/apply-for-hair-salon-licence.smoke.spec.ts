@@ -150,7 +150,8 @@ export function buildData() {
     vehicleLicence: `V-${faker.string.numeric(6)}`,
     licenceReferenceNumber: `HSL-${faker.string.numeric(5)}`,
 
-    ownerName: `${faker.person.firstName()} ${faker.person.lastName()}`,
+    ownerFirstName: faker.person.firstName(),
+    ownerLastName: faker.person.lastName(),
     ownerAddressLine1: faker.location.streetAddress(),
     ownerAddressLine2: faker.location.street(),
     ownerCityTown: faker.location.city(),
@@ -286,14 +287,21 @@ export async function fillBusinessDetails(
   await advance(page, step);
 }
 
-/** Step 2 — the owner or operator, identical on both branches. */
+/**
+ * Step 2 — the owner or operator, identical on both branches.
+ *
+ * The owner's name is two fields (`first-name` / `last-name`), not the single
+ * `owner-name` this step used to carry: #2582 split it, and the webhook's
+ * `applicant.name` mapping was repointed at the pair in the same PR.
+ */
 export async function fillOwnerDetails(
   page: Page,
   data: ReturnType<typeof buildData>,
 ): Promise<void> {
   const step = expectStep(page, "owner-details");
   await expect(page.locator("h1")).toContainText("Owner or operator details");
-  await fillField(page, step, "owner-name", data.ownerName);
+  await fillField(page, step, "first-name", data.ownerFirstName);
+  await fillField(page, step, "last-name", data.ownerLastName);
 
   // ─── "Same as the business" hides the whole owner address block ───────────
   // Added by the same publish that ungated the business address. Toggle it to
@@ -398,7 +406,8 @@ test.describe("Register Hair & Beauty Business — Live Smoke", () => {
     const step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
     await expect(page.getByText(data.businessName).first()).toBeVisible();
-    await expect(page.getByText(data.ownerName).first()).toBeVisible();
+    await expect(page.getByText(data.ownerFirstName).first()).toBeVisible();
+    await expect(page.getByText(data.ownerLastName).first()).toBeVisible();
     // The vehicle licence was never asked on the building branch.
     await expect(page.getByText(data.vehicleLicence)).toHaveCount(0);
     // SMOKE_HOLD_CYA=1 pauses a headed run here so the review screen can be
