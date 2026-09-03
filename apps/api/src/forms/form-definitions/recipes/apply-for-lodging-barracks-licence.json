@@ -792,6 +792,13 @@
       }
     },
     {
+      "type": "email",
+      "config": {
+        "recipientField": "catchment.mdaEmail",
+        "subject": "A new application to register a guest property has been received"
+      }
+    },
+    {
       "type": "webhook",
       "config": {
         "method": "POST",
