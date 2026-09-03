@@ -507,10 +507,10 @@
           "ref": "components/generic-number",
           "overrides": {
             "fieldId": "floor-number-of-occupants",
-            "label": "Number of occupants on this floor",
+            "label": "Expected total number of occupants on this floor",
             "validations": {
               "required": {
-                "error": "Enter the number of occupants on this floor.",
+                "error": "Enter the expected total number of occupants on this floor.",
                 "value": true
               },
               "min": {
@@ -743,9 +743,259 @@
       "behaviours": []
     },
     {
+      "stepId": "amenities",
+      "title": "Amenities at the hotel",
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "hotel-amenities",
+            "label": "Which of these amenities are available at the hotel?",
+            "hint": "Select all that apply. Leave blank if none are available.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "options": [
+              {
+                "label": "Swimming pool",
+                "value": "swimming-pool"
+              },
+              {
+                "label": "Food business",
+                "value": "food-business"
+              },
+              {
+                "label": "Restaurant",
+                "value": "restaurant"
+              },
+              {
+                "label": "Hair salon",
+                "value": "hair-salon"
+              },
+              {
+                "label": "Spa",
+                "value": "spa"
+              },
+              {
+                "label": "Nail salon",
+                "value": "nail-salon"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "swimming-pool-licence-applied",
+            "label": "Has the licence for the swimming pool already been applied for?",
+            "validations": {
+              "required": {
+                "error": "Select whether the swimming pool licence has been applied for.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "amenities",
+                "targetFieldId": "hotel-amenities",
+                "operator": "in",
+                "value": [
+                  "swimming-pool"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "food-business-licence-applied",
+            "label": "Has the licence for the food business already been applied for?",
+            "validations": {
+              "required": {
+                "error": "Select whether the food business licence has been applied for.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "amenities",
+                "targetFieldId": "hotel-amenities",
+                "operator": "in",
+                "value": [
+                  "food-business"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "restaurant-licence-applied",
+            "label": "Has the licence for the restaurant already been applied for?",
+            "validations": {
+              "required": {
+                "error": "Select whether the restaurant licence has been applied for.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "amenities",
+                "targetFieldId": "hotel-amenities",
+                "operator": "in",
+                "value": [
+                  "restaurant"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "hair-salon-licence-applied",
+            "label": "Has the licence for the hair salon already been applied for?",
+            "validations": {
+              "required": {
+                "error": "Select whether the hair salon licence has been applied for.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "amenities",
+                "targetFieldId": "hotel-amenities",
+                "operator": "in",
+                "value": [
+                  "hair-salon"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "spa-licence-applied",
+            "label": "Has the licence for the spa already been applied for?",
+            "validations": {
+              "required": {
+                "error": "Select whether the spa licence has been applied for.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "amenities",
+                "targetFieldId": "hotel-amenities",
+                "operator": "in",
+                "value": [
+                  "spa"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "nail-salon-licence-applied",
+            "label": "Has the licence for the nail salon already been applied for?",
+            "validations": {
+              "required": {
+                "error": "Select whether the nail salon licence has been applied for.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "amenities",
+                "targetFieldId": "hotel-amenities",
+                "operator": "in",
+                "value": [
+                  "nail-salon"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
       "stepId": "documents",
       "title": "Supporting documents",
-      "description": "You must upload a site plan with a new Hotel Licence application.",
+      "description": "You must upload a site plan of the hotel. If you are applying for a new Hotel Licence, you must also give the Town and Country Planning plan or application number for the new structure.",
       "elements": [
         {
           "ref": "components/upload-document",
@@ -772,17 +1022,35 @@
               }
             }
           }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "planning-application-number",
+            "label": "Town and Country Planning plan or application number",
+            "hint": "The plan number or application number for the new structure.",
+            "validations": {
+              "required": {
+                "error": "Enter the Town and Country Planning plan or application number.",
+                "value": true
+              }
+            },
+            "ui": {
+              "width": "short"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "application-type",
+                "targetFieldId": "application-type",
+                "operator": "equal",
+                "value": "new-licence"
+              }
+            ]
+          }
         }
       ],
-      "behaviours": [
-        {
-          "type": "stepConditionalOn",
-          "targetFieldId": "application-type",
-          "targetStepId": "application-type",
-          "operator": "equal",
-          "value": "new-licence"
-        }
-      ]
+      "behaviours": []
     },
     {
       "stepId": "check-your-answers",
@@ -822,9 +1090,9 @@
       "title": "Application submitted",
       "elements": [],
       "behaviours": [],
-      "markdownContent": "A copy of your application has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your application.\n- They may contact you if they need more information.\n- Submitting an application does not mean that a Hotel Licence has been granted.\n\nKeep your reference number for any follow-up."
+      "markdownContent": "A copy of your application has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your application.\n- They may contact you if they need more information.\n- Submitting an application does not mean that a Hotel Licence has been granted.\n\nKeep your reference number for any follow-up.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n- Branford Taitt Polyclinic - [536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)\n- David Thompson Health and Social Services Complex - [536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)\n- Eunice Gibson Polyclinic - [536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)\n- Maurice Byer Polyclinic - [536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)\n- Randall Phillips Polyclinic - [536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)\n- St. Philip Polyclinic - [536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)\n- Winston Scott Polyclinic - [536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)"
     }
   ],
   "createdAt": "2026-08-18T17:01:58.317Z",
-  "updatedAt": "2026-08-24T23:37:15.523Z"
+  "updatedAt": "2026-09-03T00:00:00.000Z"
 }
