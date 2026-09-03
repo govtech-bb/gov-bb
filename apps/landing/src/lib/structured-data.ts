@@ -5,6 +5,7 @@ import {
   getPageTitle,
 } from '../content/registry'
 import type { ContentPage } from '../content/registry'
+import { breadcrumbPaths } from './breadcrumb-hierarchy'
 
 /**
  * schema.org JSON-LD builders for the landing site (#1643). Each returns a
@@ -76,16 +77,18 @@ function titleForSegment(seg: string, previousSegment?: string): string {
 }
 
 export function buildBreadcrumbLd(page: ContentPage) {
-  const segments = page.url.split('/').filter(Boolean)
+  const paths = breadcrumbPaths(page.url)
   const items = [{ name: 'Home', url: SITE_URL }]
-  segments.forEach((seg, i) => {
-    const url = `${SITE_URL}/${segments.slice(0, i + 1).join('/')}`
-    // The current page is the last segment — use its frontmatter title rather
+  paths.forEach((path, i) => {
+    const segments = path.split('/')
+    const segment = segments.at(-1) ?? ''
+    const url = `${SITE_URL}/${path}`
+    // The current page is the last segment - use its frontmatter title rather
     // than a slug lookup.
     const name =
-      i === segments.length - 1
+      i === paths.length - 1
         ? page.frontmatter.title
-        : titleForSegment(seg, segments[i - 1])
+        : titleForSegment(segment, segments.at(-2))
     items.push({ name, url })
   })
   return {

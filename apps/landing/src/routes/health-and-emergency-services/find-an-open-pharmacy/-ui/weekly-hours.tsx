@@ -1,7 +1,7 @@
 /**
  * Seven-row opening-times table, shared by the result card and the detail
- * page. Static content — safe to server-render; only the today emphasis
- * depends on the clock, and it appears after mount ("Today — Monday",
+ * page. Static content - safe to server-render; only the today emphasis
+ * depends on the clock, and it appears after mount ("Today - Monday",
  * highlighted row).
  */
 
@@ -17,20 +17,20 @@ export function WeeklyHoursRows({
   today: Weekday | null
 }) {
   return (
-    <dl className="m-0 flex flex-col divide-y divide-grey-20">
+    <dl className="govbb-text-body m-0 flex flex-col divide-y divide-grey-20">
       {WEEKDAYS.map((weekday) => {
         const isToday = weekday === today
         const label = dayHoursLabel(hours[weekday])
         return (
           <div
             className={`flex items-baseline justify-between gap-s px-xs py-xxs ${
-              isToday ? 'bg-blue-10 font-bold' : ''
+              isToday ? 'bg-blue-10 govbb-text-bold' : ''
             }`}
             key={weekday}
           >
             <dt>
               {isToday
-                ? `Today — ${WEEKDAY_LABELS[weekday]}`
+                ? `Today, ${WEEKDAY_LABELS[weekday]}`
                 : WEEKDAY_LABELS[weekday]}
             </dt>
             <dd

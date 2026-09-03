@@ -1,5 +1,5 @@
 /**
- * schema.org/Pharmacy JSON-LD for a detail page — built from the same
+ * schema.org/Pharmacy JSON-LD for a detail page - built from the same
  * structured records the page renders, nothing invented. Pure; the caller
  * supplies the canonical URL.
  */

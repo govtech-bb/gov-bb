@@ -1,5 +1,5 @@
 /**
- * Typed caveat — per-record uncertainty, typed rather than uniform.
+ * Typed caveat - per-record uncertainty, typed rather than uniform.
  * coverage = which prescription slips this pharmacy will not
  * honour (highest stakes, yellow); confidence = how sure we are of the
  * details (grey); channel = an alternative ordering route (teal, usually
