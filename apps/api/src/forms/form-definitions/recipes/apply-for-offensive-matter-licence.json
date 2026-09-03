@@ -183,7 +183,7 @@
           }
         },
         {
-          "ref": "components/address",
+          "ref": "components/address-lookup",
           "overrides": {
             "fieldId": "business-address-line-1",
             "label": "Address line 1",
@@ -311,7 +311,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:13:52.779Z",
-  "updatedAt": "2026-09-03T17:20:32.461Z",
+  "updatedAt": "2026-09-03T17:38:46.437Z",
   "meta": {
     "visibility": "preview"
   }
