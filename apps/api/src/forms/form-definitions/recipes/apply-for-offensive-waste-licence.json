@@ -234,13 +234,13 @@
       "behaviours": [],
       "elements": [
         {
-          "ref": "components/address",
+          "ref": "components/address-lookup",
           "overrides": {
             "fieldId": "work-address-line-1",
             "label": "Street address line 1",
             "validations": {
               "required": {
-                "error": "Enter street address line 1.",
+                "error": "Enter street address line 1",
                 "value": true
               }
             }
@@ -481,7 +481,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:33:15.101Z",
-  "updatedAt": "2026-09-03T16:28:18.776Z",
+  "updatedAt": "2026-09-03T17:39:59.127Z",
   "meta": {
     "visibility": "preview"
   }
