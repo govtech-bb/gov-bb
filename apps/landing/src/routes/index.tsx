@@ -6,6 +6,7 @@ import { HelpfulBox } from '../components/HelpfulBox'
 import { CATEGORIES } from '../content/categories'
 import { isCategoryVisible } from '../content/registry'
 import { trackEvent } from '../lib/analytics'
+import { publicChatSuggestions } from '../lib/chat-suggestions'
 import { pageHead } from '../lib/page-head'
 import { deriveVisibilityOverlay } from '../lib/service-status'
 
@@ -22,6 +23,7 @@ export const Route = createFileRoute('/')({
 function Home() {
   const { level, serviceStatuses } = Route.useRouteContext()
   const overlay = deriveVisibilityOverlay(serviceStatuses)
+  const questions = publicChatSuggestions(overlay)
   const categories = CATEGORIES.filter((cat) =>
     isCategoryVisible(cat, level, overlay),
   )
@@ -49,7 +51,7 @@ function Home() {
                 and more. Get instant guidance.
               </Text>
             </div>
-            <ChatAssistant />
+            <ChatAssistant questions={questions} />
           </div>
         </div>
       </section>

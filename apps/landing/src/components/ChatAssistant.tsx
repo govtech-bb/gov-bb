@@ -5,16 +5,6 @@ import { CHAT_URL } from '../lib/chat-url'
 
 const MAX_QUERY_LENGTH = 2000
 
-// Every question must be answerable from a service in src/content — chat can
-// only ground answers in that corpus, so an unbacked question (e.g. passports,
-// driver's licences) sends users straight to a dead end.
-const DEFAULT_QUESTIONS = [
-  'How do I get a birth certificate?',
-  'What financial assistance is available?',
-  'How do I get a primary school textbook grant?',
-  'How do I redirect my personal mail?',
-]
-
 type OnlineState = 'checking' | 'online' | 'offline'
 
 const STATUS_STYLES: Record<OnlineState, { dot: string; label: string }> = {
@@ -24,12 +14,12 @@ const STATUS_STYLES: Record<OnlineState, { dot: string; label: string }> = {
 }
 
 interface ChatAssistantProps {
-  questions?: Array<string>
+  questions: Array<string>
   source?: string
 }
 
 export function ChatAssistant({
-  questions = DEFAULT_QUESTIONS,
+  questions,
   source = 'home',
 }: ChatAssistantProps) {
   const chatUrl = CHAT_URL
@@ -156,27 +146,29 @@ export function ChatAssistant({
         </div>
       </div>
 
-      <div className="max-w-250 space-y-s">
-        <Heading as="h3" size="h4">
-          Questions you can ask:
-        </Heading>
-        <div className="flex flex-wrap gap-s">
-          {questions.map((q) => (
-            <button
-              key={q}
-              type="button"
-              disabled={isOffline}
-              onClick={() => {
-                trackEvent('chat-suggestion', { question: q, source })
-                goToChat(q)
-              }}
-              className="rounded-xl border border-grey-20 bg-blue-80 px-s py-xs text-sm text-white-00 hover:bg-blue-40 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-40 pointer-coarse:min-h-11 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-80"
-            >
-              {q}
-            </button>
-          ))}
+      {questions.length > 0 ? (
+        <div className="max-w-250 space-y-s">
+          <Heading as="h3" size="h4">
+            Questions you can ask:
+          </Heading>
+          <div className="flex flex-wrap gap-s">
+            {questions.map((q) => (
+              <button
+                key={q}
+                type="button"
+                disabled={isOffline}
+                onClick={() => {
+                  trackEvent('chat-suggestion', { question: q, source })
+                  goToChat(q)
+                }}
+                className="rounded-xl border border-grey-20 bg-blue-80 px-s py-xs text-sm text-white-00 hover:bg-blue-40 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-40 pointer-coarse:min-h-11 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-80"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   )
 }
