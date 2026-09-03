@@ -28,14 +28,14 @@ You will need:
 * name and address of the business  
 * registration number of each vehicle
 
-In order to be granted your licence, vehicles must be in good working order:
+In order to be granted your licence, vehicles must be in good working order and:
 
-* Hoses must be in good condition  
-* Vehicles must be leak proof  
-* Each vehicle should carry fresh water to wash down  
-* Each vehicle should carry a bucket, shovel and broom
+* hoses must be in good condition  
+* vehicles must be leak proof  
+* each vehicle should carry fresh water to wash down  
+* each vehicle should carry a bucket, shovel and broom
 
-Read the [Health Services (Disposal of Offensive Matter) Regulations, 1969](https://oag.gov.bb/attachments/Health%20Services%20\(Disposal%20of%20Offensive%20Matter\)%20Regulations,%201969%20Cap44'J.PDF) for the full legal requirements.
+Read the [Health Services (Disposal of Offensive Matter) Regulations, 1969](https://oag.gov.bb/attachments/Health%20Services%20(Disposal%20of%20Offensive%20Matter)%20Regulations,%201969%20Cap44'J.PDF) for the full legal requirements.
 
 ## When to apply
 
@@ -48,11 +48,11 @@ There are 2 ways to apply for a licence to carry offensive matter. You can:
 1. **Apply for a licence online.**
 
    Allow about 5-10 minutes to complete the form.  
-     
+
    <a data-start-link>Start now</a>
 
 2. **Get a paper application from the polyclinic**  
-   You must complete it by hand and submit the application to the polyclinic associated with the district where the business/operator’s address is located. If you require further information or assistance, contact the polyclinic \- information can be found at the bottom of this page.
+   You must complete it by hand and submit the application to the polyclinic associated with the district where the business/operator’s address is located. If you require further information or assistance, contact the polyclinic - information can be found at the bottom of this page.
 
 ## Cost
 
