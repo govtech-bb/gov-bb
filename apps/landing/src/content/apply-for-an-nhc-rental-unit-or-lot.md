@@ -1,7 +1,7 @@
 ---
-title: "Apply for an NHC rental unit or lot"
-description: "Use this service to apply for a rental unit or lot from the National Housing Corporation (NHC). You must have a monthly income of BDS$3,000 or less to be eligible."
-stage: "alpha"
+title: 'Apply for an NHC rental unit or lot'
+description: 'Use this service to apply for a rental unit or lot from the National Housing Corporation (NHC). You must have a monthly income of BDS$3,000 or less to be eligible.'
+stage: 'alpha'
 featured: false
 publish_date: 2026-04-16
 category: housing
@@ -14,21 +14,21 @@ Use this service to apply for a rental unit or lot from the National Housing Cor
 
 ## Who can apply
 
--   Barbadian citizens or permanent residents
--   People with a monthly income of BDS$3,000 or less
+- Barbadian citizens or permanent residents
+- People with a monthly income of BDS$3,000 or less
 
 ## What you will need
 
 Have these ready before you start:
 
--   National Registration Number (on your national ID card)
--   TAMIS Number (your NHC tenant reference number, if you have one)
--   Two recent pay slips
--   National ID card
--   Job letter from your employer
--   Passport-size photograph
--   Co-applicant details (if applying jointly)
--   Details of all people who will live in the unit
+- National Registration Number (on your national ID card)
+- TAMIS Number (your NHC tenant reference number, if you have one)
+- Two recent pay slips
+- National ID card
+- Job letter from your employer
+- Passport-size photograph
+- Co-applicant details (if applying jointly)
+- Details of all people who will live in the unit
 
 ## How to apply
 

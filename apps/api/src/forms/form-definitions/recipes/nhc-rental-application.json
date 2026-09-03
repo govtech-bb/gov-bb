@@ -18,7 +18,7 @@
                 "value": true
               },
               "pattern": {
-                "error": "You cannot apply for this service. To apply for an NHC rental unit or lot, your monthly income must be BDS$3,000 or less. If your circumstances change, you can come back and apply again.",
+                "error": "You must have a monthly income of BDS$3,000 or less to apply",
                 "value": "^yes$"
               }
             },
@@ -32,6 +32,22 @@
                 "value": "no"
               }
             ]
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "income-ineligible-notice",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "income-eligible",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "content": "To apply for an NHC rental unit or lot, your monthly income must be BDS$3,000 or less. If your circumstances change, you can come back and apply again.",
+            "variant": "warning"
           }
         },
         {
@@ -96,7 +112,6 @@
         {
           "ref": "components/tamis-number",
           "overrides": {
-            "label": "TAMIS number",
             "hint": "Your NHC tenant reference number, if you have one"
           }
         },
@@ -119,12 +134,7 @@
         {
           "ref": "components/postcode",
           "overrides": {
-            "hint": "For example, BB11000",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
+            "hint": "For example, BB11000"
           }
         },
         {
@@ -139,7 +149,7 @@
         {
           "ref": "components/generic-select",
           "overrides": {
-            "fieldId": "marital-status-choice",
+            "fieldId": "marital-status",
             "label": "Marital status",
             "validations": {
               "required": {
@@ -212,22 +222,19 @@
         {
           "ref": "components/first-name",
           "overrides": {
-            "fieldId": "co-applicant-first-name",
-            "label": "First name"
+            "fieldId": "co-applicant-first-name"
           }
         },
         {
           "ref": "components/last-name",
           "overrides": {
-            "fieldId": "co-applicant-last-name",
-            "label": "Last name"
+            "fieldId": "co-applicant-last-name"
           }
         },
         {
           "ref": "components/date-of-birth",
           "overrides": {
             "fieldId": "co-applicant-date-of-birth",
-            "label": "Date of birth",
             "validations": {
               "required": {
                 "error": "Enter the co-applicant's date of birth",
@@ -254,7 +261,6 @@
           "ref": "components/tamis-number",
           "overrides": {
             "fieldId": "co-applicant-tamis-number",
-            "label": "TAMIS number",
             "hint": "Their NHC tenant reference number, if they have one"
           }
         },
@@ -275,35 +281,26 @@
         {
           "ref": "components/parish",
           "overrides": {
-            "fieldId": "co-applicant-parish",
-            "label": "Parish"
+            "fieldId": "co-applicant-parish"
           }
         },
         {
           "ref": "components/postcode",
           "overrides": {
             "fieldId": "co-applicant-postcode",
-            "label": "Postcode",
-            "hint": "For example, BB11000",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
+            "hint": "For example, BB11000"
           }
         },
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "co-applicant-telephone",
-            "label": "Telephone number"
+            "fieldId": "co-applicant-telephone"
           }
         },
         {
           "ref": "components/email",
           "overrides": {
-            "fieldId": "co-applicant-email",
-            "label": "Email address"
+            "fieldId": "co-applicant-email"
           }
         },
         {
@@ -422,10 +419,6 @@
               "required": {
                 "error": "Enter your monthly salary",
                 "value": true
-              },
-              "min": {
-                "error": "Monthly salary cannot be less than 0",
-                "value": 0
               }
             },
             "ui": {
@@ -554,10 +547,6 @@
               "required": {
                 "error": "Enter the co-applicant's monthly salary",
                 "value": true
-              },
-              "min": {
-                "error": "Monthly salary cannot be less than 0",
-                "value": 0
               }
             },
             "ui": {
@@ -649,7 +638,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/address",
           "overrides": {
             "fieldId": "property-address",
             "label": "Address of the property",
@@ -741,7 +730,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/address",
           "overrides": {
             "fieldId": "previous-unit-address",
             "label": "Address of the previous unit",
@@ -776,10 +765,6 @@
               "required": {
                 "error": "Enter the number of adults who will live in the unit",
                 "value": true
-              },
-              "min": {
-                "error": "Enter 0 or more",
-                "value": 0
               }
             },
             "ui": {
@@ -796,10 +781,6 @@
               "required": {
                 "error": "Enter the number of children who will live in the unit",
                 "value": true
-              },
-              "min": {
-                "error": "Enter 0 or more",
-                "value": 0
               }
             },
             "ui": {
@@ -824,16 +805,10 @@
       ],
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/name",
           "overrides": {
             "fieldId": "occupant-name",
-            "label": "Full name",
-            "validations": {
-              "required": {
-                "error": "Enter this person's full name",
-                "value": true
-              }
-            }
+            "label": "Full name"
           }
         },
         {
@@ -856,10 +831,6 @@
             "validations": {
               "required": {
                 "value": false
-              },
-              "min": {
-                "error": "Enter 0 or more",
-                "value": 0
               }
             },
             "ui": {
@@ -888,10 +859,6 @@
             "validations": {
               "required": {
                 "value": false
-              },
-              "min": {
-                "error": "Enter 0 or more",
-                "value": 0
               }
             },
             "ui": {
@@ -929,12 +896,7 @@
     {
       "stepId": "submission-confirmation",
       "title": "Application submitted",
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "The NHC will review your application and contact you within 10 working days. They may ask you to send in supporting documents such as your pay slips and ID card.\n\nWe have sent a confirmation to the email address you gave us.\n\nKeep your reference number safe. You will need it if you contact the NHC about your application."
-        }
-      ],
+      "markdownContent": "## What happens next\n\nThe NHC will review your application and contact you within 10 working days. They may ask you to send in supporting documents such as your pay slips and ID card.\n\nWe have sent a confirmation to the email address you gave us.\n\nKeep your reference number safe. You will need it if you contact the NHC about your application.",
       "elements": []
     }
   ],
