@@ -1,15 +1,22 @@
 /**
  * Finder sidebar: locate button, search, filter accordion groups and the
- * removable filter tags. Presentational over the finder's filter state —
+ * removable filter tags. Presentational over the finder's filter state -
  * every change goes through the dispatched actions.
  */
 
-import { Button, Checkbox, Heading, Input, Select, Text } from '@govtech-bb/react'
+import {
+  Button,
+  Checkbox,
+  Heading,
+  Input,
+  Select,
+  Text,
+} from '@govtech-bb/react'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { PARISHES } from '../-data/pharmacies'
 import type { FilterAction, FilterState } from '../-lib/finder-filters'
-import { Chevron, CloseIcon, LocationIcon } from './icons'
+import { Chevron, CloseIcon } from './icons'
 
 type LocationState = 'idle' | 'loading' | 'success'
 
@@ -28,7 +35,7 @@ export function FilterSidebar({
   onRequestLocation: () => void
   onClearLocation: () => void
 }) {
-  // Open by default on desktop, where the panel sits beside the results —
+  // Open by default on desktop, where the panel sits beside the results -
   // but on small screens it stacks above them, so it starts closed to keep
   // the first pharmacy within reach.
   const [filterOpen, setFilterOpen] = useState(true)
@@ -85,7 +92,9 @@ export function FilterSidebar({
 
   return (
     <div className="mb-m flex flex-col gap-m lg:mb-0 print:hidden">
-      <h2 className="sr-only">Filter pharmacies</h2>
+      <Heading as="h2" className="govbb-visually-hidden">
+        Filter pharmacies
+      </Heading>
       <div>
         <button
           aria-controls="pharmacy-filter-panel"
@@ -94,7 +103,9 @@ export function FilterSidebar({
           onClick={() => setFilterOpen((open) => !open)}
           type="button"
         >
-          <span className="font-bold text-body underline">Filter</span>
+          <Text as="span" className="underline" weight="bold">
+            Filter
+          </Text>
           <Chevron open={filterOpen} />
         </button>
 
@@ -116,10 +127,7 @@ export function FilterSidebar({
                 }
                 type="button"
               >
-                <span className="inline-flex items-center gap-2">
-                  <LocationIcon />
-                  {locationLabel}
-                </span>
+                {locationLabel}
               </Button>
               {locationStatus && (
                 <Text
@@ -199,14 +207,14 @@ export function FilterSidebar({
                 value={filters.slip}
               >
                 <option value="any">Any colour</option>
-                <option value="white">White — Drug Service</option>
-                <option value="yellow">Yellow — GEHP</option>
-                <option value="green">Green — GEHP dependant</option>
+                <option value="white">White (Drug Service)</option>
+                <option value="yellow">Yellow (GEHP)</option>
+                <option value="green">Green (GEHP dependant)</option>
               </Select>
             </FilterGroup>
 
             <FilterGroup
-              hint="Shows only pharmacies open right now, in Barbados time. Pharmacies with no confirmed hours are not shown — call to check. Hours can change on public holidays."
+              hint="Shows only pharmacies open right now, in Barbados time. Pharmacies with no confirmed hours are not shown. Call to check. Hours can change on public holidays."
               title="Opening hours"
             >
               <Checkbox
@@ -214,7 +222,10 @@ export function FilterSidebar({
                 id="filter-open-now"
                 label="Open right now"
                 onChange={(event) =>
-                  dispatch({ type: 'set-open-now', value: event.target.checked })
+                  dispatch({
+                    type: 'set-open-now',
+                    value: event.target.checked,
+                  })
                 }
               />
             </FilterGroup>
@@ -240,26 +251,28 @@ export function FilterSidebar({
             <div className="flex flex-wrap items-center gap-xs">
               {tags.map((tag) => (
                 <button
-                  className="inline-flex items-center gap-2 bg-teal-10 p-2.5 font-medium hover:bg-teal-20"
+                  className="inline-flex items-center gap-2 bg-teal-10 p-2.5 hover:bg-teal-20"
                   key={tag.key}
                   onClick={() => dispatch(tag.action)}
                   type="button"
                 >
-                  {tag.label}
+                  <Text as="span">{tag.label}</Text>
                   <CloseIcon />
-                  <span className="sr-only">Remove filter</span>
+                  <span className="govbb-visually-hidden">Remove filter</span>
                 </button>
               ))}
             </div>
             <button
-              className="self-start font-semibold text-red-80 underline"
+              className="self-start text-red-80 underline"
               onClick={() => {
                 dispatch({ type: 'clear-all' })
                 onClearLocation()
               }}
               type="button"
             >
-              Clear all
+              <Text as="span" weight="bold">
+                Clear all
+              </Text>
             </button>
           </div>
         )}
@@ -282,19 +295,19 @@ function FilterGroup({
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div className="flex w-full flex-col gap-s border-grey-70 border-b pb-s">
-      <button
-        aria-expanded={open}
-        className="flex w-full items-center justify-between gap-2.5"
-        onClick={() => setOpen((value) => !value)}
-        type="button"
-      >
-        <Heading as="h3" size="h4">
-          {title}
-        </Heading>
-        <span className="text-teal-80">
-          <Chevron open={open} />
-        </span>
-      </button>
+      <Heading as="h3" size="h4">
+        <button
+          aria-expanded={open}
+          className="flex w-full items-center justify-between gap-2.5 text-left"
+          onClick={() => setOpen((value) => !value)}
+          type="button"
+        >
+          <span>{title}</span>
+          <span className="text-teal-80">
+            <Chevron open={open} />
+          </span>
+        </button>
+      </Heading>
       {open && (
         <div className="flex flex-col gap-s">
           {hint && (

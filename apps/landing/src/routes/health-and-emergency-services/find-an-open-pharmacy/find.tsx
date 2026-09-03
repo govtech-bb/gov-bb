@@ -11,6 +11,7 @@ const CONTENT_URL = 'health-and-emergency-services/find-an-open-pharmacy'
 export const Route = createFileRoute(
   '/health-and-emergency-services/find-an-open-pharmacy/find',
 )({
+  staticData: { breadcrumbMode: 'location' },
   // Mirror the markdown service page's rollout gate: hidden unless the
   // viewer's level meets the service's.
   beforeLoad: ({ context }) => {

@@ -2,7 +2,7 @@ import type { Pharmacy } from '../-data/pharmacies'
 import { PHARMACIES } from '../-data/pharmacies'
 
 /**
- * URL slug for a pharmacy, derived from its (unique) name — the $slug
+ * URL slug for a pharmacy, derived from its (unique) name - the $slug
  * segment of its canonical detail page.
  */
 export function pharmacySlug(name: string): string {

@@ -3,7 +3,7 @@ import { toMinutes } from '../-lib/opening-hours'
 import { pharmacySlug } from '../-lib/pharmacy-slug'
 import { PHARMACIES, WEEKDAYS } from './pharmacies'
 
-// Integrity checks the type system can't express — these keep holding when
+// Integrity checks the type system can't express - these keep holding when
 // pharmacies.json is edited.
 describe('pharmacy dataset', () => {
   it('has records', () => {

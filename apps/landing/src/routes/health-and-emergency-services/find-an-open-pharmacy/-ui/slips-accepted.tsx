@@ -1,7 +1,7 @@
 /**
  * "Prescriptions accepted" panel for the detail page.
  * One row per slip colour: swatch, accepted/not-accepted mark backed by
- * words, and — for a rejected slip — the nearest pharmacy that takes it.
+ * words, and - for a rejected slip - the nearest pharmacy that takes it.
  */
 
 import { Heading, Link, Text } from '@govtech-bb/react'
@@ -28,14 +28,14 @@ function slipDescription(pharmacy: Pharmacy, slip: SlipColour): string {
   if (acceptsSlip(pharmacy, slip)) {
     if (pharmacy.type === 'government') {
       // QEH-issued slips are filled at government pharmacies for selected
-      // medications only — see the slip colours page.
-      return 'Accepted for selected medications — call to check yours is covered.'
+      // medications only - see the slip colours page.
+      return 'Accepted for selected medications. Call to check yours is covered.'
     }
-    return 'Accepted — a small dispensing fee applies.'
+    return 'Accepted. A small dispensing fee applies.'
   }
   const nearest = nearestAccepting(pharmacy, slip, PHARMACIES)
   if (nearest) {
-    return `Not accepted here. Nearest pharmacy accepting ${slip} is ${nearest.pharmacy.name}, ${nearest.pharmacy.parish} — ${formatDistanceKm(nearest.km)}.`
+    return `Not accepted here. Nearest pharmacy accepting ${slip} is ${nearest.pharmacy.name}, ${nearest.pharmacy.parish}, ${formatDistanceKm(nearest.km)}.`
   }
   return slip === 'white'
     ? 'Not accepted here. Participating private pharmacies accept it.'
@@ -46,12 +46,12 @@ function SlipRow({ pharmacy, slip }: { pharmacy: Pharmacy; slip: SlipColour }) {
   const mark = acceptsSlip(pharmacy, slip) ? (
     <span className="text-green-80">
       <CheckIcon />
-      <span className="sr-only">Accepted</span>
+      <span className="govbb-visually-hidden">Accepted</span>
     </span>
   ) : (
     <span className="text-red-80">
       <CrossIcon />
-      <span className="sr-only">Not accepted</span>
+      <span className="govbb-visually-hidden">Not accepted</span>
     </span>
   )
 
@@ -63,7 +63,9 @@ function SlipRow({ pharmacy, slip }: { pharmacy: Pharmacy; slip: SlipColour }) {
       />
       <span className="mt-0.75">{mark}</span>
       <div className="flex flex-col gap-xxs">
-        <p className="font-bold">{SLIP_LABELS[slip]}</p>
+        <Text as="p" weight="bold">
+          {SLIP_LABELS[slip]}
+        </Text>
         <Text as="p" className="text-grey-70" size="body-sm">
           {slipDescription(pharmacy, slip)}
         </Text>
@@ -75,11 +77,12 @@ function SlipRow({ pharmacy, slip }: { pharmacy: Pharmacy; slip: SlipColour }) {
 export function SlipsAccepted({ pharmacy }: { pharmacy: Pharmacy }) {
   return (
     <section aria-labelledby="slips-accepted" className="flex flex-col gap-s">
-      <Heading as="h2" id="slips-accepted" size="h3">
+      <Heading as="h2" id="slips-accepted">
         Prescriptions accepted
       </Heading>
       <Text as="p" className="text-grey-70">
-        Check the colour of the prescription your doctor gave you before you travel.{' '}
+        Check the colour of the prescription your doctor gave you before you
+        travel.{' '}
         <Link href={SLIP_COLOURS_HREF}>What prescription colours mean</Link>
       </Text>
       <ul className="flex list-none flex-col gap-xs p-0">

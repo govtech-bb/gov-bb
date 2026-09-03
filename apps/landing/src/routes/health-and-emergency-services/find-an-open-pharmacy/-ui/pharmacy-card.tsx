@@ -3,8 +3,8 @@
  * --------------------------------------------------------------
  * Reading order: status → name → cost → where → when → caveats → actions.
  * Cost sits second because it is the deciding factor in
- * Barbados — polyclinics are free, private pharmacies charge a dispensing
- * fee. Presentational — no finder state.
+ * Barbados - polyclinics are free, private pharmacies charge a dispensing
+ * fee. Presentational - no finder state.
  *
  * Everything except the status line is static, so the card is useful
  * before hydration and without JavaScript.
@@ -39,7 +39,7 @@ export function PharmacyCard({
   pharmacy: Pharmacy
   now: Date | null
   distanceKm?: number | null
-  /** Rendered for the printed list only — hidden on screen. */
+  /** Rendered for the printed list only - hidden on screen. */
   printOnly?: boolean
 }) {
   const hasPlace = pharmacy.parish !== 'All parishes'
@@ -66,22 +66,27 @@ export function PharmacyCard({
 
       <CostChip pharmacy={pharmacy} />
 
-      <div className="flex flex-col gap-1 text-grey-70 text-sm">
-        <p className="inline-flex items-start gap-2">
+      <div className="flex flex-col gap-1 text-grey-70">
+        <Text as="p" className="inline-flex items-start gap-2" size="body-sm">
           <span className="mt-0.75">
             <MapPinIcon />
           </span>
           {pharmacy.address}
-        </p>
+        </Text>
         {distanceKm !== null && (
-          <p className="inline-flex items-start gap-2 font-semibold text-blue-40">
+          <Text
+            as="p"
+            className="inline-flex items-start gap-2 text-blue-40"
+            size="body-sm"
+            weight="bold"
+          >
             <span className="mt-0.75">
               <MapPinIcon />
             </span>
             {formatDistanceKm(distanceKm)}
-          </p>
+          </Text>
         )}
-        <p className="inline-flex items-start gap-2">
+        <Text as="p" className="inline-flex items-start gap-2" size="body-sm">
           <span className="mt-0.75">
             <ClockIcon />
           </span>
@@ -90,14 +95,14 @@ export function PharmacyCard({
               ? weeklyHoursSummary(pharmacy.hours)
               : 'Call to confirm opening hours'}
           </span>
-        </p>
+        </Text>
       </div>
 
       {pharmacy.notes && <Caveat tone="confidence">{pharmacy.notes}</Caveat>}
 
       {pharmacy.type === 'private-sbs' && (
         <Caveat tone="coverage">
-          Yellow or green (GEHP) prescriptions are not covered here — you would
+          Yellow or green (GEHP) prescriptions are not covered here. You would
           pay full price.
         </Caveat>
       )}
@@ -130,7 +135,9 @@ export function PharmacyCard({
           </LinkButton>
         </div>
         {pharmacy.phone ? (
-          <p className="hidden print:block">Call {pharmacy.phone}</p>
+          <Text as="p" className="hidden print:block" size="body-sm">
+            Call {pharmacy.phone}
+          </Text>
         ) : (
           <Text as="p" className="text-grey-70" size="body-sm">
             No number listed. Call the Drug Service on{' '}
@@ -139,7 +146,7 @@ export function PharmacyCard({
           </Text>
         )}
         {provenance && (
-          <Text as="p" className="font-medium text-grey-70" size="body-sm">
+          <Text as="p" className="text-grey-70" size="body-sm">
             {provenance}
           </Text>
         )}

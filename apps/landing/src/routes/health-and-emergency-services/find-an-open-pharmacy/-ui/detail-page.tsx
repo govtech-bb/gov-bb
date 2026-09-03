@@ -1,5 +1,5 @@
 /**
- * Pharmacy detail page — the canonical, shareable page for one pharmacy.
+ * Pharmacy detail page - the canonical, shareable page for one pharmacy.
  * --------------------------------------------------------------
  * Body for /health-and-emergency-services/find-an-open-pharmacy/<slug>.
  * Single column in the house shape (max-w-2xl, 56→40→20/16px register),
@@ -104,7 +104,7 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
           <WeeklyHoursRows hours={pharmacy.hours} today={today} />
         ) : (
           <Caveat tone="confidence">
-            Opening hours have not been confirmed — call before you go.
+            Opening hours have not been confirmed. Call before you go.
           </Caveat>
         )}
         {pharmacy.notes && <Caveat tone="confidence">{pharmacy.notes}</Caveat>}
@@ -147,7 +147,7 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
         )}
         <Text as="p" className="text-grey-70" size="body-sm">
           {provenance ? `${provenance} ` : null}Opening hours and Drug Service
-          participation can change — call ahead to confirm.
+          participation can change. Call ahead to confirm.
         </Text>
       </section>
     </div>
