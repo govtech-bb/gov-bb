@@ -193,6 +193,11 @@
                 "value": true
               }
             }
+          },
+          "geocodeTargets": {
+            "line2FieldId": "business-address-line-2",
+            "parishFieldId": "business-parish",
+            "coordinatesFieldId": "business-address-coordinates"
           }
         },
         {
@@ -217,6 +222,21 @@
                 "error": "Select the parish where the business is located.",
                 "value": true
               }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "business-address-coordinates",
+            "label": "Business location coordinates",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "ui": {
+              "hidden": true
             }
           }
         }
@@ -308,10 +328,48 @@
         "recipientField": "personal-and-contact-details.applicant-email",
         "subject": "Application received: licence to move human or rotting waste"
       }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "catchment.mdaEmail",
+        "subject": "A new application for licence to carry offensive matter application has been received"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "method": "POST",
+        "signatureHeader": "X-Webhook-Signature",
+        "mapping": {
+          "programmeCode": "HOTEL_LICENCE",
+          "mdaCode": "MOH",
+          "programmeShortCode": "HTL",
+          "applicant": {
+            "name": [
+              "personal-and-contact-details.applicant-first-name",
+              "personal-and-contact-details.applicant-last-name"
+            ],
+            "email": "personal-and-contact-details.applicant-email",
+            "phone": "personal-and-contact-details.applicant-telephone"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        },
+        "timeoutMs": 10000
+      }
     }
   ],
   "createdAt": "2026-08-24T19:13:52.779Z",
   "updatedAt": "2026-09-03T17:38:46.437Z",
+  "catchmentRouting": {
+    "coordinatesField": "business-address-details.business-address-coordinates",
+    "parishField": "business-address-details.business-parish"
+  },
   "meta": {
     "visibility": "preview"
   }
