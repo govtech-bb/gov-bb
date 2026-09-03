@@ -238,7 +238,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-to-use-state-land",
-    title: "Application to use State Land",
+    title: "Application to use state land",
     category: "housing",
     formId: "mohlm-application-use-state-land",
     visibility: "preview",

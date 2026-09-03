@@ -1,5 +1,5 @@
 ---
-title: "Application to use State Land"
+title: "Application to use state land"
 description: "Use this service to apply for permission to use land owned by the Government of Barbados for a specific purpose over a set period, such as an event, a project, or a community use."
 stage: "alpha"
 featured: false
