@@ -1,0 +1,964 @@
+{
+  "formId": "nhc-rental-application",
+  "title": "Apply for an NHC rental unit or lot",
+  "description": "National Housing Corporation application form for a rental unit or lot",
+  "steps": [
+    {
+      "stepId": "eligibility",
+      "title": "Check if you can apply",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "income-eligible",
+            "label": "Is your monthly income BDS$3,000 or less?",
+            "validations": {
+              "required": {
+                "error": "Tell us whether your monthly income is BDS$3,000 or less",
+                "value": true
+              },
+              "pattern": {
+                "error": "You cannot apply for this service. To apply for an NHC rental unit or lot, your monthly income must be BDS$3,000 or less. If your circumstances change, you can come back and apply again.",
+                "value": "^yes$"
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "has-co-applicant",
+            "label": "Are you applying with a co-applicant?",
+            "validations": {
+              "required": {
+                "error": "Tell us if you are applying with a co-applicant",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "applicant-details",
+      "title": "Your details",
+      "elements": [
+        {
+          "ref": "components/first-name"
+        },
+        {
+          "ref": "components/last-name"
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "validations": {
+              "required": {
+                "error": "Enter your date of birth",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "label": "National Registration Number",
+            "hint": "You can find this on your national ID card. For example, 870315-1234",
+            "validations": {
+              "required": {
+                "error": "Enter your National Registration Number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/tamis-number",
+          "overrides": {
+            "label": "TAMIS number",
+            "hint": "Your NHC tenant reference number, if you have one"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "label": "Home address",
+            "hint": "Street address and village or district",
+            "validations": {
+              "required": {
+                "error": "Enter your home address",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish"
+        },
+        {
+          "ref": "components/postcode",
+          "overrides": {
+            "hint": "For example, BB11000",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone"
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "hint": "We will send your confirmation here"
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "fieldId": "marital-status-choice",
+            "label": "Marital status",
+            "validations": {
+              "required": {
+                "error": "Choose your marital status",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Single",
+                "value": "single"
+              },
+              {
+                "label": "Married",
+                "value": "married"
+              },
+              {
+                "label": "Divorced",
+                "value": "divorced"
+              },
+              {
+                "label": "Widowed",
+                "value": "widowed"
+              },
+              {
+                "label": "Separated",
+                "value": "separated"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "citizenship",
+            "label": "Citizenship status",
+            "validations": {
+              "required": {
+                "error": "Choose your citizenship status",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Barbadian citizen",
+                "value": "barbadian-citizen"
+              },
+              {
+                "label": "Permanent resident",
+                "value": "permanent-resident"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "co-applicant-details",
+      "title": "Co-applicant details",
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetFieldId": "has-co-applicant",
+          "targetStepId": "eligibility",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ],
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "co-applicant-first-name",
+            "label": "First name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "co-applicant-last-name",
+            "label": "Last name"
+          }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "fieldId": "co-applicant-date-of-birth",
+            "label": "Date of birth",
+            "validations": {
+              "required": {
+                "error": "Enter the co-applicant's date of birth",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "fieldId": "co-applicant-national-id-number",
+            "label": "National Registration Number",
+            "hint": "You can find this on their national ID card. For example, 870315-1234",
+            "validations": {
+              "required": {
+                "error": "Enter the co-applicant's National Registration Number",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/tamis-number",
+          "overrides": {
+            "fieldId": "co-applicant-tamis-number",
+            "label": "TAMIS number",
+            "hint": "Their NHC tenant reference number, if they have one"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "co-applicant-address",
+            "label": "Home address",
+            "hint": "Street address and village or district",
+            "validations": {
+              "required": {
+                "error": "Enter the co-applicant's home address",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "co-applicant-parish",
+            "label": "Parish"
+          }
+        },
+        {
+          "ref": "components/postcode",
+          "overrides": {
+            "fieldId": "co-applicant-postcode",
+            "label": "Postcode",
+            "hint": "For example, BB11000",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "co-applicant-telephone",
+            "label": "Telephone number"
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "co-applicant-email",
+            "label": "Email address"
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "fieldId": "co-applicant-marital-status",
+            "label": "Marital status",
+            "validations": {
+              "required": {
+                "error": "Choose the co-applicant's marital status",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Single",
+                "value": "single"
+              },
+              {
+                "label": "Married",
+                "value": "married"
+              },
+              {
+                "label": "Divorced",
+                "value": "divorced"
+              },
+              {
+                "label": "Widowed",
+                "value": "widowed"
+              },
+              {
+                "label": "Separated",
+                "value": "separated"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "co-applicant-citizenship",
+            "label": "Citizenship status",
+            "validations": {
+              "required": {
+                "error": "Choose the co-applicant's citizenship status",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Barbadian citizen",
+                "value": "barbadian-citizen"
+              },
+              {
+                "label": "Permanent resident",
+                "value": "permanent-resident"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "applicant-employment",
+      "title": "Your employment",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "employer-name",
+            "label": "Employer's name",
+            "validations": {
+              "required": {
+                "error": "Enter the name of your employer",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "occupation",
+            "label": "Your occupation",
+            "validations": {
+              "required": {
+                "error": "Enter your occupation",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "period-of-employment",
+            "label": "How long have you worked there?",
+            "hint": "For example, 2 years 3 months",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "ui": {
+              "width": "medium"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "salary",
+            "label": "Monthly salary",
+            "hint": "Enter the amount in BDS$",
+            "validations": {
+              "required": {
+                "error": "Enter your monthly salary",
+                "value": true
+              },
+              "min": {
+                "error": "Monthly salary cannot be less than 0",
+                "value": 0
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "fieldId": "pay-period",
+            "label": "How often are you paid?",
+            "validations": {
+              "required": {
+                "error": "Choose how often you are paid",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Weekly",
+                "value": "weekly"
+              },
+              {
+                "label": "Fortnightly",
+                "value": "fortnightly"
+              },
+              {
+                "label": "Monthly",
+                "value": "monthly"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "employment-status",
+            "label": "Employment status",
+            "validations": {
+              "required": {
+                "error": "Choose your employment status",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Employed",
+                "value": "employed"
+              },
+              {
+                "label": "Self-employed",
+                "value": "self-employed"
+              },
+              {
+                "label": "Unemployed",
+                "value": "unemployed"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "co-applicant-employment",
+      "title": "Co-applicant employment",
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetFieldId": "has-co-applicant",
+          "targetStepId": "eligibility",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ],
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-employer-name",
+            "label": "Employer's name",
+            "validations": {
+              "required": {
+                "error": "Enter the name of the co-applicant's employer",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-occupation",
+            "label": "Occupation",
+            "validations": {
+              "required": {
+                "error": "Enter the co-applicant's occupation",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-period-of-employment",
+            "label": "How long have they worked there?",
+            "hint": "For example, 2 years 3 months",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "ui": {
+              "width": "medium"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "co-applicant-salary",
+            "label": "Monthly salary",
+            "hint": "Enter the amount in BDS$",
+            "validations": {
+              "required": {
+                "error": "Enter the co-applicant's monthly salary",
+                "value": true
+              },
+              "min": {
+                "error": "Monthly salary cannot be less than 0",
+                "value": 0
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "fieldId": "co-applicant-pay-period",
+            "label": "How often are they paid?",
+            "validations": {
+              "required": {
+                "error": "Choose how often the co-applicant is paid",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Weekly",
+                "value": "weekly"
+              },
+              {
+                "label": "Fortnightly",
+                "value": "fortnightly"
+              },
+              {
+                "label": "Monthly",
+                "value": "monthly"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "co-applicant-employment-status",
+            "label": "Employment status",
+            "validations": {
+              "required": {
+                "error": "Choose the co-applicant's employment status",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Employed",
+                "value": "employed"
+              },
+              {
+                "label": "Self-employed",
+                "value": "self-employed"
+              },
+              {
+                "label": "Unemployed",
+                "value": "unemployed"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "criteria",
+      "title": "Eligibility questions",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "owns-property",
+            "label": "Do you or your spouse own any land or property?",
+            "validations": {
+              "required": {
+                "error": "Tell us if you own any land or property",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "property-address",
+            "label": "Address of the property",
+            "validations": {
+              "required": {
+                "error": "Enter the address of the property",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "owns-property",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "nhc-debt",
+            "label": "Are you currently indebted to the NHC?",
+            "validations": {
+              "required": {
+                "error": "Tell us if you are indebted to the NHC",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "nhc-debt-details",
+            "label": "Details of the debt",
+            "hint": "Tell us the amount owed and any payment arrangements",
+            "validations": {
+              "required": {
+                "error": "Tell us the details of your NHC debt",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "nhc-debt",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "previous-nhc-unit",
+            "label": "Have you previously occupied an NHC unit?",
+            "validations": {
+              "required": {
+                "error": "Tell us if you have previously occupied an NHC unit",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "previous-unit-address",
+            "label": "Address of the previous unit",
+            "validations": {
+              "required": {
+                "error": "Enter the address of the previous unit",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "previous-nhc-unit",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "household",
+      "title": "People who will live in the unit",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "adults-count",
+            "label": "How many adults (18 and over)?",
+            "validations": {
+              "required": {
+                "error": "Enter the number of adults who will live in the unit",
+                "value": true
+              },
+              "min": {
+                "error": "Enter 0 or more",
+                "value": 0
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "children-count",
+            "label": "How many children (under 18)?",
+            "validations": {
+              "required": {
+                "error": "Enter the number of children who will live in the unit",
+                "value": true
+              },
+              "min": {
+                "error": "Enter 0 or more",
+                "value": 0
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "occupant-details",
+      "title": "Occupant details",
+      "description": "Tell us about each person who will live in the unit. You can add up to 5 people.",
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 5,
+          "addAnotherLabel": "Do you need to add another person?",
+          "instanceLabel": "Person"
+        }
+      ],
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "occupant-name",
+            "label": "Full name",
+            "validations": {
+              "required": {
+                "error": "Enter this person's full name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/relationship",
+          "overrides": {
+            "fieldId": "occupant-relationship",
+            "label": "Relationship to you",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "occupant-age",
+            "label": "Age",
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "min": {
+                "error": "Enter 0 or more",
+                "value": 0
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "occupant-occupation",
+            "label": "Occupation or school",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "occupant-income",
+            "label": "Monthly income (BDS$)",
+            "hint": "Enter 0 if they have no income",
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "min": {
+                "error": "Enter 0 or more",
+                "value": 0
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "validations": {
+              "required": {
+                "error": "You must agree to the declaration before you can submit",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "I declare that the information provided in this application is true and correct to the best of my knowledge.",
+                "value": "confirmed"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "The NHC will review your application and contact you within 10 working days. They may ask you to send in supporting documents such as your pay slips and ID card.\n\nWe have sent a confirmation to the email address you gave us.\n\nKeep your reference number safe. You will need it if you contact the NHC about your application."
+        }
+      ],
+      "elements": []
+    }
+  ],
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "applicant-details.email",
+        "subject": "We have received your application for an NHC Rental Unit or Lot",
+        "label": "Applicant Email"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "config.mdaEmail",
+        "subject": "Submission received for NHC Application for Rental Unit or Lot",
+        "label": "MDA Email"
+      }
+    }
+  ],
+  "createdAt": "2026-09-03T00:00:00.000Z",
+  "updatedAt": "2026-09-03T00:00:00.000Z",
+  "meta": {
+    "visibility": "preview"
+  }
+}
