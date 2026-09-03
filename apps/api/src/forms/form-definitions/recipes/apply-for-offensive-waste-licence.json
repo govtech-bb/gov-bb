@@ -244,6 +244,11 @@
                 "error": "Enter street address line 1",
                 "value": true
               }
+            },
+            "geocodeTargets": {
+              "line2FieldId": "work-address-line-2",
+              "parishFieldId": "work-address-parish",
+              "coordinatesFieldId": "business-address-coordinates"
             }
           }
         },
@@ -269,6 +274,21 @@
                 "error": "Select the parish where you will do this work.",
                 "value": true
               }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "business-address-coordinates",
+            "label": "Business location coordinates",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "ui": {
+              "hidden": true
             }
           }
         }
@@ -454,6 +474,13 @@
       }
     },
     {
+      "type": "email",
+      "config": {
+        "recipientField": "catchment.mdaEmail",
+        "subject": "A new application for Licence to carry offensive waste has been received"
+      }
+    },
+    {
       "type": "webhook",
       "config": {
         "method": "POST",
@@ -485,5 +512,9 @@
   "updatedAt": "2026-09-03T17:41:43.503Z",
   "meta": {
     "visibility": "preview"
+  },
+  "catchmentRouting": {
+    "coordinatesField": "work-address.business-address-coordinates",
+    "parishField": "work-address.work-address-parish"
   }
 }
