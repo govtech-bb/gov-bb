@@ -202,6 +202,11 @@
                 "error": "Enter the property address.",
                 "value": true
               }
+            },
+            "geocodeTargets": {
+              "line2FieldId": "property-address-line-2",
+              "parishFieldId": "property-parish",
+              "coordinatesFieldId": "property-address-coordinates"
             }
           }
         },
@@ -232,7 +237,19 @@
           }
         },
         {
-          "ref": "components/generic-text"
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "property-address-coordinates",
+            "label": "Property location coordinates",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "ui": {
+              "hidden": true
+            }
+          }
         },
         {
           "ref": "components/generic-number",
@@ -828,6 +845,10 @@
   ],
   "createdAt": "2026-08-24T23:54:14.187Z",
   "updatedAt": "2026-09-03T19:57:20.893Z",
+  "catchmentRouting": {
+    "coordinatesField": "property-details.property-address-coordinates",
+    "parishField": "property-details.property-parish"
+  },
   "meta": {
     "visibility": "preview"
   }
