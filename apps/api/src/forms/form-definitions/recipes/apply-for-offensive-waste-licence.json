@@ -207,8 +207,9 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-textarea",
           "overrides": {
+            "fieldId": "generic-text",
             "label": "State the changes you have made",
             "validations": {
               "required": {
@@ -481,7 +482,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:33:15.101Z",
-  "updatedAt": "2026-09-03T17:39:59.127Z",
+  "updatedAt": "2026-09-03T17:41:43.503Z",
   "meta": {
     "visibility": "preview"
   }
