@@ -85,10 +85,10 @@ Submitting an application does not mean that an offensive trades licence has bee
 
 If you need help, contact the relevant Environmental Health Service office.
 
-* Branford Taitt Polyclinic \- 536-3700, EHD.BTPC@health.gov.bb  
-* David Thompson Health and Social Services Complex \- 536-4453, DTHSSC.EHD@health.gov.bb  
-* Eunice Gibson Polyclinic \- 536-4033, EuniceGibsonEHD@health.gov.bb  
-* Maurice Byer Polyclinic \- 5363214, MBPC.apps@health.gov.bb  
-* Randall Phillips Polyclinic \- 536-4338, RPPC.EHD@health.gov.bb  
-* St. Phillip Polyclinic \- 536-1240, StPhilipEHD@health.gov.bb  
-* Winston Scott Polyclinic \- 536-3476, EHD.WSPC@health.gov.bb
+-   Branford Taitt Polyclinic - [536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)
+-   David Thompson Health and Social Services Complex - [536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)
+-   Eunice Gibson Polyclinic - [536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)
+-   Maurice Byer Polyclinic - [536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)
+-   Randall Phillips Polyclinic - [536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)
+-   St. Phillip Polyclinic - [536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)
+-   Winston Scott Polyclinic - [536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)
