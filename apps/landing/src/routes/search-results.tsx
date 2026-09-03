@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { Heading, Link, Search as SearchInput, Text } from '@govtech-bb/react'
+import { Heading, Link, Text } from '@govtech-bb/react'
 import { z } from 'zod'
+import { ServiceSearch } from '../components/ServiceSearch'
 import { search } from '../lib/search'
 import { trackEvent } from '../lib/analytics'
 import { deriveVisibilityOverlay } from '../lib/service-status'
@@ -27,9 +28,8 @@ function SearchResultsPage() {
   const { q } = Route.useSearch()
   const { level, serviceStatuses } = Route.useRouteContext()
   const query = q.trim()
-  const hits = query
-    ? search(query, level, deriveVisibilityOverlay(serviceStatuses))
-    : []
+  const overlay = deriveVisibilityOverlay(serviceStatuses)
+  const hits = query ? search(query, level, overlay) : []
 
   useEffect(() => {
     if (!query) return
@@ -48,24 +48,12 @@ function SearchResultsPage() {
             <Text as="p" className="font-bold">
               Search for a service
             </Text>
-            <SearchInput
-              action="/search-results"
-              label="Search for a service"
-              buttonLabel="Search"
-              inputProps={{ defaultValue: query, name: 'q' }}
-              onSubmit={(event) => {
-                event.preventDefault()
-                const submitted = String(
-                  new FormData(event.currentTarget).get('q') ?? '',
-                ).trim()
-                trackEvent('search-submit', {
-                  query: submitted,
-                  source: 'results',
-                })
-                window.location.href = submitted
-                  ? `/search-results?q=${encodeURIComponent(submitted)}`
-                  : '/search-results'
-              }}
+            <ServiceSearch
+              key={query}
+              source="results"
+              viewer={level}
+              overlay={overlay}
+              defaultValue={query}
             />
           </div>
         </div>
@@ -73,77 +61,83 @@ function SearchResultsPage() {
 
       <section className="pt-4 pb-8">
         <div className="govbb-width-container">
-          <div aria-live="polite">
-            <Heading as="h2" className="mb-s">
-              Search results
-            </Heading>
+          <Heading as="h1" size="h2" className="mb-s">
+            Search results
+          </Heading>
 
-            {hasResults ? (
-              <Text as="p" className="mb-s">
-                {hits.length} search {hits.length === 1 ? 'result' : 'results'}{' '}
-                for &ldquo;<strong>{query}</strong>&rdquo;{' '}
-                {hits.length === 1 ? 'was' : 'were'} found
+          {hasResults ? (
+            <Text
+              as="p"
+              aria-atomic="true"
+              aria-live="polite"
+              className="mb-s break-words"
+            >
+              {hits.length} search {hits.length === 1 ? 'result' : 'results'}{' '}
+              for &ldquo;<strong>{query}</strong>&rdquo;{' '}
+              {hits.length === 1 ? 'was' : 'were'} found
+            </Text>
+          ) : null}
+
+          {hasNoResults ? (
+            <div className="space-y-s">
+              <Text
+                as="p"
+                aria-atomic="true"
+                aria-live="polite"
+                className="break-words"
+              >
+                We could not find any results for &ldquo;
+                <strong>{query}</strong>&rdquo;
               </Text>
-            ) : null}
-
-            {hasNoResults ? (
-              <div className="space-y-s">
-                <Text as="p">
-                  We could not find any results for &ldquo;
-                  <strong>{query}</strong>&rdquo;
-                </Text>
-                <Text as="p">You can try:</Text>
-                <ul className="list-disc space-y-xs ps-m">
-                  <li>
-                    <Text as="span">checking your spelling</Text>
-                  </li>
-                  <li>
-                    <Text as="span">using different words</Text>
-                  </li>
-                </ul>
-                <Text as="p">
-                  You can also{' '}
-                  <Link className="inline" href="/services">
-                    browse all government services
-                  </Link>
-                  .
-                </Text>
-              </div>
-            ) : null}
-
-            {hasResults ? (
-              <ul className="flex flex-col gap-s">
-                {hits.map((hit, index) => (
-                  <li
-                    key={hit.id}
-                    className="flex flex-col items-start gap-xs border-grey-20 border-b-2 py-s first:pt-0"
-                  >
-                    <Link
-                      className="text-body leading-normal"
-                      href={hit.href}
-                      onClick={() =>
-                        trackEvent('search-result-click', {
-                          query,
-                          position: index + 1,
-                          href: hit.href,
-                        })
-                      }
-                    >
-                      {hit.title}
-                    </Link>
-                    {hit.description ? (
-                      <Text as="p" className="hidden lg:block">
-                        {hit.description}
-                      </Text>
-                    ) : null}
-                    <Text as="p" className="text-grey-70">
-                      Information service
-                    </Text>
-                  </li>
-                ))}
+              <Text as="p">You can try:</Text>
+              <ul className="list-disc space-y-xs ps-m">
+                <li>
+                  <Text as="span">checking your spelling</Text>
+                </li>
+                <li>
+                  <Text as="span">using different words</Text>
+                </li>
               </ul>
-            ) : null}
-          </div>
+              <Text as="p">
+                You can also{' '}
+                <Link className="inline" href="/services">
+                  browse all government services
+                </Link>
+                .
+              </Text>
+            </div>
+          ) : null}
+
+          {hasResults ? (
+            <ul className="flex flex-col gap-s">
+              {hits.map((hit, index) => (
+                <li
+                  key={hit.id}
+                  className="flex flex-col items-start gap-xs border-grey-20 border-b-2 py-s first:pt-0"
+                >
+                  <Link
+                    className="text-body leading-normal"
+                    href={hit.href}
+                    onClick={() =>
+                      trackEvent('search-result-click', {
+                        query,
+                        position: index + 1,
+                        href: hit.href,
+                      })
+                    }
+                  >
+                    {hit.title}
+                  </Link>
+                  {hit.description ? (
+                    <Text as="p">{hit.description}</Text>
+                  ) : null}
+                  <Text as="p" className="text-body-sm text-grey-70">
+                    {hit.digital ? 'Digital service' : 'Information service'}
+                  </Text>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       </section>
     </>

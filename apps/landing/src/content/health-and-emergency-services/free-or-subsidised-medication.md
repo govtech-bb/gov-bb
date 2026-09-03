@@ -9,6 +9,14 @@ featured: false
 publish_date: '2026-08-18'
 category: health-and-emergency-services
 service_type: information
+keywords:
+  - cheap medicine
+  - cheaper medicine
+  - free medicine
+  - help paying for medicine
+  - prescription subsidy
+  - SBS
+  - Special Benefit Service
 ---
 The Barbados Drug Service can make some prescription medications free or cheaper through the government subsidy (officially the Special Benefit Service). This page explains who can get help, what to bring, and what it costs.
 

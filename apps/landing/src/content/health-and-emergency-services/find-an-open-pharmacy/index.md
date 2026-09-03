@@ -10,6 +10,11 @@ featured: false
 publish_date: '2026-08-21'
 category: health-and-emergency-services
 service_type: digital
+keywords:
+  - open pharmacy
+  - chemist
+  - BDS
+  - prescription medicine
 ---
 If you are eligible, you can get prescription medication free at a government polyclinic pharmacy or pay a small dispensing fee at a private pharmacy that participates in the government subsidy programme. This service is provided through the Special Benefit Service (SBS). The Barbados Drug Service (BDS) pays the pharmacy on your behalf.
 
