@@ -342,9 +342,9 @@
         "method": "POST",
         "signatureHeader": "X-Webhook-Signature",
         "mapping": {
-          "programmeCode": "HOTEL_LICENCE",
+          "programmeCode": "OFFENSIVE_MATTER_LICENCE",
           "mdaCode": "MOH",
-          "programmeShortCode": "HTL",
+          "programmeShortCode": "OML",
           "applicant": {
             "name": [
               "personal-and-contact-details.applicant-first-name",
