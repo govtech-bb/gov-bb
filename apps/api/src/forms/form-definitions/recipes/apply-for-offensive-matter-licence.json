@@ -1,86 +1,18 @@
 {
   "formId": "apply-for-offensive-matter-licence",
-  "title": "Apply for a offensive matter licence with Environmental Health",
+  "title": "Apply for a licence to carry offensive matter",
   "description": "Apply for a new licence or renew your existing licence to operate a vehicle for moving human or rotting waste.",
-  "processors": [
-    {
-      "type": "email",
-      "config": {
-        "subject": "Application received: licence to move human or rotting waste",
-        "recipientField": "personal-and-contact-details.applicant-email"
-      }
-    },
-    {
-      "type": "webhook",
-      "config": {
-        "method": "POST",
-        "signatureHeader": "X-Webhook-Signature",
-        "mapping": {
-          "programmeCode": "OFFENSIVE_MATTER_LICENCE",
-          "mdaCode": "MOH",
-          "programmeShortCode": "OMT",
-          "applicant": {
-            "name": [
-              "personal-and-contact-details.applicant-first-name",
-              "personal-and-contact-details.applicant-last-name"
-            ],
-            "email": "personal-and-contact-details.applicant-email",
-            "phone": "personal-and-contact-details.applicant-mobile-number"
-          },
-          "excludeSteps": [
-            "check-your-answers",
-            "declaration",
-            "submission-confirmation"
-          ],
-          "groupByStep": true
-        },
-        "timeoutMs": 10000
-      }
-    }
-  ],
-  "meta": {
-    "visibility": "preview"
-  },
   "steps": [
-    {
-      "stepId": "application-type",
-      "title": "Application type",
-      "elements": [
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "label": "Are you applying for a new licence or renewing a licence?",
-            "fieldId": "application-type",
-            "options": [
-              {
-                "label": "A new licence",
-                "value": "new"
-              },
-              {
-                "label": "Renew a licence",
-                "value": "renew"
-              }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select whether you are applying for a new licence or renewing a licence.",
-                "value": true
-              }
-            }
-          }
-        }
-      ],
-      "behaviours": []
-    },
     {
       "stepId": "personal-and-contact-details",
       "title": "Tell us about yourself",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/first-name",
           "overrides": {
-            "label": "First name",
             "fieldId": "applicant-first-name",
+            "label": "First name",
             "validations": {
               "required": {
                 "error": "Enter your first name.",
@@ -92,9 +24,9 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Enter all middle names in order.",
-            "label": "Middle name(s)",
             "fieldId": "applicant-middle-name",
+            "label": "Middle name(s)",
+            "hint": "Enter all middle names in order.",
             "validations": {
               "required": {
                 "value": false
@@ -105,8 +37,8 @@
         {
           "ref": "components/last-name",
           "overrides": {
-            "label": "Last name",
             "fieldId": "applicant-last-name",
+            "label": "Last name",
             "validations": {
               "required": {
                 "error": "Enter your last name.",
@@ -118,8 +50,8 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 1",
             "fieldId": "applicant-address-line-1",
+            "label": "Address line 1",
             "validations": {
               "required": {
                 "error": "Enter your address.",
@@ -131,8 +63,8 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 2",
             "fieldId": "applicant-address-line-2",
+            "label": "Address line 2",
             "validations": {
               "required": {
                 "value": false
@@ -143,8 +75,8 @@
         {
           "ref": "components/parish",
           "overrides": {
-            "label": "Parish",
             "fieldId": "applicant-parish",
+            "label": "Parish",
             "validations": {
               "required": {
                 "error": "Select your parish.",
@@ -156,9 +88,9 @@
         {
           "ref": "components/email",
           "overrides": {
-            "hint": "We will send confirmation to your email address. We may contact you if we need more information.",
-            "label": "Email address",
             "fieldId": "applicant-email",
+            "label": "Email address",
+            "hint": "We will send confirmation to your email address. We may contact you if we need more information.",
             "validations": {
               "required": {
                 "error": "Enter an email address in the correct format, such as name@example.com.",
@@ -168,47 +100,76 @@
           }
         },
         {
-          "ref": "components/mobile-telephone",
+          "ref": "components/telephone",
           "overrides": {
-            "label": "Mobile number",
-            "fieldId": "applicant-mobile-number",
-            "validations": {
-              "required": {
-                "value": false
+            "fieldId": "applicant-telephone",
+            "behaviours": [
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 3
               }
-            }
-          }
-        },
-        {
-          "ref": "components/home-telephone",
-          "overrides": {
-            "label": "Home number",
-            "fieldId": "applicant-home-number",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/work-telephone",
-          "overrides": {
-            "label": "Work number",
-            "fieldId": "applicant-work-number",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
+            ]
           }
         }
-      ],
-      "behaviours": []
+      ]
+    },
+    {
+      "stepId": "application-type",
+      "title": "Application type",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "application-type",
+            "label": "Are you applying for a new licence or renewing a licence?",
+            "validations": {
+              "required": {
+                "error": "Select whether you are applying for a new licence or renewing a licence.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "A new licence",
+                "value": "new"
+              },
+              {
+                "label": "Renew a licence",
+                "value": "renew"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "current-licence",
+            "label": "Current licence number",
+            "validations": {
+              "required": {
+                "error": "If renewing, provide your current licence number",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "application-type",
+                "operator": "equal",
+                "value": "renew"
+              }
+            ]
+          }
+        }
+      ]
     },
     {
       "stepId": "business-address-details",
       "title": "Your business address",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/generic-text",
@@ -222,41 +183,10 @@
           }
         },
         {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "label": "Is your business address the same as the address you gave?",
-            "fieldId": "business-address-same",
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select whether your business address is the same as the address you gave.",
-                "value": true
-              }
-            }
-          }
-        },
-        {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 1",
             "fieldId": "business-address-line-1",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "value": "no",
-                "operator": "equal",
-                "targetFieldId": "business-address-same"
-              }
-            ],
+            "label": "Address line 1",
             "validations": {
               "required": {
                 "error": "Enter your business address.",
@@ -268,16 +198,8 @@
         {
           "ref": "components/address",
           "overrides": {
-            "label": "Address line 2",
             "fieldId": "business-address-line-2",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "value": "no",
-                "operator": "equal",
-                "targetFieldId": "business-address-same"
-              }
-            ],
+            "label": "Address line 2",
             "validations": {
               "required": {
                 "value": false
@@ -288,16 +210,8 @@
         {
           "ref": "components/parish",
           "overrides": {
-            "label": "Parish",
             "fieldId": "business-parish",
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "value": "no",
-                "operator": "equal",
-                "targetFieldId": "business-address-same"
-              }
-            ],
+            "label": "Parish",
             "validations": {
               "required": {
                 "error": "Select the parish where the business is located.",
@@ -306,79 +220,99 @@
             }
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "vehicle-details",
       "title": "Vehicle",
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 20,
+          "addAnotherLabel": "Add another?",
+          "instanceLabel": "Vehicle"
+        }
+      ],
       "elements": [
         {
           "ref": "components/generic-text",
           "overrides": {
-            "ui": {
-              "width": "short"
-            },
-            "hint": "Enter the number shown on the vehicle's registration documents.",
-            "label": "What is the vehicle registration number?",
             "fieldId": "vehicle-registration-number",
+            "label": "What is the vehicle registration number?",
+            "hint": "Enter the number shown on the vehicle's registration documents.",
             "validations": {
               "required": {
                 "error": "Enter the vehicle registration number.",
                 "value": true
               }
+            },
+            "ui": {
+              "width": "short"
             }
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "check-your-answers",
       "title": "Check your answers",
       "description": "Review all the information you have provided before submitting your application.",
-      "elements": [],
-      "behaviours": []
+      "behaviours": [],
+      "elements": []
     },
     {
       "stepId": "declaration",
       "title": "Declaration",
+      "behaviours": [],
       "elements": [
         {
           "ref": "components/confirmation",
           "overrides": {
-            "label": "Declaration",
             "fieldId": "declaration-confirmed",
-            "options": [
-              {
-                "label": "I confirm that the information in this application is true and correct to the best of my knowledge.",
-                "value": "confirmed"
-              }
-            ],
+            "label": "Declaration",
             "validations": {
               "required": {
                 "error": "Confirm that the information in this application is true and correct.",
                 "value": true
               }
-            }
+            },
+            "options": [
+              {
+                "label": "I confirm that the information in this application is true and correct to the best of my knowledge.",
+                "value": "confirmed"
+              }
+            ]
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "submission-confirmation",
       "title": "Application submitted",
-      "elements": [],
       "behaviours": [],
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n* The Environmental Health Department at **{polyclinic}** will review your request.  \n* They will review it and may contact you if they need more information.   \n* The truck(s) will be inspected before a licence is issued.  \n* If your application is approved, you will receive a confirmation email and the Environment Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\nSubmitting an application does not mean that a licence to carry offensive matter has been granted.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n* Branford Taitt Polyclinic - 536-3700, EHD.BTPC@health.gov.bb  \n* David Thompson Health and Social Services Complex - 536-4453, DTHSSC.EHD@health.gov.bb  \n* Eunice Gibson Polyclinic - 536-4033, EuniceGibsonEHD@health.gov.bb  \n* Maurice Byer Polyclinic - 5363214, MBPC.apps@health.gov.bb  \n* Randall Phillips Polyclinic - 536-4338, RPPC.EHD@health.gov.bb  \n* St. Phillip Polyclinic - 536-1240, StPhilipEHD@health.gov.bb  \n* Winston Scott Polyclinic - 536-3476, EHD.WSPC@health.gov.bb",
       "nextSteps": [
         {
           "title": "What happens next",
           "content": "Environmental Health will review your application. They may ask for more information. A Medical Officer of Health will decide whether to approve your vehicle. Environmental Health will tell you the result."
         }
-      ]
+      ],
+      "elements": []
+    }
+  ],
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "personal-and-contact-details.applicant-email",
+        "subject": "Application received: licence to move human or rotting waste"
+      }
     }
   ],
   "createdAt": "2026-08-24T19:13:52.779Z",
-  "updatedAt": "2026-08-26T00:00:00.000Z"
+  "updatedAt": "2026-09-03T17:20:32.461Z",
+  "meta": {
+    "visibility": "preview"
+  }
 }
