@@ -344,7 +344,7 @@
         "mapping": {
           "programmeCode": "OFFENSIVE_MATTER_LICENCE",
           "mdaCode": "MOH",
-          "programmeShortCode": "OML",
+          "programmeShortCode": "OMT",
           "applicant": {
             "name": [
               "personal-and-contact-details.applicant-first-name",
