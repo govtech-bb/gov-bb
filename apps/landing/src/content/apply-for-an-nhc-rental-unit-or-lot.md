@@ -27,6 +27,12 @@ You will need:
 
 - your National Identification (ID) Number, which is on your national ID card
 - your TAMIS number, if you have one
+- two recent pay slips
+- your national ID card
+- a job letter from your employer
+- a passport-size photograph
+- co-applicant details, if you are applying jointly
+- details of all the people who will live in the unit
 
 ## Complete the form
 
@@ -44,12 +50,7 @@ There is no cost to apply for an NHC rental unit or lot.
 
 You will get a reference number and a confirmation email. Keep the reference number in case you need to contact NHC about your application.
 
-NHC will review your application and contact you within 10 working days. You do not need to send any documents to apply, but NHC may ask you for:
-
-- two recent pay slips
-- your national ID card
-- a job letter from your employer
-- a passport-size photograph
+NHC will review your application and contact you within 10 working days.
 
 Submitting an application does not mean that you have been offered a rental unit or lot.
 
@@ -57,4 +58,4 @@ Submitting an application does not mean that you have been offered a rental unit
 
 If you need help with your application, contact the National Housing Corporation.
 
-[MDA note: Confirm the telephone number, email address and opening hours for rental enquiries. The purchase service lists PBX (246) 536-5300 and nhc.customerservice@barbados.gov.bb for Customer Service (Property Sales), which is likely to be the wrong team for rentals.]
+<!-- MDA NOTE: Confirm the telephone number, email address and opening hours for rental enquiries, then add them here. The purchase service lists PBX (246) 536-5300 and nhc.customerservice@barbados.gov.bb for Customer Service (Property Sales), which is likely to be the wrong team for rentals. -->
