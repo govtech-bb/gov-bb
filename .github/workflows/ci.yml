@@ -494,19 +494,57 @@ jobs:
       - name: Report test results
         if: steps.test.outcome == 'failure'
         run: |
-          echo "## ❌ Tests Failed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "<details><summary>View test failures</summary>" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          tail -100 test-output.txt >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "</details>" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Fix it locally:**" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "pnpm exec nx affected -t test" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          # nx and vitest colour their output, so strip ANSI first or none of
+          # the patterns below match.
+          sed 's/\x1b\[[0-9;]*m//g' test-output.txt > test-output-plain.txt
+
+          # Vitest prints the failing suites (❯) and tests (×) as it reaches
+          # them, but the API suite's error-path tests then log thousands of
+          # Nest ERROR lines from their own fixtures. On a real run (#2598) that
+          # pushed the failure list 179 lines from the end, so `tail -100`
+          # showed 29 lines of unrelated logging and not one failing test —
+          # a red check with no way to tell what broke. Pull the failures out by
+          # pattern rather than hoping they land in the tail.
+          # Matched as a standalone token rather than anchored to the start of
+          # the line: the same output gains a timestamp prefix when read back
+          # through the downloaded job log, and an anchored pattern silently
+          # finds nothing there.
+          grep -E '(^|[[:space:]])(❯|×)[[:space:]]' test-output-plain.txt > failures.txt || true
+
+          # Annotate each failing test so it appears on the PR itself, not only
+          # inside a collapsed panel someone has to know to open. GitHub renders
+          # up to 10 per step; the rest are in the summary below.
+          while IFS= read -r line; do
+            echo "::error title=Failing test::${line}"
+          done < <(grep -E '(^|[[:space:]])×[[:space:]]' failures.txt | sed 's/^[[:space:]]*//' | head -10)
+
+          {
+            echo "## ❌ Tests Failed"
+            echo ""
+            if [ -s failures.txt ]; then
+              echo "### What failed"
+              echo ""
+              echo '```'
+              cat failures.txt
+              echo '```'
+            else
+              echo "No per-test failure lines were found, so the run failed before"
+              echo "or outside the test reporter (a build, install or nx error)."
+              echo "See the full output below."
+            fi
+            echo ""
+            echo "<details><summary>Full output (last 400 lines)</summary>"
+            echo ""
+            echo '```'
+            tail -400 test-output-plain.txt
+            echo '```'
+            echo "</details>"
+            echo ""
+            echo "**Fix it locally:**"
+            echo '```bash'
+            echo "pnpm exec nx affected -t test"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
           exit 1
 
   build:
