@@ -46,17 +46,17 @@ How long it takes to get a decision depends on how complex your request is and t
 
 There are 2 ways to apply to use state land. You can:
 
-Apply online.
+1. ### Apply online
 
-<!-- MDA NOTE: Confirm how long the form takes to complete, then state it here as "Allow about X minutes to complete the form." -->
+   <!-- MDA NOTE: Confirm how long the form takes to complete, then state it here as "Allow about X minutes to complete the form." -->
 
-You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.
+   You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.
 
-<a data-start-link>Start now</a>
+   <a data-start-link>Start now</a>
 
-Apply by email or by hand.
+2. ### Apply by email or by hand
 
-Contact the Ministry of Housing, Lands and Maintenance for the email address and office location.
+   Contact the Ministry of Housing, Lands and Maintenance for the email address and office location.
 
 ## Cost
 
