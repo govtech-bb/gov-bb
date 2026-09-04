@@ -1,8 +1,9 @@
 # Alpha search
 
 Alpha uses MiniSearch in the browser to search service entry pages. Routes and
-components receive application-owned `SearchHit` objects through `search()` and
-`suggest()`; MiniSearch result types stay inside `src/lib/search.ts`.
+components receive application-owned `SearchHit` objects from `search()` and
+`SearchSuggestion` objects from `suggest()`; MiniSearch result types stay
+inside `src/lib/search.ts`.
 
 ## Indexed fields and ranking
 
@@ -10,12 +11,13 @@ The index contains every page in `PAGES` except service sub-pages such as
 `/start`. Visibility is checked with the existing frontmatter and runtime
 overlay rules before results leave the search module.
 
-| Field         | Purpose                            | Boost | Full search  | Autocomplete |
-| ------------- | ---------------------------------- | ----: | ------------ | ------------ |
-| `title`       | Official service name              |     8 | Yes          | Yes          |
-| `keywords`    | Reviewed aliases and citizen terms |     5 | Yes          | Yes          |
-| `description` | Short service purpose              |     2 | Yes          | No           |
-| `body`        | Supporting detail                  |   0.2 | Ranking only | No           |
+| Field                | Purpose                             | Full search  | Autocomplete              |
+| -------------------- | ----------------------------------- | ------------ | ------------------------- |
+| `title`              | Official service name               | Boost 8      | Displayed phrase fallback |
+| `keywords`           | Reviewed aliases and citizen terms  | Boost 5      | Matching only, boost 3    |
+| `search_suggestions` | Reviewed phrases safe to show users | No           | Displayed phrase, boost 8 |
+| `description`        | Short service purpose               | Boost 2      | No                        |
+| `body`               | Supporting detail                   | Ranking only | No                        |
 
 Results are ordered by:
 
@@ -107,18 +109,48 @@ identify the service. For example, `doctor` is not an alias for every health
 page and `permit` is not an alias for every licence. Add one clear phrase per
 item, confirm the term through research or search feedback, and add a relevance
 case with the expected URL. Review aliases like content because an overly broad
-term changes both search and autocomplete.
+term changes both search and autocomplete matching.
+
+## Query suggestions (`search_suggestions`)
+
+[GOV.UK autocompletes search queries](https://github.com/alphagov/govuk-design-guide/blob/main/docs/components/search-autocomplete.md)
+rather than listing destination titles. Alpha follows that pattern with
+reviewed phrases beside each service:
+
+```yaml
+search_suggestions:
+  - birth certificate
+  - apply for a birth certificate
+  - copy of a birth certificate
+```
+
+Use complete, correctly-spelled phrases that a citizen would reasonably
+submit. Prefer wording confirmed in aggregate Umami data or user research. Do
+not copy personal data, uncorrected typos, unsupported queries, or broad topics
+into the list. Each phrase must already find the intended service through its
+title or aliases; a test enforces that contract without letting autocomplete
+metadata alter full-search ranking.
+
+Interactive features use `searchSuggestions` in their `-meta.ts` file. When a
+service has no reviewed phrases, its official title remains the fallback.
 
 ## Autocomplete
 
-Autocomplete is deliberately separate from full search. It combines literal
-official-title prefixes with strict MiniSearch matches from title and keywords
-only. It does not use descriptions, body text, or the relaxed fallback.
+Autocomplete is deliberately separate from full search. It searches individual
+reviewed query phrases, using service keywords only to recognise alternative
+wording. Keywords are not displayed unless they are also explicitly approved
+as `search_suggestions`. It does not use descriptions, body text, or the
+relaxed fallback.
 
 Suggestions start after three trimmed characters, retain the conservative
-prefix and typo rules, prefer literal title prefixes, apply visibility, and
-return at most five real service titles. Selecting one submits its official
-title. Unmatched free text can still be submitted normally.
+prefix and typo rules, prefer phrase prefixes, apply visibility, and return at
+most five query phrases. Selecting one submits that phrase to normal search;
+unmatched free text can still be submitted normally. The accessible combobox
+keeps the list inline so it pushes following content down.
+
+This is the small-catalogue equivalent of GOV.UK's analytics-trained query
+model: Alpha uses an editorial allowlist informed by aggregate Umami data and
+does not add a learned autocomplete service or new search backend.
 
 ## Relevance suite and metrics
 

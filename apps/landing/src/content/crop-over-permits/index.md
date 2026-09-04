@@ -6,6 +6,9 @@ featured: false
 service_type: digital
 publish_date: 2026-05-13
 category: business-trade
+search_suggestions:
+  - Crop Over permits
+  - permits for a Crop Over event
 ---
 
 Find out which permits you need, which agencies to contact, and in what order.

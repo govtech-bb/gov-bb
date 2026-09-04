@@ -13,6 +13,9 @@ form_id: nhc-land-property-application
 keywords:
   - NHC
   - National Housing Corporation
+search_suggestions:
+  - NHC land or property
+  - buy NHC land
 ---
 The National Housing Corporation (NHC) sells land and homes to people who do not already own land or property. Use this service to apply to buy an NHC lot or house.
 

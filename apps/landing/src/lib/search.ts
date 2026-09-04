@@ -19,14 +19,29 @@ export interface SearchHit {
   kind: SearchKind
 }
 
+export interface SearchSuggestion {
+  value: string
+  serviceTitle: string
+  href: string
+}
+
 interface IndexDoc extends SearchHit {
   body: string
+  keywords: string
+  searchSuggestions: Array<string>
+}
+
+interface SuggestionDoc {
+  id: string
+  serviceId: string
+  value: string
   keywords: string
 }
 
 const INDEX_FIELDS = ['title', 'keywords', 'description', 'body']
 const IDENTITY_FIELDS = ['title', 'keywords', 'description']
-const AUTOCOMPLETE_FIELDS = ['title', 'keywords']
+const STRONG_IDENTITY_FIELDS = ['title', 'keywords']
+const SUGGESTION_FIELDS = ['value', 'keywords']
 const MIN_PREFIX_LENGTH = 3
 const MIN_FUZZY_LENGTH = 5
 const MIN_SUGGESTION_LENGTH = 3
@@ -121,10 +136,10 @@ const SEARCH_OPTIONS: SearchOptions = {
   boost: { title: 8, keywords: 5, description: 2, body: 0.2 },
 }
 
-const AUTOCOMPLETE_OPTIONS: SearchOptions = {
+const SUGGESTION_OPTIONS: SearchOptions = {
   ...MATCH_OPTIONS,
-  fields: AUTOCOMPLETE_FIELDS,
-  boost: { title: 8, keywords: 5 },
+  fields: SUGGESTION_FIELDS,
+  boost: { value: 8, keywords: 3 },
 }
 
 const RELAXED_OPTIONS: SearchOptions = {
@@ -179,17 +194,21 @@ function stripMarkdown(markdown: string): string {
 function buildIndex(): {
   engine: MiniSearch<IndexDoc>
   documents: Map<string, IndexDoc>
+  suggestionEngine: MiniSearch<SuggestionDoc>
+  suggestionDocuments: Map<string, SuggestionDoc>
 } {
   const documents = new Map<string, IndexDoc>()
 
   for (const page of PAGES) {
     if (isSubPage(page)) continue
+    const searchSuggestions = page.frontmatter.searchSuggestions ?? []
     const document: IndexDoc = {
       id: `service:${page.url}`,
       title: page.frontmatter.title,
       description: page.frontmatter.description ?? '',
       body: stripMarkdown(page.body),
       keywords: page.frontmatter.keywords?.join(' ') ?? '',
+      searchSuggestions,
       href: `/${page.url}`,
       digital: isDigitalService(page),
       kind: 'service',
@@ -205,7 +224,32 @@ function buildIndex(): {
     searchOptions: SEARCH_OPTIONS,
   })
   engine.addAll([...documents.values()])
-  return { engine, documents }
+
+  const suggestionDocuments = new Map<string, SuggestionDoc>()
+  for (const document of documents.values()) {
+    for (const value of new Set([
+      ...document.searchSuggestions,
+      document.title,
+    ])) {
+      const suggestion: SuggestionDoc = {
+        id: `suggestion:${suggestionDocuments.size}`,
+        serviceId: document.id,
+        value,
+        keywords: document.keywords,
+      }
+      suggestionDocuments.set(suggestion.id, suggestion)
+    }
+  }
+  const suggestionEngine = new MiniSearch<SuggestionDoc>({
+    idField: 'id',
+    fields: SUGGESTION_FIELDS,
+    tokenize,
+    processTerm,
+    searchOptions: SUGGESTION_OPTIONS,
+  })
+  suggestionEngine.addAll([...suggestionDocuments.values()])
+
+  return { engine, documents, suggestionEngine, suggestionDocuments }
 }
 
 let index: ReturnType<typeof buildIndex> | undefined
@@ -277,7 +321,7 @@ function rankResults(
 function isStrongStrictResult(result: SearchResult): boolean {
   return (
     result.queryTerms.length > 1 ||
-    matchedTermCount(result, AUTOCOMPLETE_FIELDS) > 0
+    matchedTermCount(result, STRONG_IDENTITY_FIELDS) > 0
   )
 }
 
@@ -289,7 +333,7 @@ function isStrongRelaxedResult(
   return (
     matchedTerms >= RELAXED_CONFIDENCE.minimumMatchedTerms &&
     matchedTerms / queryTermCount >= RELAXED_CONFIDENCE.minimumQueryCoverage &&
-    matchedTermCount(result, AUTOCOMPLETE_FIELDS) >=
+    matchedTermCount(result, STRONG_IDENTITY_FIELDS) >=
       RELAXED_CONFIDENCE.minimumTitleOrKeywordTerms
   )
 }
@@ -357,37 +401,50 @@ export function suggest(
   query: string,
   viewer: ViewLevel = 'public',
   overlay?: ReadonlyMap<string, ViewLevel>,
-): Array<SearchHit> {
+): Array<SearchSuggestion> {
   const trimmed = query.trim()
   if (trimmed.length < MIN_SUGGESTION_LENGTH) return []
 
-  const { engine, documents } = getIndex()
+  const { documents, suggestionEngine, suggestionDocuments } = getIndex()
   const normalizedPrefix = normalizeLiteralPrefix(trimmed)
+  if (!normalizedPrefix) return []
   const normalizedQuery = normalizeSearchQuery(trimmed)
-  const titlePrefixDocuments = [...documents.values()]
-    .filter((document) =>
-      normalizeLiteralPrefix(document.title).startsWith(normalizedPrefix),
+  const literalPrefixSuggestions = [...suggestionDocuments.values()]
+    .filter((suggestion) =>
+      normalizeLiteralPrefix(suggestion.value).startsWith(normalizedPrefix),
     )
-    .sort((left, right) => left.title.localeCompare(right.title))
-  const searchDocuments = normalizedQuery
-    ? rankResults(
-        engine.search(normalizedQuery, AUTOCOMPLETE_OPTIONS),
-        documents,
-        normalizedQuery.split(' '),
-      ).flatMap((result) => documents.get(String(result.id)) ?? [])
+    .sort(
+      (left, right) =>
+        left.value.length - right.value.length ||
+        left.value.localeCompare(right.value),
+    )
+  const matchedSuggestions = normalizedQuery
+    ? suggestionEngine
+        .search(normalizedQuery)
+        .flatMap((result) => suggestionDocuments.get(String(result.id)) ?? [])
     : []
 
-  const suggestions: Array<SearchHit> = []
+  const suggestions: Array<SearchSuggestion> = []
   const seen = new Set<string>()
-  for (const document of [...titlePrefixDocuments, ...searchDocuments]) {
+  for (const suggestion of [
+    ...literalPrefixSuggestions,
+    ...matchedSuggestions,
+  ]) {
+    const document = documents.get(suggestion.serviceId)
+    const key = normalizeLiteralPrefix(suggestion.value)
     if (
-      seen.has(document.id) ||
+      !document ||
+      seen.has(key) ||
       !isUrlVisible(document.href.slice(1), viewer, overlay)
     ) {
       continue
     }
-    seen.add(document.id)
-    suggestions.push(toSearchHit(document))
+    seen.add(key)
+    suggestions.push({
+      value: suggestion.value,
+      serviceTitle: document.title,
+      href: document.href,
+    })
     if (suggestions.length === MAX_SUGGESTIONS) break
   }
   return suggestions

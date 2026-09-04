@@ -3,7 +3,7 @@
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { SearchHit } from '../lib/search'
+import type { SearchSuggestion } from '../lib/search'
 import { ServiceSearch } from './ServiceSearch'
 
 const { navigateMock, suggestMock, trackEventMock } = vi.hoisted(() => ({
@@ -18,17 +18,18 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('../lib/analytics', () => ({ trackEvent: trackEventMock }))
 vi.mock('../lib/search', () => ({ suggest: suggestMock }))
 
-const HITS: Array<SearchHit> = Array.from({ length: 5 }, (_, index) => ({
-  id: `service:${index}`,
-  title: index === 0 ? 'Get a birth certificate' : `Service ${index + 1}`,
-  description: '',
-  href:
-    index === 0
-      ? '/family-birth-relationships/get-birth-certificate'
-      : `/service-${index + 1}`,
-  digital: false,
-  kind: 'service',
-}))
+const SUGGESTIONS: Array<SearchSuggestion> = Array.from(
+  { length: 5 },
+  (_, index) => ({
+    value: index === 0 ? 'birth certificate' : `search phrase ${index + 1}`,
+    serviceTitle:
+      index === 0 ? 'Get a birth certificate' : `Service ${index + 1}`,
+    href:
+      index === 0
+        ? '/family-birth-relationships/get-birth-certificate'
+        : `/service-${index + 1}`,
+  }),
+)
 
 function renderSearch(
   props: Partial<React.ComponentProps<typeof ServiceSearch>> = {},
@@ -59,7 +60,7 @@ beforeEach(() => {
   suggestMock.mockReset()
   trackEventMock.mockReset()
   suggestMock.mockImplementation((query: string) =>
-    query.trim().length >= 3 ? HITS : [],
+    query.trim().length >= 3 ? SUGGESTIONS : [],
   )
 })
 
@@ -105,6 +106,7 @@ describe('ServiceSearch', () => {
     typeInto(input, 'bir')
     expect(input.getAttribute('aria-expanded')).toBe('true')
     expect(optionsFor(input)).toHaveLength(5)
+    expect(optionsFor(input)[0]?.textContent).toBe('birth certificate')
   })
 
   it('keeps focus on the input and selects one highlighted option with Enter', () => {
@@ -149,7 +151,7 @@ describe('ServiceSearch', () => {
   })
 
   it.each(['keyboard', 'pointer'] as const)(
-    'tracks and submits an official title selected by %s',
+    'tracks and submits a query phrase selected by %s',
     (method) => {
       renderSearch({ source: 'results' })
       const input = screen.getByRole<HTMLInputElement>('combobox')
@@ -167,18 +169,19 @@ describe('ServiceSearch', () => {
           'search-suggestion-select',
           {
             query: 'bir',
-            title: HITS[0].title,
-            href: HITS[0].href,
+            suggestion: SUGGESTIONS[0].value,
+            title: SUGGESTIONS[0].serviceTitle,
+            href: SUGGESTIONS[0].href,
             position: 1,
             source: 'results',
           },
         ],
-        ['search-submit', { query: HITS[0].title, source: 'results' }],
+        ['search-submit', { query: SUGGESTIONS[0].value, source: 'results' }],
       ])
       expect(navigateMock).toHaveBeenCalledTimes(1)
       expect(navigateMock).toHaveBeenCalledWith({
         to: '/search-results',
-        search: { q: HITS[0].title },
+        search: { q: SUGGESTIONS[0].value },
       })
     },
   )

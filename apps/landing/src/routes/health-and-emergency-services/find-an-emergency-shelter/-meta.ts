@@ -20,5 +20,10 @@ export const META = {
     'warden',
     'disaster',
   ],
+  searchSuggestions: [
+    'emergency shelter',
+    'hurricane shelter',
+    'shelter by parish',
+  ],
   visibility: 'public',
 } satisfies FeatureMeta

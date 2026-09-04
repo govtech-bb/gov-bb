@@ -20,6 +20,8 @@ export const FeatureMetaSchema = z.object({
   subcategory: z.string().optional(),
   // Extra search terms, mirroring a markdown page's frontmatter keywords.
   keywords: SearchKeywordsSchema.default([]),
+  // Reviewed query phrases, mirroring markdown search_suggestions.
+  searchSuggestions: SearchKeywordsSchema.optional(),
   // Rollout gate: same semantics as markdown frontmatter visibility.
   visibility: z.enum(VIEW_LEVELS).default('public'),
 })

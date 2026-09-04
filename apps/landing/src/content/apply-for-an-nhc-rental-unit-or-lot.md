@@ -8,6 +8,9 @@ category: housing
 visibility: preview
 service_type: digital
 form_id: nhc-rental-application
+search_suggestions:
+  - NHC rental
+  - NHC rental unit or lot
 ---
 
 Use this service to apply for a rental unit or lot from the National Housing Corporation (NHC). You must have a monthly income of BDS$3,000 or less to be eligible.

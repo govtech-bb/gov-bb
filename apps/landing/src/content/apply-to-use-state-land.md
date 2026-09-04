@@ -7,6 +7,9 @@ publish_date: 2026-06-04
 category: housing
 visibility: preview
 form_id: mohlm-application-use-state-land
+search_suggestions:
+  - state land application
+  - use state land
 ---
 
 Use this service to apply for permission to use land owned by the Government of Barbados for a specific purpose over a set period, such as an event, a project, or a community use.

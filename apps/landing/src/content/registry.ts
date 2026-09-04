@@ -127,6 +127,7 @@ function buildBasePage(
     service_type: raw.service_type,
     form_id: raw.form_id,
     keywords: raw.keywords,
+    searchSuggestions: raw.search_suggestions,
   }
   /** Canonical URL: category + optional subcategory + leaf; uncategorised pages live at the root. */
   const primaryCategory = categories[0]
@@ -237,6 +238,7 @@ const featurePages: Array<ContentPage> = Object.entries(featureMetaModules).map(
       subcategory: meta.subcategory,
       visibility: meta.visibility,
       keywords: meta.keywords,
+      searchSuggestions: meta.searchSuggestions,
     }
     const slug = meta.url.split('/').pop() ?? meta.url
     return {

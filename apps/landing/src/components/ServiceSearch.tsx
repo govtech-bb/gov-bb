@@ -61,7 +61,7 @@ export function ServiceSearch({
           autoComplete="off"
           className="govbb-search__input rounded-e-none"
           value={inputValue}
-          suggestions={items.map((item) => ({ value: item.title }))}
+          suggestions={items.map((item) => ({ value: item.value }))}
           onChange={(event) => {
             setHasTyped(true)
             setInputValue(event.currentTarget.value)
@@ -71,15 +71,16 @@ export function ServiceSearch({
             if (!selectedItem) return
 
             const typedQuery = inputValue.trim()
-            setInputValue(selectedItem.title)
+            setInputValue(selectedItem.value)
             trackEvent('search-suggestion-select', {
               query: typedQuery,
-              title: selectedItem.title,
+              suggestion: selectedItem.value,
+              title: selectedItem.serviceTitle,
               href: selectedItem.href,
               position: index + 1,
               source,
             })
-            submit(selectedItem.title)
+            submit(selectedItem.value)
           }}
         />
       </div>

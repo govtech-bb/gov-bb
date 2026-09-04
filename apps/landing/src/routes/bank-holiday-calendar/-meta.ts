@@ -16,5 +16,6 @@ export const META = {
     'substitution day',
     'Public Holidays Act',
   ],
+  searchSuggestions: ['bank holidays', 'public holidays', 'days off'],
   visibility: 'public',
 } satisfies FeatureMeta

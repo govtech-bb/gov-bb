@@ -1,16 +1,35 @@
 import { describe, expect, it } from 'vitest'
+import { isSubPage, PAGES } from '../content/registry'
 import { FrontmatterSchema } from './frontmatter'
 import type { ViewLevel } from './frontmatter'
 import { normalizeSearchQuery, search, suggest } from './search'
 
 describe('search metadata', () => {
-  it('trims aliases and rejects blank entries', () => {
-    expect(FrontmatterSchema.parse({ keywords: ['  NIS  '] }).keywords).toEqual(
-      ['NIS'],
-    )
+  it('trims search terms and rejects blank entries', () => {
+    const parsed = FrontmatterSchema.parse({
+      keywords: ['  NIS  '],
+      search_suggestions: ['  pay NIS contributions  '],
+    })
+    expect(parsed.keywords).toEqual(['NIS'])
+    expect(parsed.search_suggestions).toEqual(['pay NIS contributions'])
     expect(FrontmatterSchema.safeParse({ keywords: ['   '] }).success).toBe(
       false,
     )
+    expect(
+      FrontmatterSchema.safeParse({ search_suggestions: ['   '] }).success,
+    ).toBe(false)
+  })
+
+  it('keeps every approved suggestion searchable for its service', () => {
+    for (const page of PAGES) {
+      if (isSubPage(page)) continue
+      for (const suggestion of page.frontmatter.searchSuggestions ?? []) {
+        expect(
+          search(suggestion, 'draft').map((hit) => hit.href),
+          suggestion,
+        ).toContain(`/${page.url}`)
+      }
+    }
   })
 })
 
@@ -119,32 +138,31 @@ describe('autocomplete', () => {
     const results = suggest('Get a')
 
     expect(results.length).toBeGreaterThan(0)
-    expect(results.every((result) => result.title.startsWith('Get a'))).toBe(
+    expect(results.every((result) => result.value.startsWith('Get a'))).toBe(
       true,
     )
   })
 
-  it('matches title-word prefixes and genuine misspellings', () => {
+  it('returns query phrases for prefixes and genuine misspellings', () => {
+    expect(suggest('birth')[0]?.value).toBe('birth certificate')
+
     const certificateSuggestions = suggest('certif')
     expect(certificateSuggestions.length).toBeGreaterThan(0)
     expect(
-      certificateSuggestions.every((hit) =>
-        hit.title.toLowerCase().includes('certificate'),
+      certificateSuggestions.every((suggestion) =>
+        suggestion.value.toLowerCase().includes('certificate'),
       ),
     ).toBe(true)
-    expect(suggest('birth certif')[0]?.href).toBe(
-      '/family-birth-relationships/get-birth-certificate',
-    )
-    expect(suggest('birth certficate')[0]?.href).toBe(
-      '/family-birth-relationships/get-birth-certificate',
-    )
+    expect(suggest('birth certif')[0]?.value).toBe('birth certificate')
+    expect(suggest('birth certficate')[0]?.value).toBe('birth certificate')
   })
 
   it('uses aliases and visibility without description or body matches', () => {
     expect(suggest('open chemist')).toEqual([])
-    expect(suggest('open chemist', 'preview')[0]?.href).toBe(
-      '/health-and-emergency-services/find-an-open-pharmacy',
-    )
+    expect(suggest('open chemist', 'preview')[0]).toMatchObject({
+      value: 'open pharmacy',
+      href: '/health-and-emergency-services/find-an-open-pharmacy',
+    })
     expect(suggest('BRA', 'preview')).toEqual([])
     expect(suggest('photocopies', 'preview')).toEqual([])
   })
@@ -155,7 +173,7 @@ describe('autocomplete', () => {
     )
   })
 
-  it('returns at most five services', () => {
+  it('returns at most five query phrases', () => {
     expect(suggest('apply')).toHaveLength(5)
   })
 

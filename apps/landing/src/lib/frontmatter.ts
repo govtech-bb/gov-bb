@@ -35,6 +35,7 @@ export const FrontmatterSchema = z.object({
   service_type: z.enum(['digital', 'information']).optional(),
   form_id: z.string().optional(),
   keywords: SearchKeywordsSchema.optional(),
+  search_suggestions: SearchKeywordsSchema.optional(),
 })
 
 type RawFrontmatter = z.infer<typeof FrontmatterSchema>
@@ -46,13 +47,15 @@ type RawFrontmatter = z.infer<typeof FrontmatterSchema>
  */
 export type Frontmatter = Omit<
   RawFrontmatter,
-  'title' | 'category' | 'categories'
+  'title' | 'category' | 'categories' | 'search_suggestions'
 > & {
   title: string
   categories: Array<string>
   subcategory?: string
   /** Citizen terms and aliases that identify this service in search. */
   keywords?: Array<string>
+  /** Reviewed query phrases that autocomplete may show to users. */
+  searchSuggestions?: Array<string>
 }
 
 export function titleFromSlug(slug: string): string {
