@@ -1,5 +1,5 @@
 /**
- * Pharmacy finder — page wrapper
+ * Pharmacy finder - page wrapper
  * --------------------------------------------------------------
  * Page body for /health-and-emergency-services/find-an-open-pharmacy/find.
  * Renders the static heading, freshness, sources and Drug Service contact,
@@ -21,19 +21,18 @@ export function FindOpenPharmacyPage() {
     <div className="mb-l flex flex-col gap-m">
       <div className="flex flex-col gap-xs">
         <Heading as="h1">{TITLE}</Heading>
-        <div className="border-blue-10 border-b-4 pb-4 text-grey-70">
+        <div className="border-blue-10 border-b-4 pb-4">
           <Text as="p" size="body-sm">
             Last updated on {format(parseISO(PHARMACIES_LAST_UPDATED), 'PPP')}.
           </Text>
         </div>
       </div>
 
-      <Text as="p" className="text-grey-70">
+      <Text as="p">
         Pharmacies that give free or cheaper prescription medication across
-        Barbados. Government polyclinic pharmacies are free; private
-        pharmacies in the Drug Service subsidy charge a small dispensing fee.
-        Set your prescription colour to hide the pharmacies that cannot
-        fill it.
+        Barbados. Government polyclinic pharmacies are free; private pharmacies
+        in the Drug Service subsidy charge a small dispensing fee. Set your
+        prescription colour to hide the pharmacies that cannot fill it.
       </Text>
 
       <PharmacyFinder />
@@ -45,13 +44,13 @@ export function FindOpenPharmacyPage() {
         <Heading as="h2" id="sources-heading" size="h3">
           Where this information comes from
         </Heading>
-        <Text as="p" className="text-grey-70">
+        <Text as="p">
           Government pharmacies come from the Drug Service register, verified
-          May 2026. Pharmacies marked “Small fee” are on the Drug Service
-          Active PPP list, supplied August 2026. Pharmacies marked “Full
-          price” are not on that list, so the Drug Service subsidy does not
-          apply there. Opening hours and Drug Service participation can change
-          — call ahead to confirm.
+          May 2026. Pharmacies marked “Small fee” are on the Drug Service Active
+          PPP list, supplied August 2026. Pharmacies marked “Full price” are not
+          on that list, so the Drug Service subsidy does not apply there.
+          Opening hours and Drug Service participation can change. Call ahead to
+          confirm.
         </Text>
       </aside>
 
@@ -63,9 +62,9 @@ export function FindOpenPharmacyPage() {
           Drug Service
         </Heading>
         <Text as="p">
-          If a pharmacy is refusing your Drug Service prescription, contact
-          the Drug Service before you pay — do not pay full price on the
-          assumption the refusal is correct.
+          If a pharmacy is refusing your Drug Service prescription, contact the
+          Drug Service before you pay. Do not pay full price on the assumption
+          the refusal is correct.
         </Text>
         <Text as="p">
           Phone:{' '}

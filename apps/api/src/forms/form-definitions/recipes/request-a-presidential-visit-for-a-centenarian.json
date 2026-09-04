@@ -450,7 +450,8 @@
                 "type": "fieldConditionalOn",
                 "value": "female",
                 "operator": "equal",
-                "targetFieldId": "centenarian-sex"
+                "targetFieldId": "centenarian-sex",
+                "targetStepId": "centenarian-info"
               }
             ],
             "validations": {

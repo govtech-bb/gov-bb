@@ -15,7 +15,7 @@ import type {
 } from '../-data/pharmacies'
 import { WEEKDAYS } from '../-data/pharmacies'
 
-/** UTC-4 year-round — Barbados has no daylight saving time. */
+/** UTC-4 year-round - Barbados has no daylight saving time. */
 export const BARBADOS_TIME_ZONE = 'America/Barbados'
 
 export const WEEKDAY_LABELS = {
@@ -153,7 +153,7 @@ export function pharmacyStatus(
 
 /**
  * 'HH:MM' → '8:00 am' / '1:30 pm'; '12:00' → 'midday', '00:00' and '24:00' →
- * 'midnight' (GOV.UK style — no ambiguous 12 am/12 pm).
+ * 'midnight' (GOV.UK style - no ambiguous 12 am/12 pm).
  */
 export function formatTime(time: string): string {
   const minutes = toMinutes(time)
@@ -199,7 +199,7 @@ function shortRanges(ranges: ReadonlyArray<TimeRange>): string {
 
 /**
  * The whole week on one line for the result card: consecutive days with
- * identical hours are grouped — 'Mon–Fri 8:15am–10pm · Sat 8:15am–4:30pm'.
+ * identical hours are grouped - 'Mon–Fri 8:15am–10pm · Sat 8:15am–4:30pm'.
  * Closed days are omitted.
  */
 export function weeklyHoursSummary(hours: WeeklyHours): string {

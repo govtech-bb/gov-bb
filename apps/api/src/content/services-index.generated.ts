@@ -49,6 +49,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
+    slug: "apply-for-an-nhc-rental-unit-or-lot",
+    title: "Apply for an NHC rental unit or lot",
+    category: "housing",
+    formId: "nhc-rental-application",
+    visibility: "preview",
+  },
+  {
     slug: "apply-for-community-elder-care",
     title: "Apply for the Community Elder Care Programme",
     category: "social-empowerment",
@@ -238,7 +245,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-to-use-state-land",
-    title: "Application to use state land",
+    title: "Apply to use state land",
     category: "housing",
     formId: "mohlm-application-use-state-land",
     visibility: "preview",

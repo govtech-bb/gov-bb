@@ -10,6 +10,11 @@ featured: false
 publish_date: '2026-08-21'
 category: health-and-emergency-services
 service_type: digital
+keywords:
+  - open pharmacy
+  - chemist
+  - BDS
+  - prescription medicine
 ---
 If you are eligible, you can get prescription medication free at a government polyclinic pharmacy or pay a small dispensing fee at a private pharmacy that participates in the government subsidy programme. This service is provided through the Special Benefit Service (SBS). The Barbados Drug Service (BDS) pays the pharmacy on your behalf.
 
@@ -18,7 +23,7 @@ If you are eligible, you can get prescription medication free at a government po
 ## What to take to the pharmacy
 
 -   your prescription
--   original accepted ID for the person the medication is for — a Barbados National Identification (ID) card, passport or child health book. A child health book is only accepted for children up to 6 weeks old. After 6 weeks, an ID card is required.
+-   original accepted ID for the person the medication is for: a Barbados National Identification (ID) card, passport or child health book. A child health book is only accepted for children up to 6 weeks old. After 6 weeks, an ID card is required.
 
 Photocopies are not accepted.
 
@@ -28,7 +33,7 @@ Medication must be collected in person. This service is not available online. So
 
 ## Get free or subsidised medication
 
-Some pharmacies can lower or remove the cost of your prescription medication through the Barbados Drug Service, if you qualify — free at government (polyclinic) pharmacies, or at a lower cost at private pharmacies that work with the Drug Service. Not all private pharmacies take part — at those, you pay the full price.
+Some pharmacies can lower or remove the cost of your prescription medication through the Barbados Drug Service if you qualify. Medication is free at government (polyclinic) pharmacies and costs less at private pharmacies that work with the Drug Service. Not all private pharmacies take part. At those pharmacies, you pay full price.
 
 [Check who qualifies and what to bring](/health-and-emergency-services/free-or-subsidised-medication)
 

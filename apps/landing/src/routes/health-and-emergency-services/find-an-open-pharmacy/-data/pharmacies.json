@@ -526,7 +526,7 @@
     }
   },
   {
-    "name": "iMart Pharmacy — Lanterns Mall",
+    "name": "iMart Pharmacy, Lanterns Mall",
     "type": "private-sbs",
     "parish": "Christ Church",
     "address": "Lanterns Mall, Christ Church",
@@ -583,7 +583,7 @@
     }
   },
   {
-    "name": "iMart Pharmacy — Sheraton Mall",
+    "name": "iMart Pharmacy, Sheraton Mall",
     "type": "private-sbs",
     "parish": "Christ Church",
     "address": "Sheraton Centre, Sargeant's Village, Christ Church",
@@ -635,7 +635,7 @@
     }
   },
   {
-    "name": "iMart Pharmacy — Haggatt Hall",
+    "name": "iMart Pharmacy, Haggatt Hall",
     "type": "private-sbs",
     "parish": "St. Michael",
     "address": "Haggatt Hall, St. Michael",
@@ -692,7 +692,7 @@
     }
   },
   {
-    "name": "iMart Pharmacy — The Walk, Welches",
+    "name": "iMart Pharmacy, The Walk, Welches",
     "type": "private-sbs",
     "parish": "St. Thomas",
     "address": "The Walk at Welches, St. Thomas",
@@ -749,7 +749,7 @@
     }
   },
   {
-    "name": "iMart Pharmacy — Wildey Commercial Centre",
+    "name": "iMart Pharmacy, Wildey Commercial Centre",
     "type": "private-sbs",
     "parish": "St. Michael",
     "address": "Wildey, St. Michael",
@@ -801,7 +801,7 @@
     }
   },
   {
-    "name": "iMart Pharmacy — Six Roads",
+    "name": "iMart Pharmacy, Six Roads",
     "type": "private-sbs",
     "parish": "St. Philip",
     "address": "Emerald Park, Six Cross Roads, St. Philip",
@@ -853,7 +853,7 @@
     }
   },
   {
-    "name": "iMart Pharmacy — The Estates",
+    "name": "iMart Pharmacy, The Estates",
     "type": "private-sbs",
     "parish": "St. George",
     "address": "Boarded Hall, St. George",
@@ -910,7 +910,7 @@
     }
   },
   {
-    "name": "iMart Pharmacy — W Plaza",
+    "name": "iMart Pharmacy, W Plaza",
     "type": "private-sbs",
     "parish": "St. Thomas",
     "address": "Welches, St. Thomas",
@@ -1061,7 +1061,7 @@
     "parish": "Christ Church",
     "address": "Rockley Main Road, Rockley, Christ Church",
     "phone": "(246) 435-8090",
-    "notes": "25+ years serving Barbadians and visitors. DATA CONFLICT: a Barbados business directory lists Lewis Drug Mart at Carmen, Rockley / Highway 7 — verify with the Drug Service.",
+    "notes": "25+ years serving Barbadians and visitors. DATA CONFLICT: a Barbados business directory lists Lewis Drug Mart at Carmen, Rockley / Highway 7. Verify with the Drug Service.",
     "routes": "Routes 30, 31 from Bridgetown",
     "coords": {
       "lat": 13.072427,
@@ -1312,7 +1312,7 @@
     }
   },
   {
-    "name": "OneUp Pharmacy — Wildey Mall",
+    "name": "OneUp Pharmacy, Wildey Mall",
     "type": "private-sbs",
     "parish": "St. Michael",
     "address": "Wildey Mall, Wildey, St. Michael",
@@ -1365,7 +1365,7 @@
     "whatsapp": "(246) 426-6387"
   },
   {
-    "name": "OneUp Pharmacy — Jemmotts Lane",
+    "name": "OneUp Pharmacy, Jemmotts Lane",
     "type": "private-sbs",
     "parish": "St. Michael",
     "address": "Jemmotts Lane, St. Michael",
@@ -1417,7 +1417,7 @@
     "whatsapp": "(246) 426-6387"
   },
   {
-    "name": "OneUp Pharmacy — Triad Health",
+    "name": "OneUp Pharmacy, Triad Health",
     "type": "private-sbs",
     "parish": "St. Michael",
     "address": "Triad Health Centre, St. Michael",
@@ -1469,7 +1469,7 @@
     "whatsapp": "(246) 426-6387"
   },
   {
-    "name": "OneUp Pharmacy — Diagnostic Medical",
+    "name": "OneUp Pharmacy, Diagnostic Medical",
     "type": "private-sbs",
     "parish": "St. Michael",
     "address": "Diagnostic Medical, St. Michael",
@@ -1521,7 +1521,7 @@
     "whatsapp": "(246) 426-6387"
   },
   {
-    "name": "Callies Pharmacy — Bayside",
+    "name": "Callies Pharmacy, Bayside",
     "type": "private-sbs",
     "parish": "St. Michael",
     "address": "Bayside Plaza, Bay Street, St. Michael",
@@ -1578,7 +1578,7 @@
     }
   },
   {
-    "name": "Callies Pharmacy — Cottage",
+    "name": "Callies Pharmacy, Cottage",
     "type": "private-sbs",
     "parish": "St. George",
     "address": "Cottage Plantation, St. George",
@@ -1634,7 +1634,7 @@
     "parish": "Christ Church",
     "address": "Maxwell Main Road, Christ Church",
     "phone": "(246) 428-5323",
-    "notes": "Listed as 8am–10pm — call to confirm opening days. Address and phone from a Barbados business directory — confirm opening days and whether they offer the government subsidy with the Drug Service."
+    "notes": "Listed as 8am–10pm. Call to confirm opening days. Address and phone from a Barbados business directory. Confirm opening days and whether they offer the government subsidy with the Drug Service."
   },
   {
     "name": "Lyte Drug Mart",
@@ -1642,7 +1642,7 @@
     "parish": "St. Michael",
     "address": "Brittons Cross Roads, St. Michael",
     "phone": "(246) 624-4581",
-    "notes": "Listed as 8am–5:30pm — call to confirm opening days. Address, phone and opening days to be confirmed with the Drug Service.",
+    "notes": "Listed as 8am–5:30pm. Call to confirm opening days. Address, phone and opening days to be confirmed with the Drug Service.",
     "coords": {
       "lat": 13.088571,
       "lon": -59.596507
@@ -1654,7 +1654,7 @@
     "parish": "St. Michael",
     "address": "28 Pine Road, Belleville, St. Michael",
     "phone": "(246) 437-8098",
-    "notes": "Listed as 8am–4:30pm — call to confirm opening days. Address and phone from a Barbados business directory — confirm opening days and whether they offer the government subsidy with the Drug Service."
+    "notes": "Listed as 8am–4:30pm. Call to confirm opening days. Address and phone from a Barbados business directory. Confirm opening days and whether they offer the government subsidy with the Drug Service."
   },
   {
     "name": "Holborn Pharmacy",
@@ -1701,7 +1701,7 @@
       ],
       "sun": []
     },
-    "notes": "Opening days assumed Mon–Sat — confirm with the Drug Service.",
+    "notes": "Opening days assumed Mon–Sat. Confirm with the Drug Service.",
     "coords": {
       "lat": 13.095956,
       "lon": -59.601443
@@ -1713,7 +1713,7 @@
     "parish": "St. Michael",
     "address": "Pine Housing Estate, St. Michael",
     "phone": "(246) 228-2026",
-    "notes": "DATA CONFLICT: a Barbados business directory lists Ace Pharmacy at 3 10th Ave, Belleville — verify with the Drug Service.",
+    "notes": "DATA CONFLICT: a Barbados business directory lists Ace Pharmacy at 3 10th Ave, Belleville. Verify with the Drug Service.",
     "coords": {
       "lat": 13.09793,
       "lon": -59.605172
@@ -1813,7 +1813,7 @@
     "parish": "St. Michael",
     "address": "23 Baxters Road, St. Michael",
     "phone": "(246) 438-9218",
-    "notes": "DATA CONFLICT: a Barbados business directory lists Friendship Pharmacy at Manor Lodge Complex, Lodge Hill, and shows 23 Baxters Road as Total Care Pharmacy — this address may be mislabelled. Verify with the Drug Service.",
+    "notes": "DATA CONFLICT: a Barbados business directory lists Friendship Pharmacy at Manor Lodge Complex, Lodge Hill, and shows 23 Baxters Road as Total Care Pharmacy. This address may be mislabelled. Verify with the Drug Service.",
     "coords": {
       "lat": 13.104791,
       "lon": -59.618223
@@ -1869,7 +1869,7 @@
     "parish": "Christ Church",
     "address": "Unit 3, Emperors Court, Worthing, Christ Church",
     "phone": "(246) 426-2601",
-    "notes": "Address, parish and phone from a Barbados business directory — confirm with the Drug Service.",
+    "notes": "Address, parish and phone from a Barbados business directory. Confirm with the Drug Service.",
     "coords": {
       "lat": 13.076596,
       "lon": -59.57795
@@ -1892,7 +1892,7 @@
     "parish": "St. Michael",
     "address": "Peterkin Road, Bank Hall, St. Michael",
     "phone": "(246) 429-0334",
-    "notes": "Address and phone from a Barbados business directory — confirm with the Drug Service.",
+    "notes": "Address and phone from a Barbados business directory. Confirm with the Drug Service.",
     "coords": {
       "lat": 13.110854,
       "lon": -59.613587
@@ -1910,7 +1910,7 @@
     }
   },
   {
-    "name": "JillAnDeeHLP — Island-wide Delivery",
+    "name": "JillAnDeeHLP, Island-wide Delivery",
     "type": "private",
     "parish": "All parishes",
     "address": "Island-wide delivery service",
@@ -1923,7 +1923,7 @@
     "parish": "St. Michael",
     "address": "George Saint Belleville, St. Michael",
     "phone": "(246) 426-8771",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.097735,
       "lon": -59.603193
@@ -1935,7 +1935,7 @@
     "parish": "St. Michael",
     "address": "Sunny Side Complex, Black Rock, St. Michael",
     "phone": "(246) 426-3499",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.099174,
       "lon": -59.611161
@@ -1947,7 +1947,7 @@
     "parish": "Christ Church",
     "address": "Worthing, Christ Church",
     "phone": "(246) 436-6337",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.070991,
       "lon": -59.580453
@@ -1959,7 +1959,7 @@
     "parish": "St. James",
     "address": "28 Thorpes Main Road, St. James",
     "phone": "(246) 438-4444",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.151059,
       "lon": -59.623756
@@ -1971,31 +1971,31 @@
     "parish": "St. Michael",
     "address": "Corner George St & 3rd Avenue, St. Michael",
     "phone": "(246) 429-5616",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.101584,
       "lon": -59.611308
     }
   },
   {
-    "name": "Brittons Hill Dispensary",
+    "name": "Brittons Hill Medical Centre",
     "type": "private-sbs",
     "parish": "St. Michael",
     "address": "Corner Flagstaff & Brittons New Road, St. Michael",
     "phone": "(246) 429-5461",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.10155,
       "lon": -59.611341
     }
   },
   {
-    "name": "Callies Pharmacy — Garrison",
+    "name": "Callies Pharmacy, Garrison",
     "type": "private",
     "parish": "St. Michael",
     "address": "Brigade House Garrison, St. Michael",
     "phone": "",
-    "notes": "From a Barbados business directory — location approximate. The number listed for this branch was the Cottage Plantation one, so it has been dropped rather than ring the wrong pharmacy.",
+    "notes": "From a Barbados business directory. Location approximate. The number listed for this branch was the Cottage Plantation one, so it has been dropped rather than ring the wrong pharmacy.",
     "coords": {
       "lat": 13.101481,
       "lon": -59.611396
@@ -2007,7 +2007,7 @@
     "parish": "St. Michael",
     "address": "Lr Bay St, St. Michael",
     "phone": "(246) 228-2476",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.101387,
       "lon": -59.611467
@@ -2019,7 +2019,7 @@
     "parish": "St. Michael",
     "address": "Carlton Complex, Black Rock Main Road, St. Michael",
     "phone": "(246) 425-1604",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.101257,
       "lon": -59.61156
@@ -2031,7 +2031,7 @@
     "parish": "Christ Church",
     "address": "Worthing Plaza, Christ Church",
     "phone": "(246) 435-7460",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.070723,
       "lon": -59.579373
@@ -2043,7 +2043,7 @@
     "parish": "Christ Church",
     "address": "Gall Hill Medical Centre, Christ Church",
     "phone": "(246) 428-3497",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.070256,
       "lon": -59.54074
@@ -2055,7 +2055,7 @@
     "parish": "St. Michael",
     "address": "Wildey Main Road, St. Michael",
     "phone": "(246) 427-7070",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.093217,
       "lon": -59.592847
@@ -2067,7 +2067,7 @@
     "parish": "St. Michael",
     "address": "Marhill St, St. Michael",
     "phone": "(246) 426-2454",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.097549,
       "lon": -59.613494
@@ -2079,19 +2079,19 @@
     "parish": "St. Philip",
     "address": "Church Village, St. Philip",
     "phone": "(246) 423-4449",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.138901,
       "lon": -59.488371
     }
   },
   {
-    "name": "Elbethel Pharmacy — 2nd Avenue",
+    "name": "Elbethel Pharmacy, 2nd Avenue",
     "type": "private-sbs",
     "parish": "St. Michael",
     "address": "2nd Avenue, Belleville, St. Michael",
     "phone": "(246) 437-9261",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.099119,
       "lon": -59.611222
@@ -2103,7 +2103,7 @@
     "parish": "St. Michael",
     "address": "Shoppers Centre Black Rock, St. Michael",
     "phone": "(246) 425-9654",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.0988,
       "lon": -59.611047
@@ -2115,7 +2115,7 @@
     "parish": "St. Michael",
     "address": "Chapel St Nr Tudor St",
     "phone": "(246) 427-2654",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.097926,
       "lon": -59.609707
@@ -2127,7 +2127,7 @@
     "parish": "St. Michael",
     "address": "Lr Dayrell's Road, St. Michael",
     "phone": "(246) 426-0438",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.097918,
       "lon": -59.609191
@@ -2139,7 +2139,7 @@
     "parish": "St. Michael",
     "address": "Beckles Road, St. Michael",
     "phone": "(246) 436-6842",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.087087,
       "lon": -59.604372
@@ -2151,7 +2151,7 @@
     "parish": "Christ Church",
     "address": "Skyway Plaza, Christ Church",
     "phone": "(246) 429-8932",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.074388,
       "lon": -59.596224
@@ -2163,7 +2163,7 @@
     "parish": "St. Michael",
     "address": "101 Devlind Lr Black Rock Tel/Fax, St. Michael",
     "phone": "(246) 425-2273",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.100699,
       "lon": -59.60721
@@ -2175,7 +2175,7 @@
     "parish": "St. George",
     "address": "Charles Rowe Bridge, St. George, Froster Hall",
     "phone": "(246) 436-7417",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.130525,
       "lon": -59.550329
@@ -2187,7 +2187,7 @@
     "parish": "St. Michael",
     "address": "Spooners Hill, St. Michael",
     "phone": "(246) 425-3159",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.122228,
       "lon": -59.609911
@@ -2199,7 +2199,7 @@
     "parish": "St. Michael",
     "address": "Bethesda Black Rock, St. Michael",
     "phone": "(246) 436-1744",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.102518,
       "lon": -59.610162
@@ -2211,7 +2211,7 @@
     "parish": "St. James",
     "address": "Jamestown Clinic Holetown, St. James",
     "phone": "(246) 432-6997",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.181214,
       "lon": -59.634549
@@ -2223,7 +2223,7 @@
     "parish": "Christ Church",
     "address": "Oistins Main Road, Christ Church",
     "phone": "(246) 271-8990",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.065204,
       "lon": -59.544351
@@ -2235,19 +2235,19 @@
     "parish": "St. Michael",
     "address": "Drug Store 8 High Street, St. Michael",
     "phone": "(246) 426-3241",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.101667,
       "lon": -59.611318
     }
   },
   {
-    "name": "K C B Pharmacy",
+    "name": "Premier Pharmacy",
     "type": "private-sbs",
     "parish": "St. Michael",
-    "address": "Brittons New Road Brittons Hill, St. Michael",
+    "address": "Dinkryst Medical Centre, Brittons Hill, St. Michael",
     "phone": "(246) 426-7456",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.085751,
       "lon": -59.591351
@@ -2259,7 +2259,7 @@
     "parish": "St. Michael",
     "address": "Fontabelle, St. Michael",
     "phone": "(246) 228-5087",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.106023,
       "lon": -59.62467
@@ -2271,7 +2271,7 @@
     "parish": "St. Michael",
     "address": "Rock Dundo Medical Clinic White Main Road St Michael Tel/Fax",
     "phone": "(246) 271-5736",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.099622,
       "lon": -59.611827
@@ -2283,7 +2283,7 @@
     "parish": "St. Philip",
     "address": "Emerald City Supermarket, Six Roads, St. Philip",
     "phone": "(246) 423-4937",
-    "notes": "Directory listing says open until 10pm Mon–Sat — confirm by phone. Location approximate and subsidy status not confirmed with the Drug Service.",
+    "notes": "Directory listing says open until 10pm Mon–Sat. Confirm by phone. Location approximate and subsidy status not confirmed with the Drug Service.",
     "coords": {
       "lat": 13.119513,
       "lon": -59.46114
@@ -2295,7 +2295,7 @@
     "parish": "St. Michael",
     "address": "Mayfield Medical Centre, 4th Avenue Belleville, St. Michael",
     "phone": "(246) 427-6066",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.094231,
       "lon": -59.603082
@@ -2307,7 +2307,7 @@
     "parish": "St. Michael",
     "address": "Aberfoyle Black Rock, St. Michael",
     "phone": "(246) 427-5762",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.098741,
       "lon": -59.611061
@@ -2319,7 +2319,7 @@
     "parish": "St. Peter",
     "address": "Gills Terr Speightstown, St. Peter",
     "phone": "(246) 422-1800",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.250727,
       "lon": -59.641291
@@ -2331,7 +2331,7 @@
     "parish": "St. Michael",
     "address": "Upper Collymore Rock Road, St. Michael",
     "phone": "(246) 427-5521",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.097887,
       "lon": -59.609592
@@ -2343,7 +2343,7 @@
     "parish": "St. Peter",
     "address": "Church St Speightstown, St. Peter",
     "phone": "(246) 422-1908",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.250617,
       "lon": -59.640794
@@ -2355,7 +2355,7 @@
     "parish": "St. Michael",
     "address": "Peterkin Road Bank Hall, St. Michael",
     "phone": "(246) 430-9594",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.110587,
       "lon": -59.613429
@@ -2367,7 +2367,7 @@
     "parish": "St. Michael",
     "address": "Pine Medical Centre 3rd Avenue Belleville, St. Michael",
     "phone": "(246) 436-8678",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.09825,
       "lon": -59.608056
@@ -2379,7 +2379,7 @@
     "parish": "St. Michael",
     "address": "4th Avenue Belleville, St. Michael",
     "phone": "(246) 437-3684",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.09502,
       "lon": -59.601459
@@ -2391,7 +2391,7 @@
     "parish": "St. Michael",
     "address": "Canary Lane Mall, St George Street, St. Michael",
     "phone": "(246) 435-7587",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.097115,
       "lon": -59.616704
@@ -2403,7 +2403,7 @@
     "parish": "St. Michael",
     "address": "Glendor House River Road, St. Michael",
     "phone": "(246) 429-4240",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.100779,
       "lon": -59.607199
@@ -2415,19 +2415,19 @@
     "parish": "St. Michael",
     "address": "Cave Hill, St. Michael",
     "phone": "(246) 425-1088",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.135653,
       "lon": -59.627371
     }
   },
   {
-    "name": "Roebuck Pharmacy Ltd",
+    "name": "Cosmopolitan Pharmacy, Roebuck",
     "type": "private-sbs",
     "parish": "St. Michael",
     "address": "121 Roebuck, St. Michael",
     "phone": "(246) 436-6101",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.103757,
       "lon": -59.606956
@@ -2439,7 +2439,7 @@
     "parish": "St. Michael",
     "address": "ARS Medicare 6th Avenue Belleville, St. Michael",
     "phone": "(246) 436-1099",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.102913,
       "lon": -59.60927
@@ -2451,7 +2451,7 @@
     "parish": "Christ Church",
     "address": "Rendezvous Court R'vous, Christ Church",
     "phone": "(246) 436-0140",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.071846,
       "lon": -59.539509
@@ -2463,7 +2463,7 @@
     "parish": "St. Michael",
     "address": "Corner of Fairfield Road Tweedside Road, St. Michael",
     "phone": "(246) 429-3298",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.102549,
       "lon": -59.610225
@@ -2475,19 +2475,19 @@
     "parish": "St. Michael",
     "address": "23 Baxters Road Opp Jordans Supermarket, St. Michael",
     "phone": "(246) 436-5241",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.102003,
       "lon": -59.611109
     }
   },
   {
-    "name": "Walkers H C Pharmacy",
+    "name": "H.C. Walkes Pharmacy",
     "type": "private-sbs",
     "parish": "St. Michael",
     "address": "47 Tudor St",
     "phone": "(246) 426-3707",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.101937,
       "lon": -59.618601
@@ -2499,7 +2499,7 @@
     "parish": "St. Michael",
     "address": "Carlton Black Rock Main Road, St. Michael",
     "phone": "(246) 425-1046",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.100388,
       "lon": -59.612247
@@ -2511,7 +2511,7 @@
     "parish": "Christ Church",
     "address": "Welches, Christ Church",
     "phone": "(246) 428-1206",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.065187,
       "lon": -59.549856
@@ -2523,7 +2523,7 @@
     "parish": "St. Peter",
     "address": "Queen Saint Speightstown, St. Peter",
     "phone": "(246) 422-5207",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.249468,
       "lon": -59.64362
@@ -2535,7 +2535,7 @@
     "parish": "St. Michael",
     "address": "Wildey Shopping Plaza, St. Michael",
     "phone": "(246) 427-5468",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.09877,
       "lon": -59.611737
@@ -2547,79 +2547,79 @@
     "parish": "Christ Church",
     "address": "Worthing, Christ Church",
     "phone": "(246) 435-7041",
-    "notes": "From a Barbados business directory — location approximate.",
+    "notes": "From a Barbados business directory. Location approximate.",
     "coords": {
       "lat": 13.071095,
       "lon": -59.581476
     }
   },
   {
-    "name": "Massy Pharmacy — Warrens",
+    "name": "Massy Pharmacy, Warrens",
     "type": "private-sbs",
     "parish": "St. Michael",
     "address": "Warrens SuperCentre, St. Michael",
     "phone": "(246) 417-5232",
-    "notes": "Massy Stores pharmacy (formerly Knights) — on the Drug Service subsidised list; pharmacy hours unconfirmed — call to confirm.",
+    "notes": "Massy Stores pharmacy (formerly Knights) is on the Drug Service subsidised list. Pharmacy hours are unconfirmed. Call to confirm.",
     "coords": {
       "lat": 13.140182,
       "lon": -59.60768
     }
   },
   {
-    "name": "Massy Pharmacy — Sky Mall",
+    "name": "Massy Pharmacy, Sky Mall",
     "type": "private-sbs",
     "parish": "St. Michael",
     "address": "Sky Mall, Haggatt Hall, St. Michael",
     "phone": "(246) 434-1023",
-    "notes": "Massy Stores pharmacy (formerly Knights) — on the Drug Service subsidised list; pharmacy hours unconfirmed — call to confirm.",
+    "notes": "Massy Stores pharmacy (formerly Knights) is on the Drug Service subsidised list. Pharmacy hours are unconfirmed. Call to confirm.",
     "coords": {
       "lat": 13.106699,
       "lon": -59.577748
     }
   },
   {
-    "name": "Massy Pharmacy — Sunset Crest",
+    "name": "Massy Pharmacy, Sunset Crest",
     "type": "private-sbs",
     "parish": "St. James",
     "address": "Sunset Crest, Holetown, St. James",
     "phone": "(246) 432-1290",
-    "notes": "Massy Stores pharmacy (formerly Knights) — on the Drug Service subsidised list; pharmacy hours unconfirmed — call to confirm.",
+    "notes": "Massy Stores pharmacy (formerly Knights) is on the Drug Service subsidised list. Pharmacy hours are unconfirmed. Call to confirm.",
     "coords": {
       "lat": 13.185508,
       "lon": -59.637305
     }
   },
   {
-    "name": "Massy Pharmacy — Six Roads",
+    "name": "Massy Pharmacy, Six Roads",
     "type": "private-sbs",
     "parish": "St. Philip",
     "address": "Six Roads, St. Philip",
     "phone": "(246) 423-3700",
-    "notes": "Massy Stores pharmacy (formerly Knights) — on the Drug Service subsidised list; pharmacy hours unconfirmed — call to confirm.",
+    "notes": "Massy Stores pharmacy (formerly Knights) is on the Drug Service subsidised list. Pharmacy hours are unconfirmed. Call to confirm.",
     "coords": {
       "lat": 13.117812,
       "lon": -59.477786
     }
   },
   {
-    "name": "Massy Pharmacy — Worthing",
+    "name": "Massy Pharmacy, Worthing",
     "type": "private-sbs",
     "parish": "Christ Church",
     "address": "Rendezvous Road, Worthing, Christ Church",
     "phone": "(246) 435-0020",
-    "notes": "Massy Stores pharmacy (formerly Knights) — on the Drug Service subsidised list; pharmacy hours unconfirmed — call to confirm.",
+    "notes": "Massy Stores pharmacy (formerly Knights) is on the Drug Service subsidised list. Pharmacy hours are unconfirmed. Call to confirm.",
     "coords": {
       "lat": 13.073487,
       "lon": -59.581698
     }
   },
   {
-    "name": "Massy Pharmacy — Oistins",
+    "name": "Massy Pharmacy, Oistins",
     "type": "private-sbs",
     "parish": "Christ Church",
     "address": "Oistins, Christ Church",
     "phone": "(246) 428-6057",
-    "notes": "Massy Stores pharmacy (formerly Knights) — on the Drug Service subsidised list; pharmacy hours unconfirmed — call to confirm.",
+    "notes": "Massy Stores pharmacy (formerly Knights) is on the Drug Service subsidised list. Pharmacy hours are unconfirmed. Call to confirm.",
     "coords": {
       "lat": 13.063301,
       "lon": -59.542029
@@ -2638,7 +2638,7 @@
     }
   },
   {
-    "name": "Elbethel Pharmacy — 6th Avenue",
+    "name": "Elbethel Pharmacy, 6th Avenue",
     "type": "private-sbs",
     "parish": "St. Michael",
     "address": "Corner 6th Avenue, Belleville, St. Michael",
@@ -2735,12 +2735,12 @@
     }
   },
   {
-    "name": "Massy Pharmacy — Coverley",
+    "name": "Massy Pharmacy, Coverley",
     "type": "private-sbs",
     "parish": "Christ Church",
     "address": "The Villages at Coverley, Christ Church",
     "phone": "(246) 623-7374",
-    "notes": "Massy Stores pharmacy (formerly Knights) — on the Drug Service subsidised list. Phone is the store line; pharmacy hours unconfirmed — call to confirm.",
+    "notes": "Massy Stores pharmacy (formerly Knights) is on the Drug Service subsidised list. Phone is the store line. Pharmacy hours are unconfirmed. Call to confirm.",
     "coords": {
       "lat": 13.086209,
       "lon": -59.501558
@@ -2796,14 +2796,14 @@
     "phone": "(246) 622-4088"
   },
   {
-    "name": "Elbethel Pharmacy — Prerogative",
+    "name": "Elbethel Pharmacy, Prerogative",
     "type": "private-sbs",
     "parish": "St. George",
     "address": "Prerogative, St. George",
     "phone": "(246) 233-2141"
   },
   {
-    "name": "Elgar Pharmacy — Market Hill",
+    "name": "Elgar Pharmacy, Market Hill",
     "type": "private-sbs",
     "parish": "St. George",
     "address": "Market Hill, St. George",
@@ -2831,7 +2831,7 @@
     "phone": "(246) 826-6622"
   },
   {
-    "name": "Health Care Pharmacy — Westbury Road",
+    "name": "Health Care Pharmacy, Westbury Road",
     "type": "private-sbs",
     "parish": "St. Michael",
     "address": "Cnr Westbury Road & St. Leonards Ave, St. Michael",
@@ -2845,14 +2845,14 @@
     "phone": "(246) 258-3639"
   },
   {
-    "name": "Heritage Pharmacy — Kendal Hill",
+    "name": "Heritage Pharmacy, Kendal Hill",
     "type": "private-sbs",
     "parish": "Christ Church",
     "address": "Kendal Hill, Christ Church",
     "phone": "(246) 622-2321"
   },
   {
-    "name": "Jems Pharmacy — Four Roads",
+    "name": "Jems Pharmacy, Four Roads",
     "type": "private-sbs",
     "parish": "St. Philip",
     "address": "Four Roads Medical Clinic, Four Roads, St. Philip",
@@ -2866,7 +2866,7 @@
     "phone": "(246) 537-2099"
   },
   {
-    "name": "Massy Pharmacy — Sargeants Village",
+    "name": "Massy Pharmacy, Sargeants Village",
     "type": "private-sbs",
     "parish": "Christ Church",
     "address": "Sargeants Village, Christ Church",
@@ -2887,7 +2887,7 @@
     "phone": "(246) 285-0772"
   },
   {
-    "name": "Neighbourhood Care Pharmacy — Bank Hall",
+    "name": "Neighbourhood Care Pharmacy, Bank Hall",
     "type": "private-sbs",
     "parish": "St. Michael",
     "address": "Bank Hall Medical Clinic, Bank Hall, St. Michael",
@@ -2950,7 +2950,7 @@
     "phone": "(246) 436-0172"
   },
   {
-    "name": "Total Care Pharmacy — Emerald City",
+    "name": "Total Care Pharmacy, Emerald City",
     "type": "private-sbs",
     "parish": "St. Philip",
     "address": "Emerald City Supermarket, Six Roads, St. Philip",

@@ -1,5 +1,5 @@
 /**
- * Finder filter state — pure and testable.
+ * Finder filter state - pure and testable.
  * --------------------------------------------------------------
  * One reducer owns the six filter facets; URL parse/serialize live beside
  * it so the shareable-link format has a single definition; matching and
@@ -97,7 +97,7 @@ export function filtersFromParams(params: URLSearchParams): FilterState {
   }
 }
 
-/** Serialize filter state for the URL — defaults are omitted. */
+/** Serialize filter state for the URL - defaults are omitted. */
 export function paramsFromFilters(state: FilterState): URLSearchParams {
   const params = new URLSearchParams()
   if (state.search) params.set('q', state.search)
