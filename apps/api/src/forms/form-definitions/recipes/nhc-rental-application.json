@@ -11,14 +11,14 @@
           "ref": "components/generic-radio",
           "overrides": {
             "fieldId": "income-eligible",
-            "label": "Is your monthly income BDS$3,000 or less?",
+            "label": "Is your monthly income BDS $3,000 or less?",
             "validations": {
               "required": {
-                "error": "Tell us whether your monthly income is BDS$3,000 or less",
+                "error": "Tell us whether your monthly income is BDS $3,000 or less",
                 "value": true
               },
               "pattern": {
-                "error": "You must have a monthly income of BDS$3,000 or less to apply",
+                "error": "You must have a monthly income of BDS $3,000 or less to apply",
                 "value": "^yes$"
               }
             },
@@ -46,7 +46,7 @@
                 "value": "no"
               }
             ],
-            "content": "To apply for an NHC rental unit or lot, your monthly income must be BDS$3,000 or less. If your circumstances change, you can come back and apply again.",
+            "content": "To apply for an NHC rental unit or lot, your monthly income must be BDS $3,000 or less. If your circumstances change, you can come back and apply again.",
             "variant": "warning"
           }
         },
@@ -99,27 +99,23 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "label": "National Registration Number",
-            "hint": "You can find this on your national ID card. For example, 870315-1234",
+            "label": "National Identification (ID) Number",
+            "hint": "For example, 870315-1234",
             "validations": {
               "required": {
-                "error": "Enter your National Registration Number",
+                "error": "Enter your National Identification (ID) Number",
                 "value": true
               }
             }
           }
         },
         {
-          "ref": "components/tamis-number",
-          "overrides": {
-            "hint": "Your NHC tenant reference number, if you have one"
-          }
+          "ref": "components/tamis-number"
         },
         {
           "ref": "components/address",
           "overrides": {
             "label": "Home address",
-            "hint": "Street address and village or district",
             "validations": {
               "required": {
                 "error": "Enter your home address",
@@ -134,17 +130,14 @@
         {
           "ref": "components/postcode",
           "overrides": {
-            "hint": "For example, BB11000"
+            "hint": "For example, BB17004"
           }
         },
         {
           "ref": "components/telephone"
         },
         {
-          "ref": "components/email",
-          "overrides": {
-            "hint": "We will send your confirmation here"
-          }
+          "ref": "components/email"
         },
         {
           "ref": "components/generic-select",
@@ -247,11 +240,11 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "co-applicant-national-id-number",
-            "label": "National Registration Number",
-            "hint": "You can find this on their national ID card. For example, 870315-1234",
+            "label": "National Identification (ID) Number",
+            "hint": "For example, 870315-1234",
             "validations": {
               "required": {
-                "error": "Enter the co-applicant's National Registration Number",
+                "error": "Enter the co-applicant's National Identification (ID) Number",
                 "value": true
               }
             }
@@ -260,8 +253,7 @@
         {
           "ref": "components/tamis-number",
           "overrides": {
-            "fieldId": "co-applicant-tamis-number",
-            "hint": "Their NHC tenant reference number, if they have one"
+            "fieldId": "co-applicant-tamis-number"
           }
         },
         {
@@ -269,7 +261,6 @@
           "overrides": {
             "fieldId": "co-applicant-address",
             "label": "Home address",
-            "hint": "Street address and village or district",
             "validations": {
               "required": {
                 "error": "Enter the co-applicant's home address",
@@ -288,7 +279,7 @@
           "ref": "components/postcode",
           "overrides": {
             "fieldId": "co-applicant-postcode",
-            "hint": "For example, BB11000"
+            "hint": "For example, BB17004"
           }
         },
         {
@@ -413,8 +404,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "fieldId": "salary",
-            "label": "Monthly salary",
-            "hint": "Enter the amount in BDS$",
+            "label": "Monthly salary (BDS $)",
             "validations": {
               "required": {
                 "error": "Enter your monthly salary",
@@ -541,8 +531,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "fieldId": "co-applicant-salary",
-            "label": "Monthly salary",
-            "hint": "Enter the amount in BDS$",
+            "label": "Monthly salary (BDS $)",
             "validations": {
               "required": {
                 "error": "Enter the co-applicant's monthly salary",
@@ -854,7 +843,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "fieldId": "occupant-income",
-            "label": "Monthly income (BDS$)",
+            "label": "Monthly income (BDS $)",
             "hint": "Enter 0 if they have no income",
             "validations": {
               "required": {

@@ -111,7 +111,6 @@
         {
           "ref": "components/tamis-number",
           "overrides": {
-            "hint": "Enter your Taxpayer Identification Number from the Barbados Revenue Authority (for example 10000000000004)",
             "validations": {
               "required": {
                 "value": true
@@ -403,7 +402,6 @@
           "overrides": {
             "fieldId": "co-applicant-tamis-number",
             "label": "TAMIS number",
-            "hint": "Enter your Taxpayer Identification Number from the Barbados Revenue Authority (for example 10000000000004)",
             "validations": {
               "required": {
                 "value": true
