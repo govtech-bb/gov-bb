@@ -9,6 +9,11 @@ featured: false
 publish_date: 2026-07-22
 categories:
   - money-financial-support
+keywords:
+  - NIS
+  - NISSS
+  - self-employed contributions
+  - pay contributions
 ---
 
 ## Who this is for

@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Heading, Link, Search, Text } from '@govtech-bb/react'
+import { Heading, Link, Text } from '@govtech-bb/react'
 import { HelpfulBox } from '../components/HelpfulBox'
+import { ServiceSearch } from '../components/ServiceSearch'
 import { isDigitalService, isVisible, PAGES } from '../content/registry'
-import { trackEvent } from '../lib/analytics'
 import { pageHead } from '../lib/page-head'
 import { deriveVisibilityOverlay } from '../lib/service-status'
 
@@ -41,22 +41,7 @@ function ServicesPage() {
             <Text as="p" className="font-bold">
               Search for a service
             </Text>
-            <Search
-              action="/search-results"
-              label="Search for a service"
-              buttonLabel="Search"
-              inputProps={{ name: 'q' }}
-              onSubmit={(event) => {
-                event.preventDefault()
-                const q = String(
-                  new FormData(event.currentTarget).get('q') ?? '',
-                ).trim()
-                trackEvent('search-submit', { query: q, source: 'services' })
-                window.location.href = q
-                  ? `/search-results?q=${encodeURIComponent(q)}`
-                  : '/search-results'
-              }}
-            />
+            <ServiceSearch source="services" viewer={level} overlay={overlay} />
           </div>
         </div>
       </section>

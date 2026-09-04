@@ -1,11 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Heading, Search, Text } from '@govtech-bb/react'
+import { Heading, Text } from '@govtech-bb/react'
 import { ChatAssistant } from '../components/ChatAssistant'
 import { Featured } from '../components/Featured'
 import { HelpfulBox } from '../components/HelpfulBox'
+import { ServiceSearch } from '../components/ServiceSearch'
 import { CATEGORIES } from '../content/categories'
 import { isCategoryVisible } from '../content/registry'
-import { trackEvent } from '../lib/analytics'
 import { publicChatSuggestions } from '../lib/chat-suggestions'
 import { pageHead } from '../lib/page-head'
 import { deriveVisibilityOverlay } from '../lib/service-status'
@@ -27,15 +27,6 @@ function Home() {
   const categories = CATEGORIES.filter((cat) =>
     isCategoryVisible(cat, level, overlay),
   )
-
-  const handleSearch = (q: string) => {
-    trackEvent('search-submit', { query: q, source: 'home' })
-    if (q === '') {
-      window.location.href = '/services'
-      return
-    }
-    window.location.href = `/search-results?q=${encodeURIComponent(q)}`
-  }
 
   return (
     <>
@@ -62,18 +53,11 @@ function Home() {
             <Heading as="h4">
               Or search all government services directly
             </Heading>
-            <Search
-              action="/search-results"
-              label="Search for a service"
-              buttonLabel="Search"
-              inputProps={{ name: 'q' }}
-              onSubmit={(event) => {
-                event.preventDefault()
-                const q = String(
-                  new FormData(event.currentTarget).get('q') ?? '',
-                ).trim()
-                handleSearch(q)
-              }}
+            <ServiceSearch
+              source="home"
+              viewer={level}
+              overlay={overlay}
+              emptyHref="/services"
             />
           </div>
         </div>
