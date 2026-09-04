@@ -21,14 +21,14 @@ You can apply as an individual, a business, or on behalf of an organisation.
 
 You will need:
 
-- your National Identification (ID) Number
+- your National Registration Number (NRN)
 - the name of the organisation, if you are applying for one
-- your phone number, email address and home address
-- the location of the land you want to use, including the parish
-- the GPS coordinates of the land, if you have them
-- a photo of the land, if you have one
-- what you want to do on the land, including any structures you plan to put there
-- the start and end dates you need the land for
+- your contact details: phone, email, and address
+- the **location of the land** you want to use, including the parish
+- the GPS coordinates of the land, if you have them, or a clear description of where it is
+- a **photo of the land**, if you have one
+- a clear description of **what you want to do** on the land, including the purpose and any structures or installations you plan to put there
+- the **start and end dates** you need the land for, and how long that is in days, months, or years
 
 You can upload the photo of the land as part of the form.
 
