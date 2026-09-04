@@ -31,10 +31,14 @@
  *   FAKER_SEED       fix faker's RNG for a reproducible data set.
  *
  * Form-specific notes:
- *  - `application-type` drives two things: "renew-licence" reveals the inline
- *    `hotel-licence-number` field, and "new-licence" is what puts the whole
- *    `documents` step (required site plan) in the journey via stepConditionalOn.
- *    The two tests below cover both answers.
+ *  - `application-type` = "renew-licence" reveals the inline `hotel-licence-number`
+ *    field. The `documents` step now shows on BOTH branches (the old
+ *    stepConditionalOn was removed): the site plan is always required, and the
+ *    Town and Country Planning number is a fieldConditionalOn "new-licence"
+ *    element on that step. The two tests below cover both answers.
+ *  - `amenities` is a step after `staff-details`: a checkbox group, then one
+ *    "has the licence been applied for?" radio per selected amenity
+ *    (fieldConditionalOn `operator: "in"` against the checkbox group).
  *  - `is-operator` = "no" reveals the operator's name / phone / email inline
  *    (fieldConditionalOn, not a separate step); `your-role` = "another-role"
  *    likewise reveals `describe-your-role`.
@@ -58,12 +62,12 @@ import { test, expect, type Page } from "@playwright/test";
 import {
   STEP_TIMEOUT,
   advance,
-  currentStep,
   expectStep,
   fillField,
   selectDropdown,
   selectRadio,
   submitAndConfirm,
+  tickCheckbox,
   uploadOne,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
@@ -162,6 +166,7 @@ export function buildData() {
     maximumGuests: String(faker.number.int({ min: 10, max: 400 })),
 
     licenceNumber: `HTL-${faker.string.numeric(5)}`,
+    planningApplicationNumber: `TCP-${faker.string.numeric(6)}`,
 
     operatorName: faker.company.name(),
     operatorPhone: bbMobileNumber(),
@@ -313,6 +318,30 @@ export async function fillFloor(
   await advance(page, stepId);
 }
 
+/**
+ * Amenities step — tick two amenities, then answer the per-amenity
+ * "has the licence been applied for?" radio each one reveals. The other four
+ * radios stay hidden (fieldConditionalOn `operator: "in"`), so they impose no
+ * required validation.
+ */
+export async function fillAmenities(page: Page): Promise<void> {
+  const step = expectStep(page, "amenities");
+  await expect(page.locator("h1")).toContainText("Amenities at the hotel");
+
+  const restaurantLicence = page.locator(
+    `[id="${step}_restaurant-licence-applied-yes"]`,
+  );
+  await expect(restaurantLicence).toBeHidden();
+
+  await tickCheckbox(page, step, "hotel-amenities", "swimming-pool");
+  await tickCheckbox(page, step, "hotel-amenities", "restaurant");
+
+  await expect(restaurantLicence).toBeVisible({ timeout: STEP_TIMEOUT });
+  await selectRadio(page, step, "swimming-pool-licence-applied", "yes");
+  await selectRadio(page, step, "restaurant-licence-applied", "no");
+  await advance(page, step);
+}
+
 /** Step 6 — staff facilities, identical on both branches. */
 export async function fillStaffDetails(
   page: Page,
@@ -386,8 +415,10 @@ test.describe("Hotel Licence Application — Live Smoke", () => {
     await fillFloor(page, step, data.groundFloor, "no");
 
     await fillStaffDetails(page, data);
+    await fillAmenities(page);
 
-    // ─── Supporting documents — only in the journey on the new-licence branch ─
+    // ─── Supporting documents — always in the journey; the Town and Country
+    //     Planning number is revealed only on the new-licence branch ──────────
     step = expectStep(page, "documents");
     await expect(page.locator("h1")).toContainText("Supporting documents");
     await uploadOne(page, step, "site-plan", {
@@ -395,6 +426,12 @@ test.describe("Hotel Licence Application — Live Smoke", () => {
       mimeType: TEST_PNG.mimeType,
       buffer: TEST_PNG.buffer,
     });
+    await fillField(
+      page,
+      step,
+      "planning-application-number",
+      data.planningApplicationNumber,
+    );
     await advance(page, step);
 
     // ─── Check your answers ─────────────────────────────────────────────────
@@ -419,7 +456,7 @@ test.describe("Hotel Licence Application — Live Smoke", () => {
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 
-  test("submits a renewal with a separate operator and two floors, skipping the documents step", async ({
+  test("submits a renewal with a separate operator and two floors, with the site plan but no planning number", async ({
     page,
   }) => {
     const data = buildData();
@@ -461,13 +498,21 @@ test.describe("Hotel Licence Application — Live Smoke", () => {
     await fillFloor(page, secondFloorStep, data.firstFloor, "no");
 
     await fillStaffDetails(page, data);
+    await fillAmenities(page);
 
-    // The gate's whole purpose: the site plan is only asked for on a new
-    // licence, so leaving staff-details lands straight on check-your-answers.
-    expect(
-      currentStep(page),
-      "a renewal must skip the documents step",
-    ).not.toContain("documents");
+    // ─── Supporting documents — the site plan is asked for on both branches;
+    //     the Town and Country Planning number is new-licence only, so it must
+    //     be absent here ─────────────────────────────────────────────────────
+    step = expectStep(page, "documents");
+    await expect(
+      page.locator(`[id="${step}_planning-application-number"]`),
+    ).toBeHidden();
+    await uploadOne(page, step, "site-plan", {
+      name: "site-plan.png",
+      mimeType: TEST_PNG.mimeType,
+      buffer: TEST_PNG.buffer,
+    });
+    await advance(page, step);
 
     // ─── Check your answers ─────────────────────────────────────────────────
     step = expectStep(page, "check-your-answers");
