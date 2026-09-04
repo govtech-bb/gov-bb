@@ -1,7 +1,13 @@
 import { useLayoutEffect, useRef } from "react";
 
 interface SlidingTabsProps<K extends string> {
-  options: ReadonlyArray<{ key: K; label: string }>;
+  options: ReadonlyArray<{
+    key: K;
+    label: string;
+    disabled?: boolean;
+    id?: string;
+    controls?: string;
+  }>;
   value: K;
   onChange: (key: K) => void;
   ariaLabel?: string;
@@ -22,6 +28,7 @@ export function SlidingTabs<K extends string>({
 }: SlidingTabsProps<K>) {
   const barRef = useRef<HTMLDivElement>(null);
   const pillRef = useRef<HTMLSpanElement>(null);
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const painted = useRef(false);
 
   const moveTo = (animate: boolean) => {
@@ -53,6 +60,18 @@ export function SlidingTabs<K extends string>({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  const moveFocus = (currentIndex: number, direction: 1 | -1) => {
+    for (let offset = 1; offset <= options.length; offset += 1) {
+      const nextIndex =
+        (currentIndex + direction * offset + options.length) % options.length;
+      const option = options[nextIndex];
+      if (option.disabled) continue;
+      tabRefs.current[nextIndex]?.focus();
+      onChange(option.key);
+      return;
+    }
+  };
+
   return (
     <div
       ref={barRef}
@@ -61,14 +80,44 @@ export function SlidingTabs<K extends string>({
       aria-label={ariaLabel}
     >
       <span ref={pillRef} className="t-tabs-pill" aria-hidden="true" />
-      {options.map((o) => (
+      {options.map((o, index) => (
         <button
           key={o.key}
+          ref={(element) => {
+            tabRefs.current[index] = element;
+          }}
+          id={o.id}
           type="button"
           role="tab"
           className="t-tab"
           aria-selected={value === o.key}
+          aria-controls={o.controls}
+          tabIndex={value === o.key ? 0 : -1}
+          disabled={o.disabled}
           onClick={() => onChange(o.key)}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowRight") {
+              event.preventDefault();
+              moveFocus(index, 1);
+            } else if (event.key === "ArrowLeft") {
+              event.preventDefault();
+              moveFocus(index, -1);
+            } else if (event.key === "Home" || event.key === "End") {
+              event.preventDefault();
+              const nextIndex =
+                event.key === "Home"
+                  ? options.findIndex((option) => !option.disabled)
+                  : ([...options]
+                      .map((_option, optionIndex) => optionIndex)
+                      .reverse()
+                      .find((optionIndex) => !options[optionIndex].disabled) ??
+                    -1);
+              if (nextIndex >= 0) {
+                tabRefs.current[nextIndex]?.focus();
+                onChange(options[nextIndex].key);
+              }
+            }
+          }}
         >
           {o.label}
         </button>

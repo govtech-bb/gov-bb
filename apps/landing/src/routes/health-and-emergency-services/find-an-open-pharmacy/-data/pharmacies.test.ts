@@ -3,8 +3,8 @@ import { toMinutes } from '../-lib/opening-hours'
 import { pharmacySlug } from '../-lib/pharmacy-slug'
 import { PHARMACIES, WEEKDAYS } from './pharmacies'
 
-// Integrity checks the type system can't express — these keep holding when
-// the dataset is regenerated from a newer Drug Service register.
+// Integrity checks the type system can't express - these keep holding when
+// pharmacies.json is edited.
 describe('pharmacy dataset', () => {
   it('has records', () => {
     expect(PHARMACIES.length).toBeGreaterThan(0)
@@ -18,11 +18,10 @@ describe('pharmacy dataset', () => {
     }
   })
 
-  it('converted the prototype minute slots faithfully (spot check)', () => {
+  it('keeps the reviewed opening hours (spot check)', () => {
     const winstonScott = PHARMACIES.find(
       (p) => p.name === 'Winston Scott Polyclinic',
     )
-    // Prototype: Mon–Fri 495–1320 (8:15am–10pm), Sat 495–990 (8:15am–4:30pm).
     expect(winstonScott?.hours?.mon).toEqual([
       { opens: '08:15', closes: '22:00' },
     ])
@@ -30,6 +29,31 @@ describe('pharmacy dataset', () => {
       { opens: '08:15', closes: '16:30' },
     ])
     expect(winstonScott?.hours?.sun).toEqual([])
+  })
+
+  it('includes the reviewed government-clinic operating hours', () => {
+    const stAndrew = PHARMACIES.find(
+      (p) => p.name === 'St. Andrew Outpatient Clinic',
+    )
+    expect(stAndrew?.hours?.mon).toEqual([{ opens: '08:15', closes: '12:00' }])
+    expect(stAndrew?.hours?.wed).toEqual([{ opens: '08:15', closes: '12:00' }])
+
+    const randalPhillips = PHARMACIES.find(
+      (p) => p.name === 'Randal Phillips Polyclinic',
+    )
+    expect(randalPhillips?.hours?.mon).toEqual([
+      { opens: '07:30', closes: '16:30' },
+    ])
+  })
+
+  it('keeps the reviewed non-participating pharmacies at full price', () => {
+    for (const name of [
+      'SWM Pharmacy',
+      'DASAE Pharmacy (Sparman Clinic)',
+      'Market Hill Dispensary',
+    ]) {
+      expect(PHARMACIES.find((p) => p.name === name)?.type).toBe('private')
+    }
   })
 
   it.each(PHARMACIES.map((p) => [p.name, p] as const))(

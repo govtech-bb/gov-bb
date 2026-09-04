@@ -1,5 +1,5 @@
 /**
- * Finder filter state — pure and testable.
+ * Finder filter state - pure and testable.
  * --------------------------------------------------------------
  * One reducer owns the six filter facets; URL parse/serialize live beside
  * it so the shareable-link format has a single definition; matching and
@@ -97,7 +97,7 @@ export function filtersFromParams(params: URLSearchParams): FilterState {
   }
 }
 
-/** Serialize filter state for the URL — defaults are omitted. */
+/** Serialize filter state for the URL - defaults are omitted. */
 export function paramsFromFilters(state: FilterState): URLSearchParams {
   const params = new URLSearchParams()
   if (state.search) params.set('q', state.search)
@@ -129,12 +129,11 @@ export function matchesFilters(
   if (f.type === 'private-sbs' && pharmacy.type !== 'private-sbs') {
     return false
   }
-  // A slip filter shows only pharmacies that definitely accept that slip —
-  // unknown (unconfirmed) is not good enough to send someone travelling.
-  if (f.slip !== 'any' && acceptsSlip(pharmacy, f.slip) !== true) {
+  // A slip filter shows only pharmacies that accept that slip.
+  if (f.slip !== 'any' && !acceptsSlip(pharmacy, f.slip)) {
     return false
   }
-  if (f.subsidisedOnly && pharmacy.type === 'unconfirmed') {
+  if (f.subsidisedOnly && pharmacy.type === 'private') {
     return false
   }
   if (f.openNow && now && pharmacyStatus(pharmacy, now)?.open !== true) {
@@ -157,14 +156,21 @@ export function matchesFilters(
 const TYPE_ORDER = {
   government: 0,
   'private-sbs': 1,
-  unconfirmed: 2,
+  private: 2,
+} satisfies Record<PharmacyType, number>
+
+const FACILITY_GROUP_ORDER = {
+  government: 0,
+  'private-sbs': 1,
+  private: 1,
 } satisfies Record<PharmacyType, number>
 
 /**
- * Open pharmacies first (the point of the service). Then nearest when the
- * user shared their location, else free (government) before private before
- * unconfirmed; name breaks ties. Before mount `now` is null, so the server
- * and hydration renders sort identically by type and name.
+ * Government/outpatient facilities first, then private pharmacies. Within
+ * each group, open facilities come first, followed by the nearest when the
+ * user shared their location. Subsidy status and name break remaining ties.
+ * Before mount `now` is null, so the server and hydration renders sort
+ * identically by type and name.
  */
 export function compareForSort(
   a: Pharmacy,
@@ -172,6 +178,10 @@ export function compareForSort(
   now: Date | null,
   user: LatLon | null,
 ): number {
+  const groupDifference =
+    FACILITY_GROUP_ORDER[a.type] - FACILITY_GROUP_ORDER[b.type]
+  if (groupDifference !== 0) return groupDifference
+
   if (now) {
     const aOpen = pharmacyStatus(a, now)?.open === true
     const bOpen = pharmacyStatus(b, now)?.open === true

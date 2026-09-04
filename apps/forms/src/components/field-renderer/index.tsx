@@ -17,6 +17,7 @@ import { renderCheckboxAccordionField } from "./checkbox-accordion-field";
 import { renderRadioField } from "./radio-field";
 import { renderShowHideField } from "./show-hide-field";
 import { AddressLookupField } from "./address-lookup-field";
+import { OpeningHoursField } from "./opening-hours-field";
 import { renderContentElement } from "./content-field";
 
 export type { InsetFieldEntry };
@@ -154,6 +155,8 @@ export default function FieldRenderer({
               return renderShowHideField(ctx);
             case "address-lookup":
               return <AddressLookupField ctx={ctx} />;
+            case "opening-hours":
+              return <OpeningHoursField ctx={ctx} />;
             default:
               return (
                 <div style={{ color: "red" }}>

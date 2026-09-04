@@ -1,6 +1,6 @@
 import {
   Behaviour,
-  CatchmentRouting,
+  ConditionalLabel,
   ConditionalTitle,
   ContactDetails,
   DateTimeFormat,
@@ -21,6 +21,9 @@ export interface ClientPrimitive {
   stepId: string;
   name: string;
   label: string;
+  /** Per-answer label overrides (#2521); the renderer and check-your-answers
+   * resolve the effective label from live form values via `resolveFieldLabel`. */
+  conditionalLabel?: ConditionalLabel[];
   htmlType: HtmlTypes;
   placeholder?: string;
   hint?: string;
@@ -70,7 +73,6 @@ export interface ClientServiceContract {
   description?: string;
   contactDetails?: ContactDetails;
   closingDateTime?: DateTimeFormat;
-  catchmentRouting?: CatchmentRouting;
   steps: ClientFormStep[];
   createdAt: DateTimeFormat;
   updatedAt: DateTimeFormat;

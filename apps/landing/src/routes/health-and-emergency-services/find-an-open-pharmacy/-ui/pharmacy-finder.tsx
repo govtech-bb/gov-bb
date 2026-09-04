@@ -10,7 +10,7 @@
  * (ticking each minute), so server and client markup stay identical.
  */
 
-import { Button, Text } from '@govtech-bb/react'
+import { Button, Heading, Text } from '@govtech-bb/react'
 import {
   useCallback,
   useEffect,
@@ -42,7 +42,7 @@ const GEO_OPTIONS: PositionOptions = {
   maximumAge: 300_000,
 }
 
-// Keyed by GeolocationPositionError.code — an arbitrary runtime number, so
+// Keyed by GeolocationPositionError.code - an arbitrary runtime number, so
 // a Map lookup, not a literal-keyed object.
 const LOCATION_ERRORS = new Map<number, string>([
   [
@@ -68,7 +68,7 @@ export function PharmacyFinder() {
   const [filters, dispatchFilters] = useReducer(filtersReducer, DEFAULT_FILTERS)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
-  // Every user-driven filter change returns to the first page — done here,
+  // Every user-driven filter change returns to the first page - done here,
   // in the dispatch path, not as an effect reacting to state.
   const dispatch = useCallback((action: FilterAction) => {
     dispatchFilters(action)
@@ -144,7 +144,7 @@ export function PharmacyFinder() {
       params.set('near', '1')
     }
     const qs = params.toString()
-    // Preserve the router's own history.state — nulling it makes TanStack
+    // Preserve the router's own history.state - nulling it makes TanStack
     // Router treat the URL change as a navigation and reset the scroll
     // position moments later.
     window.history.replaceState(
@@ -164,26 +164,11 @@ export function PharmacyFinder() {
 
   const visiblePharmacies = results.slice(0, visibleCount)
 
-  // "Open right now" can only assess pharmacies with confirmed hours — say
-  // how many it is silently leaving out rather than hiding them wordlessly.
-  const hiddenUnconfirmedHours = useMemo(() => {
-    if (!filters.openNow || !now) return 0
-    return PHARMACIES.filter(
-      (pharmacy) =>
-        !pharmacy.hours &&
-        matchesFilters(pharmacy, { ...filters, openNow: false }, now),
-    ).length
-  }, [filters, now])
-
   return (
     <section aria-label="Pharmacy finder">
-      <Text
-        as="p"
-        className="mb-s text-mid-grey-00 print:hidden"
-        size="caption"
-      >
+      <Text as="p" className="mb-s print:hidden" size="body-sm">
         <button
-          className="underline"
+          className="govbb-link"
           onClick={() => window.print()}
           type="button"
         >
@@ -193,70 +178,35 @@ export function PharmacyFinder() {
         directions link.
       </Text>
 
-      <div className="lg:grid lg:grid-cols-[20rem_1fr] lg:gap-8">
-        <FilterSidebar
-          dispatch={dispatch}
-          filters={filters}
-          locationState={locationState}
-          locationStatus={locationStatus}
-          onClearLocation={clearLocation}
-          onRequestLocation={requestLocation}
-        />
+      <div className="govbb-grid-row">
+        <div className="govbb-grid-column-one-third-from-desktop">
+          <FilterSidebar
+            dispatch={dispatch}
+            filters={filters}
+            locationState={locationState}
+            locationStatus={locationStatus}
+            onClearLocation={clearLocation}
+            onRequestLocation={requestLocation}
+          />
+        </div>
 
-        <div>
-          <h2 className="sr-only">Results</h2>
+        <div className="govbb-grid-column-two-thirds-from-desktop">
+          <Heading as="h2" className="govbb-visually-hidden">
+            Results
+          </Heading>
           {now === null ? (
             <LoadingResults />
           ) : (
             <>
-              <Text as="p" className="mb-xxs font-bold" role="status">
+              <Text as="p" className="mb-s" role="status" weight="bold">
                 {resultCountLabel(visiblePharmacies.length, results.length)}
               </Text>
-              <Text as="p" className="mb-s text-mid-grey-00" size="caption">
-                {filters.subsidisedOnly ? (
-                  <>
-                    Showing pharmacies that give free or cheaper medication.{' '}
-                    <button
-                      className="underline"
-                      onClick={() =>
-                        dispatch({
-                          type: 'set-subsidised-only',
-                          value: false,
-                        })
-                      }
-                      type="button"
-                    >
-                      Show all pharmacies
-                    </button>
-                    .
-                  </>
-                ) : (
-                  <>
-                    Showing all pharmacies, including those not confirmed in
-                    the subsidy.{' '}
-                    <button
-                      className="underline"
-                      onClick={() =>
-                        dispatch({ type: 'set-subsidised-only', value: true })
-                      }
-                      type="button"
-                    >
-                      Show only free and subsidised
-                    </button>
-                    .
-                  </>
-                )}{' '}
-                Open/closed status is shown in Barbados time.
-                {hiddenUnconfirmedHours > 0 &&
-                  ` ${hiddenUnconfirmedHours} ${
-                    hiddenUnconfirmedHours === 1 ? 'pharmacy' : 'pharmacies'
-                  } with unconfirmed hours ${
-                    hiddenUnconfirmedHours === 1 ? 'is' : 'are'
-                  } hidden — call to check.`}
-              </Text>
-
               {results.length === 0 ? (
-                <NoResultsPanel dispatch={dispatch} filters={filters} now={now} />
+                <NoResultsPanel
+                  dispatch={dispatch}
+                  filters={filters}
+                  now={now}
+                />
               ) : (
                 <>
                   <ul className="flex list-none flex-col gap-s p-0">
@@ -310,7 +260,7 @@ export function PharmacyFinder() {
 
 /**
  * Loader for the results column while the Barbados clock is unknown
- * (server render and the instant before hydration) — the list then arrives
+ * (server render and the instant before hydration) - the list then arrives
  * once, sorted and with statuses, instead of popping in piecemeal.
  */
 function LoadingResults() {
@@ -318,11 +268,9 @@ function LoadingResults() {
     <div className="flex flex-col items-center gap-s py-l" role="status">
       <span
         aria-hidden="true"
-        className="size-8 animate-spin rounded-full border-4 border-grey-00 border-t-green-00 motion-reduce:animate-none"
+        className="size-8 animate-spin rounded-full border-4 border-grey-20 border-t-green-80 motion-reduce:animate-none"
       />
-      <Text as="p" className="text-mid-grey-00">
-        Loading pharmacies…
-      </Text>
+      <Text as="p">Loading pharmacies…</Text>
       <noscript>
         <Text as="p">
           This page needs JavaScript to list pharmacies. To find a pharmacy or

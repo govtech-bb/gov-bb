@@ -1,4 +1,9 @@
-import { evaluateFormConditions, resolveStepTitle } from "./index";
+import { DEFAULT_ZONE } from "@govtech-bb/expressions";
+import {
+  evaluateFormConditions,
+  resolveFieldLabel,
+  resolveStepTitle,
+} from "./index";
 import { evaluateCondition, flattenStepValues } from "./internals";
 // Also import via the package entry to exercise the public re-exports (#668):
 // `apps/forms` consumes these low-level primitives directly from the package.
@@ -1305,12 +1310,26 @@ describe("evaluateCondition — transform daysUntil (future lead time)", () => {
       transform: "daysUntil",
     }) as unknown as FieldConditionalOnBehaviour;
 
+  // Anchored on the Barbados calendar day, because that is what `daysUntil`
+  // measures from. `new Date()` would anchor on the runner's zone instead: CI
+  // runs in UTC, where just after midnight it is already tomorrow in UTC but
+  // still today in Barbados, so every offset came out a day short.
   const dateDaysAhead = (
     days: number,
   ): { day: number; month: number; year: number } => {
-    const d = new Date();
-    d.setDate(d.getDate() + days);
-    return { day: d.getDate(), month: d.getMonth() + 1, year: d.getFullYear() };
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: DEFAULT_ZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    const d = new Date(`${today}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + days);
+    return {
+      day: d.getUTCDate(),
+      month: d.getUTCMonth() + 1,
+      year: d.getUTCFullYear(),
+    };
   };
 
   it("gte 14: matches a date at least 14 days ahead, not one that is sooner", () => {
@@ -1445,5 +1464,81 @@ describe("resolveStepTitle", () => {
     };
     expect(resolveStepTitle(multi, { s: { kind: "b" } })).toBe("Title B");
     expect(resolveStepTitle(multi, { s: { kind: "a" } })).toBe("Title A");
+  });
+});
+
+// ─── resolveFieldLabel ───────────────────────────────────────────────────────
+
+describe("resolveFieldLabel", () => {
+  // The temporary restaurant permit's case: one fieldId, reworded when the
+  // permit is not for an event.
+  const field = {
+    label: "Name of event",
+    conditionalLabel: [
+      {
+        targetStepId: "event-organiser",
+        targetFieldId: "is-for-event",
+        operator: "equal" as const,
+        value: "no",
+        label: "Name of location",
+      },
+    ],
+  };
+
+  it("returns the static label when there is no conditionalLabel", () => {
+    expect(resolveFieldLabel({ label: "Name of event" }, EMPTY_VALUES)).toBe(
+      "Name of event",
+    );
+  });
+
+  it("returns the static label when the conditionalLabel array is empty", () => {
+    expect(
+      resolveFieldLabel(
+        { label: "Name of event", conditionalLabel: [] },
+        { "event-organiser": { "is-for-event": "no" } },
+      ),
+    ).toBe("Name of event");
+  });
+
+  it("returns the conditional label when its condition matches", () => {
+    expect(
+      resolveFieldLabel(field, {
+        "event-organiser": { "is-for-event": "no" },
+      }),
+    ).toBe("Name of location");
+  });
+
+  it("falls back to the static label when no condition matches", () => {
+    expect(
+      resolveFieldLabel(field, {
+        "event-organiser": { "is-for-event": "yes" },
+      }),
+    ).toBe("Name of event");
+  });
+
+  it("falls back to the static label when the watched field is absent", () => {
+    expect(resolveFieldLabel(field, EMPTY_VALUES)).toBe("Name of event");
+  });
+
+  it("returns the first matching entry's label (first match wins)", () => {
+    const multi = {
+      label: "Default",
+      conditionalLabel: [
+        {
+          targetFieldId: "kind",
+          operator: "equal" as const,
+          value: "a",
+          label: "Label A",
+        },
+        {
+          targetFieldId: "kind",
+          operator: "equal" as const,
+          value: "b",
+          label: "Label B",
+        },
+      ],
+    };
+    expect(resolveFieldLabel(multi, { s: { kind: "b" } })).toBe("Label B");
+    expect(resolveFieldLabel(multi, { s: { kind: "a" } })).toBe("Label A");
   });
 });

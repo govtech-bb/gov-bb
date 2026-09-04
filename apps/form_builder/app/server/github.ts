@@ -4,6 +4,7 @@ import {
   authHeaders as ghAuthHeaders,
   ghError as ghErrorImpl,
   createdAtFromContents as createdAtFromContentsImpl,
+  recipeFromContents as recipeFromContentsImpl,
   type OpenPRHead,
   type PutFileOptions,
   type OpenPullRequestOptions,
@@ -39,6 +40,7 @@ export const ghError = ghErrorImpl;
 // GitHub-Contents helper from this one facade. Used to preserve a recipe's
 // committed createdAt on re-publish (#1720).
 export const createdAtFromContents = createdAtFromContentsImpl;
+export const recipeFromContents = recipeFromContentsImpl;
 
 export function createBranchFrom(
   token: string,
@@ -79,4 +81,20 @@ export function listOpenPRHeads(
   baseBranch: string,
 ): Promise<OpenPRHead[]> {
   return client().listOpenPRHeads(token, baseBranch);
+}
+
+export function findOpenPRByHeadRef(
+  token: string,
+  baseBranch: string,
+  isMatch: (headRef: string) => boolean,
+): Promise<OpenPRHead | null> {
+  return client().findOpenPRByHeadRef(token, baseBranch, isMatch);
+}
+
+export function commentOnPR(
+  token: string,
+  prNumber: number,
+  body: string,
+): Promise<void> {
+  return client().commentOnPR(token, prNumber, body);
 }

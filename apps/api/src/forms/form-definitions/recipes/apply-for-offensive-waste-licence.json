@@ -1,0 +1,520 @@
+{
+  "formId": "apply-for-offensive-waste-licence",
+  "title": "Apply for a offensive trade licence with Environmental Health",
+  "description": "Apply for or renew a licence to carry out work that may produce fumes or strong smells.",
+  "steps": [
+    {
+      "stepId": "your-details",
+      "title": "About you",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "validations": {
+              "required": {
+                "error": "Enter your first name.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "validations": {
+              "required": {
+                "error": "Enter your last name.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "address-line-1",
+            "label": "Street address line 1",
+            "validations": {
+              "required": {
+                "error": "Enter street address line 1.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "address-line-2",
+            "label": "Street address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish"
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "hint": "We will send confirmation of your application to this email address.",
+            "validations": {
+              "required": {
+                "error": "Enter your email address.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-tel",
+          "overrides": {
+            "fieldId": "telephone-number",
+            "label": "Telephone number",
+            "hint": "Enter at least one telephone number.",
+            "validations": {
+              "required": {
+                "error": "Enter at least one telephone number.",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "application-type",
+      "title": "Your application",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "application-type",
+            "label": "Are you applying for a new licence or renewing one?",
+            "validations": {
+              "required": {
+                "error": "Select whether you are applying for a new licence or renewing one.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Applying for a new licence",
+                "value": "new"
+              },
+              {
+                "label": "Renewing a licence",
+                "value": "renewal"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "renewal-details",
+      "title": "Renewal details",
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetFieldId": "application-type",
+          "targetStepId": "application-type",
+          "operator": "equal",
+          "value": "renewal"
+        }
+      ],
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "current-licence-number",
+            "label": "Enter your current licence number",
+            "validations": {
+              "required": {
+                "error": "Current licence number is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "address-changed",
+            "label": "Has the address where you do this work changed since you got your current licence?",
+            "validations": {
+              "required": {
+                "error": "Select whether the address where you do the work has changed.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "building-changes",
+            "label": "Have you made any changes to the building since you got your last licence, or do you plan to?",
+            "validations": {
+              "required": {
+                "error": "Select whether you have made or plan to make changes to the building.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "address-changed",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "generic-text",
+            "label": "State the changes you have made",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "building-changes",
+                "targetStepId": "renewal-details",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "work-address",
+      "title": "Where you will do the work",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/address-lookup",
+          "overrides": {
+            "fieldId": "work-address-line-1",
+            "label": "Street address line 1",
+            "validations": {
+              "required": {
+                "error": "Enter street address line 1",
+                "value": true
+              }
+            },
+            "geocodeTargets": {
+              "line2FieldId": "work-address-line-2",
+              "parishFieldId": "work-address-parish",
+              "coordinatesFieldId": "business-address-coordinates"
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "work-address-line-2",
+            "label": "Street address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "work-address-parish",
+            "label": "Parish",
+            "validations": {
+              "required": {
+                "error": "Select the parish where you will do this work.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "business-address-coordinates",
+            "label": "Business location coordinates",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "ui": {
+              "hidden": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "business-activities",
+      "title": "What will the business do?",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "business-activities",
+            "label": "Business activities",
+            "hint": "Select all that apply. We show the legal name in brackets when needed.",
+            "validations": {
+              "required": {
+                "error": "Select at least one business activity.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Heat animal blood or organs (blood or offal boiling)",
+                "value": "blood-offal-boiling"
+              },
+              {
+                "label": "Heat or crush animal bones (bone boiling or crushing)",
+                "value": "bone-boiling-crushing"
+              },
+              {
+                "label": "Take wool off sheep skins (fellmongering)",
+                "value": "fellmongering"
+              },
+              {
+                "label": "Clean animal guts (gut scraping)",
+                "value": "gut-scraping"
+              },
+              {
+                "label": "Make string from animal guts (gut spinning)",
+                "value": "gut-spinning"
+              },
+              {
+                "label": "Kill animals for food or other uses (slaughtering)",
+                "value": "slaughtering"
+              },
+              {
+                "label": "Melt animal fat (tallow melting)",
+                "value": "tallow-melting"
+              },
+              {
+                "label": "Make leather from animal skins (tanning)",
+                "value": "tanning"
+              },
+              {
+                "label": "Make chemicals or acids",
+                "value": "chemicals-acids"
+              },
+              {
+                "label": "Make glue",
+                "value": "glue"
+              },
+              {
+                "label": "Make fertiliser from animal waste (manure manufacturing)",
+                "value": "manure-manufacturing"
+              },
+              {
+                "label": "Make soap by boiling fats or oils (soap boiling)",
+                "value": "soap-boiling"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "building-plans",
+      "title": "Upload the plans and details for the building",
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetFieldId": "application-type",
+          "targetStepId": "application-type",
+          "operator": "equal",
+          "value": "new"
+        },
+        {
+          "type": "stepConditionalOn",
+          "targetFieldId": "building-changes",
+          "targetStepId": "renewal-details",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ],
+      "elements": [
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "building-plans",
+            "label": "Plans and details for the building",
+            "hint": "These should show the rooms, work areas and how you will use them. You can upload more than one file.",
+            "validations": {
+              "fileTypes": {
+                "error": "File must be a PDF, image or document",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".doc",
+                  ".docx"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "Each file must be no larger than 5 MB",
+                "value": 5242880
+              },
+              "maxSize": {
+                "error": "Total file size must be no larger than 20 MB",
+                "value": 20971520
+              }
+            },
+            "ui": {
+              "width": "long"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review your answers before you send your application.",
+      "behaviours": [],
+      "elements": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Your agreement",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "validations": {
+              "required": {
+                "error": "Confirm that the information you have provided is true and correct to the best of your knowledge.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
+                "value": "confirmed"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "behaviours": [],
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your request.\n- They will review it and may contact you if they need more information. \n- If your application is approved, you will receive a confirmation email and the Environment Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n**Obtaining your licence:**\n\nIf your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\nSubmitting an application does not mean that an offensive trades licence has been granted.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n-   Branford Taitt Polyclinic - [536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)\n-   David Thompson Health and Social Services Complex - [536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)\n-   Eunice Gibson Polyclinic - [536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)\n-   Maurice Byer Polyclinic - [536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)\n-   Randall Phillips Polyclinic - [536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)\n-   St. Phillip Polyclinic - [536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)\n-   Winston Scott Polyclinic - [536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)",
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "Environmental Health will review your application. They may contact you for more information or arrange an inspection.\n\nThey will contact you with the result. If your application is approved, they will tell you what to do next to get your licence."
+        }
+      ],
+      "elements": []
+    }
+  ],
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "your-details.email",
+        "subject": "Application received: Environmental Health licence for work that may cause fumes or strong smells"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "catchment.mdaEmail",
+        "subject": "A new application for Licence to carry offensive waste has been received"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "method": "POST",
+        "signatureHeader": "X-Webhook-Signature",
+        "mapping": {
+          "programmeCode": "OFFENSIVE_WASTE_LICENCE",
+          "mdaCode": "MOH",
+          "programmeShortCode": "OWS",
+          "applicant": {
+            "name": [
+              "your-details.first-name",
+              "your-details.last-name"
+            ],
+            "email": "your-details.email",
+            "phone": "your-details.telephone-number"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        },
+        "timeoutMs": 10000
+      }
+    }
+  ],
+  "createdAt": "2026-08-24T19:33:15.101Z",
+  "updatedAt": "2026-09-03T17:41:43.503Z",
+  "meta": {
+    "visibility": "preview"
+  },
+  "catchmentRouting": {
+    "coordinatesField": "work-address.business-address-coordinates",
+    "parishField": "work-address.work-address-parish"
+  }
+}

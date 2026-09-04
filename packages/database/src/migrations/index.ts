@@ -19,3 +19,8 @@ export { CreateNotificationLog1783458705143 } from "./1783458705143-CreateNotifi
 export { SeedServiceStatus1783520007424 } from "./1783520007424-SeedServiceStatus";
 export { AddMinistryKeyToMdaContact1784000000000 } from "./1784000000000-AddMinistryKeyToMdaContact";
 export { CreateCatchmentContact1785500000000 } from "./1785500000000-CreateCatchmentContact";
+export { RenameHotelLicenceFormId1787682865564 } from "./1787682865564-RenameHotelLicenceFormId";
+export { RenameSwimmingPoolFormId1787769265564 } from "./1787769265564-RenameSwimmingPoolFormId";
+export { RenameTemporaryRestaurantFormId1787855665564 } from "./1787855665564-RenameTemporaryRestaurantFormId";
+export { DeleteSupersededEnvironmentalHealthForms1787942065564 } from "./1787942065564-DeleteSupersededEnvironmentalHealthForms";
+export { RenameEnvironmentalHealthFormIds1788028465564 } from "./1788028465564-RenameEnvironmentalHealthFormIds";

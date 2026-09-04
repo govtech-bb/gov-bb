@@ -9,9 +9,9 @@ export const PHARMACY_FIND_HREF = `${PHARMACY_LANDING_HREF}/find`
 // Markdown guidance pages live at category level (the module's $slug route
 // owns every child URL of the service, so content pages cannot nest there).
 export const SLIP_COLOURS_HREF =
-  '/health-and-emergency-services/prescription-slip-colours'
+  '/health-and-emergency-services/prescription-colours'
 
-/** Canonical page for one pharmacy — the URL people share. */
+/** Canonical page for one pharmacy - the URL people share. */
 export function pharmacyDetailHref(name: string): string {
   return `${PHARMACY_LANDING_HREF}/${pharmacySlug(name)}`
 }
@@ -36,7 +36,7 @@ export function telHref(phone: string): string {
 export const DRUG_SERVICE_PHONE = '(246) 535-4300'
 
 /**
- * The pharmacy advertises WhatsApp ordering — with or without a confirmed
+ * The pharmacy advertises WhatsApp ordering - with or without a confirmed
  * number. Drives the card tag; the deep link needs the confirmed number.
  */
 export function offersWhatsApp(pharmacy: Pharmacy): boolean {
@@ -44,11 +44,11 @@ export function offersWhatsApp(pharmacy: Pharmacy): boolean {
 }
 
 /**
- * WhatsApp ordering deep link — opens WhatsApp in a new tab with the
+ * WhatsApp ordering deep link - opens WhatsApp in a new tab with the
  * message prefilled. Uses the confirmed WhatsApp number when the record
  * has one, else the listed phone. The prefilled message reflects how the
  * service actually
- * works: the citizen sends their existing prescription for filling — they
+ * works: the citizen sends their existing prescription for filling - they
  * are not asking the pharmacy to prescribe.
  */
 export function whatsappHref(pharmacy: Pharmacy): string | null {

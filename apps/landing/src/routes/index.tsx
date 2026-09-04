@@ -1,10 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Heading, Search, Text, linkVariants } from '@govtech-bb/react'
+import { Heading, Text } from '@govtech-bb/react'
 import { ChatAssistant } from '../components/ChatAssistant'
+import { Featured } from '../components/Featured'
 import { HelpfulBox } from '../components/HelpfulBox'
+import { ServiceSearch } from '../components/ServiceSearch'
 import { CATEGORIES } from '../content/categories'
 import { isCategoryVisible } from '../content/registry'
-import { trackEvent } from '../lib/analytics'
+import { publicChatSuggestions } from '../lib/chat-suggestions'
 import { pageHead } from '../lib/page-head'
 import { deriveVisibilityOverlay } from '../lib/service-status'
 
@@ -21,82 +23,94 @@ export const Route = createFileRoute('/')({
 function Home() {
   const { level, serviceStatuses } = Route.useRouteContext()
   const overlay = deriveVisibilityOverlay(serviceStatuses)
+  const questions = publicChatSuggestions(overlay)
   const categories = CATEGORIES.filter((cat) =>
     isCategoryVisible(cat, level, overlay),
   )
 
-  const handleSearch = (q: string) => {
-    trackEvent('search-submit', { query: q, source: 'home' })
-    if (q === '') {
-      window.location.href = '/services'
-      return
-    }
-    window.location.href = `/search-results?q=${encodeURIComponent(q)}`
-  }
-
   return (
     <>
-      <section className="border-b-4 border-yellow-100 bg-blue-00 text-white-00">
-        <div className="container">
+      <section className="border-b-4 border-yellow-40 bg-blue-80 text-white-00">
+        <div className="govbb-width-container">
           <div className="space-y-m py-[clamp(var(--spacing-m),5vw,var(--spacing-l))]">
             <div className="max-w-210 space-y-s">
-              <Heading as="h1" className="text-balance">
+              <Heading as="h1">
                 Find and use Barbados government services
               </Heading>
-              <Text as="p" className="text-pretty">
+              <Text as="p" size="body-lg">
                 Ask anything — applications, certificates, licences, benefits,
                 and more. Get instant guidance.
               </Text>
             </div>
-            <ChatAssistant />
+            <ChatAssistant questions={questions} />
           </div>
         </div>
       </section>
 
-      <section className="border-b-4 border-teal-100 bg-green-10">
-        <div className="container">
+      <section className="border-b-4 border-teal-40 bg-green-10">
+        <div className="govbb-width-container">
           <div className="space-y-m py-m">
-            <Heading as="h4">Or search all government services directly</Heading>
-            <Search
-              action="/search-results"
-              name="q"
-              label="Search for a service"
-              buttonLabel="Search"
-              onSearch={handleSearch}
+            <Heading as="h4">
+              Or search all government services directly
+            </Heading>
+            <ServiceSearch
+              source="home"
+              viewer={level}
+              overlay={overlay}
+              emptyHref="/services"
             />
           </div>
         </div>
       </section>
 
       <section>
-        <div className="container">
-          <div className="space-y-m py-m lg:py-l">
-            <Heading as="h2" className="text-balance">All government services</Heading>
-            <ul className="m-0 flex list-none flex-col p-0">
-              {categories.map((cat) => (
-                <li
-                  key={cat.slug}
-                  className="border-b-2 border-grey-00 py-s lg:py-xm"
-                >
-                  <a
-                    href={`/${cat.slug}`}
-                    className={`${linkVariants()} text-[clamp(1.25rem,2.5vw,2rem)] leading-normal font-bold text-green-00`}
+        <div className="govbb-width-container">
+          {/*
+            Two columns from lg, stacking below it with services first.
+
+            The gap steps up at xl. 128px all the way down to lg squeezed the
+            Featured column to 245px at a 1024 viewport, leaving 173px for the
+            descriptions — four lines each; 64px keeps them to three. From xl it
+            widens to 128px, which reproduces the design's 1256 = 752 + 128 + 376
+            at the 1512 frame width.
+
+            xl (1280) rather than a min-[1512px] query: a 1512 *viewport* is only
+            ~1497 CSS px once the scrollbar is taken off, so a 1512 breakpoint
+            never matches at the width the design is drawn for.
+          */}
+          <div className="py-m lg:grid lg:grid-cols-[2fr_1fr] lg:gap-x-l lg:py-l xl:gap-x-xl">
+            <div className="space-y-m">
+              <Heading as="h2">All government services</Heading>
+              <ul className="m-0 flex list-none flex-col p-0">
+                {categories.map((cat) => (
+                  <li
+                    key={cat.slug}
+                    className="border-neutral border-b-2 py-s lg:py-xm [--govbb-link-color:var(--govbb-color-tertiary)]"
                   >
-                    {cat.title}
-                  </a>
-                  {cat.description ? (
-                    <Text as="p" className="mt-xxs text-pretty">
-                      {cat.description}
-                    </Text>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
+                    <a
+                      href={`/${cat.slug}`}
+                      className="govbb-link govbb-text-body-lg govbb-text-bold"
+                    >
+                      {cat.title}
+                    </a>
+                    {cat.description ? (
+                      <Text as="p" className="mt-xxs">
+                        {cat.description}
+                      </Text>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mt-l lg:mt-0">
+              <Featured />
+            </div>
           </div>
         </div>
       </section>
 
-      <div className="container">
+      <div className="govbb-width-container">
         <HelpfulBox className="mb-s lg:mb-l" />
       </div>
     </>

@@ -3,7 +3,7 @@ import { Text } from '@govtech-bb/react'
 
 /**
  * A muted (grey) paragraph. `caption` (a bare tag flag) renders it at the
- * smaller caption size — e.g. a footnote under a call to action.
+ * smaller body-sm size — e.g. a footnote under a call to action.
  */
 export function Muted({
   caption,
@@ -17,8 +17,8 @@ export function Muted({
   return (
     <Text
       as="p"
-      size={isCaption ? 'caption' : undefined}
-      className="text-mid-grey-00"
+      size={isCaption ? 'body-sm' : undefined}
+      className="text-grey-70"
     >
       {children}
     </Text>

@@ -426,6 +426,14 @@
               "required": {
                 "error": "Upload the birth certificate",
                 "value": true
+              },
+              "fileTypes": {
+                "value": ["application/pdf", "image/jpeg", "image/png"],
+                "error": "Upload a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }
@@ -442,9 +450,20 @@
                 "type": "fieldConditionalOn",
                 "value": "female",
                 "operator": "equal",
-                "targetFieldId": "centenarian-sex"
+                "targetFieldId": "centenarian-sex",
+                "targetStepId": "centenarian-info"
               }
-            ]
+            ],
+            "validations": {
+              "fileTypes": {
+                "value": ["application/pdf", "image/jpeg", "image/png"],
+                "error": "Upload a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
+              }
+            }
           }
         }
       ],

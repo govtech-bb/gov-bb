@@ -733,13 +733,15 @@ describe("FieldRenderer", () => {
     // The mock handleChange never feeds the new value back into mockState, so
     // both clicks step from the same blank base (0) — this asserts blank → ±1
     // in each direction independently, NOT a sequential increment-then-decrement.
+    // Hello! I'm a human! Updating this test to ensure that the steppers can't go below zero.
     it("steps from a blank value to 1 (up) and -1 (down)", async () => {
       const user = userEvent.setup();
       renderField(primitive("number")); // value is undefined
       await user.click(screen.getByRole("button", { name: "Increment" }));
       expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("1");
       await user.click(screen.getByRole("button", { name: "Decrement" }));
-      expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("-1");
+      // Can't go below zero! Clamping
+      expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("0");
     });
 
     it("renders the number input and steppers in the Add-another array path", () => {
@@ -1249,6 +1251,67 @@ describe("FieldRenderer", () => {
       expect(
         container.querySelector(".govbb-radio-item__conditional"),
       ).toBeNull();
+    });
+
+    it("renders a revealed radio's OWN inset fields nested inside it", () => {
+      mockState = { value: "yes", meta: { isValid: true, errors: [] } };
+
+      const deepField = primitive("text", {
+        id: "step-1.deep-field",
+        fieldId: "deep-field",
+        name: "deep-field",
+        label: "Deep field label",
+      });
+      const nestedRadio = primitive("radio", {
+        id: "step-1.nested-radio",
+        fieldId: "nested-radio",
+        name: "nested-radio",
+        label: "Nested radio label",
+        options: [
+          { value: "yes", label: "Yes" },
+          { value: "no", label: "No" },
+        ],
+      });
+
+      const insetFieldsByOption = new Map([
+        [
+          "yes",
+          [
+            {
+              field: nestedRadio,
+              validationProperties: noValidation,
+              insetFieldsByOption: new Map([
+                [
+                  "yes",
+                  [{ field: deepField, validationProperties: noValidation }],
+                ],
+              ]),
+            },
+          ],
+        ],
+      ]);
+
+      const { container } = renderField(
+        primitive("radio", {
+          options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" },
+          ],
+        }),
+        { insetFieldsByOption },
+      );
+
+      // The deep field sits inside the NESTED radio's reveal, which itself
+      // sits inside the outer radio's reveal — two levels, not one flat list.
+      const outerReveal = container.querySelector(
+        ".govbb-radio-item__conditional",
+      );
+      expect(outerReveal).toBeTruthy();
+      const innerReveal = outerReveal!.querySelector(
+        ".govbb-radio-item__conditional",
+      );
+      expect(innerReveal).toBeTruthy();
+      expect(innerReveal!.querySelector("#step-1\\.deep-field")).toBeTruthy();
     });
   });
 

@@ -41,31 +41,54 @@ export async function ghError(label: string, res: Response): Promise<Error> {
 }
 
 /**
+ * Parse the committed recipe out of a GitHub Contents API response body, so a
+ * re-publish can read what is already on the branch instead of assuming the
+ * incoming payload is the whole truth. The Contents response carries the file
+ * as base64 `content`. Returns `undefined` whenever there is nothing to read —
+ * no inline content (GitHub omits it for files over 1MB) or content that isn't
+ * a JSON object — so callers fall back to first-publish behaviour.
+ */
+export function recipeFromContents(body: {
+  content?: string;
+}): Record<string, unknown> | undefined {
+  if (!body.content) return undefined;
+  try {
+    const decoded = Buffer.from(body.content, "base64").toString("utf8");
+    const parsed = JSON.parse(decoded) as unknown;
+    return typeof parsed === "object" &&
+      parsed !== null &&
+      !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Pull a committed recipe's `createdAt` out of a GitHub Contents API response
- * body so a re-publish can preserve it instead of restamping (#1720). The
- * Contents response carries the file as base64 `content`; decode it, parse the
- * recipe JSON, and return its `createdAt`. Returns `undefined` whenever there's
- * nothing to preserve — no inline content (GitHub omits it for files over 1MB),
- * unparseable content, or no string `createdAt` — so callers fall back to the
- * freshly-stamped value, which is exactly first-publish behaviour.
+ * body so a re-publish can preserve it instead of restamping (#1720). Returns
+ * `undefined` whenever there's nothing to preserve — nothing `recipeFromContents`
+ * can read, or no string `createdAt` — so callers fall back to the freshly-stamped
+ * value, which is exactly first-publish behaviour.
  */
 export function createdAtFromContents(body: {
   content?: string;
 }): string | undefined {
-  if (!body.content) return undefined;
-  try {
-    const decoded = Buffer.from(body.content, "base64").toString("utf8");
-    const parsed = JSON.parse(decoded) as { createdAt?: unknown };
-    return typeof parsed.createdAt === "string" ? parsed.createdAt : undefined;
-  } catch {
-    return undefined;
-  }
+  const createdAt = recipeFromContents(body)?.["createdAt"];
+  return typeof createdAt === "string" ? createdAt : undefined;
 }
 
 export interface OpenPRHead {
   number: number;
   htmlUrl: string;
   headRef: string;
+  /** Tip used to bind an edit to the exact PR revision it loaded. */
+  headSha?: string;
+  /** A PR from a fork is reviewable but must not be written through this repo. */
+  headRepoFullName?: string;
+  /** Optional flow marker used by callers to distinguish builder-owned PRs. */
+  body?: string;
 }
 
 export interface PutFileOptions {
@@ -98,6 +121,12 @@ export interface RecipePublishClient {
     opts: OpenPullRequestOptions,
   ): Promise<{ prUrl: string; prNumber: number }>;
   listOpenPRHeads(token: string, baseBranch: string): Promise<OpenPRHead[]>;
+  findOpenPRByHeadRef(
+    token: string,
+    baseBranch: string,
+    isMatch: (headRef: string) => boolean,
+  ): Promise<OpenPRHead | null>;
+  commentOnPR(token: string, prNumber: number, body: string): Promise<void>;
 }
 
 /** A GitHub-REST client bound to one `{owner, repo}` identity. */
@@ -117,7 +146,7 @@ export function createPublishClient(repo: GitHubRepo): RecipePublishClient {
     return ((await res.json()) as { object: { sha: string } }).object.sha;
   };
 
-  return {
+  const client: RecipePublishClient = {
     repoUrl,
 
     /** Create `branch` off the tip of `baseBranch`; returns the base tip SHA. */
@@ -196,18 +225,75 @@ export function createPublishClient(repo: GitHubRepo): RecipePublishClient {
         const prs = (await res.json()) as {
           number: number;
           html_url: string;
-          head: { ref: string };
+          head: {
+            ref: string;
+            sha?: string;
+            repo?: { full_name?: string } | null;
+          };
+          body?: string | null;
         }[];
         for (const pr of prs) {
           heads.push({
             number: pr.number,
             htmlUrl: pr.html_url,
             headRef: pr.head.ref,
+            headSha: pr.head.sha,
+            headRepoFullName: pr.head.repo?.full_name,
+            ...(typeof pr.body === "string" ? { body: pr.body } : {}),
           });
         }
         if (prs.length < 100) break;
+        if (page === 5) {
+          throw new Error(
+            "More than 500 open pull requests matched the base branch; the review inventory is incomplete.",
+          );
+        }
       }
       return heads;
     },
+
+    /**
+     * Find the open PR against `baseBranch` whose head ref satisfies
+     * `isMatch`, built on top of `listOpenPRHeads` rather than duplicating
+     * its paginated fetch loop. The branch-naming scheme is a caller concern
+     * (#2390) — this transport-level client only knows how to list and
+     * filter PRs, not how a caller names its branches — so the match
+     * predicate is supplied by the caller, not baked in here.
+     *
+     * Returns `null` when nothing matches. Matching more than one PR
+     * shouldn't happen (a given head ref should have at most one open PR
+     * against a given base) but can if someone opens a duplicate by hand; in
+     * that case, return the highest-numbered (most recent) match so the
+     * result stays deterministic rather than picking an arbitrary one.
+     */
+    async findOpenPRByHeadRef(token, baseBranch, isMatch) {
+      const heads = await client.listOpenPRHeads(token, baseBranch);
+      const matches = heads.filter((head) => isMatch(head.headRef));
+      if (matches.length === 0) return null;
+      return matches.reduce((latest, head) =>
+        head.number > latest.number ? head : latest,
+      );
+    },
+
+    /**
+     * Comment on a PR's conversation thread. GitHub serves PR conversation
+     * comments through the issues API (`/issues/{n}/comments`) since every PR
+     * is also an issue under the hood; `/pulls/{n}/comments` is a different
+     * endpoint for line-level review comments and would be a natural but
+     * wrong reach here. Throws via `ghError` on a non-ok response — it's up
+     * to the caller to decide whether a failed comment is fatal (for #2390
+     * it isn't).
+     */
+    async commentOnPR(token, prNumber, body) {
+      const res = await fetch(repoUrl(`/issues/${prNumber}/comments`), {
+        method: "POST",
+        headers: jsonHeaders(token),
+        body: JSON.stringify({ body }),
+      });
+      if (!res.ok)
+        throw await ghError("Failed to comment on pull request", res);
+    },
   };
+
+  return client;
 }

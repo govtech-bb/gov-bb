@@ -5,7 +5,8 @@ import {
   createRootRouteWithContext,
   redirect,
 } from '@tanstack/react-router'
-import { Footer, textVariants } from '@govtech-bb/react'
+import { Footer, FooterLink, SkipLink } from '@govtech-bb/react'
+import { BreadcrumbRegion } from '../components/BreadcrumbRegion'
 import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
 import { trackEvent } from '../lib/analytics'
@@ -173,7 +174,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="govbb-page print:block print:min-h-0">
         {children}
         <Scripts />
       </body>
@@ -221,23 +222,27 @@ function ServerErrorPage() {
 
 function RootLayout() {
   return (
-    <div
-      className={`${textVariants({ size: 'body' })} grid min-h-screen grid-rows-[auto_1fr_auto] font-sans antialiased text-black-00 bg-white-00 print:block print:min-h-0 print:h-auto`}
-    >
+    <>
+      <SkipLink href="#main-content" />
       <div className="print:hidden">
         <Header />
       </div>
-      <main id="main">
-        <Outlet />
-      </main>
-      <div className="print:hidden">
-        <Footer
-          links={FOOTER_LINKS}
-          logoSrc="/images/coat-of-arms.png"
-          logoAlt="Barbados Coat of Arms"
-          copyrightText={`© ${new Date().getFullYear()} Government of Barbados`}
-        />
-      </div>
-    </div>
+      <BreadcrumbRegion>
+        <main id="main-content" tabIndex={-1}>
+          <Outlet />
+        </main>
+      </BreadcrumbRegion>
+      <Footer
+        className="print:hidden"
+        coatSrc="/images/coat-of-arms.png"
+        copy={`© ${new Date().getFullYear()} Government of Barbados`}
+      >
+        {FOOTER_LINKS.map(({ label, ...link }) => (
+          <FooterLink key={label} {...link}>
+            {label}
+          </FooterLink>
+        ))}
+      </Footer>
+    </>
   )
 }

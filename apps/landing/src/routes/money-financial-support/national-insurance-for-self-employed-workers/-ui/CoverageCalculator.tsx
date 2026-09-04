@@ -1,4 +1,5 @@
-import { Button, ErrorSummary, Link, linkVariants } from '@govtech-bb/react'
+import { Button, ErrorSummary, Link } from '@govtech-bb/react'
+import type { ErrorSummaryItem } from '@govtech-bb/react'
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode, RefObject } from 'react'
 import { money as formatBbd } from '@/lib/money'
@@ -23,13 +24,13 @@ const REGISTER_HREF = 'https://www.nis.gov.bb/self-employment-registration/'
 
 // The prototype's soft card shadow (no design token for it).
 const CARD =
-  'rounded-2xl border border-grey-00 bg-white-00 shadow-[0_1px_2px_rgba(0,22,74,0.04),0_4px_14px_rgba(0,22,74,0.06)]'
+  'rounded-2xl border border-grey-20 bg-white-00 shadow-[0_1px_2px_rgba(0,22,74,0.04),0_4px_14px_rgba(0,22,74,0.06)]'
 
 function PerWeek({ weekly }: { weekly: number }) {
   return (
     <>
       <strong className="tabular-nums">{money(weekly)}</strong> a week{' '}
-      <span className="text-mid-grey-00">
+      <span className="text-grey-70">
         (about {money((weekly * 52) / 12)}/month)
       </span>
     </>
@@ -100,45 +101,45 @@ const TONE: Record<
 > = {
   teal: {
     bg: 'bg-teal-10',
-    text: 'text-teal-00',
-    border: 'border-teal-40',
-    borderStrong: 'border-teal-00',
-    fill: 'bg-teal-00',
+    text: 'text-teal-80',
+    border: 'border-teal-20',
+    borderStrong: 'border-teal-80',
+    fill: 'bg-teal-80',
   },
   pink: {
     bg: 'bg-pink-10',
-    text: 'text-pink-00',
-    border: 'border-pink-40',
-    borderStrong: 'border-pink-00',
-    fill: 'bg-pink-00',
+    text: 'text-pink-80',
+    border: 'border-pink-20',
+    borderStrong: 'border-pink-80',
+    fill: 'bg-pink-80',
   },
   blue: {
     bg: 'bg-blue-10',
-    text: 'text-blue-100',
-    border: 'border-blue-40',
-    borderStrong: 'border-blue-100',
-    fill: 'bg-blue-100',
+    text: 'text-blue-40',
+    border: 'border-blue-20',
+    borderStrong: 'border-blue-40',
+    fill: 'bg-blue-40',
   },
   purple: {
     bg: 'bg-purple-10',
-    text: 'text-purple-00',
-    border: 'border-purple-40',
-    borderStrong: 'border-purple-00',
-    fill: 'bg-purple-00',
+    text: 'text-purple-80',
+    border: 'border-purple-20',
+    borderStrong: 'border-purple-80',
+    fill: 'bg-purple-80',
   },
   yellow: {
     bg: 'bg-yellow-10',
-    text: 'text-yellow-00',
-    border: 'border-yellow-40',
-    borderStrong: 'border-yellow-00',
-    fill: 'bg-yellow-00',
+    text: 'text-yellow-80',
+    border: 'border-yellow-20',
+    borderStrong: 'border-yellow-80',
+    fill: 'bg-yellow-80',
   },
   green: {
     bg: 'bg-green-10',
-    text: 'text-green-00',
-    border: 'border-green-40',
-    borderStrong: 'border-green-00',
-    fill: 'bg-green-00',
+    text: 'text-green-80',
+    border: 'border-green-20',
+    borderStrong: 'border-green-80',
+    fill: 'bg-green-80',
   },
 }
 
@@ -174,7 +175,7 @@ function rovingRadioProps<T>(
 
 function ServiceCaption() {
   return (
-    <p className="mb-2 border-blue-40 border-l-4 py-2 pl-4 text-[1rem] text-mid-grey-00">
+    <p className="mb-2 border-blue-20 border-l-4 py-2 pl-4 text-body-sm text-grey-70">
       {SERVICE_CAPTION}
     </p>
   )
@@ -420,14 +421,14 @@ function Hero({
             'radial-gradient(circle at 20% 20%, rgba(48,192,200,0.18), transparent 40%), radial-gradient(circle at 80% 0%, rgba(255,199,38,0.22), transparent 40%)',
         }}
       >
-        <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-teal-10 px-3 py-1.5 font-medium text-[0.95rem] text-teal-00">
+        <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-teal-10 px-3 py-1.5 font-medium text-[0.95rem] text-teal-80">
           <Icon className="h-4 w-4" name="shield" />
           From National Insurance (NIS)
         </span>
         <h1 className="mb-4 font-bold text-[2.75rem] text-black-00 leading-[1.1] tracking-tight sm:text-[3.5rem]">
           Estimate how much National Insurance to pay
         </h1>
-        <p className="mb-6 text-[1.125rem] text-mid-grey-00">
+        <p className="mb-6 text-[1.125rem] text-grey-70">
           Answer a few questions about what you earn to compare payment amounts.
         </p>
         <div className="flex flex-col items-stretch gap-3 [&_button]:w-full [&_button]:justify-center">
@@ -448,17 +449,17 @@ function Hero({
       </div>
 
       <div className="mt-10">
-        <h2 className="mb-3 font-bold text-[1.5rem] text-black-00">
+        <h2 className="mb-3 font-bold text-body-lg text-black-00">
           What is NIS, simply?
         </h2>
-        <p className="mb-4 text-[1.125rem] text-mid-grey-00">
+        <p className="mb-4 text-[1.125rem] text-grey-70">
           NIS stands for{' '}
           <strong className="text-black-00">National Insurance</strong>. Think
           of it as a safety net you build up bit by bit. You put in a small
           amount when you earn. It&rsquo;s there when you need it: when
           you&rsquo;re sick, when you have a baby, when you retire.
         </p>
-        <p className="mb-6 text-[1.125rem] text-mid-grey-00">
+        <p className="mb-6 text-[1.125rem] text-grey-70">
           Self-employed Bajans can join too. You choose how much you put in:{' '}
           <strong className="text-black-00">
             more in busy months, less in slow ones
@@ -473,17 +474,17 @@ function Hero({
           <ul className="flex flex-col gap-2.5">
             {HELPS.map(([icon, text]) => (
               <li className="flex items-start gap-3" key={icon}>
-                <span className="mt-0.5 text-teal-00">
+                <span className="mt-0.5 text-teal-80">
                   <Icon className="h-6 w-6" name={icon} />
                 </span>
-                <span className="text-[1.25rem] text-black-00">{text}</span>
+                <span className="text-body text-black-00">{text}</span>
               </li>
             ))}
           </ul>
         </div>
 
         <button
-          className="inline-flex items-center gap-1.5 font-medium text-[1rem] text-teal-00 underline underline-offset-2 hover:no-underline"
+          className="inline-flex items-center gap-1.5 font-medium text-body-sm text-teal-80 underline underline-offset-2 hover:no-underline"
           onClick={onBenefits}
           type="button"
         >
@@ -492,7 +493,7 @@ function Hero({
         </button>
       </div>
 
-      <p className="mt-8 flex items-center gap-2 border-grey-00 border-t pt-6 text-[1rem] text-mid-grey-00">
+      <p className="mt-8 flex items-center gap-2 border-grey-20 border-t pt-6 text-body-sm text-grey-70">
         <Icon className="h-4 w-4 shrink-0" name="lock" />
         This is a guide only. Nothing you enter here is saved or shared.
       </p>
@@ -551,7 +552,7 @@ function BenefitsQuick({ onBack }: { onBack: () => void }) {
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
         Six ways NIS protects you.
       </h1>
-      <p className="mb-6 text-[1.125rem] text-mid-grey-00">
+      <p className="mb-6 text-[1.125rem] text-grey-70">
         Quick read: about a minute.
       </p>
       <div className="flex flex-col gap-3">
@@ -607,21 +608,21 @@ function MoneyField({
   return (
     <div className={`${CARD} p-5`}>
       <label
-        className="block font-semibold text-[1.25rem] text-black-00"
+        className="block font-semibold text-body text-black-00"
         htmlFor={id}
       >
         {label}
       </label>
-      <p className="mt-1 mb-3 text-[1rem] text-mid-grey-00" id={`${id}-hint`}>
+      <p className="mt-1 mb-3 text-body-sm text-grey-70" id={`${id}-hint`}>
         {hint}
       </p>
       <div
-        className={`inline-flex max-w-[16rem] items-center rounded-sm border-2 bg-white-00 transition-all focus-within:ring-4 focus-within:ring-teal-100 ${
-          error ? 'border-red-00' : 'border-black-00'
+        className={`inline-flex max-w-[16rem] items-center rounded-sm border-2 bg-white-00 transition-all focus-within:ring-4 focus-within:ring-teal-40 ${
+          error ? 'border-red-80' : 'border-black-00'
         }`}
       >
         {prefix && (
-          <span className="shrink-0 whitespace-nowrap pl-3 text-mid-grey-00">
+          <span className="shrink-0 whitespace-nowrap pl-3 text-grey-70">
             {prefix}
           </span>
         )}
@@ -637,13 +638,13 @@ function MoneyField({
         />
       </div>
       {error && (
-        <p className="mt-2 text-[1rem] text-red-00" id={`${id}-error`}>
+        <p className="mt-2 text-body-sm text-red-80" id={`${id}-error`}>
           {error}
         </p>
       )}
       {overCeiling && max !== undefined && (
         <div
-          className="mt-4 border-blue-40 border-l-4 bg-grey-00/50 p-3 text-[1rem] text-black-00"
+          className="mt-4 border-blue-20 border-l-4 bg-grey-20/50 p-3 text-body-sm text-black-00"
           role="status"
         >
           The most NIS can insure is {money(max)} a month, so earning more than
@@ -703,14 +704,14 @@ function IncomeStep({
   )
   const errorItems = [
     errors.earningsVary && {
-      text: errors.earningsVary,
-      target: 'earnings-vary-yes',
+      label: errors.earningsVary,
+      href: '#earnings-vary-yes',
     },
-    errors.usualMonth && { text: errors.usualMonth, target: 'usual-month' },
-    errors.goodMonth && { text: errors.goodMonth, target: 'good-month' },
-    errors.slowMonth && { text: errors.slowMonth, target: 'slow-month' },
-    errors.goodMonths && { text: errors.goodMonths, target: 'good-months' },
-  ].filter(Boolean) as Array<{ text: string; target: string }>
+    errors.usualMonth && { label: errors.usualMonth, href: '#usual-month' },
+    errors.goodMonth && { label: errors.goodMonth, href: '#good-month' },
+    errors.slowMonth && { label: errors.slowMonth, href: '#slow-month' },
+    errors.goodMonths && { label: errors.goodMonths, href: '#good-months' },
+  ].filter(Boolean) as ErrorSummaryItem[]
   return (
     <div>
       {errorItems.length > 0 && (
@@ -726,27 +727,27 @@ function IncomeStep({
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
         Let&rsquo;s talk about your earnings.
       </h1>
-      <p className="mb-6 text-[1.125rem] text-mid-grey-00">
+      <p className="mb-6 text-[1.125rem] text-grey-70">
         Enter your best estimate. We use it to give you a real estimate that
         fits your life.
       </p>
 
       <div className={`${CARD} mb-4 p-5`}>
         <p
-          className="font-semibold text-[1.25rem] text-black-00"
+          className="font-semibold text-body text-black-00"
           id="earnings-vary-label"
         >
           Do your earnings change during the year?
         </p>
         <p
-          className="mt-1 mb-3 text-[1rem] text-mid-grey-00"
+          className="mt-1 mb-3 text-body-sm text-grey-70"
           id="earnings-vary-hint"
         >
           For example, busier in season and quieter out of season.
         </p>
         {errors.earningsVary && (
           <p
-            className="mb-2 font-semibold text-[1rem] text-red-00"
+            className="mb-2 font-semibold text-body-sm text-red-80"
             id="earnings-vary-error"
           >
             {errors.earningsVary}
@@ -763,10 +764,10 @@ function IncomeStep({
             return (
               <button
                 aria-checked={selected}
-                className={`min-w-[6rem] rounded-xl border-2 px-5 py-3 text-center font-semibold text-[1.125rem] transition-all focus-visible:ring-4 focus-visible:ring-teal-100 ${
+                className={`min-w-[6rem] rounded-xl border-2 px-5 py-3 text-center font-semibold text-[1.125rem] transition-all focus-visible:ring-4 focus-visible:ring-teal-40 ${
                   selected
-                    ? 'border-teal-00 bg-teal-10 text-black-00'
-                    : 'border-grey-00 bg-white-00 text-black-00'
+                    ? 'border-teal-80 bg-teal-10 text-black-00'
+                    : 'border-grey-20 bg-white-00 text-black-00'
                 }`}
                 id={`earnings-vary-${o.id}`}
                 key={o.id}
@@ -893,7 +894,7 @@ function PlanStep({
       {error && (
         <div className="mb-6">
           <ErrorSummary
-            errors={[{ text: error, target: 'tier-minimum' }]}
+            errors={[{ label: error, href: '#tier-minimum' }]}
             ref={errorRef}
             title="There is a problem"
           />
@@ -903,20 +904,20 @@ function PlanStep({
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
         Choose an amount to compare
       </h1>
-      <p className="mb-5 text-[1.125rem] text-mid-grey-00">
+      <p className="mb-5 text-[1.125rem] text-grey-70">
         Compare how much you could pay and the benefits you may get. You can
         choose a different amount when you make a payment.
       </p>
 
       {/* A caption, not a card: the contribution levels below are the things to
           choose, so this recap of what was entered stays plain text. */}
-      <div className="mb-5 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-grey-00 border-b pb-3 text-[1.125rem]">
-        <span className="text-mid-grey-00">Average monthly earnings</span>
+      <div className="mb-5 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-grey-20 border-b pb-3 text-[1.125rem]">
+        <span className="text-grey-70">Average monthly earnings</span>
         <span className="font-semibold text-black-00 tabular-nums">
           {money(monthlyAvg)}
         </span>
         <button
-          className={`${linkVariants()} ml-auto`}
+          className="govbb-link ml-auto"
           onClick={onBack}
           type="button"
         >
@@ -924,10 +925,10 @@ function PlanStep({
         </button>
       </div>
 
-      <div className={error ? 'border-red-00 border-l-4 pl-4' : ''}>
+      <div className={error ? 'border-red-80 border-l-4 pl-4' : ''}>
         {error && (
           <p
-            className="mb-2 font-semibold text-[1rem] text-red-00"
+            className="mb-2 font-semibold text-body-sm text-red-80"
             id="tier-error"
           >
             {error}
@@ -949,7 +950,7 @@ function PlanStep({
                   selected
                     ? `${tone.borderStrong} shadow-[inset_0_0_0_2px] `
                     : tone.border
-                } p-4 text-left transition-shadow focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100 ${
+                } p-4 text-left transition-shadow focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-40 ${
                   selected ? tone.text : ''
                 }`}
                 id={`tier-${t.id}`}
@@ -963,18 +964,18 @@ function PlanStep({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1 text-black-00">
                     {t.label && (
-                      <p className="mb-1 font-semibold text-[1rem] text-mid-grey-00">
+                      <p className="mb-1 font-semibold text-body-sm text-grey-70">
                         {t.label}
                       </p>
                     )}
                     <p className="font-bold text-[2rem] tabular-nums leading-none">
                       {money(suggested[t.id])}
-                      <span className="font-normal text-[1rem] text-mid-grey-00">
+                      <span className="font-normal text-body-sm text-grey-70">
                         {' '}
                         /month
                       </span>
                     </p>
-                    <p className="mt-1 text-[1rem] text-mid-grey-00">
+                    <p className="mt-1 text-body-sm text-grey-70">
                       About{' '}
                       <span className="tabular-nums">
                         {money((suggested[t.id] * 12) / 52)}
@@ -982,7 +983,7 @@ function PlanStep({
                       a week
                     </p>
                     {t.id === Tier.Minimum && minimumApplies && (
-                      <p className="mt-3 text-[1rem] text-black-00">
+                      <p className="mt-3 text-body-sm text-black-00">
                         <strong>Why have we shown this minimum</strong>
                         <br />
                         {(NIS.SE_RATE * 100).toFixed(2)}% of the{' '}
@@ -1005,7 +1006,7 @@ function PlanStep({
                     className={`mt-1 inline-flex h-6 w-6 shrink-0 rounded-full ${
                       selected
                         ? `${tone.fill} shadow-[0_0_0_3px_#fff]`
-                        : 'border-2 border-mid-grey-00'
+                        : 'border-2 border-grey-70'
                     }`}
                   />
                 </div>
@@ -1020,11 +1021,11 @@ function PlanStep({
           className="mt-6 rounded-3xl p-6 text-white-00"
           style={{
             backgroundImage:
-              'linear-gradient(to bottom right, var(--color-teal-00), var(--color-blue-100))',
+              'linear-gradient(to bottom right, var(--color-teal-80), var(--color-blue-40))',
           }}
         >
           <div className="mb-1 flex items-start justify-between gap-3">
-            <p className="font-semibold text-[0.95rem] text-teal-40 uppercase tracking-wide">
+            <p className="font-semibold text-[0.95rem] text-teal-20 uppercase tracking-wide">
               Your selected amount
             </p>
             {selTier.label && (
@@ -1037,12 +1038,12 @@ function PlanStep({
           </div>
           <p className="mb-1 font-bold text-[2rem] tabular-nums leading-tight">
             {money(chosen)}
-            <span className="font-normal text-[1rem] text-teal-40">
+            <span className="font-normal text-body-sm text-teal-20">
               {' '}
               / month
             </span>
           </p>
-          <p className="text-[1rem] text-white-00/90">
+          <p className="text-body-sm text-white-00/90">
             About{' '}
             <strong className="tabular-nums">
               {money((chosen * 12) / 52)}
@@ -1050,7 +1051,7 @@ function PlanStep({
             a week.
           </p>
           <div className="mt-4 border-white-00/20 border-t pt-4">
-            <p className="text-[0.95rem] text-teal-40 uppercase tracking-wide">
+            <p className="text-[0.95rem] text-teal-20 uppercase tracking-wide">
               In a year
             </p>
             <p className="font-bold text-[1.3rem] tabular-nums">
@@ -1060,7 +1061,7 @@ function PlanStep({
         </div>
       )}
 
-      <div className="mt-6 space-y-2 border-blue-40 border-l-4 bg-grey-00/50 p-4 text-[1rem] text-black-00">
+      <div className="mt-6 space-y-2 border-blue-20 border-l-4 bg-grey-20/50 p-4 text-body-sm text-black-00">
         <p>
           <strong>Busy month?</strong> Pay a bit more.{' '}
           <strong>Slow month?</strong> Pay less, or skip it. What matters is
@@ -1104,12 +1105,12 @@ function BenefitCard({
 }) {
   return (
     <details
-      className="group overflow-hidden rounded-xl border border-grey-00 bg-white-00"
+      className="group overflow-hidden rounded-xl border border-grey-20 bg-white-00"
       open={defaultOpen}
     >
       <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
         <IconCircle name={icon} tint tone={tone} />
-        <span className="min-w-0 flex-1 font-semibold text-[1.25rem] text-black-00">
+        <span className="min-w-0 flex-1 font-semibold text-body text-black-00">
           {title}
         </span>
         <Icon
@@ -1118,16 +1119,16 @@ function BenefitCard({
           strokeWidth={2.25}
         />
       </summary>
-      <div className="flex flex-col gap-3 border-grey-00 border-t px-4 pt-4 pb-5">
+      <div className="flex flex-col gap-3 border-grey-20 border-t px-4 pt-4 pb-5">
         <p className="text-[1.125rem] text-black-00">{explain}</p>
-        <div className="rounded-lg border border-grey-00 bg-grey-00/40 p-3">
-          <p className="mb-1 font-semibold text-[0.95rem] text-mid-grey-00 uppercase tracking-wide">
+        <div className="rounded-lg border border-grey-20 bg-grey-20/40 p-3">
+          <p className="mb-1 font-semibold text-[0.95rem] text-grey-70 uppercase tracking-wide">
             Without NIS
           </p>
           <p className="text-[1.125rem] text-black-00">{without}</p>
         </div>
-        <div className="rounded-lg border border-green-40 bg-green-10 p-3">
-          <p className="mb-1 font-semibold text-[0.95rem] text-green-00 uppercase tracking-wide">
+        <div className="rounded-lg border border-green-20 bg-green-10 p-3">
+          <p className="mb-1 font-semibold text-[0.95rem] text-green-80 uppercase tracking-wide">
             With NIS
           </p>
           <p className="text-[1.125rem] text-black-00">{withNis}</p>
@@ -1268,7 +1269,7 @@ function ResultStep({
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
         Benefits you may get
       </h1>
-      <p className="mb-6 text-[1.125rem] text-mid-grey-00">
+      <p className="mb-6 text-[1.125rem] text-grey-70">
         These estimates are based on the{' '}
         <strong className="text-black-00 tabular-nums">
           {money(b.monthlyContribution)}
@@ -1277,7 +1278,7 @@ function ResultStep({
         earnings you entered. NIS will confirm whether you qualify and how much
         you may get when you claim.
       </p>
-      <p className="mb-3 text-[1rem] text-mid-grey-00">
+      <p className="mb-3 text-body-sm text-grey-70">
         Select a benefit to see who may get it and when.
       </p>
 
@@ -1324,7 +1325,7 @@ function NextSteps({
       <h1 className="mb-2 font-bold text-[2.25rem] text-black-00 leading-[1.15] sm:text-[2.75rem]">
         What to do next
       </h1>
-      <p className="mb-6 text-[1.125rem] text-mid-grey-00">
+      <p className="mb-6 text-[1.125rem] text-grey-70">
         Below are a few steps you could take:
       </p>
 
@@ -1341,7 +1342,7 @@ function NextSteps({
         </li>
       </ul>
 
-      <h2 className="mt-8 mb-2 font-bold text-[1.5rem] text-black-00">
+      <h2 className="mt-8 mb-2 font-bold text-body-lg text-black-00">
         Get help
       </h2>
       <p className="text-[1.125rem]">

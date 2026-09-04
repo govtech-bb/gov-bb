@@ -1,37 +1,25 @@
 import { useEffect, useState } from 'react'
 import { Button, Heading, Input, Text } from '@govtech-bb/react'
 import { trackEvent } from '../lib/analytics'
-
-const CHAT_URL =
-  import.meta.env.VITE_CHAT_URL || 'https://chat.sandbox.alpha.gov.bb'
+import { CHAT_URL } from '../lib/chat-url'
 
 const MAX_QUERY_LENGTH = 2000
-
-// Every question must be answerable from a service in src/content — chat can
-// only ground answers in that corpus, so an unbacked question (e.g. passports,
-// driver's licences) sends users straight to a dead end.
-const DEFAULT_QUESTIONS = [
-  'How do I get a birth certificate?',
-  'What financial assistance is available?',
-  'How do I get a primary school textbook grant?',
-  'How do I redirect my personal mail?',
-]
 
 type OnlineState = 'checking' | 'online' | 'offline'
 
 const STATUS_STYLES: Record<OnlineState, { dot: string; label: string }> = {
-  checking: { dot: 'bg-grey-00', label: 'Checking...' },
-  online: { dot: 'bg-green-100', label: 'Online' },
-  offline: { dot: 'bg-red-100', label: 'Offline' },
+  checking: { dot: 'bg-grey-20', label: 'Checking...' },
+  online: { dot: 'bg-green-40', label: 'Online' },
+  offline: { dot: 'bg-red-40', label: 'Offline' },
 }
 
 interface ChatAssistantProps {
-  questions?: Array<string>
+  questions: Array<string>
   source?: string
 }
 
 export function ChatAssistant({
-  questions = DEFAULT_QUESTIONS,
+  questions,
   source = 'home',
 }: ChatAssistantProps) {
   const chatUrl = CHAT_URL
@@ -98,20 +86,20 @@ export function ChatAssistant({
   return (
     <div className="space-y-m">
       <div className="max-w-200 overflow-hidden rounded-lg border border-white-00 bg-white-00 shadow-md">
-        <div className="flex items-center gap-xm bg-teal-00 p-xm text-white-00">
+        <div className="flex items-center gap-xm bg-teal-80 p-xm text-white-00">
           <div className="flex-1 space-y-xxs">
             <Heading as="h2" size="h3">
               Ask your government assistant
             </Heading>
-            <div className="flex items-center gap-xs text-grey-00">
-              <div className="flex items-center gap-xs border-r border-grey-00 pr-xs">
+            <div className="flex items-center gap-xs text-grey-20">
+              <div className="flex items-center gap-xs border-r border-grey-20 pr-xs">
                 <span
                   aria-hidden="true"
                   className={`inline-block size-1.5 rounded-full ${dot}`}
                 />
-                <span className="text-base">{label}</span>
+                <span className="text-body-sm">{label}</span>
               </div>
-              <span className="text-base">Powered by alpha.gov.bb</span>
+              <span className="text-body-sm">Powered by alpha.gov.bb</span>
             </div>
           </div>
         </div>
@@ -120,13 +108,14 @@ export function ChatAssistant({
           <div className="flex items-start gap-2.5">
             <div
               aria-hidden="true"
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-teal-00 text-sm font-bold text-white-00"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-teal-80 text-sm font-bold text-white-00"
             >
               A
             </div>
             <div className="rounded-2xl rounded-bl-xs bg-blue-10 px-s py-3.5 text-black-00 max-w-130">
-              <Text as="p" className="text-pretty">
-                Welcome to <strong>alpha.gov.bb.</strong> What would you like help with today?
+              <Text as="p">
+                Welcome to <strong>alpha.gov.bb.</strong> What would you like
+                help with today?
               </Text>
             </div>
           </div>
@@ -150,34 +139,36 @@ export function ChatAssistant({
                 Send
               </Button>
             </div>
-            <Text size="caption" className="text-center text-mid-grey-00">
+            <Text size="body-sm" className="text-center text-grey-70">
               Responses are based on official Government of Barbados information
             </Text>
           </form>
         </div>
       </div>
 
-      <div className="max-w-250 space-y-s">
-        <Heading as="h3" size="h4">
-          Questions you can ask:
-        </Heading>
-        <div className="flex flex-wrap gap-s">
-          {questions.map((q) => (
-            <button
-              key={q}
-              type="button"
-              disabled={isOffline}
-              onClick={() => {
-                trackEvent('chat-suggestion', { question: q, source })
-                goToChat(q)
-              }}
-              className="rounded-xl border border-grey-00 bg-blue-00 px-s py-xs text-sm text-white-00 hover:bg-blue-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100 pointer-coarse:min-h-11 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-00"
-            >
-              {q}
-            </button>
-          ))}
+      {questions.length > 0 ? (
+        <div className="max-w-250 space-y-s">
+          <Heading as="h3" size="h4">
+            Questions you can ask:
+          </Heading>
+          <div className="flex flex-wrap gap-s">
+            {questions.map((q) => (
+              <button
+                key={q}
+                type="button"
+                disabled={isOffline}
+                onClick={() => {
+                  trackEvent('chat-suggestion', { question: q, source })
+                  goToChat(q)
+                }}
+                className="rounded-xl border border-grey-20 bg-blue-80 px-s py-xs text-sm text-white-00 hover:bg-blue-40 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-40 pointer-coarse:min-h-11 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-80"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   )
 }

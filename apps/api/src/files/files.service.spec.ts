@@ -142,6 +142,57 @@ describe("FilesService", () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    // `application/octet-stream` is what the client sends when the browser
+    // could not type the file at all. It is never evidence that a file is
+    // allowed, so it has to earn acceptance on its extension instead.
+    it("accepts an unverifiable type whose extension is allowlisted", async () => {
+      const r = await service.presignUpload({
+        ...dto,
+        contentType: "application/octet-stream",
+        fileName: "certificate.pdf",
+      });
+      expect(r.uploadUrl).toBeTruthy();
+    });
+
+    it("rejects an unverifiable type whose extension is not allowlisted", async () => {
+      await expect(
+        service.presignUpload({
+          ...dto,
+          contentType: "application/octet-stream",
+          fileName: "certificate-scan",
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    // Fail closed: with no allowlist there is nothing to check an unverifiable
+    // file against, so it is refused rather than stored unidentified. A typed
+    // file against the same field still goes through.
+    it("rejects an unverifiable type when the field declares no fileTypes", async () => {
+      const contract = makeContract();
+      const field = (
+        contract.steps[0] as unknown as {
+          elements: Array<{ validations?: unknown }>;
+        }
+      ).elements[0]!;
+      delete field.validations;
+      formDefs.findByFormId.mockResolvedValue(contract);
+
+      await expect(
+        service.presignUpload({
+          ...dto,
+          contentType: "application/octet-stream",
+          fileName: "certificate-scan",
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      const r = await service.presignUpload({
+        ...dto,
+        contentType: "application/pdf",
+        fileName: "certificate.pdf",
+      });
+      expect(r.uploadUrl).toBeTruthy();
+    });
+
     it("rejects oversize", async () => {
       await expect(
         service.presignUpload({ ...dto, size: 5 * 1024 * 1024 }),

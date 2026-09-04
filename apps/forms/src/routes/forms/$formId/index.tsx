@@ -35,14 +35,20 @@ import {
   clearFormStartTime,
 } from "../../../lib/session-storage";
 import { elapsedSeconds } from "../../../lib/submit-duration";
-import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
+import {
+  formatDataForSubmission,
+  postFormSubmission,
+  FormValidationError,
+} from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
+import { resolveServerFieldErrors } from "../../../lib/server-field-errors";
+import { resolveConditionalMarkdown } from "@govtech-bb/form-conditions";
+import { buildStepScopedValues } from "../../../lib/form-builder/helpers/value-tree";
 import { formCategory } from "../../../lib/form-category";
 import {
   resolveSubmissionOutcome,
   applyPaymentReturn,
 } from "../../../lib/submission-outcome";
-import { fillParishRoutingCoordinate } from "../../../lib/parish-routing-points";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
@@ -264,18 +270,50 @@ function FormView() {
         );
         return step.fields.filter((field) => !visibleFieldIds.has(field.id));
       });
-      const formattedData: FormValuesByStep = fillParishRoutingCoordinate(
-        formatDataForSubmission(
-          values,
-          repeatableStepSettingsRef.current,
-          hiddenFields,
-        ),
-        formMeta.catchmentRouting,
+      const formattedData: FormValuesByStep = formatDataForSubmission(
+        values,
+        repeatableStepSettingsRef.current,
+        hiddenFields,
       );
       let response;
       try {
         response = await postFormSubmission(formMeta, formattedData, preview);
-      } catch {
+      } catch (error) {
+        // The server told us which answers it rejected (422 + meta.errors).
+        // Put those messages back on the fields they name and return the
+        // citizen to the step holding the first one, so they can see and fix
+        // it — rather than the generic failure panel and a retry that would
+        // fail identically (#1257). A bundle nothing maps to (a renamed field,
+        // a repeatable step's per-instance shape) falls through to the panel:
+        // no feedback at all is worse than imprecise feedback.
+        if (error instanceof FormValidationError) {
+          const { byFieldId, stepId } = resolveServerFieldErrors(
+            error.errors,
+            visibleSteps,
+          );
+          if (stepId) {
+            for (const [fieldId, messages] of Object.entries(byFieldId)) {
+              form.setFieldMeta(fieldId, (prev) => ({
+                ...prev,
+                isValid: false,
+                errors: messages,
+                errorMap: { ...prev.errorMap, onServer: messages[0] },
+              }));
+            }
+            trackEvent("form-submit-error", {
+              form: formMeta.formId,
+              category: formCategory(formMeta.formId),
+              errors: "validation",
+            });
+            void navigate({
+              search: (prev: Record<string, unknown>) => ({
+                ...prev,
+                step: stepId,
+              }),
+            });
+            return;
+          }
+        }
         trackEvent("form-submit-error", {
           form: formMeta.formId,
           category: formCategory(formMeta.formId),
@@ -294,7 +332,26 @@ function FormView() {
         return;
       }
 
-      const { subState, event } = resolveSubmissionOutcome(response);
+      // Fill the confirmation body's per-answer passages (#2068) NOW, while the
+      // answers are still in the form store: `clearFormState` below drops the
+      // draft on success, so a refresh on the confirmation step would otherwise
+      // have no values to branch on and would fall back to the neutral passage
+      // while the applicant's email showed the real one. Persisted with the rest
+      // of the outcome, so it survives the reload.
+      const confirmationStep = formMeta.steps.find(
+        (step) => step.stepId === "submission-confirmation",
+      );
+      const resolvedMarkdown = confirmationStep
+        ? resolveConditionalMarkdown(
+            confirmationStep,
+            buildStepScopedValues(values as Record<string, unknown>),
+          )
+        : undefined;
+
+      const { subState, event } = resolveSubmissionOutcome(
+        response,
+        resolvedMarkdown,
+      );
       if (subState) {
         setSubmissionState(subState);
       }

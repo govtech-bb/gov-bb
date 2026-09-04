@@ -4,13 +4,6 @@ import type { ServiceIndexEntry } from "./service-index.type";
 
 export const SERVICES_INDEX: ServiceIndexEntry[] = [
   {
-    slug: "apply-environmental-health-food-business-license",
-    title: "Apply for or renew a food business licence",
-    category: "business-trade",
-    formId: "apply-for-food-business-licence",
-    visibility: "preview",
-  },
-  {
     slug: "apply-financial-assistance",
     title: "Apply for financial assistance",
     category: "money-financial-support",
@@ -56,6 +49,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
+    slug: "apply-for-an-nhc-rental-unit-or-lot",
+    title: "Apply for an NHC rental unit or lot",
+    category: "housing",
+    formId: "nhc-rental-application",
+    visibility: "preview",
+  },
+  {
     slug: "apply-for-community-elder-care",
     title: "Apply for the Community Elder Care Programme",
     category: "social-empowerment",
@@ -76,6 +76,48 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
+    slug: "apply-for-food-business-licence",
+    title: "Apply for a food business licence",
+    category: "business-trade",
+    formId: "apply-for-food-business-licence",
+    visibility: "preview",
+  },
+  {
+    slug: "apply-for-funeral-director-licence",
+    title: "Apply for a funeral directors licence",
+    category: "business-trade",
+    formId: "apply-for-funeral-director-licence",
+    visibility: "preview",
+  },
+  {
+    slug: "apply-for-funeral-embalmer-licence",
+    title: "Apply for an embalmer licence",
+    category: "business-trade",
+    formId: "apply-for-funeral-embalmer-licence",
+    visibility: "preview",
+  },
+  {
+    slug: "apply-for-funeral-establishment-licence",
+    title: "Apply for a funeral establishment licence",
+    category: "business-trade",
+    formId: "apply-for-funeral-establishment-licence",
+    visibility: "preview",
+  },
+  {
+    slug: "apply-for-hair-salon-licence",
+    title: "Apply for a hairdressing and beautician business licence",
+    category: "business-trade",
+    formId: "apply-for-hair-salon-licence",
+    visibility: "preview",
+  },
+  {
+    slug: "apply-for-hairdresser-licence",
+    title: "Apply for a hairdresser or beautician licence",
+    category: "business-trade",
+    formId: "apply-for-hairdresser-licence",
+    visibility: "preview",
+  },
+  {
     slug: "apply-for-home-care-programme",
     title: "Apply for the Home Care Programme",
     category: "social-empowerment",
@@ -86,7 +128,14 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     slug: "apply-for-hotel-licence",
     title: "Apply for a hotel licence",
     category: "business-trade",
-    formId: "hotel-licence-application",
+    formId: "apply-for-hotel-licence",
+    visibility: "preview",
+  },
+  {
+    slug: "apply-for-lodging-barracks-licence",
+    title: "Apply for a barracks or lodging licence with Environmental Health",
+    category: "business-trade",
+    formId: "apply-for-lodging-barracks-licence",
     visibility: "preview",
   },
   {
@@ -97,10 +146,24 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
-    slug: "apply-for-nhc-rental-unit-or-lot",
-    title: "Application for Rental Unit/Lot",
-    category: "housing",
-    formId: "nhc-application-rental-unit",
+    slug: "apply-for-offensive-matter-licence",
+    title: "Apply for an offensive matter licence with Environmental Health",
+    category: "business-trade",
+    formId: "apply-for-offensive-matter-licence",
+    visibility: "preview",
+  },
+  {
+    slug: "apply-for-offensive-waste-licence",
+    title: "Apply for an offensive trade licence with Environmental Health",
+    category: "business-trade",
+    formId: "apply-for-offensive-waste-licence",
+    visibility: "preview",
+  },
+  {
+    slug: "apply-for-restaurant-licence",
+    title: "Apply for a restaurant licence",
+    category: "business-trade",
+    formId: "apply-for-restaurant-licence",
     visibility: "preview",
   },
   {
@@ -111,10 +174,17 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
-    slug: "apply-for-temporary-restaurant-licence",
-    title: "Apply for a licence to operate a temporary restaurant",
+    slug: "apply-for-swimming-pool-licence",
+    title: "Apply for a swimming pool licence",
     category: "business-trade",
-    formId: "apply-for-temporary-restaurant-licence",
+    formId: "apply-for-swimming-pool-licence",
+    visibility: "preview",
+  },
+  {
+    slug: "apply-for-temporary-restaurant-permit",
+    title: "Apply for a temporary restaurant permit",
+    category: "business-trade",
+    formId: "apply-for-temporary-restaurant-permit",
     visibility: "preview",
   },
   {
@@ -147,13 +217,6 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
-    slug: "apply-to-environmental-health-for-a-restaurant-licence",
-    title: "Apply for a restaurant licence",
-    category: "business-trade",
-    formId: "apply-for-restaurant-licence",
-    visibility: "preview",
-  },
-  {
     slug: "apply-to-home-school-your-child",
     title: "Apply to home-school your child",
     category: "education",
@@ -182,7 +245,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-to-use-state-land",
-    title: "Application to use State Land",
+    title: "Apply to use state land",
     category: "housing",
     formId: "mohlm-application-use-state-land",
     visibility: "preview",
@@ -279,12 +342,6 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
-    slug: "get-food-safety-checks-and-approvals",
-    title: "Get food safety checks and approvals from Environmental Health",
-    category: "business-trade",
-    visibility: "draft",
-  },
-  {
     slug: "get-marriage-certificate",
     title: "Get a copy of a marriage certificate",
     category: "family-birth-relationships",
@@ -305,7 +362,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "health-and-emergency-services/find-an-open-pharmacy",
-    title: "Find an open pharmacy",
+    title: "Find Barbados Drug Service prescription medication",
     category: "health-and-emergency-services",
     visibility: "preview",
   },
@@ -316,8 +373,8 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
-    slug: "health-and-emergency-services/prescription-slip-colours",
-    title: "What prescription slip colours mean",
+    slug: "health-and-emergency-services/prescription-colours",
+    title: "What prescription colours mean",
     category: "health-and-emergency-services",
     visibility: "preview",
   },
@@ -410,13 +467,6 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
-    slug: "register-guest-property-environmental-health",
-    title: "Register a guest property with Environmental Health",
-    category: "business-trade",
-    formId: "register-guest-property-environmental-health",
-    visibility: "preview",
-  },
-  {
     slug: "register-summer-camp",
     title: "Register for a summer camp",
     category: "work-employment",
@@ -456,7 +506,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "request-an-environmental-health-officer",
-    title: "Request an environmental health officer",
+    title: "Request an Environmental Health Officer",
     category: "business-trade",
     formId: "request-an-environmental-health-officer",
     visibility: "preview",

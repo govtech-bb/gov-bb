@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Heading, Link, Search, Text } from '@govtech-bb/react'
+import { Heading, Link, Text } from '@govtech-bb/react'
 import { HelpfulBox } from '../components/HelpfulBox'
+import { ServiceSearch } from '../components/ServiceSearch'
 import { isDigitalService, isVisible, PAGES } from '../content/registry'
-import { trackEvent } from '../lib/analytics'
 import { pageHead } from '../lib/page-head'
 import { deriveVisibilityOverlay } from '../lib/service-status'
 
@@ -35,30 +35,19 @@ function ServicesPage() {
 
   return (
     <>
-      <section className="border-teal-40 border-b-4 bg-teal-10 py-8">
-        <div className="container">
+      <section className="border-teal-20 border-b-4 bg-teal-10 py-8">
+        <div className="govbb-width-container">
           <div className="flex flex-col gap-2">
             <Text as="p" className="font-bold">
               Search for a service
             </Text>
-            <Search
-              action="/search-results"
-              name="q"
-              label="Search for a service"
-              buttonLabel="Search"
-              onSearch={(q) => {
-                trackEvent('search-submit', { query: q, source: 'services' })
-                window.location.href = q
-                  ? `/search-results?q=${encodeURIComponent(q)}`
-                  : '/search-results'
-              }}
-            />
+            <ServiceSearch source="services" viewer={level} overlay={overlay} />
           </div>
         </div>
       </section>
 
       <section className="pt-4 pb-8">
-        <div className="container">
+        <div className="govbb-width-container">
           <Heading as="h1" className="mb-s">
             Alpha services
           </Heading>
@@ -70,17 +59,17 @@ function ServicesPage() {
               {items.map((item) => (
                 <li
                   key={item.slug}
-                  className="flex flex-col items-start gap-xs border-grey-00 border-b-2 py-s first:pt-0"
+                  className="flex flex-col items-start gap-xs border-grey-20 border-b-2 py-s first:pt-0"
                 >
                   <Link
                     href={item.href}
-                    className="text-[20px] leading-normal"
+                    className="text-body leading-normal"
                     data-umami-event={`service-${item.slug.replace(/\//g, '-')}`}
                     data-umami-event-title={item.title}
                   >
                     {item.title}
                   </Link>
-                  <Text as="p" className="text-mid-grey-00">
+                  <Text as="p" className="text-grey-70">
                     {item.digital ? 'Digital service' : 'Information service'}
                   </Text>
                 </li>
@@ -92,7 +81,7 @@ function ServicesPage() {
         </div>
       </section>
 
-      <div className="container">
+      <div className="govbb-width-container">
         <HelpfulBox className="mb-4 lg:mb-16" />
       </div>
     </>

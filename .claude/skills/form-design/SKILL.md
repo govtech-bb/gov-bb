@@ -5,7 +5,7 @@ description: Use when creating a new form, editing an existing form, adding/remo
 
 # Form Design
 
-Create and edit Government of Barbados form recipes (service contract JSON) the same way the Form Builder AI does — guardrails first, then the repo's versioned-file conventions.
+Create and edit Government of Barbados form recipes (service contract JSON) the same way the Form Builder AI does — guardrails first, then the repo's file conventions.
 
 ## Step 1 — Read the guardrails BEFORE designing anything
 
@@ -21,20 +21,22 @@ Three adaptations to the system prompt's rules in this context:
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Output recipe in a ```json chat block / SQL wrapper | Write a `.json` recipe file in the repo; the SQL section does not apply                                                             |
 | Single-shot, never ask questions                    | Conversational — ask the designer when genuinely ambiguous; still apply guardrails deterministically where they answer the question |
-| Create-only (PDF → recipe)                          | Editing existing forms is in scope (see versioning below)                                                                           |
+| Create-only (PDF → recipe)                          | Editing existing forms is in scope (edit the recipe file in place)                                                                  |
 
-## Step 2 — File layout and versioning
+## Step 2 — File layout
 
-Recipes live at `apps/api/src/forms/form-definitions/recipes/<formId>/<version>.json`.
+Recipes are flat files, one per form: `apps/api/src/forms/form-definitions/recipes/<formId>.json`.
 
-- **New form:** create `recipes/<form-id>/1.0.0.json` with `"version": "1.0.0"`.
-- **Edit:** NEVER modify an existing version file. Copy the latest version to a new file and **bump the MINOR version only** — `1.1.0` → `1.2.0`, `1.1.3` → `1.2.0`. Not the patch, not the major — unless the designer explicitly asks for a different bump.
-- Update `version` and `updatedAt` in the copy; preserve `createdAt`.
+- **New form:** create `recipes/<form-id>.json`.
+- **Edit:** change the file in place and update `updatedAt`; preserve `createdAt`.
+
+There is no `version` field and no version bumping. Versioned recipe directories were retired — if you find guidance elsewhere describing `recipes/<formId>/<version>.json` or minor-version bumps, it predates that change and does not apply.
 
 Invariants (enforced at API boot — a violation aborts deploys):
 
-- `formId` inside the JSON must equal the directory name.
-- The filename (minus `.json`) must equal the `version` field.
+- `formId` inside the JSON must equal the filename minus `.json`.
+- `stepId`s must be unique within a recipe, and authored `fieldId`s unique within a step.
+- Every component `ref` must resolve.
 
 Optional fields: set `"required": {"value": false}` explicitly. Omitting the rule does NOT make a field optional — generic primitives (and many named components, e.g. `components/address`) inherit `required: true` from the registry, so omission silently ships a mandatory field. The renderer derives a muted "(optional)" label suffix from `value: false`; never write "(optional)" into `label` or `hint` text — it would render doubled.
 
@@ -43,17 +45,31 @@ Optional fields: set `"required": {"value": false}` explicitly. Omitting the rul
 After writing or editing any recipe:
 
 ```bash
-cd apps/api && npx jest recipe-invariants
+pnpm validate-recipes
 ```
 
-This schema-validates every recipe and checks the directory/filename invariants. Fix failures before presenting the work as done.
+This schema-validates every recipe file and checks the invariants above. It is the fastest gate and the one to reach for first — nothing else in the repo catches invalid recipe JSON, since Prettier, lint, build and type check all pass on a malformed recipe.
+
+For the full spec suite behind it:
+
+```bash
+pnpm exec nx run api:test
+```
+
+Filtering that to a single spec trips the repo's global coverage thresholds, so if you want just the invariants, disable coverage for the run:
+
+```bash
+pnpm exec vitest run recipe-invariants --coverage.enabled=false
+```
+
+Fix failures before presenting the work as done.
 
 ## Common mistakes
 
 | Mistake                                                                    | Fix                                                                                                   |
 | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Editing `1.2.0.json` in place                                              | Copy to `1.3.0.json`, bump `version` field to match                                                   |
-| Bumping patch (`1.2.0` → `1.2.1`) or major                                 | Minor only, unless the designer says otherwise                                                        |
+| Adding a `version` field, or a `recipes/<formId>/` directory               | Recipes are flat `recipes/<formId>.json` files, edited in place                                       |
+| Renaming a recipe file without changing `formId` (or vice versa)           | The filename minus `.json` and the `formId` must match, or the API aborts at boot                     |
 | Radio with 3+ options                                                      | Select for 3+; radio only for exactly 2 (Rule 8)                                                      |
 | Repurposing a semantic component (e.g. `date-of-birth` for an expiry date) | Use the generic primitive with fieldId + label override (CATEGORY 0)                                  |
 | `fieldConditionalOn`/`optionalIf` value set to a display label             | Values are always lowercased + kebab-cased option values (`"christ-church"`, never `"Christ Church"`) |

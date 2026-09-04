@@ -121,6 +121,13 @@ const baseSchema = z
     // to the first CORS_ORIGIN entry in the consuming code.
     FORMS_BASE_URL: urlOrEmpty().default(""),
 
+    // Public landing site origin, substituted into a recipe's `{landingUrl}`
+    // confirmation token so authored links to a service page point at this
+    // environment's landing site. Empty = fall back to prod
+    // (https://alpha.gov.bb) in form-conditions, which is a real page — never
+    // a root-relative link, which would be dead in the applicant's email.
+    LANDING_BASE_URL: urlOrEmpty().default(""),
+
     // EzPay (EZPAY_WEBHOOK_SECRET required only when verify-signature is on)
     EZPAY_BASE_URL: z.url(),
     EZPAY_DEPARTMENT_API_KEYS: requiredStr(),

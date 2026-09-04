@@ -1,26 +1,21 @@
 {
   "formId": "request-an-environmental-health-officer",
-  "title": "Request an environmental health officer",
-  "description": "Request an environmental health officer to attend an event where food or drink is served to the public.",
+  "title": "Request an Environmental Health Officer",
+  "description": "Request an Environmental Health Officer to attend an event where food or drink is served to the public.",
   "createdAt": "2026-08-10T00:00:00Z",
-  "updatedAt": "2026-08-19T00:00:00Z",
-  "contactDetails": {
-    "title": "Ministry of Health and Wellness",
-    "email": "info@health.gov.bb",
-    "telephoneNumber": "+1 (246) 536-3800"
-  },
+  "updatedAt": "2026-08-26T18:00:00Z",
   "processors": [
     {
       "type": "email",
       "config": {
-        "subject": "Your request for an environmental health officer has been received",
+        "subject": "Your request for an Environmental Health Officer has been received",
         "recipientField": "applicant-details.email"
       }
     },
     {
       "type": "email",
       "config": {
-        "subject": "A new request for an environmental health officer has been received",
+        "subject": "A new request for an Environmental Health Officer has been received",
         "recipientField": "catchment.mdaEmail"
       }
     },
@@ -37,7 +32,7 @@
               "applicant-details.applicant-last-name"
             ],
             "email": "applicant-details.email",
-            "phone": "applicant-details.mobile-number"
+            "phone": "applicant-details.telephone"
           },
           "excludeSteps": [
             "check-your-answers",
@@ -63,7 +58,7 @@
           "overrides": {
             "label": "Are you operating a temporary restaurant (serving food) at this event?",
             "fieldId": "operating-restaurant",
-            "hint": "A temporary restaurant is any set-up serving food or drink to the public for 30 days or less. If you are serving food, you also need a temporary restaurant licence — we will collect that in this same form.",
+            "hint": "A temporary restaurant is any set-up serving food or drink to the public for 30 days or less. If directly responsible for food or drink being served, click yes.",
             "options": [
               { "label": "Yes", "value": "yes" },
               { "label": "No", "value": "no" }
@@ -81,7 +76,7 @@
           "overrides": {
             "fieldId": "operating-restaurant-licence-notice",
             "variant": "inset",
-            "content": "Because you are serving food, this request also includes your application for a temporary restaurant licence. We will ask about the food you serve and your food-safety arrangements.",
+            "content": "Because you are serving food, this request also includes your application for a temporary restaurant permit. We will ask about the food you serve and your food-safety arrangements.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -97,7 +92,7 @@
           "overrides": {
             "fieldId": "operating-restaurant-licence-info",
             "variant": "text",
-            "content": "You **do not need** to fill out a separate temporary restaurant licence form.",
+            "content": "You **do not need** to fill out a separate temporary restaurant permit form.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -162,34 +157,17 @@
           }
         },
         {
-          "ref": "components/mobile-telephone",
+          "ref": "components/telephone",
           "overrides": {
-            "label": "Mobile number",
-            "fieldId": "mobile-number",
-            "hint": "We will use your mobile number to contact you. For example, (246) 249 1234."
-          }
-        },
-        {
-          "ref": "components/home-telephone",
-          "overrides": {
-            "label": "Home telephone",
-            "hint": "For example, (246) 433 1234.",
-            "validations": {
-              "required": {
-                "value": false
+            "hint": "We will use this to contact you about your request. For example, (246) 249 1234.",
+            "behaviours": [
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 4,
+                "addAnotherLabel": "Add another telephone number"
               }
-            }
-          }
-        },
-        {
-          "ref": "components/work-telephone",
-          "overrides": {
-            "label": "Work telephone",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
+            ]
           }
         },
         {
@@ -810,7 +788,7 @@
             "fieldId": "water-sanitation-note",
             "variant": "details",
             "summary": "Why we ask about water and sanitation",
-            "content": "Running water is mandatory. A stall without it can be closed on the day, and a licence cannot be issued in advance because an officer has to verify this in place.\n\n**Contact your event organiser to check whether water will be available — but be prepared to bring your own.** Vendors have arrived at events expecting water to be provided and found none. Whoever supplies it, it is your stall that is closed without it.\n\n[Read more about keeping food safe](https://alpha.gov.bb/business-trade/temporary-restaurants-what-you-need-to-know#keeping-food-safe)"
+            "content": "Running water is mandatory. A stall without it can be closed on the day, and a permit cannot be issued in advance because an officer has to verify this in place.\n\n**Contact your event organiser to check whether water will be available — but be prepared to bring your own.** Vendors have arrived at events expecting water to be provided and found none. Whoever supplies it, it is your stall that is closed without it.\n\n[Read more about keeping food safe](https://alpha.gov.bb/business-trade/temporary-restaurants-what-you-need-to-know#keeping-food-safe)"
           }
         },
         {
@@ -880,6 +858,10 @@
                   "image/png"
                 ],
                 "error": "Upload a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }
@@ -894,6 +876,10 @@
               "fileTypes": {
                 "value": ["application/pdf", "image/jpeg", "image/png"],
                 "error": "Upload a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }
@@ -965,6 +951,10 @@
               "fileTypes": {
                 "value": ["application/pdf", "image/jpeg", "image/png"],
                 "error": "Upload a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }
@@ -1042,7 +1032,7 @@
             },
             "options": [
               {
-                "label": "I understand that the event organiser is responsible for the overtime costs of the environmental health officers who provide public health surveillance and inspection during the event.",
+                "label": "I understand that the event organiser is responsible for the overtime costs of the Environmental Health Officers who provide public health surveillance and inspection during the event.",
                 "value": "acknowledged"
               }
             ],
@@ -1060,10 +1050,10 @@
       "stepId": "submission-confirmation",
       "title": "Request submitted",
       "elements": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your request.\n- Environmental health officers will attend on the dates and times you gave. The department will confirm arrangements and any overtime costs.\n- If there are overtime costs, they will send an invoice after the request is approved. The fees are payable in advance to the Accountant General.\n- If you are also operating a temporary restaurant, this request includes your licence application. An officer checks your set-up and issues the licence at the event, not in advance. It is valid for 30 days from the date it is issued.\n\nKeep your reference number for any follow-up."
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your request.\n- The Environmental Health Department will conduct a risk assessment and may require more information including a site plan.\n- The Environmental Health Department will also determine the number and cost of officers to be assigned.\n- If there are overtime costs, they will send an invoice after the request is approved.\n- All monies to be paid to the Consolidated Fund or to the Permanent Secretary of the Ministry of Health and Wellness **two days in advance** of the event.\n- If you are also operating a temporary restaurant, this request includes your permit application.\n- An officer checks your set-up, and if compliant, issues the permit at the event, not in advance. Permits are **non-transferable** - Permits are issued for a specific location and event, and may be valid for 30 days from the date of issue.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n- Branford Taitt Polyclinic - [(246) 536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)\n- David Thompson Health and Social Services Complex - [(246) 536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)\n- Eunice Gibson Polyclinic - [(246) 536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)\n- Maurice Byer Polyclinic - [(246) 536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)\n- Randall Phillips Polyclinic - [(246) 536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)\n- St. Philip Polyclinic - [(246) 536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)\n- Winston Scott Polyclinic - [(246) 536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)"
     }
   ],
   "meta": {
-    "visibility": "draft"
+    "visibility": "preview"
   }
 }

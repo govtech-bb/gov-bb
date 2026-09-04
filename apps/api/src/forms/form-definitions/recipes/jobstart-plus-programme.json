@@ -98,12 +98,12 @@
             "validations": {
               "gt": {
                 "error": "You must be at least 16 years old",
-                "value": "15",
+                "value": 15,
                 "transform": "yearsSince"
               },
               "lt": {
                 "error": "You must be no more than 34 years old",
-                "value": "34",
+                "value": 34,
                 "transform": "yearsSince"
               },
               "required": {
@@ -381,7 +381,7 @@
                 "value": true
               },
               "minLength": {
-                "value": "5"
+                "value": 5
               }
             }
           }
@@ -1275,7 +1275,7 @@
               },
               "minLength": {
                 "error": "This must be at least 4 characters",
-                "value": "4"
+                "value": 4
               }
             }
           }

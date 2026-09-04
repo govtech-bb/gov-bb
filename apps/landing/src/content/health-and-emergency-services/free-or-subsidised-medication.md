@@ -9,6 +9,14 @@ featured: false
 publish_date: '2026-08-18'
 category: health-and-emergency-services
 service_type: information
+keywords:
+  - cheap medicine
+  - cheaper medicine
+  - free medicine
+  - help paying for medicine
+  - prescription subsidy
+  - SBS
+  - Special Benefit Service
 ---
 The Barbados Drug Service can make some prescription medications free or cheaper through the government subsidy (officially the Special Benefit Service). This page explains who can get help, what to bring, and what it costs.
 
@@ -27,8 +35,16 @@ One of these must also apply:
 
 You will also need:
 
--   a prescription from a doctor registered with the Medical Council of Barbados — the doctor can work in the public or private health service
+-   a prescription from a doctor registered with the Medical Council of Barbados. The doctor can work in the public or private health service
 -   a prescription for a medication on the Barbados National Drug Formulary
+
+Not all medication is free, even where a patient is eligible for benefits.
+
+Some medicines or repeat items may still have a cost, including certain antihistamines.
+
+If you are travelling, you can only get up to two months' supply of medication.
+
+You will need to pay for any medication not covered by the Special Benefit Service (SBS).
 
 The Barbados National Drug Formulary is the list of medications covered by the Drug Service.
 
@@ -45,15 +61,8 @@ Special approval is only for government pharmacy use.
 
 ## What to take to the pharmacy
 
--   the prescription
--   original accepted ID for the person the medication is for
-
-Accepted ID can be:
-
--   Barbados National Identification (ID) card
--   Barbados passport
--   Barbados driver's licence
--   child health book, if the medication is for a child
+-   your prescription
+-   original accepted ID for the person the medication is for: a Barbados National Identification (ID) card, passport or child health book. A child health book is only accepted for children up to 6 weeks old. After 6 weeks, an ID card is required.
 
 Photocopies are not accepted.
 
@@ -61,17 +70,15 @@ Photocopies are not accepted.
 
 ## What you may pay
 
-Some medications may still cost money.
-
 -   At a government pharmacy, there is no fee to prepare your medication.
 -   At a private pharmacy that works with the Drug Service, you pay a fee to prepare your medication. This is called a dispensing fee. The amount depends on the medication.
 -   At a private pharmacy that is not part of the Drug Service, you pay the full price.
 
 ## Prescription colour
 
-The colour of your prescription slip — the paper your doctor or clinic gives you — can affect which pharmacies can fill it.
+The colour of your prescription can affect which pharmacies can fill it.
 
-[Check what the prescription slip colours mean](/health-and-emergency-services/prescription-slip-colours)
+[Check what the prescription colours mean](/health-and-emergency-services/prescription-colours)
 
 ## Need help at the pharmacy?
 

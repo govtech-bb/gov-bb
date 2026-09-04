@@ -274,8 +274,8 @@ export function StepEditor({
       {/* Confirmation-page copy. The submission-confirmation step renders this
           markdown ("What happens next") below the submission receipt (#1292).
           Authored here so it round-trips through publish instead of being
-          dropped. Reuses the content CMS's visual editor; linkType "none"
-          hides its Start-button tool, which has no meaning here. */}
+          dropped. Reuses the content CMS's visual editor in the constrained
+          form-content profile. */}
       {showMarkdownEditor && (
         <section className={styles.card}>
           <div className={styles.sectionTitle}>
@@ -283,6 +283,12 @@ export function StepEditor({
           </div>
           <div className={styles.formGroup}>
             <BodyEditor
+              id={`step-${step.stepId}-markdown-content`}
+              ariaLabel={
+                isConfirmation
+                  ? "Confirmation page content"
+                  : `${step.stepId} step content`
+              }
               value={step.markdownContent ?? ""}
               onChange={(next) =>
                 dispatch({
@@ -291,7 +297,7 @@ export function StepEditor({
                   meta: { markdownContent: next || undefined },
                 })
               }
-              linkType="none"
+              profile={{ kind: "form-content" }}
             />
             <span className={styles.fieldHint}>
               {isConfirmation

@@ -2,7 +2,11 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { interpolateConfirmationMarkdown } from "@govtech-bb/form-conditions";
-import { markdownComponents } from "./markdown-components";
+import {
+  markdownComponents,
+  markdownUrlTransform,
+} from "./markdown-components";
+import { LANDING_URL } from "../config/landing";
 import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
 import { SubmissionConfirmationProps } from "../types/props.type";
 
@@ -66,11 +70,15 @@ export default function SubmissionConfirmation({
   } = submissionState;
 
   // Substitute the resolved polyclinic name into the recipe's `{polyclinic}`
-  // token (coordinate-routed forms only). Shared with the applicant email via
+  // token (coordinate-routed forms only), and the landing origin into
+  // `{landingUrl}` so authored links to a service page resolve to this
+  // environment's landing site rather than to the forms host this page is
+  // served from. Shared with the applicant email via
   // interpolateConfirmationMarkdown so the page and email copy can't drift
   // (#2201).
   const resolvedMarkdown = interpolateConfirmationMarkdown(markdownContent, {
     polyclinic,
+    landingUrl: LANDING_URL,
   });
 
   const serviceLabel = paymentDescription || serviceName;
@@ -133,6 +141,7 @@ export default function SubmissionConfirmation({
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={markdownComponents}
+            urlTransform={markdownUrlTransform}
           >
             {resolvedMarkdown}
           </ReactMarkdown>

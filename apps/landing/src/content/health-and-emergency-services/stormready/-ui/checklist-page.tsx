@@ -91,17 +91,17 @@ export function StormReadyChecklistPage() {
         <Heading as="h1" size="h2">
           {TITLE}
         </Heading>
-        <Text as="p" size="caption">
+        <Text as="p" size="body-sm">
           StormReady Barbados — Government of Barbados
         </Text>
-        <Text as="p" className="text-mid-grey-00" size="caption">
+        <Text as="p" className="text-grey-70" size="body-sm">
           Name: _______________________ Date: ______________
         </Text>
       </div>
 
       <div className="flex flex-col gap-xs print:hidden">
         <Heading as="h1">{TITLE}</Heading>
-        <Text as="p" className="text-mid-grey-00">
+        <Text as="p" className="text-grey-70">
           Tick items as you get ready. Save as PDF or print to keep a copy at
           home. Your progress is saved on this device.
         </Text>
@@ -117,7 +117,7 @@ export function StormReadyChecklistPage() {
       </div>
 
       <div className="flex flex-col gap-xs bg-teal-10 p-s print:hidden">
-        <div className="flex justify-between gap-s font-bold text-teal-00">
+        <div className="flex justify-between gap-s font-bold text-teal-80">
           <span>Your progress</span>
           <span>
             {doneCount} of {STORMREADY_CHECKLIST_TOTAL} items
@@ -128,11 +128,11 @@ export function StormReadyChecklistPage() {
           aria-valuemax={STORMREADY_CHECKLIST_TOTAL}
           aria-valuemin={0}
           aria-valuenow={doneCount}
-          className="h-2 overflow-hidden rounded-full bg-grey-00"
+          className="h-2 overflow-hidden rounded-full bg-grey-20"
           role="progressbar"
         >
           <div
-            className="h-full rounded-full bg-teal-00 transition-[width] duration-200"
+            className="h-full rounded-full bg-teal-80 transition-[width] duration-200"
             style={{ width: `${percent}%` }}
           />
         </div>
@@ -143,16 +143,13 @@ export function StormReadyChecklistPage() {
           block, not the flex fieldset. */}
       <div className="flex flex-col gap-m print:block">
         {STORMREADY_CHECKLIST.map((section) => (
-          <div
-            className="print:mb-m print:break-inside-avoid"
-            key={section.id}
-          >
+          <div className="print:mb-m print:break-inside-avoid" key={section.id}>
             <fieldset className="flex flex-col gap-s border-0 p-0">
-              <legend className="w-full border-grey-00 border-b pb-xs">
+              <legend className="w-full border-grey-20 border-b pb-xs">
                 <Heading as="h2">{section.title}</Heading>
               </legend>
               {section.hint && (
-                <Text as="p" className="text-mid-grey-00">
+                <Text as="p" className="text-grey-70">
                   {section.hint}
                 </Text>
               )}
@@ -163,8 +160,8 @@ export function StormReadyChecklistPage() {
                     id={item.id}
                     key={item.id}
                     label={item.label}
-                    onCheckedChange={(checked) =>
-                      setItem(item.id, checked === true)
+                    onChange={(event) =>
+                      setItem(item.id, event.currentTarget.checked)
                     }
                   />
                 ))}

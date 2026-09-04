@@ -36,6 +36,10 @@
  *    this file covers "no" and asserts the food steps are skipped.
  *  - There is no National Registration Number on this form (unlike the licence),
  *    so no Maskito-masked field to type digit-by-digit.
+ *  - The applicant's phone is a single `telephone` fieldArray (min 1, max 4)
+ *    replacing the old mobile/home/work trio. Row 0 keeps the plain
+ *    `${stepId}_telephone` id — only rows 1+ are index-suffixed — so one
+ *    fillField is enough and the "Add another" link is left alone.
  *  - The event address is an address-lookup (geocoder) field, so it cannot take a
  *    free-text faker address — the geocoder must return a real Barbados match to
  *    populate the hidden coordinates the catchment router reads. We faker-pick
@@ -148,7 +152,7 @@ export function buildData() {
     lastName: faker.person.lastName(),
     addressLine1: faker.location.streetAddress(),
     applicantParish: faker.helpers.arrayElement(PARISH_VALUES),
-    mobile: bbMobileNumber(),
+    telephone: bbMobileNumber(),
     // Goes to the monitored test inbox so a real run is verifiable end-to-end.
     applicantEmail: "testing@govtech.bb",
 
@@ -239,7 +243,8 @@ export async function fillGateApplicantAndEvent(
   await fillField(page, step, "applicant-last-name", data.lastName);
   await fillField(page, step, "applicant-address-line-1", data.addressLine1);
   await selectDropdown(page, step, "applicant-parish", data.applicantParish);
-  await fillField(page, step, "mobile-number", data.mobile);
+  // fieldArray row 0 keeps the unsuffixed id — see the header note.
+  await fillField(page, step, "telephone", data.telephone);
   await fillField(page, step, "email", data.applicantEmail);
   await advance(page, step);
 

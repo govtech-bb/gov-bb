@@ -93,6 +93,7 @@ Each service or informational page is authored as a Markdown file under `src/con
 | `stage` | `alpha` flag used by the `/services` list. |
 | `service_type` | `digital` or `information`. |
 | `form_id` | Identifier of the corresponding form in the forms API. Drives **Start now** buttons (see §6). |
+| `keywords` | Curated citizen terms, aliases and abbreviations used by service search. |
 
 The full registry of pages is built at startup from the markdown tree, with category/subcategory validation enforced.
 
@@ -128,16 +129,20 @@ A standalone, alphabetised index of all pages where `stage: alpha` and the slug 
 
 ## 5. Search (`/search-results`)
 
-A client-side full-text search across services, ministries, departments and state bodies, powered by MiniSearch.
+A client-side service search powered by MiniSearch. See [SEARCH.md](./SEARCH.md) for the relevance policy, editorial guidance, regression dataset and quality metrics.
 
 - A search bar appears on the home page, `/services`, and `/search-results`. Submission navigates to `/search-results?q=<query>`.
-- The index is built once from page bodies plus organisation entries; document fields include title, description, body, and a synthesised **keywords** field.
-- The keyword field expands titles into:
-  - **Acronyms** of the org name (e.g. *Barbados Revenue Authority* → BRA).
-  - **Synonyms** for common government terms (tax, licence, health, school, passport, ID, police, pension, business, civil registration, jobs, water, electricity, transport).
-- Search options use boosted weights (`keywords:5, title:4, description:1.5, body:0.3`), AND combination, prefix matching, and fuzzy matching for terms longer than 3 characters. Stopwords are filtered out.
-- Hits are presented as a list with title, description (on desktop), and a kind label (Information service / Ministry / Department / State body).
-- Empty queries show helpful suggestions and a link to browse all services.
+- The index is built once from service entry pages. Service sub-pages such as `/start` are excluded.
+- Title, curated keywords and description determine whether a service is relevant. Body text is supporting evidence only and cannot admit a result.
+- Results prefer strict AND matching, with a one-edit typo allowance for longer terms and final-word prefix matching from 3 characters. If strict matching finds nothing strong, an exact-term fallback requires at least two title/keyword terms and 50% query coverage.
+- Curated frontmatter `keywords` provide abbreviations, spelling variants and citizen terminology. Search does not generate broad global synonyms or title acronyms.
+- Results are ordered by exact title phrase, then complete title, keyword and description coverage before the MiniSearch score is used.
+- Hits are presented as a list with title, description and digital/information service type. Existing visibility and runtime overlay rules are preserved.
+- Queries with no confident result show helpful suggestions and a link to browse all services.
+- Autocomplete starts after three trimmed characters and shows at most five ranked service-title suggestions.
+- Suggestions have a dedicated high-confidence strategy using official-title prefixes, titles and aliases only. They do not use descriptions, body text or the relaxed full-search fallback.
+- Selecting a suggestion submits its official title to `/search-results`; free-text submission remains available.
+- The v29 design-system autocomplete provides the accessible suggestion menu and interactions. Its list stays inline and pushes following content down. The native GET form remains the no-JavaScript fallback.
 
 ---
 

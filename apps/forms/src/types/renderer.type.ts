@@ -1,6 +1,6 @@
 // These will be the types used internally in the system to render a form.
 
-import { ContactDetails, CatchmentRouting } from "@govtech-bb/form-types";
+import { ContactDetails } from "@govtech-bb/form-types";
 import { ClientFormStep } from "./field-mapper.type";
 import { FieldValidationProperties } from "./validation.type";
 import { RepeatableStepSettings } from "./repeatable.type";
@@ -15,12 +15,6 @@ export interface FormMeta {
   contactDetails?: ContactDetails;
   /** Application deadline (#1936); when past, the closed page is shown. */
   closingDateTime?: string;
-  /**
-   * Coordinate-based catchment routing declaration (temp restaurant licence).
-   * Carried so the submit path can populate the parish routing coordinate when
-   * the location was not geocoded, keeping the catchment always resolvable.
-   */
-  catchmentRouting?: CatchmentRouting;
   steps: ClientFormStep[];
   defaultValues: Record<string, unknown>;
   validationProperties: Record<string, FieldValidationProperties>;

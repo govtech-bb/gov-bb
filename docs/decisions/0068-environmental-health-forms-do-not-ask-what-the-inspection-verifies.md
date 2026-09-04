@@ -74,3 +74,25 @@ does not.
   question is built.
 - The rule is specific to services with a statutory on-site inspection. It does
   not generalise to forms whose decision is made purely on the submission.
+
+## Note — on the food business licence the floor plan is invited, not demanded
+
+A later designer pass on `apply-for-food-business-licence` (PR #2377) removed the
+"I do not have a floor plan" toggle and the `planning-application-number` field
+that stood in for the upload. The floor-plan step is now a single **optional**
+upload.
+
+That reads on the "Documents" bullet above as a change of mechanism, not of
+scope. The stand-in existed to keep the form submittable for an applicant whose
+plans were still with Planning; an optional upload achieves the same thing
+without a second question, so the substitute became unnecessary rather than
+being taken away. The plan is still asked for, and the inspection remains the
+backstop when none arrives.
+
+The two facts are coupled: `required` may not come back on that upload unless an
+alternative route comes back with it, or the form strands exactly the applicants
+the toggle was built for. `apply-for-food-business-licence.spec.ts` pins this.
+
+The restaurant licence form took the other route in the same pass, keeping an
+explicit stand-in as `building-plan-number` / `tracking-number-instead`. Either
+shape satisfies this ADR.

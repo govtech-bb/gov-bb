@@ -6,12 +6,11 @@ import { CatchmentRoutingService } from "./catchment-routing.service";
 import {
   CATCHMENT_SUFFIX,
   PARISH_DEFAULTS,
-  PROGRAMME_CODE_OVERRIDES,
   SERVING_CATCHMENT,
 } from "./polyclinic-routing";
 
-const LICENCE_FORM = "apply-for-temporary-restaurant-licence";
-const LICENCE_CODE = "TEMP_RESTAURANT_LICENCE";
+const PERMIT_FORM = "apply-for-temporary-restaurant-permit";
+const PERMIT_CODE = "TEMP_RESTAURANT_PERMIT";
 const OFFICER_FORM = "request-an-environmental-health-officer";
 const OFFICER_CODE = "ENV_HEALTH_OFFICER";
 
@@ -26,20 +25,20 @@ describe("CatchmentRoutingService", () => {
     // "lat,lon" — centroid of the Sir Winston Scott outer ring, confirmed
     // in-polygon (and not in any other catchment) via a throwaway script.
     const r = svc.resolve({
-      formId: LICENCE_FORM,
-      programmeCode: LICENCE_CODE,
+      formId: PERMIT_FORM,
+      programmeCode: PERMIT_CODE,
       coordinates: "13.0901,-59.5861",
     });
     expect(r?.polyclinic).toBe("Sir Winston Scott Polyclinic");
-    expect(r?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT");
+    expect(r?.programmeCode).toBe("TEMP_RESTAURANT_PERMIT_WINSTON_SCOTT");
   });
 
   it("resolves a coordinate inside the MultiPolygon (Maurice Byer) catchment", () => {
     // Centroid of the larger Maurice Byer outer ring (the second polygon in
     // the MultiPolygon), confirmed in-polygon via a throwaway script.
     const r = svc.resolve({
-      formId: LICENCE_FORM,
-      programmeCode: LICENCE_CODE,
+      formId: PERMIT_FORM,
+      programmeCode: PERMIT_CODE,
       coordinates: "13.2716,-59.6044",
     });
     expect(r?.polyclinic).toBe("Maurice Byer Polyclinic");
@@ -47,8 +46,8 @@ describe("CatchmentRoutingService", () => {
 
   it("falls back to parish when coordinates are absent", () => {
     const r = svc.resolve({
-      formId: LICENCE_FORM,
-      programmeCode: LICENCE_CODE,
+      formId: PERMIT_FORM,
+      programmeCode: PERMIT_CODE,
       parish: "christ-church",
     });
     expect(r?.polyclinic).toBe("Randal Phillips Polyclinic");
@@ -56,8 +55,8 @@ describe("CatchmentRoutingService", () => {
 
   it("falls back to parish when coordinates land outside every catchment (sea)", () => {
     const r = svc.resolve({
-      formId: LICENCE_FORM,
-      programmeCode: LICENCE_CODE,
+      formId: PERMIT_FORM,
+      programmeCode: PERMIT_CODE,
       coordinates: "13.5,-60.5",
       parish: "st-michael",
     });
@@ -67,8 +66,8 @@ describe("CatchmentRoutingService", () => {
   it("treats a lon,lat mix-up as offshore and uses the parish", () => {
     // Correct order for the WSS point is 13.0901,-59.5861; reversed lands in the sea.
     const r = svc.resolve({
-      formId: LICENCE_FORM,
-      programmeCode: LICENCE_CODE,
+      formId: PERMIT_FORM,
+      programmeCode: PERMIT_CODE,
       coordinates: "-59.5861,13.0901",
       parish: "st-thomas",
     });
@@ -77,12 +76,12 @@ describe("CatchmentRoutingService", () => {
 
   it("returns null when neither coordinates nor a known parish resolve", () => {
     expect(
-      svc.resolve({ formId: LICENCE_FORM, programmeCode: LICENCE_CODE }),
+      svc.resolve({ formId: PERMIT_FORM, programmeCode: PERMIT_CODE }),
     ).toBeNull();
     expect(
       svc.resolve({
-        formId: LICENCE_FORM,
-        programmeCode: LICENCE_CODE,
+        formId: PERMIT_FORM,
+        programmeCode: PERMIT_CODE,
         parish: "not-a-parish",
       }),
     ).toBeNull();
@@ -95,27 +94,27 @@ describe("CatchmentRoutingService", () => {
     // confirmation page and email show, the code, and the inbox — is
     // St. Philip's.
     const r = svc.resolve({
-      formId: LICENCE_FORM,
-      programmeCode: LICENCE_CODE,
+      formId: PERMIT_FORM,
+      programmeCode: PERMIT_CODE,
       coordinates: "13.1323,-59.5626",
     });
     expect(r?.polyclinic).toBe("St. Philip Polyclinic");
-    expect(r?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_ST_PHILIP");
+    expect(r?.programmeCode).toBe("TEMP_RESTAURANT_PERMIT_ST_PHILIP");
   });
 
   it("falls back to parish when the coordinate string is malformed (wrong part count)", () => {
     expect(
       svc.resolve({
-        formId: LICENCE_FORM,
-        programmeCode: LICENCE_CODE,
+        formId: PERMIT_FORM,
+        programmeCode: PERMIT_CODE,
         coordinates: "13.1",
         parish: "st-michael",
       })?.polyclinic,
     ).toBe("Sir Winston Scott Polyclinic");
     expect(
       svc.resolve({
-        formId: LICENCE_FORM,
-        programmeCode: LICENCE_CODE,
+        formId: PERMIT_FORM,
+        programmeCode: PERMIT_CODE,
         coordinates: "1,2,3",
         parish: "st-michael",
       })?.polyclinic,
@@ -124,18 +123,18 @@ describe("CatchmentRoutingService", () => {
 
   it("falls back to parish when the coordinate string is non-numeric", () => {
     const r = svc.resolve({
-      formId: LICENCE_FORM,
-      programmeCode: LICENCE_CODE,
+      formId: PERMIT_FORM,
+      programmeCode: PERMIT_CODE,
       coordinates: "north,west",
       parish: "st-thomas",
     });
     expect(r?.polyclinic).toBe("Eunice Gibson Polyclinic");
   });
 
-  it("resolves the officer-request formId to its matching ENV_HEALTH_OFFICER_* code for the same coordinate (regression: licence routing unchanged, per-form codes differ)", () => {
-    const licence = svc.resolve({
-      formId: LICENCE_FORM,
-      programmeCode: LICENCE_CODE,
+  it("resolves the officer-request formId to its matching ENV_HEALTH_OFFICER_* code for the same coordinate (regression: permit routing unchanged, per-form codes differ)", () => {
+    const permit = svc.resolve({
+      formId: PERMIT_FORM,
+      programmeCode: PERMIT_CODE,
       coordinates: "13.0901,-59.5861",
     });
     const officer = svc.resolve({
@@ -143,10 +142,8 @@ describe("CatchmentRoutingService", () => {
       programmeCode: OFFICER_CODE,
       coordinates: "13.0901,-59.5861",
     });
-    expect(licence?.polyclinic).toBe("Sir Winston Scott Polyclinic");
-    expect(licence?.programmeCode).toBe(
-      "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
-    );
+    expect(permit?.polyclinic).toBe("Sir Winston Scott Polyclinic");
+    expect(permit?.programmeCode).toBe("TEMP_RESTAURANT_PERMIT_WINSTON_SCOTT");
     expect(officer?.polyclinic).toBe("Sir Winston Scott Polyclinic");
     expect(officer?.programmeCode).toBe("ENV_HEALTH_OFFICER_WINSTON_SCOTT");
   });
@@ -163,22 +160,22 @@ describe("CatchmentRoutingService", () => {
     expect(officer?.polyclinic).toBe("St. Philip Polyclinic");
     expect(officer?.programmeCode).toBe("ENV_HEALTH_OFFICER_ST_PHILIP");
 
-    const licence = svc.resolve({
-      formId: LICENCE_FORM,
-      programmeCode: LICENCE_CODE,
+    const permit = svc.resolve({
+      formId: PERMIT_FORM,
+      programmeCode: PERMIT_CODE,
       coordinates: "13.1323,-59.5626",
     });
-    expect(licence?.polyclinic).toBe("St. Philip Polyclinic");
-    expect(licence?.programmeCode).toBe("TEMP_RESTAURANT_LICENCE_ST_PHILIP");
+    expect(permit?.polyclinic).toBe("St. Philip Polyclinic");
+    expect(permit?.programmeCode).toBe("TEMP_RESTAURANT_PERMIT_ST_PHILIP");
 
     // The parish fallback for st-philip lands on the same resolution, so a
     // geocode outage and a coordinate hit cannot name different polyclinics.
     const byParish = svc.resolve({
-      formId: LICENCE_FORM,
-      programmeCode: LICENCE_CODE,
+      formId: PERMIT_FORM,
+      programmeCode: PERMIT_CODE,
       parish: "st-philip",
     });
-    expect(byParish).toEqual(licence);
+    expect(byParish).toEqual(permit);
   });
 
   it("returns null and logs an error when the recipe supplies no programme code", () => {
@@ -237,15 +234,15 @@ describe("programme codes are unchanged by composition (golden)", () => {
   };
 
   const EXPECTED: Record<string, Record<string, string>> = {
-    "apply-for-temporary-restaurant-licence": {
-      "Branford Taitt Polyclinic": "TEMP_RESTAURANT_LICENCE_BRANFORD_TAITT",
+    "apply-for-temporary-restaurant-permit": {
+      "Branford Taitt Polyclinic": "TEMP_RESTAURANT_PERMIT_BRANFORD_TAITT",
       "David Thompson Health & Social Services Complex":
-        "TEMP_RESTAURANT_LICENCE_DAVID_THOMPSON",
-      "Eunice Gibson Polyclinic": "TEMP_RESTAURANT_LICENCE_EUNICE_GIBSON",
-      "Maurice Byer Polyclinic": "TEMP_RESTAURANT_LICENCE_MAURICE_BYER",
-      "Randal Phillips Polyclinic": "TEMP_RESTAURANT_LICENCE_RANDAL_PHILLIPS",
-      "Sir Winston Scott Polyclinic": "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
-      "St. Philip Polyclinic": "TEMP_RESTAURANT_LICENCE_ST_PHILIP",
+        "TEMP_RESTAURANT_PERMIT_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "TEMP_RESTAURANT_PERMIT_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "TEMP_RESTAURANT_PERMIT_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "TEMP_RESTAURANT_PERMIT_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "TEMP_RESTAURANT_PERMIT_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "TEMP_RESTAURANT_PERMIT_ST_PHILIP",
     },
     "apply-for-restaurant-licence": {
       "Branford Taitt Polyclinic": "RESTAURANT_LICENCE_BRANFORD_TAITT",
@@ -263,9 +260,7 @@ describe("programme codes are unchanged by composition (golden)", () => {
         "ENV_HEALTH_OFFICER_DAVID_THOMPSON",
       "Eunice Gibson Polyclinic": "ENV_HEALTH_OFFICER_EUNICE_GIBSON",
       "Maurice Byer Polyclinic": "ENV_HEALTH_OFFICER_MAURICE_BYER",
-      // Two Ls, unlike the catchment name and every licence code. Deliberate —
-      // see PROGRAMME_CODE_OVERRIDES.
-      "Randal Phillips Polyclinic": "ENV_HEALTH_OFFICER_RANDALL_PHILLIPS",
+      "Randal Phillips Polyclinic": "ENV_HEALTH_OFFICER_RANDAL_PHILLIPS",
       "Sir Winston Scott Polyclinic": "ENV_HEALTH_OFFICER_WINSTON_SCOTT",
       "St. Philip Polyclinic": "ENV_HEALTH_OFFICER_ST_PHILIP",
     },
@@ -279,7 +274,7 @@ describe("programme codes are unchanged by composition (golden)", () => {
       "Sir Winston Scott Polyclinic": "FOOD_BUSINESS_LICENCE_WINSTON_SCOTT",
       "St. Philip Polyclinic": "FOOD_BUSINESS_LICENCE_ST_PHILIP",
     },
-    "hotel-licence-application": {
+    "apply-for-hotel-licence": {
       "Branford Taitt Polyclinic": "HOTEL_LICENCE_BRANFORD_TAITT",
       "David Thompson Health & Social Services Complex":
         "HOTEL_LICENCE_DAVID_THOMPSON",
@@ -288,6 +283,99 @@ describe("programme codes are unchanged by composition (golden)", () => {
       "Randal Phillips Polyclinic": "HOTEL_LICENCE_RANDAL_PHILLIPS",
       "Sir Winston Scott Polyclinic": "HOTEL_LICENCE_WINSTON_SCOTT",
       "St. Philip Polyclinic": "HOTEL_LICENCE_ST_PHILIP",
+    },
+    "apply-for-hair-salon-licence": {
+      "Branford Taitt Polyclinic": "HAIR_SALON_LICENCE_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "HAIR_SALON_LICENCE_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "HAIR_SALON_LICENCE_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "HAIR_SALON_LICENCE_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "HAIR_SALON_LICENCE_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "HAIR_SALON_LICENCE_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "HAIR_SALON_LICENCE_ST_PHILIP",
+    },
+    "apply-for-hairdresser-licence": {
+      "Branford Taitt Polyclinic": "HAIRDRESSER_LICENCE_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "HAIRDRESSER_LICENCE_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "HAIRDRESSER_LICENCE_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "HAIRDRESSER_LICENCE_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "HAIRDRESSER_LICENCE_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "HAIRDRESSER_LICENCE_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "HAIRDRESSER_LICENCE_ST_PHILIP",
+    },
+    "apply-for-swimming-pool-licence": {
+      "Branford Taitt Polyclinic": "SWIMMING_POOL_LICENCE_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "SWIMMING_POOL_LICENCE_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "SWIMMING_POOL_LICENCE_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "SWIMMING_POOL_LICENCE_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "SWIMMING_POOL_LICENCE_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "SWIMMING_POOL_LICENCE_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "SWIMMING_POOL_LICENCE_ST_PHILIP",
+    },
+    "apply-for-funeral-establishment-licence": {
+      "Branford Taitt Polyclinic":
+        "FUNERAL_ESTABLISHMENT_LICENCE_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "FUNERAL_ESTABLISHMENT_LICENCE_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "FUNERAL_ESTABLISHMENT_LICENCE_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "FUNERAL_ESTABLISHMENT_LICENCE_MAURICE_BYER",
+      "Randal Phillips Polyclinic":
+        "FUNERAL_ESTABLISHMENT_LICENCE_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic":
+        "FUNERAL_ESTABLISHMENT_LICENCE_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "FUNERAL_ESTABLISHMENT_LICENCE_ST_PHILIP",
+    },
+    "apply-for-funeral-director-licence": {
+      "Branford Taitt Polyclinic": "FUNERAL_DIRECTOR_LICENCE_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "FUNERAL_DIRECTOR_LICENCE_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "FUNERAL_DIRECTOR_LICENCE_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "FUNERAL_DIRECTOR_LICENCE_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "FUNERAL_DIRECTOR_LICENCE_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "FUNERAL_DIRECTOR_LICENCE_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "FUNERAL_DIRECTOR_LICENCE_ST_PHILIP",
+    },
+    "apply-for-funeral-embalmer-licence": {
+      "Branford Taitt Polyclinic": "FUNERAL_EMBALMER_LICENCE_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "FUNERAL_EMBALMER_LICENCE_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "FUNERAL_EMBALMER_LICENCE_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "FUNERAL_EMBALMER_LICENCE_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "FUNERAL_EMBALMER_LICENCE_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "FUNERAL_EMBALMER_LICENCE_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "FUNERAL_EMBALMER_LICENCE_ST_PHILIP",
+    },
+    "apply-for-offensive-matter-licence": {
+      "Branford Taitt Polyclinic": "OFFENSIVE_MATTER_LICENCE_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "OFFENSIVE_MATTER_LICENCE_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "OFFENSIVE_MATTER_LICENCE_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "OFFENSIVE_MATTER_LICENCE_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "OFFENSIVE_MATTER_LICENCE_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "OFFENSIVE_MATTER_LICENCE_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "OFFENSIVE_MATTER_LICENCE_ST_PHILIP",
+    },
+    "apply-for-offensive-waste-licence": {
+      "Branford Taitt Polyclinic": "OFFENSIVE_WASTE_LICENCE_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "OFFENSIVE_WASTE_LICENCE_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "OFFENSIVE_WASTE_LICENCE_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "OFFENSIVE_WASTE_LICENCE_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "OFFENSIVE_WASTE_LICENCE_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "OFFENSIVE_WASTE_LICENCE_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "OFFENSIVE_WASTE_LICENCE_ST_PHILIP",
+    },
+    "apply-for-lodging-barracks-licence": {
+      "Branford Taitt Polyclinic": "LODGING_BARRACKS_LICENCE_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "LODGING_BARRACKS_LICENCE_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "LODGING_BARRACKS_LICENCE_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "LODGING_BARRACKS_LICENCE_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "LODGING_BARRACKS_LICENCE_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "LODGING_BARRACKS_LICENCE_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "LODGING_BARRACKS_LICENCE_ST_PHILIP",
     },
   };
 
@@ -338,22 +426,6 @@ describe("programme codes are unchanged by composition (golden)", () => {
       .map((f) => f.replace(/\.json$/, ""));
     expect(routed.sort()).toEqual(Object.keys(EXPECTED).sort());
   });
-
-  it("every PROGRAMME_CODE_OVERRIDES formId names a real catchment-routed recipe", () => {
-    // The service validates the catchment names at boot but knows nothing of
-    // recipes, so the formId half of the invariant is asserted here.
-    for (const formId of Object.keys(PROGRAMME_CODE_OVERRIDES)) {
-      const file = path.join(RECIPES_ROOT, `${formId}.json`);
-      expect(fs.existsSync(file), `no recipe file for "${formId}"`).toBe(true);
-      const raw = JSON.parse(fs.readFileSync(file, "utf8")) as {
-        catchmentRouting?: unknown;
-      };
-      expect(
-        raw.catchmentRouting,
-        `"${formId}" has overrides but no catchmentRouting`,
-      ).toBeDefined();
-    }
-  });
 });
 
 describe("CatchmentRoutingService boot validation (mocked data)", () => {
@@ -366,7 +438,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
     const { "Sir Winston Scott Polyclinic": _omit, ...rest } = CATCHMENT_SUFFIX;
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX: rest,
-      PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS,
       SERVING_CATCHMENT,
     }));
@@ -383,7 +454,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
         ...CATCHMENT_SUFFIX,
         "Not A Real Polyclinic": "BOGUS",
       },
-      PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS,
       SERVING_CATCHMENT,
     }));
@@ -403,26 +473,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
         ...CATCHMENT_SUFFIX,
         "Frederick Miller Polyclinic": "FREDERICK_MILLER",
       },
-      PROGRAMME_CODE_OVERRIDES,
-      PARISH_DEFAULTS,
-      SERVING_CATCHMENT,
-    }));
-    vi.resetModules();
-    const { CatchmentRoutingService: Svc } =
-      await import("./catchment-routing.service");
-    const svc = new Svc();
-    expect(() => svc.onModuleInit()).toThrow(/Frederick Miller Polyclinic/);
-  });
-
-  it("throws when an override names a catchment that is no longer served", async () => {
-    vi.doMock("./polyclinic-routing", () => ({
-      CATCHMENT_SUFFIX,
-      PROGRAMME_CODE_OVERRIDES: {
-        [OFFICER_FORM]: {
-          ...PROGRAMME_CODE_OVERRIDES[OFFICER_FORM],
-          "Frederick Miller Polyclinic": "ENV_HEALTH_OFFICER_FREDERICK_MILLER",
-        },
-      },
       PARISH_DEFAULTS,
       SERVING_CATCHMENT,
     }));
@@ -436,7 +486,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
   it("throws when a PARISH_DEFAULTS value names an unknown catchment", async () => {
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX,
-      PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS: {
         ...PARISH_DEFAULTS,
         "st-lucy": "Not A Real Polyclinic",
@@ -453,7 +502,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
   it("throws when SERVING_CATCHMENT redirects a catchment that is not in the GeoJSON", async () => {
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX,
-      PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS,
       SERVING_CATCHMENT: {
         ...SERVING_CATCHMENT,
@@ -470,7 +518,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
   it("throws when SERVING_CATCHMENT points at a catchment that is not in the GeoJSON", async () => {
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX,
-      PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS,
       SERVING_CATCHMENT: {
         "Frederick Miller Polyclinic": "Not A Real Polyclinic",
@@ -486,7 +533,6 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
   it("throws when a SERVING_CATCHMENT target is itself redirected (chain)", async () => {
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX,
-      PROGRAMME_CODE_OVERRIDES,
       PARISH_DEFAULTS,
       SERVING_CATCHMENT: {
         "Frederick Miller Polyclinic": "St. Philip Polyclinic",
@@ -543,7 +589,6 @@ describe("CatchmentRoutingService polygon geometry (mocked GeoJSON)", () => {
   function mockRouting(catchment: string, suffix: string) {
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX: { [catchment]: suffix },
-      PROGRAMME_CODE_OVERRIDES: {},
       PARISH_DEFAULTS: {},
       SERVING_CATCHMENT: {},
     }));

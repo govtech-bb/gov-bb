@@ -1,6 +1,6 @@
 {
   "formId": "mohlm-application-use-state-land",
-  "title": "Application to Use State Land",
+  "title": "Application to use state land",
   "description": "Ministry of Housing, Lands and Maintenance application form for using state land",
   "processors": [
     {
@@ -313,6 +313,10 @@
                   "image/jpeg",
                   "application/pdf"
                 ]
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }

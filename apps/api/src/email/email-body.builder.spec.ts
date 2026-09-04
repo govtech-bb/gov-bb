@@ -3,6 +3,17 @@ import { EmailBodyBuilder, type EmailField } from "./email-body.builder";
 import type { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import type { ServiceContract } from "@govtech-bb/form-types";
 import type { SubmissionCreatedEvent } from "../forms/submissions/submissions.types";
+import type { ConfigService } from "@nestjs/config";
+
+// The builder reads only `app.landingUrl` off ConfigService — the origin
+// substituted into a recipe's `{landingUrl}` confirmation token. Undefined by
+// default so the shared form-conditions fallback applies, matching an env that
+// has not set LANDING_BASE_URL.
+function makeConfig(landingUrl?: string): ConfigService {
+  return {
+    get: (key: string) => (key === "app.landingUrl" ? landingUrl : undefined),
+  } as unknown as ConfigService;
+}
 
 /* ── fixtures ─────────────────────────────────────────────────────────────── */
 
@@ -145,7 +156,7 @@ describe("EmailBodyBuilder", () => {
 
   beforeEach(() => {
     formSvc = makeFormDefinitionsService();
-    builder = new EmailBodyBuilder(formSvc);
+    builder = new EmailBodyBuilder(formSvc, makeConfig());
   });
 
   describe("checkbox-accordion + higher-risk (#2065)", () => {
@@ -208,6 +219,7 @@ describe("EmailBodyBuilder", () => {
     beforeEach(() => {
       builder = new EmailBodyBuilder(
         makeFormDefinitionsService(accordionContract()),
+        makeConfig(),
       );
     });
 
@@ -281,13 +293,140 @@ describe("EmailBodyBuilder", () => {
           },
         ] as unknown as ServiceContract["steps"],
       });
-      builder = new EmailBodyBuilder(makeFormDefinitionsService(contract));
+      builder = new EmailBodyBuilder(
+        makeFormDefinitionsService(contract),
+        makeConfig(),
+      );
 
       const ctx = await builder.build(makePayload());
 
       expect(ctx.markdownHtml).toContain("<h2");
       expect(ctx.markdownHtml).toContain("What happens next");
       expect(ctx.markdownHtml).toContain("We will review your request.");
+    });
+
+    describe("conditional confirmation passages (#2068)", () => {
+      const conditionalMarkdown = [
+        {
+          token: "inspection",
+          default: "An officer **may** arrange an inspection.",
+          variants: [
+            {
+              targetStepId: "food-safety",
+              targetFieldId: "has-food-licence",
+              operator: "equal" as const,
+              value: "no",
+              content: "An officer **will** inspect your set-up.",
+            },
+          ],
+        },
+        {
+          token: "officerRequest",
+          default: "",
+          variants: [
+            {
+              targetStepId: "event-organiser",
+              targetFieldId: "is-organiser",
+              operator: "equal" as const,
+              value: "yes",
+              content: "We have requested an officer to attend.",
+            },
+          ],
+        },
+      ];
+
+      const buildFor = async (hasFoodLicence: string, isOrganiser: string) => {
+        const base = makeContract();
+        const contract = makeContract({
+          steps: [
+            ...base.steps,
+            {
+              stepId: "submission-confirmation",
+              title: "Application submitted",
+              elements: [],
+              markdownContent: "Lead.\n\n{inspection}\n\n{officerRequest}",
+              conditionalMarkdown,
+            },
+          ] as unknown as ServiceContract["steps"],
+        });
+        builder = new EmailBodyBuilder(
+          makeFormDefinitionsService(contract),
+          makeConfig(),
+        );
+        const payload = makePayload();
+        return builder.build({
+          ...payload,
+          values: {
+            ...payload.values,
+            "food-safety": { "has-food-licence": hasFoodLicence },
+            "event-organiser": { "is-organiser": isOrganiser },
+          },
+        } as SubmissionCreatedEvent);
+      };
+
+      // The has-food-licence x is-organiser matrix, on the email surface. The
+      // confirmation page is covered by the same matrix in the forms app.
+      it.each([
+        ["no", "yes", true, true],
+        ["no", "no", true, false],
+        ["yes", "yes", false, true],
+        ["yes", "no", false, false],
+      ] as const)(
+        "has-food-licence=%s is-organiser=%s -> will-inspect=%s officer-requested=%s",
+        async (hasFoodLicence, isOrganiser, willInspect, officerRequested) => {
+          const ctx = await buildFor(hasFoodLicence, isOrganiser);
+          const html = ctx.markdownHtml ?? "";
+
+          expect(html).toContain(
+            willInspect
+              ? "will</strong> inspect your set-up."
+              : "may</strong> arrange an inspection.",
+          );
+          expect(html).not.toContain(
+            willInspect
+              ? "may</strong> arrange an inspection."
+              : "will</strong> inspect your set-up.",
+          );
+
+          expect(html.includes("We have requested an officer to attend.")).toBe(
+            officerRequested,
+          );
+
+          // A token must never survive to the applicant's inbox.
+          expect(html).not.toContain("{inspection}");
+          expect(html).not.toContain("{officerRequest}");
+        },
+      );
+
+      it("falls back to the neutral passages when the answers are absent", async () => {
+        const base = makeContract();
+        const contract = makeContract({
+          steps: [
+            ...base.steps,
+            {
+              stepId: "submission-confirmation",
+              title: "Application submitted",
+              elements: [],
+              markdownContent: "Lead.\n\n{inspection}\n\n{officerRequest}",
+              conditionalMarkdown,
+            },
+          ] as unknown as ServiceContract["steps"],
+        });
+        builder = new EmailBodyBuilder(
+          makeFormDefinitionsService(contract),
+          makeConfig(),
+        );
+
+        const ctx = await builder.build(makePayload());
+
+        expect(ctx.markdownHtml).toContain(
+          "may</strong> arrange an inspection.",
+        );
+        expect(ctx.markdownHtml).not.toContain(
+          "We have requested an officer to attend.",
+        );
+        expect(ctx.markdownHtml).not.toContain("{inspection}");
+      });
     });
 
     it("substitutes the resolved polyclinic into the {polyclinic} token", async () => {
@@ -304,13 +443,16 @@ describe("EmailBodyBuilder", () => {
           },
         ] as unknown as ServiceContract["steps"],
       });
-      builder = new EmailBodyBuilder(makeFormDefinitionsService(contract));
+      builder = new EmailBodyBuilder(
+        makeFormDefinitionsService(contract),
+        makeConfig(),
+      );
 
       const ctx = await builder.build(
         makePayload({
           resolvedCatchment: {
             polyclinic: "Maurice Byer Polyclinic",
-            programmeCode: "TEMP_RESTAURANT_LICENCE_MAURICE_BYER",
+            programmeCode: "TEMP_RESTAURANT_PERMIT_MAURICE_BYER",
           },
         }),
       );
@@ -333,12 +475,67 @@ describe("EmailBodyBuilder", () => {
           },
         ] as unknown as ServiceContract["steps"],
       });
-      builder = new EmailBodyBuilder(makeFormDefinitionsService(contract));
+      builder = new EmailBodyBuilder(
+        makeFormDefinitionsService(contract),
+        makeConfig(),
+      );
 
       const ctx = await builder.build(makePayload());
 
       expect(ctx.markdownHtml).toContain("your local polyclinic");
       expect(ctx.markdownHtml).not.toContain("{polyclinic}");
+    });
+
+    it("substitutes the configured landing origin into the {landingUrl} token", async () => {
+      const base = makeContract();
+      const contract = makeContract({
+        steps: [
+          ...base.steps,
+          {
+            stepId: "submission-confirmation",
+            title: "Application submitted",
+            elements: [],
+            markdownContent:
+              "See [mass events]({landingUrl}/business-trade/guide#anchor).",
+          },
+        ] as unknown as ServiceContract["steps"],
+      });
+      builder = new EmailBodyBuilder(
+        makeFormDefinitionsService(contract),
+        makeConfig("https://landing.sandbox.alpha.gov.bb"),
+      );
+
+      const ctx = await builder.build(makePayload());
+
+      // Absolute, and pointing at this environment's landing site — an email
+      // has no base URL, so a root-relative href would be a dead link.
+      expect(ctx.markdownHtml).toContain(
+        'href="https://landing.sandbox.alpha.gov.bb/business-trade/guide#anchor"',
+      );
+      expect(ctx.markdownHtml).not.toContain("{landingUrl}");
+    });
+
+    it("falls back to the prod landing origin when LANDING_BASE_URL is unset", async () => {
+      const base = makeContract();
+      const contract = makeContract({
+        steps: [
+          ...base.steps,
+          {
+            stepId: "submission-confirmation",
+            title: "Application submitted",
+            elements: [],
+            markdownContent: "See [guidance]({landingUrl}/a-page).",
+          },
+        ] as unknown as ServiceContract["steps"],
+      });
+      builder = new EmailBodyBuilder(
+        makeFormDefinitionsService(contract),
+        makeConfig(),
+      );
+
+      const ctx = await builder.build(makePayload());
+
+      expect(ctx.markdownHtml).toContain('href="https://alpha.gov.bb/a-page"');
     });
 
     it("leaves markdownHtml undefined when the form authors none", async () => {
@@ -431,6 +628,7 @@ describe("EmailBodyBuilder", () => {
       it("uses the conditional title when its condition matches", async () => {
         builder = new EmailBodyBuilder(
           makeFormDefinitionsService(contractWithConditionalTitle),
+          makeConfig(),
         );
         const ctx = await builder.build(payloadFor("self"));
         expect(ctx.sections[0].title).toBe("Your details");
@@ -439,6 +637,7 @@ describe("EmailBodyBuilder", () => {
       it("falls back to the static title when no condition matches", async () => {
         builder = new EmailBodyBuilder(
           makeFormDefinitionsService(contractWithConditionalTitle),
+          makeConfig(),
         );
         const ctx = await builder.build(payloadFor("someone-else"));
         expect(ctx.sections[0].title).toBe("Their details");
@@ -502,6 +701,7 @@ describe("EmailBodyBuilder", () => {
       it("omits the declaration section from the feedback email", async () => {
         builder = new EmailBodyBuilder(
           makeFormDefinitionsService(withDeclaration("chat-feedback")),
+          makeConfig(),
         );
         const ctx = await builder.build(declarationPayload("chat-feedback"));
 
@@ -512,6 +712,7 @@ describe("EmailBodyBuilder", () => {
       it("keeps the declaration section for a real form (audit record)", async () => {
         builder = new EmailBodyBuilder(
           makeFormDefinitionsService(withDeclaration("get-birth-certificate")),
+          makeConfig(),
         );
         const ctx = await builder.build(
           declarationPayload("get-birth-certificate"),
@@ -537,6 +738,20 @@ describe("EmailBodyBuilder", () => {
       const field = ctx.sections[0].fields.find((f) => f.label === "Gender");
 
       expect(field?.value).toBe("Female");
+    });
+
+    it("joins multi-value string answers with ', '", async () => {
+      // A fieldArray / opening-hours answer is a plain string[]: it must
+      // join like every other list, not String()'s bare-comma join.
+      const payload = makePayload();
+      (payload.values.contact as Record<string, unknown>).phone = [
+        "Monday 09:00 - 17:00",
+        "Tuesday 09:00 - 17:00",
+      ];
+      const ctx = await builder.build(payload);
+      const field = ctx.sections[1].fields.find((f) => f.label === "Phone");
+
+      expect(field?.value).toBe("Monday 09:00 - 17:00, Tuesday 09:00 - 17:00");
     });
 
     it("resolves checkbox values to joined option labels", async () => {
@@ -668,6 +883,50 @@ describe("EmailBodyBuilder", () => {
       );
     });
 
+    // A `ui.hidden` field is machine-written and has no label worth reading —
+    // the geocoded routing coordinate is the only one in production. It carries
+    // data (the CMS payload needs it) but the applicant was never shown it, and
+    // check-your-answers filters it out (review.tsx), so an email that prints
+    // "Address coordinates: 13.09,-59.57" shows the citizen and the polyclinic a
+    // row neither asked for and neither can act on.
+    it("omits ui.hidden fields such as the geocoded routing coordinate", async () => {
+      const contract = makeContract();
+      contract.steps[0].elements.push({
+        fieldId: "addressCoordinates",
+        label: "Address coordinates",
+        htmlType: "text",
+        ui: { hidden: true },
+      });
+      const payload = makePayload();
+      (payload.values.personal as Record<string, unknown>).addressCoordinates =
+        "13.097442,-59.575067";
+      payload.meta.activeFieldIds["personal"] = [
+        "firstName",
+        "lastName",
+        "gender",
+        "interests",
+        "country",
+        "languages",
+        "dob",
+        "addressCoordinates",
+      ];
+
+      formSvc = makeFormDefinitionsService(contract);
+      builder = new EmailBodyBuilder(formSvc, makeConfig());
+
+      const ctx = await builder.build(payload);
+      const personal = ctx.sections.find(
+        (s) => s.title === "Personal Information",
+      );
+
+      expect(personal?.fields.map((f) => f.label)).not.toContain(
+        "Address coordinates",
+      );
+      expect(personal?.fields.map((f) => f.value)).not.toContain(
+        "13.097442,-59.575067",
+      );
+    });
+
     it("omits fields listed in hiddenFieldIds", async () => {
       const payload = makePayload();
       payload.meta.hiddenFieldIds = { personal: ["lastName"] };
@@ -686,7 +945,7 @@ describe("EmailBodyBuilder", () => {
         htmlType: "show-hide",
       });
       formSvc = makeFormDefinitionsService(contract);
-      builder = new EmailBodyBuilder(formSvc);
+      builder = new EmailBodyBuilder(formSvc, makeConfig());
 
       const payload = makePayload();
       payload.meta.activeFieldIds["personal"] = [
@@ -715,7 +974,7 @@ describe("EmailBodyBuilder", () => {
         variant: "inset",
       });
       formSvc = makeFormDefinitionsService(contract);
-      builder = new EmailBodyBuilder(formSvc);
+      builder = new EmailBodyBuilder(formSvc, makeConfig());
 
       const payload = makePayload();
       payload.meta.activeFieldIds["personal"] = [
@@ -808,7 +1067,7 @@ describe("EmailBodyBuilder", () => {
 
     beforeEach(() => {
       formSvc = makeFormDefinitionsService(makeFileContract());
-      builder = new EmailBodyBuilder(formSvc);
+      builder = new EmailBodyBuilder(formSvc, makeConfig());
     });
 
     it("renders an uploaded file's filename", async () => {
@@ -913,7 +1172,7 @@ describe("EmailBodyBuilder", () => {
 
     it("emits one section per repeatable instance when values is an array", async () => {
       formSvc = makeFormDefinitionsService(makeRepeatableContract());
-      builder = new EmailBodyBuilder(formSvc);
+      builder = new EmailBodyBuilder(formSvc, makeConfig());
 
       const payload = makePayload({
         values: {
@@ -952,7 +1211,7 @@ describe("EmailBodyBuilder", () => {
 
     it("omits the instance index when there is only one repeatable instance", async () => {
       formSvc = makeFormDefinitionsService(makeRepeatableContract());
-      builder = new EmailBodyBuilder(formSvc);
+      builder = new EmailBodyBuilder(formSvc, makeConfig());
 
       const payload = makePayload({
         values: {
@@ -982,7 +1241,7 @@ describe("EmailBodyBuilder", () => {
 
     it("skips repeatable instances whose every field is empty", async () => {
       formSvc = makeFormDefinitionsService(makeRepeatableContract());
-      builder = new EmailBodyBuilder(formSvc);
+      builder = new EmailBodyBuilder(formSvc, makeConfig());
 
       const payload = makePayload({
         values: {
@@ -1110,7 +1369,7 @@ describe("EmailBodyBuilder", () => {
         email: "mda@gov.bb",
       };
       formSvc = makeFormDefinitionsService(makeContract({ contactDetails }));
-      builder = new EmailBodyBuilder(formSvc);
+      builder = new EmailBodyBuilder(formSvc, makeConfig());
 
       const result = await builder.resolveContactDetails(makePayload());
 

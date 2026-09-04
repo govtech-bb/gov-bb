@@ -9,6 +9,11 @@ featured: false
 publish_date: 2026-07-22
 categories:
   - money-financial-support
+keywords:
+  - NIS
+  - NISSS
+  - self-employed contributions
+  - pay contributions
 ---
 
 ## Who this is for
@@ -50,6 +55,7 @@ Have your National Insurance number ready. You can pay:
 
 - online through SurePay
 - online through EZpay+
+- online through CIBC FirstPay
 - through a bank
 - in person at the NIS office, Frank Walcott Building, Culloden Road, St. Michael
 

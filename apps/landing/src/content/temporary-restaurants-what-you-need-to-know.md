@@ -2,15 +2,15 @@
 title: 'Temporary restaurants: what you need to know'
 description: >-
   What counts as a temporary restaurant in Barbados, who must apply for a
-  licence, and what your event needs — including food safety, paying for
-  environmental health officers, and setting up your stall.
+  permit, and what your event needs — including food safety, paying for
+  Environmental Health Officers, and setting up your stall.
 stage: alpha
 visibility: public
 service_type: information
-publish_date: '2026-08-20'
+publish_date: '2026-08-24'
 category: business-trade
 ---
-This page explains the rules for temporary restaurants — who needs a licence, what it costs and what to have ready. It covers [applying for a temporary restaurant licence](https://landing.sandbox.alpha.gov.bb/business-trade/apply-for-temporary-restaurant-licence) and [requesting an environmental health officer](https://landing.sandbox.alpha.gov.bb/business-trade/request-an-environmental-health-officer).
+This page explains the rules for temporary restaurants — who needs a permit, what it costs and what to have ready. It covers [applying for a temporary restaurant permit](/business-trade/apply-for-temporary-restaurant-permit) and [requesting an environmental health officer](/business-trade/request-an-environmental-health-officer).
 
 ## What counts as a temporary restaurant
 
@@ -24,40 +24,43 @@ In law, a temporary restaurant is “a restaurant which operates for a period no
 
 In law, food is “any substance, whether processed, semi-processed or raw, which is intended for human consumption and includes drink, chewing gum and other substances which are used in the manufacture or treatment of food, but does not include cosmetics, tobacco or substances used only as drugs” (Health Services (Food Hygiene) Regulations, 1969).
 
-You need a licence if you will serve or offer for sale, any food or drink, wether carried on for profit or not. This also includes **bars, snacks** and **confectioneries**, **free samples or product promotions**.
+You need a permit if you will serve or offer for sale, any food or drink, whether carried on for profit or not. This also includes **bars, snacks** and **confectioneries**, **free samples or product promotions**.
 
-[Apply for a licence](https://landing.sandbox.alpha.gov.bb/business-trade/apply-for-temporary-restaurant-licence)
+[Apply for a permit](/business-trade/apply-for-temporary-restaurant-permit)
 
 ## Who needs to apply
 
 Both the event organiser and each food vendor must apply. If you are a vendor, make your own application for each stall you will operate.
 
-If someone else is organising the event, ask for a letter confirming you granted permission to operate.  You will need to upload it with your application.
+If your event is likely to draw large crowds, the Environmental Health Department will assign officers to it.
+
+If someone else is organising the event, ask them for a letter confirming they have given you permission to operate. You will need to upload it with your application.
 
 Apply at least **14 days** before the event.
 
 ## Before the event
 
--   Everyone handling food must have a valid medical certificate, and have it during the event.
--   Your licence will be issued at the event by the Environmental Health Officer, at the completion and successful compliance to the EHD standards.
--   All licences should be kept it at your stall.
--   Temporary permits may be granted by the EHD based on a risk based assessment.
+-   Everyone handling food must get a valid medical certificate, and have it during the event.
+-   To obtain a medical certificate in Barbados, you can visit a private doctor, private clinic or public polyclinic.
+-   Your permit will be issued at the event by the Environmental Health Officer, at the completion and successful compliance to the Environmental Health Department standards.
+-   Keep your permit at your stall.
+-   Some temporary permits may be granted by the Environmental Health Department based on a risk based assessment.
 
-## Paying for environmental health officers
+## Paying for Environmental Health Officers
 
-There is no application fee. If you are organising the event, you must pay any overtime costs for the officers allocated to the event by the Ministry of Health and Wellness.
+There is no application fee. If you are organising the event and it falls outside normal working hours, you must pay any overtime costs for the officers allocated to the event by the Ministry of Health and Wellness. An invoice will be sent after you submit your application.
 
--   The fees are **payable in advance**, to the Accountant General or the Permanent Secretary of the Ministry of Health and Wellness— not to the polyclinic. This is set by regulation 7(2) of the Health Services (Assignment of Public Health Inspectors to Private Businesses) Regulations, 1986.
+-   The overtime fees are **payable in advance**, to the Accountant General or the Permanent Secretary of the Ministry of Health and Wellness— do not make cheques payable to the polyclinic. This is set by regulation 7(2) of the Health Services (Assignment of Public Health Inspectors to Private Businesses) Regulations, 1986.
 -   Pay at least 2 days before the event.
 -   Pay by cash or cheque only. Make cheques payable to the Accountant General.
--   Take your payment with copy of the invoices to the polyclinic or to the Environment Health Department, Ministry of Health and Wellness, Frank Walcott Building, National Insurance Building, Culloden Road, St Michael.
+-   Take your payment with a copy of the invoice to the polyclinic or to the Environmental Health Department, Ministry of Health and Wellness, Frank Walcott Building, Culloden Road, St Michael.
 -   You will get a receipt.
 
-[Request an environmental health officer](https://landing.sandbox.alpha.gov.bb/business-trade/request-an-environmental-health-officer)
+[Request an environmental health officer](/business-trade/request-an-environmental-health-officer)
 
 ## What counts as a mass event
 
-A mass event or mass gathering is generally defined as a large-scale public assembly that includes but not limited to; a festival, concert, sporting match, a fair, fete, wedding, breakfast party or a jouvert —where a high concentration of people strains health and sanitation resources, triggering special response from the Environmental Health Department, issuing of temporary restaurant licenses and strict food safety protocols.
+A mass event or mass gathering is generally defined as a large-scale public assembly that includes but not limited to: a festival, concert, sporting match, a fair, fete, wedding, breakfast party or a j'ouvert —where a high concentration of people strains health and sanitation resources, triggering special response from the Environmental Health Department, issuing of temporary restaurant permits and strict food safety protocols.
 
 ## Setting up your stall
 
@@ -125,4 +128,4 @@ You do not need to choose a polyclinic. When you apply, your application will be
 
 -   Telephone: [1 (246) 536-3800](tel:+12465363800)
 -   Email: [info@health.gov.bb](mailto:info@health.gov.bb)
--   Frank Walcott Building, Culloden Road, St. Michael
+-   Frank Walcott Building, Culloden Road, St Michael

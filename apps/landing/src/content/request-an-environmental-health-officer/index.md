@@ -1,7 +1,7 @@
 ---
-title: Request an environmental health officer
+title: Request an Environmental Health Officer
 description: >-
-  Event organisers in Barbados can request an environmental health officer to
+  Event organisers in Barbados can request an Environmental Health Officer to
   attend an event where food or drink is served to the public.
 stage: alpha
 visibility: preview
@@ -11,52 +11,67 @@ category: business-trade
 form_id: request-an-environmental-health-officer
 service_type: digital
 ---
-Use this service to request an environmental health officer to attend your event. This is required whenever food or drink is served to the public.
 
-The first question asks whether you are operating a temporary restaurant — that is, serving food yourself. If you are, this same service also completes your **temporary restaurant licence** application. You will be asked about the food and drink you serve, your food-safety arrangements, and asked to upload your own medical certificate.
+Use this service to request an Environmental Health Officer to attend your event. This is required whenever food or drink is served to the public at a [mass event](/business-trade/temporary-restaurants-what-you-need-to-know#what-counts-as-a-mass-event).
 
-## Who needs to request an officer
+## Who is this for
 
-The event organiser makes this request. Individual food vendors do not — but each vendor must apply for their own [licence to operate a temporary restaurant](/business-trade/apply-for-temporary-restaurant-licence).
+- You need to request the attendance of Environmental Health Officers if you are the organiser of a mass event where food or drink will be served.
+- If you are also directly responsible for food or drink being served, this form will cover both requesting an Environmental Health Officer and the application for a temporary restaurant permit. Review the [full requirements here](/business-trade/apply-for-temporary-restaurant-permit).
 
-Read [what counts as a temporary restaurant and what your event needs](/business-trade/temporary-restaurants-what-you-need-to-know#what-counts-as-a-temporary-restaurant).
+## Before you start
 
-## When to apply and what it costs
+You will need:
+
+- Your name, address, phone number and email address
+- The name and address of the event, and the dates and times it will run
+- The expected number of patrons, and the number of food stalls including bars
+- A list of the food vendors taking part
+- A [site or stall plan](/business-trade/temporary-restaurants-what-you-need-to-know#setting-up-your-stall)
+
+If directly responsible for food or drink being served, check list [here](/business-trade/temporary-restaurants-what-you-need-to-know#paying-for-environmental-health-officers).
+
+## When to apply
 
 Apply at least **14 days** before your event, so officers can be scheduled to attend.
 
-There is no fee to request an officer. If there are overtime costs for officers attending, those fees are **payable in advance to the Accountant General** — the polyclinic will tell you the amount after your request is approved. See [how to pay](/business-trade/temporary-restaurants-what-you-need-to-know#paying-for-environmental-health-officers).
+## Complete the form
 
-## What you will need
+There are 2 ways to request an Environmental Health Officer at your event. You can:
 
--   Your name, address, phone number and email address
--   The name and address of the event, and the dates and times it will run
--   The expected number of patrons, and the number of food stalls including bars
--   A list of the food vendors taking part
--   A [site or stall plan](/business-trade/temporary-restaurants-what-you-need-to-know#setting-up-your-stall)
+1. ### Apply online
 
-If you are serving food, and so also need a licence, you will also need:
+   Allow about 10 - 15 minutes to complete the form.
 
--   The food and drink you will serve, and where you will get it from
--   Your food-safety arrangements — water, handwashing, waste disposal, and the number of food handlers
--   Your own medical certificate. Everyone else working with you must carry theirs on the day
--   Hairnets, beard nets and clean covered clothing for everyone handling food, and no jewellery, false nails, false eyelashes, make-up or perfume ([see the full list](/business-trade/temporary-restaurants-what-you-need-to-know#personal-hygiene-for-food-handlers))
--   If you have one, a copy of your food business licence
+   <a data-start-link>Start now</a>
 
-<a data-start-link>Start now</a>
+2. ### Get a paper application from the polyclinic
 
-You can also make this request in person at your nearest polyclinic while we introduce this online service.
+   You must complete it by hand and submit the application to the polyclinic associated with the area where the event will be held. If you require further information or assistance, contact the polyclinic - information can be found at the bottom of this page.
 
-## What happens next
+## Cost
 
--   The Environmental Health Department where you have applied to will review your application.
--   They will contact you to arrange the officers' attendance.
--   If there are overtime costs, they will send an invoice after the request is approved.
+There is no fee to request an officer. If there are overtime costs for officers attending, those fees are **payable in advance to the Accountant General** - the polyclinic will tell you the amount after your request is approved. See [how to pay](/business-trade/temporary-restaurants-what-you-need-to-know#paying-for-environmental-health-officers).
 
-## Contact us
+## What happens after you apply
 
-If you need help, contact the Ministry of Health and Wellness.
+- Your application goes to the Environmental Health Department associated with the polyclinic closest to the location of your event.
+- After they review your application, they will contact you to arrange the officers' attendance.
+- The Environmental Health Department will conduct a risk assessment and may require more information including a site plan.
+- The Environmental Health Department will also determine the number and cost of officers to be assigned.
+- If there are overtime costs, they will send an invoice after the request is approved.
+- All monies to be paid to the Consolidated Fund or to the Permanent Secretary of the Ministry of Health and Wellness **two days in advance** of the event.
+- If you are also operating a temporary restaurant, this request includes your permit application.
+- An officer checks your set-up, and if compliant, issues the permit at the event, not in advance. Permits are **non-transferable** - Permits are issued for a specific location and event, and may be valid for 30 days from the date of issue.
 
-Telephone: [(246) 536-3800](tel:+12465363800)
+## Contact
 
-Email: [info@health.gov.bb](mailto:info@health.gov.bb)
+If you need help, contact the Environmental Health Service office for your area.
+
+- Branford Taitt Polyclinic: [(246) 536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)
+- David Thompson Health and Social Services Complex: [(246) 536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)
+- Eunice Gibson Polyclinic: [(246) 536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)
+- Maurice Byer Polyclinic: [(246) 536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)
+- Randall Phillips Polyclinic: [(246) 536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)
+- St. Philip Polyclinic: [(246) 536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)
+- Winston Scott Polyclinic: [(246) 536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)

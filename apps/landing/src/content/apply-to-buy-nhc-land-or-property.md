@@ -10,12 +10,15 @@ publish_date: '2026-08-05'
 category: housing
 visibility: preview
 form_id: nhc-land-property-application
+keywords:
+  - NHC
+  - National Housing Corporation
 ---
 The National Housing Corporation (NHC) sells land and homes to people who do not already own land or property. Use this service to apply to buy an NHC lot or house.
 
 ## Who can apply
 
-You can apply if you **do not already own land or property**. NHC does not sell to people who already own land or a home.
+You can apply if you **do not already own land or property**. People who already own land or a home are not eligible.
 
 You can apply on your own, or with a co-applicant, such as a partner or family member who will live in the home with you.
 

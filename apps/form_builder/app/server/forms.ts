@@ -104,6 +104,11 @@ export const listForms = createServerFn({ method: "GET" })
         disabledIds.has(f.formId) &&
         !draftIds.has(f.formId) &&
         !publishedIds.has(f.formId),
+      // #2411: the merge above prefers a draft row and then ORs `isPublished`
+      // back on, so the row's existence is otherwise unrecoverable downstream.
+      // The picker needs it to know whether a published form is being shadowed
+      // by a working copy — the only case where deleting the row does anything.
+      hasDraftRow: draftIds.has(f.formId),
     }));
   });
 

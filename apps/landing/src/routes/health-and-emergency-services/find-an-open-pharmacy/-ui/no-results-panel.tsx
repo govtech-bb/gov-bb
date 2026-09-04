@@ -1,6 +1,6 @@
 /**
  * No-results state: names why nothing matched, then offers a way back for
- * each filter that excluded something — with the count it would restore
+ * each filter that excluded something - with the count it would restore
  * ("never a dead end").
  */
 
@@ -23,10 +23,12 @@ export function NoResultsPanel({
   now: Date | null
   dispatch: (action: FilterAction) => void
 }) {
-  const relaxed = (overrides: Partial<FilterState>) =>
-    PHARMACIES.filter((pharmacy) =>
-      matchesFilters(pharmacy, { ...filters, ...overrides }, now),
+  const relaxed = (overrides: Partial<FilterState>) => {
+    const relaxedFilters = { ...filters, ...overrides }
+    return PHARMACIES.filter((pharmacy) =>
+      matchesFilters(pharmacy, relaxedFilters, now),
     )
+  }
 
   const hatches: {
     key: string
@@ -57,7 +59,7 @@ export function NoResultsPanel({
     const anyParish = relaxed({ parishes: [] })
     if (anyParish.length > 0) {
       const stLucy = filters.parishes.includes('St. Lucy')
-        ? ' St. Lucy has no pharmacy listed — the nearest are in Speightstown, St. Peter.'
+        ? ' St. Lucy has no pharmacy listed. The nearest are in Speightstown, St. Peter.'
         : ''
       hatches.push({
         key: 'parishes',
@@ -85,20 +87,20 @@ export function NoResultsPanel({
     if (anySlip.length > 0) {
       hatches.push({
         key: 'slip',
-        label: 'Show pharmacies for any slip colour',
-        caption: `${anySlip.length} of the ${PHARMACY_COUNT} pharmacies would match — check your slip is accepted before you travel.`,
+        label: 'Show pharmacies for any prescription colour',
+        caption: `${anySlip.length} of the ${PHARMACY_COUNT} pharmacies would match. Check your prescription is accepted before you travel.`,
         action: { type: 'set-slip', value: 'any' },
       })
     }
   }
 
   if (filters.subsidisedOnly) {
-    const includingUnconfirmed = relaxed({ subsidisedOnly: false })
-    if (includingUnconfirmed.length > 0) {
+    const includingFullPrice = relaxed({ subsidisedOnly: false })
+    if (includingFullPrice.length > 0) {
       hatches.push({
         key: 'subsidised',
-        label: 'Include pharmacies not confirmed in the subsidy',
-        caption: `${includingUnconfirmed.length} of the ${PHARMACY_COUNT} pharmacies would match — their subsidy status is not confirmed, so call to check.`,
+        label: 'Include pharmacies outside the subsidy',
+        caption: `${includingFullPrice.length} of the ${PHARMACY_COUNT} pharmacies would match. They are not in the subsidy, so you pay the full price.`,
         action: { type: 'set-subsidised-only', value: false },
       })
     }
@@ -116,7 +118,7 @@ export function NoResultsPanel({
     }
   }
 
-  // Relaxing one filter alone restores nothing — offer the full reset.
+  // Relaxing one filter alone restores nothing - offer the full reset.
   if (hatches.length === 0) {
     hatches.push({
       key: 'all',
@@ -127,7 +129,7 @@ export function NoResultsPanel({
   }
 
   return (
-    <div className="flex flex-col gap-s rounded-lg bg-grey-00 p-s">
+    <div className="flex flex-col gap-s rounded-lg bg-grey-20 p-s">
       <Heading as="h3" size="h4">
         No pharmacies match your search
       </Heading>
@@ -136,14 +138,14 @@ export function NoResultsPanel({
         {hatches.map((hatch) => (
           <li key={hatch.key}>
             <button
-              className="flex w-full flex-col gap-xxs rounded-md bg-white-00 p-s text-left outline-offset-2 hover:outline hover:outline-2 hover:outline-green-00"
+              className="flex w-full flex-col gap-xxs rounded-md bg-white-00 p-s text-left outline-offset-2 hover:outline hover:outline-2 hover:outline-green-80"
               onClick={() => dispatch(hatch.action)}
               type="button"
             >
-              <span className="font-semibold text-green-00 underline">
+              <Text as="span" className="text-green-80 underline" weight="bold">
                 {hatch.label}
-              </span>
-              <Text as="span" className="text-mid-grey-00" size="caption">
+              </Text>
+              <Text as="span" className="text-grey-70" size="body-sm">
                 {hatch.caption}
               </Text>
             </button>
@@ -166,14 +168,14 @@ function noResultsReason(filters: FilterState): string {
     sentence += ` matching “${query}”`
   }
   if (filters.slip !== 'any') {
-    sentence += ` accepting a ${filters.slip} slip`
+    sentence += ` accepting a ${filters.slip} prescription`
   }
   if (filters.parishes.length > 0) {
     sentence += ` in ${listJoin(filters.parishes)}`
   }
   sentence += filters.openNow ? ' are open right now.' : ' were found.'
   if (filters.subsidisedOnly && filters.type !== 'government') {
-    sentence += ' Pharmacies not confirmed in the subsidy were hidden.'
+    sentence += ' Pharmacies outside the subsidy were hidden.'
   }
   return sentence
 }

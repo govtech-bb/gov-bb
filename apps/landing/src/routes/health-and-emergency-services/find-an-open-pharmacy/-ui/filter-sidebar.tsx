@@ -1,15 +1,22 @@
 /**
  * Finder sidebar: locate button, search, filter accordion groups and the
- * removable filter tags. Presentational over the finder's filter state —
+ * removable filter tags. Presentational over the finder's filter state -
  * every change goes through the dispatched actions.
  */
 
-import { Button, Checkbox, Heading, Input, Select, Text } from '@govtech-bb/react'
+import {
+  Button,
+  Checkbox,
+  Heading,
+  Input,
+  Select,
+  Text,
+} from '@govtech-bb/react'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { PARISHES } from '../-data/pharmacies'
 import type { FilterAction, FilterState } from '../-lib/finder-filters'
-import { Chevron, CloseIcon, LocationIcon } from './icons'
+import { Chevron, CloseIcon } from './icons'
 
 type LocationState = 'idle' | 'loading' | 'success'
 
@@ -28,7 +35,7 @@ export function FilterSidebar({
   onRequestLocation: () => void
   onClearLocation: () => void
 }) {
-  // Open by default on desktop, where the panel sits beside the results —
+  // Open by default on desktop, where the panel sits beside the results -
   // but on small screens it stacks above them, so it starts closed to keep
   // the first pharmacy within reach.
   const [filterOpen, setFilterOpen] = useState(true)
@@ -60,7 +67,7 @@ export function FilterSidebar({
       ? [
           {
             key: 'slip',
-            label: `${filters.slip.charAt(0).toUpperCase()}${filters.slip.slice(1)} slip`,
+            label: `${filters.slip.charAt(0).toUpperCase()}${filters.slip.slice(1)} prescription`,
             action: { type: 'set-slip', value: 'any' } as FilterAction,
           },
         ]
@@ -85,22 +92,26 @@ export function FilterSidebar({
 
   return (
     <div className="mb-m flex flex-col gap-m lg:mb-0 print:hidden">
-      <h2 className="sr-only">Filter pharmacies</h2>
+      <Heading as="h2" className="govbb-visually-hidden">
+        Filter pharmacies
+      </Heading>
       <div>
         <button
           aria-controls="pharmacy-filter-panel"
           aria-expanded={filterOpen}
-          className="flex w-full items-center gap-xs border-mid-grey-00 border-b py-3 text-green-00"
+          className="flex w-full items-center gap-xs border-grey-70 border-b py-3 text-green-80"
           onClick={() => setFilterOpen((open) => !open)}
           type="button"
         >
-          <span className="font-bold text-[20px] underline">Filter</span>
+          <Text as="span" className="underline" weight="bold">
+            Filter
+          </Text>
           <Chevron open={filterOpen} />
         </button>
 
         {filterOpen && (
           <div
-            className="flex flex-col gap-xm border-grey-00 border-b bg-grey-00 p-xm"
+            className="flex flex-col gap-xm border-grey-20 border-b bg-grey-20 p-xm"
             id="pharmacy-filter-panel"
           >
             <div className="flex flex-col gap-xs">
@@ -116,17 +127,14 @@ export function FilterSidebar({
                 }
                 type="button"
               >
-                <span className="inline-flex items-center gap-2">
-                  <LocationIcon />
-                  {locationLabel}
-                </span>
+                {locationLabel}
               </Button>
               {locationStatus && (
                 <Text
                   aria-live="polite"
                   as="p"
-                  className="text-mid-grey-00"
-                  size="caption"
+                  className="text-grey-70"
+                  size="body-sm"
                 >
                   {locationStatus}
                 </Text>
@@ -170,21 +178,21 @@ export function FilterSidebar({
                 checked={filters.subsidisedOnly}
                 id="filter-subsidised"
                 label="Free and subsidised medication only"
-                onCheckedChange={(checked) =>
+                onChange={(event) =>
                   dispatch({
                     type: 'set-subsidised-only',
-                    value: checked === true,
+                    value: event.target.checked,
                   })
                 }
               />
             </FilterGroup>
 
             <FilterGroup
-              hint="The colour of the slip your doctor gave you. Yellow and green (GEHP) slips are filled at government pharmacies."
-              title="Prescription slip"
+              hint="The colour of the prescription your doctor gave you. Yellow and green (GEHP) prescriptions are filled at government pharmacies."
+              title="Prescription colour"
             >
               <Select
-                label="Slip colour"
+                label="Colour"
                 onChange={(event) =>
                   dispatch({
                     type: 'set-slip',
@@ -198,23 +206,26 @@ export function FilterSidebar({
                 }
                 value={filters.slip}
               >
-                <option value="any">Any slip</option>
-                <option value="white">White — Drug Service</option>
-                <option value="yellow">Yellow — GEHP</option>
-                <option value="green">Green — GEHP dependant</option>
+                <option value="any">Any colour</option>
+                <option value="white">White (Drug Service)</option>
+                <option value="yellow">Yellow (GEHP)</option>
+                <option value="green">Green (GEHP dependant)</option>
               </Select>
             </FilterGroup>
 
             <FilterGroup
-              hint="Shows only pharmacies open right now, in Barbados time. Pharmacies with no confirmed hours are not shown — call to check. Hours can change on public holidays."
+              hint="Shows only pharmacies open right now, in Barbados time. Pharmacies with no confirmed hours are not shown. Call to check. Hours can change on public holidays."
               title="Opening hours"
             >
               <Checkbox
                 checked={filters.openNow}
                 id="filter-open-now"
                 label="Open right now"
-                onCheckedChange={(checked) =>
-                  dispatch({ type: 'set-open-now', value: checked === true })
+                onChange={(event) =>
+                  dispatch({
+                    type: 'set-open-now',
+                    value: event.target.checked,
+                  })
                 }
               />
             </FilterGroup>
@@ -226,7 +237,7 @@ export function FilterSidebar({
                   id={`parish-${name}`}
                   key={name}
                   label={name}
-                  onCheckedChange={() =>
+                  onChange={() =>
                     dispatch({ type: 'toggle-parish', parish: name })
                   }
                 />
@@ -240,26 +251,28 @@ export function FilterSidebar({
             <div className="flex flex-wrap items-center gap-xs">
               {tags.map((tag) => (
                 <button
-                  className="inline-flex items-center gap-2 bg-teal-10 p-2.5 font-medium hover:bg-teal-40"
+                  className="inline-flex items-center gap-2 bg-teal-10 p-2.5 hover:bg-teal-20"
                   key={tag.key}
                   onClick={() => dispatch(tag.action)}
                   type="button"
                 >
-                  {tag.label}
+                  <Text as="span">{tag.label}</Text>
                   <CloseIcon />
-                  <span className="sr-only">Remove filter</span>
+                  <span className="govbb-visually-hidden">Remove filter</span>
                 </button>
               ))}
             </div>
             <button
-              className="self-start font-semibold text-red-00 underline"
+              className="self-start text-red-80 underline"
               onClick={() => {
                 dispatch({ type: 'clear-all' })
                 onClearLocation()
               }}
               type="button"
             >
-              Clear all
+              <Text as="span" weight="bold">
+                Clear all
+              </Text>
             </button>
           </div>
         )}
@@ -281,24 +294,24 @@ function FilterGroup({
 }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="flex w-full flex-col gap-s border-mid-grey-00 border-b pb-s">
-      <button
-        aria-expanded={open}
-        className="flex w-full items-center justify-between gap-2.5"
-        onClick={() => setOpen((value) => !value)}
-        type="button"
-      >
-        <Heading as="h3" size="h4">
-          {title}
-        </Heading>
-        <span className="text-teal-00">
-          <Chevron open={open} />
-        </span>
-      </button>
+    <div className="flex w-full flex-col gap-s border-grey-70 border-b pb-s">
+      <Heading as="h3" size="h4">
+        <button
+          aria-expanded={open}
+          className="flex w-full items-center justify-between gap-2.5 text-left"
+          onClick={() => setOpen((value) => !value)}
+          type="button"
+        >
+          <span>{title}</span>
+          <span className="text-teal-80">
+            <Chevron open={open} />
+          </span>
+        </button>
+      </Heading>
       {open && (
         <div className="flex flex-col gap-s">
           {hint && (
-            <Text as="p" className="text-mid-grey-00" size="caption">
+            <Text as="p" className="text-grey-70" size="body-sm">
               {hint}
             </Text>
           )}

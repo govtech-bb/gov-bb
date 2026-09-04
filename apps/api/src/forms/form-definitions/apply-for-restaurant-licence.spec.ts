@@ -8,15 +8,14 @@ import { validateField } from "@govtech-bb/form-validation";
 import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
 import { hydrateForm, type Resolver } from "../../registry/resolution";
 
-// This recipe leans entirely on FIELD-level behaviours: each day's opening
-// hours are a gate plus a fieldArray on one text field, and three other
-// questions only appear for a particular answer. Element behaviours and
-// validations reach the served contract through applyFieldOverrides, so a change
-// there would serve all seven hours fields at once (unrepeatable, and with the
-// 09:00 - 17:00 format unenforced) and show the conditional questions to
-// everyone. validate-recipes and recipe-invariants.spec.ts both read the file on
-// disk, so neither can see that. This spec hydrates the real recipe and asserts
-// the wiring survives.
+// This recipe leans on FIELD-level behaviours: opening hours are one weekly
+// `opening-hours` field whose format rule reaches the contract through
+// applyFieldOverrides, and five other questions only appear for a particular
+// answer. A change there would serve the hours with the "Day HH:MM - HH:MM"
+// format unenforced and show the conditional questions to everyone.
+// validate-recipes and recipe-invariants.spec.ts both read the file on disk,
+// so neither can see that. This spec hydrates the real recipe and asserts the
+// wiring survives.
 const RECIPE_PATH = path.resolve(
   __dirname,
   "recipes/apply-for-restaurant-licence.json",
@@ -29,7 +28,13 @@ type HydratedField = {
   validations?: Record<string, { value?: unknown; error?: string }>;
 };
 
-async function hydratedFields(stepId: string): Promise<HydratedField[]> {
+type HydratedStep = {
+  stepId: string;
+  behaviours?: Record<string, unknown>[];
+  elements: HydratedField[];
+};
+
+async function hydratedStep(stepId: string): Promise<HydratedStep> {
   const raw = JSON.parse(await fs.readFile(RECIPE_PATH, "utf8"));
   const recipe = serviceContractRecipeSchema.parse(raw);
   // Every ref in this recipe is a builtin, so a miss is a bug in the recipe,
@@ -42,101 +47,90 @@ async function hydratedFields(stepId: string): Promise<HydratedField[]> {
   const hydrated = await hydrateForm(recipe, resolver);
   const step = hydrated.steps.find((s) => s.stepId === stepId);
   expect(step, `step "${stepId}" is missing from the recipe`).toBeDefined();
-  return step!.elements as unknown as HydratedField[];
+  return step! as unknown as HydratedStep;
 }
 
-const DAYS = [
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-  "sunday",
-] as const;
+async function hydratedFields(stepId: string): Promise<HydratedField[]> {
+  return (await hydratedStep(stepId)).elements;
+}
 
-it.each(DAYS)(
-  "shows %s's hours only when that day is selected and the hours differ, and lets them repeat",
-  async (day) => {
-    const fields = await hydratedFields("opening-hours");
-    const field = fields.find((f) => f.fieldId === `${day}-hours`);
-    expect(field, `${day}-hours is missing`).toBeDefined();
-    // The two conditions AND together, so a per-day field appears only when
-    // that day is ticked AND the applicant said the hours are not the same
-    // every day. Were they OR'd, every ticked day would show its own field
-    // alongside the shared one and the applicant would answer twice.
-    expect(field!.behaviours).toEqual([
-      expect.objectContaining({
-        type: "fieldConditionalOn",
-        targetFieldId: "opening-days",
-        operator: "in",
-        value: [day],
-      }),
-      expect.objectContaining({
-        type: "fieldConditionalOn",
-        targetFieldId: "same-hours-every-day",
-        operator: "equal",
-        value: "no",
-      }),
-      expect.objectContaining({ type: "fieldArray", min: 1, max: 3 }),
-    ]);
-  },
-);
-
-// The shared field is the other half of that gate: most restaurants keep one
-// set of hours, so they answer once here instead of once per open day.
-it("shows the shared hours only when the hours are the same every day", async () => {
+// The step is one weekly field: seven day rows, native time pickers, value
+// entries shaped "Monday 09:00 - 17:00". The old shape (a days checkbox, a
+// "same hours every day?" gate and seven gated per-day text fields) is gone —
+// were any of it still served, the applicant would answer the question twice.
+it("serves opening hours as the single weekly field", async () => {
   const fields = await hydratedFields("opening-hours");
-  const field = fields.find((f) => f.fieldId === "everyday-hours");
-  expect(field, "everyday-hours is missing").toBeDefined();
-  expect(field!.behaviours).toEqual([
-    expect.objectContaining({
-      type: "fieldConditionalOn",
-      targetFieldId: "same-hours-every-day",
-      operator: "equal",
-      value: "yes",
-    }),
-    expect.objectContaining({ type: "fieldArray", min: 1, max: 3 }),
-  ]);
+  expect(fields.map((f) => f.fieldId)).toEqual(["opening-hours"]);
+  expect(fields[0].htmlType).toBe("opening-hours");
 });
 
-// The hours are free text, so "09:00 - 17:00" is only as good as the pattern
-// rule — and it has to hold for EVERY entry the applicant adds, not just the
-// first. Run the real validator over the hydrated field to prove both.
+// A restaurant that is never open cannot be licensed to open: the required
+// rule is what rejects a week of "Not open" rows.
+it("requires hours for at least one day", async () => {
+  const fields = await hydratedFields("opening-hours");
+  const field = fields.find((f) => f.fieldId === "opening-hours");
+  expect(field, "opening-hours is missing").toBeDefined();
+
+  const errors = validateField(field as unknown as Primitive, [], {});
+  expect(errors).toEqual(["Add hours for at least one day"]);
+
+  // A blank-entry array is no answer either: required must reject it, or a
+  // non-renderer client (chat, direct POST) could submit zero hours as
+  // "open". Pins the all-blank-array guard in @govtech-bb/form-validation.
+  const blankErrors = validateField(field as unknown as Primitive, [""], {});
+  expect(blankErrors).toEqual(["Add hours for at least one day"]);
+});
+
+// The renderer composes each entry from two native time pickers, so the
+// pattern rule is the guard against a set of hours that was added but never
+// completed — and it has to hold for EVERY entry the applicant adds, not just
+// the first. Run the real validator over the hydrated field to prove both.
 it.each([
-  [["09:00 - 17:00"], true],
-  [["9:00-17:00"], true], // a missing zero is a typing habit, not a different answer
-  [["11:00 - 15:00", "18:00 - 22:00"], true], // a second set of hours
-  [["11:00 - 15:00", "9am to 5pm"], false], // ...which is still checked
-  [["24:00 - 25:00"], false],
-  [["all day"], false],
-])("validates %j as Monday's hours -> %s", async (entries, valid) => {
+  [["Monday 09:00 - 17:00"], true],
+  [["Monday 11:00 - 15:00", "Monday 18:00 - 22:00"], true], // a second set of hours
+  [["Friday 18:00 - 02:00"], true], // overnight service is a real answer
+  [["Monday 00:00 - 23:59"], true], // open 24 hours, as the hint instructs
+  [["Monday 00:00 - 00:00"], false], // the meaningless non-answer #2358 called out
+  [["Monday 09:00 - 09:00"], false], // an equal open and close is never an answer
+  [["Monday 09:00 -"], false], // added but never completed
+  [["Monday 11:00 - 15:00", "Monday 18:00 -"], false], // ...which is still checked
+  [["Monday 9am to 5pm"], false],
+  [["Someday 09:00 - 17:00"], false],
+])("validates %j as opening hours -> %s", async (entries, valid) => {
   const fields = await hydratedFields("opening-hours");
-  const monday = fields.find((f) => f.fieldId === "monday-hours");
-  expect(monday, "monday-hours is missing").toBeDefined();
+  const field = fields.find((f) => f.fieldId === "opening-hours");
+  expect(field, "opening-hours is missing").toBeDefined();
 
-  const errors = validateField(monday as unknown as Primitive, entries, {});
+  const errors = validateField(field as unknown as Primitive, entries, {});
   expect(errors, errors.join("; ")).toHaveLength(valid ? 0 : 1);
-});
-
-// The shared field is a second copy of that rule. The table above proves what
-// the rule accepts; this proves both fields are running the same one, so an
-// applicant is not held to a different standard depending on which branch of
-// the gate they took.
-it("holds the shared hours to the same format rule as a per-day one", async () => {
-  const fields = await hydratedFields("opening-hours");
-  const patternOf = (fieldId: string) =>
-    fields.find((f) => f.fieldId === fieldId)?.validations?.pattern?.value;
-
-  expect(patternOf("everyday-hours")).toBeDefined();
-  expect(patternOf("everyday-hours")).toBe(patternOf("monday-hours"));
 });
 
 // Each entry: the step holding the field, the gated field, and the answer that
 // reveals it.
 const GATED_FIELDS: [string, string, Record<string, unknown>][] = [
+  // The applicant's own address splits on country — a parish for Barbados, a
+  // free-text town or district for anywhere else. Ungate either one and the
+  // step asks for both, which is two answers to one question.
   [
-    "about-application",
+    "about-you",
+    "parish",
+    {
+      targetFieldId: "your-country",
+      operator: "equal",
+      value: "barbados",
+    },
+  ],
+  [
+    "about-you",
+    "town-district",
+    {
+      targetFieldId: "your-country",
+      operator: "notEqual",
+      value: "barbados",
+    },
+  ],
+  [
+    "about-applicant",
     "relationship-other",
     {
       targetFieldId: "relationship-to-restaurant",
@@ -162,21 +156,6 @@ const GATED_FIELDS: [string, string, Record<string, unknown>][] = [
       value: "something-else",
     },
   ],
-  ...(
-    [
-      "other-prep-location-business",
-      "other-prep-location-address-1",
-      "other-prep-location-address-2",
-    ] as const
-  ).map((fieldId): [string, string, Record<string, unknown>] => [
-    "food-preparation",
-    fieldId,
-    {
-      targetFieldId: "food-prep-location",
-      operator: "in",
-      value: ["commercial-kitchen", "another-location"],
-    },
-  ]),
 ];
 
 it.each(GATED_FIELDS)(
@@ -196,7 +175,7 @@ it.each(GATED_FIELDS)(
 // only thing that decides which renders, so pin the served type rather than the
 // ref spelling.
 it("serves the relationship question as a dropdown, not six radios", async () => {
-  const fields = await hydratedFields("about-application");
+  const fields = await hydratedFields("about-applicant");
   const field = fields.find((f) => f.fieldId === "relationship-to-restaurant");
   expect(field, "relationship-to-restaurant is missing").toBeDefined();
   expect(field!.htmlType).toBe("select");
@@ -208,12 +187,66 @@ it("serves the relationship question as a dropdown, not six radios", async () =>
 // alone would miss a merge that dropped it.
 it.each([
   ["about-you", "your-address-line-2"],
-  ["applicant-details", "applicant-address-line-2"],
   ["about-restaurant", "restaurant-address-line-2"],
-  ["food-preparation", "other-prep-location-address-2"],
+  ["location-food-drink-prepared", "other-establishment-address-2"],
 ])("serves %s.%s as optional", async (stepId, fieldId) => {
   const fields = await hydratedFields(stepId);
   const field = fields.find((f) => f.fieldId === fieldId);
   expect(field, `${fieldId} is missing from ${stepId}`).toBeDefined();
   expect(field!.validations?.required?.value).toBe(false);
+});
+
+// The three off-site address questions used to sit in `food-preparation`, each
+// with its own fieldConditionalOn. They are now one repeatable step, so the gate
+// that used to be per-field is the step's — and a step gate is invisible to
+// GATED_FIELDS above. `another-location` belongs in the gate alongside
+// `commercial-kitchen`: ADR 0068 keeps "the addresses where food is prepared
+// elsewhere" on the form, and dropping it leaves that answer asking nothing.
+it("gates the off-site address step on both away-from-restaurant answers", async () => {
+  const step = await hydratedStep("location-food-drink-prepared");
+
+  expect(step.behaviours).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        type: "stepConditionalOn",
+        targetStepId: "food-preparation",
+        targetFieldId: "food-prep-location",
+        operator: "in",
+        value: ["commercial-kitchen", "another-location"],
+      }),
+      expect.objectContaining({ type: "repeatable" }),
+    ]),
+  );
+
+  // An establishment is not a person: `components/name` would enforce the
+  // person-name pattern and reject "KFC #4".
+  expect(step.elements.map((e) => e.fieldId)).toEqual([
+    "other-establishment-name",
+    "other-establishment-address-1",
+    "other-establishment-address-2",
+    "other-establishment-parish",
+  ]);
+  const name = step.elements.find(
+    (e) => e.fieldId === "other-establishment-name",
+  );
+  expect(name!.htmlType).toBe("text");
+  expect(name!.validations?.pattern).toBeUndefined();
+});
+
+// `components/show-hide` is only ever a gate for something else, so a toggle
+// with nothing conditioned on it is dead config and the field it should reveal
+// is always on screen.
+it("reveals the planning tracking number only when the toggle is on", async () => {
+  const fields = await hydratedFields("floor-plan");
+  const tracking = fields.find((f) => f.fieldId === "tracking-number-instead");
+  expect(tracking, "tracking-number-instead is missing").toBeDefined();
+
+  expect(tracking!.behaviours).toEqual([
+    expect.objectContaining({
+      type: "fieldConditionalOn",
+      targetFieldId: "building-plan-number",
+      operator: "equal",
+      value: true,
+    }),
+  ]);
 });

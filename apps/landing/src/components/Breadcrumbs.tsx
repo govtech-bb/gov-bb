@@ -1,10 +1,33 @@
-import { useLocation } from '@tanstack/react-router'
-import { linkVariants } from '@govtech-bb/react'
+import { forwardRef } from 'react'
+import type { ComponentPropsWithoutRef } from 'react'
+import { Breadcrumbs as GovBreadcrumbs } from '@govtech-bb/react'
+import { Link, useLocation } from '@tanstack/react-router'
 import {
   getCategoryTitle,
   getPageTitle,
   getSubcategoryTitle,
 } from '../content/registry'
+import { breadcrumbPaths } from '../lib/breadcrumb-hierarchy'
+
+type BreadcrumbLinkProps = ComponentPropsWithoutRef<'a'> & { href: string }
+
+const BreadcrumbLink = forwardRef<HTMLAnchorElement, BreadcrumbLinkProps>(
+  ({ href, ...props }, ref) => {
+    const depth = href === '/' ? 0 : href.split('/').filter(Boolean).length
+
+    return (
+      <Link
+        ref={ref}
+        to={href}
+        {...props}
+        data-umami-event="breadcrumb"
+        data-umami-event-to={href}
+        data-umami-event-depth={depth}
+      />
+    )
+  },
+)
+BreadcrumbLink.displayName = 'BreadcrumbLink'
 
 function titleCase(slug: string): string {
   const raw = slug.replace(/-/g, ' ')
@@ -34,43 +57,24 @@ export function Breadcrumbs({
 
   if (segments.includes('form')) return null
 
-  const crumbs = segments.slice(0, -1)
+  const crumbs = breadcrumbPaths(pathname).slice(0, -1)
+  const items = [
+    { href: '/', label: 'Home' },
+    ...crumbs.map((path) => {
+      const pathSegments = path.split('/')
+      const segment = pathSegments.at(-1) ?? ''
+      return {
+        href: `/${path}`,
+        label: titleForSegment(segment, pathSegments.at(-2)),
+      }
+    }),
+  ]
 
   return (
-    <nav aria-label="Breadcrumb" className="flex items-center">
-      <ol className="flex flex-wrap items-center gap-y-1 [&>li:not(:first-child):not(:last-child)]:hidden [&>li:not(:first-child):not(:last-child)]:md:flex">
-        <li className="flex items-center">
-          <a
-            href="/"
-            className={linkVariants()}
-            data-umami-event="breadcrumb"
-            data-umami-event-to="/"
-            data-umami-event-depth={0}
-          >
-            Home
-          </a>
-        </li>
-        {crumbs.map((segment, index) => {
-          const href = `/${segments.slice(0, index + 1).join('/')}`
-          const title = titleForSegment(segment, crumbs[index - 1])
-          return (
-            <li
-              key={href}
-              className="flex items-center before:mx-[0.5em] before:inline-block before:h-[0.4375em] before:w-[0.4375em] before:shrink-0 before:rotate-45 before:border-mid-grey-00 before:border-t before:border-r before:content-['']"
-            >
-              <a
-                href={href}
-                className={`${linkVariants()} break-anywhere`}
-                data-umami-event="breadcrumb"
-                data-umami-event-to={href}
-                data-umami-event-depth={index + 1}
-              >
-                {title}
-              </a>
-            </li>
-          )
-        })}
-      </ol>
-    </nav>
+    <GovBreadcrumbs
+      items={items}
+      collapseOnMobile
+      linkComponent={BreadcrumbLink}
+    />
   )
 }

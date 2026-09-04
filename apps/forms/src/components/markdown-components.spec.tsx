@@ -1,6 +1,9 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { markdownComponents } from "./markdown-components";
+import {
+  markdownComponents,
+  markdownUrlTransform,
+} from "./markdown-components";
 
 // react-markdown emits bare HTML elements, which Tailwind's preflight reset
 // strips of heading sizes / list markers. These tests pin the gov design-system
@@ -52,5 +55,21 @@ describe("markdownComponents", () => {
     expect(screen.getByRole("link", { name: "Link" })).toHaveClass(
       "govbb-link",
     );
+  });
+});
+
+describe("markdownUrlTransform", () => {
+  it("keeps tel: hrefs so a phone number dials instead of rendering blank", () => {
+    expect(markdownUrlTransform("tel:+12465363800")).toBe("tel:+12465363800");
+  });
+
+  it("keeps the protocols react-markdown already allows", () => {
+    expect(markdownUrlTransform("https://gov.bb")).toBe("https://gov.bb");
+    expect(markdownUrlTransform("mailto:a@b.com")).toBe("mailto:a@b.com");
+    expect(markdownUrlTransform("/services")).toBe("/services");
+  });
+
+  it("still blanks unsafe protocols", () => {
+    expect(markdownUrlTransform("javascript:alert(1)")).toBe("");
   });
 });
