@@ -1,6 +1,6 @@
 /**
  * No-results state: names why nothing matched, then offers a way back for
- * each filter that excluded something — with the count it would restore
+ * each filter that excluded something - with the count it would restore
  * ("never a dead end").
  */
 
@@ -59,7 +59,7 @@ export function NoResultsPanel({
     const anyParish = relaxed({ parishes: [] })
     if (anyParish.length > 0) {
       const stLucy = filters.parishes.includes('St. Lucy')
-        ? ' St. Lucy has no pharmacy listed — the nearest are in Speightstown, St. Peter.'
+        ? ' St. Lucy has no pharmacy listed. The nearest are in Speightstown, St. Peter.'
         : ''
       hatches.push({
         key: 'parishes',
@@ -88,7 +88,7 @@ export function NoResultsPanel({
       hatches.push({
         key: 'slip',
         label: 'Show pharmacies for any prescription colour',
-        caption: `${anySlip.length} of the ${PHARMACY_COUNT} pharmacies would match — check your prescription is accepted before you travel.`,
+        caption: `${anySlip.length} of the ${PHARMACY_COUNT} pharmacies would match. Check your prescription is accepted before you travel.`,
         action: { type: 'set-slip', value: 'any' },
       })
     }
@@ -100,7 +100,7 @@ export function NoResultsPanel({
       hatches.push({
         key: 'subsidised',
         label: 'Include pharmacies outside the subsidy',
-        caption: `${includingFullPrice.length} of the ${PHARMACY_COUNT} pharmacies would match — they are not in the subsidy, so you pay the full price.`,
+        caption: `${includingFullPrice.length} of the ${PHARMACY_COUNT} pharmacies would match. They are not in the subsidy, so you pay the full price.`,
         action: { type: 'set-subsidised-only', value: false },
       })
     }
@@ -118,7 +118,7 @@ export function NoResultsPanel({
     }
   }
 
-  // Relaxing one filter alone restores nothing — offer the full reset.
+  // Relaxing one filter alone restores nothing - offer the full reset.
   if (hatches.length === 0) {
     hatches.push({
       key: 'all',
@@ -142,9 +142,9 @@ export function NoResultsPanel({
               onClick={() => dispatch(hatch.action)}
               type="button"
             >
-              <span className="font-semibold text-green-80 underline">
+              <Text as="span" className="text-green-80 underline" weight="bold">
                 {hatch.label}
-              </span>
+              </Text>
               <Text as="span" className="text-grey-70" size="body-sm">
                 {hatch.caption}
               </Text>

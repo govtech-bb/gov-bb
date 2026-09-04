@@ -3,7 +3,7 @@
  * --------------------------------------------------------------
  * Barbados prescriptions come on coloured slips, and the colour decides
  * which pharmacies can fill them. Acceptance is derived from the pharmacy's
- * Drug Service type — the single source of truth — never stored per record:
+ * Drug Service type - the single source of truth - never stored per record:
  *
  *   white  (Drug Service)   → participating private pharmacies only
  *   yellow (GEHP)           → government pharmacies only
@@ -22,9 +22,9 @@ export const SLIP_COLOURS = ['white', 'yellow', 'green'] as const
 export type SlipColour = (typeof SLIP_COLOURS)[number]
 
 export const SLIP_LABELS = {
-  white: 'White — Drug Service',
-  yellow: 'Yellow — GEHP',
-  green: 'Green — GEHP dependant',
+  white: 'White (Drug Service)',
+  yellow: 'Yellow (GEHP)',
+  green: 'Green (GEHP dependant)',
 } satisfies Record<SlipColour, string>
 
 export function acceptsSlip(pharmacy: Pharmacy, slip: SlipColour): boolean {
@@ -33,7 +33,7 @@ export function acceptsSlip(pharmacy: Pharmacy, slip: SlipColour): boolean {
 }
 
 /**
- * The closest pharmacy to `from` that definitely accepts the slip — used to
+ * The closest pharmacy to `from` that definitely accepts the slip - used to
  * point people at a compatible facility when the current one cannot fill
  * their prescription. Null when `from` has no coordinates.
  */

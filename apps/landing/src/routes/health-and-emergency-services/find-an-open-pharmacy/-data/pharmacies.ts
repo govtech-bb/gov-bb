@@ -1,10 +1,10 @@
 /**
- * Pharmacies — Barbados
+ * Pharmacies - Barbados
  * --------------------------------------------------------------
  * Single source of truth for the pharmacy finder at
  * /health-and-emergency-services/find-an-open-pharmacy.
  *
- * Records live in pharmacies.json — edit that file directly, one object per
+ * Records live in pharmacies.json - edit that file directly, one object per
  * pharmacy. Sources: the GovTech pharmacy prototype dataset (23 July 2026),
  * the Drug Service register of government dispensaries (verified May 2026)
  * and the Drug Service Active PPP list (supplied 31 August 2026). Known
@@ -67,7 +67,7 @@ export interface LatLon {
 }
 
 /**
- * What the visit costs — the reader's decision variable.
+ * What the visit costs - the reader's decision variable.
  * government = free polyclinic dispensary; private-sbs = participating
  * private pharmacy on the Drug Service Active PPP list (small dispensing
  * fee); private = a private pharmacy that is not on that list, so the patient
@@ -83,7 +83,7 @@ export interface Pharmacy {
   address: string
   /** Display form '(246) NNN-NNNN'; '' when no number is listed. */
   phone: string
-  /** Absent = opening hours not confirmed — open/closed state is unknown. */
+  /** Absent = opening hours not confirmed - open/closed state is unknown. */
   hours?: WeeklyHours
   /** Geocoded point, used for the "Use my location" distance sort. */
   coords?: LatLon
@@ -92,7 +92,7 @@ export interface Pharmacy {
   routes?: string
   /**
    * Confirmed WhatsApp ordering number, display form '(246) NNN-NNNN'.
-   * Only set where the pharmacy explicitly published one — a dead wa.me
+   * Only set where the pharmacy explicitly published one - a dead wa.me
    * link is worse than no button.
    */
   whatsapp?: string

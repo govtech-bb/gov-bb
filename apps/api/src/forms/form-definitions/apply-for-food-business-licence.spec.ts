@@ -56,7 +56,7 @@ async function field(stepId: string, fieldId: string): Promise<HydratedField> {
 }
 
 it("keeps the applicant's telephone repeatable, so several owners' numbers fit", async () => {
-  const tel = await field("about-you", "your-telephone");
+  const tel = await field("applicant-details", "applicant-phone");
 
   expect(
     (tel.behaviours ?? []).filter((b) => b.type === "fieldArray"),
@@ -263,7 +263,7 @@ describe("Environmental Health routing", () => {
     const recipients = processors
       .filter((p) => p.type === "email")
       .map((p) => (p.config as { recipientField?: string }).recipientField);
-    expect(recipients).toContain("about-you.your-email");
+    expect(recipients).toContain("applicant-details.applicant-email");
     expect(recipients).toContain("catchment.mdaEmail");
   });
 
@@ -307,23 +307,23 @@ describe("Environmental Health routing", () => {
 // A `fieldConditionalOn` that names a field on ANOTHER step must say so with
 // `targetStepId`. The client defaults an absent `targetStepId` to the field's
 // own step (`checkConditionalOn` in apps/forms), so a cross-step condition
-// without it resolves against `applicant-details.completing-for` — which never
-// exists — and the field is hidden for everyone. The API's evaluator falls back
-// to a flat whole-form lookup instead, so the two sides disagree: the renderer
-// never asks the question while the server still counts it as required.
-it("points applicant-type at the step `completing-for` actually lives on", async () => {
-  const applicantType = await field("applicant-details", "applicant-type");
+// without it resolves against the wrong step — which never has the field — and
+// the field is hidden for everyone. The API's evaluator falls back to a flat
+// whole-form lookup instead, so the two sides disagree: the renderer never asks
+// the question while the server still counts it as required.
+it("points the start-date question at the step `application-type` actually lives on", async () => {
+  const start = await field("about-the-food-business", "business-already-open");
 
   expect(
-    applicantType.behaviours,
-    "applicant-type's conditional lost its targetStepId — the question is never asked when someone applies on another's behalf",
+    start.behaviours,
+    "business-already-open's conditional lost its targetStepId — the question is never asked for a first-time business",
   ).toEqual([
     {
       type: "fieldConditionalOn",
-      targetStepId: "about-you",
-      targetFieldId: "completing-for",
+      targetStepId: "application-details",
+      targetFieldId: "application-type",
       operator: "equal",
-      value: "someone-else",
+      value: "first-time",
     },
   ]);
 });

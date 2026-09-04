@@ -7,6 +7,7 @@ import {
   getPageTitle,
   getSubcategoryTitle,
 } from '../content/registry'
+import { breadcrumbPaths } from '../lib/breadcrumb-hierarchy'
 
 type BreadcrumbLinkProps = ComponentPropsWithoutRef<'a'> & { href: string }
 
@@ -56,14 +57,15 @@ export function Breadcrumbs({
 
   if (segments.includes('form')) return null
 
-  const crumbs = segments.slice(0, -1)
+  const crumbs = breadcrumbPaths(pathname).slice(0, -1)
   const items = [
     { href: '/', label: 'Home' },
-    ...crumbs.map((segment, index) => {
-      const href = `/${segments.slice(0, index + 1).join('/')}`
+    ...crumbs.map((path) => {
+      const pathSegments = path.split('/')
+      const segment = pathSegments.at(-1) ?? ''
       return {
-        href,
-        label: titleForSegment(segment, crumbs[index - 1]),
+        href: `/${path}`,
+        label: titleForSegment(segment, pathSegments.at(-2)),
       }
     }),
   ]

@@ -13,8 +13,9 @@ const CONTENT_URL = 'health-and-emergency-services/find-an-open-pharmacy'
 export const Route = createFileRoute(
   '/health-and-emergency-services/find-an-open-pharmacy/$slug',
 )({
+  staticData: { breadcrumbMode: 'location' },
   // Mirror the markdown service page's rollout gate, then resolve the
-  // pharmacy — unknown slugs 404.
+  // pharmacy - unknown slugs 404.
   beforeLoad: ({ context }) => {
     const overlay = deriveVisibilityOverlay(context.serviceStatuses)
     if (!isUrlVisible(CONTENT_URL, context.level, overlay)) throw notFound()

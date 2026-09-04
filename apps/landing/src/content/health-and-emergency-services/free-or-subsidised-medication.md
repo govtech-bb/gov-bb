@@ -9,6 +9,14 @@ featured: false
 publish_date: '2026-08-18'
 category: health-and-emergency-services
 service_type: information
+keywords:
+  - cheap medicine
+  - cheaper medicine
+  - free medicine
+  - help paying for medicine
+  - prescription subsidy
+  - SBS
+  - Special Benefit Service
 ---
 The Barbados Drug Service can make some prescription medications free or cheaper through the government subsidy (officially the Special Benefit Service). This page explains who can get help, what to bring, and what it costs.
 
@@ -27,7 +35,7 @@ One of these must also apply:
 
 You will also need:
 
--   a prescription from a doctor registered with the Medical Council of Barbados — the doctor can work in the public or private health service
+-   a prescription from a doctor registered with the Medical Council of Barbados. The doctor can work in the public or private health service
 -   a prescription for a medication on the Barbados National Drug Formulary
 
 Not all medication is free, even where a patient is eligible for benefits.
@@ -54,7 +62,7 @@ Special approval is only for government pharmacy use.
 ## What to take to the pharmacy
 
 -   your prescription
--   original accepted ID for the person the medication is for — a Barbados National Identification (ID) card, passport or child health book. A child health book is only accepted for children up to 6 weeks old. After 6 weeks, an ID card is required.
+-   original accepted ID for the person the medication is for: a Barbados National Identification (ID) card, passport or child health book. A child health book is only accepted for children up to 6 weeks old. After 6 weeks, an ID card is required.
 
 Photocopies are not accepted.
 
