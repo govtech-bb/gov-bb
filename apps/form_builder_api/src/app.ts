@@ -7,7 +7,6 @@ import { formsRouter } from "./routes/forms";
 import { mdaContactsRouter } from "./routes/mda-contacts";
 import { registryRouter } from "./routes/registry";
 import { aiRouter } from "./routes/ai";
-import { publishRouter } from "./routes/publish";
 import { presenceRouter } from "./routes/presence";
 import { authMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/error-handler";
@@ -32,8 +31,11 @@ app.get("/builder/health", (_req, res) => {
 
 // Generous per-process backstop on every /builder/* route (#930). Mounted
 // *before* authMiddleware so it also caps unauthenticated admin-token guessing
-// and CodeQL sees a limiter on the path to publishHandler (clears
-// js/missing-rate-limiting #6/#9). Buckets are in-memory per process: behind
+// and CodeQL sees a limiter on the path to every route handler below (clears
+// js/missing-rate-limiting #6/#9 — originally raised against publishHandler,
+// which has since been removed, but the rule applies to the whole mount and the
+// position is what satisfies it, so keep this before authMiddleware).
+// Buckets are in-memory per process: behind
 // the ALB with no `trust proxy`, all authors share one bucket per task, and
 // each Fargate task owns its own counters — so the effective ceiling is
 // N× this limit. Acceptable as defense-in-depth alongside the AWS WAF
@@ -66,7 +68,6 @@ app.use("/builder/forms", presenceRouter);
 app.use("/builder/mda-contacts", mdaContactsRouter);
 app.use("/builder/registry", registryRouter);
 app.use("/builder/ai", aiRouter);
-app.use("/builder/publish", publishRouter);
 
 // Terminal error handler — must be registered last so every router's thrown or
 // rejected error funnels here (#1404). Express 5 auto-forwards rejected async

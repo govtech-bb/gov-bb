@@ -1,9 +1,10 @@
 /**
- * Shared GitHub-REST client for the recipe-publish flow used by both
- * form_builder (the Deploy/Erase server fns) and form_builder_api (POST
- * /builder/publish). The primitives — URL/auth/error plus the common
- * branch-create / file-write / open-PR / cleanup-delete operations — were
- * duplicated in each app; this is the single source of truth for them.
+ * Shared GitHub-REST client for the recipe-publish flow, used by form_builder's
+ * Deploy/Erase server fns. It also served form_builder_api's POST
+ * /builder/publish until that dormant route was removed. The primitives —
+ * URL/auth/error plus the common branch-create / file-write / open-PR /
+ * cleanup-delete operations — were duplicated in each app; this is the single
+ * source of truth for them.
  *
  * Repo identity ({owner, repo}) is injected by the caller via
  * `createPublishClient` so each app keeps its own env-driven source of truth
