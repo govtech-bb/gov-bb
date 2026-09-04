@@ -20,9 +20,11 @@ import { getFullCatalog } from "../catalog.js";
  *      so a ref to a removed/renamed component parses but would drop in preview
  *      / throw in the renderer (also ADR 0010).
  *
- * Shared by `POST /builder/registry/validate` (the client Deploy gate) and
- * `POST /builder/publish` (the server backstop) so the two can't drift. Returns
- * the same `{ ok: true, data } | { ok: false, issues }` shape /validate emits.
+ * Used by `POST /builder/registry/validate` (the client Deploy gate). It was
+ * also the server backstop for `POST /builder/publish` until that dormant route
+ * was removed; it stays factored out so a future server-side gate cannot drift
+ * from the client one. Returns the same
+ * `{ ok: true, data } | { ok: false, issues }` shape /validate emits.
  */
 export async function validateRecipeFully(
   recipe: unknown,
