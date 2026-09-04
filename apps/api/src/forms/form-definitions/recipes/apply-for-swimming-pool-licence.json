@@ -533,7 +533,7 @@
               "your-details.last-name"
             ],
             "email": "your-details.email",
-            "phone": "your-details.mobile-telephone"
+            "phone": "your-details.telephone"
           },
           "excludeSteps": [
             "check-your-answers",
