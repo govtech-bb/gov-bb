@@ -347,6 +347,16 @@ describe("programme codes are unchanged by composition (golden)", () => {
       "Sir Winston Scott Polyclinic": "FUNERAL_EMBALMER_LICENCE_WINSTON_SCOTT",
       "St. Philip Polyclinic": "FUNERAL_EMBALMER_LICENCE_ST_PHILIP",
     },
+    "apply-for-lodging-barracks-licence": {
+      "Branford Taitt Polyclinic": "LODGING_BARRACKS_LICENCE_BRANFORD_TAITT",
+      "David Thompson Health & Social Services Complex":
+        "LODGING_BARRACKS_LICENCE_DAVID_THOMPSON",
+      "Eunice Gibson Polyclinic": "LODGING_BARRACKS_LICENCE_EUNICE_GIBSON",
+      "Maurice Byer Polyclinic": "LODGING_BARRACKS_LICENCE_MAURICE_BYER",
+      "Randal Phillips Polyclinic": "LODGING_BARRACKS_LICENCE_RANDAL_PHILLIPS",
+      "Sir Winston Scott Polyclinic": "LODGING_BARRACKS_LICENCE_WINSTON_SCOTT",
+      "St. Philip Polyclinic": "LODGING_BARRACKS_LICENCE_ST_PHILIP",
+    },
   };
 
   /** The recipe's own webhook `mapping.programmeCode`, read off the real file. */
