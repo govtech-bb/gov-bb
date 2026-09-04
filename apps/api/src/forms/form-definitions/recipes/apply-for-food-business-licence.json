@@ -124,7 +124,15 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "applicant-phone"
+            "fieldId": "applicant-phone",
+            "behaviours": [
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 4,
+                "addAnotherLabel": "Add another telephone number"
+              }
+            ]
           }
         },
         {
@@ -330,7 +338,7 @@
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "application-type",
-                "targetStepId": "applicant-details",
+                "targetStepId": "application-details",
                 "operator": "equal",
                 "value": "first-time"
               }
@@ -851,8 +859,8 @@
               "about-you.your-first-name",
               "about-you.your-last-name"
             ],
-            "email": "about-you.your-email",
-            "phone": "about-you.your-telephone"
+            "email": "applicant-details.applicant-email",
+            "phone": "applicant-details.applicant-phone"
           },
           "excludeSteps": [
             "check-your-answers",
