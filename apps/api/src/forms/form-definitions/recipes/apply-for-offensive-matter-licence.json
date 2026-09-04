@@ -192,12 +192,12 @@
                 "error": "Enter your business address.",
                 "value": true
               }
+            },
+            "geocodeTargets": {
+              "line2FieldId": "business-address-line-2",
+              "parishFieldId": "business-parish",
+              "coordinatesFieldId": "business-address-coordinates"
             }
-          },
-          "geocodeTargets": {
-            "line2FieldId": "business-address-line-2",
-            "parishFieldId": "business-parish",
-            "coordinatesFieldId": "business-address-coordinates"
           }
         },
         {
