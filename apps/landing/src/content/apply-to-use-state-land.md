@@ -19,6 +19,8 @@ You can apply as an individual, a business, or on behalf of an organisation.
 
 ## Before you start
 
+Apply well in advance of the date you need the land.
+
 You will need:
 
 - your National Registration Number (NRN)
@@ -33,14 +35,6 @@ You will need:
 You can upload the photo of the land as part of the form.
 
 <!-- MDA NOTE: FAQ confirms GPS coordinates and a property photo are optional ("if available"). Confirm whether any other supporting documents (site plans, public liability insurance, organisation registration) are required. -->
-
-## When to apply
-
-Apply well in advance of the date you need the land.
-
-How long it takes to get a decision depends on how complex your request is and the checks the Ministry needs to do.
-
-<!-- MDA NOTE: FAQ confirms processing time varies with complexity. Confirm a typical range if one exists, and any minimum notice period before the requested start date. -->
 
 ## Complete the form
 
@@ -69,6 +63,10 @@ There is no fee to apply.
 You will get a confirmation email at the address you gave us.
 
 The Ministry of Housing, Lands and Maintenance will review your application and contact you using the details you gave.
+
+How long it takes to get a decision depends on how complex your request is and the checks the Ministry needs to do.
+
+<!-- MDA NOTE: FAQ confirms processing time varies with complexity. Confirm a typical range if one exists, and any minimum notice period before the requested start date. -->
 
 Your application may be turned down if your information is incomplete, the use you asked for is not approved, or the land is not available.
 
