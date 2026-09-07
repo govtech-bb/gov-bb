@@ -23,12 +23,7 @@ import {
 } from '../-lib/routes'
 import { Caveat } from './caveat'
 import { ClockIcon, MapPinIcon } from './icons'
-import {
-  CostChip,
-  StatusLine,
-  StatusSkeleton,
-  provenanceNote,
-} from './status-pill'
+import { CostChip, StatusLine, StatusSkeleton } from './status-pill'
 
 export function PharmacyCard({
   pharmacy,
@@ -43,7 +38,7 @@ export function PharmacyCard({
   printOnly?: boolean
 }) {
   const hasPlace = pharmacy.parish !== 'All parishes'
-  const provenance = provenanceNote(pharmacy)
+  const whatsapp = whatsappHref(pharmacy)
 
   return (
     <li
@@ -61,7 +56,7 @@ export function PharmacyCard({
       </div>
 
       <Heading as="h3" size="h4">
-        <Link href={pharmacyDetailHref(pharmacy.name)}>{pharmacy.name}</Link>
+        <Link href={pharmacyDetailHref(pharmacy)}>{pharmacy.name}</Link>
       </Heading>
 
       <CostChip pharmacy={pharmacy} />
@@ -100,16 +95,16 @@ export function PharmacyCard({
 
       {pharmacy.notes && <Caveat tone="confidence">{pharmacy.notes}</Caveat>}
 
-      {pharmacy.type === 'private-sbs' && (
+      {pharmacy.pppStatus === 'participating' && (
         <Caveat tone="coverage">
           Yellow or green (GEHP) prescriptions are not covered here. You would
           pay full price.
         </Caveat>
       )}
 
-      {whatsappHref(pharmacy) && (
+      {whatsapp && (
         <Caveat tone="channel">
-          <Link external href={whatsappHref(pharmacy) as string}>
+          <Link external href={whatsapp}>
             Order prescription via WhatsApp (opens in a new tab)
           </Link>
         </Caveat>
@@ -127,10 +122,7 @@ export function PharmacyCard({
               Directions
             </LinkButton>
           )}
-          <LinkButton
-            href={pharmacyDetailHref(pharmacy.name)}
-            variant="tertiary"
-          >
+          <LinkButton href={pharmacyDetailHref(pharmacy)} variant="tertiary">
             Full details
           </LinkButton>
         </div>
@@ -145,9 +137,9 @@ export function PharmacyCard({
             .
           </Text>
         )}
-        {provenance && (
+        {pharmacy.phoneExtension && (
           <Text as="p" className="text-grey-70" size="body-sm">
-            {provenance}
+            Dial extension {pharmacy.phoneExtension} after calling.
           </Text>
         )}
       </div>

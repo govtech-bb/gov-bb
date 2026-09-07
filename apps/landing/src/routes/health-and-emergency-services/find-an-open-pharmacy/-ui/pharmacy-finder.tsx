@@ -31,7 +31,6 @@ import {
   paramsFromFilters,
 } from '../-lib/finder-filters'
 import { pharmacyDistanceKm } from '../-lib/pharmacy-distance'
-import { DRUG_SERVICE_PHONE } from '../-lib/routes'
 import { FilterSidebar } from './filter-sidebar'
 import { NoResultsPanel } from './no-results-panel'
 import { PharmacyCard } from './pharmacy-card'
@@ -68,12 +67,10 @@ export function PharmacyFinder() {
   const [filters, dispatchFilters] = useReducer(filtersReducer, DEFAULT_FILTERS)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
-  // Every user-driven filter change returns to the first page - done here,
-  // in the dispatch path, not as an effect reacting to state.
-  const dispatch = useCallback((action: FilterAction) => {
-    dispatchFilters(action)
-    setVisibleCount(PAGE_SIZE)
-  }, [])
+  const locationRequest = useRef(0)
+  const mounted = useRef(false)
+  const resultList = useRef<HTMLUListElement>(null)
+  const nextResultToFocus = useRef<number | null>(null)
 
   const [userLocation, setUserLocation] = useState<LatLon | null>(null)
   const [locationState, setLocationState] = useState<LocationState>('idle')
@@ -84,12 +81,17 @@ export function PharmacyFinder() {
   // "Closes in N min" and open/closed stay honest in a parked tab.
   const [now, setNow] = useState<Date | null>(null)
   useEffect(() => {
+    mounted.current = true
     setNow(new Date())
     const timer = setInterval(() => setNow(new Date()), 60_000)
-    return () => clearInterval(timer)
+    return () => {
+      clearInterval(timer)
+      mounted.current = false
+    }
   }, [])
 
   const requestLocation = useCallback(() => {
+    const requestId = ++locationRequest.current
     if (!navigator.geolocation) {
       setLocationStatus(
         'Your browser cannot share your location. You can still filter by parish.',
@@ -100,14 +102,18 @@ export function PharmacyFinder() {
     setLocationStatus('Finding your location…')
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        if (!mounted.current || requestId !== locationRequest.current) return
         setUserLocation({
           lat: position.coords.latitude,
           lon: position.coords.longitude,
         })
         setLocationState('success')
-        setLocationStatus('Open pharmacies first, then nearest to you.')
+        setLocationStatus(
+          'Government pharmacies first. Within each group, open pharmacies come first, then those nearest to you.',
+        )
       },
       (error) => {
+        if (!mounted.current || requestId !== locationRequest.current) return
         setUserLocation(null)
         setLocationState('idle')
         setLocationStatus(
@@ -120,10 +126,29 @@ export function PharmacyFinder() {
   }, [])
 
   const clearLocation = useCallback(() => {
+    locationRequest.current++
     setUserLocation(null)
     setLocationState('idle')
     setLocationStatus(null)
   }, [])
+
+  const dispatch = useCallback(
+    (action: FilterAction) => {
+      if (action.type === 'clear-all') clearLocation()
+      nextResultToFocus.current = null
+      dispatchFilters(action)
+      setVisibleCount(PAGE_SIZE)
+    },
+    [clearLocation],
+  )
+
+  useEffect(() => {
+    if (nextResultToFocus.current === null) return
+    resultList.current
+      ?.querySelectorAll<HTMLAnchorElement>('h3 a')
+      [nextResultToFocus.current]?.focus()
+    nextResultToFocus.current = null
+  }, [visibleCount])
 
   // One URL sync effect: the first run (post-mount, so server and client
   // markup stay identical) reads shared `?parish=…` links INTO filter state;
@@ -162,123 +187,89 @@ export function PharmacyFinder() {
     [filters, now, userLocation],
   )
 
-  const visiblePharmacies = results.slice(0, visibleCount)
+  // The complete default directory remains usable without JavaScript.
+  const visiblePharmacies =
+    now === null ? results : results.slice(0, visibleCount)
 
   return (
     <section aria-label="Pharmacy finder">
-      <Text as="p" className="mb-s print:hidden" size="body-sm">
-        <button
-          className="govbb-link"
-          onClick={() => window.print()}
-          type="button"
-        >
-          Print this list
-        </button>{' '}
-        to keep a paper copy by the phone. Each pharmacy has a Google Maps
-        directions link.
-      </Text>
-
       <div className="govbb-grid-row">
         <div className="govbb-grid-column-one-third-from-desktop">
-          <FilterSidebar
-            dispatch={dispatch}
-            filters={filters}
-            locationState={locationState}
-            locationStatus={locationStatus}
-            onClearLocation={clearLocation}
-            onRequestLocation={requestLocation}
-          />
+          {now !== null && (
+            <FilterSidebar
+              dispatch={dispatch}
+              filters={filters}
+              locationState={locationState}
+              locationStatus={locationStatus}
+              onClearLocation={clearLocation}
+              onRequestLocation={requestLocation}
+            />
+          )}
         </div>
 
         <div className="govbb-grid-column-two-thirds-from-desktop">
           <Heading as="h2" className="govbb-visually-hidden">
             Results
           </Heading>
-          {now === null ? (
-            <LoadingResults />
-          ) : (
-            <>
-              <Text as="p" className="mb-s" role="status" weight="bold">
-                {resultCountLabel(visiblePharmacies.length, results.length)}
-              </Text>
-              {results.length === 0 ? (
-                <NoResultsPanel
-                  dispatch={dispatch}
-                  filters={filters}
-                  now={now}
-                />
-              ) : (
-                <>
-                  <ul className="flex list-none flex-col gap-s p-0">
-                    {visiblePharmacies.map((pharmacy) => (
-                      <PharmacyCard
-                        distanceKm={pharmacyDistanceKm(pharmacy, userLocation)}
-                        key={pharmacy.name}
-                        now={now}
-                        pharmacy={pharmacy}
-                      />
-                    ))}
-                    {/* "Print this list" prints every match, not just the visible page. */}
-                    {results.slice(visibleCount).map((pharmacy) => (
-                      <PharmacyCard
-                        distanceKm={pharmacyDistanceKm(pharmacy, userLocation)}
-                        key={pharmacy.name}
-                        now={now}
-                        pharmacy={pharmacy}
-                        printOnly
-                      />
-                    ))}
-                  </ul>
-                  {visiblePharmacies.length < results.length && (
-                    <div className="mt-m print:hidden">
-                      <Button
-                        className="w-full justify-center"
-                        onClick={() =>
-                          setVisibleCount((count) => count + PAGE_SIZE)
-                        }
-                        type="button"
-                        variant="secondary"
-                      >
-                        Show{' '}
-                        {Math.min(
-                          PAGE_SIZE,
-                          results.length - visiblePharmacies.length,
-                        )}{' '}
-                        more pharmacies
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
-            </>
-          )}
+          <noscript>
+            <Text as="p">
+              Call the pharmacies below to confirm opening times.
+            </Text>
+          </noscript>
+          <>
+            <Text
+              as="p"
+              className="mb-s"
+              role="status"
+              aria-atomic="true"
+              weight="bold"
+            >
+              {resultCountLabel(visiblePharmacies.length, results.length)}
+            </Text>
+            {results.length === 0 ? (
+              <NoResultsPanel dispatch={dispatch} filters={filters} now={now} />
+            ) : (
+              <>
+                <ul
+                  ref={resultList}
+                  className="flex list-none flex-col gap-s p-0"
+                >
+                  {results.map((pharmacy, index) => (
+                    <PharmacyCard
+                      distanceKm={pharmacyDistanceKm(pharmacy, userLocation)}
+                      key={pharmacy.slug}
+                      now={now}
+                      pharmacy={pharmacy}
+                      printOnly={index >= visiblePharmacies.length}
+                    />
+                  ))}
+                </ul>
+                {visiblePharmacies.length < results.length && (
+                  <div className="mt-m print:hidden">
+                    <Button
+                      className="w-full justify-center"
+                      onClick={() => {
+                        nextResultToFocus.current = visibleCount
+                        setVisibleCount((count) => count + PAGE_SIZE)
+                      }}
+                      type="button"
+                      variant="secondary"
+                    >
+                      Show{' '}
+                      {Math.min(
+                        PAGE_SIZE,
+                        results.length - visiblePharmacies.length,
+                      )}{' '}
+                      more pharmacies
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </>
         </div>
       </div>
     </section>
-  )
-}
-
-/**
- * Loader for the results column while the Barbados clock is unknown
- * (server render and the instant before hydration) - the list then arrives
- * once, sorted and with statuses, instead of popping in piecemeal.
- */
-function LoadingResults() {
-  return (
-    <div className="flex flex-col items-center gap-s py-l" role="status">
-      <span
-        aria-hidden="true"
-        className="size-8 animate-spin rounded-full border-4 border-grey-20 border-t-green-80 motion-reduce:animate-none"
-      />
-      <Text as="p">Loading pharmacies…</Text>
-      <noscript>
-        <Text as="p">
-          This page needs JavaScript to list pharmacies. To find a pharmacy or
-          ask about free or subsidised medication, call the Drug Service on{' '}
-          {DRUG_SERVICE_PHONE}.
-        </Text>
-      </noscript>
-    </div>
   )
 }
 
@@ -286,6 +277,7 @@ function resultCountLabel(visible: number, matched: number): string {
   if (matched === 0) {
     return 'No pharmacies match your filters'
   }
+  if (matched === 1) return 'Showing 1 pharmacy'
   if (visible >= matched) {
     return `Showing all ${matched} pharmacies`
   }

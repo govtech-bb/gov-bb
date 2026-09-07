@@ -4,7 +4,9 @@ import { acceptsSlip, nearestAccepting } from './slips'
 
 const pharmacy = (overrides: Partial<Pharmacy>): Pharmacy => ({
   name: 'Test',
+  slug: 'test-pharmacy',
   type: 'government',
+  pppStatus: 'not-applicable',
   parish: 'St. Michael',
   address: 'Bridgetown',
   phone: '',
@@ -20,14 +22,21 @@ describe('acceptsSlip', () => {
   })
 
   it('subsidised private pharmacies accept white only', () => {
-    const priv = pharmacy({ type: 'private-sbs' })
+    const priv = pharmacy({ type: 'private', pppStatus: 'participating' })
     expect(acceptsSlip(priv, 'white')).toBe(true)
     expect(acceptsSlip(priv, 'yellow')).toBe(false)
     expect(acceptsSlip(priv, 'green')).toBe(false)
   })
 
   it('private pharmacies outside the subsidy accept none of them', () => {
-    const priv = pharmacy({ type: 'private' })
+    const priv = pharmacy({ type: 'private', pppStatus: 'not-participating' })
+    expect(acceptsSlip(priv, 'white')).toBe(false)
+    expect(acceptsSlip(priv, 'yellow')).toBe(false)
+    expect(acceptsSlip(priv, 'green')).toBe(false)
+  })
+
+  it('does not infer acceptance for unconfirmed private pharmacies', () => {
+    const priv = pharmacy({ type: 'private', pppStatus: 'unconfirmed' })
     expect(acceptsSlip(priv, 'white')).toBe(false)
     expect(acceptsSlip(priv, 'yellow')).toBe(false)
     expect(acceptsSlip(priv, 'green')).toBe(false)
@@ -37,7 +46,8 @@ describe('acceptsSlip', () => {
 describe('nearestAccepting', () => {
   const here = pharmacy({
     name: 'Here',
-    type: 'private-sbs',
+    type: 'private',
+    pppStatus: 'participating',
     coords: { lat: 13.1, lon: -59.6 },
   })
   const nearGov = pharmacy({
@@ -50,7 +60,8 @@ describe('nearestAccepting', () => {
   })
   const nearPrivate = pharmacy({
     name: 'Near Private',
-    type: 'private-sbs',
+    type: 'private',
+    pppStatus: 'participating',
     coords: { lat: 13.101, lon: -59.6 },
   })
 
@@ -77,7 +88,11 @@ describe('nearestAccepting', () => {
   })
 
   it('returns null when the pharmacy itself has no coordinates', () => {
-    const noCoords = pharmacy({ name: 'NoCoords', type: 'private-sbs' })
+    const noCoords = pharmacy({
+      name: 'NoCoords',
+      type: 'private',
+      pppStatus: 'participating',
+    })
     expect(nearestAccepting(noCoords, 'yellow', [nearGov])).toBeNull()
   })
 })

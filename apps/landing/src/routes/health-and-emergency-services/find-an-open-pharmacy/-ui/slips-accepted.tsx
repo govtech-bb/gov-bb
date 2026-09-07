@@ -25,6 +25,9 @@ const SWATCH_CLASSES = {
 } satisfies Record<SlipColour, string>
 
 function slipDescription(pharmacy: Pharmacy, slip: SlipColour): string {
+  if (pharmacy.pppStatus === 'unconfirmed') {
+    return 'Drug Service participation is not confirmed. Call to check whether this prescription is covered.'
+  }
   if (acceptsSlip(pharmacy, slip)) {
     if (pharmacy.type === 'government') {
       // QEH-issued slips are filled at government pharmacies for selected
@@ -43,17 +46,21 @@ function slipDescription(pharmacy: Pharmacy, slip: SlipColour): string {
 }
 
 function SlipRow({ pharmacy, slip }: { pharmacy: Pharmacy; slip: SlipColour }) {
-  const mark = acceptsSlip(pharmacy, slip) ? (
-    <span className="text-green-80">
-      <CheckIcon />
-      <span className="govbb-visually-hidden">Accepted</span>
-    </span>
-  ) : (
-    <span className="text-red-80">
-      <CrossIcon />
-      <span className="govbb-visually-hidden">Not accepted</span>
-    </span>
-  )
+  const mark =
+    pharmacy.pppStatus === 'unconfirmed' ? null : acceptsSlip(
+        pharmacy,
+        slip,
+      ) ? (
+      <span className="text-green-80">
+        <CheckIcon />
+        <span className="govbb-visually-hidden">Accepted</span>
+      </span>
+    ) : (
+      <span className="text-red-80">
+        <CrossIcon />
+        <span className="govbb-visually-hidden">Not accepted</span>
+      </span>
+    )
 
   return (
     <li className="flex items-start gap-s rounded-lg border border-grey-20 bg-white-00 p-s">

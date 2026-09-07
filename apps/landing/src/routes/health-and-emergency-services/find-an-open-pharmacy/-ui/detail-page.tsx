@@ -3,7 +3,7 @@
  * --------------------------------------------------------------
  * Body for /health-and-emergency-services/find-an-open-pharmacy/<slug>.
  * Single column in the house shape (max-w-2xl, 56→40→20/16px register),
- * like every sibling content surface: identity → actions → hours → slips →
+ * like every sibling content surface: identity → actions → hours → guidance →
  * contact and provenance. Everything except the status line is static and
  * server-rendered, so a shared link is fully useful without JavaScript.
  */
@@ -13,7 +13,7 @@ import { format, parseISO } from 'date-fns'
 import { useEffect, useState } from 'react'
 import type { Pharmacy } from '../-data/pharmacies'
 import { PHARMACIES_LAST_UPDATED } from '../-data/pharmacies'
-import { barbadosWallClock } from '../-lib/opening-hours'
+import { barbadosWallClock, isBankHoliday } from '../-lib/opening-hours'
 import {
   DRUG_SERVICE_PHONE,
   mapsUrl,
@@ -23,12 +23,7 @@ import {
 import { Caveat } from './caveat'
 import { MapPinIcon } from './icons'
 import { SlipsAccepted } from './slips-accepted'
-import {
-  CostChip,
-  StatusLine,
-  StatusSkeleton,
-  provenanceNote,
-} from './status-pill'
+import { CostChip, StatusLine, StatusSkeleton } from './status-pill'
 import { WeeklyHoursRows } from './weekly-hours'
 
 export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
@@ -44,8 +39,6 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
   const today = now ? barbadosWallClock(now).weekday : null
   const hasPlace = pharmacy.parish !== 'All parishes'
   const whatsapp = whatsappHref(pharmacy)
-
-  const provenance = provenanceNote(pharmacy)
 
   return (
     <div className="mb-l flex max-w-2xl flex-col gap-m">
@@ -70,10 +63,16 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
         </Text>
       </div>
 
-      {pharmacy.type === 'private' && (
+      {pharmacy.pppStatus === 'not-participating' && (
         <Caveat>
-          This pharmacy is not on the Drug Service list of participating
-          pharmacies, so you pay the full price for your medication.
+          This pharmacy does not participate in the Drug Service subsidy. Ask
+          the pharmacy about medication costs before you travel.
+        </Caveat>
+      )}
+      {pharmacy.pppStatus === 'unconfirmed' && (
+        <Caveat tone="confidence">
+          Contact the Drug Service to confirm this branch's participation before
+          relying on subsidised medication here.
         </Caveat>
       )}
 
@@ -101,7 +100,12 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
           Opening times
         </Heading>
         {pharmacy.hours ? (
-          <WeeklyHoursRows hours={pharmacy.hours} today={today} />
+          <WeeklyHoursRows
+            hours={pharmacy.hours}
+            today={today}
+            todayIsHoliday={now ? isBankHoliday(now) : false}
+            bankHolidayHours={pharmacy.bankHolidayHours}
+          />
         ) : (
           <Caveat tone="confidence">
             Opening hours have not been confirmed. Call before you go.
@@ -120,8 +124,7 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
 
       <Caveat>
         <strong>If your prescription is refused:</strong> contact the Drug
-        Service before you pay. Do not pay full price on the assumption the
-        refusal is correct. Call the Drug Service on{' '}
+        Service if you need help checking your entitlement. Call{' '}
         <Link href={telHref(DRUG_SERVICE_PHONE)}>{DRUG_SERVICE_PHONE}</Link>.
       </Caveat>
 
@@ -138,6 +141,16 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
             <Link href={telHref(pharmacy.phone)}>{pharmacy.phone}</Link>
           </Text>
         )}
+        {pharmacy.phoneExtension && (
+          <Text as="p">
+            Dial extension {pharmacy.phoneExtension} after calling.
+          </Text>
+        )}
+        {pharmacy.additionalPhones?.map((phone) => (
+          <Text as="p" key={phone}>
+            Alternative telephone: <Link href={telHref(phone)}>{phone}</Link>
+          </Text>
+        ))}
         {whatsapp && (
           <Caveat tone="channel">
             <Link external href={whatsapp}>
@@ -146,8 +159,8 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
           </Caveat>
         )}
         <Text as="p" className="text-grey-70" size="body-sm">
-          {provenance ? `${provenance} ` : null}Opening hours and Drug Service
-          participation can change. Call ahead to confirm.
+          Opening hours and Drug Service participation can change. Call ahead to
+          confirm.
         </Text>
       </section>
     </div>

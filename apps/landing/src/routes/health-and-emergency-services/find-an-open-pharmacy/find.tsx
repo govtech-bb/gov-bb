@@ -17,10 +17,11 @@ export const Route = createFileRoute(
   beforeLoad: ({ context }) => {
     const overlay = deriveVisibilityOverlay(context.serviceStatuses)
     if (!isUrlVisible(CONTENT_URL, context.level, overlay)) throw notFound()
+    return { pharmacyServiceLevel: urlLevel(CONTENT_URL, overlay) }
   },
-  head: () =>
+  head: ({ match }) =>
     pageHead(TITLE, DESCRIPTION, {
-      noindex: urlLevel(CONTENT_URL) !== 'public',
+      noindex: match.context.pharmacyServiceLevel !== 'public',
       path: PHARMACY_FIND_HREF,
     }),
   component: () => (

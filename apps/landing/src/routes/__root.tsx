@@ -103,15 +103,15 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       // redirect), so within a document it's effectively fixed — but it's capped
       // at the cookie's lifetime so an expired grant can't linger in a tab left
       // open past 4h.
-      queryClient.ensureQueryData({
+      queryClient.fetchQuery({
         queryKey: ROOT_VIEW_LEVEL_QUERY_KEY,
         queryFn: async () => (await resolveViewLevel()).level,
         staleTime: ROOT_VIEW_LEVEL_STALE_MS,
         gcTime: ROOT_VIEW_LEVEL_STALE_MS,
       }),
-      // Mirrors the 60s server-side cache in service-status.ts: an already-open
-      // tab picks up an admin toggle within 60s, or on reload.
-      queryClient.ensureQueryData({
+      // Recheck expired statuses before gating the next navigation. Parked
+      // pages do not poll; a reload also resolves the latest cached status.
+      queryClient.fetchQuery({
         queryKey: ROOT_SERVICE_STATUSES_QUERY_KEY,
         queryFn: getServiceStatuses,
         staleTime: ROOT_SERVICE_STATUSES_STALE_MS,

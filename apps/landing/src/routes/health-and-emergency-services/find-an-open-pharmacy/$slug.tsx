@@ -19,23 +19,24 @@ export const Route = createFileRoute(
   beforeLoad: ({ context }) => {
     const overlay = deriveVisibilityOverlay(context.serviceStatuses)
     if (!isUrlVisible(CONTENT_URL, context.level, overlay)) throw notFound()
+    return { pharmacyServiceLevel: urlLevel(CONTENT_URL, overlay) }
   },
   loader: ({ params }) => {
     const pharmacy = findPharmacyBySlug(params.slug)
     if (!pharmacy) throw notFound()
     return pharmacy
   },
-  head: ({ params }) => {
-    const pharmacy = findPharmacyBySlug(params.slug)
+  head: ({ params, loaderData: pharmacy, match }) => {
+    const isPublic = match.context.pharmacyServiceLevel === 'public'
     const path = `/${CONTENT_URL}/${params.slug}`
     const head = pageHead(
       pharmacy?.name ?? 'Pharmacy',
       pharmacy
         ? `Opening hours, phone number and directions for ${pharmacy.name}, ${pharmacy.parish}, Barbados.`
         : 'Pharmacy details.',
-      { noindex: urlLevel(CONTENT_URL) !== 'public', path },
+      { noindex: !isPublic, path },
     )
-    if (!pharmacy) return head
+    if (!pharmacy || !isPublic) return head
     return {
       ...head,
       scripts: [

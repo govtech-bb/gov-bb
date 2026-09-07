@@ -7,7 +7,9 @@ const CLOSED = [] as const
 describe('pharmacyJsonLd', () => {
   const pharmacy: Pharmacy = {
     name: 'Winston Scott Polyclinic',
+    slug: 'winston-scott-polyclinic',
     type: 'government',
+    pppStatus: 'not-applicable',
     parish: 'St. Michael',
     address: 'Jemmotts Lane, St. Michael',
     phone: '(246) 536-3419',
@@ -29,22 +31,9 @@ describe('pharmacyJsonLd', () => {
     expect(ld.telephone).toBe('+12465363419')
     expect(ld.address.addressRegion).toBe('St. Michael')
     expect(ld.geo?.latitude).toBeCloseTo(13.091964)
-    expect(ld.openingHoursSpecification).toContainEqual({
-      '@type': 'OpeningHoursSpecification',
-      dayOfWeek: 'Monday',
-      opens: '08:15',
-      closes: '22:00',
-    })
-  })
-
-  it("maps '24:00' to the last indexable minute", () => {
-    const ld = pharmacyJsonLd(pharmacy, 'https://example.test/p')
-    expect(ld.openingHoursSpecification).toContainEqual({
-      '@type': 'OpeningHoursSpecification',
-      dayOfWeek: 'Saturday',
-      opens: '00:00',
-      closes: '23:59',
-    })
+    expect(ld.url).toBe('https://example.test/p')
+    // Weekly hours alone would misrepresent public-holiday closures.
+    expect(ld).not.toHaveProperty('openingHoursSpecification')
   })
 
   it('omits phone, geo and hours when the record lacks them', () => {

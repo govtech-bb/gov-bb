@@ -7,6 +7,7 @@
  * current instant as an argument so tests inject fixed dates.
  */
 
+import { getBankHolidaysForYear, startOfDay } from '@/lib/bank-holidays'
 import type {
   Pharmacy,
   TimeRange,
@@ -65,41 +66,9 @@ export type OpenStatus =
   | { open: true; closes: string }
   | {
       open: false
-      /** Next opening within 7 days; undefined = no opening hours all week. */
+      /** Next confirmed opening within 7 days, if known. */
       nextOpen?: { weekday: Weekday; opens: string; isToday: boolean }
     }
-
-/**
- * Status at a wall-clock moment. Boundary semantics are [opens, closes):
- * open at 'opens' exactly, closed at 'closes' exactly.
- */
-export function openStatus(hours: WeeklyHours, at: WallClock): OpenStatus {
-  const todayIndex = WEEKDAYS.indexOf(at.weekday)
-
-  for (const range of hours[at.weekday]) {
-    if (
-      toMinutes(range.opens) <= at.minutes &&
-      at.minutes < toMinutes(range.closes)
-    ) {
-      return { open: true, closes: range.closes }
-    }
-  }
-
-  // Offset 7 is the same weekday next week, for a pharmacy whose only
-  // remaining hours this week are earlier today.
-  for (let offset = 0; offset <= 7; offset++) {
-    const weekday = WEEKDAYS[(todayIndex + offset) % 7]
-    for (const range of hours[weekday]) {
-      if (offset === 0 && toMinutes(range.opens) <= at.minutes) continue
-      return {
-        open: false,
-        nextOpen: { weekday, opens: range.opens, isToday: offset === 0 },
-      }
-    }
-  }
-
-  return { open: false }
-}
 
 export interface UpcomingOpening {
   pharmacy: Pharmacy
@@ -122,9 +91,8 @@ export function soonestOpening(
   let bestRank = Number.POSITIVE_INFINITY
 
   for (const pharmacy of pharmacies) {
-    if (!pharmacy.hours) continue
-    const status = openStatus(pharmacy.hours, at)
-    if (status.open || !status.nextOpen) continue
+    const status = pharmacyStatus(pharmacy, now)
+    if (!status || status.open || !status.nextOpen) continue
     const { weekday, opens, isToday } = status.nextOpen
     const dayOffset = isToday
       ? 0
@@ -148,7 +116,52 @@ export function pharmacyStatus(
   now: Date,
 ): OpenStatus | null {
   if (!pharmacy.hours) return null
-  return openStatus(pharmacy.hours, barbadosWallClock(now))
+  const hours = pharmacy.hours
+  const at = barbadosWallClock(now)
+  const todayIndex = WEEKDAYS.indexOf(at.weekday)
+  const rangesAt = (offset: number) => {
+    const day = new Date(now.getTime() + offset * 86_400_000)
+    if (isBankHoliday(day)) {
+      return pharmacy.bankHolidayHours ?? null
+    }
+    return hours[WEEKDAYS[(todayIndex + offset) % 7]]
+  }
+  const today = rangesAt(0)
+  if (today === null) return null
+  for (const range of today) {
+    if (
+      toMinutes(range.opens) <= at.minutes &&
+      at.minutes < toMinutes(range.closes)
+    ) {
+      return { open: true, closes: range.closes }
+    }
+  }
+
+  // Offset 7 is the same weekday next week, for a pharmacy whose only
+  // remaining hours this week are earlier today.
+  for (let offset = 0; offset <= 7; offset++) {
+    const weekday = WEEKDAYS[(todayIndex + offset) % 7]
+    const ranges = offset === 0 ? today : rangesAt(offset)
+    // An unknown intervening day prevents a definite "next opening" claim.
+    if (ranges === null) return { open: false }
+    for (const range of ranges) {
+      if (offset === 0 && toMinutes(range.opens) <= at.minutes) continue
+      return {
+        open: false,
+        nextOpen: { weekday, opens: range.opens, isToday: offset === 0 },
+      }
+    }
+  }
+
+  return { open: false }
+}
+
+export function isBankHoliday(now: Date): boolean {
+  // Match the existing UTC calendar to Barbados's local date (UTC-4).
+  const day = startOfDay(new Date(now.getTime() - 4 * 60 * 60_000))
+  return getBankHolidaysForYear(day.getUTCFullYear()).some(
+    (holiday) => holiday.date.getTime() === day.getTime(),
+  )
 }
 
 /**

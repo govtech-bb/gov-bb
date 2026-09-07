@@ -3,7 +3,7 @@
  * --------------------------------------------------------------
  * Barbados prescriptions come on coloured slips, and the colour decides
  * which pharmacies can fill them. Acceptance is derived from the pharmacy's
- * Drug Service type - the single source of truth - never stored per record:
+ * facility type and explicit PPP status in pharmacies.json:
  *
  *   white  (Drug Service)   → participating private pharmacies only
  *   yellow (GEHP)           → government pharmacies only
@@ -29,7 +29,11 @@ export const SLIP_LABELS = {
 
 export function acceptsSlip(pharmacy: Pharmacy, slip: SlipColour): boolean {
   if (pharmacy.type === 'government') return slip !== 'white'
-  return pharmacy.type === 'private-sbs' && slip === 'white'
+  return (
+    pharmacy.type === 'private' &&
+    pharmacy.pppStatus === 'participating' &&
+    slip === 'white'
+  )
 }
 
 /**

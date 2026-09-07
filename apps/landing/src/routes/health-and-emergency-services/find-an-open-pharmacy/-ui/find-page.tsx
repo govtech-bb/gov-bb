@@ -29,10 +29,14 @@ export function FindOpenPharmacyPage() {
       </div>
 
       <Text as="p">
-        Pharmacies that give free or cheaper prescription medication across
-        Barbados. Government polyclinic pharmacies are free; private pharmacies
-        in the Drug Service subsidy charge a small dispensing fee. Set your
-        prescription colour to hide the pharmacies that cannot fill it.
+        Find government and participating private pharmacies across Barbados.
+        Covered medication is free at government pharmacies for eligible
+        patients; participating private pharmacies charge a dispensing fee.
+        Government pharmacies appear first.{' '}
+        <Link href="/health-and-emergency-services/free-or-subsidised-medication">
+          Check who qualifies and what to bring
+        </Link>
+        .
       </Text>
 
       <PharmacyFinder />
@@ -45,12 +49,10 @@ export function FindOpenPharmacyPage() {
           Where this information comes from
         </Heading>
         <Text as="p">
-          Government pharmacies come from the Drug Service register, verified
-          May 2026. Pharmacies marked “Small fee” are on the Drug Service Active
-          PPP list, supplied August 2026. Pharmacies marked “Full price” are not
-          on that list, so the Drug Service subsidy does not apply there.
-          Opening hours and Drug Service participation can change. Call ahead to
-          confirm.
+          Pharmacy details come from the Drug Service register and published
+          pharmacy information. Participation that has not been confirmed is
+          labelled separately. Call before travelling to check hours, medication
+          availability and costs.
         </Text>
       </aside>
 
@@ -63,8 +65,7 @@ export function FindOpenPharmacyPage() {
         </Heading>
         <Text as="p">
           If a pharmacy is refusing your Drug Service prescription, contact the
-          Drug Service before you pay. Do not pay full price on the assumption
-          the refusal is correct.
+          Drug Service for help checking your entitlement.
         </Text>
         <Text as="p">
           Phone:{' '}
