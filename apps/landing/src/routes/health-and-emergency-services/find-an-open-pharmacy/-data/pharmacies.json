@@ -2516,28 +2516,6 @@
       ]
     },
     {
-      "slug": "callies-pharmacy-garrison",
-      "name": "Callies Pharmacy, Garrison",
-      "type": "private",
-      "pppStatus": "unconfirmed",
-      "parish": "St. Michael",
-      "address": "Brigade House Garrison, St. Michael",
-      "phone": "",
-      "coords": {
-        "lat": 13.101481,
-        "lon": -59.611396
-      },
-      "notes": "From a Barbados business directory. Location approximate. The number listed for this branch was the Cottage Plantation one, so it has been dropped rather than ring the wrong pharmacy.",
-      "verification": [
-        {
-          "fields": ["ppp"],
-          "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
-          "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
-        }
-      ]
-    },
-    {
       "slug": "carledon-drug-emporium-inc",
       "name": "Carledon Drug Emporium Inc",
       "type": "private",
