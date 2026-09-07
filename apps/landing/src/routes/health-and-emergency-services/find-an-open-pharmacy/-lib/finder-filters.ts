@@ -1,12 +1,13 @@
 /**
  * Finder filter state - pure and testable.
  * --------------------------------------------------------------
- * One reducer owns the six filter facets; URL parse/serialize live beside
+ * One reducer owns the filter facets; URL parse/serialize live beside
  * it so the shareable-link format has a single definition; matching and
  * sorting are pure functions over the same state.
  */
 
-import type { LatLon, Pharmacy, PharmacyType } from '../-data/pharmacies'
+import type { LatLon, Pharmacy } from '../-data/pharmacies'
+import { PARISHES } from '../-data/pharmacies'
 import { pharmacyStatus } from './opening-hours'
 import { pharmacyDistanceKm } from './pharmacy-distance'
 import type { SlipColour } from './slips'
@@ -80,16 +81,20 @@ function parseType(value: string | null): TypeFilter {
 }
 
 function parseSlip(value: string | null): SlipFilter {
-  return (SLIP_COLOURS as readonly string[]).includes(value ?? '')
-    ? (value as SlipColour)
-    : 'any'
+  return SLIP_COLOURS.find((slip) => slip === value) ?? 'any'
 }
 
 /** Read a shareable URL back into filter state (unknown values fall back). */
 export function filtersFromParams(params: URLSearchParams): FilterState {
   return {
     search: params.get('q') ?? '',
-    parishes: params.get('parish')?.split(',').filter(Boolean) ?? [],
+    parishes: [
+      ...new Set(
+        (params.get('parish')?.split(',') ?? []).filter((parish) =>
+          (PARISHES as ReadonlyArray<string>).includes(parish),
+        ),
+      ),
+    ],
     type: parseType(params.get('type')),
     slip: parseSlip(params.get('slip')),
     subsidisedOnly: params.get('all') !== '1',
@@ -126,17 +131,21 @@ export function matchesFilters(
     return false
   }
   // Exact match: "Private (takes subsidy)" must never admit full-price entries.
-  if (f.type === 'private-sbs' && pharmacy.type !== 'private-sbs') {
+  if (
+    f.type === 'private-sbs' &&
+    (pharmacy.type !== 'private' || pharmacy.pppStatus !== 'participating')
+  ) {
     return false
   }
-  // A slip filter shows only pharmacies that accept that slip.
-  if (f.slip !== 'any' && !acceptsSlip(pharmacy, f.slip)) {
+  if (
+    f.subsidisedOnly &&
+    pharmacy.type === 'private' &&
+    pharmacy.pppStatus !== 'participating'
+  ) {
     return false
   }
-  if (f.subsidisedOnly && pharmacy.type === 'private') {
-    return false
-  }
-  if (f.openNow && now && pharmacyStatus(pharmacy, now)?.open !== true) {
+  if (f.slip !== 'any' && !acceptsSlip(pharmacy, f.slip)) return false
+  if (f.openNow && (!now || pharmacyStatus(pharmacy, now)?.open !== true)) {
     return false
   }
   const query = f.search.trim().toLowerCase()
@@ -153,18 +162,6 @@ export function matchesFilters(
   return true
 }
 
-const TYPE_ORDER = {
-  government: 0,
-  'private-sbs': 1,
-  private: 2,
-} satisfies Record<PharmacyType, number>
-
-const FACILITY_GROUP_ORDER = {
-  government: 0,
-  'private-sbs': 1,
-  private: 1,
-} satisfies Record<PharmacyType, number>
-
 /**
  * Government/outpatient facilities first, then private pharmacies. Within
  * each group, open facilities come first, followed by the nearest when the
@@ -178,9 +175,7 @@ export function compareForSort(
   now: Date | null,
   user: LatLon | null,
 ): number {
-  const groupDifference =
-    FACILITY_GROUP_ORDER[a.type] - FACILITY_GROUP_ORDER[b.type]
-  if (groupDifference !== 0) return groupDifference
+  if (a.type !== b.type) return a.type === 'government' ? -1 : 1
 
   if (now) {
     const aOpen = pharmacyStatus(a, now)?.open === true
@@ -192,8 +187,8 @@ export function compareForSort(
     const db = pharmacyDistanceKm(b, user) ?? Number.POSITIVE_INFINITY
     if (da !== db) return da - db
   }
-  if (TYPE_ORDER[a.type] !== TYPE_ORDER[b.type]) {
-    return TYPE_ORDER[a.type] - TYPE_ORDER[b.type]
+  if ((a.pppStatus === 'participating') !== (b.pppStatus === 'participating')) {
+    return a.pppStatus === 'participating' ? -1 : 1
   }
   return a.name.localeCompare(b.name)
 }

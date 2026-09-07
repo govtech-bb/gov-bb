@@ -5,6 +5,7 @@ import {
   DEFAULT_FILTERS,
   filtersFromParams,
   filtersReducer,
+  matchesFilters,
   paramsFromFilters,
 } from './finder-filters'
 import type { FilterState } from './finder-filters'
@@ -26,7 +27,9 @@ function pharmacy(
 ): Pharmacy {
   return {
     name,
+    slug: name.toLowerCase().replaceAll(' ', '-'),
     type,
+    pppStatus: type === 'government' ? 'not-applicable' : 'participating',
     parish: 'St. Michael',
     address: 'Bridgetown',
     phone: '(246) 536-0000',
@@ -83,6 +86,7 @@ describe('URL round-trip', () => {
     const state = filtersFromParams(params)
     expect(state.type).toBe('all')
     expect(state.slip).toBe('any')
+    expect(paramsFromFilters(state).has('slip')).toBe(false)
   })
 })
 
@@ -94,7 +98,7 @@ describe('compareForSort', () => {
       hours: CLOSED_ALL_WEEK,
       coords: { lat: 13.2, lon: -59.6 },
     })
-    const openNearbyPrivate = pharmacy('Private pharmacy', 'private-sbs', {
+    const openNearbyPrivate = pharmacy('Private pharmacy', 'private', {
       hours: {
         ...CLOSED_ALL_WEEK,
         wed: [{ opens: '08:00', closes: '18:00' }],
@@ -111,13 +115,72 @@ describe('compareForSort', () => {
 
   it('keeps participating and full-price private pharmacies in one group', () => {
     const government = pharmacy('Zulu clinic', 'government')
-    const participating = pharmacy('Zulu private', 'private-sbs')
-    const fullPrice = pharmacy('Alpha private', 'private')
+    const participating = pharmacy('Zulu private', 'private')
+    const fullPrice = pharmacy('Alpha private', 'private', {
+      pppStatus: 'not-participating',
+    })
 
     expect(
       [fullPrice, participating, government]
         .sort((a, b) => compareForSort(a, b, null, null))
-        .map((entry) => entry.type),
-    ).toEqual(['government', 'private-sbs', 'private'])
+        .map((entry) => entry.name),
+    ).toEqual(['Zulu clinic', 'Zulu private', 'Alpha private'])
+  })
+})
+
+describe('matchesFilters', () => {
+  const now = new Date('2026-08-19T18:30:00Z')
+  it('only treats explicitly participating private pharmacies as subsidised', () => {
+    const privatePharmacy = pharmacy('Private', 'private')
+    expect(matchesFilters(privatePharmacy, DEFAULT_FILTERS, now)).toBe(true)
+    for (const pppStatus of ['not-participating', 'unconfirmed'] as const) {
+      const entry = { ...privatePharmacy, pppStatus }
+      expect(matchesFilters(entry, DEFAULT_FILTERS, now)).toBe(false)
+      expect(
+        matchesFilters(
+          entry,
+          { ...DEFAULT_FILTERS, subsidisedOnly: false },
+          now,
+        ),
+      ).toBe(true)
+      expect(
+        matchesFilters(
+          entry,
+          filtersFromParams(
+            new URLSearchParams('type=private-sbs&all=1&slip=white'),
+          ),
+          now,
+        ),
+      ).toBe(false)
+    }
+  })
+
+  it('does not present unknown hours as open', () => {
+    const openNow = { ...DEFAULT_FILTERS, openNow: true }
+    const entry = pharmacy('No confirmed hours', 'government')
+    expect(matchesFilters(entry, openNow, now)).toBe(false)
+    expect(matchesFilters(entry, openNow, null)).toBe(false)
+    const holiday = {
+      ...entry,
+      hours: { ...CLOSED_ALL_WEEK, mon: [{ opens: '08:00', closes: '20:00' }] },
+    }
+    expect(
+      matchesFilters(holiday, openNow, new Date('2026-11-30T18:00:00Z')),
+    ).toBe(false)
+    expect(
+      matchesFilters(
+        { ...holiday, bankHolidayHours: [{ opens: '10:00', closes: '14:00' }] },
+        openNow,
+        new Date('2026-11-30T18:00:00Z'),
+      ),
+    ).toBe(false)
+  })
+
+  it('deduplicates parishes and ignores unknown URL values', () => {
+    expect(
+      filtersFromParams(
+        new URLSearchParams('parish=St.%20Michael,unknown,St.%20Michael'),
+      ).parishes,
+    ).toEqual(['St. Michael'])
   })
 })

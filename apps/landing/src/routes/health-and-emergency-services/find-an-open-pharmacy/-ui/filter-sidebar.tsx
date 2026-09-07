@@ -9,6 +9,7 @@ import {
   Checkbox,
   Heading,
   Input,
+  Link,
   Select,
   Text,
 } from '@govtech-bb/react'
@@ -16,6 +17,8 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { PARISHES } from '../-data/pharmacies'
 import type { FilterAction, FilterState } from '../-lib/finder-filters'
+import { SLIP_COLOURS_HREF } from '../-lib/routes'
+import { SLIP_COLOURS, SLIP_LABELS } from '../-lib/slips'
 import { Chevron, CloseIcon } from './icons'
 
 type LocationState = 'idle' | 'loading' | 'success'
@@ -83,11 +86,21 @@ export function FilterSidebar({
       : []),
   ]
 
+  const canReset = Boolean(
+    filters.search ||
+    filters.parishes.length ||
+    filters.type !== 'all' ||
+    filters.slip !== 'any' ||
+    filters.openNow ||
+    !filters.subsidisedOnly ||
+    locationStatus,
+  )
+
   const locationLabel =
     locationState === 'loading'
       ? 'Finding your location…'
       : locationState === 'success'
-        ? 'Sorted by distance (turn off)'
+        ? 'Location on (turn off)'
         : 'Use my location'
 
   return (
@@ -129,16 +142,6 @@ export function FilterSidebar({
               >
                 {locationLabel}
               </Button>
-              {locationStatus && (
-                <Text
-                  aria-live="polite"
-                  as="p"
-                  className="text-grey-70"
-                  size="body-sm"
-                >
-                  {locationStatus}
-                </Text>
-              )}
             </div>
 
             <Input
@@ -147,17 +150,15 @@ export function FilterSidebar({
               onChange={(event) =>
                 dispatch({ type: 'set-search', value: event.target.value })
               }
-              placeholder="e.g. Sparman, Collins, Oistins"
+              placeholder="e.g. Winston Scott, Oistins"
               type="search"
               value={filters.search}
             />
 
-            <FilterGroup
-              hint="Free at government polyclinics; a small dispensing fee at private pharmacies that take the Drug Service subsidy."
-              title="Cost and type"
-            >
+            <FilterGroup title="Cost and type">
               <Select
                 label="Pharmacy type"
+                description="Covered medication is free at government pharmacies for eligible patients. Participating private pharmacies charge a dispensing fee."
                 onChange={(event) =>
                   dispatch({
                     type: 'set-type',
@@ -170,8 +171,8 @@ export function FilterSidebar({
                 }
                 value={filters.type}
               >
-                <option value="all">All pharmacies</option>
-                <option value="government">Government (free)</option>
+                <option value="all">All pharmacy types</option>
+                <option value="government">Government</option>
                 <option value="private-sbs">Private (takes subsidy)</option>
               </Select>
               <Checkbox
@@ -187,12 +188,10 @@ export function FilterSidebar({
               />
             </FilterGroup>
 
-            <FilterGroup
-              hint="The colour of the prescription your doctor gave you. Yellow and green (GEHP) prescriptions are filled at government pharmacies."
-              title="Prescription colour"
-            >
+            <FilterGroup title="Prescription colour">
               <Select
                 label="Colour"
+                description="The colour of the prescription your doctor gave you. Yellow and green (GEHP) prescriptions are filled at government pharmacies. Call to check your medication is covered."
                 onChange={(event) =>
                   dispatch({
                     type: 'set-slip',
@@ -207,20 +206,23 @@ export function FilterSidebar({
                 value={filters.slip}
               >
                 <option value="any">Any colour</option>
-                <option value="white">White (Drug Service)</option>
-                <option value="yellow">Yellow (GEHP)</option>
-                <option value="green">Green (GEHP dependant)</option>
+                {SLIP_COLOURS.map((slip) => (
+                  <option key={slip} value={slip}>
+                    {SLIP_LABELS[slip]}
+                  </option>
+                ))}
               </Select>
+              <Link href={SLIP_COLOURS_HREF}>
+                What prescription colours mean
+              </Link>
             </FilterGroup>
 
-            <FilterGroup
-              hint="Shows only pharmacies open right now, in Barbados time. Pharmacies with no confirmed hours are not shown. Call to check. Hours can change on public holidays."
-              title="Opening hours"
-            >
+            <FilterGroup title="Opening hours">
               <Checkbox
                 checked={filters.openNow}
                 id="filter-open-now"
                 label="Open right now"
+                description="Uses Barbados time and listed dispensing hours. Pharmacies with unconfirmed hours today are excluded. Call before travelling."
                 onChange={(event) =>
                   dispatch({
                     type: 'set-open-now',
@@ -246,7 +248,11 @@ export function FilterSidebar({
           </div>
         )}
 
-        {tags.length > 0 && (
+        <Text as="p" role="status" className="text-grey-70" size="body-sm">
+          {locationStatus}
+        </Text>
+
+        {(tags.length > 0 || canReset) && (
           <div className="flex flex-col gap-s pt-xs">
             <div className="flex flex-wrap items-center gap-xs">
               {tags.map((tag) => (
@@ -262,18 +268,19 @@ export function FilterSidebar({
                 </button>
               ))}
             </div>
-            <button
-              className="self-start text-red-80 underline"
-              onClick={() => {
-                dispatch({ type: 'clear-all' })
-                onClearLocation()
-              }}
-              type="button"
-            >
-              <Text as="span" weight="bold">
-                Clear all
-              </Text>
-            </button>
+            {canReset && (
+              <button
+                className="govbb-link self-start"
+                onClick={() => {
+                  dispatch({ type: 'clear-all' })
+                }}
+                type="button"
+              >
+                <Text as="span" weight="bold">
+                  Reset filters
+                </Text>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -283,12 +290,10 @@ export function FilterSidebar({
 
 function FilterGroup({
   title,
-  hint,
   defaultOpen = true,
   children,
 }: {
   title: string
-  hint?: string
   defaultOpen?: boolean
   children: ReactNode
 }) {
@@ -308,16 +313,7 @@ function FilterGroup({
           </span>
         </button>
       </Heading>
-      {open && (
-        <div className="flex flex-col gap-s">
-          {hint && (
-            <Text as="p" className="text-grey-70" size="body-sm">
-              {hint}
-            </Text>
-          )}
-          {children}
-        </div>
-      )}
+      {open && <div className="flex flex-col gap-s">{children}</div>}
     </div>
   )
 }

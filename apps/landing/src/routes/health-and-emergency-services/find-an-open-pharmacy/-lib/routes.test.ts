@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { Pharmacy } from '../-data/pharmacies'
-import { offersWhatsApp, phoneE164, whatsappHref } from './routes'
+import { pharmacyDetailHref, phoneE164, whatsappHref } from './routes'
 
 const pharmacy = (overrides: Partial<Pharmacy>): Pharmacy => ({
   name: 'Test',
-  type: 'private-sbs',
+  slug: 'original-name',
+  type: 'private',
+  pppStatus: 'participating',
   parish: 'St. Michael',
   address: 'Bridgetown',
   phone: '(246) 271-3784',
@@ -18,23 +20,11 @@ describe('phoneE164', () => {
   })
 })
 
-describe('offersWhatsApp', () => {
-  it('is true for a confirmed number', () => {
-    expect(offersWhatsApp(pharmacy({ whatsapp: '(246) 426-6387' }))).toBe(true)
-  })
-
-  it('is true when only the notes advertise the service (iMart case)', () => {
-    expect(
-      offersWhatsApp(
-        pharmacy({ notes: 'WhatsApp prescription service available.' }),
-      ),
-    ).toBe(true)
-  })
-
-  it('is false otherwise', () => {
-    expect(
-      offersWhatsApp(pharmacy({ notes: 'Drive-through available.' })),
-    ).toBe(false)
+describe('pharmacyDetailHref', () => {
+  it('preserves the stored URL when the display name changes', () => {
+    expect(pharmacyDetailHref(pharmacy({ name: 'Renamed pharmacy' }))).toBe(
+      '/health-and-emergency-services/find-an-open-pharmacy/original-name',
+    )
   })
 })
 
@@ -45,12 +35,12 @@ describe('whatsappHref', () => {
     )
   })
 
-  it('falls back to the listed phone when only the notes advertise it', () => {
+  it('never guesses a WhatsApp number from the phone or notes', () => {
     expect(
       whatsappHref(
         pharmacy({ notes: 'WhatsApp prescription service available.' }),
       ),
-    ).toContain('wa.me/12462713784')
+    ).toBeNull()
   })
 
   it('is null for pharmacies that do not offer WhatsApp', () => {

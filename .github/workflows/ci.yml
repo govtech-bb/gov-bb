@@ -55,6 +55,9 @@ jobs:
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 
+      - name: Type check landing
+        run: pnpm exec nx run landing:typecheck
+
       - name: Report type check results
         if: steps.typecheck.outcome == 'failure'
         run: |

@@ -5,7 +5,6 @@ import {
   dayHoursLabel,
   formatTime,
   formatTimeShort,
-  openStatus,
   pharmacyStatus,
   soonestOpening,
   toMinutes,
@@ -63,119 +62,12 @@ describe('barbadosWallClock', () => {
   })
 })
 
-describe('openStatus', () => {
-  const STANDARD = hoursWith({
-    mon: [{ opens: '08:00', closes: '18:00' }],
-  })
-
-  it('is open mid-range with the closing time', () => {
-    expect(openStatus(STANDARD, { weekday: 'mon', minutes: 600 })).toEqual({
-      open: true,
-      closes: '18:00',
-    })
-  })
-
-  it('is open at the opening minute exactly (inclusive)', () => {
-    expect(
-      openStatus(STANDARD, { weekday: 'mon', minutes: toMinutes('08:00') }),
-    ).toEqual({ open: true, closes: '18:00' })
-  })
-
-  it('is closed at the closing minute exactly (exclusive)', () => {
-    const status = openStatus(STANDARD, {
-      weekday: 'mon',
-      minutes: toMinutes('18:00'),
-    })
-    expect(status.open).toBe(false)
-  })
-
-  it('is closed before the first range, opening later today', () => {
-    expect(openStatus(STANDARD, { weekday: 'mon', minutes: 420 })).toEqual({
-      open: false,
-      nextOpen: { weekday: 'mon', opens: '08:00', isToday: true },
-    })
-  })
-
-  it('reports the second range as next during a lunch gap', () => {
-    const split = hoursWith({
-      mon: [
-        { opens: '08:00', closes: '13:00' },
-        { opens: '14:00', closes: '18:00' },
-      ],
-    })
-    expect(
-      openStatus(split, { weekday: 'mon', minutes: toMinutes('13:30') }),
-    ).toEqual({
-      open: false,
-      nextOpen: { weekday: 'mon', opens: '14:00', isToday: true },
-    })
-  })
-
-  it('treats a 00:00–24:00 range as open all day', () => {
-    const allDay = hoursWith({ mon: [{ opens: '00:00', closes: '24:00' }] })
-    expect(openStatus(allDay, { weekday: 'mon', minutes: 0 }).open).toBe(true)
-    expect(openStatus(allDay, { weekday: 'mon', minutes: 1439 }).open).toBe(
-      true,
-    )
-  })
-
-  it('finds tomorrow when closed for the rest of today', () => {
-    const twoDays = hoursWith({
-      mon: [{ opens: '08:00', closes: '18:00' }],
-      tue: [{ opens: '09:00', closes: '17:00' }],
-    })
-    expect(
-      openStatus(twoDays, { weekday: 'mon', minutes: toMinutes('19:00') }),
-    ).toEqual({
-      open: false,
-      nextOpen: { weekday: 'tue', opens: '09:00', isToday: false },
-    })
-  })
-
-  it('skips a closed Sunday from Saturday evening to Monday', () => {
-    const weekdaysOnly = hoursWith({
-      mon: [{ opens: '08:00', closes: '18:00' }],
-      sat: [{ opens: '08:00', closes: '13:00' }],
-    })
-    expect(
-      openStatus(weekdaysOnly, { weekday: 'sat', minutes: toMinutes('15:00') }),
-    ).toEqual({
-      open: false,
-      nextOpen: { weekday: 'mon', opens: '08:00', isToday: false },
-    })
-  })
-
-  it('wraps the week from Sunday night to Monday morning', () => {
-    const mondayOnly = hoursWith({ mon: [{ opens: '08:00', closes: '18:00' }] })
-    expect(
-      openStatus(mondayOnly, { weekday: 'sun', minutes: toMinutes('22:00') }),
-    ).toEqual({
-      open: false,
-      nextOpen: { weekday: 'mon', opens: '08:00', isToday: false },
-    })
-  })
-
-  it('returns no nextOpen when there are no hours all week', () => {
-    expect(
-      openStatus(CLOSED_ALL_WEEK, { weekday: 'wed', minutes: 600 }),
-    ).toEqual({ open: false })
-  })
-
-  it('finds the same weekday next week when only earlier hours remain', () => {
-    const mondayOnly = hoursWith({ mon: [{ opens: '08:00', closes: '18:00' }] })
-    expect(
-      openStatus(mondayOnly, { weekday: 'mon', minutes: toMinutes('19:00') }),
-    ).toEqual({
-      open: false,
-      nextOpen: { weekday: 'mon', opens: '08:00', isToday: false },
-    })
-  })
-})
-
 describe('soonestOpening', () => {
   const pharmacyWith = (name: string, hours: WeeklyHours): Pharmacy => ({
     name,
+    slug: 'test-pharmacy',
     type: 'government',
+    pppStatus: 'not-applicable',
     parish: 'St. Michael',
     address: 'Bridgetown',
     phone: '(246) 536-0000',
@@ -224,12 +116,160 @@ describe('soonestOpening', () => {
 describe('pharmacyStatus', () => {
   const pharmacy: Pharmacy = {
     name: 'Test Pharmacy',
+    slug: 'test-pharmacy',
     type: 'government',
+    pppStatus: 'not-applicable',
     parish: 'St. Michael',
     address: 'Bridgetown',
     phone: '(246) 536-0000',
     hours: hoursWith({ wed: [{ opens: '08:00', closes: '18:00' }] }),
   }
+
+  const STANDARD = hoursWith({
+    mon: [{ opens: '08:00', closes: '18:00' }],
+  })
+
+  it('is open mid-range with the closing time', () => {
+    expect(
+      pharmacyStatus(
+        { ...pharmacy, hours: STANDARD },
+        new Date('2026-09-07T10:00:00-04:00'),
+      ),
+    ).toEqual({
+      open: true,
+      closes: '18:00',
+    })
+  })
+
+  it('is open at the opening minute exactly (inclusive)', () => {
+    expect(
+      pharmacyStatus(
+        { ...pharmacy, hours: STANDARD },
+        new Date('2026-09-07T08:00:00-04:00'),
+      ),
+    ).toEqual({ open: true, closes: '18:00' })
+  })
+
+  it('is closed at the closing minute exactly (exclusive)', () => {
+    const status = pharmacyStatus(
+      { ...pharmacy, hours: STANDARD },
+      new Date('2026-09-07T18:00:00-04:00'),
+    )
+    expect(status?.open).toBe(false)
+  })
+
+  it('is closed before the first range, opening later today', () => {
+    expect(
+      pharmacyStatus(
+        { ...pharmacy, hours: STANDARD },
+        new Date('2026-09-07T07:00:00-04:00'),
+      ),
+    ).toEqual({
+      open: false,
+      nextOpen: { weekday: 'mon', opens: '08:00', isToday: true },
+    })
+  })
+
+  it('reports the second range as next during a lunch gap', () => {
+    const split = hoursWith({
+      mon: [
+        { opens: '08:00', closes: '13:00' },
+        { opens: '14:00', closes: '18:00' },
+      ],
+    })
+    expect(
+      pharmacyStatus(
+        { ...pharmacy, hours: split },
+        new Date('2026-09-07T13:30:00-04:00'),
+      ),
+    ).toEqual({
+      open: false,
+      nextOpen: { weekday: 'mon', opens: '14:00', isToday: true },
+    })
+  })
+
+  it('treats a 00:00–24:00 range as open all day', () => {
+    const allDay = hoursWith({ mon: [{ opens: '00:00', closes: '24:00' }] })
+    expect(
+      pharmacyStatus(
+        { ...pharmacy, hours: allDay },
+        new Date('2026-09-07T00:00:00-04:00'),
+      )?.open,
+    ).toBe(true)
+    expect(
+      pharmacyStatus(
+        { ...pharmacy, hours: allDay },
+        new Date('2026-09-07T23:59:00-04:00'),
+      )?.open,
+    ).toBe(true)
+  })
+
+  it('finds tomorrow when closed for the rest of today', () => {
+    const twoDays = hoursWith({
+      mon: [{ opens: '08:00', closes: '18:00' }],
+      tue: [{ opens: '09:00', closes: '17:00' }],
+    })
+    expect(
+      pharmacyStatus(
+        { ...pharmacy, hours: twoDays },
+        new Date('2026-09-07T19:00:00-04:00'),
+      ),
+    ).toEqual({
+      open: false,
+      nextOpen: { weekday: 'tue', opens: '09:00', isToday: false },
+    })
+  })
+
+  it('skips a closed Sunday from Saturday evening to Monday', () => {
+    const weekdaysOnly = hoursWith({
+      mon: [{ opens: '08:00', closes: '18:00' }],
+      sat: [{ opens: '08:00', closes: '13:00' }],
+    })
+    expect(
+      pharmacyStatus(
+        { ...pharmacy, hours: weekdaysOnly },
+        new Date('2026-09-12T15:00:00-04:00'),
+      ),
+    ).toEqual({
+      open: false,
+      nextOpen: { weekday: 'mon', opens: '08:00', isToday: false },
+    })
+  })
+
+  it('wraps the week from Sunday night to Monday morning', () => {
+    const mondayOnly = hoursWith({ mon: [{ opens: '08:00', closes: '18:00' }] })
+    expect(
+      pharmacyStatus(
+        { ...pharmacy, hours: mondayOnly },
+        new Date('2026-09-13T22:00:00-04:00'),
+      ),
+    ).toEqual({
+      open: false,
+      nextOpen: { weekday: 'mon', opens: '08:00', isToday: false },
+    })
+  })
+
+  it('returns no nextOpen when there are no hours all week', () => {
+    expect(
+      pharmacyStatus(
+        { ...pharmacy, hours: CLOSED_ALL_WEEK },
+        new Date('2026-09-09T10:00:00-04:00'),
+      ),
+    ).toEqual({ open: false })
+  })
+
+  it('finds the same weekday next week when only earlier hours remain', () => {
+    const mondayOnly = hoursWith({ mon: [{ opens: '08:00', closes: '18:00' }] })
+    expect(
+      pharmacyStatus(
+        { ...pharmacy, hours: mondayOnly },
+        new Date('2026-09-07T19:00:00-04:00'),
+      ),
+    ).toEqual({
+      open: false,
+      nextOpen: { weekday: 'mon', opens: '08:00', isToday: false },
+    })
+  })
 
   it('is open at 14:30 Barbados time on a Wednesday', () => {
     expect(pharmacyStatus(pharmacy, new Date('2026-08-19T18:30:00Z'))).toEqual({
@@ -241,6 +281,83 @@ describe('pharmacyStatus', () => {
   it('is closed at 23:00 Barbados time the same Wednesday', () => {
     const status = pharmacyStatus(pharmacy, new Date('2026-08-20T03:00:00Z'))
     expect(status?.open).toBe(false)
+  })
+
+  it('uses holiday hours for status and the next opening', () => {
+    const entry: Pharmacy = {
+      ...pharmacy,
+      hours: hoursWith({
+        mon: [{ opens: '08:00', closes: '20:00' }],
+        tue: [{ opens: '08:00', closes: '20:00' }],
+      }),
+      bankHolidayHours: [{ opens: '10:00', closes: '14:00' }],
+    }
+    const beforeOpening = new Date('2026-11-30T13:59:00Z')
+    expect(pharmacyStatus(entry, beforeOpening)).toEqual({
+      open: false,
+      nextOpen: { weekday: 'mon', opens: '10:00', isToday: true },
+    })
+    expect(soonestOpening([entry], beforeOpening)?.opens).toBe('10:00')
+    expect(pharmacyStatus(entry, new Date('2026-11-30T14:00:00Z'))).toEqual({
+      open: true,
+      closes: '14:00',
+    })
+    expect(pharmacyStatus(entry, new Date('2026-11-30T18:00:00Z'))).toEqual({
+      open: false,
+      nextOpen: { weekday: 'tue', opens: '08:00', isToday: false },
+    })
+    expect(
+      pharmacyStatus({ ...entry, bankHolidayHours: [] }, beforeOpening)?.open,
+    ).toBe(false)
+    expect(
+      pharmacyStatus({ ...entry, bankHolidayHours: undefined }, beforeOpening),
+    ).toBeNull()
+    expect(
+      soonestOpening(
+        [{ ...entry, bankHolidayHours: undefined }],
+        beforeOpening,
+      ),
+    ).toBeNull()
+  })
+
+  it('uses Barbados dates across midnight, substitute holidays and the year boundary', () => {
+    const allDay = [{ opens: '00:00', closes: '24:00' }]
+    const dailyHours: WeeklyHours = {
+      mon: allDay,
+      tue: allDay,
+      wed: allDay,
+      thu: allDay,
+      fri: allDay,
+      sat: allDay,
+      sun: allDay,
+    }
+    const entry = { ...pharmacy, hours: dailyHours, bankHolidayHours: [] }
+    // Still 30 November in Barbados, even though UTC is already 1 December.
+    expect(pharmacyStatus(entry, new Date('2026-12-01T03:59:00Z'))?.open).toBe(
+      false,
+    )
+    expect(pharmacyStatus(entry, new Date('2026-12-01T04:00:00Z'))?.open).toBe(
+      true,
+    )
+    expect(pharmacyStatus(entry, new Date('2027-08-03T16:00:00Z'))?.open).toBe(
+      false,
+    )
+    expect(pharmacyStatus(entry, new Date('2027-01-01T03:59:00Z'))?.open).toBe(
+      true,
+    )
+    expect(pharmacyStatus(entry, new Date('2027-01-01T04:00:00Z'))?.open).toBe(
+      false,
+    )
+  })
+
+  it('does not promise a next opening beyond an unconfirmed holiday', () => {
+    const entry = {
+      ...pharmacy,
+      hours: hoursWith({ tue: [{ opens: '08:00', closes: '20:00' }] }),
+    }
+    expect(pharmacyStatus(entry, new Date('2026-11-29T20:00:00Z'))).toEqual({
+      open: false,
+    })
   })
 
   it('is null (unknown) when hours are not confirmed', () => {

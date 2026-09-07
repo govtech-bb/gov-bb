@@ -4,12 +4,8 @@
  * Single source of truth for the pharmacy finder at
  * /health-and-emergency-services/find-an-open-pharmacy.
  *
- * Records live in pharmacies.json - edit that file directly, one object per
- * pharmacy. Sources: the GovTech pharmacy prototype dataset (23 July 2026),
- * the Drug Service register of government dispensaries (verified May 2026)
- * and the Drug Service Active PPP list (supplied 31 August 2026). Known
- * conflicts are flagged in each record's notes. Keep META.visibility
- * 'preview' until the Drug Service signs the data off.
+ * Edit pharmacy facts and their verification references in pharmacies.json.
+ * Keep the service in preview until its data and release checks are complete.
  */
 
 import pharmacyData from './pharmacies.json'
@@ -66,25 +62,39 @@ export interface LatLon {
   lon: number
 }
 
-/**
- * What the visit costs - the reader's decision variable.
- * government = free polyclinic dispensary; private-sbs = participating
- * private pharmacy on the Drug Service Active PPP list (small dispensing
- * fee); private = a private pharmacy that is not on that list, so the patient
- * pays the full price.
- */
-export type PharmacyType = 'government' | 'private-sbs' | 'private'
+export type PharmacyType = 'government' | 'private'
+
+export type PppStatus =
+  | 'participating'
+  | 'not-participating'
+  | 'unconfirmed'
+  | 'not-applicable'
+
+export interface Verification {
+  fields: ReadonlyArray<'ppp' | 'hours' | 'contacts'>
+  source: string
+  /** Date this source was checked, not a guarantee that the facts cannot change. */
+  checkedOn: string
+  note?: string
+}
 
 export interface Pharmacy {
+  /** Stable across name changes; used by details, links and the sitemap. */
+  slug: string
   name: string
   type: PharmacyType
+  pppStatus: PppStatus
   /** 'All parishes' is the island-wide delivery service. */
   parish: Parish | 'All parishes'
   address: string
   /** Display form '(246) NNN-NNNN'; '' when no number is listed. */
   phone: string
+  phoneExtension?: string
+  additionalPhones?: ReadonlyArray<string>
   /** Absent = opening hours not confirmed - open/closed state is unknown. */
   hours?: WeeklyHours
+  /** Absent = unknown; [] = closed; ranges = confirmed holiday hours. */
+  bankHolidayHours?: ReadonlyArray<TimeRange>
   /** Geocoded point, used for the "Use my location" distance sort. */
   coords?: LatLon
   notes?: string
@@ -96,11 +106,10 @@ export interface Pharmacy {
    * link is worse than no button.
    */
   whatsapp?: string
+  verification?: ReadonlyArray<Verification>
 }
 
-export const PHARMACIES_LAST_UPDATED = '2026-08-31'
-/** When the Drug Service supplied the Active PPP list. */
-export const PPP_LIST_UPDATED = 'August 2026'
+export const PHARMACIES_LAST_UPDATED = pharmacyData.lastUpdated
 
-export const PHARMACIES = pharmacyData as ReadonlyArray<Pharmacy>
+export const PHARMACIES = pharmacyData.pharmacies as ReadonlyArray<Pharmacy>
 export const PHARMACY_COUNT = PHARMACIES.length

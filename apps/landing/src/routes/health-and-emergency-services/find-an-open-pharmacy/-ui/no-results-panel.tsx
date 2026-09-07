@@ -48,7 +48,7 @@ export function NoResultsPanel({
         : ''
       hatches.push({
         key: 'closed',
-        label: 'Show pharmacies that are closed now',
+        label: 'Include pharmacies with other opening times',
         caption: `${closedMatches.length} of the ${PHARMACY_COUNT} pharmacies would match.${opensAt}`,
         action: { type: 'set-open-now', value: false },
       })
@@ -58,13 +58,10 @@ export function NoResultsPanel({
   if (filters.parishes.length > 0) {
     const anyParish = relaxed({ parishes: [] })
     if (anyParish.length > 0) {
-      const stLucy = filters.parishes.includes('St. Lucy')
-        ? ' St. Lucy has no pharmacy listed. The nearest are in Speightstown, St. Peter.'
-        : ''
       hatches.push({
         key: 'parishes',
         label: 'Search all parishes',
-        caption: `${anyParish.length} of the ${PHARMACY_COUNT} pharmacies would match.${stLucy}`,
+        caption: `${anyParish.length} of the ${PHARMACY_COUNT} pharmacies would match.`,
         action: { type: 'clear-parishes' },
       })
     }
@@ -93,14 +90,13 @@ export function NoResultsPanel({
       })
     }
   }
-
   if (filters.subsidisedOnly) {
-    const includingFullPrice = relaxed({ subsidisedOnly: false })
-    if (includingFullPrice.length > 0) {
+    const allMatches = relaxed({ subsidisedOnly: false })
+    if (allMatches.length > 0) {
       hatches.push({
         key: 'subsidised',
-        label: 'Include pharmacies outside the subsidy',
-        caption: `${includingFullPrice.length} of the ${PHARMACY_COUNT} pharmacies would match. They are not in the subsidy, so you pay the full price.`,
+        label: 'Include all listed pharmacies',
+        caption: `${allMatches.length} of the ${PHARMACY_COUNT} pharmacies would match. Check participation and medication costs before travelling.`,
         action: { type: 'set-subsidised-only', value: false },
       })
     }
@@ -122,8 +118,9 @@ export function NoResultsPanel({
   if (hatches.length === 0) {
     hatches.push({
       key: 'all',
-      label: 'Clear all filters',
-      caption: `Show all ${PHARMACY_COUNT} pharmacies.`,
+      label: 'Reset filters',
+      caption:
+        'Return to the default list of government and participating private pharmacies.',
       action: { type: 'clear-all' },
     })
   }
@@ -173,9 +170,12 @@ function noResultsReason(filters: FilterState): string {
   if (filters.parishes.length > 0) {
     sentence += ` in ${listJoin(filters.parishes)}`
   }
-  sentence += filters.openNow ? ' are open right now.' : ' were found.'
+  sentence += filters.openNow
+    ? ' have confirmed opening hours right now.'
+    : ' were found.'
   if (filters.subsidisedOnly && filters.type !== 'government') {
-    sentence += ' Pharmacies outside the subsidy were hidden.'
+    sentence +=
+      ' Only government and confirmed participating private pharmacies were included.'
   }
   return sentence
 }

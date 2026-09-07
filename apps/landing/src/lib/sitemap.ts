@@ -60,7 +60,7 @@ export function collectSitemapEntries(
   if (pharmacyService && isVisible(pharmacyService, 'public', overlay)) {
     add(PHARMACY_FIND_HREF, 0.7)
     for (const pharmacy of PHARMACIES) {
-      add(pharmacyDetailHref(pharmacy.name), 0.6)
+      add(pharmacyDetailHref(pharmacy), 0.6)
     }
   }
 

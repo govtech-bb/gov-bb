@@ -6,8 +6,8 @@
  */
 
 import { Text } from '@govtech-bb/react'
-import type { Pharmacy, PharmacyType } from '../-data/pharmacies'
-import { PPP_LIST_UPDATED, WEEKDAYS } from '../-data/pharmacies'
+import type { Pharmacy } from '../-data/pharmacies'
+import { WEEKDAYS } from '../-data/pharmacies'
 import {
   barbadosWallClock,
   formatTime,
@@ -60,7 +60,7 @@ export function StatusLine({
     return (
       <Text as="p" className="text-grey-70" size="body-sm" weight="bold">
         <Dot className="bg-grey-70" />
-        Hours not confirmed
+        Today's hours not confirmed. Call before travelling.
       </Text>
     )
   }
@@ -125,31 +125,32 @@ export function StatusLine({
  */
 const COST_TAGS = {
   government: {
-    label: 'Free at a government polyclinic',
+    label: 'Government pharmacy: no dispensing fee',
     className: 'bg-green-10 text-green-80',
   },
-  'private-sbs': {
-    label: 'Small fee at a private pharmacy',
+  participating: {
+    label: 'Participating private pharmacy: dispensing fee',
     className: 'bg-teal-10 text-teal-80',
   },
-  private: {
-    label: 'Full price outside the subsidy',
+  'not-participating': {
+    label: 'Outside the Drug Service subsidy',
+    className: 'bg-grey-20 text-grey-70',
+  },
+  unconfirmed: {
+    label: 'Subsidy participation not confirmed',
     className: 'bg-grey-20 text-grey-70',
   },
 } as const
 
-/** Where the record came from, and how fresh it is. */
-const PROVENANCE = {
-  'private-sbs': `On the Drug Service Active PPP list, ${PPP_LIST_UPDATED}.`,
-  private: 'Not on the Drug Service list of participating pharmacies.',
-} satisfies Partial<Record<PharmacyType, string>>
-
-export function provenanceNote(pharmacy: Pharmacy): string | undefined {
-  return PROVENANCE[pharmacy.type as keyof typeof PROVENANCE]
-}
-
 export function CostChip({ pharmacy }: { pharmacy: Pharmacy }) {
-  const cost = COST_TAGS[pharmacy.type]
+  const cost =
+    COST_TAGS[
+      pharmacy.type === 'government'
+        ? 'government'
+        : pharmacy.pppStatus === 'not-applicable'
+          ? 'unconfirmed'
+          : pharmacy.pppStatus
+    ]
   return (
     <Text
       as="p"

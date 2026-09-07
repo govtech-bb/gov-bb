@@ -1,11 +1,16 @@
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, dehydrate, hydrate } from '@tanstack/react-query'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { resolveViewLevel } from '../lib/preview'
 
 // The root beforeLoad resolves the viewer level + service statuses through the
 // router's QueryClient. Mock the two server functions so we can assert how
 // often they are actually invoked across navigations.
 const previewMocks = vi.hoisted(() => ({
-  resolveViewLevel: vi.fn(async () => ({ level: 'public' as const })),
+  resolveViewLevel: vi.fn(
+    async (): Promise<Awaited<ReturnType<typeof resolveViewLevel>>> => ({
+      level: 'public',
+    }),
+  ),
   // Real value from preview.ts — __root imports it to cap the view-level cache.
   COOKIE_MAX_AGE_SECONDS: 4 * 60 * 60,
 }))
@@ -70,7 +75,7 @@ describe('root beforeLoad context resolution', () => {
     // has expired, so an expired preview/draft grant can't linger in a long-open
     // tab. Assert the value directly — a regression to `Infinity` fails here.
     const queryClient = freshClient()
-    const spy = vi.spyOn(queryClient, 'ensureQueryData')
+    const spy = vi.spyOn(queryClient, 'fetchQuery')
 
     await beforeLoad({ context: { queryClient }, location: { search: {} } })
 
@@ -105,7 +110,7 @@ describe('root beforeLoad context resolution', () => {
     previewMocks.resolveViewLevel.mockResolvedValueOnce({
       level: 'preview',
       redirectTo: '/business-trade',
-    } as { level: 'preview'; redirectTo: string })
+    })
 
     const thrown = await beforeLoad({
       context: { queryClient: freshClient() },
@@ -117,5 +122,30 @@ describe('root beforeLoad context resolution', () => {
     // TanStack's `redirect()` throws a redirect object carrying the target.
     expect(thrown).toBeDefined()
     expect(JSON.stringify(thrown)).toContain('/business-trade')
+  })
+
+  it('refreshes expired statuses hydrated from the server before navigation', async () => {
+    const serverClient = freshClient()
+    serverClient.setQueryData(
+      ['root', 'service-statuses'],
+      [['pharmacy', 'enabled']],
+      {
+        updatedAt: Date.now() - 61_000,
+      },
+    )
+    const queryClient = freshClient()
+    hydrate(queryClient, dehydrate(serverClient))
+    statusMocks.getServiceStatuses.mockResolvedValueOnce([
+      ['pharmacy', 'disabled'],
+    ])
+
+    const result = await beforeLoad({
+      context: { queryClient },
+      location: { search: {} },
+    })
+    expect(result.serviceStatuses).toEqual([['pharmacy', 'disabled']])
+    expect(statusMocks.getServiceStatuses).toHaveBeenCalledTimes(1)
+    serverClient.clear()
+    queryClient.clear()
   })
 })
