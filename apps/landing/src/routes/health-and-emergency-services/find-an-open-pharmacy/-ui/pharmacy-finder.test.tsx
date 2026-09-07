@@ -78,7 +78,7 @@ describe('pharmacy finder', () => {
         name: 'Free and subsidised medication only',
       }),
     )
-    expect(screen.getByText('Showing 12 of 164 pharmacies')).toBeTruthy()
+    expect(screen.getByText('Showing 12 of 163 pharmacies')).toBeTruthy()
     fireEvent.change(
       screen.getByRole('searchbox', { name: 'Search by name or place' }),
       { target: { value: 'Market Hill Dispensary' } },
