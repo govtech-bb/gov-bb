@@ -858,6 +858,113 @@
       ]
     },
     {
+      "stepId": "upload-your-documents",
+      "title": "Upload your documents",
+      "elements": [
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "label": "Two recent pay slips",
+            "fieldId": "pay-slips",
+            "multiple": true,
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload two recent pay slips"
+              },
+              "fileTypes": {
+                "value": [
+                  "image/png",
+                  "image/jpeg",
+                  "application/pdf"
+                ],
+                "error": "Upload a PNG, JPG or PDF file"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "label": "Your national ID card",
+            "fieldId": "national-id-card",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload your national ID card"
+              },
+              "fileTypes": {
+                "value": [
+                  "image/png",
+                  "image/jpeg",
+                  "application/pdf"
+                ],
+                "error": "Upload a PNG, JPG or PDF file"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "label": "Job letter from your employer",
+            "fieldId": "job-letter",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload a job letter from your employer"
+              },
+              "fileTypes": {
+                "value": [
+                  "image/png",
+                  "image/jpeg",
+                  "application/pdf"
+                ],
+                "error": "Upload a PNG, JPG or PDF file"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "label": "Passport-size photograph",
+            "fieldId": "passport-photograph",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload a passport-size photograph"
+              },
+              "fileTypes": {
+                "value": [
+                  "image/png",
+                  "image/jpeg"
+                ],
+                "error": "Upload a PNG or JPG file"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
       "stepId": "declaration",
       "title": "Declaration",
       "elements": [
