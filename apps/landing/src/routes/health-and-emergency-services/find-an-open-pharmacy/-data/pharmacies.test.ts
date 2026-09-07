@@ -65,9 +65,19 @@ describe('pharmacy dataset', () => {
     ])
   })
 
-  it('stores participation explicitly, including the two user corrections', () => {
-    for (const name of ['Premier Pharmacy', 'Pharm-N-Care — Warrens']) {
-      expect(ALL_PHARMACIES.find((p) => p.name === name)).toMatchObject({
+  it('stores the corrected branch participation explicitly', () => {
+    for (const slug of [
+      'premier-pharmacy',
+      'pharm-n-care-warrens',
+      'total-care-pharmacy-emerald-city',
+    ]) {
+      expect(findPharmacyBySlug(slug)).toMatchObject({
+        type: 'private',
+        pppStatus: 'participating',
+      })
+    }
+    for (const slug of ['pharm-n-care-worthing', 'total-care-pharmacy']) {
+      expect(findPharmacyBySlug(slug)).toMatchObject({
         type: 'private',
         pppStatus: 'not-participating',
       })
@@ -85,7 +95,7 @@ describe('pharmacy dataset', () => {
     }
     expect(
       ALL_PHARMACIES.filter((p) => p.pppStatus === 'participating'),
-    ).toHaveLength(107)
+    ).toHaveLength(109)
   })
 
   it('keeps the two source-listed iMart Welches branches separate', () => {

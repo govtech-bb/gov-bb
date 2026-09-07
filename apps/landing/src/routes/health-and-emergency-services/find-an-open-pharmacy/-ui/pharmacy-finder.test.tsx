@@ -72,7 +72,7 @@ describe('pharmacy finder', () => {
 
   it('shows the full directory and excludes unknown hours only when open now is selected', () => {
     render(<PharmacyFinder />)
-    expect(screen.getByText('Showing 12 of 119 pharmacies')).toBeTruthy()
+    expect(screen.getByText('Showing 12 of 121 pharmacies')).toBeTruthy()
     fireEvent.click(
       screen.getByRole('checkbox', {
         name: 'Free and subsidised medication only',

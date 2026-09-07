@@ -2157,7 +2157,7 @@
       "slug": "pharm-n-care-warrens",
       "name": "Pharm-N-Care — Warrens",
       "type": "private",
-      "pppStatus": "not-participating",
+      "pppStatus": "participating",
       "parish": "St. Michael",
       "address": "#49 Warrens Business Centre, St. Michael",
       "phone": "(246) 421-8245",
@@ -2170,7 +2170,7 @@
           "fields": ["ppp"],
           "source": "User-confirmed correction, 7 September 2026",
           "checkedOn": "2026-09-07",
-          "note": "User confirmed this branch does not participate; this overrides the entry in Active.Private.Participating.Pharmacies.Aug.2026.docx, row 87."
+          "note": "User confirmed this branch participates, correcting the earlier non-participating status."
         },
         {
           "fields": ["contacts"],
@@ -2307,7 +2307,7 @@
       "slug": "pharm-n-care-worthing",
       "name": "Pharm-N-Care — Worthing",
       "type": "private",
-      "pppStatus": "unconfirmed",
+      "pppStatus": "not-participating",
       "parish": "Christ Church",
       "address": "Unit 3, Emperors Court, Worthing, Christ Church",
       "phone": "(246) 426-2601",
@@ -2319,9 +2319,9 @@
       "verification": [
         {
           "fields": ["ppp"],
-          "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
+          "source": "User-confirmed correction, 7 September 2026",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "User confirmed this branch does not participate in the PPP."
         }
       ]
     },
@@ -2948,7 +2948,7 @@
       "slug": "premier-pharmacy",
       "name": "Premier Pharmacy",
       "type": "private",
-      "pppStatus": "not-participating",
+      "pppStatus": "participating",
       "parish": "St. Michael",
       "address": "Dinkryst Medical Centre, Brittons Hill, St. Michael",
       "phone": "(246) 426-7456",
@@ -2962,7 +2962,7 @@
           "fields": ["ppp"],
           "source": "User-confirmed correction, 7 September 2026",
           "checkedOn": "2026-09-07",
-          "note": "User confirmed this branch does not participate; this overrides the entry in Active.Private.Participating.Pharmacies.Aug.2026.docx, row 90."
+          "note": "User confirmed this branch participates, correcting the earlier non-participating status."
         },
         {
           "fields": ["contacts"],
@@ -3358,7 +3358,7 @@
       "slug": "total-care-pharmacy",
       "name": "Total Care Pharmacy",
       "type": "private",
-      "pppStatus": "unconfirmed",
+      "pppStatus": "not-participating",
       "parish": "St. Michael",
       "address": "23 Baxters Road Opp Jordans Supermarket, St. Michael",
       "phone": "(246) 436-5241",
@@ -3370,9 +3370,9 @@
       "verification": [
         {
           "fields": ["ppp"],
-          "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
+          "source": "User-confirmed correction, 7 September 2026",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "User confirmed this branch does not participate in the PPP."
         }
       ]
     },
