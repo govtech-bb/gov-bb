@@ -306,6 +306,9 @@
             "label": "Photo of the land",
             "fieldId": "photo-of-land",
             "validations": {
+              "required": {
+                "value": false
+              },
               "fileTypes": {
                 "error": "Upload a PNG, JPG or PDF file",
                 "value": [
