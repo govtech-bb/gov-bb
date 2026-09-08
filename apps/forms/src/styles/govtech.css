@@ -21,6 +21,7 @@
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/summary-section/summary-section.css";
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/summary-list/summary-list.css";
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/feedback/feedback.css";
+@import "../../../../node_modules/@govtech-bb/frontend/src/components/form/form.css";
 
 @theme {
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
@@ -60,7 +61,8 @@
 .govbb-summary-section,
 .form-page__confirmation,
 .form-page__contact,
-.form-page__markdown {
+.form-page__markdown,
+.form-page__text-field {
   @import "../../../../node_modules/@govtech-bb/frontend/src/utilities.css";
 }
 
@@ -70,7 +72,8 @@
   .govbb-summary-section,
   .form-page__confirmation,
   .form-page__contact,
-  .form-page__markdown
+  .form-page__markdown,
+  .form-page__text-field
 ) {
   @import "../../../../node_modules/@govtech-bb/frontend/src/base.css";
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/link/link.css";
@@ -78,6 +81,11 @@
   font-family: var(--govbb-font-sans);
   font-size: var(--govbb-font-size-body);
   line-height: var(--govbb-line-height-base);
+}
+
+.form-page__text-field {
+  @import "../../../../node_modules/@govtech-bb/frontend/src/components/input/input.css";
+  @import "../../../../node_modules/@govtech-bb/frontend/src/focus.css";
 }
 
 /* ---------------------------------------------------------------------------
@@ -100,15 +108,6 @@
   )
   > :where(input, select, textarea) {
   outline: 0;
-}
-
-/* The muted "(optional)" suffix inside field labels and legends. Required
- * fields carry no mark. Mirrors the design system's .govbb-label__optional,
- * which the published @govtech-bb/styles doesn't ship yet — drop this rule
- * when the app moves to a styles release that includes it. */
-.govbb-label__optional {
-  font-weight: 400;
-  color: var(--color-mid-grey-00);
 }
 
 /* Page + step layout (replaces the former design-system module classes) */

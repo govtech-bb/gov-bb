@@ -1,4 +1,5 @@
 import { JSX } from "react";
+import { FormGroup, Hint, Label } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import { MaskedInput } from "../masked-input";
 import { NumberInput } from "./number-input";
@@ -16,7 +17,6 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
     hintId,
     errorId,
     errorMessage,
-    labelClass,
     labelSuffix,
   } = ctx;
 
@@ -41,37 +41,36 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
         inputProps={withRequired ? { ...props, ...requiredProps } : props}
       />
     ) : (
-      <div className="govbb-input-wrapper">
-        <MaskedInput
-          key={props.id}
-          mask={field.mask}
-          {...props}
-          {...(withRequired ? requiredProps : {})}
-          autoComplete={autoComplete}
-          className="govbb-input"
-          value={value}
-          aria-invalid={invalid}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      </div>
+      <MaskedInput
+        key={props.id}
+        mask={field.mask}
+        {...props}
+        {...(withRequired ? requiredProps : {})}
+        autoComplete={autoComplete}
+        value={value}
+        aria-invalid={invalid}
+        onChange={(e) => onChange(e.target.value)}
+      />
     );
   };
 
   const inputElement = renderRepeatableOrSingle(ctx, renderControl);
 
   return (
-    <div className="govbb-form-group" data-field-width={field.ui?.width}>
-      <label className={labelClass("govbb-label")} htmlFor={field.id}>
+    <FormGroup
+      className={isNumber ? undefined : "form-page__text-field"}
+      data-field-width={field.ui?.width}
+    >
+      <Label
+        className={field.ui?.hideLabel ? "govbb-visually-hidden" : undefined}
+        htmlFor={field.id}
+        optional={labelSuffix !== null}
+      >
         {field.label}
-        {labelSuffix}
-      </label>
-      {field.hint && (
-        <p className="govbb-hint" id={hintId}>
-          {field.hint}
-        </p>
-      )}
+      </Label>
+      {field.hint && <Hint id={hintId}>{field.hint}</Hint>}
       <ErrorMessage id={errorId} message={errorMessage} />
       {inputElement}
-    </div>
+    </FormGroup>
   );
 }

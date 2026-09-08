@@ -1,4 +1,5 @@
 import { JSX } from "react";
+import { FormGroup, Hint, Label, TextArea } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import { renderRepeatableOrSingle, rowInputProps } from "./repeatable-field";
 import { FieldRenderContext } from "./render-context";
@@ -12,7 +13,6 @@ export function renderTextareaField(ctx: FieldRenderContext): JSX.Element {
     hintId,
     errorId,
     errorMessage,
-    labelClass,
     labelSuffix,
   } = ctx;
 
@@ -26,35 +26,34 @@ export function renderTextareaField(ctx: FieldRenderContext): JSX.Element {
   ): JSX.Element => {
     const props = rowInputProps(sharedProps, field, index);
     return (
-      <div className="govbb-input-wrapper">
-        <textarea
-          key={props.id}
-          {...props}
-          {...(withRequired ? requiredProps : {})}
-          className="govbb-textarea"
-          value={value}
-          aria-invalid={invalid}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      </div>
+      <TextArea
+        key={props.id}
+        {...props}
+        {...(withRequired ? requiredProps : {})}
+        value={value}
+        aria-invalid={invalid}
+        onChange={(e) => onChange(e.target.value)}
+      />
     );
   };
 
   const textareaElement = renderRepeatableOrSingle(ctx, renderTextarea);
 
   return (
-    <div className="govbb-form-group" data-field-width={field.ui?.width}>
-      <label className={labelClass("govbb-label")} htmlFor={field.id}>
+    <FormGroup
+      className="form-page__text-field"
+      data-field-width={field.ui?.width}
+    >
+      <Label
+        className={field.ui?.hideLabel ? "govbb-visually-hidden" : undefined}
+        htmlFor={field.id}
+        optional={labelSuffix !== null}
+      >
         {field.label}
-        {labelSuffix}
-      </label>
-      {field.hint && (
-        <p className="govbb-hint" id={hintId}>
-          {field.hint}
-        </p>
-      )}
+      </Label>
+      {field.hint && <Hint id={hintId}>{field.hint}</Hint>}
       <ErrorMessage id={errorId} message={errorMessage} />
       {textareaElement}
-    </div>
+    </FormGroup>
   );
 }
