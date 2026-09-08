@@ -1,169 +1,12 @@
-@import "@fontsource/figtree/400.css";
-@import "@fontsource/figtree/500.css";
-@import "@fontsource/figtree/600.css";
-@import "@fontsource/figtree/700.css";
 @import "tailwindcss";
-@import "@govtech-bb/design";
-@import "@govtech-bb/frontend/tokens.css";
-/* ponytail: source paths are pinned to alpha.29; use public component CSS
-   exports when the package provides them. */
-@import "../../../../node_modules/@govtech-bb/frontend/src/breakpoints.css";
-@import "../../../../node_modules/@govtech-bb/frontend/src/layout.css"
-  layer(components);
-@import "../../../../node_modules/@govtech-bb/frontend/src/components/header/header.css";
-@import "../../../../node_modules/@govtech-bb/frontend/src/components/footer/footer.css";
-@import "../../../../node_modules/@govtech-bb/frontend/src/components/official-banner/official-banner.css";
-@import "../../../../node_modules/@govtech-bb/frontend/src/components/status-banner/status-banner.css";
-@import "../../../../node_modules/@govtech-bb/frontend/src/components/skip-link/skip-link.css";
-@import "../../../../node_modules/@govtech-bb/frontend/src/components/error-summary/error-summary.css";
-@import "../../../../node_modules/@govtech-bb/frontend/src/components/service-heading/service-heading.css";
-@import "../../../../node_modules/@govtech-bb/frontend/src/components/payment/payment.css";
-@import "../../../../node_modules/@govtech-bb/frontend/src/components/summary-section/summary-section.css";
-@import "../../../../node_modules/@govtech-bb/frontend/src/components/summary-list/summary-list.css";
-@import "../../../../node_modules/@govtech-bb/frontend/src/components/feedback/feedback.css";
-@import "../../../../node_modules/@govtech-bb/frontend/src/components/form/form.css";
-@import "../../../../node_modules/@govtech-bb/frontend/src/components/show-hide/show-hide.css";
-@import "../../../../node_modules/@govtech-bb/frontend/src/components/combobox/combobox.css";
-@import "../../../../node_modules/@govtech-bb/frontend/src/components/file-upload/file-upload.css";
-@import "../../../../node_modules/@govtech-bb/frontend/src/components/add-another/add-another.css";
-
-@theme {
-  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
-}
-
-/* Keep the new typography and link resets out of the existing form fields. */
-.govbb-header,
-.govbb-footer,
-.govbb-official-banner,
-.govbb-status-banner,
-.govbb-skip-link,
-.govbb-service-heading,
-.error-page {
-  @import "../../../../node_modules/@govtech-bb/frontend/src/base.css";
-  @import "../../../../node_modules/@govtech-bb/frontend/src/components/link/link.css";
-
-  font-family: var(--govbb-font-sans);
-  font-size: var(--govbb-font-size-body);
-  line-height: var(--govbb-line-height-base);
-}
-
-.error-page,
-.form-page,
-.form-page__confirmation,
-.govbb-payment {
-  @import "../../../../node_modules/@govtech-bb/frontend/src/components/button/button.css";
-}
-
-.error-page,
-.form-page__confirmation,
-.form-page__markdown {
-  @import "../../../../node_modules/@govtech-bb/frontend/src/components/list/list.css";
-}
-
-.error-page,
-.govbb-service-heading,
-.govbb-show-hide,
-.govbb-summary-section,
-.form-page__confirmation,
-.form-page__contact,
-.form-page__markdown,
-.form-page__text-field,
-.form-page__file-field,
-.form-page__select-field,
-.form-page__choice-field {
-  @import "../../../../node_modules/@govtech-bb/frontend/src/utilities.css";
-}
-
-:where(
-  .govbb-error-summary,
-  .govbb-payment,
-  .govbb-summary-section,
-  .govbb-show-hide,
-  .form-page__confirmation,
-  .form-page__contact,
-  .form-page__markdown,
-  .form-page__text-field,
-  .form-page__file-field,
-  .form-page__select-field,
-  .form-page__choice-field
-) {
-  @import "../../../../node_modules/@govtech-bb/frontend/src/base.css";
-  @import "../../../../node_modules/@govtech-bb/frontend/src/components/link/link.css";
-
-  font-family: var(--govbb-font-sans);
-  font-size: var(--govbb-font-size-body);
-  line-height: var(--govbb-line-height-base);
-}
-
-:where(.form-page__choice-field) {
-  @import "../../../../node_modules/@govtech-bb/frontend/src/components/checkbox-radio/checkbox-radio.css";
-}
-
-.form-page__file-field {
-  @import "../../../../node_modules/@govtech-bb/frontend/src/focus.css";
-}
-
-.form-page__select-field {
-  @import "../../../../node_modules/@govtech-bb/frontend/src/components/select/select.css";
-  @import "../../../../node_modules/@govtech-bb/frontend/src/focus.css";
-}
-
-.form-page__choice-field {
-  @import "../../../../node_modules/@govtech-bb/frontend/src/focus.css";
-
-  /* Let the package set spacing; remove legacy margins between options. */
-  > :is(.govbb-checkbox-item, .govbb-radio-item)
-    ~ :is(.govbb-checkbox-item, .govbb-radio-item) {
-    margin-block-start: 0;
-  }
-}
-
-/* Use a zero-specificity scope so shared focus styles win on errors. */
-:where(.form-page__text-field) {
-  @import "../../../../node_modules/@govtech-bb/frontend/src/components/number-input/number-input.css";
-}
-
-.form-page__text-field {
-  @import "../../../../node_modules/@govtech-bb/frontend/src/components/input/input.css";
-  @import "../../../../node_modules/@govtech-bb/frontend/src/components/date-input/date-input.css";
-  @import "../../../../node_modules/@govtech-bb/frontend/src/focus.css";
-
-  /* Legacy CSS fades enabled inputs when a stepper is disabled.
-     Remove this reset with @govtech-bb/styles. */
-  .govbb-number-input-wrapper {
-    opacity: 1;
-    cursor: auto;
-  }
-}
-
-/* ---------------------------------------------------------------------------
- * Forms-app layout + surfaces the @govtech-bb/styles base stylesheet doesn't
- * cover. Form fields themselves use govbb-* classes directly (see
- * field-renderer). Everything below composes the same brand tokens the styles
- * package ships (var(--color-*), var(--spacing-*), var(--font-size-*)).
- * ------------------------------------------------------------------------- */
-
-/* Firefox grows a second focus ring on text fields (#1229): this file's
- * `@import "tailwindcss"` adds a second preflight whose
- * `:-moz-focusring { outline: auto }` lands in the merged `base` layer AFTER
- * the design system's inner-control `outline: 0` reset, and wins at equal
- * specificity. Re-assert the reset unlayered so it beats the layer. */
-:where(.govbb-input-wrapper, .govbb-number-input-wrapper)
-  > :where(input, select, textarea) {
-  outline: 0;
-}
-
-/* Page + step layout (replaces the former design-system module classes) */
-.form-page {
-  font-family: var(--font-family-base), sans-serif;
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-}
+@import "@govtech-bb/frontend/tailwind";
+/* Match landing: application utilities can override component styles. */
+@import "@govtech-bb/frontend/css" layer(components);
 
 .form-page__step {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-s);
+  gap: var(--govbb-space-s);
 }
 
 /* Per-field width hints carried on the govbb-form-group wrapper. Full width on
@@ -174,35 +17,24 @@
   width: 100%;
 }
 
-/* ---- Select conditional reveal (#863) -------------------------------------
- * Inset fields revealed by a select option. @govtech-bb/styles only ships the
- * radio variant (.govbb-radio-item__conditional), and its display toggling
- * relies on a checked-radio sibling selector — so the select variant is
- * supplied here with the same inset look. Visibility is handled by
- * conditional rendering in field-renderer, not CSS. */
+/* Select reveals are rendered by the app; radio and checkbox reveals come
+   from the package. */
 .govbb-select__conditional {
-  margin-top: var(--spacing-xs);
+  margin-top: var(--govbb-space-xs);
   padding-left: 2.5rem;
-  padding-bottom: var(--spacing-s);
-  border-left: 8px solid var(--color-grey-00);
+  padding-bottom: var(--govbb-space-s);
+  border-left: 8px solid var(--govbb-color-neutral);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-s);
+  gap: var(--govbb-space-s);
 }
 
-/* ---- Checkbox conditional reveal ------------------------------------------
- * @govtech-bb/styles ships the inset look for a checkbox reveal, but lays it
- * out as a block — fine for one revealed field, and the caterer reveal is
- * four. Elsewhere on the step the fields are spaced by the parent flex `gap`,
- * so restate that here (this rule is unlayered and the package's is inside
- * `@layer base`, so it wins on `display`). The checked-sibling guard is kept
- * so the package's hide-when-unticked rule still holds; the app renders the
- * wrapper only when ticked anyway. */
+/* Space multiple fields within a revealed checkbox option. */
 .govbb-checkbox-item:has(> .govbb-checkbox:checked)
   + .govbb-checkbox-item__conditional {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-s);
+  gap: var(--govbb-space-s);
 }
 
 /* ---- Opt-in indented field (ui.indent) ------------------------------------
@@ -214,7 +46,7 @@
  * down the whole revealed group. */
 .govbb-field--indented {
   padding-left: 2.5rem;
-  border-left: 8px solid var(--color-grey-00);
+  border-left: 8px solid var(--govbb-color-neutral);
 }
 
 /* `.form-page__step` lays its fields out as a flex column with a `gap`, so
@@ -223,8 +55,8 @@
  * the first pulls itself up by the gap and re-adds it as padding INSIDE its
  * own border, closing the seams into a single continuous rail. */
 .govbb-field--indented + .govbb-field--indented {
-  margin-top: calc(-1 * var(--spacing-s));
-  padding-top: var(--spacing-s);
+  margin-top: calc(-1 * var(--govbb-space-s));
+  padding-top: var(--govbb-space-s);
 }
 
 /* "Higher-risk" badge on a category label: a small yellow pill flagging the
@@ -233,14 +65,14 @@
   display: inline-block;
   margin-left: 6px;
   padding: 1px 8px;
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-bold);
+  font-size: var(--govbb-font-size-body-sm);
+  font-weight: 700;
   border-radius: 4px;
 }
 
 .govbb-tag--higher-risk {
-  background: var(--color-yellow-10);
-  border: 1px solid var(--color-yellow-00);
+  background: var(--govbb-yellow-10);
+  border: 1px solid var(--govbb-yellow-80);
 }
 
 /* ---- Opening hours weekly grid (#2358) ------------------------------------
@@ -252,27 +84,27 @@
   /* The height of a single-line control row ("Not open", the Add hours
      button) that day names centre against. */
   --oh-control-height: calc(
-    var(--spacing-s) * 2 + 1.5rem + var(--border-width-form, 2px) * 2
+    var(--govbb-space-s) * 2 + 1.5rem + var(--govbb-border-width-form) * 2
   );
 }
 
 .opening-hours__week {
-  margin-top: var(--spacing-s);
-  border-top: 1px solid var(--color-grey-00);
+  margin-top: var(--govbb-space-s);
+  border-top: 1px solid var(--govbb-color-neutral);
 }
 
 .opening-hours__day {
   display: grid;
   grid-template-columns: 7.5rem minmax(0, 1fr) auto;
-  column-gap: var(--spacing-s);
-  row-gap: var(--spacing-xs);
+  column-gap: var(--govbb-space-s);
+  row-gap: var(--govbb-space-xs);
   align-items: start;
-  padding-block: var(--spacing-xs);
-  border-bottom: 1px solid var(--color-grey-00);
+  padding-block: var(--govbb-space-xs);
+  border-bottom: 1px solid var(--govbb-color-neutral);
 }
 
 .opening-hours__day-name {
-  font-weight: var(--font-weight-bold);
+  font-weight: 700;
 }
 
 .opening-hours__day-name,
@@ -283,20 +115,20 @@
 }
 
 .opening-hours__not-open {
-  color: var(--color-text-muted);
+  color: var(--govbb-color-muted);
 }
 
 .opening-hours__sets {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-s);
+  gap: var(--govbb-space-s);
 }
 
 .opening-hours__set {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: var(--govbb-space-xs);
 }
 
 .opening-hours__set input[type="time"] {
@@ -320,20 +152,11 @@
   }
 }
 
-/* ---- Submission confirmation panels -------------------------------------- */
-/* Full-width wrapper for the confirmation step — no container/padding so the
- * banner can bleed to the viewport edges; inner sections supply their own
- * .govbb-width-container. */
-.form-page-confirmation {
-  font-family: var(--font-family-base), sans-serif;
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-}
-
+/* Submission confirmation panels. */
 .form-page__confirmation {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--govbb-space-xs);
 }
 
 .form-page__reference {
@@ -341,15 +164,15 @@
 }
 
 .form-page__panel--success {
-  background-color: var(--color-teal-40);
+  background-color: var(--govbb-teal-20);
 }
 
 .form-page__panel--error {
-  background-color: var(--color-red-40);
+  background-color: var(--govbb-red-20);
 }
 
 .form-page__print {
-  margin-top: var(--spacing-m);
+  margin-top: var(--govbb-space-m);
 }
 
 /* ---- Next steps + contact details ---------------------------------------- */
@@ -375,15 +198,15 @@
  * (same tokens as the service-title caption and payment panel), a small bold
  * grey label, and the formatted closing datetime beneath it. */
 .form-page__closed-panel {
-  padding: var(--spacing-s) var(--spacing-s);
-  background: var(--color-blue-10);
-  border-left: var(--color-blue-40) 0.25rem solid;
+  padding: var(--govbb-space-s) var(--govbb-space-s);
+  background: var(--govbb-color-highlight);
+  border-left: var(--govbb-blue-20) 0.25rem solid;
 }
 
 .form-page__closed-panel-label {
-  margin-bottom: var(--spacing-xxs);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-mid-grey-00);
+  margin-bottom: var(--govbb-space-xxs);
+  font-weight: 700;
+  color: var(--govbb-color-muted);
 }
 
 .form-page__markdown {
@@ -405,14 +228,14 @@
  * service-title caption and closed panel). Text variant: block spacing only;
  * the details variant reuses the .govbb-show-hide* classes. */
 .govbb-inset-text {
-  padding: var(--spacing-s) var(--spacing-m);
-  margin-bottom: var(--spacing-m);
-  background: var(--color-blue-10);
-  border-left: var(--color-blue-40) 0.25rem solid;
+  padding: var(--govbb-space-s) var(--govbb-space-m);
+  margin-bottom: var(--govbb-space-m);
+  background: var(--govbb-color-highlight);
+  border-left: var(--govbb-blue-20) 0.25rem solid;
 }
 
 .govbb-content-text {
-  margin-bottom: var(--spacing-m);
+  margin-bottom: var(--govbb-space-m);
 }
 
 /* Warning variant: amber left rule with a filled roundel, no panel. Reserved
@@ -421,11 +244,11 @@
  * blocking validation error. */
 .govbb-warning-text {
   display: flex;
-  gap: var(--spacing-s);
+  gap: var(--govbb-space-s);
   align-items: flex-start;
-  padding: var(--spacing-s) var(--spacing-m);
-  margin-bottom: var(--spacing-m);
-  border-left: var(--color-yellow-00) 0.25rem solid;
+  padding: var(--govbb-space-s) var(--govbb-space-m);
+  margin-bottom: var(--govbb-space-m);
+  border-left: var(--govbb-yellow-80) 0.25rem solid;
 }
 
 .govbb-warning-text__icon {
@@ -433,8 +256,8 @@
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 50%;
-  background: var(--color-yellow-00);
-  color: var(--color-black-00);
+  background: var(--govbb-yellow-80);
+  color: var(--govbb-color-ink);
   font-weight: 700;
   line-height: 1.75rem;
   text-align: center;
@@ -444,14 +267,14 @@
 .form-page__applicant {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xxs);
+  gap: var(--govbb-space-xxs);
 }
 
 /* ---- Error / not-found pages --------------------------------------------- */
 .form-page__message {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-s);
+  gap: var(--govbb-space-s);
 }
 
 /* Fixed-measure field widths (GOV.UK style). `ch` units size the cap to the
@@ -482,15 +305,12 @@
    next and contact details — with no page chrome, no action controls, an even
    vertical rhythm, and no block split across a page break. */
 @media print {
-  /* Chrome + every interactive control (actions are useless on paper): the
-     Print button, feedback link, "Continue to payment" and "Try again" buttons.
-     `[class*="govbb-btn"]` covers both the primary and --secondary variants. */
+  /* Hide page chrome and actions on paper. */
   .no-print,
   .form-page__print,
   .govbb-payment__note,
   .form-page .govbb-button-group,
-  .govbb-btn,
-  [class*="govbb-btn"] {
+  .govbb-button {
     display: none !important;
   }
 
@@ -523,7 +343,7 @@
   .form-page__panel--success,
   .form-page__panel--error {
     background: none !important;
-    color: var(--color-black-00) !important;
+    color: var(--govbb-color-ink) !important;
   }
 
   /* Payment summary card: drop its surface/border/shadow so the receipt lines
@@ -542,7 +362,7 @@
   .form-page__next-steps,
   .form-page__markdown-content,
   .form-page__contact {
-    margin-top: var(--spacing-m) !important;
+    margin-top: var(--govbb-space-m) !important;
   }
 
   /* Page breaks: keep a cohesive block whole and never orphan a heading from

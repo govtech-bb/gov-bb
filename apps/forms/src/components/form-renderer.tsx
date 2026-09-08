@@ -42,6 +42,7 @@ import { stepCompleteEventName } from "./step-events";
 import {
   Button,
   ButtonGroup,
+  Hint,
   ServiceHeading,
   StatusBanner,
 } from "@govtech-bb/react";
@@ -750,7 +751,7 @@ function ActiveStep({
             {instanceMarker?.hasLabel && (
               <span
                 data-testid="repeat-instance-marker"
-                className="block text-caption text-mid-grey-00"
+                className="block text-body-sm text-muted"
               >
                 {instanceMarker.text}
               </span>
@@ -879,11 +880,11 @@ function ActiveStep({
           {currentStep.stepId !== "submission-confirmation" &&
             isLastFormStep &&
             isDraft && (
-              <p className="govbb-hint" data-testid="draft-submit-hint">
+              <Hint data-testid="draft-submit-hint">
                 Submitting is disabled for an unpublished draft. Set the
                 form&apos;s visibility to Preview or Public and publish it to
                 enable submission.
-              </p>
+              </Hint>
             )}
         </div>
       </div>
