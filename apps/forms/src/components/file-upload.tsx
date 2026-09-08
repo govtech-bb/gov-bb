@@ -1,4 +1,5 @@
 import React from "react";
+import { Button } from "@govtech-bb/react";
 import { FileUploadProps, UploadedFile } from "@forms/types";
 import ErrorMessage from "./error-message";
 import { optionalSuffix } from "./field-renderer/optional-suffix";
@@ -286,14 +287,15 @@ export default function FileUpload({
           {files.map((f) => (
             <li key={f.key} className="govbb-file-upload__item">
               <span className="govbb-file-upload__name">{f.name}</span>
-              <button
-                type="button"
-                className="govbb-btn--destructive-link"
+              <Button
+                variant="text"
+                negative
+                className="no-print"
                 aria-label={`Remove ${f.name}`}
                 onClick={() => removeFile(f.key)}
               >
                 Remove
-              </button>
+              </Button>
             </li>
           ))}
 
@@ -308,14 +310,15 @@ export default function FileUpload({
               ) : (
                 <span className="govbb-file-upload__status govbb-file-upload__status--error">
                   {p.error}{" "}
-                  <button
-                    type="button"
-                    className="govbb-btn--destructive-link"
+                  <Button
+                    variant="text"
+                    negative
+                    className="no-print"
                     aria-label={`Dismiss ${p.name}`}
                     onClick={() => dismissPending(p.id)}
                   >
                     Dismiss
-                  </button>
+                  </Button>
                 </span>
               )}
             </li>
