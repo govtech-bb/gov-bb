@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import {
+  CATCHMENT_CONTACT,
   CATCHMENT_SUFFIX,
   PARISH_DEFAULTS,
   SERVING_CATCHMENT,
@@ -10,6 +11,14 @@ import {
 export interface CatchmentResolution {
   polyclinic: string;
   programmeCode: string;
+  /**
+   * The serving catchment's single contact line (name + phone + email) to show
+   * on the confirmation page and in the applicant email. Optional because the
+   * SQS message boundary may carry a resolution from an older deploy mid-rollout —
+   * callers optional-chain and fall back to the shared all-clinics list. `resolve()`
+   * always set it (boot validation guarantees a row for every serving catchment).
+   */
+  polyclinicContact?: string;
 }
 
 /** GeoJSON ring: an array of [lng, lat] pairs. */
@@ -106,6 +115,25 @@ export class CatchmentRoutingService implements OnModuleInit {
         );
       }
     }
+
+    // Every serving catchment must also carry a contact line, and a contact
+    // row must name a real serving catchment — a live submission routed to a
+    // catchment with no line would show a blank contact section, and a row for
+    // a defunct catchment is dead data (#254).
+    for (const name of servingNames) {
+      if (!(name in CATCHMENT_CONTACT)) {
+        throw new Error(
+          `[catchment] CATCHMENT_CONTACT has no contact line for catchment "${name}"`,
+        );
+      }
+    }
+    for (const name of Object.keys(CATCHMENT_CONTACT)) {
+      if (!servingNames.has(name)) {
+        throw new Error(
+          `[catchment] CATCHMENT_CONTACT has a contact for unknown catchment "${name}"`,
+        );
+      }
+    }
   }
 
   resolve(input: {
@@ -148,7 +176,25 @@ export class CatchmentRoutingService implements OnModuleInit {
     return {
       polyclinic: entry.servedBy,
       programmeCode,
+      polyclinicContact: this.contactFor(entry.servedBy),
     };
+  }
+
+  /**
+   * The single contact line for one serving catchment, read from
+   * `CATCHMENT_CONTACT`. Boot validation guarantees every serving catchment has
+   * a row, so a resolved resolution always yields a line — a miss here is a
+   * programming/configuration error, so it fails the submission loudly rather
+   * than emitting a blank or misleading contact section.
+   */
+  private contactFor(servingCatchment: string): string {
+    const contact = CATCHMENT_CONTACT[servingCatchment];
+    if (contact === undefined) {
+      throw new Error(
+        `[catchment] no contact line for serving catchment "${servingCatchment}"`,
+      );
+    }
+    return contact;
   }
 
   /**

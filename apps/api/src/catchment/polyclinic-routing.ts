@@ -70,3 +70,33 @@ export const PARISH_DEFAULTS: Record<string, string> = {
   "christ-church": "Randal Phillips Polyclinic",
   "st-michael": "Sir Winston Scott Polyclinic",
 };
+
+/**
+ * Serving catchment → the single contact line shown on the confirmation page
+ * and in the applicant email for a form routed to that catchment. Keys are
+ * **serving** catchment names (redirected catchments have no row of their own —
+ * Frederick Miller resolves to St. Philip's row). The line names the same
+ * polyclinic the `{polyclinic}` token renders so the confirmation body can't
+ * pair a name with another clinic's details (#254).
+ *
+ * These strings mirror `ALL_POLYCLINIC_CONTACTS` in `@govtech-bb/form-conditions`
+ * (the shared `{polyclinicContact}` fallback); `catchment-routing.service.spec.ts`
+ * cross-checks the resolution against that shared list so the routed single line
+ * and the all-clinics fallback can't drift.
+ */
+export const CATCHMENT_CONTACT: Record<string, string> = {
+  "Branford Taitt Polyclinic":
+    "Branford Taitt Polyclinic - [(246) 536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)",
+  "David Thompson Health & Social Services Complex":
+    "David Thompson Health & Social Services Complex - [(246) 536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)",
+  "Eunice Gibson Polyclinic":
+    "Eunice Gibson Polyclinic - [(246) 536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)",
+  "Maurice Byer Polyclinic":
+    "Maurice Byer Polyclinic - [(246) 536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)",
+  "Randal Phillips Polyclinic":
+    "Randal Phillips Polyclinic - [(246) 536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)",
+  "Sir Winston Scott Polyclinic":
+    "Sir Winston Scott Polyclinic - [(246) 536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)",
+  "St. Philip Polyclinic":
+    "St. Philip Polyclinic - [(246) 536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
+};

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  ALL_POLYCLINIC_CONTACTS_MARKDOWN,
   interpolateConfirmationMarkdown,
   resolveConditionalMarkdown,
 } from "./confirmation-markdown";
@@ -103,6 +104,38 @@ describe("interpolateConfirmationMarkdown", () => {
     ).toBe(
       "Sent to Warrens Polyclinic. See [mass events](https://alpha.gov.bb/guide).",
     );
+  });
+
+  it("substitutes the routed polyclinic's single contact line for {polyclinicContact}", () => {
+    expect(
+      interpolateConfirmationMarkdown("Contact:\n\n{polyclinicContact}", {
+        polyclinicContact: "Randal Phillips Polyclinic - [x](tel:1)",
+      }),
+    ).toBe("Contact:\n\nRandal Phillips Polyclinic - [x](tel:1)");
+  });
+
+  it("falls back to the full clinic list when no polyclinic resolved", () => {
+    const resolved = interpolateConfirmationMarkdown(
+      "Contact:\n\n{polyclinicContact}",
+      { polyclinicContact: undefined },
+    );
+    expect(resolved).toBe(`Contact:\n\n${ALL_POLYCLINIC_CONTACTS_MARKDOWN}`);
+    expect(resolved).not.toContain("{polyclinicContact}");
+  });
+
+  it("falls back to the full clinic list for a null value", () => {
+    const resolved = interpolateConfirmationMarkdown("{polyclinicContact}", {
+      polyclinicContact: null,
+    });
+    expect(resolved).toBe(ALL_POLYCLINIC_CONTACTS_MARKDOWN);
+  });
+
+  it("leaves content unchanged when the token is absent", () => {
+    expect(
+      interpolateConfirmationMarkdown("No token here.", {
+        polyclinicContact: "Branford Taitt Polyclinic - [x](tel:1)",
+      }),
+    ).toBe("No token here.");
   });
 
   it("preserves an empty-string value (nullish-coalescing parity)", () => {

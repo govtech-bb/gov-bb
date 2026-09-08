@@ -106,6 +106,14 @@ export interface SubmissionState {
    */
   polyclinic?: string;
   /**
+   * The routed polyclinic's single contact line (name + phone + email, from the
+   * submit response `meta.resolvedPolyclinicContact`). The confirmation page
+   * substitutes it into the `{polyclinicContact}` token so only the routed
+   * clinic's details are shown; absent for forms without coordinate-based
+   * routing, which read the full all-clinics fallback (#254).
+   */
+  polyclinicContact?: string;
+  /**
    * The confirmation body with its per-answer passages already filled (#2068),
    * resolved at submit time and persisted with the rest of the outcome.
    *

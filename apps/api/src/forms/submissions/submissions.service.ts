@@ -8,7 +8,10 @@ import {
 import { AppError } from "@/common/errors";
 import { isFormClosed } from "@govtech-bb/form-types";
 import { ExpressionsService } from "@/expressions/expressions.service";
-import { CatchmentRoutingService } from "@/catchment/catchment-routing.service";
+import {
+  CatchmentRoutingService,
+  type CatchmentResolution,
+} from "@/catchment/catchment-routing.service";
 import {
   fillParishRoutingCoordinate,
   isRoutingCoordinate,
@@ -58,11 +61,11 @@ export class SubmissionsService {
     if (existing) {
       const isProcessing = existing.status === FormSubmissionStatus.PROCESSING;
       // A replay is a refresh or a retry of a submission that already routed, so
-      // it has to name the same polyclinic the first response did — otherwise
-      // the confirmation page falls back to "your local polyclinic" for a
-      // submission that went somewhere specific. Re-derived from the stored
-      // values, which is why the coordinate is persisted.
-      const resolvedPolyclinic = await this.polyclinicForStored(existing);
+      // it has to name the same polyclinic (and show the same contact line) the
+      // first response did — otherwise the confirmation page falls back to the
+      // generic phrase for a submission that went somewhere specific. Re-derived
+      // from the stored values, which is why the coordinate is persisted.
+      const resolvedCatchment = await this.catchmentForStored(existing);
       return {
         outcome: isProcessing ? "in_progress" : "duplicate",
         data: existing,
@@ -70,7 +73,10 @@ export class SubmissionsService {
           ? "Submission is currently being processed"
           : "Submission already exists",
         statusCode: isProcessing ? HttpStatus.ACCEPTED : HttpStatus.OK,
-        ...(resolvedPolyclinic && { resolvedPolyclinic }),
+        ...(resolvedCatchment && {
+          resolvedPolyclinic: resolvedCatchment.polyclinic,
+          resolvedPolyclinicContact: resolvedCatchment.polyclinicContact,
+        }),
       };
     }
 
@@ -254,6 +260,7 @@ export class SubmissionsService {
         deferred,
         ...(resolvedCatchment && {
           resolvedPolyclinic: resolvedCatchment.polyclinic,
+          resolvedPolyclinicContact: resolvedCatchment.polyclinicContact,
         }),
       };
     }
@@ -267,29 +274,32 @@ export class SubmissionsService {
       statusCode: HttpStatus.CREATED,
       ...(resolvedCatchment && {
         resolvedPolyclinic: resolvedCatchment.polyclinic,
+        resolvedPolyclinicContact: resolvedCatchment.polyclinicContact,
       }),
     };
   }
 
   /**
-   * The polyclinic an already-persisted submission routed to, or undefined when
+   * The catchment an already-persisted submission routed to, or undefined when
    * its form is not catchment-routed (or the recipe can no longer be resolved —
    * a replay must not fail just because the routing lookup did).
    */
-  private async polyclinicForStored(
+  private async catchmentForStored(
     submission: FormSubmissionEntity,
-  ): Promise<string | undefined> {
+  ): Promise<CatchmentResolution | undefined> {
     try {
       const contract = await this.pipeline.resolveContract(submission.formId);
       const routing = contract.catchmentRouting;
       if (!routing) return undefined;
       const values = submission.values as SubmissionValues;
-      return this.catchmentRouting.resolve({
-        formId: submission.formId,
-        programmeCode: programmeCodeFromProcessors(contract.processors ?? []),
-        coordinates: readPath(values, routing.coordinatesField) ?? undefined,
-        parish: readPath(values, routing.parishField) ?? undefined,
-      })?.polyclinic;
+      return (
+        this.catchmentRouting.resolve({
+          formId: submission.formId,
+          programmeCode: programmeCodeFromProcessors(contract.processors ?? []),
+          coordinates: readPath(values, routing.coordinatesField) ?? undefined,
+          parish: readPath(values, routing.parishField) ?? undefined,
+        }) ?? undefined
+      );
     } catch (err) {
       // Degrade to the generic confirmation copy rather than failing a replay of
       // a submission the API has already accepted — but say so, because it means

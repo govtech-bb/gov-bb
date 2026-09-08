@@ -80,21 +80,28 @@ export class SubmissionsController {
         previewToken,
       );
 
-    const { data, message, statusCode, deferred, resolvedPolyclinic } =
-      await this.submissionsService.submit({
-        ...body,
-        idempotencyKey,
-        ...(isSmokeSubmission && { isSmokeSubmission: true }),
-        ...(bypassVisibility && { bypassVisibility: true }),
-      });
+    const {
+      data,
+      message,
+      statusCode,
+      deferred,
+      resolvedPolyclinic,
+      resolvedPolyclinicContact,
+    } = await this.submissionsService.submit({
+      ...body,
+      idempotencyKey,
+      ...(isSmokeSubmission && { isSmokeSubmission: true }),
+      ...(bypassVisibility && { bypassVisibility: true }),
+    });
 
     // Extra outcome data rides on `meta` (like `deferred`): the resolved
-    // polyclinic name lets the confirmation page name the Environmental Health
-    // Department the request went to. Only attach `meta` when there is
-    // something to carry.
+    // polyclinic name and its contact line let the confirmation page name the
+    // Environmental Health Department the request went to and show only its
+    // contact details. Only attach `meta` when there is something to carry.
     const meta = {
       ...(deferred && { deferred }),
       ...(resolvedPolyclinic && { resolvedPolyclinic }),
+      ...(resolvedPolyclinicContact && { resolvedPolyclinicContact }),
     };
 
     // `statusCode` is the outcome the service computed (201 new / 200 replay /

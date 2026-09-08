@@ -243,6 +243,7 @@ export class EmailBodyBuilder {
     // the email and page copy can't drift (#2201).
     const markdownContent = interpolateConfirmationMarkdown(rawMarkdown, {
       polyclinic: payload.resolvedCatchment?.polyclinic,
+      polyclinicContact: payload.resolvedCatchment?.polyclinicContact,
       landingUrl: this.config.get<string>("app.landingUrl"),
     });
     const markdownHtml = markdownContent

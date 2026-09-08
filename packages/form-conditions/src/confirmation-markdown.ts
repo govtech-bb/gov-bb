@@ -24,10 +24,47 @@ type TokenSpec = {
   normalise?: (value: string) => string | undefined;
 };
 
+/**
+ * The canonical Environmental Health contact lines for every serving
+ * polyclinic, in full `(246) …` format and keyed by the **resolved** catchment
+ * name (the same name `{polyclinic}` renders). Used as the `{polyclinicContact}`
+ * fallback when no catchment resolves, so a non-routed form still shows the
+ * full list — and the single source the API's per-clinic resolution is tested
+ * against, so the routed single line and the all-clinics fallback can't drift.
+ *
+ * NOTE: these names normalise the authored copy ("Randall", "Winston Scott",
+ * "St. Phillip", "… and …") to the routing/GeoJSON spellings ("Randal", "Sir
+ * Winston Scott", "St. Philip", "… & …") so the contact section always agrees
+ * with the `{polyclinic}` name in the same confirmation body (#254).
+ */
+export const ALL_POLYCLINIC_CONTACTS = [
+  "Branford Taitt Polyclinic - [(246) 536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)",
+  "David Thompson Health & Social Services Complex - [(246) 536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)",
+  "Eunice Gibson Polyclinic - [(246) 536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)",
+  "Maurice Byer Polyclinic - [(246) 536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)",
+  "Randal Phillips Polyclinic - [(246) 536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)",
+  "St. Philip Polyclinic - [(246) 536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
+  "Sir Winston Scott Polyclinic - [(246) 536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)",
+] as const;
+
+/**
+ * The `{polyclinicContact}` fallback — every serving clinic listed. Each line is
+ * a Markdown bullet so the fallback renders as the same list the recipes used to
+ * hardcode (a bare `\n` join would collapse into one run-on paragraph).
+ */
+export const ALL_POLYCLINIC_CONTACTS_MARKDOWN = ALL_POLYCLINIC_CONTACTS.map(
+  (line) => `- ${line}`,
+).join("\n");
+
 const TOKENS = {
   // Coordinate-routed forms name the resolved polyclinic; non-routed forms and
   // unresolved submissions read the generic phrase instead.
   polyclinic: { fallback: "your local polyclinic" },
+
+  // Coordinate-routed forms list only the resolved clinic's contact line;
+  // non-routed forms and unresolved submissions read the full list so the
+  // citizen still has a way to reach the right office (#254).
+  polyclinicContact: { fallback: ALL_POLYCLINIC_CONTACTS_MARKDOWN },
 
   // Origin of the public landing site, so recipe copy can link to a service
   // page as `{landingUrl}/business-trade/…` and resolve per environment. Both

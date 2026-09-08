@@ -311,7 +311,7 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "behaviours": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n* The Environmental Health Department at **{polyclinic}** will review your request.  \n* They will review it and may contact you if they need more information.   \n* The truck(s) will be inspected before a licence is issued.  \n* If your application is approved, you will receive a confirmation email and the Environment Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\nSubmitting an application does not mean that a licence to carry offensive matter has been granted.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n* Branford Taitt Polyclinic - 536-3700, EHD.BTPC@health.gov.bb  \n* David Thompson Health and Social Services Complex - 536-4453, DTHSSC.EHD@health.gov.bb  \n* Eunice Gibson Polyclinic - 536-4033, EuniceGibsonEHD@health.gov.bb  \n* Maurice Byer Polyclinic - 5363214, MBPC.apps@health.gov.bb  \n* Randall Phillips Polyclinic - 536-4338, RPPC.EHD@health.gov.bb  \n* St. Phillip Polyclinic - 536-1240, StPhilipEHD@health.gov.bb  \n* Winston Scott Polyclinic - 536-3476, EHD.WSPC@health.gov.bb",
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n* The Environmental Health Department at **{polyclinic}** will review your request.  \n* They will review it and may contact you if they need more information.   \n* The truck(s) will be inspected before a licence is issued.  \n* If your application is approved, you will receive a confirmation email and the Environment Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\nSubmitting an application does not mean that a licence to carry offensive matter has been granted.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n{polyclinicContact}",
       "nextSteps": [
         {
           "title": "What happens next",
@@ -365,7 +365,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:13:52.779Z",
-  "updatedAt": "2026-09-03T17:38:46.437Z",
+  "updatedAt": "2026-09-08T18:25:19.528Z",
   "catchmentRouting": {
     "coordinatesField": "business-address-details.business-address-coordinates",
     "parishField": "business-address-details.business-parish"

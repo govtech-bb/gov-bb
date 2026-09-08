@@ -486,6 +486,69 @@ describe("EmailBodyBuilder", () => {
       expect(ctx.markdownHtml).not.toContain("{polyclinic}");
     });
 
+    it("substitutes only the routed polyclinic's contact line into {polyclinicContact}", async () => {
+      const base = makeContract();
+      const contract = makeContract({
+        steps: [
+          ...base.steps,
+          {
+            stepId: "submission-confirmation",
+            title: "Application submitted",
+            elements: [],
+            markdownContent: "## Contact\n\n{polyclinicContact}",
+          },
+        ] as unknown as ServiceContract["steps"],
+      });
+      builder = new EmailBodyBuilder(
+        makeFormDefinitionsService(contract),
+        makeConfig(),
+      );
+
+      const ctx = await builder.build(
+        makePayload({
+          resolvedCatchment: {
+            polyclinic: "Randal Phillips Polyclinic",
+            programmeCode: "TEMP_RESTAURANT_PERMIT_RANDAL_PHILLIPS",
+            polyclinicContact:
+              "Randal Phillips Polyclinic - [(246) 536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)",
+          },
+        }),
+      );
+
+      expect(ctx.markdownHtml).toContain("Randal Phillips Polyclinic");
+      expect(ctx.markdownHtml).toContain("(246) 536-4338");
+      expect(ctx.markdownHtml).toContain("RPPC.EHD@health.gov.bb");
+      // None of the other clinics' details.
+      expect(ctx.markdownHtml).not.toContain("St. Philip Polyclinic");
+      expect(ctx.markdownHtml).not.toBe("{polyclinicContact}");
+    });
+
+    it("falls back to the full clinic list for {polyclinicContact} when nothing resolved", async () => {
+      const base = makeContract();
+      const contract = makeContract({
+        steps: [
+          ...base.steps,
+          {
+            stepId: "submission-confirmation",
+            title: "Application submitted",
+            elements: [],
+            markdownContent: "## Contact\n\n{polyclinicContact}",
+          },
+        ] as unknown as ServiceContract["steps"],
+      });
+      builder = new EmailBodyBuilder(
+        makeFormDefinitionsService(contract),
+        makeConfig(),
+      );
+
+      const ctx = await builder.build(makePayload());
+
+      expect(ctx.markdownHtml).toContain("St. Philip Polyclinic");
+      expect(ctx.markdownHtml).toContain("Sir Winston Scott Polyclinic");
+      expect(ctx.markdownHtml).toContain("Maurice Byer Polyclinic");
+      expect(ctx.markdownHtml).not.toContain("{polyclinicContact}");
+    });
+
     it("substitutes the configured landing origin into the {landingUrl} token", async () => {
       const base = makeContract();
       const contract = makeContract({
