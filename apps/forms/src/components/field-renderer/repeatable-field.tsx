@@ -1,5 +1,5 @@
-import React, { JSX } from "react";
-import { Button } from "@govtech-bb/react";
+import { JSX } from "react";
+import { AddAnother, AddAnotherItem } from "@govtech-bb/react";
 import { FieldRenderContext } from "./render-context";
 
 /**
@@ -81,42 +81,41 @@ export function renderRepeatableOrSingle(
     values && values.length > 0 ? Math.min(values.length, max) : min;
 
   return (
-    <>
+    <AddAnother
+      itemLabel={field.label}
+      onAdd={() => addAnotherField(values)}
+      canAdd={fieldCount < max}
+      className={field.ui?.hideLabel ? "[&_legend]:sr-only" : undefined}
+      addLabel={
+        fieldArray.addAnotherLabel ?? (
+          <>
+            Add Another{" "}
+            <span className="govbb-visually-hidden">{field.label}</span>
+          </>
+        )
+      }
+    >
       {Array.from({ length: fieldCount }).map((_, i) => (
-        <React.Fragment key={`${field.id}-${i}`}>
+        <AddAnotherItem
+          key={`${field.id}-${i}`}
+          index={i}
+          onRemove={() => removeField(values)}
+          removable={i === fieldCount - 1 && i !== 0}
+          removeLabel={
+            <>
+              Remove{" "}
+              <span className="govbb-visually-hidden">{field.label}</span>
+            </>
+          }
+        >
           {renderControl(
             values && values.length > 0 ? values[i] : "",
             (next) => updateField(values, i, next),
             false,
             i,
           )}
-          {i === fieldCount - 1 && i != 0 ? (
-            <Button
-              variant="text"
-              negative
-              className="no-print"
-              onClick={() => removeField(values)}
-            >
-              Remove{" "}
-              <span className="govbb-visually-hidden">{field.label}</span>
-            </Button>
-          ) : null}
-        </React.Fragment>
+        </AddAnotherItem>
       ))}
-      {fieldCount < max ? (
-        <Button
-          variant="text"
-          className="no-print"
-          onClick={() => addAnotherField(values)}
-        >
-          {fieldArray.addAnotherLabel ?? (
-            <>
-              Add Another{" "}
-              <span className="govbb-visually-hidden">{field.label}</span>
-            </>
-          )}
-        </Button>
-      ) : null}
-    </>
+    </AddAnother>
   );
 }

@@ -25,6 +25,7 @@
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/show-hide/show-hide.css";
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/combobox/combobox.css";
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/file-upload/file-upload.css";
+@import "../../../../node_modules/@govtech-bb/frontend/src/components/add-another/add-another.css";
 
 @theme {
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
