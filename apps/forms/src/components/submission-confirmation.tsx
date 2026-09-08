@@ -9,7 +9,7 @@ import {
 import { LANDING_URL } from "../config/landing";
 import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
 import { SubmissionConfirmationProps } from "../types/props.type";
-import { Button, LinkButton } from "@govtech-bb/react";
+import { Button, LinkButton, ServiceHeading } from "@govtech-bb/react";
 
 // Backend sends amounts as plain numbers; tests/recipes may already include the
 // "$". Prefix only when missing so both inputs render "$20".
@@ -211,23 +211,20 @@ export default function SubmissionConfirmation({
   if (processing) {
     return (
       <>
-        <div className="form-page__panel form-page__panel--success">
-          <div className="container">
-            <div className="form-width form-page__panel-body">
-              <p className="form-page__panel-service-title">{serviceTitle}</p>
-              <h1 className="govbb-text-h1">
-                We&apos;re processing your submission
-              </h1>
-              <p className="form-page__panel-subheading">
-                We&apos;ve received your submission and it&apos;s being
-                processed. We&apos;ll email you when it&apos;s complete.
-              </p>
-            </div>
+        <div className="form-page__panel form-page__panel--success govbb-main-wrapper">
+          <div className="govbb-width-container govbb-grid-row">
+            <ServiceHeading
+              className="govbb-grid-column-two-thirds-from-desktop"
+              service={serviceTitle}
+              description="We've received your submission and it's being processed. We'll email you when it's complete."
+            >
+              We&apos;re processing your submission
+            </ServiceHeading>
           </div>
         </div>
         {referenceNumber && (
-          <div className="container pb-8 lg:pb-16">
-            <div className="form-width form-page__confirmation">
+          <div className="govbb-width-container govbb-main-wrapper govbb-grid-row">
+            <div className="govbb-grid-column-two-thirds-from-desktop form-page__confirmation">
               <dl className="form-page__reference">
                 <dt>Submission ID</dt>
                 <dd>{referenceNumber}</dd>
@@ -242,8 +239,8 @@ export default function SubmissionConfirmation({
   // Submission itself failed — nothing was saved. Show a focused error panel.
   if (!submissionSuccess) {
     return (
-      <div className="container py-8 lg:py-16">
-        <div className="form-width">
+      <div className="govbb-width-container govbb-main-wrapper govbb-grid-row">
+        <div className="govbb-grid-column-two-thirds-from-desktop">
           <section className="govbb-payment govbb-payment--failed">
             <div className="govbb-payment__header">
               <h2 className="govbb-payment__title">Something went wrong</h2>
@@ -271,19 +268,21 @@ export default function SubmissionConfirmation({
   if (!hasPayment) {
     return (
       <>
-        <div className="form-page__panel form-page__panel--success">
-          <div className="container">
-            <div className="form-width form-page__panel-body">
-              <p className="form-page__panel-service-title">{serviceTitle}</p>
-              <h1 className="govbb-text-h1">{stepTitle}</h1>
-              <p className="form-page__panel-subheading">
-                {processingMessage ?? "Your submission has been saved"}
-              </p>
-            </div>
+        <div className="form-page__panel form-page__panel--success govbb-main-wrapper">
+          <div className="govbb-width-container govbb-grid-row">
+            <ServiceHeading
+              className="govbb-grid-column-two-thirds-from-desktop"
+              service={serviceTitle}
+              description={
+                processingMessage ?? "Your submission has been saved"
+              }
+            >
+              {stepTitle}
+            </ServiceHeading>
           </div>
         </div>
-        <div className="container pb-8 lg:pb-16">
-          <div className="form-width form-page__confirmation">
+        <div className="govbb-width-container govbb-main-wrapper govbb-grid-row">
+          <div className="govbb-grid-column-two-thirds-from-desktop form-page__confirmation">
             {referenceNumber && !hideReferenceNumber && (
               <dl className="form-page__reference">
                 <dt>Submission ID</dt>
@@ -299,15 +298,14 @@ export default function SubmissionConfirmation({
 
   // Payment flow — plain white header, then the payment-state panel.
   return (
-    <div className="container pb-8 lg:pb-16">
-      <div className="form-width form-page__confirmation">
-        <div className="form-page__header form-page__confirmation-header">
-          <p className="form-page__service-title">{serviceTitle}</p>
-          <h1 className="govbb-text-h1">{stepTitle}</h1>
-          {processingMessage && (
-            <p className="form-page__step-description">{processingMessage}</p>
-          )}
-        </div>
+    <div className="govbb-width-container govbb-main-wrapper govbb-grid-row">
+      <div className="govbb-grid-column-two-thirds-from-desktop form-page__confirmation">
+        <ServiceHeading
+          service={serviceTitle}
+          description={processingMessage || undefined}
+        >
+          {stepTitle}
+        </ServiceHeading>
 
         {referenceNumber &&
           (paymentSuccess || isSafePaymentUrl(paymentUrl)) && (

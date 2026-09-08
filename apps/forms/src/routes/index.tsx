@@ -55,8 +55,8 @@ function Index() {
   const groups = groupFormsByCategory(forms);
 
   return (
-    <div className="container py-8 lg:py-16">
-      <div className="form-width">
+    <div className="govbb-width-container govbb-main-wrapper govbb-grid-row">
+      <div className="govbb-grid-column-two-thirds-from-desktop">
         <h1 className="govbb-text-h1 mb-6">Forms</h1>
         <div className="flex flex-col gap-8">
           {groups.map(({ category, forms }) => (

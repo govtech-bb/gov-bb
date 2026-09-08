@@ -39,7 +39,12 @@ import {
 import { reviewDwellSeconds } from "./review-dwell";
 import { buildValidationErrorPayload } from "./validation-error-event";
 import { stepCompleteEventName } from "./step-events";
-import { Button, ButtonGroup, StatusBanner } from "@govtech-bb/react";
+import {
+  Button,
+  ButtonGroup,
+  ServiceHeading,
+  StatusBanner,
+} from "@govtech-bb/react";
 import {
   resolveConditionalMarkdown,
   resolveFieldLabel,
@@ -728,39 +733,51 @@ function ActiveStep({
   }
 
   return (
-    <div className="container pb-8 lg:pb-16">
-      <div className="form-page form-width">
+    <div className="govbb-width-container govbb-main-wrapper govbb-grid-row">
+      <div className="form-page govbb-grid-column-two-thirds-from-desktop">
         {isDraft && (
-          <StatusBanner variant="service" data-testid="draft-banner" rounded>
+          <StatusBanner
+            variant="service"
+            data-testid="draft-banner"
+            className="mb-8"
+            rounded
+          >
             Draft mode — this is an unpublished draft and cannot be submitted.
           </StatusBanner>
         )}
-        <div className="form-page__header">
-          <p className="form-page__service-title"> {formMeta.formTitle} </p>
-          {!isContentStep && (
-            <h1 className="govbb-text-h1">
-              {/* GOV.UK caption-in-heading pattern: the caption sits inside the
+        {isContentStep ? (
+          <div className="govbb-service-heading mb-8">
+            <p className="govbb-service-heading__service">
+              {formMeta.formTitle}
+            </p>
+            {currentStep.description && (
+              <p className="govbb-service-heading__description">
+                {currentStep.description}
+              </p>
+            )}
+          </div>
+        ) : (
+          <ServiceHeading
+            service={formMeta.formTitle}
+            description={currentStep.description || undefined}
+            className="mb-8"
+          >
+            {/* GOV.UK caption-in-heading pattern: the caption sits inside the
                 h1 so the accessible name distinguishes repeat instances for
                 screen-reader heading navigation. */}
-              {instanceMarker?.hasLabel && (
-                <span
-                  data-testid="repeat-instance-marker"
-                  className="block text-caption text-mid-grey-00"
-                >
-                  {instanceMarker.text}
-                </span>
-              )}
-              {instanceMarker && !instanceMarker.hasLabel
-                ? `${resolvedStepTitle} — ${instanceMarker.text}`
-                : resolvedStepTitle}
-            </h1>
-          )}
-          {currentStep.description && (
-            <p className="form-page__step-description">
-              {currentStep.description}
-            </p>
-          )}
-        </div>
+            {instanceMarker?.hasLabel && (
+              <span
+                data-testid="repeat-instance-marker"
+                className="block text-caption text-mid-grey-00"
+              >
+                {instanceMarker.text}
+              </span>
+            )}
+            {instanceMarker && !instanceMarker.hasLabel
+              ? `${resolvedStepTitle} — ${instanceMarker.text}`
+              : resolvedStepTitle}
+          </ServiceHeading>
+        )}
         <ErrorSummary errors={errors} />
 
         <div className="form-page__step">

@@ -16,6 +16,7 @@
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/status-banner/status-banner.css";
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/skip-link/skip-link.css";
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/error-summary/error-summary.css";
+@import "../../../../node_modules/@govtech-bb/frontend/src/components/service-heading/service-heading.css";
 
 @theme {
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
@@ -27,6 +28,7 @@
 .govbb-official-banner,
 .govbb-status-banner,
 .govbb-skip-link,
+.govbb-service-heading,
 .error-page {
   @import "../../../../node_modules/@govtech-bb/frontend/src/base.css";
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/link/link.css";
@@ -45,6 +47,10 @@
 
 .error-page {
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/list/list.css";
+}
+
+.error-page,
+.govbb-service-heading {
   @import "../../../../node_modules/@govtech-bb/frontend/src/utilities.css";
 }
 
@@ -55,38 +61,6 @@
   font-family: var(--govbb-font-sans);
   font-size: var(--govbb-font-size-body);
   line-height: var(--govbb-line-height-base);
-}
-
-/* Page wrapper used by every section (header, banner, page content, footer):
- * capped at the design's 1512px frame, centred. Side gutters step from 16px on
- * mobile up to the --xl (128px) token on large screens. */
-.container {
-  width: 100%;
-  max-width: 1512px;
-  margin-inline: auto;
-  padding-inline: var(--spacing-s); /* 16px — mobile */
-}
-
-@media (min-width: 48rem) {
-  .container {
-    padding-inline: var(--spacing-l); /* 64px — tablet */
-  }
-}
-
-@media (min-width: 64rem) {
-  .container {
-    padding-inline: var(--spacing-xl); /* 128px — desktop */
-  }
-}
-
-.form-width {
-  width: 100%;
-}
-
-@media (min-width: 48rem) {
-  .form-width {
-    width: calc(100% * 2 / 3);
-  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -127,33 +101,10 @@
   line-height: var(--line-height-body);
 }
 
-.form-page__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  padding-block: var(--spacing-l) var(--spacing-m);
-}
-
-.form-page__header h1 {
-  margin: 0;
-}
-
 .form-page__step {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-s);
-}
-
-.form-page__service-title {
-  font-size: var(--font-size-h4);
-  line-height: var(--line-height-h4);
-  border-left: var(--color-blue-40) 0.25rem solid;
-  color: var(--color-mid-grey-00);
-  padding: 0.5rem 1rem;
-}
-
-.form-page__step-description {
-  margin-bottom: var(--spacing-s);
 }
 
 /* Per-field width hints carried on the govbb-form-group wrapper. Full width on
@@ -400,7 +351,7 @@
 /* ---- Submission confirmation panels -------------------------------------- */
 /* Full-width wrapper for the confirmation step — no container/padding so the
  * banner can bleed to the viewport edges; inner sections supply their own
- * .container. */
+ * .govbb-width-container. */
 .form-page-confirmation {
   font-family: var(--font-family-base), sans-serif;
   font-size: var(--font-size-body);
@@ -411,13 +362,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
-}
-
-/* Payment confirmation header (composed with .form-page__header). Adds a fixed
- * banner height so the title block is a consistent height across payment
- * states. The no-payment state uses the teal banner panel below instead. */
-.form-page__confirmation-header {
-  min-height: 16.75rem;
 }
 
 .form-page__reference {
@@ -437,48 +381,12 @@
   margin: 0;
 }
 
-/* Full-bleed banner. The panel is a full-width child of <main> (no container),
- * so its teal background reaches the viewport edges; the inner .container keeps
- * the text aligned with the rest of the page. Fixed banner height with a 64px
- * top / 32px bottom inset. */
-.form-page__panel {
-  min-height: 16.75rem;
-  padding-block: var(--spacing-l) var(--spacing-m);
-}
-
-.form-page__panel-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-s);
-}
-
 .form-page__panel--success {
   background-color: var(--color-teal-40);
 }
 
 .form-page__panel--error {
   background-color: var(--color-red-40);
-}
-
-.form-page__panel-service-title {
-  font-size: var(--font-size-h4);
-  line-height: var(--line-height-h4);
-  color: var(--color-black-00);
-  padding: 0.5rem 1rem;
-}
-
-.form-page__panel--success .form-page__panel-service-title {
-  border-left: var(--color-teal-00) 0.25rem solid;
-}
-
-.form-page__panel--error .form-page__panel-service-title {
-  border-left: var(--color-red-00) 0.25rem solid;
-}
-
-.form-page__panel-subheading {
-  font-size: var(--font-size-h4);
-  line-height: var(--line-height-body);
-  font-weight: var(--font-weight-normal);
 }
 
 /* ---- Payment block (GOV.BB design system: govbb-payment) ----------------- */
@@ -815,7 +723,7 @@
 /* Fixed-measure field widths (GOV.UK style). `ch` units size the cap to the
  * field's own type, not its container, so a short field inside a show-hide
  * inset renders the same as a standalone one — percentage widths compounded
- * against every wrapper (.form-width 2/3 column × inset padding × 33%) and
+ * against every wrapper (two-thirds column × inset padding × 33%) and
  * left inset fields tiny. `width: 100%` from the base rule above remains the
  * floor, so fields still shrink inside containers narrower than the cap.
  * `long` (or no hint) stays unstyled: full width of the form column. */
@@ -896,14 +804,13 @@
 
   /* Use the paper's own margin: drop the on-screen page gutters and the fixed
      two-thirds measure so content isn't boxed into a narrow column. */
-  .container {
-    max-width: none !important;
+  .govbb-width-container {
+    max-inline-size: none !important;
     padding-inline: 0 !important;
-    padding-bottom: 0 !important;
   }
 
-  .form-width {
-    width: 100% !important;
+  .govbb-main-wrapper {
+    padding-block: 0 !important;
   }
 
   /* Page-break control below relies on `break-inside: avoid`, which Chrome
@@ -913,17 +820,11 @@
      mid-block. Flatten these containers to plain block flow in print so the
      browser honours the page-break rules. */
   .form-page__confirmation,
-  .form-page__panel-body,
+  .govbb-grid-row,
+  .govbb-service-heading,
   .govbb-payment,
   .form-page__contact {
     display: block !important;
-  }
-
-  /* The success/error banner is a tall (16.75rem) coloured block; print drops
-     the background, leaving a big empty gap. Collapse it to plain heading text. */
-  .form-page__panel {
-    min-height: 0 !important;
-    padding-block: 0 !important;
   }
 
   .form-page__panel--success,
