@@ -83,9 +83,21 @@
   line-height: var(--govbb-line-height-base);
 }
 
+/* Use a zero-specificity scope so shared focus styles win on errors. */
+:where(.form-page__text-field) {
+  @import "../../../../node_modules/@govtech-bb/frontend/src/components/number-input/number-input.css";
+}
+
 .form-page__text-field {
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/input/input.css";
   @import "../../../../node_modules/@govtech-bb/frontend/src/focus.css";
+
+  /* Legacy CSS fades enabled inputs when a stepper is disabled.
+     Remove this reset with @govtech-bb/styles. */
+  .govbb-number-input-wrapper {
+    opacity: 1;
+    cursor: auto;
+  }
 }
 
 /* ---------------------------------------------------------------------------

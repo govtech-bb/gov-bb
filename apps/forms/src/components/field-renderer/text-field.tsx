@@ -1,8 +1,7 @@
 import { JSX } from "react";
-import { FormGroup, Hint, Label } from "@govtech-bb/react";
+import { FormGroup, Hint, Label, NumberInput } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import { MaskedInput } from "../masked-input";
-import { NumberInput } from "./number-input";
 import { renderRepeatableOrSingle, rowInputProps } from "./repeatable-field";
 import { FieldRenderContext } from "./render-context";
 
@@ -22,10 +21,7 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
 
   const isNumber = field.htmlType === "number";
 
-  // Number fields render the design-system number input (custom
-  // steppers, native spinners hidden); the other text-like types keep
-  // the masked `.govbb-input`. `withRequired` mirrors the original
-  // behaviour where the repeating array path omits requiredProps.
+  // Repeated rows omit requiredProps; the array validator checks the group.
   const renderControl = (
     value: string,
     onChange: (next: string) => void,
@@ -35,10 +31,14 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
     const props = rowInputProps(sharedProps, field, index);
     return isNumber ? (
       <NumberInput
+        {...props}
+        {...(withRequired ? requiredProps : {})}
+        labelId={`${field.id}-label`}
+        min={0}
+        inputMode="numeric"
         value={value}
-        onChange={onChange}
-        invalid={invalid}
-        inputProps={withRequired ? { ...props, ...requiredProps } : props}
+        aria-invalid={invalid}
+        onInput={(event) => onChange(event.currentTarget.value)}
       />
     ) : (
       <MaskedInput
@@ -58,10 +58,11 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
 
   return (
     <FormGroup
-      className={isNumber ? undefined : "form-page__text-field"}
+      className="form-page__text-field"
       data-field-width={field.ui?.width}
     >
       <Label
+        id={`${field.id}-label`}
         className={field.ui?.hideLabel ? "govbb-visually-hidden" : undefined}
         htmlFor={field.id}
         optional={labelSuffix !== null}

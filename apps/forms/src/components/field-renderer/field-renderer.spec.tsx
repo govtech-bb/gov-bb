@@ -719,7 +719,7 @@ describe("FieldRenderer", () => {
       mockState = { value: "5", meta: { isValid: true, errors: [] } };
       renderField(primitive("number"));
       await user.click(screen.getByRole("button", { name: "Increment" }));
-      expect(mockFieldApi.handleChange).toHaveBeenCalledWith("6");
+      expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith("6");
     });
 
     it("Decrement steps the value down by 1", async () => {
@@ -730,11 +730,7 @@ describe("FieldRenderer", () => {
       expect(mockFieldApi.handleChange).toHaveBeenCalledWith("4");
     });
 
-    // The mock handleChange never feeds the new value back into mockState, so
-    // both clicks step from the same blank base (0) — this asserts blank → ±1
-    // in each direction independently, NOT a sequential increment-then-decrement.
-    // Hello! I'm a human! Updating this test to ensure that the steppers can't go below zero.
-    it("steps from a blank value to 1 (up) and -1 (down)", async () => {
+    it("steps from a blank value without going below zero", async () => {
       const user = userEvent.setup();
       renderField(primitive("number")); // value is undefined
       await user.click(screen.getByRole("button", { name: "Increment" }));
@@ -742,6 +738,24 @@ describe("FieldRenderer", () => {
       await user.click(screen.getByRole("button", { name: "Decrement" }));
       // Can't go below zero! Clamping
       expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("0");
+    });
+
+    it("uses the configured step and emits one string value", async () => {
+      const user = userEvent.setup();
+      mockState = { value: "1.5", meta: { isValid: true, errors: [] } };
+      renderField(primitive("number", { step: 0.5 }));
+      await user.click(screen.getByRole("button", { name: "Increment" }));
+      expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith("2");
+    });
+
+    it("disables decrement at zero without changing the value", async () => {
+      const user = userEvent.setup();
+      mockState = { value: "0", meta: { isValid: true, errors: [] } };
+      renderField(primitive("number"));
+      const decrement = screen.getByRole("button", { name: "Decrement" });
+      expect(decrement).toBeDisabled();
+      await user.click(decrement);
+      expect(mockFieldApi.handleChange).not.toHaveBeenCalled();
     });
 
     it("renders the number input and steppers in the Add-another array path", () => {
