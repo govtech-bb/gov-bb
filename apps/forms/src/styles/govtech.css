@@ -22,6 +22,7 @@
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/summary-list/summary-list.css";
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/feedback/feedback.css";
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/form/form.css";
+@import "../../../../node_modules/@govtech-bb/frontend/src/components/show-hide/show-hide.css";
 
 @theme {
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
@@ -58,6 +59,7 @@
 
 .error-page,
 .govbb-service-heading,
+.govbb-show-hide,
 .govbb-summary-section,
 .form-page__confirmation,
 .form-page__contact,
@@ -72,6 +74,7 @@
   .govbb-error-summary,
   .govbb-payment,
   .govbb-summary-section,
+  .govbb-show-hide,
   .form-page__confirmation,
   .form-page__contact,
   .form-page__markdown,
@@ -164,13 +167,6 @@
 .govbb-form-group[data-field-width="medium"] {
   width: 100%;
 }
-
-/* ---- Show/hide -----------------------------------------------------------
- * The show-hide toggle now renders as a native <details>/<summary> using the
- * @govtech-bb/styles `.govbb-show-hide*` classes (#341). The revealed content
- * is a sibling `.govbb-show-hide__content` wrapper in form-renderer; the
- * vertical spacing between the summary and that wrapper comes from the parent
- * `.form-page__step` flex gap, so no app-local rules are needed here. */
 
 /* ---- Select conditional reveal (#863) -------------------------------------
  * Inset fields revealed by a select option. @govtech-bb/styles only ships the

@@ -15,11 +15,11 @@ import type { Mock } from "vitest";
  * - Renders ApplicantNameDisplay on the declaration step
  * - Renders SubmissionConfirmation on the submission-confirmation step
  * - Renders a FieldRenderer for each plain field in the step
- * - show-hide group: renders controlled fields when toggle value is true
- * - show-hide group: does not render controlled fields when toggle value is false
+ * - show-hide group: nests controlled fields inside its toggle renderer
  * - radio-conditional: radio field with conditional child is grouped correctly
  */
 
+import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useStore } from "@tanstack/react-form";
@@ -57,6 +57,7 @@ vi.mock("./field-renderer", () => ({
   __esModule: true,
   default: (props: {
     field: { id: string };
+    children?: ReactNode;
     formVersion?: string;
     insetFieldsByOption?: Map<string, MockInsetEntry[]>;
   }) => (
@@ -73,7 +74,9 @@ vi.mock("./field-renderer", () => ({
             )
           : ""
       }
-    />
+    >
+      {props.children}
+    </div>
   ),
 }));
 
@@ -675,7 +678,7 @@ describe("FormRenderer", () => {
     );
   });
 
-  it("show-hide group: renders controlled fields when toggle value is true", () => {
+  it("show-hide group: nests controlled fields inside its toggle renderer", () => {
     const toggleField = {
       id: "step1_toggle",
       fieldId: "toggle",
@@ -701,14 +704,6 @@ describe("FormRenderer", () => {
       behaviours: [{ type: "fieldConditionalOn", targetFieldId: "toggle" }],
     };
     const step = makeStep("step1", [toggleField, controlledField]);
-
-    mockUseStore.mockImplementation((_store: any, selector: any) => {
-      try {
-        return selector({ values: { step1_toggle: true }, fieldMeta: {} });
-      } catch {
-        return {};
-      }
-    });
 
     render(
       <FormRenderer
@@ -725,58 +720,11 @@ describe("FormRenderer", () => {
     const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
     expect(fieldIds).toContain("step1_toggle");
     expect(fieldIds).toContain("step1_detail");
-  });
-
-  it("show-hide group: does not render controlled fields when toggle value is false", () => {
-    const toggleField = {
-      id: "step1_toggle",
-      fieldId: "toggle",
-      stepId: "step1",
-      name: "toggle",
-      label: "Toggle",
-      htmlType: "show-hide" as any,
-      disabled: false,
-      hidden: false,
-      conditionallyHidden: false,
-      behaviours: [],
-    };
-    const controlledField = {
-      id: "step1_detail",
-      fieldId: "detail",
-      stepId: "step1",
-      name: "detail",
-      label: "Detail",
-      htmlType: "text" as const,
-      disabled: false,
-      hidden: false,
-      conditionallyHidden: false,
-      behaviours: [{ type: "fieldConditionalOn", targetFieldId: "toggle" }],
-    };
-    const step = makeStep("step1", [toggleField, controlledField]);
-
-    mockUseStore.mockImplementation((_store: any, selector: any) => {
-      try {
-        return selector({ values: { step1_toggle: false }, fieldMeta: {} });
-      } catch {
-        return {};
-      }
-    });
-
-    render(
-      <FormRenderer
-        form={mockForm}
-        formMeta={makeMeta() as any}
-        stepId="step1"
-        visibleSteps={[step]}
-        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
-        submissionState={mockSubmissionState as any}
-      />,
+    expect(
+      renderers.find((el) => el.dataset.fieldId === "step1_toggle"),
+    ).toContainElement(
+      renderers.find((el) => el.dataset.fieldId === "step1_detail")!,
     );
-
-    const renderers = screen.getAllByTestId("field-renderer");
-    const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
-    expect(fieldIds).toContain("step1_toggle");
-    expect(fieldIds).not.toContain("step1_detail");
   });
 
   it("radio-conditional: radio field with conditional child is rendered as a FieldRenderer group", () => {

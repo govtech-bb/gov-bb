@@ -1,27 +1,31 @@
-import { JSX } from "react";
+import { JSX, ReactNode } from "react";
+import { Hint, ShowHide } from "@govtech-bb/react";
 import { FieldRenderContext } from "./render-context";
 
-export function renderShowHideField(ctx: FieldRenderContext): JSX.Element {
+export function renderShowHideField(
+  ctx: FieldRenderContext,
+  children?: ReactNode,
+): JSX.Element {
   const { field, f, commitChange } = ctx;
 
-  // Value is a boolean: false = collapsed (default), true = expanded.
-  // The toggle itself carries no validation. Native <details>/<summary>
-  // gives us the disclosure semantics, keyboard behaviour and marker
-  // rotation for free (govbb-show-hide* classes). The controlled
-  // sibling fields and hint are rendered by form-renderer in a
-  // govbb-show-hide__content wrapper that reads this boolean reactively,
-  // so the open state is driven through TanStack-Form via onToggle.
+  // Unmount collapsed fields so they do not validate; their saved values stay
+  // in TanStack Form and reappear when the disclosure opens again.
   const isOpen = (f.state.value as boolean | undefined) ?? false;
   return (
-    <details
-      className="govbb-show-hide"
+    <ShowHide
+      summary={field.label}
       open={isOpen}
       onToggle={(e) => {
         const next = e.currentTarget.open;
         if (next !== isOpen) commitChange(next);
       }}
     >
-      <summary className="govbb-show-hide__summary">{field.label}</summary>
-    </details>
+      {isOpen && (
+        <>
+          {field.hint && <Hint>{field.hint}</Hint>}
+          {children}
+        </>
+      )}
+    </ShowHide>
   );
 }

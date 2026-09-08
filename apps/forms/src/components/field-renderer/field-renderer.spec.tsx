@@ -399,6 +399,31 @@ describe("FieldRenderer", () => {
       expect(summary?.textContent).toContain("More details");
     });
 
+    it.each([false, true])(
+      "mounts its hint and fields only when open=%s",
+      (open) => {
+        mockState = { value: open, meta: { isValid: true, errors: [] } };
+        const { container } = renderField(
+          primitive("show-hide", { hint: "Enter your passport details" }),
+          { children: <input aria-label="Passport number" /> },
+        );
+        const details = container.querySelector("details")!;
+        if (open) {
+          expect(details).toContainElement(
+            screen.getByText("Enter your passport details"),
+          );
+          expect(details).toContainElement(
+            screen.getByRole("textbox", { name: "Passport number" }),
+          );
+        } else {
+          expect(screen.queryByText("Enter your passport details")).toBeNull();
+          expect(
+            screen.queryByRole("textbox", { name: "Passport number" }),
+          ).toBeNull();
+        }
+      },
+    );
+
     it("toggling the summary open commits true", async () => {
       const user = userEvent.setup();
       const { container } = renderField(primitive("show-hide"));

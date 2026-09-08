@@ -650,23 +650,6 @@ function ActiveStep({
     [currentFields],
   );
 
-  // Reactively read every show-hide toggle value so the content wrapper
-  // appears/disappears when the user clicks the toggle.
-  const showHideValues = useStore(
-    form.store,
-    (state) => {
-      const values = state.values as Record<string, unknown>;
-      const result: Record<string, boolean> = {};
-      for (const group of fieldGroups) {
-        if (group.type === "show-hide") {
-          result[group.toggle.id] = !!values[group.toggle.id];
-        }
-      }
-      return result;
-    },
-    shallow,
-  );
-
   // Resolve the step's effective title reactively: a step may carry
   // `conditionalTitle` overrides (#871) that depend on an earlier answer, so the
   // heading must recompute when the watched value changes. `resolveStepTitle`
@@ -809,39 +792,28 @@ function ActiveStep({
 
           {fieldGroups.map((group) => {
             if (group.type === "show-hide") {
-              const isOpen = showHideValues[group.toggle.id] ?? false;
               return (
-                <React.Fragment key={group.toggle.id}>
-                  {/* Toggle (<details>/<summary>) — the hint and controlled
-                    fields live outside the FieldRenderer so we can wrap them all
-                    in the govbb-show-hide content border */}
-                  <FieldRenderer
-                    form={form}
-                    field={group.toggle}
-                    validationProperties={resolveValidators(group.toggle)}
-                    formId={formMeta.formId}
-                    previewToken={previewToken}
-                    draftToken={draftToken}
-                  />
-                  {isOpen && (
-                    <div className="govbb-show-hide__content">
-                      {group.toggle.hint && (
-                        <p className="govbb-hint">{group.toggle.hint}</p>
-                      )}
-                      {group.controlled.map((field) => (
-                        <FieldRenderer
-                          key={field.id}
-                          form={form}
-                          field={field}
-                          validationProperties={resolveValidators(field)}
-                          formId={formMeta.formId}
-                          previewToken={previewToken}
-                          draftToken={draftToken}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </React.Fragment>
+                <FieldRenderer
+                  key={group.toggle.id}
+                  form={form}
+                  field={group.toggle}
+                  validationProperties={resolveValidators(group.toggle)}
+                  formId={formMeta.formId}
+                  previewToken={previewToken}
+                  draftToken={draftToken}
+                >
+                  {group.controlled.map((field) => (
+                    <FieldRenderer
+                      key={field.id}
+                      form={form}
+                      field={field}
+                      validationProperties={resolveValidators(field)}
+                      formId={formMeta.formId}
+                      previewToken={previewToken}
+                      draftToken={draftToken}
+                    />
+                  ))}
+                </FieldRenderer>
               );
             }
 
