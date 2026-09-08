@@ -20,6 +20,7 @@
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/payment/payment.css";
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/summary-section/summary-section.css";
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/summary-list/summary-list.css";
+@import "../../../../node_modules/@govtech-bb/frontend/src/components/feedback/feedback.css";
 
 @theme {
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
@@ -48,17 +49,26 @@
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/button/button.css";
 }
 
-.error-page {
+.error-page,
+.form-page__confirmation {
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/list/list.css";
 }
 
 .error-page,
 .govbb-service-heading,
-.govbb-summary-section {
+.govbb-summary-section,
+.form-page__confirmation,
+.form-page__contact {
   @import "../../../../node_modules/@govtech-bb/frontend/src/utilities.css";
 }
 
-:where(.govbb-error-summary, .govbb-payment, .govbb-summary-section) {
+:where(
+  .govbb-error-summary,
+  .govbb-payment,
+  .govbb-summary-section,
+  .form-page__confirmation,
+  .form-page__contact
+) {
   @import "../../../../node_modules/@govtech-bb/frontend/src/base.css";
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/link/link.css";
 
@@ -369,20 +379,7 @@
 }
 
 .form-page__reference {
-  display: flex;
-  gap: var(--spacing-s);
-  margin: var(--spacing-s) 0 var(--spacing-m);
-  padding: var(--spacing-s);
-  background-color: var(--color-grey-00);
-  border-radius: var(--radius-sm);
-}
-
-.form-page__reference dt {
-  font-weight: var(--font-weight-bold);
-}
-
-.form-page__reference dd {
-  margin: 0;
+  margin-block: var(--govbb-space-s) var(--govbb-space-m);
 }
 
 .form-page__panel--success {
@@ -393,51 +390,26 @@
   background-color: var(--color-red-40);
 }
 
-/* ---- Feedback section (plain — no callout box, per the confirmation design) */
-.form-page__feedback {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--spacing-xs);
-  margin-top: var(--spacing-m);
-}
-
-.form-page__feedback h3 {
-  margin-top: 0;
-}
-
 .form-page__print {
   margin-top: var(--spacing-m);
 }
 
 /* ---- Next steps + contact details ---------------------------------------- */
 .form-page__next-steps {
-  margin-top: var(--spacing-m);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
+  margin-block-start: var(--govbb-space-m);
 }
 
 .form-page__contact {
-  margin-top: var(--spacing-m);
+  margin-block-start: var(--govbb-space-m);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-s); /* 16px between inner elements */
+  gap: var(--govbb-space-s);
 }
 
 .form-page__contact-body {
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-s);
-}
-
-.form-page__contact-body p {
-  margin: 0;
-}
-
-.form-page__contact-label {
-  font-weight: var(--font-weight-bold);
+  gap: var(--govbb-space-s);
 }
 
 /* ---- Applications-closed page (#1936) ------------------------------------ *
@@ -612,7 +584,6 @@
      `[class*="govbb-btn"]` covers both the primary and --secondary variants. */
   .no-print,
   .form-page__print,
-  .form-page__feedback,
   .govbb-payment__note,
   .form-page .govbb-button-group,
   .govbb-btn,
@@ -641,6 +612,7 @@
   .govbb-grid-row,
   .govbb-service-heading,
   .govbb-payment,
+  .form-page__next-steps,
   .form-page__contact {
     display: block !important;
   }

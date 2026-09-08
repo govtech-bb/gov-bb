@@ -1,5 +1,5 @@
 import { ContactDetails, formatClosingDateTime } from "@govtech-bb/form-types";
-import { ServiceHeading } from "@govtech-bb/react";
+import { Heading, Link, ServiceHeading, Text } from "@govtech-bb/react";
 
 interface ApplicationClosedProps {
   serviceTitle: string;
@@ -40,27 +40,24 @@ export default function ApplicationClosed({
 
         {hasContact && contactDetails && (
           <div className="form-page__contact">
-            <h2 className="govbb-text-h2">Have a question?</h2>
-            <p>
+            <Heading as="h2">Have a question?</Heading>
+            <Text className="govbb-text-break-word">
               If you need assistance or have any questions, please contact{" "}
               {contactDetails.title ? `the ${contactDetails.title}` : "us"}
               {contactDetails.email && (
                 <>
                   {" "}
                   at{" "}
-                  <a
-                    className="govbb-link"
-                    href={`mailto:${contactDetails.email}`}
-                  >
+                  <Link href={`mailto:${contactDetails.email}`}>
                     {contactDetails.email}
-                  </a>
+                  </Link>
                 </>
               )}
               {contactDetails.telephoneNumber && (
                 <> or call {contactDetails.telephoneNumber}</>
               )}
               .
-            </p>
+            </Text>
           </div>
         )}
       </div>

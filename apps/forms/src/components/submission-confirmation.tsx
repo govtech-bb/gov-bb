@@ -8,7 +8,18 @@ import {
 import { LANDING_URL } from "../config/landing";
 import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
 import { SubmissionConfirmationProps } from "../types/props.type";
-import { Button, LinkButton, Payment, ServiceHeading } from "@govtech-bb/react";
+import {
+  Button,
+  Feedback,
+  Heading,
+  Link,
+  LinkButton,
+  List,
+  Payment,
+  ServiceHeading,
+  SummaryList,
+  Text,
+} from "@govtech-bb/react";
 
 // Backend sends amounts as plain numbers; tests/recipes may already include the
 // "$". Prefix only when missing so both inputs render "$20".
@@ -103,17 +114,17 @@ export default function SubmissionConfirmation({
   const trailingSections = (
     <>
       {nextSteps && nextSteps.length > 0 && (
-        <div className="form-page__next-steps">
+        <div className="form-page__next-steps flex flex-col gap-8">
           {nextSteps.map((section, index) => (
-            <div key={index}>
-              <h2 className="govbb-text-h2">{section.title}</h2>
-              {section.content && <p>{section.content}</p>}
+            <div key={index} className="flex flex-col gap-4">
+              <Heading as="h2">{section.title}</Heading>
+              {section.content && <Text>{section.content}</Text>}
               {section.items && section.items.length > 0 && (
-                <ul className="govbb-list govbb-list--bullet">
+                <List variant="bullet">
                   {section.items.map((item, i) => (
                     <li key={i}>{item}</li>
                   ))}
-                </ul>
+                </List>
               )}
             </div>
           ))}
@@ -148,37 +159,41 @@ export default function SubmissionConfirmation({
 
       {contactDetails && (
         <div className="form-page__contact">
-          <p>If you need help with your application, contact:</p>
+          <Text>If you need help with your application, contact:</Text>
           {/* title/telephone/email are each optional (issue #607) — render
               only the lines that are present so a partial contact (e.g. an
               email-only MDA) doesn't show empty labels or a blank heading. */}
           {contactDetails.title && (
-            <h3 className="govbb-text-h3">{contactDetails.title}</h3>
+            <Heading as="h3">{contactDetails.title}</Heading>
           )}
-          <div className="form-page__contact-body">
+          <div className="form-page__contact-body govbb-text-break-word">
             {contactDetails.address && (
               <>
-                <p>{contactDetails.address.line1}</p>
+                <Text>{contactDetails.address.line1}</Text>
                 {contactDetails.address.line2 && (
-                  <p>{contactDetails.address.line2}</p>
+                  <Text>{contactDetails.address.line2}</Text>
                 )}
-                <p>{contactDetails.address.city}</p>
+                <Text>{contactDetails.address.city}</Text>
                 {contactDetails.address.country && (
-                  <p>{contactDetails.address.country}</p>
+                  <Text>{contactDetails.address.country}</Text>
                 )}
               </>
             )}
             {contactDetails.telephoneNumber && (
-              <p>
-                <span className="form-page__contact-label">Telephone:</span>{" "}
+              <Text>
+                <Text as="span" weight="bold">
+                  Telephone:
+                </Text>{" "}
                 {contactDetails.telephoneNumber}
-              </p>
+              </Text>
             )}
             {contactDetails.email && (
-              <p>
-                <span className="form-page__contact-label">Email:</span>{" "}
+              <Text>
+                <Text as="span" weight="bold">
+                  Email:
+                </Text>{" "}
                 {contactDetails.email}
-              </p>
+              </Text>
             )}
           </div>
         </div>
@@ -187,19 +202,19 @@ export default function SubmissionConfirmation({
       {/* Only invite feedback when a target is provided. The exit survey's own
           confirmation passes no feedbackUrl, so it never links to itself. */}
       {feedbackUrl && (
-        <div className="form-page__feedback">
-          <h3 className="govbb-text-h3">Help us improve this service</h3>
-          <p>
+        <Feedback
+          heading="Help us improve this service"
+          className="mt-8 no-print"
+        >
+          <Text>
             We are always working to improve government services. If you have a
             moment, you can tell us about your experience today.
-          </p>
-          {/* Renders as a link (not a button) styled as a secondary action —
-              the same pattern as the "Continue to payment" anchor above. */}
-          <LinkButton variant="secondary" href={feedbackUrl}>
-            Give feedback on this service
-          </LinkButton>
-          <p>This will take about 30 seconds. Your responses are anonymous.</p>
-        </div>
+          </Text>
+          <Link href={feedbackUrl}>Give feedback on this service</Link>
+          <Text>
+            This will take about 30 seconds. Your responses are anonymous.
+          </Text>
+        </Feedback>
       )}
     </>
   );
@@ -226,10 +241,10 @@ export default function SubmissionConfirmation({
         {referenceNumber && (
           <div className="govbb-width-container govbb-main-wrapper govbb-grid-row">
             <div className="govbb-grid-column-two-thirds-from-desktop form-page__confirmation">
-              <dl className="form-page__reference">
-                <dt>Submission ID</dt>
-                <dd>{referenceNumber}</dd>
-              </dl>
+              <SummaryList
+                className="form-page__reference"
+                rows={[{ key: "Submission ID", value: referenceNumber }]}
+              />
             </div>
           </div>
         )}
@@ -281,10 +296,10 @@ export default function SubmissionConfirmation({
         <div className="govbb-width-container govbb-main-wrapper govbb-grid-row">
           <div className="govbb-grid-column-two-thirds-from-desktop form-page__confirmation">
             {referenceNumber && !hideReferenceNumber && (
-              <dl className="form-page__reference">
-                <dt>Submission ID</dt>
-                <dd>{referenceNumber}</dd>
-              </dl>
+              <SummaryList
+                className="form-page__reference"
+                rows={[{ key: "Submission ID", value: referenceNumber }]}
+              />
             )}
             {trailingSections}
           </div>
@@ -306,10 +321,10 @@ export default function SubmissionConfirmation({
 
         {referenceNumber &&
           (paymentSuccess || isSafePaymentUrl(paymentUrl)) && (
-            <dl className="form-page__reference">
-              <dt>Submission ID</dt>
-              <dd>{referenceNumber}</dd>
-            </dl>
+            <SummaryList
+              className="form-page__reference"
+              rows={[{ key: "Submission ID", value: referenceNumber }]}
+            />
           )}
 
         {paymentSuccess ? (
