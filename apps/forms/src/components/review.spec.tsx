@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "jest-axe";
 import Review from "./review";
@@ -1040,6 +1040,27 @@ describe("Review", () => {
 
     expect(mockNavigate).toHaveBeenCalled();
   });
+
+  it.each(["metaKey", "ctrlKey", "shiftKey", "altKey"])(
+    "preserves native Change link navigation with %s",
+    (modifier) => {
+      render(
+        <Review
+          formMeta={baseFormMeta as FormMeta}
+          form={makeMockForm() as never}
+          visibleSteps={[
+            makeStep({ stepId: "step-personal", title: "Personal Details" }),
+          ]}
+        />,
+      );
+
+      const link = screen.getByRole("link", {
+        name: "Change Personal Details",
+      });
+      expect(fireEvent.click(link, { [modifier]: true })).toBe(true);
+      expect(mockNavigate).not.toHaveBeenCalled();
+    },
+  );
 
   // -------------------------------------------------------------------------
   // handleChangeClick — navigate call with search param (line 41)
