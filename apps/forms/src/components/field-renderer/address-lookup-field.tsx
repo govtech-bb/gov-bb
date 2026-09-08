@@ -1,4 +1,5 @@
 import { JSX, useEffect, useRef, useState } from "react";
+import { Autocomplete, FormGroup, Hint, Label } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import {
   GeocodeResult,
@@ -34,7 +35,6 @@ export function AddressLookupField({
     hintId,
     errorId,
     errorMessage,
-    labelClass,
     labelSuffix,
     commitChange,
   } = ctx;
@@ -46,14 +46,11 @@ export function AddressLookupField({
   const initial = typeof f.state.value === "string" ? f.state.value : "";
   const [query, setQuery] = useState(initial);
   const [suggestions, setSuggestions] = useState<GeocodeResult[]>([]);
-  const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
   const [lookupFailed, setLookupFailed] = useState(false);
 
   // The last committed selection — suppresses the lookup that a select would
   // otherwise trigger by changing the input's text.
   const justSelected = useRef(false);
-  const listboxId = `${field.id}-listbox`;
 
   useEffect(() => {
     if (justSelected.current) {
@@ -63,7 +60,6 @@ export function AddressLookupField({
     const trimmed = query.trim();
     if (trimmed.length < MIN_QUERY_LENGTH) {
       setSuggestions([]);
-      setOpen(false);
       return;
     }
 
@@ -72,15 +68,12 @@ export function AddressLookupField({
       searchAddresses(trimmed, controller.signal)
         .then((results) => {
           setSuggestions(results);
-          setActiveIndex(-1);
-          setOpen(results.length > 0);
           setLookupFailed(false);
         })
         .catch((error: unknown) => {
           if (error instanceof DOMException && error.name === "AbortError")
             return;
           setSuggestions([]);
-          setOpen(false);
           setLookupFailed(true);
         });
     }, DEBOUNCE_MS);
@@ -130,108 +123,45 @@ export function AddressLookupField({
     }
 
     setSuggestions([]);
-    setOpen(false);
-    setActiveIndex(-1);
   };
-
-  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!open || suggestions.length === 0) return;
-    switch (event.key) {
-      case "ArrowDown":
-        event.preventDefault();
-        setActiveIndex((i) => (i + 1) % suggestions.length);
-        break;
-      case "ArrowUp":
-        event.preventDefault();
-        setActiveIndex((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
-        break;
-      case "Enter":
-        if (activeIndex >= 0) {
-          event.preventDefault();
-          select(suggestions[activeIndex]);
-        }
-        break;
-      case "Escape":
-        setOpen(false);
-        break;
-    }
-  };
-
-  const activeId =
-    open && activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined;
 
   return (
-    <div className="govbb-form-group" data-field-width={field.ui?.width}>
-      <label className={labelClass("govbb-label")} htmlFor={field.id}>
+    <FormGroup
+      className="form-page__text-field"
+      data-field-width={field.ui?.width}
+    >
+      <Label
+        className={field.ui?.hideLabel ? "govbb-visually-hidden" : undefined}
+        htmlFor={field.id}
+        optional={labelSuffix !== null}
+      >
         {field.label}
-        {labelSuffix}
-      </label>
-      {field.hint && (
-        <p className="govbb-hint" id={hintId}>
-          {field.hint}
-        </p>
-      )}
+      </Label>
+      {field.hint && <Hint id={hintId}>{field.hint}</Hint>}
       <ErrorMessage id={errorId} message={errorMessage} />
-      <div className="govbb-address-lookup">
-        <div className="govbb-input-wrapper">
-          <input
-            id={sharedProps.id}
-            name={sharedProps.name}
-            disabled={sharedProps.disabled}
-            placeholder={sharedProps.placeholder}
-            aria-describedby={sharedProps["aria-describedby"]}
-            {...requiredProps}
-            type="text"
-            className="govbb-input"
-            role="combobox"
-            aria-expanded={open}
-            aria-controls={listboxId}
-            aria-autocomplete="list"
-            aria-activedescendant={activeId}
-            aria-invalid={invalid}
-            autoComplete="off"
-            value={query}
-            onChange={(e) => update(e.target.value)}
-            onBlur={() => {
-              // Delay so a mouse click on an option registers before we close.
-              setTimeout(() => setOpen(false), 150);
-              // TanStack Form's blur handler takes no arguments.
-              sharedProps.onBlur?.();
-            }}
-            onKeyDown={onKeyDown}
-          />
-        </div>
-        {open && suggestions.length > 0 && (
-          <ul
-            className="govbb-address-suggestions"
-            role="listbox"
-            id={listboxId}
-          >
-            {suggestions.map((result, index) => (
-              <li
-                key={`${result.label}-${index}`}
-                id={`${listboxId}-option-${index}`}
-                role="option"
-                aria-selected={index === activeIndex}
-                className="govbb-address-suggestion"
-                // onMouseDown (not onClick) so it fires before the input's blur.
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  select(result);
-                }}
-              >
-                {result.label}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <Autocomplete
+        id={sharedProps.id}
+        name={sharedProps.name}
+        disabled={sharedProps.disabled}
+        placeholder={sharedProps.placeholder}
+        aria-describedby={sharedProps["aria-describedby"]}
+        {...requiredProps}
+        aria-invalid={invalid}
+        value={query}
+        onChange={(e) => update(e.target.value)}
+        onBlur={sharedProps.onBlur}
+        suggestions={suggestions.map((result) => ({
+          value: result.line1 || result.label,
+          label: result.label,
+        }))}
+        onSuggestionSelect={(_, index) => select(suggestions[index])}
+      />
       {lookupFailed && (
-        <p className="govbb-hint" role="status">
+        <Hint role="status">
           Address suggestions are unavailable right now — you can type the
           address yourself.
-        </p>
+        </Hint>
       )}
-    </div>
+    </FormGroup>
   );
 }
