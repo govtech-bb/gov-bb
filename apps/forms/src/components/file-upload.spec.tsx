@@ -257,10 +257,18 @@ describe("FileUpload", () => {
         selector: ".govbb-file-upload__status--error",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /bad\.pdf:.*file upload failed/i,
-    );
+    expect(
+      screen.getByText(/bad\.pdf:.*file upload failed/i, {
+        selector: '[role="status"]',
+      }),
+    ).toBeInTheDocument();
     expect(onFileChange).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Dismiss bad.pdf" }));
+    expect(fileInput).toHaveFocus();
+    expect(
+      screen.queryByRole("button", { name: "Dismiss bad.pdf" }),
+    ).toBeNull();
   });
 
   it("rejects an oversize file client-side without calling the upload API", async () => {
@@ -279,9 +287,11 @@ describe("FileUpload", () => {
         selector: ".govbb-file-upload__status--error",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /huge\.pdf:.*larger than/i,
-    );
+    expect(
+      screen.getByText(/huge\.pdf:.*larger than/i, {
+        selector: '[role="status"]',
+      }),
+    ).toBeInTheDocument();
     expect(mockUploadFile).not.toHaveBeenCalled();
     expect(onFileChange).not.toHaveBeenCalled();
   });
@@ -311,7 +321,9 @@ describe("FileUpload", () => {
     const user = userEvent.setup();
     const fileA = makeUploaded("alpha.pdf");
     const fileB = makeUploaded("beta.pdf", "application/pdf", 200);
-    const { onFileChange } = renderComponent({ value: [fileA, fileB] });
+    const { onFileChange, fileInput } = renderComponent({
+      value: [fileA, fileB],
+    });
 
     expect(screen.getByText("alpha.pdf")).toBeInTheDocument();
     expect(screen.getByText("beta.pdf")).toBeInTheDocument();
@@ -323,6 +335,7 @@ describe("FileUpload", () => {
     const remaining = onFileChange.mock.calls[0][0] as UploadedFile[];
     expect(remaining).toHaveLength(1);
     expect(remaining[0].name).toBe("beta.pdf");
+    expect(fileInput).toHaveFocus();
   });
 
   it("calls onFileChange with null when the only file is removed", async () => {
@@ -489,7 +502,11 @@ describe("FileUpload", () => {
   });
 
   it("renders the authored hint instead of the derived file-type description, without leaking raw MIME subtypes", () => {
-    renderComponent({
+    const { fileInput } = renderComponent({
+      sharedProps: {
+        ...baseSharedProps,
+        "aria-describedby": `${baseField.id}-hint`,
+      },
       field: {
         ...baseField,
         hint: "A list of the food vendors taking part in your event. PDF, JPG, PNG, DOC or DOCX.",
@@ -511,6 +528,9 @@ describe("FileUpload", () => {
         "A list of the food vendors taking part in your event. PDF, JPG, PNG, DOC or DOCX.",
       ),
     ).toBeInTheDocument();
+    expect(fileInput).toHaveAccessibleDescription(
+      "A list of the food vendors taking part in your event. PDF, JPG, PNG, DOC or DOCX.",
+    );
     expect(
       screen.queryByText(
         /vnd\.openxmlformats-officedocument\.wordprocessingml\.document/i,
@@ -590,10 +610,11 @@ describe("FileUpload", () => {
 
     await user.upload(fileInput, makeFile("report.pdf", "application/pdf", 64));
 
-    const status = screen.getByRole("status");
-    await waitFor(() =>
-      expect(status).toHaveTextContent(/report\.pdf added\./i),
-    );
+    expect(
+      await screen.findByText(/report\.pdf added\./i, {
+        selector: '[role="status"]',
+      }),
+    ).toBeInTheDocument();
   });
 
   it("announces when a file is removed", async () => {
@@ -602,9 +623,11 @@ describe("FileUpload", () => {
 
     await user.click(screen.getByRole("button", { name: /remove/i }));
 
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /alpha\.pdf removed\./i,
-    );
+    expect(
+      screen.getByText(/alpha\.pdf removed\./i, {
+        selector: '[role="status"]',
+      }),
+    ).toBeInTheDocument();
   });
 
   // -------------------------------------------------------------------------
