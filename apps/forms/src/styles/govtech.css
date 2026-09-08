@@ -16,8 +16,6 @@
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/status-banner/status-banner.css";
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/skip-link/skip-link.css";
 
-@source "../../../../node_modules/@govtech-bb/react/dist/**/*.{js,cjs}";
-
 @theme {
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
 }

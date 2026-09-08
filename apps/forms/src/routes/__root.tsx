@@ -4,7 +4,7 @@ import {
   Outlet,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { Footer, FooterLink, SkipLink } from "@govtech-bb/react-next";
+import { Footer, FooterLink, SkipLink } from "@govtech-bb/react";
 import Header from "../components/Header";
 import NotFound from "../components/not-found";
 import type { QueryClient } from "@tanstack/react-query";

@@ -5,7 +5,7 @@ import {
   LinkButton,
   List,
   Text,
-} from "@govtech-bb/react-next";
+} from "@govtech-bb/react";
 import type { ReactNode } from "react";
 
 type ErrorPageAction =

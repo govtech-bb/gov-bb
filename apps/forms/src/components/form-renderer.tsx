@@ -39,7 +39,7 @@ import {
 import { reviewDwellSeconds } from "./review-dwell";
 import { buildValidationErrorPayload } from "./validation-error-event";
 import { stepCompleteEventName } from "./step-events";
-import { StatusBanner } from "@govtech-bb/react-next";
+import { StatusBanner } from "@govtech-bb/react";
 import {
   resolveConditionalMarkdown,
   resolveFieldLabel,

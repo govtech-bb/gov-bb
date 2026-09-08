@@ -3,7 +3,7 @@ import {
   Link,
   OfficialBanner,
   StatusBanner,
-} from "@govtech-bb/react-next";
+} from "@govtech-bb/react";
 import govBbLogoUrl from "@govtech-bb/frontend/assets/images/govbb-logo.svg?url";
 import { LANDING_URL } from "../config/landing";
 
