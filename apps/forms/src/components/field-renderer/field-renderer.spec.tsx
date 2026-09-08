@@ -269,9 +269,17 @@ describe("FieldRenderer", () => {
     renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
     expect(screen.queryByLabelText("Popcorn")).toBeNull();
     await user.click(screen.getByLabelText("Snacks and sweets"));
+    expect(mockFieldApi.handleChange).not.toHaveBeenCalled();
+    const category = screen.getByLabelText("Snacks and sweets");
+    expect(category).toHaveAttribute("aria-expanded", "true");
+    expect(
+      document.getElementById(category.getAttribute("aria-controls")!),
+    ).toContainElement(screen.getByLabelText("Popcorn"));
     expect(screen.getByLabelText("Popcorn")).toBeInTheDocument();
     await user.click(screen.getByLabelText("Popcorn"));
-    expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["popcorn"]);
+    expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith([
+      "popcorn",
+    ]);
   });
 
   it("checkbox-accordion → a category with an existing selection opens expanded and accumulates", async () => {
@@ -281,6 +289,56 @@ describe("FieldRenderer", () => {
     // Meat holds "beef", so it renders expanded and its items are visible.
     await user.click(screen.getByLabelText("Chicken"));
     expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["beef", "chicken"]);
+  });
+
+  it("checkbox-accordion → closing and reopening a category preserves its selection", async () => {
+    const user = userEvent.setup();
+    mockState = { value: ["beef"], meta: { isValid: true, errors: [] } };
+    renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
+    const category = screen.getByLabelText(/Meat and poultry/);
+    await user.click(category);
+    expect(category).toHaveAttribute("aria-expanded", "false");
+    expect(category).not.toHaveAttribute("aria-controls");
+    expect(screen.queryByLabelText("Beef")).toBeNull();
+    await user.click(category);
+    expect(screen.getByLabelText("Beef")).toBeChecked();
+    expect(mockFieldApi.handleChange).not.toHaveBeenCalled();
+  });
+
+  it("checkbox-accordion → disabled fields prevent category and item changes", async () => {
+    const user = userEvent.setup();
+    mockState = { value: ["beef"], meta: { isValid: true, errors: [] } };
+    renderField(
+      primitive("checkbox-accordion", {
+        groups: accordionGroups,
+        disabled: true,
+      }),
+    );
+    for (const checkbox of screen.getAllByRole("checkbox")) {
+      expect(checkbox).toBeDisabled();
+      await user.click(checkbox);
+    }
+    expect(screen.getByLabelText("Beef")).toBeChecked();
+    expect(mockFieldApi.handleChange).not.toHaveBeenCalled();
+  });
+
+  it("checkbox-accordion → associates group hints and errors and marks invalid choices", () => {
+    mockState = {
+      value: [],
+      meta: { isValid: false, errors: ["Choose a food"] },
+    };
+    const field = primitive("checkbox-accordion", {
+      groups: accordionGroups,
+      hint: "Select the foods you serve",
+    });
+    const { container } = renderField(field);
+    expect(container.querySelector("fieldset")).toHaveAttribute(
+      "aria-describedby",
+      `${field.id}-hint ${field.id}-error`,
+    );
+    for (const checkbox of screen.getAllByRole("checkbox")) {
+      expect(checkbox).toHaveAttribute("aria-invalid", "true");
+    }
   });
 
   it("date → renders three text inputs with numeric inputmode (day/month/year)", () => {

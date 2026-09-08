@@ -219,25 +219,6 @@
   padding-top: var(--spacing-s);
 }
 
-/* ---- Checkbox accordion (#2065) ------------------------------------------
- * A collapsible multi-select matching the prototype: each category is a
- * checkbox that, when ticked, expands to reveal its item checkboxes in a
- * blue-bordered inset. Categories are stacked with a small gap. */
-.form-page__accordion {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-s);
-}
-
-.govbb-accordion-group__content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  margin: var(--spacing-xs) 0 var(--spacing-m);
-  padding-left: var(--spacing-l);
-  border-left: 4px solid var(--color-blue-40);
-}
-
 /* "Higher-risk" badge on a category label: a small yellow pill flagging the
  * categories needing extra care (meat, seafood, dairy, eggs). */
 .govbb-tag {
