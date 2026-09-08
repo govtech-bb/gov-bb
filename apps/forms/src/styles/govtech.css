@@ -17,6 +17,7 @@
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/skip-link/skip-link.css";
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/error-summary/error-summary.css";
 @import "../../../../node_modules/@govtech-bb/frontend/src/components/service-heading/service-heading.css";
+@import "../../../../node_modules/@govtech-bb/frontend/src/components/payment/payment.css";
 
 @theme {
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
@@ -54,7 +55,7 @@
   @import "../../../../node_modules/@govtech-bb/frontend/src/utilities.css";
 }
 
-:where(.govbb-error-summary) {
+:where(.govbb-error-summary, .govbb-payment) {
   @import "../../../../node_modules/@govtech-bb/frontend/src/base.css";
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/link/link.css";
 
@@ -389,97 +390,6 @@
   background-color: var(--color-red-40);
 }
 
-/* ---- Payment block (GOV.BB design system: govbb-payment) ----------------- */
-/* Canonical payment summary card. Not shipped in @govtech-bb/styles, so its
- * markup + CSS are copied here per the design-system block spec:
- * https://govtech-bb.github.io/design-system/llm/blocks/payment.md
- * `--color-text` is not defined in @govtech-bb/design, so fall back to black. */
-.govbb-payment {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xm);
-  padding: var(--spacing-xm);
-  border-radius: var(--spacing-xxs);
-  background: var(--color-blue-10);
-  color: var(--color-text, var(--color-black-00));
-}
-
-.govbb-payment--success {
-  background: var(--color-green-00);
-  color: var(--color-white-00);
-}
-
-.govbb-payment--failed {
-  background: var(--color-red-00);
-  color: var(--color-white-00);
-}
-
-.govbb-payment__header {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding-bottom: var(--spacing-xm);
-  border-bottom: 1px solid var(--color-mid-grey-00);
-}
-
-.govbb-payment--success .govbb-payment__header,
-.govbb-payment--failed .govbb-payment__header {
-  border-bottom-color: var(--color-grey-00);
-}
-
-.govbb-payment__title {
-  font-size: var(--font-size-h2);
-  line-height: var(--line-height-h2);
-  font-weight: var(--font-weight-bold);
-  margin: 0;
-}
-
-.govbb-payment__description {
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  margin: 0;
-}
-
-.govbb-payment__items {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-s);
-}
-
-.govbb-payment__item {
-  display: flex;
-  gap: var(--spacing-s);
-  align-items: flex-start;
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-}
-
-.govbb-payment__item-label {
-  flex: 1 0 0;
-  min-width: 0;
-  margin: 0;
-  font-weight: var(--font-weight-bold);
-}
-
-.govbb-payment__item-value {
-  margin: 0;
-  white-space: nowrap;
-}
-
-.govbb-payment__note {
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  margin: 0;
-  font-style: italic;
-  color: var(--color-mid-grey-00);
-}
-
-.govbb-payment--success .govbb-payment__note,
-.govbb-payment--failed .govbb-payment__note {
-  color: inherit;
-  font-style: normal;
-}
-
 /* ---- Feedback section (plain — no callout box, per the confirmation design) */
 .form-page__feedback {
   display: flex;
@@ -796,6 +706,7 @@
   .no-print,
   .form-page__print,
   .form-page__feedback,
+  .govbb-payment__note,
   .form-page .govbb-button-group,
   .govbb-btn,
   [class*="govbb-btn"] {
@@ -836,6 +747,7 @@
   /* Payment summary card: drop its surface/border/shadow so the receipt lines
      print as plain text, consistent with the non-payment layout. */
   .govbb-payment {
+    color: var(--govbb-color-ink) !important;
     background: none !important;
     border: 0 !important;
     box-shadow: none !important;
@@ -864,7 +776,7 @@
 
   .form-page__reference,
   .form-page__contact,
-  .govbb-payment__item,
+  .govbb-payment__row,
   .form-page__next-steps > div,
   .form-page__next-steps li {
     break-inside: avoid;

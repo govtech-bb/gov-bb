@@ -1,4 +1,3 @@
-import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { interpolateConfirmationMarkdown } from "@govtech-bb/form-conditions";
@@ -9,7 +8,7 @@ import {
 import { LANDING_URL } from "../config/landing";
 import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
 import { SubmissionConfirmationProps } from "../types/props.type";
-import { Button, LinkButton, ServiceHeading } from "@govtech-bb/react";
+import { Button, LinkButton, Payment, ServiceHeading } from "@govtech-bb/react";
 
 // Backend sends amounts as plain numbers; tests/recipes may already include the
 // "$". Prefix only when missing so both inputs render "$20".
@@ -82,20 +81,22 @@ export default function SubmissionConfirmation({
     landingUrl: LANDING_URL,
   });
 
-  const serviceLabel = paymentDescription || serviceName;
-  const formattedAmount = formatMoney(amount);
-  const formattedUnitPrice = formatMoney(unitPrice);
-  const formattedDate = formatDate(date);
-
-  // One label/value row of the govbb-payment block. Returns null for empty
-  // values so optional rows (unit price, quantity) drop out cleanly.
-  const paymentItem = (label: string, value?: React.ReactNode) =>
-    value === undefined || value === null || value === "" ? null : (
-      <div className="govbb-payment__item" key={label}>
-        <p className="govbb-payment__item-label">{label}</p>
-        <p className="govbb-payment__item-value">{value}</p>
-      </div>
-    );
+  const paymentRows = (
+    paymentSuccess
+      ? [
+          { key: "Service:", value: paymentDescription || serviceName },
+          { key: "Amount:", value: formatMoney(amount) },
+          { key: "Date:", value: formatDate(date) },
+        ]
+      : [
+          { key: "Service:", value: paymentDescription || serviceName },
+          { key: "Unit price:", value: formatMoney(unitPrice) },
+          { key: "Quantity:", value: quantity },
+          { key: "Amount:", value: formatMoney(amount) },
+        ]
+  ).filter(
+    ({ value }) => value !== undefined && value !== null && value !== "",
+  );
 
   // Trailing sections (what-happens-next, contact, feedback) are shared by every
   // successful state — payment or not — and rendered below the lead panel.
@@ -241,15 +242,11 @@ export default function SubmissionConfirmation({
     return (
       <div className="govbb-width-container govbb-main-wrapper govbb-grid-row">
         <div className="govbb-grid-column-two-thirds-from-desktop">
-          <section className="govbb-payment govbb-payment--failed">
-            <div className="govbb-payment__header">
-              <h2 className="govbb-payment__title">Something went wrong</h2>
-              <p className="govbb-payment__description">
-                We could not process your submission. No information has been
-                saved. Please try again — if the problem continues, contact
-                support.
-              </p>
-            </div>
+          <Payment
+            outcome="failed"
+            title="Something went wrong"
+            description="We could not process your submission. No information has been saved. Please try again — if the problem continues, contact support."
+          >
             <Button
               variant="secondary"
               className="no-print"
@@ -257,7 +254,7 @@ export default function SubmissionConfirmation({
             >
               Try again
             </Button>
-          </section>
+          </Payment>
         </div>
       </div>
     );
@@ -316,37 +313,19 @@ export default function SubmissionConfirmation({
           )}
 
         {paymentSuccess ? (
-          <section className="govbb-payment govbb-payment--success">
-            <div className="govbb-payment__header">
-              <h2 className="govbb-payment__title">
-                Your payment was successful
-              </h2>
-              <p className="govbb-payment__description">
-                Your payment has been received. We&apos;ve sent a confirmation
-                email to the address you provided.
-              </p>
-            </div>
-            <div className="govbb-payment__items">
-              {paymentItem("Service:", serviceLabel)}
-              {paymentItem("Amount:", formattedAmount)}
-              {paymentItem("Date:", formattedDate)}
-            </div>
-          </section>
+          <Payment
+            outcome="success"
+            title="Your payment was successful"
+            description="Your payment has been received. We've sent a confirmation email to the address you provided."
+            rows={paymentRows}
+          />
         ) : isSafePaymentUrl(paymentUrl) ? (
-          <section className="govbb-payment">
-            <div className="govbb-payment__header">
-              <h2 className="govbb-payment__title">Complete your payment</h2>
-              <p className="govbb-payment__description">
-                Please review and complete your payment to finalize your
-                submission
-              </p>
-            </div>
-            <div className="govbb-payment__items">
-              {paymentItem("Service:", serviceLabel)}
-              {paymentItem("Unit price:", formattedUnitPrice)}
-              {paymentItem("Quantity:", quantity)}
-              {paymentItem("Amount:", formattedAmount)}
-            </div>
+          <Payment
+            title="Complete your payment"
+            description="Please review and complete your payment to finalize your submission"
+            rows={paymentRows}
+            note="You will be redirected to EZ Pay to securely complete your payment."
+          >
             <LinkButton
               className="no-print"
               href={paymentUrl}
@@ -354,21 +333,13 @@ export default function SubmissionConfirmation({
             >
               Continue to payment
             </LinkButton>
-            <p className="govbb-payment__note no-print">
-              You will be redirected to EZ Pay to securely complete your
-              payment.
-            </p>
-          </section>
+          </Payment>
         ) : (
-          <section className="govbb-payment govbb-payment--failed">
-            <div className="govbb-payment__header">
-              <h2 className="govbb-payment__title">
-                Unfortunately, your payment was unsuccessful
-              </h2>
-              <p className="govbb-payment__description">
-                Your payment could not be processed. You have not been charged.
-              </p>
-            </div>
+          <Payment
+            outcome="failed"
+            title="Unfortunately, your payment was unsuccessful"
+            description="Your payment could not be processed. You have not been charged."
+          >
             <Button
               variant="secondary"
               className="no-print"
@@ -376,7 +347,7 @@ export default function SubmissionConfirmation({
             >
               Try again
             </Button>
-          </section>
+          </Payment>
         )}
 
         {(paymentSuccess || isSafePaymentUrl(paymentUrl)) && trailingSections}

@@ -276,6 +276,46 @@ describe("SubmissionConfirmation", () => {
     });
   });
 
+  it.each([
+    {
+      paymentSuccess: false,
+      labels: ["Service:", "Quantity:", "Amount:"],
+      values: ["Certificate copies", "0", "$0"],
+    },
+    {
+      paymentSuccess: true,
+      labels: ["Service:", "Amount:"],
+      values: ["Certificate copies", "$0"],
+    },
+  ])(
+    "keeps zero values and omits missing receipt details (paid: $paymentSuccess)",
+    ({ paymentSuccess, labels, values }) => {
+      render(
+        <SubmissionConfirmation
+          serviceTitle="Passport"
+          stepTitle="Submitted"
+          submissionState={{
+            ...baseState,
+            hasPayment: true,
+            paymentSuccess,
+            paymentDescription: "Certificate copies",
+            paymentUrl: "https://ezpay.gov.bb/pay?token=abc",
+            amount: 0,
+            quantity: 0,
+            referenceNumber: undefined,
+            date: "",
+          }}
+        />,
+      );
+      expect(screen.getAllByRole("term").map((row) => row.textContent)).toEqual(
+        labels,
+      );
+      expect(
+        screen.getAllByRole("definition").map((row) => row.textContent),
+      ).toEqual(values);
+    },
+  );
+
   it("passes axe accessibility audit (excluding heading-order: pre-existing component issue)", async () => {
     const { container } = render(
       <SubmissionConfirmation
