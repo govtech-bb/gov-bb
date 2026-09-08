@@ -14,7 +14,7 @@
  * Step-level (stepConditionalOn):
  *   - random-step → visible when telephone field has a value (operator: exists)
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/api-mock";
 import { FormPage } from "./helpers/form-page";
 import { TEST_PNG, TEST_PNG_2, TEST_PNG_3 } from "./helpers/test-data";
 
@@ -229,14 +229,18 @@ test.describe("Step 5 — has-bank-account conditional", () => {
     page,
   }) => {
     const form = new FormPage(page);
-    await form.expectFieldVisible("step-5-financial-information_bank-name");
-    await form.expectFieldVisible("step-5-financial-information_account-type");
+    await form.clickContinue();
+    await form.waitForStep("step-5-financial-information~1");
+    await form.expectFieldVisible("step-5-financial-information~1_bank-name");
     await form.expectFieldVisible(
-      "step-5-financial-information_account-number",
+      "step-5-financial-information~1_account-type",
     );
-    await form.expectFieldVisible("step-5-financial-information_swift-code");
+    await form.expectFieldVisible(
+      "step-5-financial-information~1_account-number",
+    );
+    await form.expectFieldVisible("step-5-financial-information~1_swift-code");
     await form.expectFieldHidden(
-      "step-5-financial-information_no-account-reason",
+      "step-5-financial-information~1_no-account-reason",
     );
   });
 
@@ -248,9 +252,11 @@ test.describe("Step 5 — has-bank-account conditional", () => {
       "step-5-financial-information_has-bank-account",
       "I do",
     );
-    await form.expectFieldHidden("step-5-financial-information_bank-name");
+    await form.clickContinue();
+    await form.waitForStep("step-5-financial-information~1");
+    await form.expectFieldHidden("step-5-financial-information~1_bank-name");
     await form.expectFieldVisible(
-      "step-5-financial-information_no-account-reason",
+      "step-5-financial-information~1_no-account-reason",
     );
   });
 
@@ -262,18 +268,24 @@ test.describe("Step 5 — has-bank-account conditional", () => {
       "step-5-financial-information_has-bank-account",
       "I do",
     );
+    await form.clickContinue();
+    await form.waitForStep("step-5-financial-information~1");
     await form.expectFieldVisible(
-      "step-5-financial-information_no-account-reason",
+      "step-5-financial-information~1_no-account-reason",
     );
-    // Re-check
+    // Change the shared answer, then revisit the repeat instance.
+    await form.clickPrevious();
+    await form.waitForStep("step-5-financial-information");
     await form.clickCheckbox(
       "step-5-financial-information_has-bank-account",
       "I do",
     );
+    await form.clickContinue();
+    await form.waitForStep("step-5-financial-information~1");
     await form.expectFieldHidden(
-      "step-5-financial-information_no-account-reason",
+      "step-5-financial-information~1_no-account-reason",
     );
-    await form.expectFieldVisible("step-5-financial-information_bank-name");
+    await form.expectFieldVisible("step-5-financial-information~1_bank-name");
   });
 });
 
@@ -295,6 +307,8 @@ test.describe("Step 5 — fund-source radio conditional reveal", () => {
     await form.fillStep4(TEST_PNG, [TEST_PNG_2, TEST_PNG_3]);
     await form.clickContinue();
     await form.waitForStep("step-5-financial-information");
+    await form.clickContinue();
+    await form.waitForStep("step-5-financial-information~1");
   });
 
   test("fund-source-other hidden when non-other option selected", async ({
@@ -302,11 +316,11 @@ test.describe("Step 5 — fund-source radio conditional reveal", () => {
   }) => {
     const form = new FormPage(page);
     await form.clickRadio(
-      "step-5-financial-information_fund-source",
+      "step-5-financial-information~1_fund-source",
       "Employment Income",
     );
     await form.expectFieldHidden(
-      "step-5-financial-information_fund-source-other",
+      "step-5-financial-information~1_fund-source-other",
     );
   });
 
@@ -314,9 +328,12 @@ test.describe("Step 5 — fund-source radio conditional reveal", () => {
     page,
   }) => {
     const form = new FormPage(page);
-    await form.clickRadio("step-5-financial-information_fund-source", "Other");
+    await form.clickRadio(
+      "step-5-financial-information~1_fund-source",
+      "Other",
+    );
     await form.expectFieldVisible(
-      "step-5-financial-information_fund-source-other",
+      "step-5-financial-information~1_fund-source-other",
     );
     // The inset field should be inside [data-radio-conditional]
     const inset = page.locator(".govbb-radio-item__conditional");
@@ -327,28 +344,44 @@ test.describe("Step 5 — fund-source radio conditional reveal", () => {
     page,
   }) => {
     const form = new FormPage(page);
-    await form.clickRadio("step-5-financial-information_fund-source", "Other");
+    await form.clickRadio(
+      "step-5-financial-information~1_fund-source",
+      "Other",
+    );
     await form.expectFieldVisible(
-      "step-5-financial-information_fund-source-other",
+      "step-5-financial-information~1_fund-source-other",
     );
     await form.clickRadio(
-      "step-5-financial-information_fund-source",
+      "step-5-financial-information~1_fund-source",
       "Savings",
     );
     await form.expectFieldHidden(
-      "step-5-financial-information_fund-source-other",
+      "step-5-financial-information~1_fund-source-other",
     );
   });
 
   test("fund-source-other validates only when visible", async ({ page }) => {
     const form = new FormPage(page);
     // Select "Other" then fill the inset field
-    await form.clickRadio("step-5-financial-information_fund-source", "Other");
+    await form.clickRadio(
+      "step-5-financial-information~1_fund-source",
+      "Other",
+    );
     // Leave fund-source-other blank and try to continue
-    await form.fillStep5Source({ fundSourceLabel: "Other" });
+    await form.fillStep5Repeat("step-5-financial-information~1", {
+      fundSourceLabel: "Other",
+    });
     // The "Other" radio has been clicked — inset field is visible but blank
     await form.clickContinue();
     await form.expectError("Please specify the source of funds");
+    await form.errorSummary
+      .getByRole("link", { name: "Please specify the source of funds" })
+      .click();
+    await expect(
+      page.locator(
+        'input[id="step-5-financial-information~1_fund-source-other"]',
+      ),
+    ).toBeFocused();
   });
 });
 

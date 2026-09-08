@@ -14,7 +14,7 @@
  *  - proof-of-address: total maxSize validation
  *  - additional-documents field-array: add / remove via upload
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/api-mock";
 import { FormPage } from "./helpers/form-page";
 import {
   TEST_PNG,
@@ -53,7 +53,7 @@ test.describe("upload-document (single file, required)", () => {
     );
 
     const listItem = page
-      .locator(".govbb-file-upload")
+      .locator(".form-page__file-field")
       .filter({
         has: page.locator(
           "input[type=file]#step-4-documents-uploads_upload-document",
@@ -72,7 +72,7 @@ test.describe("upload-document (single file, required)", () => {
     );
 
     const listItem = page
-      .locator(".govbb-file-upload")
+      .locator(".form-page__file-field")
       .filter({
         has: page.locator(
           "input[type=file]#step-4-documents-uploads_upload-document",
@@ -134,7 +134,7 @@ test.describe("proof-of-address (multiple files, min 2 / max 3)", () => {
     );
 
     const items = page
-      .locator(".govbb-file-upload")
+      .locator(".form-page__file-field")
       .filter({
         has: page.locator(
           "input[type=file]#step-4-documents-uploads_proof-of-address",
@@ -223,7 +223,7 @@ test.describe("additional-documents (field array)", () => {
     );
 
     const fileItems = page
-      .locator(".govbb-file-upload")
+      .locator(".form-page__file-field")
       .filter({
         has: page.locator(
           "input[type=file]#step-4-documents-uploads_additional-documents",

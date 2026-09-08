@@ -14,7 +14,7 @@
  *  - middle-name field array: initial slot renders, Add Another adds a slot
  *  - middle-name field array: Remove works
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/api-mock";
 import { FormPage } from "./helpers/form-page";
 import { TEST_PNG, TEST_PNG_2, TEST_PNG_3 } from "./helpers/test-data";
 
@@ -53,18 +53,18 @@ test.describe("Step 5 — source step (step-5-financial-information)", () => {
     );
   });
 
-  test("source step renders non-shared bank fields when has-bank-account is checked", async ({
+  test("source step keeps non-shared bank fields on repeat instances", async ({
     page,
   }) => {
     const form = new FormPage(page);
-    await form.expectFieldVisible("step-5-financial-information_bank-name");
-    await form.expectFieldVisible("step-5-financial-information_account-type");
+    await form.expectFieldHidden("step-5-financial-information_bank-name");
+    await form.expectFieldHidden("step-5-financial-information_account-type");
   });
 
   test("source step does NOT have an addAnother radio", async ({ page }) => {
     // addAnother is only on repeat instances, not the source step
     await expect(
-      page.locator(`input#step-5-financial-information_addAnother`),
+      page.locator(`fieldset#step-5-financial-information_addAnother`),
     ).toHaveCount(0);
   });
 
@@ -93,7 +93,7 @@ test.describe("Step 5 — first repeat instance (step-5-financial-information~1)
     // has-bank-account is a sharedField — excluded from repeat instances
     await expect(
       page.locator(
-        `input[id="step-5-financial-information~1_has-bank-account"]`,
+        `fieldset[id="step-5-financial-information~1_has-bank-account"]`,
       ),
     ).toHaveCount(0);
   });
@@ -109,11 +109,9 @@ test.describe("Step 5 — first repeat instance (step-5-financial-information~1)
   test("repeat instance renders the addAnother radio (min=1 < max=6)", async ({
     page,
   }) => {
-    const addAnotherGroup = page.locator(".govbb-fieldset").filter({
-      has: page.locator(
-        `input[id="step-5-financial-information~1_addAnother"]`,
-      ),
-    });
+    const addAnotherGroup = page.locator(
+      `fieldset[id="step-5-financial-information~1_addAnother"]`,
+    );
     await expect(addAnotherGroup).toBeVisible();
   });
 
@@ -182,7 +180,7 @@ test.describe("Step 5 — adding multiple repeat instances", () => {
   test("each repeat instance holds independent values", async ({ page }) => {
     const form = new FormPage(page);
     await goToStep5Source(form);
-    await form.fillStep5Source({ bankName: "Bank A" });
+    await form.fillStep5Source();
     await form.clickContinue();
     await form.waitForStep("step-5-financial-information~1");
 
@@ -214,22 +212,25 @@ test.describe("Step 1 — middle-name field array", () => {
   test("initial middle-name slot is rendered", async ({ page }) => {
     // The first slot renders a text input
     const inputs = page.locator(
-      'input[id="step-1-personal-details_middle-name"]',
+      'input[id="step-1-personal-details_middle-name"], input[id^="step-1-personal-details_middle-name-"]',
     );
     await expect(inputs.first()).toBeVisible();
   });
 
-  test("Add Another link renders a second middle-name input", async ({
+  test("Add Another button renders a second middle-name input", async ({
     page,
   }) => {
     // fieldArray max=4; min=1 so "Add Another" should be visible
-    const addLink = page.getByText("Add Another");
+    const addLink = page.getByRole("button", {
+      name: "Add Another Middle Name",
+      exact: true,
+    });
     await expect(addLink).toBeVisible();
     await addLink.click();
 
     // Now there should be 2 inputs
     const inputs = page.locator(
-      'input[id="step-1-personal-details_middle-name"]',
+      'input[id="step-1-personal-details_middle-name"], input[id^="step-1-personal-details_middle-name-"]',
     );
     await expect(inputs).toHaveCount(2);
   });
@@ -237,32 +238,46 @@ test.describe("Step 1 — middle-name field array", () => {
   test("Remove button removes the second middle-name input", async ({
     page,
   }) => {
-    const addLink = page.getByText("Add Another");
+    const addLink = page.getByRole("button", {
+      name: "Add Another Middle Name",
+      exact: true,
+    });
     await addLink.click();
     const inputs = page.locator(
-      'input[id="step-1-personal-details_middle-name"]',
+      'input[id="step-1-personal-details_middle-name"], input[id^="step-1-personal-details_middle-name-"]',
     );
     await expect(inputs).toHaveCount(2);
 
     // "Remove" only appears when count > 1 (i === fieldCount - 1 && i !== 0)
-    const removeLink = page.getByText("Remove");
+    const removeLink = page.getByRole("button", {
+      name: "Remove Middle Name",
+      exact: true,
+    });
     await removeLink.click();
     await expect(inputs).toHaveCount(1);
   });
 
   test("Add Another is hidden when max (4) reached", async ({ page }) => {
-    const addLink = page.getByText("Add Another");
+    const addLink = page.getByRole("button", {
+      name: "Add Another Middle Name",
+      exact: true,
+    });
     // Click 3 times to go from 1 → 4
     await addLink.click();
     await addLink.click();
     await addLink.click();
 
     const inputs = page.locator(
-      'input[id="step-1-personal-details_middle-name"]',
+      'input[id="step-1-personal-details_middle-name"], input[id^="step-1-personal-details_middle-name-"]',
     );
     await expect(inputs).toHaveCount(4);
 
     // "Add Another" should no longer be visible when at max
-    await expect(page.getByText("Add Another")).not.toBeVisible();
+    await expect(
+      page.getByRole("button", {
+        name: "Add Another Middle Name",
+        exact: true,
+      }),
+    ).not.toBeVisible();
   });
 });

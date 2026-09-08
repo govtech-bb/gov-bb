@@ -11,9 +11,8 @@
  *  - Entering an unknown step ID redirects gracefully
  *  - Check-Your-Answers Change link returns to the correct step
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/api-mock";
 import { FormPage } from "./helpers/form-page";
-import { mockSuccessfulSubmission } from "./helpers/submission-mock";
 import { TEST_PNG, TEST_PNG_2, TEST_PNG_3 } from "./helpers/test-data";
 
 test.describe("Step Guard — direct URL access", () => {
@@ -147,10 +146,6 @@ test.describe("Forward & Back navigation", () => {
 });
 
 test.describe("Check-Your-Answers Change links", () => {
-  test.beforeEach(async ({ page }) => {
-    await mockSuccessfulSubmission(page);
-  });
-
   test("Change link on Personal Details navigates back to step 1", async ({
     page,
   }) => {
