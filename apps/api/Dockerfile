@@ -2,7 +2,7 @@
 # ---- builder ------------------------------------------------------------
 # Compiles the NestJS app + the workspace packages it depends on into
 # /app/dist, using the full monorepo as context.
-FROM node:24-alpine3.23@sha256:595398b0081eacda8e1c4c5b97b76cd1020e4d58a8ebcb4843b9bca1e79e7436 AS builder
+FROM node:24.20-alpine3.23@sha256:0388af2af070cd4736a1567cfed02469ba117848845b4165d87a333edb53d2ca AS builder
 
 # Corepack must run as root — it writes to /usr/local/bin.
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
@@ -72,9 +72,24 @@ CMD ["pnpm", "exec", "nx", "dev", "api"]
 # ---- runner -------------------------------------------------------------
 # Slim runtime image. Includes pnpm so the ECS sandbox migrate-task
 # (deploy-sandbox.yml) can shell into the container and run `pnpm migration:run`.
-FROM node:24-alpine3.23@sha256:595398b0081eacda8e1c4c5b97b76cd1020e4d58a8ebcb4843b9bca1e79e7436 AS runner
+FROM node:24.20-alpine3.23@sha256:0388af2af070cd4736a1567cfed02469ba117848845b4165d87a333edb53d2ca AS runner
 
-RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
+# Pick up Alpine security patches ahead of the base image's rebuild cadence
+# (e.g. openssl 3.5.8-r0 fixing CVE-2026-75803/CVE-2026-63073 while the base
+# still ships 3.5.7).
+RUN apk upgrade --no-cache
+
+# This image only ever uses pnpm; the npm bundled with the node base image is
+# dead weight that AWS Inspector still scans (its vendored tar/pacote/undici/
+# ip-address/brace-expansion copies were all flagged). corepack stays — it
+# provides pnpm.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+
+# rm /root/.cache: corepack prepare (running as root) caches a copy of pnpm
+# whose vendored deps Inspector flags (tar, undici). The in-container
+# `pnpm migration:run` executes as the `app` user, whose corepack shim never
+# reads root's cache — so deleting it changes nothing at runtime.
+RUN corepack enable && corepack prepare pnpm@11.6.0 --activate && rm -rf /root/.cache
 
 # Closes #15 (CIS Docker Benchmark — no container should run as root).
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
