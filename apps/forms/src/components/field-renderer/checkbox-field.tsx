@@ -27,6 +27,9 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
     draftToken,
   } = ctx;
 
+  // Keep the field ID on the fieldset; let the package generate option IDs.
+  const { id: _fieldId, ...inputProps } = sharedProps;
+
   if (field.options && field.options.length === 1) {
     const option = field.options[0];
     const value = (f.state.value as string | undefined) ?? "";
@@ -39,9 +42,8 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
         {field.hint && <Hint id={hintId}>{field.hint}</Hint>}
         <ErrorMessage id={errorId} message={errorMessage} />
         <Checkbox
-          {...sharedProps}
+          {...inputProps}
           {...requiredProps}
-          id={`${field.id}-${option.value}`}
           checked={option.value === value}
           aria-invalid={invalid}
           onChange={() =>
@@ -89,8 +91,7 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
         return (
           <Checkbox
             key={option.value}
-            {...sharedProps}
-            id={`${field.id}-${option.value}`}
+            {...inputProps}
             label={option.label}
             checked={isChecked}
             aria-invalid={invalid}

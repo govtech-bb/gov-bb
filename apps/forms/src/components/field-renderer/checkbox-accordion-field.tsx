@@ -15,15 +15,11 @@ import { FieldRenderContext } from "./render-context";
  */
 function AccordionCategory({
   group,
-  idBase,
-  fieldId,
   selected,
   invalid,
   onToggleItem,
 }: {
   group: OptionGroup;
-  idBase: string;
-  fieldId: string;
   selected: string[];
   invalid?: boolean;
   onToggleItem: (value: string) => void;
@@ -48,7 +44,6 @@ function AccordionCategory({
     const option = group.options[0];
     return (
       <Checkbox
-        id={`${fieldId}-${option.value}`}
         label={label}
         checked={selected.includes(option.value)}
         aria-invalid={invalid}
@@ -59,7 +54,6 @@ function AccordionCategory({
 
   return (
     <Checkbox
-      id={idBase}
       label={label}
       checked={open}
       aria-expanded={open}
@@ -71,7 +65,6 @@ function AccordionCategory({
             {group.options.map((option) => (
               <Checkbox
                 key={option.value}
-                id={`${fieldId}-${option.value}`}
                 label={option.label}
                 checked={selected.includes(option.value)}
                 aria-invalid={invalid}
@@ -123,12 +116,10 @@ export function renderCheckboxAccordionField(
       </legend>
       {field.hint && <Hint id={hintId}>{field.hint}</Hint>}
       <ErrorMessage id={errorId} message={errorMessage} />
-      {field.groups?.map((group, i) => (
+      {field.groups?.map((group) => (
         <AccordionCategory
           key={group.label}
           group={group}
-          idBase={`${field.id}-cat-${i}`}
-          fieldId={field.id}
           selected={selected}
           invalid={invalid}
           onToggleItem={toggle}

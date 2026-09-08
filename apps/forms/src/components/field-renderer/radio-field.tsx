@@ -24,6 +24,9 @@ export function renderRadioField(ctx: FieldRenderContext): JSX.Element {
     draftToken,
   } = ctx;
 
+  // Keep the field ID on the fieldset; let the package generate option IDs.
+  const { id: _fieldId, ...inputProps } = sharedProps;
+
   const value: string = (f.state.value as string | undefined) ?? "";
   return (
     <Fieldset className="form-page__choice-field" id={field.id}>
@@ -39,9 +42,8 @@ export function renderRadioField(ctx: FieldRenderContext): JSX.Element {
         return (
           <Radio
             key={option.value}
-            {...sharedProps}
+            {...inputProps}
             {...requiredProps}
-            id={`${field.id}-${option.value}`}
             label={option.label}
             checked={isSelected}
             aria-invalid={invalid}

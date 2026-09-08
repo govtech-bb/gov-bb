@@ -1105,12 +1105,11 @@ describe("FieldRenderer", () => {
       ).toHaveAttribute("aria-controls", inset?.id);
       // The reveal must sit between the two options, not after the group —
       // the CSS reveal rule and the reading order both depend on it.
-      expect(
-        inset?.previousElementSibling?.querySelector("input"),
-      ).toHaveAttribute("id", "step-1.checkbox-field-a");
-      expect(inset?.nextElementSibling?.querySelector("input")).toHaveAttribute(
-        "id",
-        "step-1.checkbox-field-b",
+      expect(inset?.previousElementSibling?.querySelector("input")).toBe(
+        screen.getByRole("checkbox", { name: "Option A" }),
+      );
+      expect(inset?.nextElementSibling?.querySelector("input")).toBe(
+        screen.getByRole("checkbox", { name: "Option B" }),
       );
     });
 
@@ -1127,6 +1126,91 @@ describe("FieldRenderer", () => {
       ).toBeNull();
     });
   });
+
+  it.each([
+    ["radio", "other", { options: [{ value: "other", label: "Other" }] }],
+    ["checkbox", "other", { options: [{ value: "other", label: "Other" }] }],
+    [
+      "checkbox",
+      ["other"],
+      {
+        options: [
+          { value: "other", label: "Other" },
+          { value: "yes", label: "Yes" },
+        ],
+      },
+    ],
+    [
+      "checkbox-accordion",
+      ["other"],
+      {
+        groups: [
+          { label: "Other", options: [{ value: "other", label: "Other" }] },
+        ],
+      },
+    ],
+    [
+      "checkbox-accordion",
+      ["other"],
+      {
+        groups: [
+          {
+            label: "Sources",
+            options: [
+              { value: "other", label: "Other" },
+              { value: "yes", label: "Yes" },
+            ],
+          },
+        ],
+      },
+    ],
+  ] as const)(
+    "%s option labels stay separate from similarly named fields (%j)",
+    async (htmlType, value, config) => {
+      mockState = { value, meta: { isValid: true, errors: [] } };
+      const choice = primitive(htmlType, {
+        id: "step-1_source",
+        ...structuredClone(config),
+      } as Partial<ClientPrimitive>);
+      const detail = primitive("text", {
+        id: "step-1_source-other",
+        label: "Specify other",
+      });
+      const { container } = render(
+        <>
+          <FieldRenderer
+            form={mockForm}
+            field={choice}
+            validationProperties={noValidation}
+          />
+          <FieldRenderer
+            form={mockForm}
+            field={detail}
+            validationProperties={noValidation}
+          />
+        </>,
+      );
+
+      expect(
+        screen.getByRole(htmlType === "radio" ? "radio" : "checkbox", {
+          name: "Other",
+          exact: true,
+        }),
+      ).toBeChecked();
+      const text = screen.getByRole("textbox", {
+        name: "Specify other (optional)",
+        exact: true,
+      });
+      await userEvent
+        .setup()
+        .click(screen.getByText("Specify other", { selector: "label" }));
+      expect(text).toHaveFocus();
+      const ids = [...container.querySelectorAll("[id]")].map(
+        (element) => element.id,
+      );
+      expect(new Set(ids).size).toBe(ids.length);
+    },
+  );
 
   // -------------------------------------------------------------------------
   // Date onChange handlers
