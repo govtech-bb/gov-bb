@@ -36,8 +36,12 @@
   line-height: var(--govbb-line-height-base);
 }
 
-.error-page {
+.error-page,
+.form-page {
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/button/button.css";
+}
+
+.error-page {
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/list/list.css";
   @import "../../../../node_modules/@govtech-bb/frontend/src/utilities.css";
 }
@@ -882,6 +886,7 @@
   .no-print,
   .form-page__print,
   .form-page__feedback,
+  .form-page .govbb-button-group,
   .govbb-btn,
   [class*="govbb-btn"] {
     display: none !important;

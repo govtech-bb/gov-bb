@@ -39,7 +39,7 @@ import {
 import { reviewDwellSeconds } from "./review-dwell";
 import { buildValidationErrorPayload } from "./validation-error-event";
 import { stepCompleteEventName } from "./step-events";
-import { StatusBanner } from "@govtech-bb/react";
+import { Button, ButtonGroup, StatusBanner } from "@govtech-bb/react";
 import {
   resolveConditionalMarkdown,
   resolveFieldLabel,
@@ -865,19 +865,13 @@ function ActiveStep({
           })}
 
           {currentStep.stepId !== "submission-confirmation" && (
-            <div className="govbb-btn-group">
+            <ButtonGroup>
               {!hidePrevious && (
-                <button
-                  className="govbb-btn--secondary"
-                  type="button"
-                  onClick={handlePrevious}
-                >
+                <Button variant="secondary" onClick={handlePrevious}>
                   Previous
-                </button>
+                </Button>
               )}
-              <button
-                className="govbb-btn"
-                type="button"
+              <Button
                 disabled={
                   (isLastFormStep && isSubmitting) ||
                   (isLastFormStep && isDraft)
@@ -891,8 +885,8 @@ function ActiveStep({
                     : isLastFormStep
                       ? "Submit"
                       : "Continue"}
-              </button>
-            </div>
+              </Button>
+            </ButtonGroup>
           )}
           {currentStep.stepId !== "submission-confirmation" &&
             isLastFormStep &&

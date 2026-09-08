@@ -1239,6 +1239,28 @@ describe("FormRenderer", () => {
     expect(mockCompleteAndContinue).toHaveBeenCalledWith("declaration");
   });
 
+  it("disables submission while a request is already in progress", async () => {
+    const user = userEvent.setup();
+    mockUseStore.mockImplementation((_store, selector) =>
+      selector({ values: {}, fieldMeta: {}, isSubmitting: true }),
+    );
+    const step = makeStep("declaration");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="declaration"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    const submit = screen.getByRole("button", { name: "Submitting…" });
+    expect(submit).toBeDisabled();
+    await user.click(submit);
+    expect(mockForm.handleSubmit).not.toHaveBeenCalled();
+  });
+
   // #317: form.handleSubmit() resolves even when validation fails (it just
   // skips onSubmit). Before the fix, completeAndContinue ran unconditionally
   // after the await, advancing the user past their own errors. Now it's gated
