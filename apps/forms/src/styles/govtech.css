@@ -37,7 +37,9 @@
 }
 
 .error-page,
-.form-page {
+.form-page,
+.form-page__confirmation,
+.govbb-payment {
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/button/button.css";
 }
 

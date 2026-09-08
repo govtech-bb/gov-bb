@@ -9,6 +9,7 @@ import {
 import { LANDING_URL } from "../config/landing";
 import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
 import { SubmissionConfirmationProps } from "../types/props.type";
+import { Button, LinkButton } from "@govtech-bb/react";
 
 // Backend sends amounts as plain numbers; tests/recipes may already include the
 // "$". Prefix only when missing so both inputs render "$20".
@@ -124,13 +125,9 @@ export default function SubmissionConfirmation({
           hidden in the printed output via the `form-page__print` @media print
           rule in govtech.css. */}
       <div className="form-page__print">
-        <button
-          type="button"
-          className="govbb-btn--secondary"
-          onClick={() => window.print()}
-        >
+        <Button variant="secondary" onClick={() => window.print()}>
           Print
-        </button>
+        </Button>
       </div>
 
       {resolvedMarkdown && (
@@ -197,9 +194,9 @@ export default function SubmissionConfirmation({
           </p>
           {/* Renders as a link (not a button) styled as a secondary action —
               the same pattern as the "Continue to payment" anchor above. */}
-          <a className="govbb-btn--secondary" href={feedbackUrl}>
+          <LinkButton variant="secondary" href={feedbackUrl}>
             Give feedback on this service
-          </a>
+          </LinkButton>
           <p>This will take about 30 seconds. Your responses are anonymous.</p>
         </div>
       )}
@@ -256,9 +253,13 @@ export default function SubmissionConfirmation({
                 support.
               </p>
             </div>
-            <button className="govbb-btn--secondary" onClick={onTryAgain}>
+            <Button
+              variant="secondary"
+              className="no-print"
+              onClick={onTryAgain}
+            >
               Try again
-            </button>
+            </Button>
           </section>
         </div>
       </div>
@@ -348,13 +349,13 @@ export default function SubmissionConfirmation({
               {paymentItem("Quantity:", quantity)}
               {paymentItem("Amount:", formattedAmount)}
             </div>
-            <a
-              className="govbb-btn no-print"
+            <LinkButton
+              className="no-print"
               href={paymentUrl}
               onClick={() => onPaymentInitiated?.()}
             >
               Continue to payment
-            </a>
+            </LinkButton>
             <p className="govbb-payment__note no-print">
               You will be redirected to EZ Pay to securely complete your
               payment.
@@ -370,9 +371,13 @@ export default function SubmissionConfirmation({
                 Your payment could not be processed. You have not been charged.
               </p>
             </div>
-            <button className="govbb-btn--secondary" onClick={onTryAgain}>
+            <Button
+              variant="secondary"
+              className="no-print"
+              onClick={onTryAgain}
+            >
               Try again
-            </button>
+            </Button>
           </section>
         )}
 

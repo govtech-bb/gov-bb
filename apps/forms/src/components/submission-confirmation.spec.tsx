@@ -101,18 +101,26 @@ describe("SubmissionConfirmation", () => {
     expect(screen.queryByText(/contact/i)).not.toBeInTheDocument();
   });
 
-  it("renders error state when submissionSuccess is false", () => {
+  it.each([
+    {
+      failure: "submission",
+      state: { ...baseState, submissionSuccess: false },
+    },
+    { failure: "payment", state: { ...baseState, hasPayment: true } },
+  ])("retries after a $failure failure", ({ state }) => {
+    const onTryAgain = vi.fn();
     render(
       <SubmissionConfirmation
         serviceTitle="Passport"
         stepTitle="Submitted"
-        submissionState={{ ...baseState, submissionSuccess: false }}
-        onTryAgain={vi.fn()}
+        submissionState={state}
+        onTryAgain={onTryAgain}
       />,
     );
-    expect(
-      screen.getByRole("button", { name: /try again/i }),
-    ).toBeInTheDocument();
+    const retry = screen.getByRole("button", { name: /try again/i });
+    expect(retry).toHaveAttribute("type", "button");
+    fireEvent.click(retry);
+    expect(onTryAgain).toHaveBeenCalledTimes(1);
   });
 
   describe("processing state (#463)", () => {
