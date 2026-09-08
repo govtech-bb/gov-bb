@@ -27,13 +27,20 @@
 .govbb-footer,
 .govbb-official-banner,
 .govbb-status-banner,
-.govbb-skip-link {
+.govbb-skip-link,
+.error-page {
   @import "../../../../node_modules/@govtech-bb/frontend/src/base.css";
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/link/link.css";
 
   font-family: var(--govbb-font-sans);
   font-size: var(--govbb-font-size-body);
   line-height: var(--govbb-line-height-base);
+}
+
+.error-page {
+  @import "../../../../node_modules/@govtech-bb/frontend/src/components/button/button.css";
+  @import "../../../../node_modules/@govtech-bb/frontend/src/components/list/list.css";
+  @import "../../../../node_modules/@govtech-bb/frontend/src/utilities.css";
 }
 
 /* Page wrapper used by every section (header, banner, page content, footer):

@@ -1,11 +1,7 @@
+import { useRouter, type ErrorComponentProps } from "@tanstack/react-router";
 import { FormFetchError } from "@forms/form-api";
 import { LANDING_URL } from "../config/landing";
 import { ErrorPage } from "./error-page";
-
-interface FormErrorProps {
-  error: Error;
-  reset: () => void;
-}
 
 const HOMEPAGE = { label: "Return to homepage", href: LANDING_URL };
 const SERVICE_DIRECTORY = {
@@ -13,7 +9,11 @@ const SERVICE_DIRECTORY = {
   href: `${LANDING_URL}/services`,
 };
 
-export default function FormError({ error, reset }: FormErrorProps) {
+export default function FormError({ error }: ErrorComponentProps<unknown>) {
+  const router = useRouter();
+  const retry = () => {
+    void router.invalidate();
+  };
   const isNotFound = error instanceof FormFetchError && error.status === 404;
   const isNetworkError = error instanceof FormFetchError && error.status === 0;
 
@@ -44,7 +44,7 @@ export default function FormError({ error, reset }: FormErrorProps) {
           "Return to the homepage",
         ]}
         secondary={HOMEPAGE}
-        primary={{ label: "Try again", onClick: reset }}
+        primary={{ label: "Try again", onClick: retry }}
       />
     );
   }
@@ -55,7 +55,7 @@ export default function FormError({ error, reset }: FormErrorProps) {
       intro="An unexpected error occurred while loading the form. Please try again."
       suggestions={["Wait a moment and try again", "Return to the homepage"]}
       secondary={HOMEPAGE}
-      primary={{ label: "Try again", onClick: reset }}
+      primary={{ label: "Try again", onClick: retry }}
     />
   );
 }
