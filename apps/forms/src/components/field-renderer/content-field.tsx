@@ -2,6 +2,7 @@ import { JSX } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ClientPrimitive } from "@forms/types";
+import { ShowHide } from "@govtech-bb/react";
 
 // Renders a non-field content block. Called directly by FieldRenderer, outside
 // the TanStack <form.Field> wrapper, so it holds no value and is never
@@ -32,14 +33,7 @@ export function renderContentElement(field: ClientPrimitive): JSX.Element {
         </div>
       );
     case "details":
-      return (
-        <details className="govbb-show-hide">
-          <summary className="govbb-show-hide__summary">
-            {field.summary ?? field.label}
-          </summary>
-          <div className="govbb-show-hide__content">{body}</div>
-        </details>
-      );
+      return <ShowHide summary={field.summary ?? field.label}>{body}</ShowHide>;
     case "text":
     default:
       return <div className="govbb-content-text">{body}</div>;
