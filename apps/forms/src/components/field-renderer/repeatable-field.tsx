@@ -1,4 +1,5 @@
 import React, { JSX } from "react";
+import { Button } from "@govtech-bb/react";
 import { FieldRenderContext } from "./render-context";
 
 /**
@@ -90,21 +91,22 @@ export function renderRepeatableOrSingle(
             i,
           )}
           {i === fieldCount - 1 && i != 0 ? (
-            <button
-              type="button"
-              className="govbb-btn--destructive-link"
+            <Button
+              variant="text"
+              negative
+              className="no-print"
               onClick={() => removeField(values)}
             >
               Remove{" "}
               <span className="govbb-visually-hidden">{field.label}</span>
-            </button>
+            </Button>
           ) : null}
         </React.Fragment>
       ))}
       {fieldCount < max ? (
-        <button
-          type="button"
-          className="govbb-btn--link"
+        <Button
+          variant="text"
+          className="no-print"
           onClick={() => addAnotherField(values)}
         >
           {fieldArray.addAnotherLabel ?? (
@@ -113,7 +115,7 @@ export function renderRepeatableOrSingle(
               <span className="govbb-visually-hidden">{field.label}</span>
             </>
           )}
-        </button>
+        </Button>
       ) : null}
     </>
   );
