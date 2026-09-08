@@ -124,6 +124,7 @@
 
 .form-page__text-field {
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/input/input.css";
+  @import "../../../../node_modules/@govtech-bb/frontend/src/components/date-input/date-input.css";
   @import "../../../../node_modules/@govtech-bb/frontend/src/focus.css";
 
   /* Legacy CSS fades enabled inputs when a stepper is disabled.
@@ -146,11 +147,7 @@
  * `:-moz-focusring { outline: auto }` lands in the merged `base` layer AFTER
  * the design system's inner-control `outline: 0` reset, and wins at equal
  * specificity. Re-assert the reset unlayered so it beats the layer. */
-:where(
-    .govbb-input-wrapper,
-    .govbb-date-input-wrapper,
-    .govbb-number-input-wrapper
-  )
+:where(.govbb-input-wrapper, .govbb-number-input-wrapper)
   > :where(input, select, textarea) {
   outline: 0;
 }
