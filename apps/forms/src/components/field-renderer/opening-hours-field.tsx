@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Button } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import { FieldRenderContext } from "./render-context";
 
@@ -302,9 +303,10 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
                       {timeInput(row, index, "start", sets.length)}
                       <span aria-hidden="true">to</span>
                       {timeInput(row, index, "end", sets.length)}
-                      <button
-                        type="button"
-                        className="govbb-btn--destructive-link"
+                      <Button
+                        variant="text"
+                        negative
+                        className="no-print"
                         disabled={field.disabled}
                         onClick={() => removeHours(row, index)}
                       >
@@ -314,15 +316,15 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
                             ? `set ${index + 1} of hours for ${row.label}`
                             : `hours for ${row.label}`}
                         </span>
-                      </button>
+                      </Button>
                     </div>
                   ))
                 )}
               </div>
               {sets.length < MAX_SETS_PER_DAY && (
-                <button
-                  type="button"
-                  className="govbb-btn--tertiary opening-hours__add"
+                <Button
+                  variant="tertiary"
+                  className="opening-hours__add no-print"
                   disabled={field.disabled}
                   onClick={() => addHours(row)}
                   ref={(el) => {
@@ -336,7 +338,7 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
                 >
                   Add hours{" "}
                   <span className="govbb-visually-hidden">for {row.label}</span>
-                </button>
+                </Button>
               )}
             </div>
           );
