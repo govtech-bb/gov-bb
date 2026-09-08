@@ -39,7 +39,7 @@ import {
 import { reviewDwellSeconds } from "./review-dwell";
 import { buildValidationErrorPayload } from "./validation-error-event";
 import { stepCompleteEventName } from "./step-events";
-import { StatusBanner } from "@govtech-bb/react";
+import { StatusBanner } from "@govtech-bb/react-next";
 import {
   resolveConditionalMarkdown,
   resolveFieldLabel,
@@ -731,7 +731,7 @@ function ActiveStep({
     <div className="container pb-8 lg:pb-16">
       <div className="form-page form-width">
         {isDraft && (
-          <StatusBanner variant="service-issue" data-testid="draft-banner">
+          <StatusBanner variant="service" data-testid="draft-banner" rounded>
             Draft mode — this is an unpublished draft and cannot be submitted.
           </StatusBanner>
         )}
