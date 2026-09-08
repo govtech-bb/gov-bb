@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ClientPrimitive } from "@forms/types";
 import { ShowHide } from "@govtech-bb/react";
+import { markdownComponents } from "../markdown-components";
 
 // Renders a non-field content block. Called directly by FieldRenderer, outside
 // the TanStack <form.Field> wrapper, so it holds no value and is never
@@ -10,14 +11,14 @@ import { ShowHide } from "@govtech-bb/react";
 // remark-gfm only, no rehype-raw (raw HTML stays escaped).
 export function renderContentElement(field: ClientPrimitive): JSX.Element {
   const body = (
-    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
       {field.content ?? ""}
     </ReactMarkdown>
   );
 
   switch (field.variant) {
     case "inset":
-      return <div className="govbb-inset-text">{body}</div>;
+      return <div className="govbb-inset-text form-page__markdown">{body}</div>;
     // Amber lead-time / risk callout. The glyph is decorative, so assistive
     // tech gets the word instead — same split as ErrorMessage's "Error:".
     case "warning":
@@ -26,16 +27,25 @@ export function renderContentElement(field: ClientPrimitive): JSX.Element {
           <span className="govbb-warning-text__icon" aria-hidden="true">
             !
           </span>
-          <div className="govbb-warning-text__body">
+          <div className="govbb-warning-text__body form-page__markdown">
             <span className="govbb-visually-hidden">Warning:</span>
             {body}
           </div>
         </div>
       );
     case "details":
-      return <ShowHide summary={field.summary ?? field.label}>{body}</ShowHide>;
+      return (
+        <ShowHide
+          className="form-page__markdown"
+          summary={field.summary ?? field.label}
+        >
+          {body}
+        </ShowHide>
+      );
     case "text":
     default:
-      return <div className="govbb-content-text">{body}</div>;
+      return (
+        <div className="govbb-content-text form-page__markdown">{body}</div>
+      );
   }
 }

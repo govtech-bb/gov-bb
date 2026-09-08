@@ -58,7 +58,7 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
               }
             />
             <label
-              className="govbb-checkbox-item__label"
+              className="govbb-checkbox-item__label form-page__markdown"
               htmlFor={`${field.id}-${option.value}`}
             >
               {/* Declaration/consent copy is authored in markdown

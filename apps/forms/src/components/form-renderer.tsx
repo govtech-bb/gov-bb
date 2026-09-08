@@ -782,7 +782,7 @@ function ActiveStep({
 
         <div className="form-page__step">
           {currentStep.markdownContent && (
-            <div className="form-page__markdown-content">
+            <div className="form-page__markdown-content form-page__markdown">
               {/* Recipe-authored step copy (e.g. an intro page). react-markdown
                   escapes raw HTML by default and we omit rehype-raw, so recipe
                   content cannot inject markup. */}

@@ -143,7 +143,7 @@ export default function SubmissionConfirmation({
       </div>
 
       {resolvedMarkdown && (
-        <div className="form-page__markdown-content">
+        <div className="form-page__markdown-content form-page__markdown">
           {/* Recipe-authored copy (e.g. "What you need to know"). react-markdown
               escapes raw HTML by default and we deliberately omit rehype-raw, so
               recipe content cannot inject markup. */}

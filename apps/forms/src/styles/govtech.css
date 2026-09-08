@@ -50,7 +50,8 @@
 }
 
 .error-page,
-.form-page__confirmation {
+.form-page__confirmation,
+.form-page__markdown {
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/list/list.css";
 }
 
@@ -58,7 +59,8 @@
 .govbb-service-heading,
 .govbb-summary-section,
 .form-page__confirmation,
-.form-page__contact {
+.form-page__contact,
+.form-page__markdown {
   @import "../../../../node_modules/@govtech-bb/frontend/src/utilities.css";
 }
 
@@ -67,7 +69,8 @@
   .govbb-payment,
   .govbb-summary-section,
   .form-page__confirmation,
-  .form-page__contact
+  .form-page__contact,
+  .form-page__markdown
 ) {
   @import "../../../../node_modules/@govtech-bb/frontend/src/base.css";
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/link/link.css";
@@ -155,24 +158,6 @@
   padding-top: calc(
     (3rem - var(--font-size-body) * var(--line-height-body)) / 2
   );
-}
-
-/* The consent/declaration copy is rendered from markdown (react-markdown emits
- * bare <p>/<ul>, which Tailwind's preflight resets to zero margin — collapsing
- * the intro line, bullet list and confirming statement together). Restore the
- * vertical rhythm between them, matching .form-page__markdown-content. */
-.govbb-checkbox-item__label > :first-child {
-  margin-top: 0;
-}
-
-.govbb-checkbox-item__label p,
-.govbb-checkbox-item__label ul,
-.govbb-checkbox-item__label ol {
-  margin: 0 0 var(--spacing-s);
-}
-
-.govbb-checkbox-item__label > :last-child {
-  margin-bottom: 0;
 }
 
 /* ---- Show/hide -----------------------------------------------------------
@@ -428,22 +413,18 @@
   color: var(--color-mid-grey-00);
 }
 
-/* ---- Markdown content (recipe-authored confirmation copy) ---------------- *
- * react-markdown emits bare <p> elements, which Tailwind's preflight resets to
- * zero margin — collapsing paragraphs together. Restore vertical rhythm between
- * them (matching body spacing), and align the block with the next-steps panel. */
+.form-page__markdown {
+  overflow-wrap: anywhere;
+}
+
+/* Markdown components own typography; the app supplies block spacing.
+ * ShowHide already spaces its content with the package's flex gap. */
+.form-page__markdown:not(.govbb-show-hide) > :not(:last-child) {
+  margin-block-end: var(--govbb-space-s);
+}
+
 .form-page__markdown-content {
-  margin-top: var(--spacing-m);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-}
-
-.form-page__markdown-content p {
-  margin: 0 0 var(--spacing-s);
-}
-
-.form-page__markdown-content p:last-child {
-  margin-bottom: 0;
+  margin-top: var(--govbb-space-m);
 }
 
 /* ---- Content element (htmlType "content") ------------------------------- *
@@ -455,11 +436,6 @@
   margin-bottom: var(--spacing-m);
   background: var(--color-blue-10);
   border-left: var(--color-blue-40) 0.25rem solid;
-}
-
-.govbb-inset-text > :last-child,
-.govbb-content-text > :last-child {
-  margin-bottom: 0;
 }
 
 .govbb-content-text {
@@ -489,10 +465,6 @@
   font-weight: 700;
   line-height: 1.75rem;
   text-align: center;
-}
-
-.govbb-warning-text__body > :last-child {
-  margin-bottom: 0;
 }
 
 /* ---- Applicant name (declaration step) ----------------------------------- */
