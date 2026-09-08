@@ -1,5 +1,8 @@
-import { FieldValidationErrors } from "@forms/types";
-import { JSX } from "react";
+import type { FieldValidationErrors } from "@forms/types";
+import {
+  ErrorSummary as GovErrorSummary,
+  type ErrorSummaryItem,
+} from "@govtech-bb/react";
 
 export default function ErrorSummary({
   errors,
@@ -15,25 +18,17 @@ export default function ErrorSummary({
     type: "conjunction",
   });
 
-  const fieldErrorItems: JSX.Element[] = [];
+  const fieldErrorItems: ErrorSummaryItem[] = [];
 
   for (const [fieldId, errorMessages] of Object.entries(errors)) {
     if (!errorMessages || errorMessages.length === 0) continue;
-    fieldErrorItems.push(
-      <li key={fieldId}>
-        <a className="govbb-error-summary__link" href={`#${fieldId}`}>
-          {formatter.format(errorMessages)}
-        </a>
-      </li>,
-    );
+    fieldErrorItems.push({
+      href: `#${fieldId}`,
+      label: formatter.format(errorMessages),
+    });
   }
 
   if (fieldErrorItems.length === 0) return null;
 
-  return (
-    <div className="govbb-error-summary" role="alert">
-      <h2 className="govbb-error-summary__title">There is a problem</h2>
-      <ul className="govbb-error-summary__list">{fieldErrorItems}</ul>
-    </div>
-  );
+  return <GovErrorSummary errors={fieldErrorItems} />;
 }
