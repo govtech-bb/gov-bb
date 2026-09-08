@@ -209,16 +209,6 @@
   color: var(--govbb-color-muted);
 }
 
-.form-page__markdown {
-  overflow-wrap: anywhere;
-}
-
-/* Markdown components own typography; the app supplies block spacing.
- * ShowHide already spaces its content with the package's flex gap. */
-.form-page__markdown:not(.govbb-show-hide) > :not(:last-child) {
-  margin-block-end: var(--govbb-space-s);
-}
-
 .form-page__markdown-content {
   margin-top: var(--govbb-space-m);
 }

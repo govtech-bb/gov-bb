@@ -3,7 +3,6 @@ import { Checkbox, Fieldset, Hint } from "@govtech-bb/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import ErrorMessage from "../error-message";
-import { markdownComponents } from "../markdown-components";
 import { FieldRenderContext } from "./render-context";
 import FieldRenderer from "./index";
 
@@ -50,14 +49,11 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
             commitChange(option.value === value ? "" : option.value)
           }
           label={
-            <div className="form-page__markdown">
+            <div className="govbb-prose wrap-anywhere">
               {/* Declaration/consent copy is authored in markdown
                   (bullets, bold) — render it so the statement reads
                   as intended rather than as a run-on line. */}
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={markdownComponents}
-              >
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {option.label}
               </ReactMarkdown>
             </div>

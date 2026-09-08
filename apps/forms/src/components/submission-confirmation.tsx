@@ -1,10 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { interpolateConfirmationMarkdown } from "@govtech-bb/form-conditions";
-import {
-  markdownComponents,
-  markdownUrlTransform,
-} from "./markdown-components";
+import { markdownUrlTransform } from "./markdown-url-transform";
 import { LANDING_URL } from "../config/landing";
 import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
 import { SubmissionConfirmationProps } from "../types/props.type";
@@ -143,13 +140,12 @@ export default function SubmissionConfirmation({
       </div>
 
       {resolvedMarkdown && (
-        <div className="form-page__markdown-content form-page__markdown">
+        <div className="form-page__markdown-content govbb-prose wrap-anywhere">
           {/* Recipe-authored copy (e.g. "What you need to know"). react-markdown
               escapes raw HTML by default and we deliberately omit rehype-raw, so
               recipe content cannot inject markup. */}
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
-            components={markdownComponents}
             urlTransform={markdownUrlTransform}
           >
             {resolvedMarkdown}

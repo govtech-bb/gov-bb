@@ -9,7 +9,6 @@ import FieldRenderer, { InsetFieldEntry } from "./field-renderer";
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { markdownComponents } from "./markdown-components";
 import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { shallow } from "@tanstack/react-store";
@@ -765,14 +764,11 @@ function ActiveStep({
 
         <div className="form-page__step">
           {currentStep.markdownContent && (
-            <div className="form-page__markdown-content form-page__markdown">
+            <div className="form-page__markdown-content govbb-prose wrap-anywhere">
               {/* Recipe-authored step copy (e.g. an intro page). react-markdown
                   escapes raw HTML by default and we omit rehype-raw, so recipe
                   content cannot inject markup. */}
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={markdownComponents}
-              >
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {currentStep.markdownContent}
               </ReactMarkdown>
             </div>
