@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Button } from "@govtech-bb/react";
+import { Button, Checkbox, Fieldset, Hint, Input } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import { FieldRenderContext } from "./render-context";
 
@@ -225,40 +225,37 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
     const halfName = half === "start" ? "opening" : "closing";
     const setSuffix = setsCount > 1 ? `, set ${index + 1}` : "";
     return (
-      <div className="govbb-input-wrapper">
-        <input
-          type="time"
-          className="govbb-input"
-          value={rowSets(row)[index][half]}
-          step={field.step}
-          disabled={field.disabled}
-          onBlur={f.handleBlur}
-          // Only the halves the applicant still has to fix are marked
-          // invalid — an empty picker, or both when open equals close — so
-          // a format error doesn't paint valid times red.
-          aria-invalid={
-            invalid &&
-            (rowSets(row)[index][half] === "" ||
-              rowSets(row)[index].start === rowSets(row)[index].end)
-              ? true
-              : undefined
+      <Input
+        type="time"
+        value={rowSets(row)[index][half]}
+        step={field.step}
+        disabled={field.disabled}
+        onBlur={f.handleBlur}
+        // Only the halves the applicant still has to fix are marked
+        // invalid — an empty picker, or both when open equals close — so
+        // a format error doesn't paint valid times red.
+        aria-invalid={
+          invalid &&
+          (rowSets(row)[index][half] === "" ||
+            rowSets(row)[index].start === rowSets(row)[index].end)
+            ? true
+            : undefined
+        }
+        aria-label={`${row.label} ${halfName} time${setSuffix}`}
+        onChange={(e) => updateHours(row, index, half, e.target.value)}
+        ref={(el) => {
+          if (el && pendingFocus.current === focusKey) {
+            pendingFocus.current = null;
+            el.focus();
           }
-          aria-label={`${row.label} ${halfName} time${setSuffix}`}
-          onChange={(e) => updateHours(row, index, half, e.target.value)}
-          ref={(el) => {
-            if (el && pendingFocus.current === focusKey) {
-              pendingFocus.current = null;
-              el.focus();
-            }
-          }}
-        />
-      </div>
+        }}
+      />
     );
   };
 
   return (
-    <fieldset
-      className="govbb-fieldset opening-hours"
+    <Fieldset
+      className="opening-hours form-page__text-field form-page__choice-field"
       id={field.id}
       aria-describedby={describedBy}
     >
@@ -266,28 +263,15 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
         {field.label}
         {labelSuffix}
       </legend>
-      {field.hint && (
-        <p className="govbb-hint" id={hintId}>
-          {field.hint}
-        </p>
-      )}
+      {field.hint && <Hint id={hintId}>{field.hint}</Hint>}
       <ErrorMessage id={errorId} message={errorMessage} />
-      <div className="govbb-checkbox-item opening-hours__same-weekdays">
-        <input
-          type="checkbox"
-          id={`${field.id}-same-weekday-hours`}
-          className="govbb-checkbox"
-          checked={sameWeekdayHours}
-          disabled={field.disabled}
-          onChange={(e) => toggleSameWeekdayHours(e.target.checked)}
-        />
-        <label
-          className="govbb-checkbox-item__label"
-          htmlFor={`${field.id}-same-weekday-hours`}
-        >
-          The hours are the same every weekday (Monday to Friday)
-        </label>
-      </div>
+      <Checkbox
+        id={`${field.id}-same-weekday-hours`}
+        label="The hours are the same every weekday (Monday to Friday)"
+        checked={sameWeekdayHours}
+        disabled={field.disabled}
+        onChange={(e) => toggleSameWeekdayHours(e.target.checked)}
+      />
       <div className="opening-hours__week">
         {rows.map((row) => {
           const sets = rowSets(row);
@@ -347,6 +331,6 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
       <div className="govbb-visually-hidden" role="status">
         {status}
       </div>
-    </fieldset>
+    </Fieldset>
   );
 }

@@ -251,11 +251,6 @@
   );
 }
 
-/* The "same hours every weekday" toggle sits between the hint and the grid. */
-.opening-hours__same-weekdays {
-  margin-block: var(--spacing-s);
-}
-
 .opening-hours__week {
   margin-top: var(--spacing-s);
   border-top: 1px solid var(--color-grey-00);
@@ -299,18 +294,13 @@
   gap: var(--spacing-xs);
 }
 
-/* The wrapper is full-width by default; shrink it to the picker. */
-.opening-hours__set .govbb-input-wrapper {
-  width: auto;
-}
-
 .opening-hours__set input[type="time"] {
   width: 10rem;
 }
 
 /* On small screens each day stacks: name, its sets of hours, then the Add
    hours button — the side-by-side grid leaves too little room for a pair of
-   pickers. Slimmer picker padding keeps "start to end" on one line. */
+   pickers. */
 @media (max-width: 40rem) {
   .opening-hours__day {
     grid-template-columns: minmax(0, 1fr);
@@ -322,11 +312,6 @@
 
   .opening-hours__add {
     justify-self: start;
-  }
-
-  .opening-hours__set input[type="time"] {
-    width: 9.25rem;
-    padding-inline: var(--spacing-xs);
   }
 }
 
