@@ -159,6 +159,20 @@ describe("FieldRenderer", () => {
     expect(inputs.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("radio selection emits one option value", async () => {
+    const user = userEvent.setup();
+    renderField(
+      primitive("radio", {
+        options: [
+          { value: "yes", label: "Yes" },
+          { value: "no", label: "No" },
+        ],
+      }),
+    );
+    await user.click(screen.getByRole("radio", { name: "Yes" }));
+    expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith("yes");
+  });
+
   it("checkbox → renders checkbox inputs", () => {
     const { container } = renderField(
       primitive("checkbox", {
@@ -886,14 +900,6 @@ describe("FieldRenderer", () => {
       expect(inputs).toHaveLength(1);
     });
 
-    it("tags the checkbox item with the single-checkbox alignment class", () => {
-      const { container } = renderField(
-        primitive("checkbox", { options: singleOption }),
-      );
-      const item = container.querySelector(".govbb-checkbox-item");
-      expect(item).toHaveClass("form-page__single-checkbox");
-    });
-
     it("clicking unchecked checkbox calls handleChange with the option value", async () => {
       const user = userEvent.setup();
       mockState = { value: "", meta: { isValid: true, errors: [] } };
@@ -902,7 +908,9 @@ describe("FieldRenderer", () => {
       );
       const input = container.querySelector("input") as HTMLInputElement;
       await user.click(input);
-      expect(mockFieldApi.handleChange).toHaveBeenCalledWith("agree");
+      expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith(
+        "agree",
+      );
     });
 
     it("clicking checked checkbox calls handleChange with empty string", async () => {
@@ -951,18 +959,7 @@ describe("FieldRenderer", () => {
       );
       const inputs = container.querySelectorAll("input");
       await user.click(inputs[0]);
-      expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["a"]);
-    });
-
-    it("does not tag multi-option items with the single-checkbox alignment class", () => {
-      const { container } = renderField(
-        primitive("checkbox", { options: multiOptions }),
-      );
-      const items = container.querySelectorAll(".govbb-checkbox-item");
-      expect(items.length).toBeGreaterThan(1);
-      items.forEach((item) =>
-        expect(item).not.toHaveClass("form-page__single-checkbox"),
-      );
+      expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith(["a"]);
     });
 
     it("clicking a checked option removes it from the selection", async () => {
@@ -973,7 +970,7 @@ describe("FieldRenderer", () => {
       );
       const inputs = container.querySelectorAll("input");
       await user.click(inputs[0]);
-      expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["b"]);
+      expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith(["b"]);
     });
   });
 
@@ -1013,6 +1010,9 @@ describe("FieldRenderer", () => {
       );
       expect(inset).toBeTruthy();
       expect(inset?.querySelector("input")).toBeTruthy();
+      expect(
+        screen.getByRole("checkbox", { name: "Option A" }),
+      ).toHaveAttribute("aria-controls", inset?.id);
       // The reveal must sit between the two options, not after the group —
       // the CSS reveal rule and the reading order both depend on it.
       expect(

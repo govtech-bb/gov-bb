@@ -62,7 +62,8 @@
 .form-page__confirmation,
 .form-page__contact,
 .form-page__markdown,
-.form-page__text-field {
+.form-page__text-field,
+.form-page__choice-field {
   @import "../../../../node_modules/@govtech-bb/frontend/src/utilities.css";
 }
 
@@ -73,7 +74,8 @@
   .form-page__confirmation,
   .form-page__contact,
   .form-page__markdown,
-  .form-page__text-field
+  .form-page__text-field,
+  .form-page__choice-field
 ) {
   @import "../../../../node_modules/@govtech-bb/frontend/src/base.css";
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/link/link.css";
@@ -81,6 +83,20 @@
   font-family: var(--govbb-font-sans);
   font-size: var(--govbb-font-size-body);
   line-height: var(--govbb-line-height-base);
+}
+
+:where(.form-page__choice-field) {
+  @import "../../../../node_modules/@govtech-bb/frontend/src/components/checkbox-radio/checkbox-radio.css";
+}
+
+.form-page__choice-field {
+  @import "../../../../node_modules/@govtech-bb/frontend/src/focus.css";
+
+  /* Let the package set spacing; remove legacy margins between options. */
+  > :is(.govbb-checkbox-item, .govbb-radio-item)
+    ~ :is(.govbb-checkbox-item, .govbb-radio-item) {
+    margin-block-start: 0;
+  }
 }
 
 /* Use a zero-specificity scope so shared focus styles win on errors. */
@@ -141,34 +157,6 @@
 .govbb-form-group[data-field-width="short"],
 .govbb-form-group[data-field-width="medium"] {
   width: 100%;
-}
-
-/* Vertical spacing for a group of radio/checkbox options. The govbb-checkboxes
- * wrapper isn't in this package version, so the gap is supplied here. */
-.form-page__options {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-/* Single declaration/consent checkbox alignment (#405). The package's
- * `.govbb-checkbox-item` uses `align-items: center`, which centres the tall
- * 3rem checkbox against the *whole* multi-line consent paragraph so it no
- * longer lines up with the first line. For the single-option branch only
- * (tagged `form-page__single-checkbox` in field-renderer), top-align the row
- * and nudge the label down so its first line sits optically centred against
- * the checkbox — half the difference between the checkbox height and one line
- * box (font-size x line-height). Compound selector keeps specificity above the
- * package rule regardless of stylesheet order; multi-option groups are
- * untouched. */
-.govbb-checkbox-item.form-page__single-checkbox {
-  align-items: flex-start;
-}
-
-.govbb-checkbox-item.form-page__single-checkbox .govbb-checkbox-item__label {
-  padding-top: calc(
-    (3rem - var(--font-size-body) * var(--line-height-body)) / 2
-  );
 }
 
 /* ---- Show/hide -----------------------------------------------------------

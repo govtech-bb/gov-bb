@@ -1,4 +1,5 @@
-import React, { JSX } from "react";
+import { JSX } from "react";
+import { Fieldset, Hint, Radio } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import { FieldRenderContext } from "./render-context";
 import FieldRenderer from "./index";
@@ -25,47 +26,29 @@ export function renderRadioField(ctx: FieldRenderContext): JSX.Element {
 
   const value: string = (f.state.value as string | undefined) ?? "";
   return (
-    <fieldset className="govbb-fieldset" id={field.id}>
+    <Fieldset className="form-page__choice-field" id={field.id}>
       <legend className={labelClass("govbb-fieldset__legend")}>
         {field.label}
         {labelSuffix}
       </legend>
-      {field.hint && (
-        <p className="govbb-hint" id={hintId}>
-          {field.hint}
-        </p>
-      )}
+      {field.hint && <Hint id={hintId}>{field.hint}</Hint>}
       <ErrorMessage id={errorId} message={errorMessage} />
-      <div className="form-page__options">
-        {field.options?.map((option) => {
-          const insetEntries = insetFieldsByOption?.get(option.value);
-          const isSelected = option.value === value;
-          return (
-            <React.Fragment key={option.value}>
-              <div className="govbb-radio-item">
-                <input
-                  {...sharedProps}
-                  {...requiredProps}
-                  id={`${field.id}-${option.value}`}
-                  className="govbb-radio"
-                  checked={isSelected}
-                  aria-invalid={invalid}
-                  onChange={() => commitChange(option.value)}
-                />
-                <label
-                  className="govbb-radio-item__label"
-                  htmlFor={`${field.id}-${option.value}`}
-                >
-                  {option.label}
-                </label>
-              </div>
-              {/* Conditional reveal: inset fields shown below the
-                  selected option. Rendered as a sibling immediately
-                  after the radio item so the govbb
-                  `:has(:checked) + __conditional` styling applies. */}
-              {insetEntries && isSelected && (
-                <div className="govbb-radio-item__conditional">
-                  {insetEntries.map(
+      {field.options?.map((option) => {
+        const insetEntries = insetFieldsByOption?.get(option.value);
+        const isSelected = option.value === value;
+        return (
+          <Radio
+            key={option.value}
+            {...sharedProps}
+            {...requiredProps}
+            id={`${field.id}-${option.value}`}
+            label={option.label}
+            checked={isSelected}
+            aria-invalid={invalid}
+            onChange={() => commitChange(option.value)}
+            conditional={
+              insetEntries && isSelected
+                ? insetEntries.map(
                     ({
                       field: insetField,
                       validationProperties: insetValidation,
@@ -82,13 +65,12 @@ export function renderRadioField(ctx: FieldRenderContext): JSX.Element {
                         draftToken={draftToken}
                       />
                     ),
-                  )}
-                </div>
-              )}
-            </React.Fragment>
-          );
-        })}
-      </div>
-    </fieldset>
+                  )
+                : undefined
+            }
+          />
+        );
+      })}
+    </Fieldset>
   );
 }
