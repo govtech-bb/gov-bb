@@ -4,12 +4,11 @@ import {
   Outlet,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { Footer, OfficialBanner } from "@govtech-bb/react";
+import { Footer, FooterLink, SkipLink } from "@govtech-bb/react-next";
+import Header from "../components/Header";
 import NotFound from "../components/not-found";
 import type { QueryClient } from "@tanstack/react-query";
 import { LANDING_URL } from "../config/landing";
-import { SiteHeader } from "../components/site-header";
-import { StageBanner } from "../components/stage-banner";
 
 /**
  * Router context shape.  The QueryClient is injected here from main.tsx so
@@ -27,48 +26,34 @@ const FOOTER_LINKS = [
   { label: "Terms & Conditions", href: `${LANDING_URL}/terms-conditions` },
 ];
 
-const RootLayout = () => (
-  <div className="flex min-h-dvh flex-col bg-white-00">
-    <HeadContent />
-    {/* Skip-to-content link (#341/#321): the first focusable element, hidden
-        until focused, lets keyboard users bypass the banner/header and jump
-        straight to <main>. `.govbb-visually-hidden-focusable` ships with
-        @govtech-bb/styles. */}
-    <a href="#main-content" className="govbb-visually-hidden-focusable">
-      Skip to main content
-    </a>
-    {/* Page chrome (banners, header) — hidden in print output (#2132). */}
-    <div className="no-print">
-      <OfficialBanner
-        imageSrc="/images/coat-of-arms.png"
-        imageAlt=""
-        showLearnMore={false}
-      />
-    </div>
-    <div className="bg-blue-10 no-print">
-      <div className="container">
-        <StageBanner
-          stage="alpha"
-          url={`${LANDING_URL}/what-we-mean-by-alpha`}
-        />
-      </div>
-    </div>
-    <SiteHeader />
-    <main id="main-content" className="flex-1">
-      <Outlet />
-    </main>
-    <Footer
-      className="no-print"
-      links={FOOTER_LINKS}
-      logoSrc="/images/coat-of-arms.png"
-      logoAlt="Barbados Coat of Arms"
-      copyrightText={`© ${new Date().getFullYear()} Government of Barbados`}
-    />
-    {import.meta.env.DEV && <TanStackRouterDevtools />}
-  </div>
-);
-
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootLayout,
   notFoundComponent: NotFound,
 });
+
+function RootLayout() {
+  return (
+    <>
+      <HeadContent />
+      <SkipLink className="print:hidden" href="#main-content" />
+      <div className="print:hidden">
+        <Header />
+      </div>
+      <main id="main-content" tabIndex={-1}>
+        <Outlet />
+      </main>
+      <Footer
+        className="print:hidden"
+        coatSrc="/images/coat-of-arms.png"
+        copy={`© ${new Date().getFullYear()} Government of Barbados`}
+      >
+        {FOOTER_LINKS.map(({ label, ...link }) => (
+          <FooterLink key={label} {...link}>
+            {label}
+          </FooterLink>
+        ))}
+      </Footer>
+      {import.meta.env.DEV && <TanStackRouterDevtools />}
+    </>
+  );
+}

@@ -914,9 +914,15 @@ importers:
       '@govtech-bb/form-validation':
         specifier: workspace:*
         version: link:../../packages/form-validation
+      '@govtech-bb/frontend':
+        specifier: 1.0.0-alpha.29
+        version: 1.0.0-alpha.29
       '@govtech-bb/react':
         specifier: ^1.0.0-alpha.17
         version: 1.0.0-alpha.17(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)
+      '@govtech-bb/react-next':
+        specifier: npm:@govtech-bb/react@1.0.0-alpha.29
+        version: '@govtech-bb/react@1.0.0-alpha.29(react@19.2.7)'
       '@govtech-bb/styles':
         specifier: ^1.0.0-alpha.17
         version: 1.0.0-alpha.17

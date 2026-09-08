@@ -4,11 +4,36 @@
 @import "@fontsource/figtree/700.css";
 @import "tailwindcss";
 @import "@govtech-bb/design";
+@import "@govtech-bb/frontend/tokens.css";
+/* ponytail: source paths are pinned to alpha.29; use public component CSS
+   exports when the package provides them. */
+@import "../../../../node_modules/@govtech-bb/frontend/src/breakpoints.css";
+@import "../../../../node_modules/@govtech-bb/frontend/src/layout.css"
+  layer(components);
+@import "../../../../node_modules/@govtech-bb/frontend/src/components/header/header.css";
+@import "../../../../node_modules/@govtech-bb/frontend/src/components/footer/footer.css";
+@import "../../../../node_modules/@govtech-bb/frontend/src/components/official-banner/official-banner.css";
+@import "../../../../node_modules/@govtech-bb/frontend/src/components/status-banner/status-banner.css";
+@import "../../../../node_modules/@govtech-bb/frontend/src/components/skip-link/skip-link.css";
 
 @source "../../../../node_modules/@govtech-bb/react/dist/**/*.{js,cjs}";
 
 @theme {
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Keep the new typography and link resets out of the existing form fields. */
+.govbb-header,
+.govbb-footer,
+.govbb-official-banner,
+.govbb-status-banner,
+.govbb-skip-link {
+  @import "../../../../node_modules/@govtech-bb/frontend/src/base.css";
+  @import "../../../../node_modules/@govtech-bb/frontend/src/components/link/link.css";
+
+  font-family: var(--govbb-font-sans);
+  font-size: var(--govbb-font-size-body);
+  line-height: var(--govbb-line-height-base);
 }
 
 /* Page wrapper used by every section (header, banner, page content, footer):
@@ -72,25 +97,6 @@
 .govbb-label__optional {
   font-weight: 400;
   color: var(--color-mid-grey-00);
-}
-
-/* The skip-to-content link (#341) is meant to stay hidden until focused, but
- * @govtech-bb/styles ships an inverted `.govbb-visually-hidden-focusable`
- * rule: it applies the *visible* styles in the `:not(:focus)` state and never
- * hides the element, so the link renders on every page. Re-assert the correct
- * behaviour here (this file loads after the styles package, so it wins at equal
- * specificity): clip it away when unfocused, leaving the styles package's
- * focus reveal intact. Matches `.govbb-visually-hidden`. */
-.govbb-visually-hidden-focusable:not(:focus):not(:focus-visible) {
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border-width: 0;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  position: absolute;
-  overflow: hidden;
 }
 
 /* Page + step layout (replaces the former design-system module classes) */
