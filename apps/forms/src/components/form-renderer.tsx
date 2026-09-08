@@ -94,15 +94,14 @@ type FieldGroup =
 
 /**
  * A field hosts inset conditional reveals when its options each have a DOM
- * position to nest under: radios, selects without `multiple`, and multi-option
+ * position to nest under: radios, selects, and multi-option
  * checkboxes. A single-option checkbox is a confirmation, not an option list,
- * so its reveals stay page-level; `multiple` selects have no per-option
- * position to nest under.
+ * so its reveals stay page-level.
  */
 function supportsOptionConditionals(field: ClientPrimitive): boolean {
   return (
     field.htmlType === "radio" ||
-    (field.htmlType === "select" && !field.multiple) ||
+    field.htmlType === "select" ||
     (field.htmlType === "checkbox" && (field.options?.length ?? 0) > 1)
   );
 }

@@ -146,6 +146,13 @@ describe("FieldRenderer", () => {
     expect(container.querySelector("select")).toBeTruthy();
   });
 
+  it("select selection emits one option value", async () => {
+    const user = userEvent.setup();
+    renderField(primitive("select", { options: [{ value: "a", label: "A" }] }));
+    await user.selectOptions(screen.getByRole("combobox"), "a");
+    expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith("a");
+  });
+
   it("radio → renders radio inputs", () => {
     const { container } = renderField(
       primitive("radio", {

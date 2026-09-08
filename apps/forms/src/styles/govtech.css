@@ -63,6 +63,7 @@
 .form-page__contact,
 .form-page__markdown,
 .form-page__text-field,
+.form-page__select-field,
 .form-page__choice-field {
   @import "../../../../node_modules/@govtech-bb/frontend/src/utilities.css";
 }
@@ -75,6 +76,7 @@
   .form-page__contact,
   .form-page__markdown,
   .form-page__text-field,
+  .form-page__select-field,
   .form-page__choice-field
 ) {
   @import "../../../../node_modules/@govtech-bb/frontend/src/base.css";
@@ -87,6 +89,11 @@
 
 :where(.form-page__choice-field) {
   @import "../../../../node_modules/@govtech-bb/frontend/src/components/checkbox-radio/checkbox-radio.css";
+}
+
+.form-page__select-field {
+  @import "../../../../node_modules/@govtech-bb/frontend/src/components/select/select.css";
+  @import "../../../../node_modules/@govtech-bb/frontend/src/focus.css";
 }
 
 .form-page__choice-field {
@@ -130,7 +137,6 @@
  * specificity. Re-assert the reset unlayered so it beats the layer. */
 :where(
     .govbb-input-wrapper,
-    .govbb-select-wrapper,
     .govbb-date-input-wrapper,
     .govbb-number-input-wrapper
   )
