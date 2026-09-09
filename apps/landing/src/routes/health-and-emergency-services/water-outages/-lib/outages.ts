@@ -35,23 +35,23 @@ export function bbDayKey(date: Date): string {
   return date.toLocaleDateString('en-CA', { timeZone: BB_TZ })
 }
 
-/** Has this work already finished? */
+/** Has the notice's stated period passed, or is an undated notice over three days old? */
 export function isPast(o: Outage, nowMs: number): boolean {
   if (o.endsAt) return nowMs > Date.parse(o.endsAt)
   if (o.eventDay) return o.eventDay < bbDayKey(new Date(nowMs))
   return nowMs - Date.parse(o.published) > STALE_DAYS * 86_400_000
 }
 
-/** Is this something to act on now: today or coming up, and not over? */
+/** Is this a recent notice or one whose stated period has not passed? */
 export function isCurrentConcern(o: Outage, nowMs: number): boolean {
   if (isPast(o, nowMs)) return false
   if (o.eventDay) return o.eventDay >= bbDayKey(new Date(nowMs))
   return true
 }
 
-/** Short human label: "Today", "Tomorrow", "Ended", or "23 Jun". */
+/** Short date label; an older notice does not confirm restored service. */
 export function freshnessLabel(o: Outage, nowMs: number): string {
-  if (isPast(o, nowMs)) return 'Ended'
+  if (isPast(o, nowMs)) return 'Older notice'
   const key = o.eventDay ?? bbDayKey(new Date(o.published))
   if (key === bbDayKey(new Date(nowMs))) return 'Today'
   if (key === bbDayKey(new Date(nowMs + 86_400_000))) return 'Tomorrow'

@@ -1,5 +1,6 @@
 import {
   Button,
+  ButtonGroup,
   Heading,
   Link,
   Select,
@@ -43,10 +44,21 @@ const MAP_FALLBACK = (
   </Text>
 )
 
-export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
+export function WaterOutagesPage({
+  data,
+  selected,
+  onSelect,
+  onRetry,
+  retrying,
+}: {
+  data: WaterOutagesData
+  selected: string
+  onSelect: (parish: string) => void
+  onRetry: () => void
+  retrying: boolean
+}) {
   const { outages, checkedAt, now, failed } = data
 
-  const [selected, setSelected] = useState('')
   const [locating, setLocating] = useState(false)
   const [locationError, setLocationError] = useState(false)
   const [locatedParish, setLocatedParish] = useState<string | null>(null)
@@ -69,13 +81,12 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
     return (
       <div className="water-outages-page">
         {heading}
-        <StatusBanner variant="service">
+        <StatusBanner className="water-outages-result" variant="service">
           <Text as="p">
             <strong>
               We can&apos;t reach the Barbados Water Authority right now.
             </strong>{' '}
-            To avoid showing out-of-date or made-up information, notices are
-            paused for the moment. Please try again shortly, or check the{' '}
+            Try again, or check the{' '}
             <Link
               external
               href="https://barbadoswaterauthority.com/service-disruptions/"
@@ -84,8 +95,22 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
             </Link>{' '}
             directly.
           </Text>
+          <ButtonGroup>
+            <Button
+              aria-busy={retrying}
+              disabled={retrying}
+              onClick={onRetry}
+              type="button"
+              variant="secondary"
+            >
+              {retrying ? 'Trying again…' : 'Try again'}
+            </Button>
+          </ButtonGroup>
         </StatusBanner>
-        <SubscribeForm selectedArea="" selectedLabel={null} />
+        <SubscribeForm
+          selectedArea={selected}
+          selectedLabel={findParish(selected)?.label ?? null}
+        />
       </div>
     )
   }
@@ -114,7 +139,7 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
 
   function chooseParish(value: string) {
     locationRequest.current += 1
-    setSelected(value)
+    onSelect(value)
     setLocating(false)
     setLocationError(false)
     setLocatedParish(null)
@@ -138,7 +163,7 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
           )
           if (request !== locationRequest.current) return
           if (located) {
-            setSelected(located.value)
+            onSelect(located.value)
             setLocatedParish(located.value)
             setLocatedExact(located.exact)
           } else {
@@ -231,31 +256,6 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
         )}
       </div>
 
-      <figure className="water-outages-figure">
-        <div
-          className="water-outages-map"
-          role="region"
-          aria-label="Water notices by parish"
-        >
-          <ClientOnly fallback={MAP_FALLBACK}>
-            <Suspense fallback={MAP_FALLBACK}>
-              <OutageMap
-                counts={counts}
-                onSelect={chooseParish}
-                selected={selected}
-              />
-            </Suspense>
-          </ClientOnly>
-        </div>
-        <figcaption>
-          <Text as="p" className="govbb-hint" size="body-sm">
-            Select a circle or choose a parish above. Red circles have current
-            notices; blue-grey circles have none. A dark blue border marks your
-            choice. Circles show parish centres, not the exact areas affected.
-          </Text>
-        </figcaption>
-      </figure>
-
       {showStoreWater && (
         <StatusBanner variant="service">
           <Text as="p">
@@ -265,8 +265,6 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
           </Text>
         </StatusBanner>
       )}
-
-      <SubscribeForm selectedArea={selected} selectedLabel={selectedLabel} />
 
       <Text as="p" className="govbb-hint" size="body-sm">
         Notices published by the Barbados Water Authority.
@@ -323,9 +321,11 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
         </div>
 
         {visiblePast.length > 0 && (
-          <ShowHide summary={`Past notices (${visiblePast.length})`}>
+          <ShowHide summary={`Older notices (${visiblePast.length})`}>
             <Text as="p" className="govbb-hint" size="body-sm">
-              View notices that have ended.
+              These notices have passed their stated date or time, or were
+              published more than three days ago without one. This does not
+              confirm that water service has been restored.
             </Text>
             {visiblePast.map((o) => (
               <OutageCard key={o.id} now={now} outage={o} />
@@ -333,13 +333,39 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
           </ShowHide>
         )}
       </div>
+
+      <figure className="water-outages-figure">
+        <div
+          className="water-outages-map"
+          role="region"
+          aria-label="Water notices by parish"
+        >
+          <ClientOnly fallback={MAP_FALLBACK}>
+            <Suspense fallback={MAP_FALLBACK}>
+              <OutageMap
+                counts={counts}
+                onSelect={chooseParish}
+                selected={selected}
+              />
+            </Suspense>
+          </ClientOnly>
+        </div>
+        <figcaption>
+          <Text as="p" className="govbb-hint" size="body-sm">
+            Select a circle or choose a parish above. Red circles have current
+            notices; blue-grey circles have none. A dark blue border marks your
+            choice. Circles show parish centres, not the exact areas affected.
+          </Text>
+        </figcaption>
+      </figure>
+
+      <SubscribeForm selectedArea={selected} selectedLabel={selectedLabel} />
     </div>
   )
 }
 
 function OutageCard({ outage, now }: { outage: Outage; now: number }) {
   const fresh = freshnessLabel(outage, now)
-  const over = fresh === 'Ended'
 
   return (
     <article className="water-outages-card">
@@ -356,7 +382,6 @@ function OutageCard({ outage, now }: { outage: Outage; now: number }) {
         <Text
           as="span"
           className="water-outages-badge"
-          data-state={over ? 'ended' : 'active'}
           size="body-sm"
           weight="bold"
         >

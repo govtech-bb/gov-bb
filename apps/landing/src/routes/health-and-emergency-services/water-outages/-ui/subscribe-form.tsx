@@ -30,6 +30,7 @@ export function SubscribeForm({
   const [doneMessage, setDoneMessage] = useState('')
   const [isPending, startTransition] = useTransition()
   const emailInput = useRef<HTMLInputElement>(null)
+  const returnFocus = useRef(false)
 
   const headlinePlace = selectedLabel
     ? `in ${selectedLabel}`
@@ -37,6 +38,8 @@ export function SubscribeForm({
 
   function openForm() {
     setArea(selectedArea)
+    setEmailError(undefined)
+    setStatus('idle')
     setOpen(true)
   }
 
@@ -83,19 +86,22 @@ export function SubscribeForm({
   if (!open) {
     return (
       <div className="govbb-status-banner govbb-status-banner--rounded water-outages-subscribe">
-        <Text as="p" weight="bold">
-          Get email alerts
-        </Text>
         <Text as="p">
-          Get an email when the Barbados Water Authority publishes a water
-          notice {headlinePlace}. We&apos;ll only use your email to send these
-          alerts, and you can unsubscribe at any time.
-        </Text>
-        <Text as="p" size="body-sm">
-          <Link href="/terms-conditions#your-data">How we use your data</Link>
+          Get an email when the BWA publishes a water notice {headlinePlace}.
+          You can unsubscribe at any time.
         </Text>
         <ButtonGroup>
-          <Button onClick={openForm} type="button" variant="primary">
+          <Button
+            onClick={openForm}
+            ref={(button) => {
+              if (button && returnFocus.current) {
+                button.focus()
+                returnFocus.current = false
+              }
+            }}
+            type="button"
+            variant="primary"
+          >
             Get email alerts
           </Button>
         </ButtonGroup>
@@ -152,7 +158,8 @@ export function SubscribeForm({
       {status === 'error' && (
         <StatusBanner role="alert" variant="service">
           <Text as="p">
-            Something went wrong. Please try again in a moment.
+            We could not send your confirmation email. Please try again in a
+            moment.
           </Text>
         </StatusBanner>
       )}
@@ -163,9 +170,12 @@ export function SubscribeForm({
         </Button>
         <Button
           disabled={isPending}
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            returnFocus.current = true
+            setOpen(false)
+          }}
           type="button"
-          variant="tertiary"
+          variant="ghost"
         >
           Cancel
         </Button>

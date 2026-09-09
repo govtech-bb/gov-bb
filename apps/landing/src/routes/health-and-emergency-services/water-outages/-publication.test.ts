@@ -29,6 +29,17 @@ function call(hook: unknown, args: unknown) {
 }
 
 describe('water service publication', () => {
+  it('accepts a known parish in shared URLs and ignores invalid selections', () => {
+    expect(
+      call(index.options.validateSearch, { parish: 'saint-john' }),
+    ).toEqual({ parish: 'saint-john' })
+    for (const parish of [undefined, '', 'not-a-parish', ['saint-john'], 42]) {
+      expect(call(index.options.validateSearch, { parish })).toEqual({
+        parish: undefined,
+      })
+    }
+  })
+
   it('registers the service and honors preview and runtime publication', () => {
     expect(PAGES.find((p) => p.url === META.url)?.frontmatter.title).toBe(
       META.title,
