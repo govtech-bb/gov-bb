@@ -192,7 +192,7 @@ it("hands real selected Markdown to the assistant without modifying the editor",
 });
 
 it("keeps typed attachment parts on restore and revokes image preview URLs", async () => {
-  const create = vi.fn(() => "blob:preview"),
+  const create = vi.fn((_blob: Blob) => "blob:preview"),
     revoke = vi.fn();
   Object.defineProperty(URL, "createObjectURL", {
     value: create,
@@ -221,13 +221,11 @@ it("keeps typed attachment parts on restore and revokes image preview URLs", asy
   ]);
   expect(restored[0].parts[1]).toEqual(part);
   expect(attachmentMetadata(part)).toEqual(metadata);
-  const view = render(
-    <AttachmentCard
-      attachment={metadata}
-      file={new File(["image"], metadata.name, { type: metadata.type })}
-    />,
-  );
+  const file = new File(["image"], metadata.name, { type: metadata.type });
+  const view = render(<AttachmentCard attachment={metadata} file={file} />);
   await screen.findByAltText("Preview of scan.png");
+  expect(create.mock.calls[0][0]).not.toBe(file);
+  expect(create.mock.calls[0][0].type).toBe("image/png");
   view.unmount();
   expect(revoke).toHaveBeenCalledWith("blob:preview");
 });

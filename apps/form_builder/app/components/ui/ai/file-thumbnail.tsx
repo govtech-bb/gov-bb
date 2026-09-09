@@ -58,7 +58,8 @@ export function FileThumbnail({
     setLoading(false);
     if (!file) return;
     if (["image/png", "image/jpeg"].includes(file.type)) {
-      const url = URL.createObjectURL(file);
+      const type = file.type === "image/png" ? "image/png" : "image/jpeg";
+      const url = URL.createObjectURL(new Blob([file], { type }));
       setPreview(url);
       return () => URL.revokeObjectURL(url);
     }

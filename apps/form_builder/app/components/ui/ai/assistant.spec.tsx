@@ -114,11 +114,13 @@ it("requires a review and explicit approval before a client tool can change the 
   const view = render(<Assistant {...props} prepare={prepare} />);
   await waitFor(() => expect(harness.options).toBeTruthy());
   const resolve = await propose();
-  view.rerender(<Assistant {...props} prepare={prepare} />);
-  const button = await screen.findByRole("button", {
+  await act(async () => {
+    view.rerender(<Assistant {...props} prepare={prepare} />);
+  });
+  const button = screen.getByRole("button", {
     name: "Apply with warnings",
   });
-  await waitFor(() => expect(button).not.toBeDisabled());
+  expect(button).not.toBeDisabled();
   expect(apply).not.toHaveBeenCalled();
   expect(
     harness.options.tools[0].execute(proposal, { toolCallId: "call" }).applied,
