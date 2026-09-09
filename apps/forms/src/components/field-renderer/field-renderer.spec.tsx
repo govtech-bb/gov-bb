@@ -146,6 +146,13 @@ describe("FieldRenderer", () => {
     expect(container.querySelector("select")).toBeTruthy();
   });
 
+  it("select selection emits one option value", async () => {
+    const user = userEvent.setup();
+    renderField(primitive("select", { options: [{ value: "a", label: "A" }] }));
+    await user.selectOptions(screen.getByRole("combobox"), "a");
+    expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith("a");
+  });
+
   it("radio → renders radio inputs", () => {
     const { container } = renderField(
       primitive("radio", {
@@ -159,7 +166,25 @@ describe("FieldRenderer", () => {
     expect(inputs.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("checkbox → renders checkbox inputs", () => {
+  it("radio selection emits one option value", async () => {
+    const user = userEvent.setup();
+    renderField(
+      primitive("radio", {
+        options: [
+          { value: "yes", label: "Yes" },
+          { value: "no", label: "No" },
+        ],
+      }),
+    );
+    expect(screen.getByRole("radio", { name: "Yes" })).toHaveAttribute(
+      "value",
+      "yes",
+    );
+    await user.click(screen.getByRole("radio", { name: "Yes" }));
+    expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith("yes");
+  });
+
+  it("checkbox → renders checkbox inputs with their option values", () => {
     const { container } = renderField(
       primitive("checkbox", {
         options: [
@@ -170,6 +195,14 @@ describe("FieldRenderer", () => {
     );
     const inputs = container.querySelectorAll("input");
     expect(inputs.length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByRole("checkbox", { name: "A" })).toHaveAttribute(
+      "value",
+      "a",
+    );
+    expect(screen.getByRole("checkbox", { name: "B" })).toHaveAttribute(
+      "value",
+      "b",
+    );
   });
 
   it("time → renders a native time input", () => {
@@ -255,9 +288,17 @@ describe("FieldRenderer", () => {
     renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
     expect(screen.queryByLabelText("Popcorn")).toBeNull();
     await user.click(screen.getByLabelText("Snacks and sweets"));
+    expect(mockFieldApi.handleChange).not.toHaveBeenCalled();
+    const category = screen.getByLabelText("Snacks and sweets");
+    expect(category).toHaveAttribute("aria-expanded", "true");
+    expect(
+      document.getElementById(category.getAttribute("aria-controls")!),
+    ).toContainElement(screen.getByLabelText("Popcorn"));
     expect(screen.getByLabelText("Popcorn")).toBeInTheDocument();
     await user.click(screen.getByLabelText("Popcorn"));
-    expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["popcorn"]);
+    expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith([
+      "popcorn",
+    ]);
   });
 
   it("checkbox-accordion → a category with an existing selection opens expanded and accumulates", async () => {
@@ -267,6 +308,56 @@ describe("FieldRenderer", () => {
     // Meat holds "beef", so it renders expanded and its items are visible.
     await user.click(screen.getByLabelText("Chicken"));
     expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["beef", "chicken"]);
+  });
+
+  it("checkbox-accordion → closing and reopening a category preserves its selection", async () => {
+    const user = userEvent.setup();
+    mockState = { value: ["beef"], meta: { isValid: true, errors: [] } };
+    renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
+    const category = screen.getByLabelText(/Meat and poultry/);
+    await user.click(category);
+    expect(category).toHaveAttribute("aria-expanded", "false");
+    expect(category).not.toHaveAttribute("aria-controls");
+    expect(screen.queryByLabelText("Beef")).toBeNull();
+    await user.click(category);
+    expect(screen.getByLabelText("Beef")).toBeChecked();
+    expect(mockFieldApi.handleChange).not.toHaveBeenCalled();
+  });
+
+  it("checkbox-accordion → disabled fields prevent category and item changes", async () => {
+    const user = userEvent.setup();
+    mockState = { value: ["beef"], meta: { isValid: true, errors: [] } };
+    renderField(
+      primitive("checkbox-accordion", {
+        groups: accordionGroups,
+        disabled: true,
+      }),
+    );
+    for (const checkbox of screen.getAllByRole("checkbox")) {
+      expect(checkbox).toBeDisabled();
+      await user.click(checkbox);
+    }
+    expect(screen.getByLabelText("Beef")).toBeChecked();
+    expect(mockFieldApi.handleChange).not.toHaveBeenCalled();
+  });
+
+  it("checkbox-accordion → associates group hints and errors and marks invalid choices", () => {
+    mockState = {
+      value: [],
+      meta: { isValid: false, errors: ["Choose a food"] },
+    };
+    const field = primitive("checkbox-accordion", {
+      groups: accordionGroups,
+      hint: "Select the foods you serve",
+    });
+    const { container } = renderField(field);
+    expect(container.querySelector("fieldset")).toHaveAttribute(
+      "aria-describedby",
+      `${field.id}-hint ${field.id}-error`,
+    );
+    for (const checkbox of screen.getAllByRole("checkbox")) {
+      expect(checkbox).toHaveAttribute("aria-invalid", "true");
+    }
   });
 
   it("date → renders three text inputs with numeric inputmode (day/month/year)", () => {
@@ -319,6 +410,31 @@ describe("FieldRenderer", () => {
       expect(summary).toBeTruthy();
       expect(summary?.textContent).toContain("More details");
     });
+
+    it.each([false, true])(
+      "mounts its hint and fields only when open=%s",
+      (open) => {
+        mockState = { value: open, meta: { isValid: true, errors: [] } };
+        const { container } = renderField(
+          primitive("show-hide", { hint: "Enter your passport details" }),
+          { children: <input aria-label="Passport number" /> },
+        );
+        const details = container.querySelector("details")!;
+        if (open) {
+          expect(details).toContainElement(
+            screen.getByText("Enter your passport details"),
+          );
+          expect(details).toContainElement(
+            screen.getByRole("textbox", { name: "Passport number" }),
+          );
+        } else {
+          expect(screen.queryByText("Enter your passport details")).toBeNull();
+          expect(
+            screen.queryByRole("textbox", { name: "Passport number" }),
+          ).toBeNull();
+        }
+      },
+    );
 
     it("toggling the summary open commits true", async () => {
       const user = userEvent.setup();
@@ -463,7 +579,7 @@ describe("FieldRenderer", () => {
 
     it("with addAnotherLabel set, the button renders that label verbatim with no 'Add Another' text", () => {
       mockState = { value: ["first"], meta: { isValid: true, errors: [] } };
-      const { container } = renderField(
+      renderField(
         primitive("text", {
           label: "Middle name",
           behaviours: [
@@ -479,7 +595,7 @@ describe("FieldRenderer", () => {
       });
       expect(button).toBeInTheDocument();
       expect(button.textContent).toBe("Add another middle name");
-      expect(container.querySelector(".govbb-visually-hidden")).toBeNull();
+      expect(button.querySelector(".govbb-visually-hidden")).toBeNull();
     });
 
     it("without addAnotherLabel, the button still renders 'Add Another' with the field label visually hidden", () => {
@@ -719,7 +835,7 @@ describe("FieldRenderer", () => {
       mockState = { value: "5", meta: { isValid: true, errors: [] } };
       renderField(primitive("number"));
       await user.click(screen.getByRole("button", { name: "Increment" }));
-      expect(mockFieldApi.handleChange).toHaveBeenCalledWith("6");
+      expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith("6");
     });
 
     it("Decrement steps the value down by 1", async () => {
@@ -730,11 +846,7 @@ describe("FieldRenderer", () => {
       expect(mockFieldApi.handleChange).toHaveBeenCalledWith("4");
     });
 
-    // The mock handleChange never feeds the new value back into mockState, so
-    // both clicks step from the same blank base (0) — this asserts blank → ±1
-    // in each direction independently, NOT a sequential increment-then-decrement.
-    // Hello! I'm a human! Updating this test to ensure that the steppers can't go below zero.
-    it("steps from a blank value to 1 (up) and -1 (down)", async () => {
+    it("steps from a blank value without going below zero", async () => {
       const user = userEvent.setup();
       renderField(primitive("number")); // value is undefined
       await user.click(screen.getByRole("button", { name: "Increment" }));
@@ -742,6 +854,24 @@ describe("FieldRenderer", () => {
       await user.click(screen.getByRole("button", { name: "Decrement" }));
       // Can't go below zero! Clamping
       expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("0");
+    });
+
+    it("uses the configured step and emits one string value", async () => {
+      const user = userEvent.setup();
+      mockState = { value: "1.5", meta: { isValid: true, errors: [] } };
+      renderField(primitive("number", { step: 0.5 }));
+      await user.click(screen.getByRole("button", { name: "Increment" }));
+      expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith("2");
+    });
+
+    it("disables decrement at zero without changing the value", async () => {
+      const user = userEvent.setup();
+      mockState = { value: "0", meta: { isValid: true, errors: [] } };
+      renderField(primitive("number"));
+      const decrement = screen.getByRole("button", { name: "Decrement" });
+      expect(decrement).toBeDisabled();
+      await user.click(decrement);
+      expect(mockFieldApi.handleChange).not.toHaveBeenCalled();
     });
 
     it("renders the number input and steppers in the Add-another array path", () => {
@@ -872,14 +1002,6 @@ describe("FieldRenderer", () => {
       expect(inputs).toHaveLength(1);
     });
 
-    it("tags the checkbox item with the single-checkbox alignment class", () => {
-      const { container } = renderField(
-        primitive("checkbox", { options: singleOption }),
-      );
-      const item = container.querySelector(".govbb-checkbox-item");
-      expect(item).toHaveClass("form-page__single-checkbox");
-    });
-
     it("clicking unchecked checkbox calls handleChange with the option value", async () => {
       const user = userEvent.setup();
       mockState = { value: "", meta: { isValid: true, errors: [] } };
@@ -888,7 +1010,9 @@ describe("FieldRenderer", () => {
       );
       const input = container.querySelector("input") as HTMLInputElement;
       await user.click(input);
-      expect(mockFieldApi.handleChange).toHaveBeenCalledWith("agree");
+      expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith(
+        "agree",
+      );
     });
 
     it("clicking checked checkbox calls handleChange with empty string", async () => {
@@ -937,18 +1061,7 @@ describe("FieldRenderer", () => {
       );
       const inputs = container.querySelectorAll("input");
       await user.click(inputs[0]);
-      expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["a"]);
-    });
-
-    it("does not tag multi-option items with the single-checkbox alignment class", () => {
-      const { container } = renderField(
-        primitive("checkbox", { options: multiOptions }),
-      );
-      const items = container.querySelectorAll(".govbb-checkbox-item");
-      expect(items.length).toBeGreaterThan(1);
-      items.forEach((item) =>
-        expect(item).not.toHaveClass("form-page__single-checkbox"),
-      );
+      expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith(["a"]);
     });
 
     it("clicking a checked option removes it from the selection", async () => {
@@ -959,7 +1072,7 @@ describe("FieldRenderer", () => {
       );
       const inputs = container.querySelectorAll("input");
       await user.click(inputs[0]);
-      expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["b"]);
+      expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith(["b"]);
     });
   });
 
@@ -999,14 +1112,16 @@ describe("FieldRenderer", () => {
       );
       expect(inset).toBeTruthy();
       expect(inset?.querySelector("input")).toBeTruthy();
+      expect(
+        screen.getByRole("checkbox", { name: "Option A" }),
+      ).toHaveAttribute("aria-controls", inset?.id);
       // The reveal must sit between the two options, not after the group —
       // the CSS reveal rule and the reading order both depend on it.
-      expect(
-        inset?.previousElementSibling?.querySelector("input"),
-      ).toHaveAttribute("id", "step-1.checkbox-field-a");
-      expect(inset?.nextElementSibling?.querySelector("input")).toHaveAttribute(
-        "id",
-        "step-1.checkbox-field-b",
+      expect(inset?.previousElementSibling?.querySelector("input")).toBe(
+        screen.getByRole("checkbox", { name: "Option A" }),
+      );
+      expect(inset?.nextElementSibling?.querySelector("input")).toBe(
+        screen.getByRole("checkbox", { name: "Option B" }),
       );
     });
 
@@ -1023,6 +1138,91 @@ describe("FieldRenderer", () => {
       ).toBeNull();
     });
   });
+
+  it.each([
+    ["radio", "other", { options: [{ value: "other", label: "Other" }] }],
+    ["checkbox", "other", { options: [{ value: "other", label: "Other" }] }],
+    [
+      "checkbox",
+      ["other"],
+      {
+        options: [
+          { value: "other", label: "Other" },
+          { value: "yes", label: "Yes" },
+        ],
+      },
+    ],
+    [
+      "checkbox-accordion",
+      ["other"],
+      {
+        groups: [
+          { label: "Other", options: [{ value: "other", label: "Other" }] },
+        ],
+      },
+    ],
+    [
+      "checkbox-accordion",
+      ["other"],
+      {
+        groups: [
+          {
+            label: "Sources",
+            options: [
+              { value: "other", label: "Other" },
+              { value: "yes", label: "Yes" },
+            ],
+          },
+        ],
+      },
+    ],
+  ] as const)(
+    "%s option labels stay separate from similarly named fields (%j)",
+    async (htmlType, value, config) => {
+      mockState = { value, meta: { isValid: true, errors: [] } };
+      const choice = primitive(htmlType, {
+        id: "step-1_source",
+        ...structuredClone(config),
+      } as Partial<ClientPrimitive>);
+      const detail = primitive("text", {
+        id: "step-1_source-other",
+        label: "Specify other",
+      });
+      const { container } = render(
+        <>
+          <FieldRenderer
+            form={mockForm}
+            field={choice}
+            validationProperties={noValidation}
+          />
+          <FieldRenderer
+            form={mockForm}
+            field={detail}
+            validationProperties={noValidation}
+          />
+        </>,
+      );
+
+      expect(
+        screen.getByRole(htmlType === "radio" ? "radio" : "checkbox", {
+          name: "Other",
+          exact: true,
+        }),
+      ).toBeChecked();
+      const text = screen.getByRole("textbox", {
+        name: "Specify other (optional)",
+        exact: true,
+      });
+      await userEvent
+        .setup()
+        .click(screen.getByText("Specify other", { selector: "label" }));
+      expect(text).toHaveFocus();
+      const ids = [...container.querySelectorAll("[id]")].map(
+        (element) => element.id,
+      );
+      expect(new Set(ids).size).toBe(ids.length);
+    },
+  );
 
   // -------------------------------------------------------------------------
   // Date onChange handlers

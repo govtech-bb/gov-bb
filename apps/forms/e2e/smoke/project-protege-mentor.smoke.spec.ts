@@ -35,13 +35,14 @@
  *  - `declaration.declaration-date` is `isHidden: true` in the recipe, so it is
  *    not filled.
  *  - `declaration` is the explicit final step; its single-option confirmation
- *    checkbox input is `declaration_declaration-confirmed-confirmed`. The
+ *    checkbox input is `declaration_declaration-confirmed`. The
  *    renderer auto-injects `check-your-answers` immediately before it.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect } from "@playwright/test";
 import {
   STEP_TIMEOUT,
+  openSmokeForm,
   advance,
   currentStep,
   expectStep,
@@ -58,7 +59,7 @@ test.describe("Project Protege Mentor — Live Smoke", () => {
   test("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
   }) => {
-    await page.goto(`/forms/${FORM_ID}`);
+    await openSmokeForm(page, FORM_ID);
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });
@@ -174,7 +175,8 @@ test.describe("Project Protege Mentor — Live Smoke", () => {
     // ─── Declaration ─────────────────────────────────────────────────────────
     step = expectStep(page, "declaration", { exact: true });
     await page
-      .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

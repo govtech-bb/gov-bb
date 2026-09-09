@@ -795,8 +795,7 @@
         {
           "fieldId": "document-types",
           "label": "Additional Document Types",
-          "htmlType": "select",
-          "placeholder": "Select document types provided",
+          "htmlType": "checkbox",
           "options": [
             {
               "label": "Bank Statement",
@@ -819,7 +818,6 @@
               "value": "other"
             }
           ],
-          "multiple": true,
           "validations": {
             "minSelection": {
               "value": 1,

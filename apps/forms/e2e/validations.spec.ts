@@ -14,7 +14,7 @@
  *  - Checkbox: minSelection / maxSelection
  *  - File: type restriction, size limit, minItems / maxItems
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/api-mock";
 import { FormPage } from "./helpers/form-page";
 import {
   TEST_PNG,
@@ -50,6 +50,8 @@ async function completeUntilStep5(form: FormPage) {
   await form.fillStep4(TEST_PNG, [TEST_PNG_2, TEST_PNG_3]);
   await form.clickContinue();
   await form.waitForStep("step-5-financial-information");
+  await form.clickContinue();
+  await form.waitForStep("step-5-financial-information~1");
 }
 
 // ─── Step 1 validations ───────────────────────────────────────────────────────
@@ -134,12 +136,14 @@ test.describe("Step 1 — Personal Details validations", () => {
     await form.expectError("You must be at least 18 years old");
   });
 
-  test("date: minYear — year before 1900 shows error", async ({ page }) => {
+  test("date: year before 1900 fails the shared date validation", async ({
+    page,
+  }) => {
     const form = new FormPage(page);
     await form.goto();
     await form.fillDate("step-1-personal-details_date-of-birth", 1, 1, 1899);
     await form.clickContinue();
-    await form.expectError("Please enter a valid year");
+    await form.expectError("Year must include 4 numbers");
   });
 
   test("pattern: NINO format is enforced", async ({ page }) => {
@@ -401,11 +405,11 @@ test.describe("Step 5 — Financial Information validations", () => {
     // has-bank-account defaults to "confirmed" — leave it
     // Do NOT fill bank-name
     await form.fillNumber(
-      "step-5-financial-information_initial-deposit",
+      "step-5-financial-information~1_initial-deposit",
       "1000",
     );
     await form.clickRadio(
-      "step-5-financial-information_fund-source",
+      "step-5-financial-information~1_fund-source",
       "Employment Income",
     );
     await form.clickContinue();
@@ -414,19 +418,19 @@ test.describe("Step 5 — Financial Information validations", () => {
 
   test("minLength: account-number too short shows error", async ({ page }) => {
     const form = new FormPage(page);
-    await form.fillText("step-5-financial-information_bank-name", "Bank");
+    await form.fillText("step-5-financial-information~1_bank-name", "Bank");
     await form.selectOption(
-      "step-5-financial-information_account-type",
+      "step-5-financial-information~1_account-type",
       "current",
     );
-    await form.fillText("step-5-financial-information_account-number", "12"); // below min=4
-    await form.fillText("step-5-financial-information_swift-code", "123456");
+    await form.fillText("step-5-financial-information~1_account-number", "12"); // below min=4
+    await form.fillText("step-5-financial-information~1_swift-code", "123456");
     await form.fillNumber(
-      "step-5-financial-information_initial-deposit",
+      "step-5-financial-information~1_initial-deposit",
       "1000",
     );
     await form.clickRadio(
-      "step-5-financial-information_fund-source",
+      "step-5-financial-information~1_fund-source",
       "Employment Income",
     );
     await form.clickContinue();
@@ -435,22 +439,25 @@ test.describe("Step 5 — Financial Information validations", () => {
 
   test("pattern: invalid swift-code shows error", async ({ page }) => {
     const form = new FormPage(page);
-    await form.fillText("step-5-financial-information_bank-name", "Bank");
+    await form.fillText("step-5-financial-information~1_bank-name", "Bank");
     await form.selectOption(
-      "step-5-financial-information_account-type",
+      "step-5-financial-information~1_account-type",
       "current",
     );
     await form.fillText(
-      "step-5-financial-information_account-number",
+      "step-5-financial-information~1_account-number",
       "12345678",
     );
-    await form.fillText("step-5-financial-information_swift-code", "NOTVALID");
+    await form.fillText(
+      "step-5-financial-information~1_swift-code",
+      "NOTVALID",
+    );
     await form.fillNumber(
-      "step-5-financial-information_initial-deposit",
+      "step-5-financial-information~1_initial-deposit",
       "1000",
     );
     await form.clickRadio(
-      "step-5-financial-information_fund-source",
+      "step-5-financial-information~1_fund-source",
       "Employment Income",
     );
     await form.clickContinue();
@@ -459,19 +466,22 @@ test.describe("Step 5 — Financial Information validations", () => {
 
   test("min: initial-deposit below 100 shows error", async ({ page }) => {
     const form = new FormPage(page);
-    await form.fillText("step-5-financial-information_bank-name", "Bank");
+    await form.fillText("step-5-financial-information~1_bank-name", "Bank");
     await form.selectOption(
-      "step-5-financial-information_account-type",
+      "step-5-financial-information~1_account-type",
       "current",
     );
     await form.fillText(
-      "step-5-financial-information_account-number",
+      "step-5-financial-information~1_account-number",
       "12345678",
     );
-    await form.fillText("step-5-financial-information_swift-code", "123456");
-    await form.fillNumber("step-5-financial-information_initial-deposit", "50"); // below min=100
+    await form.fillText("step-5-financial-information~1_swift-code", "123456");
+    await form.fillNumber(
+      "step-5-financial-information~1_initial-deposit",
+      "50",
+    ); // below min=100
     await form.clickRadio(
-      "step-5-financial-information_fund-source",
+      "step-5-financial-information~1_fund-source",
       "Employment Income",
     );
     await form.clickContinue();
@@ -480,22 +490,22 @@ test.describe("Step 5 — Financial Information validations", () => {
 
   test("max: initial-deposit above 100,000 shows error", async ({ page }) => {
     const form = new FormPage(page);
-    await form.fillText("step-5-financial-information_bank-name", "Bank");
+    await form.fillText("step-5-financial-information~1_bank-name", "Bank");
     await form.selectOption(
-      "step-5-financial-information_account-type",
+      "step-5-financial-information~1_account-type",
       "current",
     );
     await form.fillText(
-      "step-5-financial-information_account-number",
+      "step-5-financial-information~1_account-number",
       "12345678",
     );
-    await form.fillText("step-5-financial-information_swift-code", "123456");
+    await form.fillText("step-5-financial-information~1_swift-code", "123456");
     await form.fillNumber(
-      "step-5-financial-information_initial-deposit",
+      "step-5-financial-information~1_initial-deposit",
       "200000",
     ); // above max=100000
     await form.clickRadio(
-      "step-5-financial-information_fund-source",
+      "step-5-financial-information~1_fund-source",
       "Employment Income",
     );
     await form.clickContinue();
@@ -506,17 +516,21 @@ test.describe("Step 5 — Financial Information validations", () => {
     page,
   }) => {
     const form = new FormPage(page);
+    await form.clickPrevious();
+    await form.waitForStep("step-5-financial-information");
     // Uncheck has-bank-account (default is confirmed)
     await form.clickCheckbox(
       "step-5-financial-information_has-bank-account",
       "I do",
     );
+    await form.clickContinue();
+    await form.waitForStep("step-5-financial-information~1");
     await form.fillNumber(
-      "step-5-financial-information_initial-deposit",
+      "step-5-financial-information~1_initial-deposit",
       "1000",
     );
     await form.clickRadio(
-      "step-5-financial-information_fund-source",
+      "step-5-financial-information~1_fund-source",
       "Employment Income",
     );
     await form.clickContinue();

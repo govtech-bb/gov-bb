@@ -1,7 +1,7 @@
 /**
  * eho-frederick-miller-local.smoke.spec.ts
  *
- * LOCAL-ONLY smoke for `request-an-environmental-health-officer`, pinned to the
+ * Live smoke for `request-an-environmental-health-officer`, pinned to the
  * catchment case that is easiest to get wrong: an event whose coordinates fall
  * inside the **Frederick Miller** catchment must be routed to, and named as,
  * **St. Philip Polyclinic** (Frederick Miller has no Environmental Health
@@ -13,7 +13,8 @@
  * screen can only have come from the coordinate hit plus the redirect, never
  * from the parish fallback.
  *
- * Run against a local stack only:
+ * Run against a local stack or a sandbox with its smoke and preview tokens.
+ * Local example:
  *   SMOKE_BASE_URL=http://localhost:4300 VITE_API_URL=http://localhost:3011 \
  *     PREVIEW_TOKEN=… pnpm --filter @govtech-bb/forms exec playwright test \
  *     --config playwright.smoke.config.ts eho-frederick-miller-local --headed
@@ -24,6 +25,7 @@ import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
 import {
   STEP_TIMEOUT,
+  openSmokeForm,
   advance,
   expectStep,
   fillDate,
@@ -31,7 +33,10 @@ import {
   selectDropdown,
   selectRadio,
   submitAndConfirm,
+  tickCheckbox,
+  uploadOne,
 } from "../helpers/smoke";
+import { TEST_PNG, TEST_PNG_2 } from "../helpers/test-data";
 
 const FORM_ID = "request-an-environmental-health-officer";
 
@@ -121,12 +126,7 @@ test("routes a Frederick Miller event to St. Philip and mints an MOH-EHO referen
   const data = buildData();
 
   // ─── Open (preview token: the recipe is visibility:draft) ─────────────────
-  const previewToken = process.env.PREVIEW_TOKEN;
-  await page.goto(
-    previewToken
-      ? `/forms/${FORM_ID}?preview=${encodeURIComponent(previewToken)}`
-      : `/forms/${FORM_ID}`,
-  );
+  await openSmokeForm(page, FORM_ID);
   await page.waitForURL((url) => !!url.searchParams.get("step"), {
     timeout: STEP_TIMEOUT,
   });
@@ -220,7 +220,7 @@ test("routes a Frederick Miller event to St. Philip and mints an MOH-EHO referen
   step = expectStep(page, "food-details");
   await page.getByRole("checkbox", { name: "Other food", exact: true }).check();
   await fillField(page, step, "other-food-description", data.otherFood);
-  await page.locator(`input[id="${step}_food-source-supplier"]`).check();
+  await tickCheckbox(page, step, "food-source", "supplier");
   await expect(page.locator(`[id="${step}_supplier-details"]`)).toBeVisible({
     timeout: STEP_TIMEOUT,
   });
@@ -237,8 +237,10 @@ test("routes a Frederick Miller event to St. Philip and mints an MOH-EHO referen
   await fillField(page, step, "waste-disposal", data.wasteDisposal);
   await advance(page, step);
 
-  // ─── Documents: all uploads are optional in the local recipe tweak ────────
+  // ─── Documents required by the published serving-food recipe ─────────────
   step = expectStep(page, "documents");
+  await uploadOne(page, step, "vendor-list", TEST_PNG);
+  await uploadOne(page, step, "medical-certs", TEST_PNG_2);
   await advance(page, step);
 
   step = expectStep(page, "check-your-answers");

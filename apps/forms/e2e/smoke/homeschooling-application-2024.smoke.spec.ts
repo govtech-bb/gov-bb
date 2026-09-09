@@ -26,13 +26,14 @@
  *    `previous-school-info` hidden; `following-national-curriculum` = "yes"
  *    keeps the conditional `curriculum-attachment` upload hidden.
  *  - `declaration` is the explicit final step; its single-option checkbox input
- *    is `declaration_declaration-confirmed-confirmed`.
+ *    is `declaration_declaration-confirmed`.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect } from "@playwright/test";
 import { TEST_PNG, TEST_PNG_2 } from "../helpers/test-data";
 import {
   STEP_TIMEOUT,
+  openSmokeForm,
   advance,
   expectStep,
   fillDate,
@@ -49,7 +50,7 @@ test.describe("Homeschooling Application — Live Smoke", () => {
   test("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
   }) => {
-    await page.goto(`/forms/${FORM_ID}`);
+    await openSmokeForm(page, FORM_ID);
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });
@@ -112,7 +113,8 @@ test.describe("Homeschooling Application — Live Smoke", () => {
     // ─── Declaration ─────────────────────────────────────────────────────────
     step = expectStep(page, "declaration", { exact: true });
     await page
-      .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

@@ -5,15 +5,17 @@ import { getCatalogFn } from "../../server/registry";
 import { createMdaContact } from "../../server/mda-contacts";
 import { getPublishBaseBranch } from "../../server/publish";
 import { previewRecipe } from "../../server/registry";
-import { serializeRecipeDraft, findRecipeIdCollisions, resolveFieldIds } from "@govtech-bb/form-builder";
+import {
+  serializeRecipeDraft,
+  findRecipeIdCollisions,
+  resolveFieldIds,
+} from "@govtech-bb/form-builder";
 import type {
   ServiceContract,
   ServiceContractRecipe,
   RecipeVisibility,
 } from "@govtech-bb/form-types";
-import {
-  getRecipeVisibility,
-} from "@govtech-bb/form-types";
+import { getRecipeVisibility } from "@govtech-bb/form-types";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 
 import { Moon02Icon, Sun03Icon } from "hugeicons-react";
@@ -22,8 +24,13 @@ import { SectionSwitch } from "../../components/section-switch";
 import { Tip } from "../content/-sliding-tabs";
 import { useTheme } from "../content/-use-theme";
 import { draftsEqual } from "./-apply-recipe";
-import { AiSidebar } from "./-ai-sidebar";
-import { recipeReducer, EMPTY_DRAFT, nextStepId, REQUIRED_STEP_IDS } from "./-recipe-reducer";
+import { FormAssistant } from "../../components/ui/ai/form-assistant";
+import {
+  recipeReducer,
+  EMPTY_DRAFT,
+  nextStepId,
+  REQUIRED_STEP_IDS,
+} from "./-recipe-reducer";
 import { Toolbar } from "./-toolbar";
 import { usePresence } from "./-use-presence";
 import { PresenceBanner } from "./-presence-banner";
@@ -61,6 +68,7 @@ export const Route = createFileRoute("/builder/")({
 });
 
 function BuilderPage() {
+  const { user } = Route.useRouteContext();
   const { catalog, baseBranch } = Route.useLoaderData();
   const {
     forms,
@@ -101,12 +109,14 @@ function BuilderPage() {
   // The serialized draft captured when Preview is pressed (#744) — set before
   // the preview request so the "View recipe JSON" action works even while the
   // contract is loading or the request failed.
-  const [previewRecipeJson, setPreviewRecipeJson] = useState<ServiceContractRecipe | null>(null);
+  const [previewRecipeJson, setPreviewRecipeJson] =
+    useState<ServiceContractRecipe | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
 
   // Derived
-  const selectedStep = draft.steps.find((s) => s.stepId === selectedStepId) ?? null;
+  const selectedStep =
+    draft.steps.find((s) => s.stepId === selectedStepId) ?? null;
   const isDirty =
     draft.steps.length > REQUIRED_STEP_IDS.length ||
     draft.formId !== "" ||
@@ -243,9 +253,7 @@ function BuilderPage() {
     handleDuplicate,
   } = useDraftLifecycle({
     draft,
-    catalog,
     savedDraft,
-    hasUnsavedChanges,
     dispatch,
     setSavedDraft,
     setLoadedFromId,
@@ -336,21 +344,35 @@ function BuilderPage() {
       // Captured before the request so the JSON is inspectable even when the
       // preview request fails — failure is exactly when you want to see it.
       setPreviewRecipeJson(recipe);
-      const contract = await previewRecipe({ data: { recipe } }) as ServiceContract;
+      const contract = (await previewRecipe({
+        data: { recipe },
+      })) as ServiceContract;
       setPreviewData(contract as ServiceContract);
     } catch (e) {
-      setPreviewError(e instanceof Error ? e.message : "Preview request failed");
+      setPreviewError(
+        e instanceof Error ? e.message : "Preview request failed",
+      );
     } finally {
       setIsPreviewing(false);
     }
   };
 
   const handleFormIdChange = (id: string) => {
-    dispatch({ type: "SET_FORM_META", formId: id, title: draft.title, description: draft.description });
+    dispatch({
+      type: "SET_FORM_META",
+      formId: id,
+      title: draft.title,
+      description: draft.description,
+    });
   };
 
   const handleTitleChange = (title: string) => {
-    dispatch({ type: "SET_FORM_META", formId: draft.formId, title, description: draft.description });
+    dispatch({
+      type: "SET_FORM_META",
+      formId: draft.formId,
+      title,
+      description: draft.description,
+    });
   };
 
   const handleVisibilityChange = (visibility: RecipeVisibility) => {
@@ -466,105 +488,123 @@ function BuilderPage() {
       />
 
       <div className={styles.builderMain}>
-      <div className={styles.builderRoot}>
-      <div className={styles.builderBody}>
-        <StepList
-          steps={draft.steps}
-          selectedStepId={mainView === "step" ? selectedStepId : null}
-          onSelect={handleSelectStep}
-          onAdd={handleAddStep}
-          onRemove={handleRemoveStep}
-          onMoveUp={handleMoveStepUp}
-          onMoveDown={handleMoveStepDown}
-          processorCount={draft.processors?.length ?? 0}
-          isProcessorsActive={mainView === "processors"}
-          onSelectProcessors={handleSelectProcessors}
-          hasContactDetails={draft.contactDetails !== undefined}
-          isContactDetailsActive={mainView === "contactDetails"}
-          onSelectContactDetails={handleSelectContactDetails}
-        />
+        <div className={styles.builderRoot}>
+          <div className={styles.builderBody}>
+            <StepList
+              steps={draft.steps}
+              selectedStepId={mainView === "step" ? selectedStepId : null}
+              onSelect={handleSelectStep}
+              onAdd={handleAddStep}
+              onRemove={handleRemoveStep}
+              onMoveUp={handleMoveStepUp}
+              onMoveDown={handleMoveStepDown}
+              processorCount={draft.processors?.length ?? 0}
+              isProcessorsActive={mainView === "processors"}
+              onSelectProcessors={handleSelectProcessors}
+              hasContactDetails={draft.contactDetails !== undefined}
+              isContactDetailsActive={mainView === "contactDetails"}
+              onSelectContactDetails={handleSelectContactDetails}
+            />
 
-        <BuilderPanel
-          mainView={mainView}
-          draft={draft}
-          dispatch={dispatch}
-          catalog={catalog}
-          selectedStep={selectedStep}
-          mdaContacts={mdaContacts}
-          mdaContactsLoadError={mdaContactsLoadError}
-          resolvedFieldIds={resolvedFieldIds}
-          onCreateContact={handleCreateMdaContact}
-          onStepIdChange={handleStepIdChange}
-        />
-      </div>
+            <BuilderPanel
+              mainView={mainView}
+              draft={draft}
+              dispatch={dispatch}
+              catalog={catalog}
+              selectedStep={selectedStep}
+              mdaContacts={mdaContacts}
+              mdaContactsLoadError={mdaContactsLoadError}
+              resolvedFieldIds={resolvedFieldIds}
+              onCreateContact={handleCreateMdaContact}
+              onStepIdChange={handleStepIdChange}
+            />
+          </div>
 
-      {/* Floating over the canvas (not in-flow) so appearing/dismissing never
+          {/* Floating over the canvas (not in-flow) so appearing/dismissing never
           reflows the editor underneath. */}
-      <div className={styles.bannerStack}>
-      <CollisionBanner idCollisions={idCollisions} />
+          <div className={styles.bannerStack}>
+            <CollisionBanner idCollisions={idCollisions} />
 
-      <ValidationPanel result={validateResult} onDismiss={dismiss} />
-      </div>
+            <ValidationPanel result={validateResult} onDismiss={dismiss} />
+          </div>
 
-      <BuilderModals
-        isPickerOpen={isPickerOpen}
-        forms={forms}
-        formsLoadError={formsLoadError}
-        openPRs={formOpenPRs}
-        isDirty={isDirty}
-        catalog={catalog}
-        onLoad={handleLoad}
-        onClosePicker={() => setIsPickerOpen(false)}
-        onRequestDelete={handleRequestDelete}
-        onRequestDisable={handleRequestDisable}
-        onRequestErase={handleRequestErase}
-        onEnable={handleEnable}
-        onDuplicate={handleDuplicate}
-        isPreviewOpen={isPreviewOpen}
-        previewData={previewData}
-        isPreviewing={isPreviewing}
-        previewError={previewError}
-        loadedFromId={loadedFromId}
-        previewRecipeJson={previewRecipeJson}
-        onClosePreview={() => { setIsPreviewOpen(false); setPreviewData(null); setPreviewError(null); setPreviewRecipeJson(null); }}
-        isSubmitOpen={isSubmitOpen}
-        draft={draft}
-        isSubmitting={isSubmitting}
-        submitSuccess={submitSuccess}
-        submitError={submitError}
-        isReadOnly={isReadOnly}
-        onSubmit={handleSubmit}
-        onCloseSubmit={() => setIsSubmitOpen(false)}
-        isPublishOpen={isPublishOpen}
-        baseBranch={baseBranch}
-        isPublishing={isPublishing}
-        publishSuccess={publishSuccess}
-        publishError={publishError}
-        onPublish={handlePublish}
-        onClosePublish={handleClosePublish}
-        deleteTarget={deleteTarget}
-        isDeleting={isDeleting}
-        deleteError={deleteError}
-        onConfirmDelete={handleConfirmDelete}
-        onCloseDelete={handleCloseDelete}
-        disableTarget={disableTarget}
-        isDisabling={isDisabling}
-        disableError={disableError}
-        onConfirmDisable={handleConfirmDisable}
-        onCloseDisable={handleCloseDisable}
-        eraseTarget={eraseTarget}
-        isErasing={isErasing}
-        eraseError={eraseError}
-        eraseSuccess={eraseSuccess}
-        onConfirmErase={handleConfirmErase}
-        onCloseErase={handleCloseErase}
-      />
-      </div>
+          <BuilderModals
+            isPickerOpen={isPickerOpen}
+            forms={forms}
+            formsLoadError={formsLoadError}
+            openPRs={formOpenPRs}
+            isDirty={isDirty}
+            catalog={catalog}
+            onLoad={handleLoad}
+            onClosePicker={() => setIsPickerOpen(false)}
+            onRequestDelete={handleRequestDelete}
+            onRequestDisable={handleRequestDisable}
+            onRequestErase={handleRequestErase}
+            onEnable={handleEnable}
+            onDuplicate={handleDuplicate}
+            isPreviewOpen={isPreviewOpen}
+            previewData={previewData}
+            isPreviewing={isPreviewing}
+            previewError={previewError}
+            loadedFromId={loadedFromId}
+            previewRecipeJson={previewRecipeJson}
+            onClosePreview={() => {
+              setIsPreviewOpen(false);
+              setPreviewData(null);
+              setPreviewError(null);
+              setPreviewRecipeJson(null);
+            }}
+            isSubmitOpen={isSubmitOpen}
+            draft={draft}
+            isSubmitting={isSubmitting}
+            submitSuccess={submitSuccess}
+            submitError={submitError}
+            isReadOnly={isReadOnly}
+            onSubmit={handleSubmit}
+            onCloseSubmit={() => setIsSubmitOpen(false)}
+            isPublishOpen={isPublishOpen}
+            baseBranch={baseBranch}
+            isPublishing={isPublishing}
+            publishSuccess={publishSuccess}
+            publishError={publishError}
+            onPublish={handlePublish}
+            onClosePublish={handleClosePublish}
+            deleteTarget={deleteTarget}
+            isDeleting={isDeleting}
+            deleteError={deleteError}
+            onConfirmDelete={handleConfirmDelete}
+            onCloseDelete={handleCloseDelete}
+            disableTarget={disableTarget}
+            isDisabling={isDisabling}
+            disableError={disableError}
+            onConfirmDisable={handleConfirmDisable}
+            onCloseDisable={handleCloseDisable}
+            eraseTarget={eraseTarget}
+            isErasing={isErasing}
+            eraseError={eraseError}
+            eraseSuccess={eraseSuccess}
+            onConfirmErase={handleConfirmErase}
+            onCloseErase={handleCloseErase}
+          />
+        </div>
 
-      <AiSidebar
-        draft={draft}
-        onApplyRecipe={applyAiRecipe}
-      />
+        <FormAssistant
+          user={user.login}
+          documentId={loadedFromId ?? "new"}
+          draft={draft}
+          catalog={catalog}
+          readOnly={isReadOnly}
+          selection={
+            mainView === "step"
+              ? selectedStep
+                ? `${selectedStep.title} (${selectedStep.stepId})`
+                : undefined
+              : mainView === "processors"
+                ? "Processors"
+                : "Contact details"
+          }
+          onApply={applyAiRecipe}
+        />
       </div>
     </div>
   );

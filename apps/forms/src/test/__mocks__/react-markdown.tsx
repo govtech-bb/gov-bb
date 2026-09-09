@@ -16,7 +16,7 @@ export default function ReactMarkdown({
   return <div data-testid="react-markdown">{children}</div>;
 }
 
-// Verbatim copy of react-markdown@9's defaultUrlTransform. markdown-components
+// Verbatim copy of react-markdown@9's defaultUrlTransform. markdown-url-transform
 // imports it to sanitise hrefs, and this alias replaces the whole module, so
 // the named export has to exist here too.
 export function defaultUrlTransform(value: string): string {

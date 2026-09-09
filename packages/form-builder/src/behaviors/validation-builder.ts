@@ -304,18 +304,6 @@ export const VALIDATION_RULE_DESCRIPTORS: Record<
       hasValue: false,
       hasReference: false,
     },
-    {
-      type: "minSelection",
-      label: "Min Selection",
-      hasValue: true,
-      hasReference: false,
-    },
-    {
-      type: "maxSelection",
-      label: "Max Selection",
-      hasValue: true,
-      hasReference: false,
-    },
   ],
   radio: [
     {

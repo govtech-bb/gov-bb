@@ -1,7 +1,7 @@
 import { JSX } from "react";
+import { FormGroup, Hint, Label, NumberInput } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import { MaskedInput } from "../masked-input";
-import { NumberInput } from "./number-input";
 import { renderRepeatableOrSingle, rowInputProps } from "./repeatable-field";
 import { FieldRenderContext } from "./render-context";
 
@@ -16,16 +16,12 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
     hintId,
     errorId,
     errorMessage,
-    labelClass,
     labelSuffix,
   } = ctx;
 
   const isNumber = field.htmlType === "number";
 
-  // Number fields render the design-system number input (custom
-  // steppers, native spinners hidden); the other text-like types keep
-  // the masked `.govbb-input`. `withRequired` mirrors the original
-  // behaviour where the repeating array path omits requiredProps.
+  // Repeated rows omit requiredProps; the array validator checks the group.
   const renderControl = (
     value: string,
     onChange: (next: string) => void,
@@ -35,43 +31,44 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
     const props = rowInputProps(sharedProps, field, index);
     return isNumber ? (
       <NumberInput
+        {...props}
+        {...(withRequired ? requiredProps : {})}
+        labelId={`${field.id}-label`}
+        min={0}
+        inputMode="numeric"
         value={value}
-        onChange={onChange}
-        invalid={invalid}
-        inputProps={withRequired ? { ...props, ...requiredProps } : props}
+        aria-invalid={invalid}
+        onInput={(event) => onChange(event.currentTarget.value)}
       />
     ) : (
-      <div className="govbb-input-wrapper">
-        <MaskedInput
-          key={props.id}
-          mask={field.mask}
-          {...props}
-          {...(withRequired ? requiredProps : {})}
-          autoComplete={autoComplete}
-          className="govbb-input"
-          value={value}
-          aria-invalid={invalid}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      </div>
+      <MaskedInput
+        key={props.id}
+        mask={field.mask}
+        {...props}
+        {...(withRequired ? requiredProps : {})}
+        autoComplete={autoComplete}
+        value={value}
+        aria-invalid={invalid}
+        onChange={(e) => onChange(e.target.value)}
+      />
     );
   };
 
   const inputElement = renderRepeatableOrSingle(ctx, renderControl);
 
   return (
-    <div className="govbb-form-group" data-field-width={field.ui?.width}>
-      <label className={labelClass("govbb-label")} htmlFor={field.id}>
+    <FormGroup data-field-width={field.ui?.width}>
+      <Label
+        id={`${field.id}-label`}
+        className={field.ui?.hideLabel ? "govbb-visually-hidden" : undefined}
+        htmlFor={field.id}
+        optional={labelSuffix !== null}
+      >
         {field.label}
-        {labelSuffix}
-      </label>
-      {field.hint && (
-        <p className="govbb-hint" id={hintId}>
-          {field.hint}
-        </p>
-      )}
+      </Label>
+      {field.hint && <Hint id={hintId}>{field.hint}</Hint>}
       <ErrorMessage id={errorId} message={errorMessage} />
       {inputElement}
-    </div>
+    </FormGroup>
   );
 }

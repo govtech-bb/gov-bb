@@ -1,4 +1,5 @@
 import React from "react";
+import { Input } from "@govtech-bb/react";
 import { useMaskito } from "@maskito/react";
 
 const MASK_CHAR_MAP: Record<string, RegExp> = {
@@ -17,7 +18,7 @@ type MaskedInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 
 export function MaskedInput({ mask, ...rest }: MaskedInputProps) {
   if (mask) return <MaskedInputInner mask={mask} {...rest} />;
-  return <input {...rest} />;
+  return <Input {...rest} />;
 }
 
 function MaskedInputInner({
@@ -26,5 +27,5 @@ function MaskedInputInner({
 }: React.InputHTMLAttributes<HTMLInputElement> & { mask: string }) {
   const maskArray = React.useMemo(() => parseMask(mask), [mask]);
   const ref = useMaskito({ options: { mask: maskArray } });
-  return <input ref={ref} {...rest} />;
+  return <Input ref={ref} {...rest} />;
 }

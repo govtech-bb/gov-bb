@@ -42,6 +42,7 @@ import { test, expect } from "@playwright/test";
 import { TEST_PNG, TEST_PNG_2, TEST_PNG_3 } from "../helpers/test-data";
 import {
   STEP_TIMEOUT,
+  openSmokeForm,
   advance,
   expectStep,
   fillDate,
@@ -61,7 +62,7 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     const firstName = faker.person.firstName();
     const lastName = faker.person.lastName();
 
-    await page.goto(`/forms/${FORM_ID}`);
+    await openSmokeForm(page, FORM_ID);
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });
@@ -165,7 +166,8 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     await expect(applicant).toContainText(`${firstName} ${lastName}`);
     await expect(applicant).toContainText(/\b\d{2}\/\d{2}\/\d{4}\b/);
     await page
-      .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

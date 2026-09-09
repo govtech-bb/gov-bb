@@ -36,6 +36,7 @@ import { faker } from "@faker-js/faker";
 import { test, expect } from "@playwright/test";
 import {
   STEP_TIMEOUT,
+  openSmokeForm,
   advance,
   expectStep,
   fillField,
@@ -99,7 +100,7 @@ test.describe("Smart Stream Vendor Registration — Live Smoke", () => {
 
     // Land on step 1 — the step guard redirects a fresh session to the first
     // step, whatever its (possibly numbered) ID is.
-    await page.goto(`/forms/${FORM_ID}`);
+    await openSmokeForm(page, FORM_ID);
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });

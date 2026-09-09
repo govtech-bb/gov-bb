@@ -74,7 +74,7 @@ export function getSwappableRefs(
  * Keep-compatible override migration when a field's ref changes html type.
  * Carries the type-agnostic overrides (id, label, hint, placeholder, disabled,
  * hidden, ui, behaviours), keeps `required`/`conditionalOn` plus any validation
- * rule the *target* htmlType supports, and carries `options`/`multiple` only
+ * rule the *target* htmlType supports, and carries `options` only
  * when both ends are in the Choice group. Type-specific keys (`defaultValue`,
  * `mask`) are dropped.
  */
@@ -114,13 +114,10 @@ export function migrateOverridesForRef(
   }
 
   // `options` survive any swap within the Choice group (select/radio/checkbox
-  // all carry options). `multiple` is select-only — radio/checkbox have no such
-  // property — so it survives only when the target is a select.
+  // all carry options).
   const choice = SWAP_GROUPS.choice as readonly HtmlTypes[];
   if (choice.includes(fromHtmlType) && choice.includes(toHtmlType)) {
     if (overrides.options !== undefined) next.options = overrides.options;
-    if (overrides.multiple !== undefined && toHtmlType === "select")
-      next.multiple = overrides.multiple;
   }
 
   return next;

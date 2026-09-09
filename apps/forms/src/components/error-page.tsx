@@ -1,14 +1,13 @@
-import { Button, Heading, LinkButton, Text } from "@govtech-bb/react";
+import {
+  Button,
+  ButtonGroup,
+  Heading,
+  LinkButton,
+  List,
+  Text,
+} from "@govtech-bb/react";
 import type { ReactNode } from "react";
 
-// Mirrors the landing app's ErrorPage (apps/landing/src/components/ErrorPage.tsx)
-// so forms error states look identical to the rest of the platform. Promoting
-// this into the shared @govtech-bb/react package is the proper long-term home
-// (#1692), but that package is external/published, so it is mirrored here for now.
-//
-// Unlike landing's version, an action may be a link (`href`) OR a button
-// (`onClick`) — forms' connection/generic error states keep a "Try again"
-// retry that re-runs the route loader, which a plain link cannot do.
 type ErrorPageAction =
   | { label: string; href: string }
   | { label: string; onClick: () => void };
@@ -50,28 +49,28 @@ export function ErrorPage({
   primary,
 }: ErrorPageProps) {
   return (
-    <div className="container py-8 lg:py-16">
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2 lg:space-y-8">
+    <div className="govbb-width-container govbb-main-wrapper">
+      <div className="govbb-grid-row">
+        <div className="govbb-grid-column-two-thirds-from-desktop flex flex-col gap-6 lg:gap-8">
           <Heading as="h1">{title}</Heading>
           <Text as="p">{intro}</Text>
-          <div className="space-y-4">
-            <Heading as="h3">Suggestions:</Heading>
-            <ul className="list-disc space-y-2 ps-8">
+          <div className="flex flex-col gap-4">
+            <Heading as="h2" size="h3">
+              Suggestions:
+            </Heading>
+            <List variant="bullet">
               {suggestions.map((s, i) => (
-                <li key={i}>
-                  <Text as="span">{s}</Text>
-                </li>
+                <li key={i}>{s}</li>
               ))}
-            </ul>
+            </List>
           </div>
           {(secondary || primary) && (
-            <div className="flex flex-wrap gap-4 pt-2">
+            <ButtonGroup className="pt-2">
               {secondary && (
                 <ActionButton action={secondary} variant="secondary" />
               )}
               {primary && <ActionButton action={primary} variant="primary" />}
-            </div>
+            </ButtonGroup>
           )}
         </div>
       </div>

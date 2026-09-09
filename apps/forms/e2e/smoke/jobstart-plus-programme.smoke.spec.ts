@@ -42,13 +42,14 @@
  *  - eligibility-age carries only the required `willing-to-work-nights` radio.
  *  - The renderer auto-injects nothing extra: `check-your-answers` is an explicit
  *    recipe step. It is guarded all the same in case of deployment drift.
- *  - `declaration` carries a single-option confirmation checkbox; its input id is
- *    `declaration_declaration-confirmed-confirmed`. (`declaration-date` is hidden.)
+ *  - `declaration` carries a single-option confirmation checkbox; its fieldset id is
+ *    `declaration_declaration-confirmed`. (`declaration-date` is hidden.)
  */
 import { faker } from "@faker-js/faker";
 import { test, expect } from "@playwright/test";
 import {
   STEP_TIMEOUT,
+  openSmokeForm,
   advance,
   currentStep,
   expectStep,
@@ -65,7 +66,7 @@ test.describe("JobStart Plus Programme — Live Smoke", () => {
   test("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
   }) => {
-    await page.goto(`/forms/${FORM_ID}`);
+    await openSmokeForm(page, FORM_ID);
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });
@@ -246,7 +247,8 @@ test.describe("JobStart Plus Programme — Live Smoke", () => {
     // ─── Declaration ─────────────────────────────────────────────────────────
     step = expectStep(page, "declaration", { exact: true });
     await page
-      .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

@@ -6,6 +6,7 @@
   "types": "./src/index.d.ts",
   "dependencies": {
     "@govtech-bb/form-types": "workspace:*",
-    "@govtech-bb/registry": "workspace:*"
+    "@govtech-bb/registry": "workspace:*",
+    "zod": "^4.4.3"
   }
 }

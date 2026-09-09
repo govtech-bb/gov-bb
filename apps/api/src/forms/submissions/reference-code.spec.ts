@@ -1,8 +1,11 @@
+import { randomInt } from "node:crypto";
 import {
   canonicalizeReferenceCode,
   generateReferenceCode,
   referencePrefixFromProcessors,
 } from "./reference-code";
+
+vi.mock("node:crypto", { spy: true });
 
 describe("generateReferenceCode", () => {
   it("derives an uppercase first-letter-of-each-segment prefix from the formId", () => {
@@ -53,16 +56,18 @@ describe("generateReferenceCode", () => {
     expect(tails.size).toBeGreaterThan(15);
   });
 
-  it("generates no collisions across a large batch (CSPRNG entropy check)", () => {
-    // Statistical guard on the generator itself. The DB unique constraint +
-    // retry-on-collision is the real guarantee (see SubmissionsService); this
-    // ensures the entropy is high enough that retries stay vanishingly rare.
-    const N = 50_000;
-    const codes = new Set<string>();
-    for (let i = 0; i < N; i++) {
-      codes.add(generateReferenceCode("byac", { prefix: "BYAC" }));
+  it("draws each tail character from the full alphabet using the CSPRNG", () => {
+    const random = vi.mocked(randomInt).mockClear();
+    for (const index of [0, 31, 10, 11, 30, 1, 2]) {
+      random.mockImplementationOnce(() => index);
     }
-    expect(codes.size).toBe(N);
+    expect(
+      generateReferenceCode("byac", {
+        prefix: "BYAC",
+        now: new Date("2026-06-15T00:00:00.000Z"),
+      }),
+    ).toBe("BYAC-2606-0ZABY12");
+    expect(random.mock.calls).toEqual(Array.from({ length: 7 }, () => [0, 32]));
   });
 });
 

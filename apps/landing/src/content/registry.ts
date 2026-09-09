@@ -238,7 +238,8 @@ const featurePages: Array<ContentPage> = Object.entries(featureMetaModules).map(
       visibility: meta.visibility,
       keywords: meta.keywords,
     }
-    const slug = meta.url.split('/').pop() ?? meta.url
+    // Match the canonical key emitted by loadFeatureRouteServices for flags.
+    const slug = meta.url
     return {
       slug,
       url: meta.url,

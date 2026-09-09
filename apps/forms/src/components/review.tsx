@@ -4,6 +4,7 @@ import { AnyFormApi } from "@tanstack/react-form";
 import { ClientFormStep, ClientPrimitive, FormMeta } from "@forms/types";
 import { getInstanceMarker, getVisibleFields } from "@forms/lib";
 import { DateValue } from "@govtech-bb/form-types";
+import { Heading, Link, SummaryList, Text } from "@govtech-bb/react";
 import {
   resolveFieldLabel,
   resolveStepTitle,
@@ -43,6 +44,16 @@ export default function Review({
 
   const handleChangeClick =
     (stepId: string) => (event: React.MouseEvent<HTMLAnchorElement>) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
       event.preventDefault();
       trackEvent("form-step-edit", {
         form: formMeta.formId,
@@ -149,7 +160,7 @@ export default function Review({
   );
 
   return (
-    <div className="form-page__review">
+    <div>
       {visibleSteps
         .filter((step) => !excludeStepIds.includes(step.stepId))
         .map((step) => {
@@ -180,36 +191,30 @@ export default function Review({
           // instance. Base steps / first instances return undefined.
           const marker = getInstanceMarker(step);
 
+          // ponytail: keep the section until SummaryList has an empty-state slot.
           return (
             <section key={step.stepId} className="govbb-summary-section">
-              <h2 className="govbb-summary-section__title">
-                {marker ? `${stepTitle} — ${marker.text}` : stepTitle}
-              </h2>
-              <div className="govbb-summary-section__action">
-                <a
-                  className="govbb-link"
+              <div className="govbb-summary-section__header">
+                <Heading as="h2" className="govbb-summary-section__title">
+                  {marker ? `${stepTitle} — ${marker.text}` : stepTitle}
+                </Heading>
+                <Link
                   href={`/forms/${formMeta.formId}?step=${step.stepId}`}
                   onClick={handleChangeClick(step.stepId)}
                 >
                   Change{" "}
                   <span className="govbb-visually-hidden">{stepTitle}</span>
-                </a>
+                </Link>
               </div>
               {rows.length === 0 ? (
-                <p className="govbb-summary-section__empty">
-                  No values provided
-                </p>
+                <Text>No values provided</Text>
               ) : (
-                <dl className="govbb-summary-list">
-                  {rows.map(({ field, value }) => (
-                    <div key={field.id} className="govbb-summary-list__row">
-                      <dt className="govbb-summary-list__key">
-                        {resolveFieldLabel(field, stepScopedValues)}
-                      </dt>
-                      <dd className="govbb-summary-list__value">{value}</dd>
-                    </div>
-                  ))}
-                </dl>
+                <SummaryList
+                  rows={rows.map(({ field, value }) => ({
+                    key: resolveFieldLabel(field, stepScopedValues),
+                    value,
+                  }))}
+                />
               )}
             </section>
           );

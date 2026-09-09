@@ -9,7 +9,6 @@ import FieldRenderer, { InsetFieldEntry } from "./field-renderer";
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { markdownComponents } from "./markdown-components";
 import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { shallow } from "@tanstack/react-store";
@@ -39,7 +38,13 @@ import {
 import { reviewDwellSeconds } from "./review-dwell";
 import { buildValidationErrorPayload } from "./validation-error-event";
 import { stepCompleteEventName } from "./step-events";
-import { StatusBanner } from "@govtech-bb/react";
+import {
+  Button,
+  ButtonGroup,
+  Hint,
+  ServiceHeading,
+  StatusBanner,
+} from "@govtech-bb/react";
 import {
   resolveConditionalMarkdown,
   resolveFieldLabel,
@@ -89,15 +94,14 @@ type FieldGroup =
 
 /**
  * A field hosts inset conditional reveals when its options each have a DOM
- * position to nest under: radios, selects without `multiple`, and multi-option
+ * position to nest under: radios, selects, and multi-option
  * checkboxes. A single-option checkbox is a confirmation, not an option list,
- * so its reveals stay page-level; `multiple` selects have no per-option
- * position to nest under.
+ * so its reveals stay page-level.
  */
 function supportsOptionConditionals(field: ClientPrimitive): boolean {
   return (
     field.htmlType === "radio" ||
-    (field.htmlType === "select" && !field.multiple) ||
+    field.htmlType === "select" ||
     (field.htmlType === "checkbox" && (field.options?.length ?? 0) > 1)
   );
 }
@@ -646,23 +650,6 @@ function ActiveStep({
     [currentFields],
   );
 
-  // Reactively read every show-hide toggle value so the content wrapper
-  // appears/disappears when the user clicks the toggle.
-  const showHideValues = useStore(
-    form.store,
-    (state) => {
-      const values = state.values as Record<string, unknown>;
-      const result: Record<string, boolean> = {};
-      for (const group of fieldGroups) {
-        if (group.type === "show-hide") {
-          result[group.toggle.id] = !!values[group.toggle.id];
-        }
-      }
-      return result;
-    },
-    shallow,
-  );
-
   // Resolve the step's effective title reactively: a step may carry
   // `conditionalTitle` overrides (#871) that depend on an earlier answer, so the
   // heading must recompute when the watched value changes. `resolveStepTitle`
@@ -693,7 +680,7 @@ function ActiveStep({
             formMeta.formId,
           )}`;
     return (
-      <div className="form-page-confirmation">
+      <div>
         <SubmissionConfirmation
           key={"submission-confirmation"}
           serviceTitle={formMeta.formTitle}
@@ -728,51 +715,60 @@ function ActiveStep({
   }
 
   return (
-    <div className="container pb-8 lg:pb-16">
-      <div className="form-page form-width">
+    <div className="govbb-width-container govbb-main-wrapper govbb-grid-row">
+      <div className="form-page govbb-grid-column-two-thirds-from-desktop">
         {isDraft && (
-          <StatusBanner variant="service-issue" data-testid="draft-banner">
+          <StatusBanner
+            variant="service"
+            data-testid="draft-banner"
+            className="mb-8"
+            rounded
+          >
             Draft mode — this is an unpublished draft and cannot be submitted.
           </StatusBanner>
         )}
-        <div className="form-page__header">
-          <p className="form-page__service-title"> {formMeta.formTitle} </p>
-          {!isContentStep && (
-            <h1 className="govbb-text-h1">
-              {/* GOV.UK caption-in-heading pattern: the caption sits inside the
+        {isContentStep ? (
+          <div className="govbb-service-heading mb-8">
+            <p className="govbb-service-heading__service">
+              {formMeta.formTitle}
+            </p>
+            {currentStep.description && (
+              <p className="govbb-service-heading__description">
+                {currentStep.description}
+              </p>
+            )}
+          </div>
+        ) : (
+          <ServiceHeading
+            service={formMeta.formTitle}
+            description={currentStep.description || undefined}
+            className="mb-8"
+          >
+            {/* GOV.UK caption-in-heading pattern: the caption sits inside the
                 h1 so the accessible name distinguishes repeat instances for
                 screen-reader heading navigation. */}
-              {instanceMarker?.hasLabel && (
-                <span
-                  data-testid="repeat-instance-marker"
-                  className="block text-caption text-mid-grey-00"
-                >
-                  {instanceMarker.text}
-                </span>
-              )}
-              {instanceMarker && !instanceMarker.hasLabel
-                ? `${resolvedStepTitle} — ${instanceMarker.text}`
-                : resolvedStepTitle}
-            </h1>
-          )}
-          {currentStep.description && (
-            <p className="form-page__step-description">
-              {currentStep.description}
-            </p>
-          )}
-        </div>
+            {instanceMarker?.hasLabel && (
+              <span
+                data-testid="repeat-instance-marker"
+                className="block text-body-sm text-muted"
+              >
+                {instanceMarker.text}
+              </span>
+            )}
+            {instanceMarker && !instanceMarker.hasLabel
+              ? `${resolvedStepTitle} — ${instanceMarker.text}`
+              : resolvedStepTitle}
+          </ServiceHeading>
+        )}
         <ErrorSummary errors={errors} />
 
         <div className="form-page__step">
           {currentStep.markdownContent && (
-            <div className="form-page__markdown-content">
+            <div className="form-page__markdown-content govbb-prose wrap-anywhere">
               {/* Recipe-authored step copy (e.g. an intro page). react-markdown
                   escapes raw HTML by default and we omit rehype-raw, so recipe
                   content cannot inject markup. */}
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={markdownComponents}
-              >
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {currentStep.markdownContent}
               </ReactMarkdown>
             </div>
@@ -793,39 +789,28 @@ function ActiveStep({
 
           {fieldGroups.map((group) => {
             if (group.type === "show-hide") {
-              const isOpen = showHideValues[group.toggle.id] ?? false;
               return (
-                <React.Fragment key={group.toggle.id}>
-                  {/* Toggle (<details>/<summary>) — the hint and controlled
-                    fields live outside the FieldRenderer so we can wrap them all
-                    in the govbb-show-hide content border */}
-                  <FieldRenderer
-                    form={form}
-                    field={group.toggle}
-                    validationProperties={resolveValidators(group.toggle)}
-                    formId={formMeta.formId}
-                    previewToken={previewToken}
-                    draftToken={draftToken}
-                  />
-                  {isOpen && (
-                    <div className="govbb-show-hide__content">
-                      {group.toggle.hint && (
-                        <p className="govbb-hint">{group.toggle.hint}</p>
-                      )}
-                      {group.controlled.map((field) => (
-                        <FieldRenderer
-                          key={field.id}
-                          form={form}
-                          field={field}
-                          validationProperties={resolveValidators(field)}
-                          formId={formMeta.formId}
-                          previewToken={previewToken}
-                          draftToken={draftToken}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </React.Fragment>
+                <FieldRenderer
+                  key={group.toggle.id}
+                  form={form}
+                  field={group.toggle}
+                  validationProperties={resolveValidators(group.toggle)}
+                  formId={formMeta.formId}
+                  previewToken={previewToken}
+                  draftToken={draftToken}
+                >
+                  {group.controlled.map((field) => (
+                    <FieldRenderer
+                      key={field.id}
+                      form={form}
+                      field={field}
+                      validationProperties={resolveValidators(field)}
+                      formId={formMeta.formId}
+                      previewToken={previewToken}
+                      draftToken={draftToken}
+                    />
+                  ))}
+                </FieldRenderer>
               );
             }
 
@@ -865,19 +850,13 @@ function ActiveStep({
           })}
 
           {currentStep.stepId !== "submission-confirmation" && (
-            <div className="govbb-btn-group">
+            <ButtonGroup>
               {!hidePrevious && (
-                <button
-                  className="govbb-btn--secondary"
-                  type="button"
-                  onClick={handlePrevious}
-                >
+                <Button variant="secondary" onClick={handlePrevious}>
                   Previous
-                </button>
+                </Button>
               )}
-              <button
-                className="govbb-btn"
-                type="button"
+              <Button
                 disabled={
                   (isLastFormStep && isSubmitting) ||
                   (isLastFormStep && isDraft)
@@ -891,17 +870,17 @@ function ActiveStep({
                     : isLastFormStep
                       ? "Submit"
                       : "Continue"}
-              </button>
-            </div>
+              </Button>
+            </ButtonGroup>
           )}
           {currentStep.stepId !== "submission-confirmation" &&
             isLastFormStep &&
             isDraft && (
-              <p className="govbb-hint" data-testid="draft-submit-hint">
+              <Hint data-testid="draft-submit-hint">
                 Submitting is disabled for an unpublished draft. Set the
                 form&apos;s visibility to Preview or Public and publish it to
                 enable submission.
-              </p>
+              </Hint>
             )}
         </div>
       </div>

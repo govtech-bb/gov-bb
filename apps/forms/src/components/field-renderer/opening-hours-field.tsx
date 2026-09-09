@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Button, Checkbox, Fieldset, Hint, Input } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import { FieldRenderContext } from "./render-context";
 
@@ -52,9 +53,10 @@ const MAX_SETS_PER_DAY = 3;
 // One stored entry: "Monday 09:00 - 17:00". Halves are optional so a set
 // that is added but not yet completed still round-trips through form state;
 // the registry component's pattern rule rejects those partial entries on
-// submit.
+// submit. Preserve native values with seconds too, so validation can reject
+// them without the applicant losing the range on the next edit.
 const ENTRY_PATTERN = new RegExp(
-  `^(${OPENING_HOURS_DAYS.join("|")})\\s*(\\d{1,2}:\\d{2})?\\s*-\\s*(\\d{1,2}:\\d{2})?$`,
+  `^(${OPENING_HOURS_DAYS.join("|")})\\s*(\\d{1,2}:\\d{2}(?::\\d{2}(?:\\.\\d{1,3})?)?)?\\s*-\\s*(\\d{1,2}:\\d{2}(?::\\d{2}(?:\\.\\d{1,3})?)?)?$`,
 );
 
 /** Parse the stored string array back into per-day sets of hours. Entries
@@ -123,6 +125,9 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
   } = ctx;
 
   const week = parseOpeningHours(f.state.value);
+  // The opening-hours contract uses minutes; sub-minute steps expose seconds.
+  const timeStep =
+    field.step && field.step > 0 && field.step % 60 === 0 ? field.step : 60;
 
   // Screen-reader announcement for add/remove; visually hidden.
   const [status, setStatus] = useState("");
@@ -159,8 +164,19 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
     if (checked) {
       // The first weekday that already has hours becomes the shared set, so
       // ticking the box after filling Monday spreads Monday's hours.
-      const template =
-        WEEKDAYS.map((day) => week[day]).find((sets) => sets.length > 0) ?? [];
+      const templateDay = WEEKDAYS.find((day) => week[day].length > 0);
+      const template = templateDay ? week[templateDay] : [];
+      const replacesHours = WEEKDAYS.some(
+        (day) => week[day].length > 0 && !hoursSetsEqual(week[day], template),
+      );
+      if (
+        replacesHours &&
+        !window.confirm(
+          `Use ${templateDay}'s hours for every weekday? This will replace the other weekday hours you have entered.`,
+        )
+      ) {
+        return;
+      }
       commitChange(
         serializeOpeningHours({
           ...week,
@@ -224,40 +240,37 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
     const halfName = half === "start" ? "opening" : "closing";
     const setSuffix = setsCount > 1 ? `, set ${index + 1}` : "";
     return (
-      <div className="govbb-input-wrapper">
-        <input
-          type="time"
-          className="govbb-input"
-          value={rowSets(row)[index][half]}
-          step={field.step}
-          disabled={field.disabled}
-          onBlur={f.handleBlur}
-          // Only the halves the applicant still has to fix are marked
-          // invalid — an empty picker, or both when open equals close — so
-          // a format error doesn't paint valid times red.
-          aria-invalid={
-            invalid &&
-            (rowSets(row)[index][half] === "" ||
-              rowSets(row)[index].start === rowSets(row)[index].end)
-              ? true
-              : undefined
+      <Input
+        type="time"
+        value={rowSets(row)[index][half]}
+        step={timeStep}
+        disabled={field.disabled}
+        onBlur={f.handleBlur}
+        // Only the halves the applicant still has to fix are marked
+        // invalid: missing times, unsupported seconds, or equal open/close.
+        aria-invalid={
+          invalid &&
+          (rowSets(row)[index][half] === "" ||
+            rowSets(row)[index][half].length > 5 ||
+            rowSets(row)[index].start === rowSets(row)[index].end)
+            ? true
+            : undefined
+        }
+        aria-label={`${row.label} ${halfName} time${setSuffix}`}
+        onChange={(e) => updateHours(row, index, half, e.target.value)}
+        ref={(el) => {
+          if (el && pendingFocus.current === focusKey) {
+            pendingFocus.current = null;
+            el.focus();
           }
-          aria-label={`${row.label} ${halfName} time${setSuffix}`}
-          onChange={(e) => updateHours(row, index, half, e.target.value)}
-          ref={(el) => {
-            if (el && pendingFocus.current === focusKey) {
-              pendingFocus.current = null;
-              el.focus();
-            }
-          }}
-        />
-      </div>
+        }}
+      />
     );
   };
 
   return (
-    <fieldset
-      className="govbb-fieldset opening-hours"
+    <Fieldset
+      className="opening-hours"
       id={field.id}
       aria-describedby={describedBy}
     >
@@ -265,28 +278,15 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
         {field.label}
         {labelSuffix}
       </legend>
-      {field.hint && (
-        <p className="govbb-hint" id={hintId}>
-          {field.hint}
-        </p>
-      )}
+      {field.hint && <Hint id={hintId}>{field.hint}</Hint>}
       <ErrorMessage id={errorId} message={errorMessage} />
-      <div className="govbb-checkbox-item opening-hours__same-weekdays">
-        <input
-          type="checkbox"
-          id={`${field.id}-same-weekday-hours`}
-          className="govbb-checkbox"
-          checked={sameWeekdayHours}
-          disabled={field.disabled}
-          onChange={(e) => toggleSameWeekdayHours(e.target.checked)}
-        />
-        <label
-          className="govbb-checkbox-item__label"
-          htmlFor={`${field.id}-same-weekday-hours`}
-        >
-          The hours are the same every weekday (Monday to Friday)
-        </label>
-      </div>
+      <Checkbox
+        id={`${field.id}-same-weekday-hours`}
+        label="The hours are the same every weekday (Monday to Friday)"
+        checked={sameWeekdayHours}
+        disabled={field.disabled}
+        onChange={(e) => toggleSameWeekdayHours(e.target.checked)}
+      />
       <div className="opening-hours__week">
         {rows.map((row) => {
           const sets = rowSets(row);
@@ -302,9 +302,10 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
                       {timeInput(row, index, "start", sets.length)}
                       <span aria-hidden="true">to</span>
                       {timeInput(row, index, "end", sets.length)}
-                      <button
-                        type="button"
-                        className="govbb-btn--destructive-link"
+                      <Button
+                        variant="text"
+                        negative
+                        className="no-print"
                         disabled={field.disabled}
                         onClick={() => removeHours(row, index)}
                       >
@@ -314,15 +315,15 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
                             ? `set ${index + 1} of hours for ${row.label}`
                             : `hours for ${row.label}`}
                         </span>
-                      </button>
+                      </Button>
                     </div>
                   ))
                 )}
               </div>
               {sets.length < MAX_SETS_PER_DAY && (
-                <button
-                  type="button"
-                  className="govbb-btn--tertiary opening-hours__add"
+                <Button
+                  variant="tertiary"
+                  className="opening-hours__add no-print"
                   disabled={field.disabled}
                   onClick={() => addHours(row)}
                   ref={(el) => {
@@ -336,7 +337,7 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
                 >
                   Add hours{" "}
                   <span className="govbb-visually-hidden">for {row.label}</span>
-                </button>
+                </Button>
               )}
             </div>
           );
@@ -345,6 +346,6 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
       <div className="govbb-visually-hidden" role="status">
         {status}
       </div>
-    </fieldset>
+    </Fieldset>
   );
 }

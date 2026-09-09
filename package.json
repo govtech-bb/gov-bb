@@ -12,7 +12,7 @@
   "scripts": {
     "build": "nx run-many -t build",
     "lint": "nx run-many -t lint",
-    "lint:deps": "sherif -i express -i @types/express -i eslint -i @eslint/js -i react-markdown -i @govtech-bb/react -r root-package-dependencies",
+    "lint:deps": "sherif -i @tanstack/ai-client -i express -i @types/express -i eslint -i @eslint/js -i react-markdown -i @govtech-bb/react -r root-package-dependencies",
     "test:all": "nx run-many -t test",
     "dev:forms": "nx dev forms",
     "dev:api": "ln -sfn ../dist/apps/api/src node_modules/@ && nx dev api",
@@ -53,7 +53,7 @@
     "@types/jest-axe": "^3.5.9",
     "@types/luxon": "^3.7.1",
     "@types/node": "^24.0.0",
-    "@vitest/coverage-istanbul": "^4.1.8",
+    "@vitest/coverage-istanbul": "^4.1.11",
     "eslint": "^10.2.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.5.0",
@@ -74,7 +74,7 @@
     "typescript": "catalog:",
     "typescript-eslint": "^8.58.2",
     "unplugin-swc": "^1.5.9",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.11"
   },
   "packageManager": "pnpm@11.6.0",
   "dependencies": {

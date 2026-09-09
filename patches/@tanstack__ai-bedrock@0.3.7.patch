@@ -1,0 +1,108 @@
+diff --git a/dist/esm/adapters/converse-text.js b/dist/esm/adapters/converse-text.js
+index 4541a0a03889fdcd3c29dd1e33a022a64833529d..705335ae33fe6db882addf76e24851b4d85a00dd 100644
+--- a/dist/esm/adapters/converse-text.js
++++ b/dist/esm/adapters/converse-text.js
+@@ -101,15 +101,15 @@ var BedrockConverseTextAdapter = class extends BaseTextAdapter {
+ 			...endpoint ? { endpoint } : {}
+ 		};
+ 	}
+-	async sendStream(input) {
++	async sendStream(input, signal) {
+ 		const { ConverseStreamCommand } = await this.importBedrockRuntime();
+-		const res = await (await this.getClient()).send(new ConverseStreamCommand(input));
++		const res = await (await this.getClient()).send(new ConverseStreamCommand(input), { abortSignal: signal });
+ 		if (!res.stream) throw new Error("Bedrock Converse: empty stream response");
+ 		return res.stream;
+ 	}
+-	async send(input) {
++	async send(input, signal) {
+ 		const { ConverseCommand } = await this.importBedrockRuntime();
+-		return (await this.getClient()).send(new ConverseCommand(input));
++		return (await this.getClient()).send(new ConverseCommand(input), { abortSignal: signal });
+ 	}
+ 	async *chatStream(options) {
+ 		try {
+@@ -118,7 +118,7 @@ var BedrockConverseTextAdapter = class extends BaseTextAdapter {
+ 				model: this.model
+ 			});
+ 			const input = this.buildInput(options);
+-			const stream = await this.sendStream(input);
++			const stream = await this.sendStream(input, options.request?.signal);
+ 			yield* processConverseStream(stream, () => this.generateId(), {
+ 				threadId: options.threadId,
+ 				parentRunId: options.parentRunId,
+@@ -160,7 +160,7 @@ var BedrockConverseTextAdapter = class extends BaseTextAdapter {
+ 				...this.buildInput(chatOptions),
+ 				toolConfig: buildStructuredToolConfig(outputSchema)
+ 			};
+-			const res = await this.send(input);
++			const res = await this.send(input, chatOptions.request?.signal);
+ 			const structured = extractStructuredToolInput(res);
+ 			if (structured === void 0) throw new Error(`${this.name}.structuredOutput: response contained no forced-tool output`);
+ 			const usage = res.usage;
+@@ -203,7 +203,7 @@ var BedrockConverseTextAdapter = class extends BaseTextAdapter {
+ 				...this.buildInput(chatOptions),
+ 				toolConfig: buildStructuredToolConfig(outputSchema)
+ 			};
+-			const stream = await this.sendStream(input);
++			const stream = await this.sendStream(input, chatOptions.request?.signal);
+ 			for await (const ev of stream) {
+ 				if (!hasEmittedRunStarted) {
+ 					hasEmittedRunStarted = true;
+diff --git a/src/adapters/converse-text.ts b/src/adapters/converse-text.ts
+index 10014e31ab6d38a1c1fcedd1cac01d2d74a70338..70d473064d9dc66bf644961711eb93fabcf54833 100644
+--- a/src/adapters/converse-text.ts
++++ b/src/adapters/converse-text.ts
+@@ -197,10 +197,11 @@ export class BedrockConverseTextAdapter<
+ 
+   protected async sendStream(
+     input: ConverseStreamCommandInput,
++    signal?: AbortSignal,
+   ): Promise<AsyncIterable<ConverseStreamOutput>> {
+     const { ConverseStreamCommand } = await this.importBedrockRuntime()
+     const client = await this.getClient()
+-    const res = await client.send(new ConverseStreamCommand(input))
++    const res = await client.send(new ConverseStreamCommand(input), { abortSignal: signal })
+     if (!res.stream) {
+       throw new Error('Bedrock Converse: empty stream response')
+     }
+@@ -209,10 +210,11 @@ export class BedrockConverseTextAdapter<
+ 
+   protected async send(
+     input: ConverseCommandInput,
++    signal?: AbortSignal,
+   ): Promise<ConverseCommandOutput> {
+     const { ConverseCommand } = await this.importBedrockRuntime()
+     const client = await this.getClient()
+-    return client.send(new ConverseCommand(input))
++    return client.send(new ConverseCommand(input), { abortSignal: signal })
+   }
+ 
+   // ---------------------------------------------------------------------------
+@@ -228,7 +230,7 @@ export class BedrockConverseTextAdapter<
+         { provider: this.name, model: this.model },
+       )
+       const input = this.buildInput(options)
+-      const stream = await this.sendStream(input)
++      const stream = await this.sendStream(input, options.request?.signal)
+       yield* processConverseStream(stream, () => this.generateId(), {
+         threadId: options.threadId,
+         parentRunId: options.parentRunId,
+@@ -278,7 +280,7 @@ export class BedrockConverseTextAdapter<
+         ...this.buildInput(chatOptions),
+         toolConfig: buildStructuredToolConfig(outputSchema),
+       }
+-      const res = await this.send(input)
++      const res = await this.send(input, chatOptions.request?.signal)
+       const structured = extractStructuredToolInput(res)
+       if (structured === undefined) {
+         throw new Error(
+@@ -332,7 +334,7 @@ export class BedrockConverseTextAdapter<
+         ...this.buildInput(chatOptions),
+         toolConfig: buildStructuredToolConfig(outputSchema),
+       }
+-      const stream = await this.sendStream(input)
++      const stream = await this.sendStream(input, chatOptions.request?.signal)
+ 
+       // The forced tool streams its `input` as partial-JSON fragments inside
+       // `contentBlockDelta.delta.toolUse.input`. We surface them as

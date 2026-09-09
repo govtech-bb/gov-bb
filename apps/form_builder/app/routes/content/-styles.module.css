@@ -1637,3 +1637,13 @@
     text-decoration: underline;
   }
 }
+
+.aiWorkspace {
+  display: flex;
+  height: 100dvh;
+  min-width: 0;
+}
+.aiWorkspace > .shell {
+  flex: 1;
+  min-width: 0;
+}

@@ -1,4 +1,5 @@
 import React from "react";
+import { Button, FileUpload as GovFileUpload } from "@govtech-bb/react";
 import { FileUploadProps, UploadedFile } from "@forms/types";
 import ErrorMessage from "./error-message";
 import { optionalSuffix } from "./field-renderer/optional-suffix";
@@ -35,6 +36,7 @@ export default function FileUpload({
   draftToken,
 }: FileUploadProps) {
   const files = value ?? [];
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
   // Mirror the confirmed-file list in a ref so concurrent uploads (e.g. two
   // testimonials selected at once) accumulate instead of racing on the stale
@@ -66,6 +68,7 @@ export default function FileUpload({
   };
 
   const removeFile = (key: string) => {
+    inputRef.current?.focus();
     const removed = confirmedRef.current.find((f) => f.key === key);
     const next = confirmedRef.current.filter((f) => f.key !== key);
     confirmedRef.current = next;
@@ -73,8 +76,10 @@ export default function FileUpload({
     if (removed) setStatusMessage(`${removed.name} removed.`);
   };
 
-  const dismissPending = (id: number) =>
+  const dismissPending = (id: number) => {
+    inputRef.current?.focus();
     setPending((prev) => prev.filter((p) => p.id !== id));
+  };
 
   // Accepts either MIME types ("image/png" → "png") or extension values
   // (".pdf" → ".pdf"), so a recipe can list user-friendly extensions and have
@@ -234,48 +239,32 @@ export default function FileUpload({
   });
 
   return (
-    <div className="govbb-file-upload">
+    <div className="govbb-file-upload form-page__file-field">
       {errorMessage && <ErrorMessage id={errorId} message={errorMessage} />}
-      <label className="govbb-file-upload__dropzone" htmlFor={field.id}>
-        <div className="govbb-file-upload__info">
-          <span className="govbb-file-upload__title">
+      <GovFileUpload
+        {...sharedProps}
+        ref={inputRef}
+        accept={sharedProps.accept ?? acceptAttr}
+        multiple={field.multiple ?? false}
+        aria-invalid={errorMessage ? true : undefined}
+        onChange={handleInputChange}
+        title={
+          <>
             {field.label ?? "Upload a file"}
             {optionalSuffix(field)}
-          </span>
-          <span className="govbb-file-upload__subtitle">
+          </>
+        }
+        subtitle={
+          <span id={field.hint ? `${field.id}-hint` : undefined}>
             {field.hint?.trim()
               ? field.hint
               : readableFileTypes.length
                 ? `Attach a ${fileTypeFormatter.format(readableFileTypes)} file`
                 : "No file type restrictions"}
           </span>
-        </div>
-
-        <input
-          {...sharedProps}
-          type="file"
-          accept={sharedProps.accept ?? acceptAttr}
-          multiple={field.multiple ?? false}
-          className="govbb-file-upload__input"
-          aria-invalid={errorMessage ? true : undefined}
-          onChange={handleInputChange}
-        />
-
-        <div className="govbb-file-upload__action">
-          <span className="govbb-btn--tertiary" aria-hidden="true">
-            Choose file
-          </span>
-          {/* Only shown when the field actually caps size. A recipe that sets
-              only `itemMaxSize` (a per-file cap) has no `maxSize`, and the old
-              "Max Size: --" placeholder read as a broken value rather than as
-              "no limit". Ternary, not `&&` — a 0 would render as "0". */}
-          {maxSize ? (
-            <span className="govbb-file-upload__max-size">
-              Max Size: {formatMb(maxSize)}
-            </span>
-          ) : null}
-        </div>
-      </label>
+        }
+        maxSize={maxSize ? `Max Size: ${formatMb(maxSize)}` : undefined}
+      />
 
       <div role="status" aria-live="polite" className="govbb-visually-hidden">
         {statusMessage}
@@ -286,14 +275,15 @@ export default function FileUpload({
           {files.map((f) => (
             <li key={f.key} className="govbb-file-upload__item">
               <span className="govbb-file-upload__name">{f.name}</span>
-              <button
-                type="button"
-                className="govbb-btn--destructive-link"
+              <Button
+                variant="text"
+                negative
+                className="no-print"
                 aria-label={`Remove ${f.name}`}
                 onClick={() => removeFile(f.key)}
               >
                 Remove
-              </button>
+              </Button>
             </li>
           ))}
 
@@ -308,14 +298,15 @@ export default function FileUpload({
               ) : (
                 <span className="govbb-file-upload__status govbb-file-upload__status--error">
                   {p.error}{" "}
-                  <button
-                    type="button"
-                    className="govbb-btn--destructive-link"
+                  <Button
+                    variant="text"
+                    negative
+                    className="no-print"
                     aria-label={`Dismiss ${p.name}`}
                     onClick={() => dismissPending(p.id)}
                   >
                     Dismiss
-                  </button>
+                  </Button>
                 </span>
               )}
             </li>

@@ -3,9 +3,19 @@ import { axe } from "jest-axe";
 import ErrorMessage from "./error-message";
 
 describe("ErrorMessage", () => {
-  it("renders the message string", () => {
-    render(<ErrorMessage message="This field is required" />);
+  it("associates the message and hidden error prefix with its input", () => {
+    render(
+      <>
+        <label htmlFor="email">Email</label>
+        <input id="email" aria-describedby="email-error" />
+        <ErrorMessage id="email-error" message="This field is required" />
+      </>,
+    );
     expect(screen.getByText("This field is required")).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Email" }),
+    ).toHaveAccessibleDescription(/^Error:\s*This field is required$/);
+    expect(screen.getByText("Error:")).toHaveClass("govbb-visually-hidden");
   });
 
   it("applies the govbb-error-message class with a polite status role (#320)", () => {

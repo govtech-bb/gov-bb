@@ -57,7 +57,6 @@ interface OverrideFormProps {
   // resolved id. Omitted for block-child forms (deferred to the recipe-wide gate).
   checkDuplicateFieldId?: (candidateId: string) => boolean;
   defaultOptions?: Option[];
-  defaultMultiple?: boolean;
   defaultRequired?: boolean;
   // Validations declared on the base primitive — surfaced by the validation
   // editor as inherited, overridable rows (#618).
@@ -355,21 +354,16 @@ function RequiredRuleEditor({
 
 interface OptionsSectionProps {
   htmlType: HtmlTypes;
-  multiple: FieldOverrides["multiple"];
   options: FieldOverrides["options"];
-  defaultMultiple: boolean | undefined;
   defaultOptions: Option[] | undefined;
   patch: (partial: Partial<FieldOverrides>) => void;
   fg: (isOverridden: boolean) => string;
 }
 
-// The Options block for choice fields (select/radio/checkbox): the select-only
-// Multiple toggle and the OptionsEditor. Renders nothing for other html types.
+// The Options block for choice fields (select/radio/checkbox).
 function OptionsSection({
   htmlType,
-  multiple,
   options,
-  defaultMultiple,
   defaultOptions,
   patch,
   fg,
@@ -378,30 +372,12 @@ function OptionsSection({
   return (
     <>
       <div className={styles.sectionTitle}>Options</div>
-      {htmlType === "select" && (
-        <div className={`${fg(multiple !== undefined)} ${styles.checkRow}`}>
-          <label>
-            <input
-              type="checkbox"
-              checked={multiple ?? defaultMultiple ?? false}
-              onChange={(e) => patch({ multiple: e.target.checked })}
-            />{" "}
-            Multiple
-          </label>
-        </div>
-      )}
       <div className={fg(options !== undefined)}>
         <OptionsEditor
           value={options ?? []}
           defaultValue={defaultOptions ?? []}
           isOverridden={options !== undefined}
-          onChange={(next) => {
-            if (next === undefined) {
-              patch({ options: undefined, multiple: undefined });
-            } else {
-              patch({ options: next });
-            }
-          }}
+          onChange={(options) => patch({ options })}
         />
       </div>
     </>
@@ -491,7 +467,6 @@ function OverrideForm({
   onChange,
   checkDuplicateFieldId,
   defaultOptions,
-  defaultMultiple,
   defaultRequired = false,
   baseValidations,
   baseUi,
@@ -559,9 +534,7 @@ function OverrideForm({
 
       <OptionsSection
         htmlType={htmlType}
-        multiple={overrides.multiple}
         options={overrides.options}
-        defaultMultiple={defaultMultiple}
         defaultOptions={defaultOptions}
         patch={patch}
         fg={fg}
@@ -714,7 +687,6 @@ export function FieldEditPanel({
                       handleChildOverrideChange(element.fieldId, updated)
                     }
                     defaultOptions={element.options}
-                    defaultMultiple={element.multiple}
                     defaultRequired={isRequiredRule(
                       element.validations?.required,
                     )}
@@ -764,11 +736,6 @@ export function FieldEditPanel({
               }
               defaultOptions={
                 item && "primitive" in item ? item.primitive.options : undefined
-              }
-              defaultMultiple={
-                item && "primitive" in item
-                  ? item.primitive.multiple
-                  : undefined
               }
               defaultRequired={
                 item && "primitive" in item

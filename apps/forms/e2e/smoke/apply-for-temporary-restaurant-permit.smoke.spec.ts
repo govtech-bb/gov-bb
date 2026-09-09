@@ -58,8 +58,8 @@
  *    "Other food or drink" is the exception: a single-option group renders as one
  *    plain checkbox (no expander), and ticking it reveals the required free-text
  *    other-food-description.
- *  - food-source is a TWO-option checkbox (values "supplier" and "caterer"), so
- *    the input ids are `<step>_food-source-supplier` / `-caterer`. It gates the
+ *  - food-source is a TWO-option checkbox (values "supplier" and "caterer").
+ *    The fieldset id is `<step>_food-source`. It gates the
  *    supplier textarea and the caterer address and contact fields respectively;
  *    both are asserted hidden before the boxes are ticked and then filled.
  */
@@ -67,6 +67,7 @@ import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
 import {
   STEP_TIMEOUT,
+  openSmokeForm,
   advance,
   expectLeadTimeWarningIsAdvisory,
   expectStep,
@@ -75,6 +76,7 @@ import {
   selectDropdown,
   selectRadio,
   submitAndConfirm,
+  tickCheckbox,
   uploadOne,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
@@ -299,11 +301,7 @@ test.describe("Temporary Restaurant Permit — Live Smoke", () => {
     if (logData) console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     // A preview-gated form needs the token; a public one ignores the param.
-    const previewToken = process.env.PREVIEW_TOKEN;
-    const landing = previewToken
-      ? `/forms/${FORM_ID}?preview=${encodeURIComponent(previewToken)}`
-      : `/forms/${FORM_ID}`;
-    await page.goto(landing);
+    await openSmokeForm(page, FORM_ID);
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });
@@ -323,7 +321,9 @@ test.describe("Temporary Restaurant Permit — Live Smoke", () => {
     // ─── Step 2: Event and organiser (is-for-event = yes, is-organiser = no) ─
     step = expectStep(page, "event-organiser");
     // is-organiser only exists once the permit is declared to be for an event.
-    const isOrganiser = page.locator(`input[id="${step}_is-organiser-no"]`);
+    const isOrganiser = page.locator(
+      `fieldset[id="${step}_is-organiser"] input[type=radio][value="no"]`,
+    );
     await expect(isOrganiser).toBeHidden();
     await radio(page, step, "is-for-event", "yes");
     await expect(isOrganiser).toBeVisible({ timeout: STEP_TIMEOUT });
@@ -394,8 +394,8 @@ test.describe("Temporary Restaurant Permit — Live Smoke", () => {
     const catererName = page.locator(`[id="${step}_caterer-name"]`);
     await expect(supplierDetails).toBeHidden();
     await expect(catererName).toBeHidden();
-    await page.locator(`input[id="${step}_food-source-supplier"]`).check();
-    await page.locator(`input[id="${step}_food-source-caterer"]`).check();
+    await tickCheckbox(page, step, "food-source", "supplier");
+    await tickCheckbox(page, step, "food-source", "caterer");
     await expect(supplierDetails).toBeVisible({ timeout: STEP_TIMEOUT });
     await expect(catererName).toBeVisible({ timeout: STEP_TIMEOUT });
     await afterField(page);

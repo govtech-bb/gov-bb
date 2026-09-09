@@ -250,23 +250,27 @@ describe("checkboxPrimitiveSchema", () => {
 });
 
 describe("selectPrimitiveSchema", () => {
-  it("accepts a select field with options and multiple flag", () => {
-    expect(
-      selectPrimitiveSchema.safeParse({
-        ...validTextField,
-        htmlType: "select",
-        options: [{ label: "A", value: "a" }],
-        multiple: false,
-      }).success,
-    ).toBe(true);
-  });
+  it.each([undefined, false])(
+    "accepts a single select with multiple=%s",
+    (multiple) => {
+      expect(
+        selectPrimitiveSchema.safeParse({
+          ...validTextField,
+          htmlType: "select",
+          options: [{ label: "A", value: "a" }],
+          multiple,
+        }).success,
+      ).toBe(true);
+    },
+  );
 
-  it("rejects when multiple is missing", () => {
+  it("rejects multiple selections", () => {
     expect(
       selectPrimitiveSchema.safeParse({
         ...validTextField,
         htmlType: "select",
         options: [{ label: "A", value: "a" }],
+        multiple: true,
       }).success,
     ).toBe(false);
   });

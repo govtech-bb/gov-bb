@@ -63,6 +63,7 @@ import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
 import {
   STEP_TIMEOUT,
+  openSmokeForm,
   advance,
   currentStep,
   expectStep,
@@ -196,11 +197,7 @@ type Person = ReturnType<typeof buildPerson>;
 
 /** Open the form at its first step, carrying the preview token when supplied. */
 async function openForm(page: Page): Promise<void> {
-  const previewToken = process.env.PREVIEW_TOKEN;
-  const landing = previewToken
-    ? `/forms/${FORM_ID}?preview=${encodeURIComponent(previewToken)}`
-    : `/forms/${FORM_ID}`;
-  await page.goto(landing);
+  await openSmokeForm(page, FORM_ID);
   await page.waitForURL((url) => !!url.searchParams.get("step"), {
     timeout: STEP_TIMEOUT,
   });
@@ -381,7 +378,8 @@ async function fillHouseholdIncome(page: Page, data: Data): Promise<void> {
 async function confirmAndSubmit(page: Page): Promise<void> {
   const step = expectStep(page, "declaration", { exact: true });
   await page
-    .locator(`input[id="${step}_declaration-confirmed-confirmed"]`)
+    .locator(`fieldset[id="${step}_declaration-confirmed"]`)
+    .getByRole("checkbox")
     .check();
 
   await submitAndConfirm(page, {

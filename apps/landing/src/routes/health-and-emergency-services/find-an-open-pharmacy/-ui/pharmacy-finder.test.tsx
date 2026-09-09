@@ -72,13 +72,13 @@ describe('pharmacy finder', () => {
 
   it('shows the full directory and excludes unknown hours only when open now is selected', () => {
     render(<PharmacyFinder />)
-    expect(screen.getByText('Showing 12 of 119 pharmacies')).toBeTruthy()
+    expect(screen.getByText('Showing 12 of 121 pharmacies')).toBeTruthy()
     fireEvent.click(
       screen.getByRole('checkbox', {
         name: 'Free and subsidised medication only',
       }),
     )
-    expect(screen.getByText('Showing 12 of 164 pharmacies')).toBeTruthy()
+    expect(screen.getByText('Showing 12 of 163 pharmacies')).toBeTruthy()
     fireEvent.change(
       screen.getByRole('searchbox', { name: 'Search by name or place' }),
       { target: { value: 'Market Hill Dispensary' } },
@@ -97,6 +97,57 @@ describe('pharmacy finder', () => {
     expect(
       screen.getByRole('link', { name: 'Market Hill Dispensary' }),
     ).toBeTruthy()
+  })
+
+  it('finds every document pharmacy with Open right now enabled during its Monday hours', () => {
+    vi.setSystemTime(new Date('2026-09-14T14:00:00Z'))
+    render(<PharmacyFinder />)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Open right now' }))
+    const search = screen.getByRole('searchbox', {
+      name: 'Search by name or place',
+    })
+    const participating = PHARMACIES.filter(
+      (pharmacy) => pharmacy.pppStatus === 'participating',
+    )
+    expect(participating).toHaveLength(109)
+    // Avoid recomputing accessible names across the page for all 109 searches.
+    for (const pharmacy of participating) {
+      fireEvent.change(search, { target: { value: pharmacy.name } })
+      expect(
+        screen
+          .getByText(pharmacy.name, { selector: 'a[href]' })
+          .getAttribute('href'),
+      ).toBe(
+        `/health-and-emergency-services/find-an-open-pharmacy/${pharmacy.slug}`,
+      )
+      expect(
+        screen.queryByText(
+          "Today's hours not confirmed. Call before travelling.",
+        ),
+      ).toBeNull()
+    }
+  }, 15_000)
+
+  it('shows C S Pharmacy opening times and both document telephone numbers', () => {
+    const pharmacy = PHARMACIES.find((p) => p.slug === 'c-s-pharmacy')!
+    render(<PharmacyDetailPage pharmacy={pharmacy} />)
+    expect(
+      screen.getByRole('heading', { name: 'C S Pharmacy', level: 1 }),
+    ).toBeTruthy()
+    for (const [day, hours] of [
+      ['Today, Monday', '8:00 am to 5:00 pm'],
+      ['Friday', '8:00 am to 6:00 pm'],
+      ['Saturday', '8:00 am to 4:30 pm'],
+      ['Sunday', 'Closed'],
+    ]) {
+      expect(screen.getByText(day).nextElementSibling?.textContent).toBe(hours)
+    }
+    expect(
+      screen.getByRole('link', { name: '(246) 427-2047' }).getAttribute('href'),
+    ).toBe('tel:+12464272047')
+    expect(
+      screen.getByRole('link', { name: '(246) 426-0320' }).getAttribute('href'),
+    ).toBe('tel:+12464260320')
   })
 
   it('ignores a late location callback after reset and after unmount', () => {

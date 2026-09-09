@@ -385,6 +385,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
+    slug: "health-and-emergency-services/water-outages",
+    title: "Check for water outages in your area",
+    category: "health-and-emergency-services",
+    visibility: "preview",
+  },
+  {
     slug: "loud-music-permit",
     title: "Get a permit to play loud music",
     category: "business-trade",

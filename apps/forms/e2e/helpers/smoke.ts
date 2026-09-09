@@ -15,8 +15,7 @@
  * Field-ID scheme (confirmed against the running renderer):
  *   text/textarea : `${stepId}_${fieldId}`
  *   date parts    : `${stepId}_${fieldId}-day` / `-month` / `-year`
- *   radio option  : `${stepId}_${fieldId}-${optionValue}`  (e.g. gender-female)
- *   checkbox opt  : `${stepId}_${fieldId}-${optionValue}`
+ *   radio/checkbox: fieldset `${stepId}_${fieldId}`, then native option value
  *   file          : `${stepId}_${fieldId}`
  */
 import { expect, type Page, type Response } from "@playwright/test";
@@ -31,6 +30,15 @@ const UPLOAD_TIMEOUT = 30_000;
  */
 const primaryButton = (page: Page) =>
   page.getByRole("button", { name: /^(Continue|Submit)$/ });
+
+/** Open a published recipe, including private forms when a preview token is set. */
+export async function openSmokeForm(page: Page, formId: string): Promise<void> {
+  const previewToken = process.env.PREVIEW_TOKEN;
+  const search = previewToken
+    ? `?preview=${encodeURIComponent(previewToken)}`
+    : "";
+  await page.goto(`/forms/${formId}${search}`);
+}
 
 /** Read the current `?step=` param. */
 export function currentStep(page: Page): string {
@@ -199,7 +207,7 @@ export async function selectDropdown(
   await page.locator(`select[id="${stepId}_${suffix}"]`).selectOption(value);
 }
 
-/** Select a radio option by its value suffix (`gender-female`, `addAnother-no`). */
+/** Select an option by its field and value; input IDs belong to the package. */
 export async function selectRadio(
   page: Page,
   stepId: string,
@@ -207,11 +215,13 @@ export async function selectRadio(
   optionValue: string,
 ): Promise<void> {
   await page
-    .locator(`input[type=radio][id="${stepId}_${suffix}-${optionValue}"]`)
+    .locator(
+      `fieldset[id="${stepId}_${suffix}"] input[type=radio][value="${optionValue}"]`,
+    )
     .check();
 }
 
-/** Tick a checkbox option by its value suffix (`opening-days-monday`). */
+/** Tick a checkbox option by its field and value. */
 export async function tickCheckbox(
   page: Page,
   stepId: string,
@@ -219,7 +229,9 @@ export async function tickCheckbox(
   optionValue: string,
 ): Promise<void> {
   await page
-    .locator(`input[type=checkbox][id="${stepId}_${suffix}-${optionValue}"]`)
+    .locator(
+      `fieldset[id="${stepId}_${suffix}"] input[type=checkbox][value="${optionValue}"]`,
+    )
     .check();
 }
 
