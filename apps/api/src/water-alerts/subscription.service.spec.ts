@@ -4,7 +4,7 @@ import type { SesMailer } from "../email/ses-mailer";
 import { SubscriptionService } from "./subscription.service";
 import type { WaterSubscriberRepository } from "./water-subscriber.repository";
 
-const TOKEN = "123e4567-e89b-42d3-a456-426614174000";
+const TOKEN = "00000000-0000-4000-8000-000000000000";
 
 function makeRepo(overrides: Record<string, unknown> = {}) {
   return {
