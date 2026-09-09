@@ -15,11 +15,7 @@ import { listForms } from "../../server/forms";
 import { getPublishBaseBranch } from "../../server/publish";
 import { publishStartPage, deleteContentPage } from "./-server";
 import { HeaderMenu, type HeaderMenuItem } from "./-header-menu";
-import {
-  linkableForms,
-  applyAiPagePatch,
-  buildDeployPayload,
-} from "./-lib";
+import { linkableForms, applyAiPagePatch, buildDeployPayload } from "./-lib";
 import { StartPagePreviewFrame, LANDING_ORIGIN } from "./-preview-frame";
 import { useContentList } from "./-use-content-list";
 import { usePersistedState } from "./-use-persisted";
@@ -54,7 +50,9 @@ export const Route = createFileRoute("/content/edit")({
     const [forms, baseBranch] = await Promise.all([
       // Hide disabled draft-only / orphan-override rows the picker uses for
       // re-enable (#1658) — they have no live recipe to link content to.
-      listForms().then(linkableForms).catch(() => []),
+      listForms()
+        .then(linkableForms)
+        .catch(() => []),
       getPublishBaseBranch().catch(() => "dev"),
     ]);
     return { forms, baseBranch };
@@ -77,6 +75,7 @@ function buildHeaderMenuItems(deps: {
   showPreview: boolean;
   onTogglePreview: () => void;
   editing: boolean;
+  deleteAllowed: boolean;
   url: string;
   theme: string;
   onToggleTheme: () => void;
@@ -89,6 +88,7 @@ function buildHeaderMenuItems(deps: {
     showPreview,
     onTogglePreview,
     editing,
+    deleteAllowed,
     url,
     theme,
     onToggleTheme,
@@ -116,13 +116,18 @@ function buildHeaderMenuItems(deps: {
             label: "View live",
             icon: <ArrowUpRight01Icon size={15} />,
             onSelect: () =>
-              window.open(`${LANDING_ORIGIN}${url}`, "_blank", "noopener,noreferrer"),
+              window.open(
+                `${LANDING_ORIGIN}${url}`,
+                "_blank",
+                "noopener,noreferrer",
+              ),
           },
         ]
       : []),
     {
       label: theme === "light" ? "Dark mode" : "Light mode",
-      icon: theme === "light" ? <Moon02Icon size={15} /> : <Sun03Icon size={15} />,
+      icon:
+        theme === "light" ? <Moon02Icon size={15} /> : <Sun03Icon size={15} />,
       onSelect: onToggleTheme,
     },
     ...(dirty && !success
@@ -141,7 +146,7 @@ function buildHeaderMenuItems(deps: {
           },
         ]
       : []),
-    ...(editing && !success
+    ...(editing && deleteAllowed && !success
       ? [
           {
             label: "Delete page",
@@ -159,12 +164,16 @@ function buildHeaderMenuItems(deps: {
 function EditorPreviewPane({
   dragging,
   onStartDrag,
+  paneWidth,
+  onResize,
   breakpoint,
   onBreakpointChange,
   ed,
 }: {
   dragging: boolean;
   onStartDrag: (e: React.MouseEvent) => void;
+  paneWidth: number;
+  onResize: (nextWidth: number) => void;
   breakpoint: Breakpoint;
   onBreakpointChange: (b: Breakpoint) => void;
   ed: EditorState;
@@ -172,14 +181,37 @@ function EditorPreviewPane({
   const { state } = ed;
   const frameWidth =
     BREAKPOINTS.find((b) => b.key === breakpoint)?.width ?? "100%";
+  const onSplitterKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = event.shiftKey ? 80 : 20;
+    const nextWidth =
+      event.key === "ArrowLeft"
+        ? paneWidth - step
+        : event.key === "ArrowRight"
+          ? paneWidth + step
+          : event.key === "Home"
+            ? 360
+            : event.key === "End"
+              ? 4096
+              : null;
+    if (nextWidth === null) return;
+    event.preventDefault();
+    onResize(nextWidth);
+  };
   return (
     <>
       <div
         className={s.splitter}
         role="separator"
         aria-orientation="vertical"
-        title="Drag to resize"
+        aria-label="Resize editor and preview"
+        aria-valuemin={360}
+        aria-valuemax={4096}
+        aria-valuenow={Math.min(paneWidth, 4096)}
+        aria-valuetext={`${paneWidth} pixels`}
+        tabIndex={0}
+        title="Drag or use arrow keys to resize"
         onMouseDown={onStartDrag}
+        onKeyDown={onSplitterKeyDown}
       />
       <div
         className={s.previewPanel}
@@ -232,8 +264,23 @@ function StartPagesEditor() {
   const { theme, toggleTheme } = useTheme();
 
   const contentList = useContentList(true);
-  const ed = useEditorState(forms, search, contentList.pages);
+  const ed = useEditorState(
+    forms,
+    search,
+    contentList.pages,
+    contentList.reviewSnapshot.complete,
+  );
   const { state } = ed;
+  const editClaims = ed.editPath
+    ? (contentList.openPRs.get(ed.editPath) ?? [])
+    : [];
+  const editRevision = ed.editRevision;
+  const activeReview =
+    editRevision?.source === "pr" && editClaims.length === 1
+      ? editClaims.find(
+          (claim) => claim.prNumber === editRevision.prNumber && claim.writable,
+        )
+      : undefined;
 
   // Combobox options = the builder's forms ∪ any form referenced by a content
   // page, so the picker is populated even when the forms API is unavailable
@@ -270,14 +317,17 @@ function StartPagesEditor() {
     460,
   );
   const [dragging, setDragging] = useState(false);
+  const resizePane = (nextWidth: number) => {
+    const max = Math.max(360, Math.round(window.innerWidth * 0.65));
+    setPaneWidth(Math.min(Math.max(360, nextWidth), max));
+  };
   const startDrag = (e: React.MouseEvent) => {
     e.preventDefault();
     const startX = e.clientX;
     const startW = paneWidth;
     setDragging(true);
     const onMove = (ev: MouseEvent) => {
-      const max = Math.round(window.innerWidth * 0.65);
-      setPaneWidth(Math.min(Math.max(360, startW + ev.clientX - startX), max));
+      resizePane(startW + ev.clientX - startX);
     };
     const onUp = () => {
       setDragging(false);
@@ -312,10 +362,16 @@ function StartPagesEditor() {
           newCatDesc: ed.newCatDesc,
           editPath: ed.editPath,
           editSha: ed.editSha,
+          editRevision: ed.editRevision,
           baseFrontmatter: ed.baseFrontmatter,
           createPath: ed.createPath,
         }),
       });
+      if (result.status === "conflict") {
+        ed.setDeployConflict(result.conflict);
+        ed.setError(result.conflict.message);
+        return;
+      }
       deployModal.close();
       ed.markSaved();
       ed.setSuccess({ ...result, kind: ed.editing ? "updated" : "added" });
@@ -332,7 +388,11 @@ function StartPagesEditor() {
     ed.setError(null);
     try {
       const result = await deleteContentPage({
-        data: { path: ed.editPath, title: state.title.trim() },
+        data: {
+          path: ed.editPath,
+          title: state.title.trim(),
+          expectedRevision: ed.editRevision ?? { source: "absent" },
+        },
       });
       deleteModal.close();
       ed.setSuccess({ ...result, kind: "removed" });
@@ -397,6 +457,8 @@ function StartPagesEditor() {
               showPreview,
               onTogglePreview: () => setShowPreview((v) => !v),
               editing: ed.editing,
+              deleteAllowed:
+                ed.editRevision?.source === "base" && !ed.reviewBlock,
               url: ed.url,
               theme,
               onToggleTheme: toggleTheme,
@@ -416,7 +478,11 @@ function StartPagesEditor() {
               disabled={!ed.canDeploy || isPublishing || ed.loadingPage}
             >
               <Rocket01Icon size={15} />
-              {ed.editing ? "Deploy update" : "Deploy page"}
+              {activeReview
+                ? `Update PR #${activeReview.prNumber}`
+                : ed.editing
+                  ? "Deploy update"
+                  : "Deploy page"}
             </button>
           )}
         </div>
@@ -437,9 +503,11 @@ function StartPagesEditor() {
             }
           >
             <p className={s.hint}>
-              {ed.editing
-                ? "Editing an existing landing page. Deploy opens a pull request that updates it."
-                : "Deploy opens a pull request that adds this page to the landing site."}{" "}
+              {activeReview
+                ? `Editing PR #${activeReview.prNumber}. Update adds a commit to the same PR.`
+                : ed.editing
+                  ? "Editing an existing landing page. Deploy opens a pull request that updates it."
+                  : "Deploy opens a pull request that adds this page to the landing site."}{" "}
               Base: <code>{baseBranch}</code>.
             </p>
 
@@ -450,22 +518,106 @@ function StartPagesEditor() {
                 </span>
               </p>
             )}
-            {!ed.loadingPage &&
-              ed.editPath &&
-              contentList.openPRs.get(ed.editPath) && (
-                <p className={s.modalNote}>
-                  Showing the version from open PR{" "}
+            {!ed.loadingPage && activeReview && (
+              <p className={s.modalNote}>
+                You’re editing the version in PR{" "}
+                <a
+                  href={activeReview.prUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  #{activeReview.prNumber}
+                </a>
+                {", not the live page. Updating adds one commit to that PR."}
+              </p>
+            )}
+            {ed.reviewBlock && (
+              <div className={s.recoveryBanner} role="alert">
+                <span>{ed.reviewBlock.message}</span>
+                <span className={s.reviewLinks}>
+                  {ed.reviewBlock.claims.map((claim) => (
+                    <a
+                      key={`${claim.prNumber}:${claim.path}:${claim.previousPath ?? ""}`}
+                      href={claim.prUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open PR #{claim.prNumber}
+                    </a>
+                  ))}
+                </span>
+              </div>
+            )}
+            {ed.deployConflict && ed.deployConflict.claims.length > 0 && (
+              <div className={s.reviewLinks}>
+                {ed.deployConflict.claims.map((claim) => (
                   <a
-                    href={contentList.openPRs.get(ed.editPath)!.prUrl}
+                    key={`${claim.prNumber}:${claim.path}:${claim.previousPath ?? ""}`}
+                    href={claim.prUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    #{contentList.openPRs.get(ed.editPath)!.prNumber}
-                  </a>{" "}
-                  (not what's live) — deploying updates that PR.
-                </p>
-              )}
-            <ErrorBanner error={ed.error} />
+                    Review PR #{claim.prNumber}
+                  </a>
+                ))}
+              </div>
+            )}
+            {ed.deployConflict?.kind === "review-unavailable" && (
+              <div className={s.recoveryBanner} role="alert">
+                <span>{ed.deployConflict.message}</span>
+                <button
+                  type="button"
+                  className={s.secondaryBtn}
+                  onClick={() => {
+                    ed.setDeployConflict(null);
+                    ed.setError(null);
+                    contentList.refetch();
+                  }}
+                  disabled={contentList.loading}
+                >
+                  Retry review check
+                </button>
+              </div>
+            )}
+            {ed.staleDraft && (
+              <div className={s.recoveryBanner} role="alert">
+                <span>
+                  {ed.deployConflict
+                    ? `${ed.deployConflict.message} `
+                    : "This draft is based on an older page revision. "}
+                  Your changes are still saved in this browser. Copy anything
+                  you need, then load the latest version before deploying.
+                </span>
+                <button
+                  type="button"
+                  className={s.secondaryBtn}
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        "Discard this saved draft and load the latest page version?",
+                      )
+                    ) {
+                      ed.discardDraft();
+                      if (ed.editPath) {
+                        // Let React remove the beforeunload guard after the
+                        // draft is discarded, then request a clean revision.
+                        window.setTimeout(() => window.location.reload(), 0);
+                      }
+                    }
+                  }}
+                >
+                  Discard draft and load latest
+                </button>
+              </div>
+            )}
+            <ErrorBanner
+              error={
+                ed.deployConflict?.kind === "review-unavailable" ||
+                ed.staleDraft
+                  ? null
+                  : ed.error
+              }
+            />
 
             <PageFields
               ed={ed}
@@ -478,6 +630,8 @@ function StartPagesEditor() {
             <EditorPreviewPane
               dragging={dragging}
               onStartDrag={startDrag}
+              paneWidth={paneWidth}
+              onResize={resizePane}
               breakpoint={breakpoint}
               onBreakpointChange={setBreakpoint}
               ed={ed}
@@ -522,9 +676,7 @@ function StartPagesEditor() {
           onClose={() => deployModal.close()}
           ed={ed}
           baseBranch={baseBranch}
-          openPR={
-            ed.editPath ? contentList.openPRs.get(ed.editPath) : undefined
-          }
+          openPR={activeReview}
           isPublishing={isPublishing}
           onDeploy={(desc) => void onDeploy(desc)}
         />

@@ -1,0 +1,885 @@
+{
+  "formId": "apply-for-food-business-licence",
+  "title": "Apply to Environmental Health for a food business licence",
+  "description": "Apply for a food business licence in Barbados",
+  "steps": [
+    {
+      "stepId": "about-you",
+      "title": "About you",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "completing-for",
+            "label": "Are you applying as an owner of the food business?",
+            "validations": {
+              "required": {
+                "error": "Select who you are completing the application for.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No, I am applying on behalf of the owner",
+                "value": "someone-else"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/relationship",
+          "overrides": {
+            "fieldId": "food-business-relationship",
+            "label": "What is your relationship to the food business?",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "completing-for",
+                "targetStepId": "about-you",
+                "operator": "equal",
+                "value": "someone-else"
+              }
+            ],
+            "options": [
+              {
+                "label": "Owner",
+                "value": "owner"
+              },
+              {
+                "label": "Co-owner or partner",
+                "value": "co-owner"
+              },
+              {
+                "label": "Director or company officer",
+                "value": "director-co"
+              },
+              {
+                "label": "Manager or operator",
+                "value": "manager-operator"
+              },
+              {
+                "label": "Authorised representative",
+                "value": "rep"
+              },
+              {
+                "label": "Something else",
+                "value": "something-else"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "your-first-name",
+            "label": "First name",
+            "validations": {
+              "required": {
+                "error": "Enter your first name.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "your-middle-name",
+            "label": "Middle name(s)",
+            "hint": "Enter all middle names in order."
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "your-last-name",
+            "label": "Last name",
+            "validations": {
+              "required": {
+                "error": "Enter your last name.",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "applicant-details",
+      "title": "Applicant details",
+      "behaviours": [],
+      "markdownContent": "This is your own address information. We will use it for any post about this application. You will give the food business address later.",
+      "elements": [
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "applicant-email"
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "applicant-phone",
+            "behaviours": [
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 4,
+                "addAnotherLabel": "Add another telephone number"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "applicant-address-line-1",
+            "label": "Address line 1"
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "applicant-address-line-2",
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/town",
+          "overrides": {
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "country",
+                "targetStepId": "applicant-details",
+                "operator": "notEqual",
+                "value": "barbados"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/country"
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "applicant-parish",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "country",
+                "targetStepId": "applicant-details",
+                "operator": "equal",
+                "value": "barbados"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "application-details",
+      "title": "Application details",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "application-type",
+            "label": "What are you applying to do?",
+            "validations": {
+              "required": {
+                "error": "Select what you are applying to do.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Apply for a food business licence for the first time",
+                "value": "first-time"
+              },
+              {
+                "label": "Renew a food business licence",
+                "value": "renewal"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "licence-number",
+            "label": "Licence or reference number",
+            "hint": "Enter the number shown on your current licence or Environmental Health correspondence.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "operator": "equal",
+                "value": "renewal"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "about-the-food-business",
+      "title": "About the food business",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "food-business-type",
+            "label": "What type of food business is this?",
+            "validations": {
+              "required": {
+                "error": "Enter the type of food business.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "food-business-name",
+            "label": "What is the food business name?",
+            "hint": "Enter the name the food business uses or will use.",
+            "validations": {
+              "required": {
+                "error": "Enter the food business name.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "premises-type",
+            "label": "Where will the food business operate from?",
+            "validations": {
+              "required": {
+                "error": "Select where the food business will operate from.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "A fixed building or property",
+                "value": "fixed-property"
+              },
+              {
+                "label": "A mobile van or trailer",
+                "value": "mobile-van"
+              },
+              {
+                "label": "A stall or cart",
+                "value": "stall-cart"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "vehicle-registration-number",
+            "label": "Vehicle registration number",
+            "hint": "The registration number of the van or trailer.",
+            "validations": {
+              "required": {
+                "error": "Enter the vehicle registration number.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "premises-type",
+                "operator": "equal",
+                "value": "mobile-van"
+              }
+            ],
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "business-already-open",
+            "label": "Is the food business already open?",
+            "validations": {
+              "required": {
+                "error": "Select whether the food business is already open.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "application-details",
+                "operator": "equal",
+                "value": "first-time"
+              }
+            ],
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "fieldId": "business-start-date",
+            "label": "What date did the food business start?",
+            "validations": {
+              "required": {
+                "error": "Enter the date the food business started.",
+                "value": true
+              },
+              "pastOrToday": {
+                "error": "The start date cannot be in the future.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "business-already-open",
+                "targetStepId": "about-the-food-business",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "fieldId": "business-expected-start-date",
+            "label": "What date do you expect the food business to start?",
+            "validations": {
+              "required": {
+                "error": "Enter the expected start date.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "business-already-open",
+                "targetStepId": "about-the-food-business",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "business-location-address-note",
+            "content": "The address of the food business itself — not your own postal address.",
+            "variant": "text"
+          }
+        },
+        {
+          "ref": "components/address-lookup",
+          "overrides": {
+            "fieldId": "business-location-address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "error": "Enter the address where the food business will operate.",
+                "value": true
+              }
+            },
+            "geocodeTargets": {
+              "line2FieldId": "business-location-address-line-2",
+              "parishFieldId": "business-location-parish",
+              "coordinatesFieldId": "business-location-address-coordinates"
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "business-location-address-line-2",
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/town",
+          "overrides": {
+            "fieldId": "business-location-town",
+            "label": "Town or district",
+            "validations": {
+              "required": {
+                "error": "Enter the town or district.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "business-location-parish",
+            "label": "Parish",
+            "validations": {
+              "required": {
+                "error": "Select the parish.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "business-location-address-coordinates",
+            "label": "Food business location coordinates",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "ui": {
+              "hidden": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "where-food-is-prepared",
+      "title": "Where food and drink is prepared",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "will-prepare-food",
+            "label": "Will the food business prepare any food or drink?",
+            "validations": {
+              "required": {
+                "error": "Select whether the food business will prepare any food or drink.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "preparation-location",
+            "label": "Where will the food or drink be prepared?",
+            "hint": "Select all that apply.",
+            "validations": {
+              "required": {
+                "error": "Select where the food or drink will be prepared.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "will-prepare-food",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "options": [
+              {
+                "label": "At the food business",
+                "value": "at-food-business"
+              },
+              {
+                "label": "At another food business or commercial kitchen",
+                "value": "at-another-food-business"
+              },
+              {
+                "label": "At another location",
+                "value": "at-another-location"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "supplier-licence-warning",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "preparation-location",
+                "operator": "in",
+                "value": [
+                  "at-another-food-business",
+                  "at-another-location"
+                ]
+              }
+            ],
+            "content": "It is your responsibility to make sure your suppliers have a valid food licence.",
+            "variant": "warning"
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "other-preparation-locations",
+      "title": "Where else food and drink is prepared",
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 5,
+          "addAnotherLabel": "Do you need to add another place where food or drink is prepared?",
+          "instanceLabel": "Place"
+        },
+        {
+          "type": "stepConditionalOn",
+          "targetFieldId": "preparation-location",
+          "targetStepId": "where-food-is-prepared",
+          "operator": "in",
+          "value": [
+            "at-another-food-business",
+            "at-another-location"
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "other-prep-business-name",
+            "label": "Name of business or place",
+            "validations": {
+              "required": {
+                "error": "Enter the name of the business or place.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "other-prep-address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "error": "Enter the address.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "other-prep-address-line-2",
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/town",
+          "overrides": {
+            "fieldId": "other-prep-town",
+            "label": "Town or district",
+            "validations": {
+              "required": {
+                "error": "Enter the town or district.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "other-prep-parish",
+            "label": "Parish",
+            "validations": {
+              "required": {
+                "error": "Select the parish.",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "people-working-at-the-food-business",
+      "title": "People working at the food business",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "staff-documents-note",
+            "content": "Everyone who handles food needs a valid medical certificate. This includes staff who only sell, serve, store, pack or deliver food, not just the people who cook.",
+            "variant": "text"
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "male-staff-count",
+            "label": "How many male staff will prepare or handle food or drink?",
+            "validations": {
+              "required": {
+                "error": "Enter the number of male staff",
+                "value": true
+              },
+              "min": {
+                "error": "Enter a number of 0 or more",
+                "value": 0
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "female-staff-count",
+            "label": "How many female staff will prepare or handle food or drink?",
+            "validations": {
+              "required": {
+                "error": "Enter the number of female staff",
+                "value": true
+              },
+              "min": {
+                "error": "Enter a number of 0 or more",
+                "value": 0
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "staff-list-upload",
+            "label": "Upload a list of your staff",
+            "hint": "The list must give each person's name and address. PDF, JPG or PNG, up to 5MB.",
+            "validations": {
+              "required": {
+                "error": "Upload a list of your staff.",
+                "value": true
+              },
+              "fileTypes": {
+                "error": "The staff list must be a PDF, JPG or PNG.",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "The staff list must be smaller than 5MB.",
+                "value": 5242880
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "medical-certificates-upload",
+            "label": "Upload medical certificates for your staff",
+            "hint": "You can upload more than one file. PDF, JPG or PNG, up to 5MB each. If you do not have them now, you can bring them to the inspection.",
+            "validations": {
+              "fileTypes": {
+                "error": "Each medical certificate must be a PDF, JPG or PNG.",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "Each medical certificate must be smaller than 5MB.",
+                "value": 5242880
+              },
+              "maxSize": {
+                "error": "The medical certificates must be smaller than 20MB in total.",
+                "value": 20971520
+              }
+            },
+            "multiple": true
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "floor-plan",
+      "title": "Floor plan",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "floor-plan-upload",
+            "label": "Upload a floor plan of the food business",
+            "hint": "A drawing of the layout. PDF, JPG or PNG, up to 5MB.",
+            "validations": {
+              "fileTypes": {
+                "error": "The floor plan must be a PDF, JPG or PNG.",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "The floor plan must be smaller than 5MB.",
+                "value": 5242880
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "behaviours": [],
+      "elements": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "I confirm that I am authorised to submit this application and that the information provided is true and correct.",
+                "value": "confirmed"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "behaviours": [],
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\nEnvironmental Health will review your application and an officer will be assigned to your case.\n\nThey must inspect the food business before they can issue a licence. More than one visit may be required before the issuing of a licence.\n\nIf there are any contraventions of the Health Services (Food Hygiene) Regulations, you will be given instructions to rectify them within a specified time period. Until the contraventions are rectified, you will be unable to operate the food business. Failure to comply may result in receiving recommendations to cancel the licence, close the establishment, or be subject to prosecution.\n\n**Obtaining your licence:**\n\nIf your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n- Branford Taitt Polyclinic - [536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)\n- David Thompson Health and Social Services Complex - [536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)\n- Eunice Gibson Polyclinic - [536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)\n- Maurice Byer Polyclinic - [536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)\n- Randall Phillips Polyclinic - [536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)\n- St. Phillip Polyclinic - [536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)\n- Winston Scott Polyclinic - [536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)",
+      "elements": []
+    }
+  ],
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "applicant-details.applicant-email",
+        "subject": "Your Food Business Licence application has been received"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "catchment.mdaEmail",
+        "subject": "A new Food Business Licence application has been received"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "method": "POST",
+        "signatureHeader": "X-Webhook-Signature",
+        "mapping": {
+          "programmeCode": "FOOD_BUSINESS_LICENCE",
+          "mdaCode": "MOH",
+          "programmeShortCode": "FBL",
+          "applicant": {
+            "name": [
+              "about-you.your-first-name",
+              "about-you.your-last-name"
+            ],
+            "email": "applicant-details.applicant-email",
+            "phone": "applicant-details.applicant-phone"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        },
+        "timeoutMs": 10000
+      }
+    }
+  ],
+  "createdAt": "2026-08-18T20:19:05.878Z",
+  "updatedAt": "2026-09-02T15:00:47.388Z",
+  "meta": {
+    "visibility": "preview"
+  },
+  "catchmentRouting": {
+    "coordinatesField": "about-the-food-business.business-location-address-coordinates",
+    "parishField": "about-the-food-business.business-location-parish"
+  }
+}

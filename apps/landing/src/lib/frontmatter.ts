@@ -15,6 +15,9 @@ import { z } from 'zod'
 export const VIEW_LEVELS = ['public', 'preview', 'draft'] as const
 export type ViewLevel = (typeof VIEW_LEVELS)[number]
 
+/** Reviewed, service-specific alternative language used by search. */
+export const SearchKeywordsSchema = z.array(z.string().trim().min(1))
+
 export const FrontmatterSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
@@ -31,6 +34,7 @@ export const FrontmatterSchema = z.object({
   section: z.string().optional(),
   service_type: z.enum(['digital', 'information']).optional(),
   form_id: z.string().optional(),
+  keywords: SearchKeywordsSchema.optional(),
 })
 
 type RawFrontmatter = z.infer<typeof FrontmatterSchema>
@@ -47,7 +51,7 @@ export type Frontmatter = Omit<
   title: string
   categories: Array<string>
   subcategory?: string
-  /** Extra search terms. Set by co-located feature modules; markdown pages omit it. */
+  /** Citizen terms and aliases that identify this service in search. */
   keywords?: Array<string>
 }
 

@@ -98,4 +98,25 @@ describe('buildBreadcrumbLd', () => {
       true,
     )
   })
+
+  it('includes the pharmacy service parent for its linked information pages', () => {
+    const page = makePage(
+      'health-and-emergency-services/free-or-subsidised-medication',
+      { title: 'Get free or subsidised medication' },
+    )
+    const items = buildBreadcrumbLd(page).itemListElement
+
+    expect(items.map((item) => item.name)).toEqual([
+      'Home',
+      'Health and emergency services',
+      'Find Barbados Drug Service prescription medication',
+      'Get free or subsidised medication',
+    ])
+    expect(items.map((item) => item.item)).toEqual([
+      SITE_URL,
+      `${SITE_URL}/health-and-emergency-services`,
+      `${SITE_URL}/health-and-emergency-services/find-an-open-pharmacy`,
+      `${SITE_URL}/health-and-emergency-services/free-or-subsidised-medication`,
+    ])
+  })
 })

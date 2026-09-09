@@ -21,12 +21,18 @@ function outage(overrides: Partial<Outage> = {}): Outage {
 
 function makeDeps(
   over: {
+    dataSource?: DataSource;
     matchedRecipients?: unknown;
     pendingUnsent?: unknown;
     send?: unknown;
+    configurationSet?: string;
   } = {},
 ) {
-  const feed = { fetchOutages: vi.fn().mockResolvedValue([]) };
+  const feed = {
+    fetchOutages: vi
+      .fn()
+      .mockResolvedValue({ outages: [], checkedAt: new Date().toISOString() }),
+  };
   const subscribers = {
     matchedRecipients: over.matchedRecipients ?? vi.fn().mockResolvedValue([]),
   };
@@ -39,17 +45,17 @@ function makeDeps(
   const mailer = {
     client: { send },
     from: "noreply@gov.bb",
-    configurationSet: undefined,
+    configurationSet: over.configurationSet,
     sendSimple: vi.fn(),
   };
   const service = new CheckerService(
-    {} as DataSource,
+    over.dataSource ?? ({} as DataSource),
     feed as unknown as FeedService,
     subscribers as unknown as WaterSubscriberRepository,
     sentAlerts as unknown as WaterSentAlertRepository,
     mailer as unknown as SesMailer,
   );
-  return { service, feed, subscribers, sentAlerts, send };
+  return { service, feed, subscribers, sentAlerts, send, mailer };
 }
 
 const PENDING_ROW = {
@@ -61,6 +67,17 @@ const PENDING_ROW = {
 };
 
 describe("CheckerService.runAlertCheck", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("uses outages from the cached feed snapshot", async () => {
+    const { service, feed } = makeDeps();
+    feed.fetchOutages.mockResolvedValue({
+      outages: [outage()],
+      checkedAt: new Date().toISOString(),
+    });
+    expect((await service.runAlertCheck()).activeNotices).toBe(1);
+  });
+
   it("dry-run computes recipients without claiming or sending", async () => {
     const { service, sentAlerts } = makeDeps({
       matchedRecipients: vi.fn().mockResolvedValue([
@@ -70,13 +87,14 @@ describe("CheckerService.runAlertCheck", () => {
     });
 
     const res = await service.runAlertCheck({
-      notices: [outage()],
+      notices: [outage(), outage({ id: "unmatched" })],
       dryRun: true,
     });
 
     expect(res.dryRun).toBe(true);
     expect(res.recipients).toBe(2);
     expect(res.plan?.[0]?.recipients).toEqual(["a@x", "b@x"]);
+    expect(res.plan?.[1]?.recipients).toEqual([]);
     expect(sentAlerts.claimForPairs).not.toHaveBeenCalled();
   });
 
@@ -135,10 +153,13 @@ describe("CheckerService.runAlertCheck", () => {
   });
 
   it("sends the alert with RFC 8058 one-click unsubscribe headers", async () => {
+    vi.stubEnv("LANDING_BASE_URL", "https://gov.bb/");
+    vi.stubEnv("API_PUBLIC_URL", "https://api.gov.bb/");
     const send = vi.fn().mockResolvedValue({});
     const { service } = makeDeps({
       pendingUnsent: vi.fn().mockResolvedValue([PENDING_ROW]),
       send,
+      configurationSet: "water-alerts",
     });
 
     await service.runAlertCheck({ notices: [outage()] });
@@ -149,5 +170,105 @@ describe("CheckerService.runAlertCheck", () => {
     );
     expect(headerNames).toContain("List-Unsubscribe");
     expect(headerNames).toContain("List-Unsubscribe-Post");
+    expect(input.Content.Simple.Headers).toContainEqual({
+      Name: "List-Unsubscribe",
+      Value: "<https://api.gov.bb/water-alerts/unsubscribe/u1>",
+    });
+    expect(input.Content.Simple.Body.Text.Data).toContain(
+      "https://gov.bb/health-and-emergency-services/water-outages/unsubscribe?token=u1",
+    );
+    expect(input.ConfigurationSetName).toBe("water-alerts");
+  });
+});
+
+describe("CheckerService.scheduled", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("skips a concurrent checker and always releases its database connection", async () => {
+    const runner = {
+      connect: vi.fn(),
+      query: vi.fn().mockResolvedValue([{ pg_try_advisory_lock: false }]),
+      release: vi.fn(),
+    };
+    const { service, feed } = makeDeps({
+      dataSource: { createQueryRunner: () => runner } as unknown as DataSource,
+    });
+    await service.scheduled();
+    expect(feed.fetchOutages).not.toHaveBeenCalled();
+    expect(runner.query).toHaveBeenCalledOnce();
+    expect(runner.release).toHaveBeenCalledOnce();
+  });
+
+  it("releases the advisory lock after a failed feed fetch", async () => {
+    const runner = {
+      connect: vi.fn(),
+      query: vi.fn().mockResolvedValue([{ pg_try_advisory_lock: true }]),
+      release: vi.fn(),
+    };
+    const { service, feed } = makeDeps({
+      dataSource: { createQueryRunner: () => runner } as unknown as DataSource,
+    });
+    feed.fetchOutages.mockRejectedValue(new Error("feed down"));
+    await service.scheduled();
+    expect(runner.query).toHaveBeenLastCalledWith(
+      "SELECT pg_advisory_unlock($1)",
+      [91442],
+    );
+    expect(runner.release).toHaveBeenCalledOnce();
+  });
+
+  it.each([false, true])(
+    "reports failed sends and releases the lock even if ops delivery fails (%s)",
+    async (opsFails) => {
+      vi.stubEnv("WATER_OPS_RECIPIENT", "ops@example.test");
+      const runner = {
+        connect: vi.fn(),
+        query: vi.fn().mockResolvedValue([{ pg_try_advisory_lock: true }]),
+        release: vi.fn(),
+      };
+      const { service, feed, mailer, sentAlerts } = makeDeps({
+        dataSource: {
+          createQueryRunner: () => runner,
+        } as unknown as DataSource,
+        pendingUnsent: vi.fn().mockResolvedValue([PENDING_ROW]),
+        send: vi.fn().mockRejectedValue(new Error("SES rejected alert")),
+      });
+      feed.fetchOutages.mockResolvedValue({
+        outages: [outage()],
+        checkedAt: new Date().toISOString(),
+      });
+      if (opsFails)
+        mailer.sendSimple.mockRejectedValue(new Error("ops unavailable"));
+
+      await expect(service.scheduled()).resolves.toBeUndefined();
+
+      expect(mailer.sendSimple).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: "ops@example.test",
+          subject: "Wuh Water Doing: 1 alert send(s) failed",
+          text: expect.stringContaining('"failed": 1'),
+        }),
+      );
+      expect(sentAlerts.markManySent).toHaveBeenCalledWith([], []);
+      expect(runner.query).toHaveBeenLastCalledWith(
+        "SELECT pg_advisory_unlock($1)",
+        [91442],
+      );
+      expect(runner.release).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("finishes a successful scheduled check without sending an ops alert", async () => {
+    const runner = {
+      connect: vi.fn(),
+      query: vi.fn().mockResolvedValue([{ pg_try_advisory_lock: true }]),
+      release: vi.fn(),
+    };
+    const { service, mailer } = makeDeps({
+      dataSource: { createQueryRunner: () => runner } as unknown as DataSource,
+    });
+    await service.scheduled();
+    expect(mailer.sendSimple).not.toHaveBeenCalled();
+    expect(runner.release).toHaveBeenCalledOnce();
   });
 });

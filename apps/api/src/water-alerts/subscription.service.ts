@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { Injectable, Logger } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from "@nestjs/common";
+import { isUUID } from "class-validator";
 import { Not } from "typeorm";
 import {
   WaterSubscriberEntity,
@@ -11,7 +16,7 @@ import { areaLabelFor } from "./parishes";
 import { WaterSubscriberRepository } from "./water-subscriber.repository";
 
 // Public route the confirm/unsubscribe links resolve to (a landing page that
-// calls the API back). Built onto PUBLIC_SITE_URL.
+// calls the API back). Built onto LANDING_BASE_URL.
 const WATER_OUTAGES_PATH = "/health-and-emergency-services/water-outages";
 
 export type TokenOutcome = "done" | "already" | "invalid";
@@ -43,7 +48,7 @@ export class SubscriptionService {
   ) {}
 
   private get siteUrl(): string {
-    return (process.env.PUBLIC_SITE_URL ?? "http://localhost:3000").replace(
+    return (process.env.LANDING_BASE_URL || "http://localhost:3000").replace(
       /\/+$/,
       "",
     );
@@ -88,19 +93,26 @@ export class SubscriptionService {
         );
       }
     } catch (err) {
-      // Backstop: two identical sign-ups raced and the unique rule rejected the
-      // second. Treat as "already signed up", not an error.
+      // The racing request may not have sent its confirmation successfully yet.
       if (String(err).includes("uq_water_subscribers_email_area")) {
-        return { ok: true, message: CONFIRM_MESSAGE, emailSent: false };
+        throw new ServiceUnavailableException(
+          "A sign-up is already being processed. Please try again shortly.",
+        );
       }
       throw err;
     }
 
     const emailSent = await this.sendConfirm(normEmail, normArea, confirmToken);
+    if (!emailSent) {
+      throw new ServiceUnavailableException(
+        "We couldn't send your confirmation email. Please try signing up again.",
+      );
+    }
     return { ok: true, message: CONFIRM_MESSAGE, emailSent };
   }
 
   async confirm(token: string): Promise<TokenOutcome> {
+    if (!isUUID(token, "4")) return "invalid";
     const res = await this.subscribers.update(
       { confirmToken: token, status: WaterSubscriberStatus.PENDING },
       { status: WaterSubscriberStatus.CONFIRMED, confirmedAt: new Date() },
@@ -116,6 +128,7 @@ export class SubscriptionService {
   }
 
   async unsubscribe(token: string): Promise<TokenOutcome> {
+    if (!isUUID(token, "4")) return "invalid";
     const res = await this.subscribers.update(
       {
         unsubscribeToken: token,
@@ -133,7 +146,7 @@ export class SubscriptionService {
       : "invalid";
   }
 
-  /** Sends the confirm email. Never throws — a mail hiccup can't break sign-up. */
+  /** Returns false on delivery failure so sign-up can report a retryable error. */
   private async sendConfirm(
     to: string,
     area: string,

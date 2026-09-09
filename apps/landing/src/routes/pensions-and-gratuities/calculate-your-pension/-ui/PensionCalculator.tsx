@@ -1,10 +1,12 @@
 import {
   Button,
+  ButtonGroup,
   ErrorSummary,
   Heading,
   Input,
   Link,
   Select,
+  ServiceHeading,
   Text,
 } from '@govtech-bb/react'
 import { useNavigate } from '@tanstack/react-router'
@@ -35,16 +37,6 @@ const MONTH_NAMES = [
 const monthYear = (month: number, year: number) =>
   `${MONTH_NAMES[month - 1] ?? ''} ${year}`
 
-function ServiceTitle() {
-  return (
-    <div className="border-blue-40 border-l-4 py-xs pl-s">
-      <Text as="p" className="text-mid-grey-00">
-        Calculate your Government pension
-      </Text>
-    </div>
-  )
-}
-
 function ResultCard({
   label,
   value,
@@ -56,12 +48,12 @@ function ResultCard({
 }) {
   const toneClasses =
     tone === 'green'
-      ? 'border-green-00 bg-green-10 text-green-00'
-      : 'border-teal-00 bg-teal-10 text-teal-00'
+      ? 'border-green-80 bg-green-10 text-green-80'
+      : 'border-teal-80 bg-teal-10 text-teal-80'
   return (
     <div className={`rounded-sm border-l-4 px-4 py-3 ${toneClasses}`}>
-      <p className="text-mid-grey-00 text-sm">{label}</p>
-      <p className="font-bold text-2xl">{value}</p>
+      <p className="text-grey-70 text-sm">{label}</p>
+      <p className="font-bold text-body-lg">{value}</p>
     </div>
   )
 }
@@ -210,16 +202,16 @@ export function PensionCalculator() {
 
   const errorItems = [
     errors.startMonth
-      ? { text: errors.startMonth, target: '#start-month' }
+      ? { label: errors.startMonth, href: '#start-month' }
       : null,
-    errors.startYear ? { text: errors.startYear, target: '#start-year' } : null,
-    errors.endMonth ? { text: errors.endMonth, target: '#end-month' } : null,
-    errors.endYear ? { text: errors.endYear, target: '#end-year' } : null,
+    errors.startYear ? { label: errors.startYear, href: '#start-year' } : null,
+    errors.endMonth ? { label: errors.endMonth, href: '#end-month' } : null,
+    errors.endYear ? { label: errors.endYear, href: '#end-year' } : null,
     errors.nopayMonths
-      ? { text: errors.nopayMonths, target: '#nopay-months' }
+      ? { label: errors.nopayMonths, href: '#nopay-months' }
       : null,
-    errors.salary ? { text: errors.salary, target: '#salary' } : null,
-  ].filter((e): e is { text: string; target: string } => e !== null)
+    errors.salary ? { label: errors.salary, href: '#salary' } : null,
+  ].filter((e): e is { label: string; href: string } => e !== null)
 
   const monthOptions = (
     <>
@@ -259,21 +251,22 @@ export function PensionCalculator() {
         `) and a last annual salary of ${money(sal)}.`
 
     return (
-      <div className="container pt-4 pb-8 lg:pt-6 lg:pb-12">
+      <div className="govbb-width-container govbb-main-wrapper">
         <section
           aria-live="polite"
           className="flex flex-col gap-6 focus:outline-none md:w-2/3"
           ref={resultsRef}
           tabIndex={-1}
         >
-          <ServiceTitle />
-          <Heading as="h1">Your estimated pension</Heading>
-          <Text as="p" className="text-mid-grey-00" size="caption">
+          <ServiceHeading service="Calculate your Government pension">
+            Your estimated pension
+          </ServiceHeading>
+          <Text as="p" className="text-grey-70" size="body-sm">
             {context}
           </Text>
 
           {estimate.serviceWarning && (
-            <div className="border-yellow-00 border-l-4 bg-yellow-10 p-4">
+            <div className="border-yellow-80 border-l-4 bg-yellow-10 p-4">
               <Text as="p" size="body">
                 <strong>You may not be entitled to a pension.</strong> Workers
                 with fewer than 10 years (120 months) of pensionable service who
@@ -335,7 +328,7 @@ export function PensionCalculator() {
             <Text as="p" size="body">
               Your full annual pension:
             </Text>
-            <p className="mt-2 border-blue-40 border-l-4 bg-blue-10 px-4 py-3">
+            <p className="mt-2 border-blue-20 border-l-4 bg-blue-10 px-4 py-3">
               {monthWord(months)} ÷ 600 × {money(sal)} ={' '}
               {money(estimate.fullAnnual)}
             </p>
@@ -346,7 +339,7 @@ export function PensionCalculator() {
             </Text>
           </div>
 
-          <Text as="p" className="text-mid-grey-00" size="caption">
+          <Text as="p" className="text-grey-70" size="body-sm">
             These figures are estimates only. Contact the PRC to discuss which
             option suits your circumstances before you retire.
           </Text>
@@ -357,7 +350,7 @@ export function PensionCalculator() {
             </Button>
           </div>
 
-          <div className="mt-4 border-grey-00 border-t-2 pt-6">
+          <div className="mt-4 border-grey-20 border-t-2 pt-6">
             <Heading as="h2">Next steps</Heading>
             <Text as="p" size="body">
               Once you have your estimate and you are eligible and ready to
@@ -407,7 +400,7 @@ export function PensionCalculator() {
 
   // ---- Form view ----------------------------------------------------------
   return (
-    <div className="container pt-4 pb-8 lg:pt-6 lg:pb-12">
+    <div className="govbb-width-container govbb-main-wrapper">
       <div className="flex flex-col gap-6 md:w-2/3">
         {errorItems.length > 0 && (
           <ErrorSummary
@@ -416,10 +409,11 @@ export function PensionCalculator() {
             title="There is a problem"
           />
         )}
-        <ServiceTitle />
-        <Heading as="h1">Government Pension calculator</Heading>
+        <ServiceHeading service="Calculate your Government pension">
+          Government Pension calculator
+        </ServiceHeading>
 
-        <div className="border-blue-40 border-l-4 bg-blue-10 p-4">
+        <div className="border-blue-20 border-l-4 bg-blue-10 p-4">
           <Text as="p" size="body">
             <strong>This calculator gives an estimate only.</strong> Your actual
             pension depends on information held by the People Resourcing and
@@ -440,7 +434,7 @@ export function PensionCalculator() {
             <legend className="mb-1 font-bold">
               When you started pensionable service
             </legend>
-            <Text as="p" className="text-mid-grey-00" size="caption">
+            <Text as="p" className="text-grey-70" size="body-sm">
               The month and year you began the service that counts towards your
               pension.
             </Text>
@@ -473,7 +467,7 @@ export function PensionCalculator() {
             <legend className="mb-1 font-bold">
               When you stopped or will retire
             </legend>
-            <Text as="p" className="text-mid-grey-00" size="caption">
+            <Text as="p" className="text-grey-70" size="body-sm">
               The month and year your pensionable service ends. If you have not
               retired yet, use your expected retirement date.
             </Text>
@@ -525,7 +519,7 @@ export function PensionCalculator() {
             value={salary}
           />
 
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() =>
                 navigate({
@@ -539,10 +533,10 @@ export function PensionCalculator() {
               Back
             </Button>
             <Button type="submit">Calculate pension</Button>
-          </div>
+          </ButtonGroup>
         </form>
 
-        <div className="mt-4 border-grey-00 border-t-2 pt-6">
+        <div className="mt-4 border-grey-20 border-t-2 pt-6">
           <Text as="p" size="body">
             <Link href={ABOUT_URL}>Learn how your pension is calculated</Link>
           </Text>

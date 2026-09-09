@@ -13,6 +13,10 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { Primitive, ServiceContract } from "@govtech-bb/form-types";
+import {
+  fileTypesRunner,
+  UNVERIFIED_CONTENT_TYPE,
+} from "@govtech-bb/form-validation";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import { isValidSecretToken } from "../common/secret-token";
 import { AppError } from "../common/errors";
@@ -469,24 +473,42 @@ export class FilesService {
     contentType: string,
     fileName: string,
   ): void {
-    const allowed = field.validations?.fileTypes?.value as string[] | undefined;
-    if (!allowed || allowed.length === 0) return;
+    const rule = field.validations?.fileTypes;
+    const allowed = Array.isArray(rule?.value)
+      ? (rule.value as string[])
+      : undefined;
 
-    // Allowlist entries starting with "." are extension patterns; everything
-    // else is a MIME type. A file is accepted if EITHER matches — users
-    // typically configure `[".pdf", "application/pdf"]` meaning "PDFs OK".
-    // Note: contentType is client-supplied (S3 does not sniff bytes), so this
-    // is policy enforcement, not malware defense.
-    const lc = allowed.map((s) => s.toLowerCase());
-    const parts = fileName.split(".");
-    const ext =
-      parts.length > 1 ? `.${parts[parts.length - 1]!.toLowerCase()}` : "";
+    // `application/octet-stream` is what the client sends when the browser
+    // could not type the file at all (an extensionless scan, an unrecognised
+    // document) — "unknown binary", not a claim about content.
+    const unverified = contentType.toLowerCase() === UNVERIFIED_CONTENT_TYPE;
 
-    if (lc.includes(contentType.toLowerCase()) || lc.includes(ext)) return;
+    if (!allowed || allowed.length === 0) {
+      // Fail closed. With no allowlist there is nothing to check an unverified
+      // file against, so accepting it would mean storing something we cannot
+      // identify by type OR extension. A field that genuinely wants to take
+      // anything should say so by listing the types it accepts.
+      if (unverified) {
+        throw new BadRequestException(
+          "The file type could not be identified. Rename the file so it has " +
+            "its correct extension (for example .pdf or .jpg) and try again.",
+        );
+      }
+      return;
+    }
 
-    throw new BadRequestException(
-      `Content type ${contentType} not allowed for this field`,
+    // Delegate to the shared runner rather than re-implementing the match:
+    // it normalises MIME / dotted / dotless allowlist entries to a bare
+    // extension, so `image/png` accepts `scan.png`. The local re-implementation
+    // this replaces matched only verbatim, which meant an untyped file the
+    // client validated as fine was still refused here.
+    // contentType is client-supplied (S3 does not sniff bytes), so this stays
+    // policy enforcement, not malware defence.
+    const error = fileTypesRunner(
+      [{ name: fileName, size: 0, type: contentType }],
+      { ...rule, value: allowed },
     );
+    if (error) throw new BadRequestException(error);
   }
 
   private resolveMaxSize(field: Primitive): number {

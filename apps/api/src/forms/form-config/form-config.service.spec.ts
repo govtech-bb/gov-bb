@@ -258,3 +258,53 @@ describe("FormConfigService.resolveDepartmentName", () => {
     await expect(service.resolveDepartmentName("form-a")).resolves.toBeNull();
   });
 });
+
+describe("FormConfigService.listMinistryKeysByForm", () => {
+  function makeBulkService(
+    formConfigRows: Partial<FormConfigEntity>[],
+    mdaContactRows: Partial<MdaContactEntity>[],
+  ) {
+    const formConfigRepo = {
+      find: vi.fn().mockResolvedValue(formConfigRows),
+    } as unknown as Mocked<FormConfigRepository>;
+    const mdaContactRepo = {
+      find: vi.fn().mockResolvedValue(mdaContactRows),
+    } as unknown as Mocked<MdaContactRepository>;
+    return new FormConfigService(formConfigRepo, mdaContactRepo);
+  }
+
+  it("maps each form to its ministry key in two queries", async () => {
+    const service = makeBulkService(
+      [
+        { formId: "form-a", mdaContactId: "contact-1" },
+        { formId: "form-b", mdaContactId: "contact-1" },
+        { formId: "form-c", mdaContactId: "contact-2" },
+      ],
+      [
+        { id: "contact-1", ministryKey: "health" },
+        { id: "contact-2", ministryKey: "youth" },
+      ],
+    );
+
+    await expect(service.listMinistryKeysByForm()).resolves.toEqual(
+      new Map([
+        ["form-a", "health"],
+        ["form-b", "health"],
+        ["form-c", "youth"],
+      ]),
+    );
+  });
+
+  it("omits forms whose contact is missing or has a blank ministry key", async () => {
+    const service = makeBulkService(
+      [
+        { formId: "unlinked", mdaContactId: null },
+        { formId: "dangling", mdaContactId: "gone" },
+        { formId: "blank-key", mdaContactId: "contact-3" },
+      ],
+      [{ id: "contact-3", ministryKey: "" }],
+    );
+
+    await expect(service.listMinistryKeysByForm()).resolves.toEqual(new Map());
+  });
+});

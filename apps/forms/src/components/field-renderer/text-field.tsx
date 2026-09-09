@@ -17,6 +17,7 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
     errorId,
     errorMessage,
     labelClass,
+    labelSuffix,
   } = ctx;
 
   const isNumber = field.htmlType === "number";
@@ -62,6 +63,7 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
     <div className="govbb-form-group" data-field-width={field.ui?.width}>
       <label className={labelClass("govbb-label")} htmlFor={field.id}>
         {field.label}
+        {labelSuffix}
       </label>
       {field.hint && (
         <p className="govbb-hint" id={hintId}>

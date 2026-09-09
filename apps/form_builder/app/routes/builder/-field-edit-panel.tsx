@@ -13,7 +13,13 @@ import type {
   RecipeDraft,
 } from "@govtech-bb/form-builder";
 import { primitiveUISchema } from "@govtech-bb/form-types";
-import type { FieldOverrides, HtmlTypes, Option, PrimitiveUI, ValidationRule } from "@govtech-bb/form-types";
+import type {
+  FieldOverrides,
+  HtmlTypes,
+  Option,
+  PrimitiveUI,
+  ValidationRule,
+} from "@govtech-bb/form-types";
 import type { FieldRef, StepRef } from "./-recipe-refs";
 import { getFieldRefs, getStepRefs } from "./-recipe-refs";
 import type { RecipeAction } from "./-recipe-reducer";
@@ -56,6 +62,10 @@ interface OverrideFormProps {
   // Validations declared on the base primitive — surfaced by the validation
   // editor as inherited, overridable rows (#618).
   baseValidations?: ValidationRule;
+  // Label declared on the base primitive — with the label override, it feeds
+  // the behaviours editor's fieldArray miniature the applicant-visible label
+  // (#2317).
+  defaultLabel?: string;
   // `ui` hints declared on the base primitive — the per-key fallback the ui
   // editor collapses to, so a registry default (e.g. National ID's
   // `width: "short"`) is shown truthfully and overriding it persists (#789).
@@ -84,9 +94,11 @@ const DEFAULT_REQUIRED_MSG = "This field is required";
 // declared on the base primitive itself (e.g. National ID's `width: "short"`)
 // takes precedence over the global default here (#789). Boolean keys need no
 // entry beyond a label.
-const UI_FIELD_META: Partial<
+type UiFieldMeta = Partial<
   Record<keyof PrimitiveUI, { label: string; default?: string }>
-> = {
+>;
+
+const UI_FIELD_META: UiFieldMeta = {
   width: { label: "Field width", default: "long" },
   hideLabel: { label: "Hide label" },
 };
@@ -113,7 +125,12 @@ interface UiPropertiesEditorProps {
 // the base primitive's `ui` value when declared, the global UI_FIELD_META
 // default otherwise (#789) — drops it, and `ui` collapses to `undefined` once
 // nothing is set, per the override contract (ADR 0013/0014).
-function UiPropertiesEditor({ ui, baseUi, onChange, fg }: UiPropertiesEditorProps) {
+function UiPropertiesEditor({
+  ui,
+  baseUi,
+  onChange,
+  fg,
+}: UiPropertiesEditorProps) {
   function setKey(key: keyof PrimitiveUI, value: string | boolean | undefined) {
     // A key is dropped only when explicitly cleared back to its default
     // (`undefined` from the control's onChange). We deliberately avoid `value
@@ -129,9 +146,7 @@ function UiPropertiesEditor({ ui, baseUi, onChange, fg }: UiPropertiesEditorProp
     <>
       {Object.entries(primitiveUISchema.shape).map(([key, schema]) => {
         const k = key as keyof PrimitiveUI;
-        const inner = (
-          schema as unknown as { unwrap: () => UiInnerSchema }
-        ).unwrap();
+        const inner = (schema as { unwrap: () => UiInnerSchema }).unwrap();
         const meta = UI_FIELD_META[k];
         const label = meta?.label ?? humanize(key);
 
@@ -139,16 +154,24 @@ function UiPropertiesEditor({ ui, baseUi, onChange, fg }: UiPropertiesEditorProp
           const fallback = baseUi?.[k] === true;
           const checked = (ui?.[k] as boolean | undefined) ?? fallback;
           return (
-            <div key={key} className={`${fg(ui?.[k] !== undefined)} ${styles.checkRow}`}>
+            <div
+              key={key}
+              className={`${fg(ui?.[k] !== undefined)} ${styles.checkRow}`}
+            >
               <label>
                 <input
                   type="checkbox"
                   checked={checked}
                   onChange={(e) =>
-                    setKey(k, e.target.checked === fallback ? undefined : e.target.checked)
+                    setKey(
+                      k,
+                      e.target.checked === fallback
+                        ? undefined
+                        : e.target.checked,
+                    )
                   }
-                />
-                {" "}{label}
+                />{" "}
+                {label}
               </label>
             </div>
           );
@@ -167,11 +190,16 @@ function UiPropertiesEditor({ ui, baseUi, onChange, fg }: UiPropertiesEditorProp
                 id={selectId}
                 value={current}
                 onChange={(e) =>
-                  setKey(k, e.target.value === fallback ? undefined : e.target.value)
+                  setKey(
+                    k,
+                    e.target.value === fallback ? undefined : e.target.value,
+                  )
                 }
               >
                 {options.map((opt) => (
-                  <option key={opt} value={opt}>{humanize(opt)}</option>
+                  <option key={opt} value={opt}>
+                    {humanize(opt)}
+                  </option>
                 ))}
               </select>
             </div>
@@ -195,7 +223,12 @@ interface FieldIdOverrideInputProps {
 // The Field ID Override input owns the transient format error and the
 // kebab-on-blur normalization; the duplicate error is passed in from the parent
 // (which alone can check the recipe-wide id set).
-function FieldIdOverrideInput({ value, duplicate, onChange, fg }: FieldIdOverrideInputProps) {
+function FieldIdOverrideInput({
+  value,
+  duplicate,
+  onChange,
+  fg,
+}: FieldIdOverrideInputProps) {
   const [fieldIdError, setFieldIdError] = useState("");
   return (
     <div className={fg(value !== undefined && value !== "")}>
@@ -261,7 +294,9 @@ function RequiredRuleEditor({
 
   return (
     <>
-      <div className={`${fg(validations?.required !== undefined)} ${styles.checkRow}`}>
+      <div
+        className={`${fg(validations?.required !== undefined)} ${styles.checkRow}`}
+      >
         <label>
           <input
             type="checkbox"
@@ -278,8 +313,8 @@ function RequiredRuleEditor({
               }
               onChange(Object.keys(next).length > 0 ? next : undefined);
             }}
-          />
-          {" "}Required
+          />{" "}
+          Required
         </label>
       </div>
       {effectiveRequired && (
@@ -289,7 +324,9 @@ function RequiredRuleEditor({
             <input
               type="text"
               value={validations?.required?.error ?? ""}
-              placeholder={baseValidations?.required?.error ?? DEFAULT_REQUIRED_MSG}
+              placeholder={
+                baseValidations?.required?.error ?? DEFAULT_REQUIRED_MSG
+              }
               onChange={(e) => {
                 const text = e.target.value;
                 const next = { ...(validations ?? {}) };
@@ -348,8 +385,8 @@ function OptionsSection({
               type="checkbox"
               checked={multiple ?? defaultMultiple ?? false}
               onChange={(e) => patch({ multiple: e.target.checked })}
-            />
-            {" "}Multiple
+            />{" "}
+            Multiple
           </label>
         </div>
       )}
@@ -379,18 +416,37 @@ interface PlainOverrideFieldsProps {
 
 // The unconditional override fields: the free-text Label and Hint, and the
 // Disabled / Hidden toggles. No branching beyond the shared override-highlight.
-function PlainOverrideFields({ overrides, patch, fg }: PlainOverrideFieldsProps) {
+function PlainOverrideFields({
+  overrides,
+  patch,
+  fg,
+}: PlainOverrideFieldsProps) {
   return (
     <>
-      <div className={fg(overrides.label !== undefined && overrides.label !== "")}>
+      <div
+        className={fg(overrides.label !== undefined && overrides.label !== "")}
+      >
         <label>Label</label>
         <input
           type="text"
           value={overrides.label ?? ""}
           onChange={(e) => patch({ label: e.target.value || undefined })}
+          onBlur={(e) => {
+            // Optionality is data, not copy: the renderer appends "(optional)"
+            // from `required: {value: false}`, so a hand-typed suffix would
+            // render doubled. Same normalise-on-blur shape as the Field ID.
+            const stripped = e.target.value.replace(
+              /\s*\(optional\)\s*$|,\s*optional\s*$/i,
+              "",
+            );
+            if (stripped !== e.target.value)
+              patch({ label: stripped || undefined });
+          }}
         />
       </div>
-      <div className={fg(overrides.hint !== undefined && overrides.hint !== "")}>
+      <div
+        className={fg(overrides.hint !== undefined && overrides.hint !== "")}
+      >
         <label>Hint</label>
         <input
           type="text"
@@ -398,14 +454,18 @@ function PlainOverrideFields({ overrides, patch, fg }: PlainOverrideFieldsProps)
           onChange={(e) => patch({ hint: e.target.value || undefined })}
         />
       </div>
-      <div className={`${fg(overrides.isDisabled === true)} ${styles.checkRow}`}>
+      <div
+        className={`${fg(overrides.isDisabled === true)} ${styles.checkRow}`}
+      >
         <label>
           <input
             type="checkbox"
             checked={overrides.isDisabled ?? false}
-            onChange={(e) => patch({ isDisabled: e.target.checked || undefined })}
-          />
-          {" "}Disabled
+            onChange={(e) =>
+              patch({ isDisabled: e.target.checked || undefined })
+            }
+          />{" "}
+          Disabled
         </label>
       </div>
       <div className={`${fg(overrides.isHidden === true)} ${styles.checkRow}`}>
@@ -414,8 +474,8 @@ function PlainOverrideFields({ overrides, patch, fg }: PlainOverrideFieldsProps)
             type="checkbox"
             checked={overrides.isHidden ?? false}
             onChange={(e) => patch({ isHidden: e.target.checked || undefined })}
-          />
-          {" "}Hidden
+          />{" "}
+          Hidden
         </label>
       </div>
     </>
@@ -435,6 +495,7 @@ function OverrideForm({
   defaultRequired = false,
   baseValidations,
   baseUi,
+  defaultLabel,
 }: OverrideFormProps) {
   const fieldIdDuplicate =
     checkDuplicateFieldId?.(overrides.fieldId ?? "") ?? false;
@@ -487,6 +548,10 @@ function OverrideForm({
         fieldRefs={fieldRefs}
         stepRefs={stepRefs}
         currentStepId={currentStepId}
+        currentField={{
+          label: overrides.label || defaultLabel || "",
+          htmlType,
+        }}
         onChange={(behaviours) =>
           patch({ behaviours: behaviours.length > 0 ? behaviours : undefined })
         }
@@ -524,7 +589,9 @@ export function FieldEditPanel({
   // prop would leave stale local state. `ref` is held locally too so a type
   // swap re-derives htmlType and re-runs the rest of the form live (#642).
   const [ref, setRef] = useState<string>(field.ref);
-  const [overrides, setOverrides] = useState<FieldOverrides>({ ...field.overrides });
+  const [overrides, setOverrides] = useState<FieldOverrides>({
+    ...field.overrides,
+  });
   const [childOverrides, setChildOverrides] = useState<ChildOverrides>(
     field.childOverrides ? { ...field.childOverrides } : {},
   );
@@ -550,7 +617,9 @@ export function FieldEditPanel({
   function handleChangeRef(nextRef: string) {
     const nextItem = getRegistryItem(nextRef, catalog);
     const toHtmlType =
-      nextItem && "primitive" in nextItem ? nextItem.primitive.htmlType : htmlType;
+      nextItem && "primitive" in nextItem
+        ? nextItem.primitive.htmlType
+        : htmlType;
     setOverrides((prev) => {
       // A field on its registry default fieldId would silently re-resolve to the
       // new ref's default on swap, dangling any condition/validation that
@@ -603,10 +672,18 @@ export function FieldEditPanel({
 
   return (
     <div className={styles.modal} onClick={onClose}>
-      <div className={`${styles.modalContent} ${styles.modalContentWide}`} role="dialog" aria-modal="true" aria-label="Edit Field" onClick={(e) => e.stopPropagation()}>
+      <div
+        className={`${styles.modalContent} ${styles.modalContentWide}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Edit Field"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className={styles.modalHead}>
           <strong>Edit Field: {item?.displayName ?? ref}</strong>
-          <button type="button" onClick={onClose}>Close</button>
+          <button type="button" onClick={onClose}>
+            Close
+          </button>
         </div>
 
         {isBlock && blockDef ? (
@@ -638,9 +715,12 @@ export function FieldEditPanel({
                     }
                     defaultOptions={element.options}
                     defaultMultiple={element.multiple}
-                    defaultRequired={isRequiredRule(element.validations?.required)}
+                    defaultRequired={isRequiredRule(
+                      element.validations?.required,
+                    )}
                     baseValidations={element.validations}
                     baseUi={element.ui}
+                    defaultLabel={element.label}
                   />
                 </div>
               );
@@ -675,31 +755,48 @@ export function FieldEditPanel({
             <OverrideForm
               overrides={overrides}
               htmlType={htmlType}
-            fieldRefs={fieldRefs}
-            stepRefs={stepRefs}
-            currentStepId={stepId}
-            onChange={setOverrides}
-            checkDuplicateFieldId={(candidate) =>
-              fieldIdDuplicatesAnother(draft, catalog, field.id, candidate)
-            }
-            defaultOptions={item && "primitive" in item ? item.primitive.options : undefined}
-            defaultMultiple={item && "primitive" in item ? item.primitive.multiple : undefined}
-            defaultRequired={
-              item && "primitive" in item
-                ? isRequiredRule(item.primitive.validations?.required)
-                : false
-            }
-            baseValidations={
-              item && "primitive" in item ? item.primitive.validations : undefined
-            }
-            baseUi={item && "primitive" in item ? item.primitive.ui : undefined}
+              fieldRefs={fieldRefs}
+              stepRefs={stepRefs}
+              currentStepId={stepId}
+              onChange={setOverrides}
+              checkDuplicateFieldId={(candidate) =>
+                fieldIdDuplicatesAnother(draft, catalog, field.id, candidate)
+              }
+              defaultOptions={
+                item && "primitive" in item ? item.primitive.options : undefined
+              }
+              defaultMultiple={
+                item && "primitive" in item
+                  ? item.primitive.multiple
+                  : undefined
+              }
+              defaultRequired={
+                item && "primitive" in item
+                  ? isRequiredRule(item.primitive.validations?.required)
+                  : false
+              }
+              baseValidations={
+                item && "primitive" in item
+                  ? item.primitive.validations
+                  : undefined
+              }
+              baseUi={
+                item && "primitive" in item ? item.primitive.ui : undefined
+              }
+              defaultLabel={
+                item && "primitive" in item ? item.primitive.label : undefined
+              }
             />
           </>
         )}
 
         <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
-          <button type="button" onClick={handleSave}>Save</button>
-          <button type="button" onClick={onClose}>Cancel</button>
+          <button type="button" onClick={handleSave}>
+            Save
+          </button>
+          <button type="button" onClick={onClose}>
+            Cancel
+          </button>
         </div>
       </div>
     </div>

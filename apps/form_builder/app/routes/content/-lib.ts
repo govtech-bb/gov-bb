@@ -16,6 +16,7 @@
 import { KEBAB_ID_PATTERN } from "@govtech-bb/form-types";
 import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
 import type { BuilderFormSummary } from "../../types/index";
+import type { ContentRevision } from "./-server";
 
 /**
  * Forms the CMS can link a content page to: every form except a disabled one
@@ -351,6 +352,8 @@ export interface DeployPayloadInput {
   baseFrontmatter: Record<string, unknown> | null;
   /** Fixed-create mode: the target repo path for a new entry/start page. */
   createPath: string | null;
+  /** Exact source loaded by the editor; null for a page that does not exist. */
+  editRevision: Exclude<ContentRevision, { source: "absent" }> | null;
 }
 
 /**
@@ -372,6 +375,7 @@ export function buildDeployPayload(input: DeployPayloadInput) {
     editSha,
     baseFrontmatter,
     createPath,
+    editRevision,
   } = input;
   const fixedPath = editPath ?? createPath;
   return {
@@ -394,6 +398,7 @@ export function buildDeployPayload(input: DeployPayloadInput) {
           description: newCatDesc.trim() || undefined,
         }
       : undefined,
+    expectedRevision: editRevision ?? ({ source: "absent" } as const),
     ...(editPath
       ? {
           path: editPath,

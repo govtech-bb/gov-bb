@@ -1,11 +1,13 @@
 import {
   Button,
+  ButtonGroup,
   Checkbox,
   CheckboxGroup,
   ErrorSummary,
   Heading,
   Link,
   LinkButton,
+  ServiceHeading,
   ShowHide,
   Text,
 } from '@govtech-bb/react'
@@ -30,10 +32,10 @@ const SERVICE_PATH_SPLAT = 'business-trade/crop-over-permits'
 const SERVICE_TITLE = 'Find the permits you need for a Crop Over event'
 
 const URGENCY_CLASSES: Record<Permit['urgency'], string> = {
-  urgent: 'text-red-00',
-  amber: 'text-yellow-00',
-  green: 'text-green-00',
-  normal: 'text-mid-grey-00',
+  urgent: 'text-red-80',
+  amber: 'text-yellow-80',
+  green: 'text-green-80',
+  normal: 'text-grey-70',
 }
 
 interface CardOption<T extends string> {
@@ -119,8 +121,8 @@ const FEATURE_OPTIONS: Array<{ id: FeatureFlag; label: string }> = [
 
 function ServiceTitle() {
   return (
-    <div className="border-blue-40 border-l-4 py-xs pl-s">
-      <Text as="p" className="text-mid-grey-00">
+    <div className="border-blue-20 border-l-4 py-xs pl-s">
+      <Text as="p" className="text-grey-70">
         {SERVICE_TITLE}
       </Text>
     </div>
@@ -144,17 +146,17 @@ function OptionCard<T extends string>({
 }: OptionCardProps<T>) {
   return (
     <label
-      className={`flex min-h-14 cursor-pointer items-start gap-s rounded-sm border-2 p-s transition-colors hover:border-teal-00 hover:bg-teal-10 ${
+      className={`flex min-h-14 cursor-pointer items-start gap-s rounded-sm border-2 p-s transition-colors hover:border-teal-80 hover:bg-teal-10 ${
         selected
-          ? 'border-teal-00 bg-teal-10'
+          ? 'border-teal-80 bg-teal-10'
           : invalid
-            ? 'border-red-00'
-            : 'border-grey-00'
+            ? 'border-red-80'
+            : 'border-grey-20'
       }`}
     >
       <input
         checked={selected}
-        className="mt-1 h-5 w-5 shrink-0 accent-teal-00"
+        className="mt-1 h-5 w-5 shrink-0 accent-teal-80"
         id={`${name}-${option.value}`}
         name={name}
         onChange={() => onChange(option.value)}
@@ -162,8 +164,8 @@ function OptionCard<T extends string>({
         value={option.value}
       />
       <span>
-        <span className="block font-bold text-base">{option.title}</span>
-        <span className="mt-1 block text-base text-mid-grey-00">
+        <span className="block font-bold text-body-sm">{option.title}</span>
+        <span className="mt-1 block text-body-sm text-grey-70">
           {option.hint}
         </span>
       </span>
@@ -249,7 +251,7 @@ export function CropOverPermitsForm() {
     .join(' · ')
 
   return (
-    <div className="container pt-4 pb-8 lg:py-8">
+    <div className="govbb-width-container govbb-main-wrapper">
       {step === 'q-event' && (
         <form
           className="flex flex-col gap-6"
@@ -261,12 +263,13 @@ export function CropOverPermitsForm() {
         >
           {eventError && (
             <ErrorSummary
-              errors={[{ text: eventError, target: 'event-fete' }]}
+              errors={[{ href: '#event-fete', label: eventError }]}
               title="There is a problem"
             />
           )}
-          <ServiceTitle />
-          <Heading as="h1">What are you putting on?</Heading>
+          <ServiceHeading service={SERVICE_TITLE}>
+            What are you putting on?
+          </ServiceHeading>
           <fieldset className="flex flex-col gap-xs">
             <legend className="sr-only">Choose one</legend>
             {EVENT_OPTIONS.map((option) => (
@@ -280,7 +283,7 @@ export function CropOverPermitsForm() {
               />
             ))}
           </fieldset>
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() =>
                 navigate({
@@ -294,7 +297,7 @@ export function CropOverPermitsForm() {
               Previous
             </Button>
             <Button type="submit">Continue</Button>
-          </div>
+          </ButtonGroup>
         </form>
       )}
 
@@ -309,12 +312,13 @@ export function CropOverPermitsForm() {
         >
           {venueError && (
             <ErrorSummary
-              errors={[{ text: venueError, target: 'venue-private' }]}
+              errors={[{ href: '#venue-private', label: venueError }]}
               title="There is a problem"
             />
           )}
-          <ServiceTitle />
-          <Heading as="h1">Where are you holding it?</Heading>
+          <ServiceHeading service={SERVICE_TITLE}>
+            Where are you holding it?
+          </ServiceHeading>
           <fieldset className="flex flex-col gap-xs">
             <legend className="sr-only">Choose one</legend>
             {VENUE_OPTIONS.map((option) => (
@@ -328,7 +332,7 @@ export function CropOverPermitsForm() {
               />
             ))}
           </fieldset>
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() => go('q-event')}
               type="button"
@@ -337,7 +341,7 @@ export function CropOverPermitsForm() {
               Previous
             </Button>
             <Button type="submit">Continue</Button>
-          </div>
+          </ButtonGroup>
         </form>
       )}
 
@@ -352,12 +356,13 @@ export function CropOverPermitsForm() {
         >
           {sizeError && (
             <ErrorSummary
-              errors={[{ text: sizeError, target: 'size-small' }]}
+              errors={[{ href: '#size-small', label: sizeError }]}
               title="There is a problem"
             />
           )}
-          <ServiceTitle />
-          <Heading as="h1">How many people are you expecting?</Heading>
+          <ServiceHeading service={SERVICE_TITLE}>
+            How many people are you expecting?
+          </ServiceHeading>
           <fieldset className="flex flex-col gap-xs">
             <legend className="sr-only">Choose one</legend>
             {SIZE_OPTIONS.map((option) => (
@@ -371,18 +376,16 @@ export function CropOverPermitsForm() {
               />
             ))}
           </fieldset>
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
-              onClick={() =>
-                go(eventType === 'cruise' ? 'q-event' : 'q-venue')
-              }
+              onClick={() => go(eventType === 'cruise' ? 'q-event' : 'q-venue')}
               type="button"
               variant="secondary"
             >
               Previous
             </Button>
             <Button type="submit">Continue</Button>
-          </div>
+          </ButtonGroup>
         </form>
       )}
 
@@ -395,25 +398,29 @@ export function CropOverPermitsForm() {
             go('result')
           }}
         >
-          <ServiceTitle />
-          <Heading as="h1">Tell us what's happening at your event</Heading>
+          <ServiceHeading service={SERVICE_TITLE}>
+            Tell us what's happening at your event
+          </ServiceHeading>
           <Text as="p" size="body">
             Tick everything that applies. Leave blank any that do not.
           </Text>
-          <CheckboxGroup label="Select all that apply">
+          <CheckboxGroup legend="Select all that apply">
             {FEATURE_OPTIONS.map(({ id, label }) => (
               <Checkbox
                 checked={features[id]}
                 id={`feat-${id}`}
                 key={id}
                 label={label}
-                onCheckedChange={(checked) =>
-                  setFeatures((prev) => ({ ...prev, [id]: checked === true }))
-                }
+                onChange={(event) => {
+                  // Read before the updater runs — React nulls currentTarget
+                  // once the handler returns.
+                  const { checked } = event.currentTarget
+                  setFeatures((prev) => ({ ...prev, [id]: checked }))
+                }}
               />
             ))}
           </CheckboxGroup>
-          <div className="flex gap-3">
+          <ButtonGroup>
             <Button
               onClick={() => go('q-size')}
               type="button"
@@ -422,7 +429,7 @@ export function CropOverPermitsForm() {
               Previous
             </Button>
             <Button type="submit">Show my permits</Button>
-          </div>
+          </ButtonGroup>
         </form>
       )}
 
@@ -430,22 +437,22 @@ export function CropOverPermitsForm() {
         <div className="flex flex-col gap-6">
           <ServiceTitle />
 
-          <div className="rounded-sm bg-blue-100 p-m text-white-00">
+          <div className="rounded-sm bg-blue-40 p-m text-white-00">
             <Heading as="h2" className="text-white-00">
               Your permit checklist
             </Heading>
             <Text as="p" className="mt-1 text-white-00" size="body">
               {subtitle || '—'}
             </Text>
-            <p className="mt-3 font-bold text-3xl text-yellow-100">
+            <p className="mt-3 font-bold text-3xl text-yellow-40">
               {activePermits.length}{' '}
-              <span className="font-normal text-base text-white-00">
+              <span className="font-normal text-body-sm text-white-00">
                 {activePermits.length === 1 ? 'permit' : 'permits'}
               </span>
             </p>
           </div>
 
-          <div className="border-blue-100 border-l-4 bg-blue-10 p-4">
+          <div className="border-blue-40 border-l-4 bg-blue-10 p-4">
             <Text as="p" size="body">
               Apply in the order each permit appears. Start now and complete
               applications no later than <strong>May or early June</strong>.
@@ -463,11 +470,11 @@ export function CropOverPermitsForm() {
             ))}
           </ol>
 
-          <div className="border-grey-00 border-l-4 pl-s text-mid-grey-00">
+          <div className="border-grey-20 border-l-4 pl-s text-grey-70">
             <Text as="p" className="text-black-00" size="body">
               <strong>Worth knowing</strong>
             </Text>
-            <Text as="p" className="mt-2 text-mid-grey-00" size="body">
+            <Text as="p" className="mt-2 text-grey-70" size="body">
               This guidance is based on publicly available information and is
               indicative only. Requirements can change — always confirm with
               each agency before you apply. This is not legal advice.
@@ -485,30 +492,33 @@ export function CropOverPermitsForm() {
           </div>
         </div>
       )}
-
     </div>
   )
 }
 
 function PermitCard({ permit }: { permit: Permit; displayStep: number }) {
   return (
-    <li className="rounded-sm border border-grey-00 p-s">
+    <li className="rounded-sm border border-grey-20 p-s">
       <div className="flex items-start gap-s">
         <div className="flex-1">
           <Heading as="h3">
             {permit.link ? (
-              <Link external href={permit.link}>
+              <Link
+                href={permit.link}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
                 {permit.name}
               </Link>
             ) : (
               permit.name
             )}
           </Heading>
-          <Text as="p" className="mt-1 text-mid-grey-00" size="body">
+          <Text as="p" className="mt-1 text-grey-70" size="body">
             {permit.agency}
           </Text>
           <p
-            className={`mt-2 font-bold text-base ${URGENCY_CLASSES[permit.urgency]}`}
+            className={`mt-2 font-bold text-body-sm ${URGENCY_CLASSES[permit.urgency]}`}
           >
             {permit.lead}
           </p>
@@ -529,17 +539,21 @@ function PermitCard({ permit }: { permit: Permit; displayStep: number }) {
             ))}
           </ul>
           {(permit.applyOnline || permit.applyInPerson) && (
-            <div className="mt-4 border-blue-40 border-t pt-4">
+            <div className="mt-4 border-blue-20 border-t pt-4">
               <Text
                 as="p"
-                className="mb-2 font-bold text-mid-grey-00 uppercase tracking-wider"
-                size="caption"
+                className="mb-2 font-bold text-grey-70 uppercase tracking-wider"
+                size="body-sm"
               >
                 How to apply
               </Text>
               {permit.applyOnline && (
                 <div className="mb-3">
-                  <LinkButton external href={permit.applyOnline}>
+                  <LinkButton
+                    href={permit.applyOnline}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
                     Apply online
                   </LinkButton>
                 </div>

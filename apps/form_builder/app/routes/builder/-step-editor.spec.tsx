@@ -229,7 +229,7 @@ it("renders this step's fields as Shared Fields checkboxes", () => {
       { id: "field-1", kind: "component", ref: "components/first-name", overrides: {} },
     ],
     behaviours: [
-      { type: "sharedFields", fieldIds: [] } as unknown as RecipeStepDraft["behaviours"][number],
+      { type: "sharedFields", fieldIds: [] },
     ],
   });
   const draft: RecipeDraft = { formId: "f", title: "F", steps: [step] };

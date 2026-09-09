@@ -1,6 +1,7 @@
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 import type { ServiceContract, ServiceContractRecipe } from "@govtech-bb/form-types";
 import type { BuilderFormSummary } from "../../types/index";
+import type { OpenDeployPR } from "../../server/publish";
 import { formPreviewUrl } from "../../lib/form-url";
 import { FormPicker } from "./-form-picker";
 import { PreviewModal } from "./-preview-modal";
@@ -13,6 +14,10 @@ interface BuilderModalsProps {
   isPickerOpen: boolean;
   forms: BuilderFormSummary[] | null;
   formsLoadError: string | null;
+  /** Open Deploy PRs keyed by formId (#2390), so a picker row whose form
+   *  already has a Deploy in review can badge itself instead of inviting a
+   *  duplicate deploy. */
+  openPRs: Map<string, OpenDeployPR>;
   isDirty: boolean;
   catalog: RegistryCatalog;
   onLoad: (draft: RecipeDraft, formId: string) => void;
@@ -46,7 +51,13 @@ interface BuilderModalsProps {
   isPublishOpen: boolean;
   baseBranch: string;
   isPublishing: boolean;
-  publishSuccess: { prUrl: string; prNumber: number } | null;
+  // #2390: updatedExistingPR distinguishes a fresh PR from a push onto one
+  // already open for this form, so PublishModal can render the right copy.
+  publishSuccess: {
+    prUrl: string;
+    prNumber: number;
+    updatedExistingPR: boolean;
+  } | null;
   publishError: string | null;
   onPublish: (description: string) => void;
   onClosePublish: () => void;
@@ -74,6 +85,7 @@ export function BuilderModals({
   isPickerOpen,
   forms,
   formsLoadError,
+  openPRs,
   isDirty,
   catalog,
   onLoad,
@@ -128,6 +140,7 @@ export function BuilderModals({
         <FormPicker
           forms={forms}
           loadError={formsLoadError}
+          openPRs={openPRs}
           isDirty={isDirty}
           catalog={catalog}
           onLoad={onLoad}

@@ -25,13 +25,14 @@ function make(
 }
 
 describe("WaterAlertsController", () => {
-  it("returns the outages and a checkedAt timestamp", async () => {
+  it("returns the outages with the upstream fetch timestamp", async () => {
+    const checkedAt = "2026-06-22T08:00:00.000Z";
     const controller = make({
-      fetchOutages: vi.fn().mockResolvedValue([OUTAGE]),
+      fetchOutages: vi.fn().mockResolvedValue({ outages: [OUTAGE], checkedAt }),
     });
     const res = await controller.outages();
     expect(res.outages).toEqual([OUTAGE]);
-    expect(Number.isNaN(Date.parse(res.checkedAt))).toBe(false);
+    expect(res.checkedAt).toBe(checkedAt);
   });
 
   it("maps a feed failure to a 503", async () => {

@@ -15,6 +15,7 @@ export function renderDateField(ctx: FieldRenderContext): JSX.Element {
     errorMessage,
     describedBy,
     labelClass,
+    labelSuffix,
     partInvalid,
     commitChange,
   } = ctx;
@@ -31,6 +32,7 @@ export function renderDateField(ctx: FieldRenderContext): JSX.Element {
     >
       <legend className={labelClass("govbb-fieldset__legend")}>
         {field.label}
+        {labelSuffix}
       </legend>
       {field.hint && (
         <p className="govbb-hint" id={hintId}>

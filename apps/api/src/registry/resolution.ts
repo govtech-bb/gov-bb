@@ -92,6 +92,11 @@ export async function hydrateStep(
     // intentionally NOT carried here — it is unused by the live serving path,
     // and wiring it would switch on dormant copy across many existing recipes.
     markdownContent: step.markdownContent,
+    // Per-answer passages inside that markdown (#2068). The live serving path
+    // resolves these off the served step, so — exactly like `conditionalTitle`
+    // above — omitting it here would strip the property from the citizen-facing
+    // contract and leave every `{token}` in the body unfilled.
+    conditionalMarkdown: step.conditionalMarkdown,
   };
 }
 

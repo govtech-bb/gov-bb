@@ -2,9 +2,9 @@ name: Archive merged drafts
 
 on:
   push:
-    branches: [dev]
+    branches: [main]
     paths:
-      - "recipes/**/*.json"
+      - "apps/api/src/forms/form-definitions/recipes/**/*.json"
 
 permissions:
   contents: read

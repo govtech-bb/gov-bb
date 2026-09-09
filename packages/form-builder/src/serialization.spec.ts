@@ -86,6 +86,34 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     }
   });
 
+  // Regression guard for #2376/#2377: a Deploy of a catchment-routed form was
+  // silently stripping this block, which unroutes the form — no
+  // `catchment.mdaEmail` recipient and no per-polyclinic programme code.
+  it("preserves catchmentRouting through a full open → deploy cycle", () => {
+    const catchmentRouting = {
+      coordinatesField: "about-restaurant.restaurant-address-coordinates",
+      parishField: "about-restaurant.restaurant-parish",
+    };
+    const draft = makeBaseDraft({ catchmentRouting });
+    const recipe = serializeRecipeDraft(draft);
+
+    expect(recipe.catchmentRouting).toEqual(catchmentRouting);
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
+    // The path that actually broke: open an existing recipe, then deploy it.
+    expect(
+      serializeRecipeDraft(deserializeRecipe(recipe)).catchmentRouting,
+    ).toEqual(catchmentRouting);
+  });
+
+  it("omits catchmentRouting when the recipe has none", () => {
+    const recipe = serializeRecipeDraft(makeBaseDraft());
+
+    expect(Object.keys(recipe)).not.toContain("catchmentRouting");
+    expect(Object.keys(deserializeRecipe(recipe))).not.toContain(
+      "catchmentRouting",
+    );
+  });
+
   it("does not assert exact createdAt/updatedAt — only that they are strings", () => {
     const draft = makeBaseDraft();
     const recipe = serializeRecipeDraft(draft);
@@ -386,6 +414,64 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
 
     const result = deserializeRecipe(recipe);
     expect(result.steps[0].markdownContent).toBeUndefined();
+  });
+
+  it("conditionalMarkdown on a confirmation step survives round-trip (#2068)", () => {
+    // No builder editor for it yet, so it must be carried through untouched —
+    // otherwise a republish strips the segments and the served body renders
+    // its `{token}`s unfilled.
+    const conditionalMarkdown = [
+      {
+        token: "inspection",
+        default: "An officer may arrange an inspection.",
+        variants: [
+          {
+            targetStepId: "food-safety",
+            targetFieldId: "has-food-licence",
+            operator: "equal" as const,
+            value: "no",
+            content: "An officer will inspect your set-up.",
+          },
+        ],
+      },
+    ];
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "submission-confirmation",
+          title: "Application submitted",
+          fields: [],
+          behaviours: [],
+          markdownContent: "Lead.\n\n{inspection}",
+          conditionalMarkdown,
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft);
+    expect(recipe.steps[0].conditionalMarkdown).toEqual(conditionalMarkdown);
+
+    const result = deserializeRecipe(recipe);
+    expect(result.steps[0].conditionalMarkdown).toEqual(conditionalMarkdown);
+  });
+
+  it("absent conditionalMarkdown on a step is not forwarded (#2068)", () => {
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "submission-confirmation",
+          title: "Application submitted",
+          fields: [],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft);
+    expect(Object.keys(recipe.steps[0])).not.toContain("conditionalMarkdown");
+
+    const result = deserializeRecipe(recipe);
+    expect(result.steps[0].conditionalMarkdown).toBeUndefined();
   });
 
   it("nextSteps on a confirmation step are carried through untouched (#1292)", () => {
@@ -830,5 +916,100 @@ describe("mdaContactId serialization", () => {
     const draft = makeBaseDraft({ mdaContactId: null });
     const recipe = serializeRecipeDraft(draft);
     expect(Object.keys(recipe)).not.toContain("mdaContactId");
+  });
+});
+
+// ─── rule value normalisation (#2384) ───────────────────────────────────────
+
+/**
+ * The builder's Value box is a text input, so a rule value can reach the
+ * serializer as raw text — freshly typed, or carried in from an older recipe
+ * the author never reopened. The validation editor only converts what the
+ * author actually retypes, so without normalisation here a legacy string
+ * survives a full open → Deploy round-trip and fails the recipe schema in CI.
+ * That is exactly how `apply-for-hair-salon-licence` shipped
+ * `itemMaxSize: "5242880"` and turned main red.
+ */
+describe("serializeRecipeDraft normalises off-shape rule values (#2384)", () => {
+  const draftWithValidations = (validations: unknown): RecipeDraft =>
+    makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-one",
+          title: "Step one",
+          behaviours: [],
+          fields: [
+            f({
+              kind: "component",
+              ref: "components/upload-document",
+              overrides: { validations },
+            } as unknown as Omit<RecipeFieldDraft, "id">),
+          ],
+        },
+      ],
+    } as Partial<RecipeDraft>);
+
+  const validationsOf = (recipe: ServiceContractRecipe) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (recipe.steps[0]!.elements[0] as any).overrides.validations;
+
+  it("converts a numeric string byte count to a number", () => {
+    const recipe = serializeRecipeDraft(
+      draftWithValidations({ itemMaxSize: { value: "5242880" } }),
+    );
+    expect(validationsOf(recipe).itemMaxSize.value).toBe(5242880);
+  });
+
+  it("converts a comma-separated fileTypes string to an array", () => {
+    const recipe = serializeRecipeDraft(
+      draftWithValidations({
+        fileTypes: { value: "application/pdf, image/png" },
+      }),
+    );
+    expect(validationsOf(recipe).fileTypes.value).toEqual([
+      "application/pdf",
+      "image/png",
+    ]);
+  });
+
+  it("preserves the rule's error copy while coercing its value", () => {
+    const recipe = serializeRecipeDraft(
+      draftWithValidations({
+        itemMaxSize: { value: "5242880", error: "Too big." },
+      }),
+    );
+    expect(validationsOf(recipe).itemMaxSize).toEqual({
+      value: 5242880,
+      error: "Too big.",
+    });
+  });
+
+  it("leaves an uncoercible value alone so the recipe schema still reports it", () => {
+    const recipe = serializeRecipeDraft(
+      draftWithValidations({ minLength: { value: "abc" } }),
+    );
+    expect(validationsOf(recipe).minLength.value).toBe("abc");
+  });
+
+  it("leaves already-correct values untouched", () => {
+    const recipe = serializeRecipeDraft(
+      draftWithValidations({
+        itemMaxSize: { value: 5242880 },
+        fileTypes: { value: ["application/pdf"] },
+        pattern: { value: "^[0-9]+$" },
+      }),
+    );
+    expect(validationsOf(recipe)).toEqual({
+      itemMaxSize: { value: 5242880 },
+      fileTypes: { value: ["application/pdf"] },
+      pattern: { value: "^[0-9]+$" },
+    });
+  });
+
+  it("produces a recipe that passes the schema gate that rejected the old output", () => {
+    const recipe = serializeRecipeDraft(
+      draftWithValidations({ itemMaxSize: { value: "5242880" } }),
+    );
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
   });
 });

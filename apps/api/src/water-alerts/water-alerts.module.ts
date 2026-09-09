@@ -11,8 +11,7 @@ import { WaterSubscriberRepository } from "./water-subscriber.repository";
 /**
  * Water-outage alerts (Wuh Water Doing?) — the server side of the service being
  * migrated in from the standalone prototype. Covers reading the BWA feed for the
- * public map/list (Step 2) and subscribe/confirm/unsubscribe + confirm email
- * (Step 3). The @Cron checker lands in Step 4.
+ * public map/list, double opt-in subscriptions, and scheduled email alerts.
  */
 @Module({
   imports: [HttpModule],

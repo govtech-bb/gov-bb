@@ -196,13 +196,7 @@
           "ref": "components/postcode",
           "overrides": {
             "fieldId": "deceased-postcode",
-            "hint": "For example, BB17004 (optional)",
-            "validations": {
-              "pattern": {
-                "error": "Enter a valid postcode (for example, BB17004)",
-                "value": "^[A-Z]{2}\\d{5}$"
-              }
-            },
+            "hint": "For example, BB17004",
             "ui": {
               "width": "short"
             }
@@ -248,7 +242,7 @@
           "overrides": {
             "fieldId": "applicant-middle-name",
             "label": "Middle name(s)",
-            "hint": "Optional. Enter only if known.",
+            "hint": "Enter only if known.",
             "validations": {
               "minLength": {
                 "error": "Middle name must be at least 2 characters",
@@ -458,13 +452,7 @@
           "ref": "components/postcode",
           "overrides": {
             "fieldId": "new-postcode",
-            "hint": "For example, BB17004 (optional)",
-            "validations": {
-              "pattern": {
-                "error": "Enter a valid postcode (for example, BB17004)",
-                "value": "^[A-Z]{2}\\d{5}$"
-              }
-            },
+            "hint": "For example, BB17004",
             "ui": {
               "width": "short"
             }

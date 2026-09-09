@@ -105,6 +105,18 @@ export interface SubmissionState {
    * went to. Absent for forms without coordinate-based routing.
    */
   polyclinic?: string;
+  /**
+   * The confirmation body with its per-answer passages already filled (#2068),
+   * resolved at submit time and persisted with the rest of the outcome.
+   *
+   * It has to be captured here rather than evaluated at render: `clearFormState`
+   * drops the draft answers the moment the submission succeeds, so a refresh on
+   * the confirmation step has an outcome but no values left to branch on — and
+   * re-evaluating then would quietly show the fallback passage while the
+   * applicant's email showed the real one. Still carries `{polyclinic}` /
+   * `{landingUrl}`, which the page interpolates at render.
+   */
+  resolvedMarkdown?: string;
   referenceNumber: string;
   // Optional: payment ("gated") submissions are not finalised yet, so the
   // server returns `submittedAt: null` — there is no submission date to show

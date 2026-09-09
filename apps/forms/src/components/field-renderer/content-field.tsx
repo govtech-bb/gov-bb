@@ -17,6 +17,20 @@ export function renderContentElement(field: ClientPrimitive): JSX.Element {
   switch (field.variant) {
     case "inset":
       return <div className="govbb-inset-text">{body}</div>;
+    // Amber lead-time / risk callout. The glyph is decorative, so assistive
+    // tech gets the word instead — same split as ErrorMessage's "Error:".
+    case "warning":
+      return (
+        <div className="govbb-warning-text">
+          <span className="govbb-warning-text__icon" aria-hidden="true">
+            !
+          </span>
+          <div className="govbb-warning-text__body">
+            <span className="govbb-visually-hidden">Warning:</span>
+            {body}
+          </div>
+        </div>
+      );
     case "details":
       return (
         <details className="govbb-show-hide">

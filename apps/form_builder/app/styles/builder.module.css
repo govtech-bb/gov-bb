@@ -864,6 +864,28 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
   text-transform: capitalize;
 }
 
+/* Open Deploy PR badge (#2390): a row with an in-flight Deploy PR gets a
+   clickable "In review" pill linking to it. Unlike the static badges above,
+   this one is interactive, so it borrows the solid --el-1000/--on-inverse
+   pairing already used for primary actions (.btnPrimary) rather than the
+   --el-800/--el-150 pair — same theme-inverting guarantee (light-mode dark
+   surface + white text, dark-mode light surface + dark text, per #1739) but
+   reads as "do something" instead of "state". */
+.reviewBadge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--el-1000);
+  color: var(--on-inverse);
+  margin-left: 4px;
+  cursor: pointer;
+}
+
+.reviewBadge:hover {
+  text-decoration: underline;
+}
+
 /* ── Validation banners ───────────────────────────── */
 /* Inline (in-modal / in-editor) variants of the floating .errorBanner /
    .successBanner: same tokens and shape, no floating margins. */
@@ -1441,4 +1463,52 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
   background: var(--color-warning-light);
   color: var(--color-warning-text);
   font-size: 13px;
+}
+
+/* ── fieldArray "The applicant sees" miniature (#2317) ─── */
+
+.faMiniature {
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border: 1px dashed var(--el-250);
+  border-radius: var(--rad-m);
+  background: var(--el-50);
+}
+
+.faMiniatureCaption {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--txt-dim);
+  margin-bottom: 6px;
+}
+
+.faMiniatureLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--txt);
+  margin-bottom: 4px;
+}
+
+.faMiniatureBox {
+  height: 22px;
+  max-width: 260px;
+  margin-bottom: 4px;
+  border: 1px solid var(--el-400);
+  border-radius: var(--rad-s);
+  background: var(--el-0);
+}
+
+.faMiniatureMore {
+  font-size: 12px;
+  color: var(--txt-dim);
+  margin-bottom: 4px;
+}
+
+.faMiniatureLink {
+  font-size: 13px;
+  color: var(--txt);
+  text-decoration: underline;
 }

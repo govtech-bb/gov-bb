@@ -245,7 +245,7 @@
           "ref": "components/postcode",
           "overrides": {
             "fieldId": "contact-postcode",
-            "hint": "For example, BB17004 (optional)"
+            "hint": "For example, BB17004"
           }
         },
         {
@@ -585,6 +585,10 @@
                   ".png"
                 ]
               },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
+              },
               "maxSize": {
                 "error": "The file must be 25MB or smaller",
                 "value": 26214400
@@ -623,14 +627,6 @@
                 "value": "confirmed"
               }
             ]
-          }
-        },
-        {
-          "ref": "components/date-of-birth",
-          "overrides": {
-            "fieldId": "declaration-date",
-            "label": "Date of declaration",
-            "isHidden": true
           }
         }
       ],

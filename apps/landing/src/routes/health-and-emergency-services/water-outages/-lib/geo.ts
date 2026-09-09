@@ -65,20 +65,32 @@ export function parishAt(
 /**
  * Resolve a GPS position to a parish. `exact` is true when the point falls
  * inside a parish boundary; false when we had to fall back to the nearest
- * parish (e.g. a reading just off the coast). Returns null only if there are
- * no parishes to match against at all.
+ * parish (e.g. a reading just off the coast). Returns null if the position is
+ * outside Barbados or boundary data could not be loaded.
  */
 export async function locateParish(
   lat: number,
   lon: number,
 ): Promise<{ value: string; exact: boolean } | null> {
+  // ponytail: a coastal bounding box limits centroid guesses; use coastline
+  // distance if offshore locations need finer handling.
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lon) ||
+    lat < 13.03 ||
+    lat > 13.35 ||
+    lon < -59.67 ||
+    lon > -59.4
+  ) {
+    return null
+  }
   try {
     const mod = await import('./parish-boundaries.json')
     const boundaries = (mod.default ?? mod) as unknown as ParishBoundaries
     const hit = parishAt(lat, lon, boundaries)
     if (hit) return { value: hit, exact: true }
   } catch {
-    // Boundary data unavailable — fall through to the centroid estimate.
+    return null
   }
   const nearest = nearestParish(lat, lon)
   return nearest ? { value: nearest, exact: false } : null

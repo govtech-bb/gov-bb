@@ -5,8 +5,7 @@ import { MigrationInterface, QueryRunner } from "typeorm";
  *
  * water_subscribers  — who signed up (email + area), their double-opt-in state,
  *                      and their confirm/unsubscribe tokens.
- * water_sent_alerts  — the exactly-once logbook of which notice already went to
- *                      which subscriber (claim-then-send).
+ * water_sent_alerts  — claimed notices and recorded sends per subscriber.
  */
 export class CreateWaterAlertsTables1785917644000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {

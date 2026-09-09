@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { fieldOverridesSchema, primitiveSchema } from "./primitive.type";
-import { behaviourSchema, conditionalTitleSchema } from "./behavior.type";
+import {
+  behaviourSchema,
+  conditionalMarkdownSchema,
+  conditionalTitleSchema,
+} from "./behavior.type";
 import { kebabIdSchema } from "./id-pattern";
 
 export const formStepSchema = z.object({
@@ -19,6 +23,12 @@ export const formStepSchema = z.object({
   // (e.g. a "What you need to know" section) without code changes. Distinct
   // from `nextSteps`, which renders structured title/content/items blocks.
   markdownContent: z.string().optional(),
+  // Per-answer passages within `markdownContent` (#2068). Each entry fills one
+  // `{token}` the markdown carries inline, so several passages of one
+  // confirmation body can follow different answers without duplicating the
+  // body. Resolved by `resolveConditionalMarkdown` in form-conditions, which
+  // both confirmation surfaces (page and applicant email) call.
+  conditionalMarkdown: z.array(conditionalMarkdownSchema).optional(),
   // Suppress the "Submission ID" line on the submission-confirmation page. For
   // an anonymous form (e.g. the exit survey) that issues no meaningful
   // reference, the design shows no ID. Omitted ⇒ the ID is shown as before.

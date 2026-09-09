@@ -64,3 +64,47 @@ export function generateReferenceCode(
     randomTail(opts.tailLength ?? TAIL_LENGTH),
   ].join("-");
 }
+
+/**
+ * Canonical form for *comparing* two reference codes, applying Crockford's
+ * decode rules: `O`→`0`, `I`/`L`→`1` (https://www.crockford.com/base32.html).
+ *
+ * We adopted the Crockford alphabet for the tail but the leading segments are
+ * not alphabet-constrained — a derived prefix can contain the letter `O`
+ * (`request-an-environmental-health-officer` → `RAEHO`), which is
+ * indistinguishable from `RAEH0` on paper or down a phone line. Comparing
+ * canonical forms makes a mistyped code resolve anyway.
+ *
+ * Safe to apply to the whole string: the tail alphabet contains no I/L/O/U and
+ * YYMM is digits, so this can only ever rewrite the prefix. Never store the
+ * result — it is a comparison key, not a reference code.
+ */
+export function canonicalizeReferenceCode(code: string): string {
+  return code.toUpperCase().replace(/O/g, "0").replace(/[IL]/g, "1");
+}
+
+/**
+ * The `MDA-PROG` reference prefix a form's recipe declares, or `undefined` when
+ * it declares none — in which case the prefix falls back to the formId
+ * initials, which is what every pre-migration form still does.
+ *
+ * Read straight off the recipe's webhook mapping, so minting costs no DB read
+ * and the prefix is identical in every environment. Both segments are required
+ * together: a half-migrated recipe falls back rather than minting a third shape
+ * of code.
+ */
+export function referencePrefixFromProcessors(
+  processors: readonly { type: string; config?: unknown }[],
+): string | undefined {
+  for (const processor of processors) {
+    if (processor.type !== "webhook") continue;
+    const mapping = (processor.config as { mapping?: unknown } | undefined)
+      ?.mapping as
+      | { mdaCode?: string; programmeShortCode?: string }
+      | undefined;
+    if (mapping?.mdaCode && mapping.programmeShortCode) {
+      return `${mapping.mdaCode}-${mapping.programmeShortCode}`;
+    }
+  }
+  return undefined;
+}

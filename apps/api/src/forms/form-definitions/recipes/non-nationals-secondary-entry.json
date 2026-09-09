@@ -164,7 +164,17 @@
             "label": "Birth Certificate",
             "accept": "application/pdf,image/*",
             "fieldId": "birth-certificate",
-            "required": true
+            "required": true,
+            "validations": {
+              "fileTypes": {
+                "value": ["application/pdf", "image/jpeg", "image/png"],
+                "error": "Upload a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
+              }
+            }
           }
         },
         {
@@ -173,7 +183,17 @@
             "label": "Immigration Status Document (Parent for CARICOM Nationals, Child for Other Non-Nationals)",
             "accept": "application/pdf,image/*",
             "fieldId": "immigration-status-document",
-            "required": true
+            "required": true,
+            "validations": {
+              "fileTypes": {
+                "value": ["application/pdf", "image/jpeg", "image/png"],
+                "error": "Upload a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
+              }
+            }
           }
         }
       ],

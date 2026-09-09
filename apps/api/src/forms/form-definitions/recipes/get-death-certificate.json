@@ -57,7 +57,7 @@
           "overrides": {
             "fieldId": "applicant-middle-name",
             "label": "Middle name",
-            "hint": "Optional. Provide only if known"
+            "hint": "Provide only if known"
           }
         },
         {
@@ -168,7 +168,7 @@
           "ref": "components/postcode",
           "overrides": {
             "fieldId": "applicant-postcode",
-            "hint": "For example, BB17004 (optional)"
+            "hint": "For example, BB17004"
           }
         },
         {

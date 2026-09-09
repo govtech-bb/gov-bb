@@ -15,6 +15,7 @@ export function renderRadioField(ctx: FieldRenderContext): JSX.Element {
     errorId,
     errorMessage,
     labelClass,
+    labelSuffix,
     commitChange,
     insetFieldsByOption,
     formId,
@@ -27,6 +28,7 @@ export function renderRadioField(ctx: FieldRenderContext): JSX.Element {
     <fieldset className="govbb-fieldset" id={field.id}>
       <legend className={labelClass("govbb-fieldset__legend")}>
         {field.label}
+        {labelSuffix}
       </legend>
       {field.hint && (
         <p className="govbb-hint" id={hintId}>
@@ -67,12 +69,14 @@ export function renderRadioField(ctx: FieldRenderContext): JSX.Element {
                     ({
                       field: insetField,
                       validationProperties: insetValidation,
+                      insetFieldsByOption: nestedInsets,
                     }) => (
                       <FieldRenderer
                         key={insetField.id}
                         form={form}
                         field={insetField}
                         validationProperties={insetValidation}
+                        insetFieldsByOption={nestedInsets}
                         formId={formId}
                         previewToken={previewToken}
                         draftToken={draftToken}

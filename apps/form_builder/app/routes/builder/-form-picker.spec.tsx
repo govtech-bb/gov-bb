@@ -8,6 +8,7 @@ import type { Mock } from "vitest";
 import { FormPicker } from "./-form-picker";
 import { getRecipe, getFormConfig } from "../../server/forms";
 import type { BuilderFormSummary } from "../../types/index";
+import type { OpenDeployPR } from "../../server/publish";
 import type { RegistryCatalog } from "@govtech-bb/form-builder";
 
 // getRecipe/getFormConfig are only invoked when a row is clicked; render-only
@@ -67,6 +68,17 @@ const ORPHAN_OVERRIDE: BuilderFormSummary = {
   isOrphanOverride: true,
 };
 
+// Published, and shadowed by a builder scratch row (#2411) — the case where a
+// recipe hand-edited in the repo cannot reach the builder.
+const SHADOWED_PUBLISHED: BuilderFormSummary = {
+  id: "shadowed",
+  formId: "shadowed",
+  title: "Shadowed Service",
+  version: "1.1.0",
+  isPublished: true,
+  hasDraftRow: true,
+};
+
 function renderPicker(props: Partial<React.ComponentProps<typeof FormPicker>> = {}) {
   return render(
     <FormPicker
@@ -74,6 +86,7 @@ function renderPicker(props: Partial<React.ComponentProps<typeof FormPicker>> = 
       loadError={null}
       isDirty={false}
       catalog={CATALOG}
+      openPRs={new Map()}
       onLoad={vi.fn()}
       onClose={vi.fn()}
       onRequestDelete={vi.fn()}
@@ -267,5 +280,118 @@ describe("FormPicker", () => {
 
     await userEvent.click(enableBtn);
     expect(onEnable).toHaveBeenCalledWith(ORPHAN_OVERRIDE);
+  });
+
+  describe("In review badge (#2390)", () => {
+    const OPEN_PR: OpenDeployPR = {
+      formId: "passport",
+      prNumber: 42,
+      prUrl: "https://github.com/govtech-bb/gov-bb/pull/42",
+      branch: "deploy/passport",
+    };
+
+    it("renders the badge only for the row with an open Deploy PR", () => {
+      renderPicker({
+        forms: [FORMS[0], DRAFT],
+        openPRs: new Map([[OPEN_PR.formId, OPEN_PR]]),
+      });
+      // Passport (formId matches the PR) shows it; Draft Form does not.
+      expect(screen.getAllByText(/in review/i)).toHaveLength(1);
+    });
+
+    it("shows no badge when no form has an open PR", () => {
+      renderPicker({ forms: [DRAFT], openPRs: new Map() });
+      expect(screen.queryByText(/in review/i)).not.toBeInTheDocument();
+    });
+
+    it("exposes the PR number via the badge's title", () => {
+      renderPicker({
+        forms: FORMS,
+        openPRs: new Map([[OPEN_PR.formId, OPEN_PR]]),
+      });
+      expect(screen.getByTitle(/#42/)).toBeInTheDocument();
+    });
+
+    it("clicking the badge opens the PR in a new tab and does not select/load the form", async () => {
+      const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+      renderPicker({
+        forms: FORMS,
+        openPRs: new Map([[OPEN_PR.formId, OPEN_PR]]),
+      });
+
+      await userEvent.click(screen.getByText(/in review/i));
+
+      expect(openSpy).toHaveBeenCalledWith(OPEN_PR.prUrl, "_blank", "noopener");
+      // A click on the badge must not bubble to the row's select handler —
+      // that would fetch the recipe and load the form into the editor.
+      expect(getRecipe).not.toHaveBeenCalled();
+
+      openSpy.mockRestore();
+    });
+
+    it("opens the PR on Enter for keyboard access", async () => {
+      const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+      renderPicker({
+        forms: FORMS,
+        openPRs: new Map([[OPEN_PR.formId, OPEN_PR]]),
+      });
+
+      screen.getByText(/in review/i).focus();
+      await userEvent.keyboard("{Enter}");
+
+      expect(openSpy).toHaveBeenCalledWith(OPEN_PR.prUrl, "_blank", "noopener");
+      expect(getRecipe).not.toHaveBeenCalled();
+
+      openSpy.mockRestore();
+    });
+  });
+
+  describe("Delete working copy (#2411)", () => {
+    it("offers it for a published form that a scratch row is shadowing, reusing the delete flow", async () => {
+      const onRequestDelete = vi.fn();
+      renderPicker({ forms: [SHADOWED_PUBLISHED], onRequestDelete });
+
+      const btn = screen.getByRole("button", { name: /delete working copy/i });
+      await userEvent.click(btn);
+
+      expect(onRequestDelete).toHaveBeenCalledWith(SHADOWED_PUBLISHED);
+    });
+
+    it("keeps Disable and Erase alongside it, and still offers no bare Delete", () => {
+      renderPicker({ forms: [SHADOWED_PUBLISHED] });
+
+      expect(screen.getByRole("button", { name: /^disable$/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^erase$/i })).toBeInTheDocument();
+      // #576: a bare "Delete" must never sit beside a live published service —
+      // the working-copy action is labelled for what it actually removes.
+      expect(screen.queryByRole("button", { name: /^delete$/i })).not.toBeInTheDocument();
+    });
+
+    it("offers nothing to delete for a published form with no scratch row", () => {
+      renderPicker({ forms: [LIVE_PUBLISHED] });
+
+      expect(
+        screen.queryByRole("button", { name: /delete working copy/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /^delete$/i })).not.toBeInTheDocument();
+    });
+
+    it("leaves a draft-only form on the plain Delete", () => {
+      renderPicker({ forms: [{ ...DRAFT, hasDraftRow: true }] });
+
+      expect(screen.getByRole("button", { name: /^delete$/i })).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /delete working copy/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("offers no working-copy delete for a disabled form — Enable wins the row", () => {
+      renderPicker({ forms: [{ ...DISABLED_PUBLISHED, hasDraftRow: true }] });
+
+      expect(
+        screen.queryByRole("button", { name: /delete working copy/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /enable/i })).toBeInTheDocument();
+    });
   });
 });

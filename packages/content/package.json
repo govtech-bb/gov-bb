@@ -9,9 +9,11 @@
     "./schemas": "./src/schemas.ts",
     "./form-categories": "./src/form-categories.ts",
     "./load": "./src/load.ts",
+    "./markdown-authoring": "./src/markdown-authoring.ts",
     "./types": "./src/types.ts"
   },
   "dependencies": {
+    "entities": "8.0.0",
     "gray-matter": "^4.0.3",
     "zod": "^4.4.3"
   }

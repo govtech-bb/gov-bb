@@ -495,9 +495,19 @@ async function main(): Promise<void> {
   await apply(owner, repo, plans, token);
 }
 
-// Only execute under GitHub Actions (where GITHUB_EVENT_NAME is set);
-// importing this module in tests must not trigger a run.
-if (process.env.GITHUB_EVENT_NAME) {
+// Only run main() when executed directly, not when imported by tests.
+// Root package.json has no `"type": "module"`, so this file runs as CJS
+// under both ts-jest and tsx — `require.main === module` works. Same guard
+// as archive-merged-drafts.ts.
+//
+// This was `process.env.GITHUB_EVENT_NAME`, which reads as "only under GitHub
+// Actions" but is set on EVERY Actions step — including the one that runs this
+// repo's tests. So it passed in exactly the case it was written to block: the
+// spec imports this module, main() runs for real, finds no GITHUB_TOKEN, and
+// process.exit(1) kills the job after all 56 tests have already passed. It held
+// locally, where GITHUB_EVENT_NAME is unset, which is why it looked right.
+// "Am I in CI" cannot answer this; "am I the thing being run" can.
+if (require.main === module) {
   main().catch((err) => {
     console.error(err);
     process.exit(1);

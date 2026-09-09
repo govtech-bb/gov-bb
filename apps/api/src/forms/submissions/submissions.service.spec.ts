@@ -11,8 +11,10 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { ProcessorFactory } from "./processors/processor-factory.service";
 import type { ISubmissionProcessor } from "./processors/submission-processor.interface";
 import type { SubmitDto } from "./submissions.types";
+import { makeSubmissionEntity as makeEntity } from "./__fixtures__/form-submission";
 import type { ExpressionsService } from "@/expressions/expressions.service";
 import type { CatchmentRoutingService } from "@/catchment/catchment-routing.service";
+import { PARISH_ROUTING_POINTS } from "@/catchment/parish-routing-point";
 
 function makeExpressions(
   impl: (cfg: Record<string, unknown>) => Record<string, unknown> = (cfg) =>
@@ -36,25 +38,6 @@ function makeCatchmentRouting(
     null,
 ): CatchmentRoutingService {
   return { resolve: vi.fn(impl) } as unknown as CatchmentRoutingService;
-}
-
-function makeEntity(
-  overrides: Partial<FormSubmissionEntity> = {},
-): FormSubmissionEntity {
-  return {
-    id: "uuid-sub-1",
-    idempotencyKey: "key-abc",
-    referenceCode: "TF-2606-ABCDEFG",
-    formId: "test-form",
-    formVersion: "1.0.0",
-    status: FormSubmissionStatus.SUBMITTED,
-    values: { "step-1": { field1: "value1" } },
-    meta: null,
-    submittedAt: new Date("2026-04-01T00:00:00Z"),
-    createdAt: new Date("2026-04-01T00:00:00Z"),
-    updatedAt: new Date("2026-04-01T00:00:00Z"),
-    ...overrides,
-  } as FormSubmissionEntity;
 }
 
 const AUDIT_TRAIL = {
@@ -107,6 +90,9 @@ function makeMocks(options: MakeMocksOptions = {}) {
       contract: { processors },
       auditTrail: AUDIT_TRAIL,
     }),
+    // Only the idempotency-replay path calls this, to re-derive the polyclinic
+    // from the stored values. Defaults to a non-routed contract.
+    resolveContract: vi.fn().mockResolvedValue({ processors }),
   } as unknown as SubmissionPipelineService;
 
   const eventEmitter = {
@@ -303,6 +289,55 @@ describe("SubmissionsService", () => {
       expect(pipeline.run).not.toHaveBeenCalled();
       expect(result.outcome).toBe("duplicate");
       expect(result.data).toBe(existing);
+    });
+
+    // A retry / refresh of an already-accepted submission used to come back with
+    // no `resolvedPolyclinic`, so the confirmation page rendered the generic
+    // "your local polyclinic" for a submission that HAD routed. The polyclinic
+    // is derivable from the stored values, so re-derive it on the replay.
+    it("re-derives resolvedPolyclinic on an idempotency replay", async () => {
+      const existing = makeEntity({
+        status: FormSubmissionStatus.SUBMITTED,
+        values: {
+          "event-details": { "event-address-coordinates": "13.0824,-59.5158" },
+        },
+      });
+      const catchmentRouting = makeCatchmentRouting(() => ({
+        polyclinic: "Randal Phillips Polyclinic",
+        programmeCode: "TEMP_RESTAURANT_PERMIT_RANDAL_PHILLIPS",
+      }));
+      const { pipeline, service } = makeMocks({
+        existingEntity: existing,
+        catchmentRouting,
+      });
+      pipeline.resolveContract = vi.fn().mockResolvedValue({
+        processors: [],
+        catchmentRouting: {
+          coordinatesField: "event-details.event-address-coordinates",
+          parishField: "event-details.event-parish",
+        },
+      });
+
+      const result = await service.submit(BASE_DTO);
+
+      expect(result.outcome).toBe("duplicate");
+      expect(result.resolvedPolyclinic).toBe("Randal Phillips Polyclinic");
+    });
+
+    // A replay must never fail because the ROUTING lookup failed — the API has
+    // already accepted that submission. Degrade to the generic confirmation copy
+    // and warn, rather than turning a refresh into an error.
+    it("still replays when the recipe can no longer be resolved", async () => {
+      const existing = makeEntity({ status: FormSubmissionStatus.SUBMITTED });
+      const { pipeline, service } = makeMocks({ existingEntity: existing });
+      pipeline.resolveContract = vi
+        .fn()
+        .mockRejectedValue(new Error("recipe gone"));
+
+      const result = await service.submit(BASE_DTO);
+
+      expect(result.outcome).toBe("duplicate");
+      expect(result.resolvedPolyclinic).toBeUndefined();
     });
 
     it('returns outcome "in_progress" when key exists with PROCESSING status', async () => {
@@ -855,6 +890,249 @@ describe("SubmissionsService", () => {
       );
     });
 
+    // #2329: the per-polyclinic CMS code is composed from the recipe's own
+    // webhook mapping.programmeCode, so the resolver has to be handed it.
+    it("passes the recipe's webhook programmeCode to the catchment resolver", async () => {
+      const catchmentRouting = makeCatchmentRouting();
+      const { pipeline, service } = makeMocks({ catchmentRouting });
+      pipeline.run = vi.fn().mockResolvedValue({
+        draft: null,
+        contract: {
+          processors: [
+            {
+              type: "webhook",
+              config: { mapping: { programmeCode: "TEMP_RESTAURANT_PERMIT" } },
+            },
+          ],
+          catchmentRouting: {
+            coordinatesField: "event-details.event-address-coordinates",
+            parishField: "event-details.event-parish",
+          },
+        },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {
+          "event-details": { "event-parish": "st-philip" },
+        },
+      });
+
+      await service.submit(BASE_DTO);
+
+      expect(catchmentRouting.resolve as Mock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          programmeCode: "TEMP_RESTAURANT_PERMIT",
+          parish: "st-philip",
+        }),
+      );
+    });
+
+    // The programme code is the form's identity, not a side effect of which
+    // processors fire — a smoke submission drops every processor, so reading
+    // it from the dropped list would silently un-route the form.
+    it("reads the programmeCode from the contract even for a smoke submission", async () => {
+      const catchmentRouting = makeCatchmentRouting();
+      const { pipeline, service } = makeMocks({ catchmentRouting });
+      pipeline.run = vi.fn().mockResolvedValue({
+        draft: null,
+        contract: {
+          processors: [
+            {
+              type: "webhook",
+              config: { mapping: { programmeCode: "TEMP_RESTAURANT_PERMIT" } },
+            },
+          ],
+          catchmentRouting: {
+            coordinatesField: "event-details.event-address-coordinates",
+            parishField: "event-details.event-parish",
+          },
+        },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {
+          "event-details": { "event-parish": "st-philip" },
+        },
+      });
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: true });
+
+      expect(catchmentRouting.resolve as Mock).toHaveBeenCalledWith(
+        expect.objectContaining({ programmeCode: "TEMP_RESTAURANT_PERMIT" }),
+      );
+    });
+
+    // #2137/#2152 regression: the parish→coordinate fallback used to live in
+    // apps/forms and read `catchmentRouting`, which the API strips from the
+    // client contract — so it never ran. A free-typed address left the CMS with
+    // no coordinate at all. The fill is server-side now.
+    it("fills an empty coordinate from the parish routing point before resolving", async () => {
+      const catchmentRouting = makeCatchmentRouting(() => null);
+      const { pipeline, service } = makeMocks({ catchmentRouting });
+      pipeline.run = vi.fn().mockResolvedValue({
+        draft: null,
+        contract: {
+          processors: [],
+          catchmentRouting: {
+            coordinatesField: "event-details.event-address-coordinates",
+            parishField: "event-details.event-parish",
+          },
+        },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {
+          "event-details": { "event-parish": "christ-church" },
+        },
+      });
+
+      await service.submit(BASE_DTO);
+
+      expect(catchmentRouting.resolve as Mock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          coordinates: PARISH_ROUTING_POINTS["christ-church"],
+        }),
+      );
+    });
+
+    // The coordinate has to reach the CMS, not just the router — the webhook
+    // reads it out of the persisted/emitted values.
+    it("persists the filled coordinate so the webhook payload carries it", async () => {
+      const { pipeline, service, txRepo, eventEmitter } = makeMocks({
+        catchmentRouting: makeCatchmentRouting(() => null),
+      });
+      pipeline.run = vi.fn().mockResolvedValue({
+        draft: null,
+        contract: {
+          processors: [],
+          catchmentRouting: {
+            coordinatesField: "event-details.event-address-coordinates",
+            parishField: "event-details.event-parish",
+          },
+        },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {
+          "event-details": { "event-parish": "christ-church" },
+        },
+      });
+
+      await service.submit(BASE_DTO);
+
+      expect(txRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          values: {
+            "event-details": {
+              "event-parish": "christ-church",
+              "event-address-coordinates":
+                PARISH_ROUTING_POINTS["christ-church"],
+            },
+          },
+        }),
+      );
+      expect(eventEmitter.emit as Mock).toHaveBeenCalledWith(
+        "submission.created",
+        expect.objectContaining({
+          values: expect.objectContaining({
+            "event-details": expect.objectContaining({
+              "event-address-coordinates":
+                PARISH_ROUTING_POINTS["christ-church"],
+            }),
+          }),
+        }),
+      );
+    });
+
+    it("leaves a real geocoded coordinate alone", async () => {
+      const catchmentRouting = makeCatchmentRouting(() => null);
+      const { pipeline, service } = makeMocks({ catchmentRouting });
+      pipeline.run = vi.fn().mockResolvedValue({
+        draft: null,
+        contract: {
+          processors: [],
+          catchmentRouting: {
+            coordinatesField: "event-details.event-address-coordinates",
+            parishField: "event-details.event-parish",
+          },
+        },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {
+          "event-details": {
+            "event-parish": "christ-church",
+            "event-address-coordinates": "13.0824,-59.5158",
+          },
+        },
+      });
+
+      await service.submit(BASE_DTO);
+
+      expect(catchmentRouting.resolve as Mock).toHaveBeenCalledWith(
+        expect.objectContaining({ coordinates: "13.0824,-59.5158" }),
+      );
+    });
+
+    // A catchment-routed form with no coordinate AND no routable parish would
+    // reach the CMS with no programme code and show the citizen the generic
+    // "your local polyclinic". Reject it instead of routing it nowhere.
+    it("rejects the submission when there is neither a coordinate nor a routable parish", async () => {
+      const { pipeline, service, txRepo } = makeMocks({
+        catchmentRouting: makeCatchmentRouting(() => null),
+      });
+      pipeline.run = vi.fn().mockResolvedValue({
+        draft: null,
+        contract: {
+          processors: [],
+          catchmentRouting: {
+            coordinatesField: "event-details.event-address-coordinates",
+            parishField: "event-details.event-parish",
+          },
+        },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: { "event-details": {} },
+      });
+
+      await expect(service.submit(BASE_DTO)).rejects.toMatchObject({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        response: {
+          errors: {
+            "event-details": {
+              "event-parish": expect.arrayContaining([expect.any(String)]),
+            },
+          },
+        },
+      });
+      expect(txRepo.create).not.toHaveBeenCalled();
+    });
+
+    // A value that is not a "lat,lng" pair is unusable to the point-in-polygon,
+    // so it must not satisfy the guard just by being non-empty — that would send
+    // the CMS junk and resolve no polyclinic.
+    it("rejects a malformed coordinate the parish cannot rescue", async () => {
+      const { pipeline, service, txRepo } = makeMocks({
+        catchmentRouting: makeCatchmentRouting(() => null),
+      });
+      pipeline.run = vi.fn().mockResolvedValue({
+        draft: null,
+        contract: {
+          processors: [],
+          catchmentRouting: {
+            coordinatesField: "event-details.event-address-coordinates",
+            parishField: "event-details.event-parish",
+          },
+        },
+        auditTrail: AUDIT_TRAIL,
+        normalizedValues: {
+          "event-details": { "event-address-coordinates": "not-a-coordinate" },
+        },
+      });
+
+      await expect(service.submit(BASE_DTO)).rejects.toMatchObject({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+      });
+      expect(txRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("does not reject a form that declares no catchmentRouting", async () => {
+      const { service } = makeMocks();
+
+      await expect(service.submit(BASE_DTO)).resolves.toMatchObject({
+        outcome: "created",
+      });
+    });
+
     it("leaves resolvedCatchment undefined when the contract has no catchmentRouting block", async () => {
       const { service, eventEmitter } = makeMocks();
 
@@ -865,5 +1143,47 @@ describe("SubmissionsService", () => {
         expect.objectContaining({ resolvedCatchment: undefined }),
       );
     });
+  });
+});
+
+describe("reference-code prefix from the recipe (#2318)", () => {
+  const mappedWebhook = (mapping: Record<string, unknown>) => ({
+    type: "webhook",
+    config: {
+      mapping: {
+        programmeCode: "TEMP_RESTAURANT_PERMIT",
+        applicant: { name: "a.name", email: "a.email", phone: "a.phone" },
+        ...mapping,
+      },
+    },
+  });
+
+  const mintedReference = (txRepo: { create: ReturnType<typeof vi.fn> }) =>
+    (txRepo.create.mock.calls[0]![0] as { referenceCode: string })
+      .referenceCode;
+
+  it("mints MDA-PROG-YYMM-TAIL when the recipe declares both segments", async () => {
+    const { service, txRepo } = makeMocks({
+      processors: [
+        mappedWebhook({ mdaCode: "MOH", programmeShortCode: "TRP" }),
+      ],
+    });
+
+    await service.submit(BASE_DTO);
+
+    expect(mintedReference(txRepo)).toMatch(
+      /^MOH-TRP-\d{4}-[0-9A-HJKMNP-TV-Z]{7}$/,
+    );
+  });
+
+  it("falls back to the formId prefix when the recipe declares neither", async () => {
+    const { service, txRepo } = makeMocks({
+      processors: [mappedWebhook({})],
+    });
+
+    await service.submit(BASE_DTO);
+
+    // formId "test-form" → TF
+    expect(mintedReference(txRepo)).toMatch(/^TF-\d{4}-[0-9A-HJKMNP-TV-Z]{7}$/);
   });
 });

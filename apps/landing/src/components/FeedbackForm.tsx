@@ -1,14 +1,8 @@
-import {
-  Button,
-  ErrorSummary,
-  Text,
-  TextArea
-  
-} from '@govtech-bb/react'
-import type {ErrorItem} from '@govtech-bb/react';
+import { Button, ErrorSummary, Text, TextArea } from '@govtech-bb/react'
+import type { ErrorSummaryItem } from '@govtech-bb/react'
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { sendFeedback  } from '../lib/send-feedback'
-import type {FeedbackState} from '../lib/send-feedback';
+import { sendFeedback } from '../lib/send-feedback'
+import type { FeedbackState } from '../lib/send-feedback'
 import { trackEvent } from '../lib/analytics'
 
 const INITIAL: FeedbackState = { error: null }
@@ -50,21 +44,9 @@ export function FeedbackForm() {
   }, [state.error, state.fieldErrors])
 
   const fieldErrors = state.fieldErrors ?? {}
-  const errorItems: Array<ErrorItem> = Object.entries(fieldErrors).map(
-    ([field, message]) => ({ text: message, target: field }),
+  const errorItems: ErrorSummaryItem[] = Object.entries(fieldErrors).map(
+    ([field, message]) => ({ href: `#${field}`, label: message }),
   )
-
-  const handleErrorClick = (
-    error: ErrorItem,
-    event: React.MouseEvent<HTMLAnchorElement>,
-  ) => {
-    event.preventDefault()
-    const el = document.getElementById(error.target)
-    if (el) {
-      el.focus()
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }
-  }
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -78,18 +60,17 @@ export function FeedbackForm() {
   }
 
   const showSuccess = state.success && dismissed !== state
-  const showServerError =
-    !!state.error && Object.keys(fieldErrors).length === 0
+  const showServerError = !!state.error && Object.keys(fieldErrors).length === 0
 
   return (
     <div className="mb-6 space-y-6">
       {showSuccess ? (
-        <div className="flex flex-wrap items-baseline gap-2 border-4 border-teal-40 bg-teal-10 p-6">
+        <div className="flex flex-wrap items-baseline gap-2 border-4 border-teal-20 bg-teal-10 p-6">
           <Text weight="bold">Thank you for your feedback.</Text>
           <Button
             className="text-black!"
             onClick={() => setDismissed(state)}
-            variant="link"
+            variant="text"
           >
             Tell us something else
           </Button>
@@ -99,7 +80,6 @@ export function FeedbackForm() {
           {errorItems.length > 0 && (
             <ErrorSummary
               errors={errorItems}
-              onErrorClick={handleErrorClick}
               ref={errorSummaryRef}
               title="There is a problem"
             />
@@ -123,7 +103,7 @@ export function FeedbackForm() {
             {isPending ? 'Submitting...' : 'Send Feedback'}
           </Button>
           {showServerError && (
-            <div className="rounded-md border border-red-100 bg-red-10 px-4 py-3 text-red-00">
+            <div className="rounded-md border border-red-40 bg-red-10 px-4 py-3 text-red-80">
               {state.error}
             </div>
           )}

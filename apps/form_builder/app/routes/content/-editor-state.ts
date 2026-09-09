@@ -14,7 +14,12 @@ import {
   type StartLinkType,
   type FormState,
 } from "./-lib";
-import type { ContentPageSummary } from "./-server";
+import type {
+  ContentDeployConflict,
+  ContentPageSummary,
+  ContentRevision,
+  ContentReviewBlock,
+} from "./-server";
 import type { BuilderFormSummary } from "../../types/index";
 import { draftKeyFor, readDraft, writeDraft, clearDraft } from "./-draft-store";
 
@@ -67,12 +72,35 @@ It shouldn't take longer than 20 minutes.
 
 const BODY_PLACEHOLDER = START_TEMPLATE;
 
+interface StoredEditorDraft {
+  version: 2;
+  state: FormState;
+  revision: ContentRevision;
+}
+
+function revisionKey(revision: ContentRevision): string {
+  if (revision.source === "absent") return "absent";
+  if (revision.source === "base") return `base:${revision.sha}`;
+  return `pr:${revision.prNumber}:${revision.branch}:${revision.headSha}:${revision.sha}`;
+}
+
+function isStoredEditorDraft(value: unknown): value is StoredEditorDraft {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as { version?: unknown }).version === 2 &&
+    typeof (value as { state?: unknown }).state === "object" &&
+    (value as { state?: unknown }).state !== null
+  );
+}
+
 export interface DeploySuccess {
   prUrl: string;
   prNumber: number;
   path: string;
   kind: "added" | "updated" | "removed";
   updatedExistingPR?: boolean;
+  warning?: string;
 }
 
 function catSlug(title: string): string {
@@ -86,6 +114,7 @@ export function useEditorState(
   forms: BuilderFormSummary[],
   search: EditSearch,
   contentPages: ContentPageSummary[] | null,
+  reviewComplete = true,
 ) {
   const [state, setState] = useState<FormState>(EMPTY);
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +126,16 @@ export function useEditorState(
   // free create (top-level slug). `baseFrontmatter` preserves unmanaged keys.
   const [editPath, setEditPath] = useState<string | null>(null);
   const [editSha, setEditSha] = useState<string | null>(null);
+  const [editRevision, setEditRevision] = useState<Exclude<
+    ContentRevision,
+    { source: "absent" }
+  > | null>(null);
+  const [reviewBlock, setReviewBlock] = useState<ContentReviewBlock | null>(
+    null,
+  );
+  const [deployConflict, setDeployConflict] =
+    useState<ContentDeployConflict | null>(null);
+  const [staleDraft, setStaleDraft] = useState(false);
   const [createPath, setCreatePath] = useState<string | null>(null);
   const [baseFrontmatter, setBaseFrontmatter] = useState<Record<
     string,
@@ -123,11 +162,20 @@ export function useEditorState(
   const initKey = search.path ?? `${search.formId ?? ""}:${search.kind ?? ""}`;
   const draftKey = draftKeyFor(initKey);
 
-  // Overlay any autosaved draft for this target onto the just-loaded baseline,
-  // so reopening the editor restores in-progress edits (and `dirty` lights up).
-  const applyStoredDraft = () => {
-    const draft = readDraft<Partial<FormState>>(draftKey);
-    if (draft) setState((cur) => ({ ...cur, ...draft }));
+  // Restore only against the revision the draft was based on. A stale draft
+  // stays visible but cannot deploy until the author deliberately loads latest.
+  const applyStoredDraft = (baseline: FormState, revision: ContentRevision) => {
+    const draft = readDraft<StoredEditorDraft | Partial<FormState>>(draftKey);
+    if (!draft) return;
+    if (isStoredEditorDraft(draft)) {
+      setState(draft.state);
+      setStaleDraft(revisionKey(draft.revision) !== revisionKey(revision));
+      return;
+    }
+    // Legacy edit drafts have no revision proof. Preserve the text, but block
+    // deploy until the author deliberately loads the latest page.
+    setState({ ...baseline, ...draft });
+    if (revision.source !== "absent") setStaleDraft(true);
   };
 
   // Autosave: debounce-persist the draft whenever it diverges from the loaded
@@ -138,13 +186,17 @@ export function useEditorState(
     setDraftSaved(false);
     if (draftTimer.current) clearTimeout(draftTimer.current);
     draftTimer.current = setTimeout(() => {
-      writeDraft(draftKey, state);
+      writeDraft<StoredEditorDraft>(draftKey, {
+        version: 2,
+        state,
+        revision: editRevision ?? { source: "absent" },
+      });
       setDraftSaved(true);
     }, 400);
     return () => {
       if (draftTimer.current) clearTimeout(draftTimer.current);
     };
-  }, [state, dirty, loadingPage, draftKey]);
+  }, [state, dirty, loadingPage, draftKey, editRevision]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -159,13 +211,38 @@ export function useEditorState(
     !dirty ||
     window.confirm("You have unsaved changes — leave and discard them?");
 
-  const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setState((cur) => ({ ...cur, [key]: value }));
+    if (
+      key === "slug" &&
+      editRevision === null &&
+      deployConflict &&
+      deployConflict.kind !== "review-unavailable" &&
+      deployConflict.kind !== "missing-revision"
+    ) {
+      setDeployConflict(null);
+      setError(null);
+    }
+  };
+
+  const recordDeployConflict = (conflict: ContentDeployConflict | null) => {
+    setDeployConflict(conflict);
+    if (
+      conflict &&
+      editRevision !== null &&
+      conflict.kind !== "review-unavailable" &&
+      conflict.kind !== "missing-revision"
+    ) {
+      setStaleDraft(true);
+    }
+  };
 
   const markSaved = () => {
     setSavedSnapshot(JSON.stringify(state));
     clearDraft(draftKey);
     setDraftSaved(false);
+    setDeployConflict(null);
+    setStaleDraft(false);
   };
 
   // Drop the autosaved draft and revert the editor to the last loaded/saved
@@ -174,13 +251,17 @@ export function useEditorState(
     setState(JSON.parse(savedSnapshot) as FormState);
     clearDraft(draftKey);
     setDraftSaved(false);
+    setDeployConflict(null);
+    setStaleDraft(false);
   };
 
-  const loadPath = async (path: string) => {
+  const loadRequestRef = useRef(0);
+  const loadPath = async (path: string, requestId: number) => {
     setLoadingPage(true);
     setError(null);
     try {
       const page = await loadLandingContentPage({ data: { path } });
+      if (loadRequestRef.current !== requestId) return;
       const fm = page.frontmatter;
       const formId = asString(fm.form_id);
       const link = parseStartLink(page.body);
@@ -210,16 +291,21 @@ export function useEditorState(
       setSavedSnapshot(JSON.stringify(loaded));
       setEditPath(page.path);
       setEditSha(page.sha);
+      setEditRevision(page.revision);
+      setReviewBlock(page.reviewBlock ?? null);
+      setDeployConflict(null);
+      setStaleDraft(false);
       setCreatePath(null);
       setBaseFrontmatter(fm);
       setCreatingCategory(false);
       setNewCatTitle("");
       setNewCatDesc("");
-      applyStoredDraft();
+      applyStoredDraft(loaded, page.revision);
     } catch (e) {
+      if (loadRequestRef.current !== requestId) return;
       setError(e instanceof Error ? e.message : "Could not load page");
     } finally {
-      setLoadingPage(false);
+      if (loadRequestRef.current === requestId) setLoadingPage(false);
     }
   };
 
@@ -238,8 +324,13 @@ export function useEditorState(
     setCreatePath(`${CONTENT_ROOT}${formId}/${leaf}.md`);
     setEditPath(null);
     setEditSha(null);
+    setEditRevision(null);
+    setReviewBlock(null);
+    setDeployConflict(null);
+    setStaleDraft(false);
     setBaseFrontmatter(null);
-    applyStoredDraft();
+    setLoadingPage(false);
+    applyStoredDraft(prefilled, { source: "absent" });
   };
 
   const resetNew = () => {
@@ -250,25 +341,34 @@ export function useEditorState(
     setNewCatDesc("");
     setEditPath(null);
     setEditSha(null);
+    setEditRevision(null);
+    setReviewBlock(null);
+    setDeployConflict(null);
+    setStaleDraft(false);
     setCreatePath(null);
     setBaseFrontmatter(null);
-    applyStoredDraft();
+    setLoadingPage(false);
+    applyStoredDraft(EMPTY, { source: "absent" });
   };
 
-  // Initialise from the URL once per distinct search signature.
-  const initedRef = useRef<string | null>(null);
+  // Initialise from the URL. The request id prevents a slower page response
+  // from replacing a newer route after navigation (and prevents updates after
+  // unmount); React Strict Mode can safely start a fresh request after cleanup.
   useEffect(() => {
-    if (initedRef.current === initKey) return;
-    initedRef.current = initKey;
+    const requestId = ++loadRequestRef.current;
     setError(null);
     setSuccess(null);
-    if (search.path) void loadPath(search.path);
+    if (search.path) void loadPath(search.path, requestId);
     else if (search.formId && search.kind)
       prefillCreate(search.formId, search.kind);
     else resetNew();
+    return () => {
+      if (loadRequestRef.current === requestId) loadRequestRef.current++;
+    };
   }, [initKey]);
 
   const editing = editPath !== null;
+  const sourceReady = !search.path || editRevision !== null;
   const fixedPath = editPath ?? createPath;
   const slug = state.slug.trim() || state.formId;
   const slugValid = slug === "" || isValidSlug(slug);
@@ -303,6 +403,11 @@ export function useEditorState(
   }, [editing, targetPath, contentPages]);
 
   const canDeploy =
+    reviewComplete &&
+    sourceReady &&
+    !reviewBlock &&
+    !deployConflict &&
+    !staleDraft &&
     !!state.title.trim() &&
     !!state.body.trim() &&
     hrefValid &&
@@ -313,23 +418,33 @@ export function useEditorState(
 
   // The first unmet `canDeploy` condition, in the same order, so the disabled
   // deploy button can say *why*. Null exactly when `canDeploy` is true.
-  const deployBlockReason: string | null = !state.title.trim()
-    ? "Add a title"
-    : !state.body.trim()
-      ? "Add page content"
-      : !hrefValid
-        ? "Add a valid Start link"
-        : collision === "exists"
-          ? "A page already exists at this path"
-          : collision !== null
-            ? "Slug collides with an existing page's URL"
-            : state.linkType === "form" && !state.formId
-              ? "Choose the form the Start button opens"
-              : creatingCategory && !newCatSlug
-                ? "Name the new category"
-                : !fixedPath && !isValidSlug(slug)
-                  ? "Slug must be kebab-case"
-                  : null;
+  const deployBlockReason: string | null = !reviewComplete
+    ? "Refresh review status before deploying"
+    : !sourceReady
+      ? "Load the page before deploying"
+      : reviewBlock
+        ? reviewBlock.message
+        : deployConflict
+          ? deployConflict.message
+          : staleDraft
+            ? "This draft is based on an older page revision"
+            : !state.title.trim()
+              ? "Add a title"
+              : !state.body.trim()
+                ? "Add page content"
+                : !hrefValid
+                  ? "Add a valid Start link"
+                  : collision === "exists"
+                    ? "A page already exists at this path"
+                    : collision !== null
+                      ? "Slug collides with an existing page's URL"
+                      : state.linkType === "form" && !state.formId
+                        ? "Choose the form the Start button opens"
+                        : creatingCategory && !newCatSlug
+                          ? "Name the new category"
+                          : !fixedPath && !isValidSlug(slug)
+                            ? "Slug must be kebab-case"
+                            : null;
 
   const formMissing =
     state.linkType === "form" &&
@@ -375,6 +490,11 @@ export function useEditorState(
     loadingPage,
     editPath,
     editSha,
+    editRevision,
+    reviewBlock,
+    deployConflict,
+    setDeployConflict: recordDeployConflict,
+    staleDraft,
     createPath,
     baseFrontmatter,
     creatingCategory,
@@ -390,6 +510,7 @@ export function useEditorState(
     markSaved,
     discardDraft,
     editing,
+    sourceReady,
     fixedPath,
     slug,
     slugValid,

@@ -1,9 +1,11 @@
 import type { Root, RootContent } from 'hast'
 
-const SAFE_PROTOCOL = /^(https?|ircs?|mailto|xmpp)$/i
+const SAFE_PROTOCOL = /^(https?|ircs?|mailto|tel|xmpp)$/i
 
-// Verbatim copy of react-markdown@9's defaultUrlTransform: blanks URLs whose
-// protocol isn't on the safe list (e.g. javascript:). Note: `tel:` isn't listed.
+// react-markdown@9's defaultUrlTransform: blanks URLs whose protocol isn't on
+// the safe list (e.g. javascript:). `tel` is added to react-markdown's list —
+// content links phone numbers as `[(246) 536-3800](tel:+12465363800)` and the
+// upstream list omits `tel:`, which blanked every one of those hrefs.
 function defaultUrlTransform(value: string): string {
   const colon = value.indexOf(':')
   const questionMark = value.indexOf('?')

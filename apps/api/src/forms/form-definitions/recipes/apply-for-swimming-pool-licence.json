@@ -1,0 +1,558 @@
+{
+  "formId": "apply-for-swimming-pool-licence",
+  "title": "Apply for a swimming pool licence with Environmental Health",
+  "description": "Apply to Environmental Health for a swimming pool licence",
+  "steps": [
+    {
+      "stepId": "your-details",
+      "title": "Your details",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/first-name"
+        },
+        {
+          "ref": "components/middle-name"
+        },
+        {
+          "ref": "components/last-name"
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "your-address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "error": "Enter your address",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "your-address-line-2",
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish"
+        },
+        {
+          "ref": "components/email"
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "behaviours": [
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 4
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "about-application",
+      "title": "About your application",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "application-type",
+            "label": "Is this a new application or a renewal?",
+            "validations": {
+              "required": {
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "New application",
+                "value": "new"
+              },
+              {
+                "label": "Renewal",
+                "value": "renewal"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "pool-location",
+      "title": "Where is the pool?",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/address-lookup",
+          "overrides": {
+            "fieldId": "pool-address-line-1",
+            "label": "Address line 1",
+            "hint": "Start typing the address and choose it from the list. If you are applying for more than one pool, give the address of the property they are on.",
+            "validations": {
+              "required": {
+                "error": "Enter the address where the pool is",
+                "value": true
+              }
+            },
+            "geocodeTargets": {
+              "line2FieldId": "pool-address-line-2",
+              "parishFieldId": "pool-parish",
+              "coordinatesFieldId": "pool-address-coordinates"
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "pool-address-line-2",
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "pool-parish",
+            "label": "Parish",
+            "validations": {
+              "required": {
+                "error": "Select the parish where the pool is",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "pool-address-coordinates",
+            "label": "Pool location coordinates",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "ui": {
+              "hidden": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "pool-details",
+      "title": "Pool details and maintenance",
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 5000,
+          "addAnotherLabel": "Do you want to add another pool?"
+        }
+      ],
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "owner-type",
+            "label": "Which best describes your application?",
+            "validations": {
+              "required": {
+                "error": "Select an option",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "I own the pool for a business or property",
+                "value": "business-owner"
+              },
+              {
+                "label": "I manage or operate the pool for someone else",
+                "value": "manager"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "connection-to-pool",
+            "label": "How are you connected to the pool?",
+            "hint": "For example, manager, employee or authorised representative.",
+            "validations": {
+              "required": {
+                "error": "Enter how you are connected to the pool",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "owner-type",
+                "operator": "equal",
+                "value": "manager"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "pool-type",
+            "label": "What type of pool is it?",
+            "validations": {
+              "required": {
+                "error": "Select a pool type",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Swimming pool",
+                "value": "swimming"
+              },
+              {
+                "label": "Wading pool",
+                "value": "wading"
+              },
+              {
+                "label": "Jacuzzi/Hot tub",
+                "value": "jacuzzi"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "pool-name",
+            "label": "What is the name of the pool?",
+            "hint": "If the pool does not have a formal name, enter a simple description, such as home pool or hotel pool.",
+            "validations": {
+              "required": {
+                "error": "Enter the name of the pool",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "pool-water-capacity-number",
+            "label": "How much water can the pool hold?",
+            "validations": {
+              "required": {
+                "error": "Enter the water capacity",
+                "value": true
+              },
+              "gt": {
+                "error": "Enter a value greater than 0",
+                "value": 0
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "fieldId": "pool-capacity-unit",
+            "label": "What unit is this measured in?",
+            "validations": {
+              "required": {
+                "error": "Select a unit",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Gallons",
+                "value": "gallons"
+              },
+              {
+                "label": "Cubic metres",
+                "value": "cubic-metres"
+              }
+            ],
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-checkbox",
+          "overrides": {
+            "fieldId": "pool-usage-type",
+            "label": "How is the pool mainly used?",
+            "validations": {
+              "required": {
+                "error": "Select how the pool is mainly used",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "By guests at a hotel or other accommodation",
+                "value": "hotel"
+              },
+              {
+                "label": "By residents of an apartment building or residential complex",
+                "value": "apartment"
+              },
+              {
+                "label": "By members of the public",
+                "value": "public"
+              },
+              {
+                "label": "Condominiums",
+                "value": "condo-home"
+              },
+              {
+                "label": "School",
+                "value": "school"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "other-pool",
+            "label": "Describe how is the pool mainly used",
+            "validations": {
+              "required": {
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "pool-usage-type",
+                "targetStepId": "pool-details",
+                "operator": "in",
+                "value": [
+                  "other"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "supporting-documents",
+      "title": "Supporting documents",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "town-country-planning-plan",
+            "label": "Town and Country Planning Site Plan",
+            "validations": {
+              "required": {
+                "error": "Upload the Town and Country Planning Site Plan",
+                "value": true
+              },
+              "fileTypes": {
+                "error": "Upload a file in PDF, JPEG, PNG, Word or Excel format",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".doc",
+                  ".docx",
+                  ".xls",
+                  ".xlsx"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "Each file must be 5 MB or smaller",
+                "value": 5242880
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "about-application",
+                "operator": "equal",
+                "value": "new"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "pool-plan",
+            "label": "Pool Plan",
+            "validations": {
+              "fileTypes": {
+                "error": "Upload a file in PDF, JPEG, PNG, Word or Excel format",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".doc",
+                  ".docx",
+                  ".xls",
+                  ".xlsx"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "Each file must be 5 MB or smaller",
+                "value": 5242880
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "about-application",
+                "operator": "equal",
+                "value": "renewal"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "town-text",
+            "label": "Town and Country Planning Application Number",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "about-application",
+                "operator": "equal",
+                "value": "new"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "behaviours": [],
+      "elements": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "declaration-confirmed",
+            "label": "Declaration",
+            "validations": {
+              "required": {
+                "error": "You must confirm the declaration to continue",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "I confirm that the information I have provided is correct.",
+                "value": "confirmed"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "behaviours": [],
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n* Environmental Health will review your application and an officer will be assigned to your case.  \n* They must inspect the swimming pool before they can issue a licence. More than one visit may be required before the issuing of a licence.  \n\n**Obtaining your licence:**\n\n* If your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n- Branford Taitt Polyclinic - [536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)\n- David Thompson Health and Social Services Complex - [536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)\n- Eunice Gibson Polyclinic - [536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)\n- Maurice Byer Polyclinic - [536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)\n- Randall Phillips Polyclinic - [536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)\n- St. Phillip Polyclinic - [536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)\n- Winston Scott Polyclinic - [536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)",
+      "elements": []
+    }
+  ],
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "your-details.email",
+        "subject": "Your application for a swimming pool licence has been received"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "catchment.mdaEmail",
+        "subject": "A new application for a swimming pool licence has been received"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "method": "POST",
+        "signatureHeader": "X-Webhook-Signature",
+        "mapping": {
+          "programmeCode": "SWIMMING_POOL_LICENCE",
+          "mdaCode": "MOH",
+          "programmeShortCode": "SPL",
+          "applicant": {
+            "name": [
+              "your-details.first-name",
+              "your-details.last-name"
+            ],
+            "email": "your-details.email",
+            "phone": "your-details.telephone"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ],
+          "groupByStep": true
+        },
+        "timeoutMs": 10000
+      }
+    }
+  ],
+  "createdAt": "2026-08-25T00:10:51.219Z",
+  "updatedAt": "2026-09-03T19:28:42.140Z",
+  "meta": {
+    "visibility": "preview"
+  },
+  "catchmentRouting": {
+    "coordinatesField": "pool-location.pool-address-coordinates",
+    "parishField": "pool-location.pool-parish"
+  }
+}

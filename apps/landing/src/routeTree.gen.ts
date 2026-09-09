@@ -30,6 +30,8 @@ import { Route as MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFo
 import { Route as MoneyFinancialSupportCalculateSeverancePayFormRouteImport } from './routes/money-financial-support/calculate-severance-pay/form'
 import { Route as HealthAndEmergencyServicesWaterOutagesUnsubscribeRouteImport } from './routes/health-and-emergency-services/water-outages/unsubscribe'
 import { Route as HealthAndEmergencyServicesWaterOutagesConfirmRouteImport } from './routes/health-and-emergency-services/water-outages/confirm'
+import { Route as HealthAndEmergencyServicesFindAnOpenPharmacyFindRouteImport } from './routes/health-and-emergency-services/find-an-open-pharmacy/find'
+import { Route as HealthAndEmergencyServicesFindAnOpenPharmacySlugRouteImport } from './routes/health-and-emergency-services/find-an-open-pharmacy/$slug'
 import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/guidance'
 import { Route as HealthAndEmergencyServicesFindAnEmergencyShelterFindRouteImport } from './routes/health-and-emergency-services/find-an-emergency-shelter/find'
 import { Route as BusinessTradeCropOverPermitsFormRouteImport } from './routes/business-trade/crop-over-permits/form'
@@ -152,6 +154,18 @@ const HealthAndEmergencyServicesWaterOutagesConfirmRoute =
     path: '/confirm',
     getParentRoute: () => HealthAndEmergencyServicesWaterOutagesRouteRoute,
   } as any)
+const HealthAndEmergencyServicesFindAnOpenPharmacyFindRoute =
+  HealthAndEmergencyServicesFindAnOpenPharmacyFindRouteImport.update({
+    id: '/health-and-emergency-services/find-an-open-pharmacy/find',
+    path: '/health-and-emergency-services/find-an-open-pharmacy/find',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const HealthAndEmergencyServicesFindAnOpenPharmacySlugRoute =
+  HealthAndEmergencyServicesFindAnOpenPharmacySlugRouteImport.update({
+    id: '/health-and-emergency-services/find-an-open-pharmacy/$slug',
+    path: '/health-and-emergency-services/find-an-open-pharmacy/$slug',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute =
   HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRouteImport.update({
     id: '/guidance',
@@ -191,6 +205,8 @@ export interface FileRoutesByFullPath {
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
   '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
+  '/health-and-emergency-services/find-an-open-pharmacy/$slug': typeof HealthAndEmergencyServicesFindAnOpenPharmacySlugRoute
+  '/health-and-emergency-services/find-an-open-pharmacy/find': typeof HealthAndEmergencyServicesFindAnOpenPharmacyFindRoute
   '/health-and-emergency-services/water-outages/confirm': typeof HealthAndEmergencyServicesWaterOutagesConfirmRoute
   '/health-and-emergency-services/water-outages/unsubscribe': typeof HealthAndEmergencyServicesWaterOutagesUnsubscribeRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
@@ -215,6 +231,8 @@ export interface FileRoutesByTo {
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
   '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
+  '/health-and-emergency-services/find-an-open-pharmacy/$slug': typeof HealthAndEmergencyServicesFindAnOpenPharmacySlugRoute
+  '/health-and-emergency-services/find-an-open-pharmacy/find': typeof HealthAndEmergencyServicesFindAnOpenPharmacyFindRoute
   '/health-and-emergency-services/water-outages/confirm': typeof HealthAndEmergencyServicesWaterOutagesConfirmRoute
   '/health-and-emergency-services/water-outages/unsubscribe': typeof HealthAndEmergencyServicesWaterOutagesUnsubscribeRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
@@ -242,6 +260,8 @@ export interface FileRoutesById {
   '/business-trade/crop-over-permits/form': typeof BusinessTradeCropOverPermitsFormRoute
   '/health-and-emergency-services/find-an-emergency-shelter/find': typeof HealthAndEmergencyServicesFindAnEmergencyShelterFindRoute
   '/health-and-emergency-services/find-an-emergency-shelter/guidance': typeof HealthAndEmergencyServicesFindAnEmergencyShelterGuidanceRoute
+  '/health-and-emergency-services/find-an-open-pharmacy/$slug': typeof HealthAndEmergencyServicesFindAnOpenPharmacySlugRoute
+  '/health-and-emergency-services/find-an-open-pharmacy/find': typeof HealthAndEmergencyServicesFindAnOpenPharmacyFindRoute
   '/health-and-emergency-services/water-outages/confirm': typeof HealthAndEmergencyServicesWaterOutagesConfirmRoute
   '/health-and-emergency-services/water-outages/unsubscribe': typeof HealthAndEmergencyServicesWaterOutagesUnsubscribeRoute
   '/money-financial-support/calculate-severance-pay/form': typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
@@ -270,6 +290,8 @@ export interface FileRouteTypes {
     | '/business-trade/crop-over-permits/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
     | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
+    | '/health-and-emergency-services/find-an-open-pharmacy/$slug'
+    | '/health-and-emergency-services/find-an-open-pharmacy/find'
     | '/health-and-emergency-services/water-outages/confirm'
     | '/health-and-emergency-services/water-outages/unsubscribe'
     | '/money-financial-support/calculate-severance-pay/form'
@@ -294,6 +316,8 @@ export interface FileRouteTypes {
     | '/business-trade/crop-over-permits/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
     | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
+    | '/health-and-emergency-services/find-an-open-pharmacy/$slug'
+    | '/health-and-emergency-services/find-an-open-pharmacy/find'
     | '/health-and-emergency-services/water-outages/confirm'
     | '/health-and-emergency-services/water-outages/unsubscribe'
     | '/money-financial-support/calculate-severance-pay/form'
@@ -320,6 +344,8 @@ export interface FileRouteTypes {
     | '/business-trade/crop-over-permits/form'
     | '/health-and-emergency-services/find-an-emergency-shelter/find'
     | '/health-and-emergency-services/find-an-emergency-shelter/guidance'
+    | '/health-and-emergency-services/find-an-open-pharmacy/$slug'
+    | '/health-and-emergency-services/find-an-open-pharmacy/find'
     | '/health-and-emergency-services/water-outages/confirm'
     | '/health-and-emergency-services/water-outages/unsubscribe'
     | '/money-financial-support/calculate-severance-pay/form'
@@ -345,6 +371,8 @@ export interface RootRouteChildren {
   HealthAndEmergencyServicesWaterOutagesRouteRoute: typeof HealthAndEmergencyServicesWaterOutagesRouteRouteWithChildren
   BankHolidayCalendarIndexRoute: typeof BankHolidayCalendarIndexRoute
   BusinessTradeCropOverPermitsFormRoute: typeof BusinessTradeCropOverPermitsFormRoute
+  HealthAndEmergencyServicesFindAnOpenPharmacySlugRoute: typeof HealthAndEmergencyServicesFindAnOpenPharmacySlugRoute
+  HealthAndEmergencyServicesFindAnOpenPharmacyFindRoute: typeof HealthAndEmergencyServicesFindAnOpenPharmacyFindRoute
   MoneyFinancialSupportCalculateSeverancePayFormRoute: typeof MoneyFinancialSupportCalculateSeverancePayFormRoute
   MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute: typeof MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute
   PensionsAndGratuitiesCalculateYourPensionFormRoute: typeof PensionsAndGratuitiesCalculateYourPensionFormRoute
@@ -499,6 +527,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HealthAndEmergencyServicesWaterOutagesConfirmRouteImport
       parentRoute: typeof HealthAndEmergencyServicesWaterOutagesRouteRoute
     }
+    '/health-and-emergency-services/find-an-open-pharmacy/find': {
+      id: '/health-and-emergency-services/find-an-open-pharmacy/find'
+      path: '/health-and-emergency-services/find-an-open-pharmacy/find'
+      fullPath: '/health-and-emergency-services/find-an-open-pharmacy/find'
+      preLoaderRoute: typeof HealthAndEmergencyServicesFindAnOpenPharmacyFindRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/health-and-emergency-services/find-an-open-pharmacy/$slug': {
+      id: '/health-and-emergency-services/find-an-open-pharmacy/$slug'
+      path: '/health-and-emergency-services/find-an-open-pharmacy/$slug'
+      fullPath: '/health-and-emergency-services/find-an-open-pharmacy/$slug'
+      preLoaderRoute: typeof HealthAndEmergencyServicesFindAnOpenPharmacySlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/health-and-emergency-services/find-an-emergency-shelter/guidance': {
       id: '/health-and-emergency-services/find-an-emergency-shelter/guidance'
       path: '/guidance'
@@ -583,6 +625,10 @@ const rootRouteChildren: RootRouteChildren = {
     HealthAndEmergencyServicesWaterOutagesRouteRouteWithChildren,
   BankHolidayCalendarIndexRoute: BankHolidayCalendarIndexRoute,
   BusinessTradeCropOverPermitsFormRoute: BusinessTradeCropOverPermitsFormRoute,
+  HealthAndEmergencyServicesFindAnOpenPharmacySlugRoute:
+    HealthAndEmergencyServicesFindAnOpenPharmacySlugRoute,
+  HealthAndEmergencyServicesFindAnOpenPharmacyFindRoute:
+    HealthAndEmergencyServicesFindAnOpenPharmacyFindRoute,
   MoneyFinancialSupportCalculateSeverancePayFormRoute:
     MoneyFinancialSupportCalculateSeverancePayFormRoute,
   MoneyFinancialSupportNationalInsuranceForSelfEmployedWorkersFormRoute:

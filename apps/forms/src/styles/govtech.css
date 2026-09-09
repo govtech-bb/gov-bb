@@ -65,6 +65,15 @@
   outline: 0;
 }
 
+/* The muted "(optional)" suffix inside field labels and legends. Required
+ * fields carry no mark. Mirrors the design system's .govbb-label__optional,
+ * which the published @govtech-bb/styles doesn't ship yet — drop this rule
+ * when the app moves to a styles release that includes it. */
+.govbb-label__optional {
+  font-weight: 400;
+  color: var(--color-mid-grey-00);
+}
+
 /* The skip-to-content link (#341) is meant to stay hidden until focused, but
  * @govtech-bb/styles ships an inverted `.govbb-visually-hidden-focusable`
  * rule: it applies the *visible* styles in the `:not(:focus)` state and never
@@ -197,6 +206,43 @@
   gap: var(--spacing-s);
 }
 
+/* ---- Checkbox conditional reveal ------------------------------------------
+ * @govtech-bb/styles ships the inset look for a checkbox reveal, but lays it
+ * out as a block — fine for one revealed field, and the caterer reveal is
+ * four. Elsewhere on the step the fields are spaced by the parent flex `gap`,
+ * so restate that here (this rule is unlayered and the package's is inside
+ * `@layer base`, so it wins on `display`). The checked-sibling guard is kept
+ * so the package's hide-when-unticked rule still holds; the app renders the
+ * wrapper only when ticked anyway. */
+.govbb-checkbox-item:has(> .govbb-checkbox:checked)
+  + .govbb-checkbox-item__conditional {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+/* ---- Opt-in indented field (ui.indent) ------------------------------------
+ * The same inset rail as .govbb-select__conditional, but requested per field
+ * instead of derived from an option list — the automatic inset only covers
+ * single-choice radios and selects, so a run of fields revealed by a CHECKBOX
+ * opts in via `ui.indent`. No vertical margin: consecutive indented fields
+ * each draw a rail segment and those butt together into one continuous line
+ * down the whole revealed group. */
+.govbb-field--indented {
+  padding-left: 2.5rem;
+  border-left: 8px solid var(--color-grey-00);
+}
+
+/* `.form-page__step` lays its fields out as a flex column with a `gap`, so
+ * each indented field would draw a rail segment separated by that gap —
+ * a dashed-looking ladder rather than one line. Every indented field after
+ * the first pulls itself up by the gap and re-adds it as padding INSIDE its
+ * own border, closing the seams into a single continuous rail. */
+.govbb-field--indented + .govbb-field--indented {
+  margin-top: calc(-1 * var(--spacing-s));
+  padding-top: var(--spacing-s);
+}
+
 /* ---- Checkbox accordion (#2065) ------------------------------------------
  * A collapsible multi-select matching the prototype: each category is a
  * checkbox that, when ticked, expands to reveal its item checkboxes in a
@@ -230,6 +276,98 @@
 .govbb-tag--higher-risk {
   background: var(--color-yellow-10);
   border: 1px solid var(--color-yellow-00);
+}
+
+/* ---- Opening hours weekly grid (#2358) ------------------------------------
+   One row per day: day name | sets of hours (or "Not open") | Add hours.
+   Each set is two native time pickers, and Monday-Friday can collapse into
+   one shared row. Colour, spacing and type all come from the design-system
+   tokens. */
+.opening-hours {
+  /* The height of a single-line control row ("Not open", the Add hours
+     button) that day names centre against. */
+  --oh-control-height: calc(
+    var(--spacing-s) * 2 + 1.5rem + var(--border-width-form, 2px) * 2
+  );
+}
+
+/* The "same hours every weekday" toggle sits between the hint and the grid. */
+.opening-hours__same-weekdays {
+  margin-block: var(--spacing-s);
+}
+
+.opening-hours__week {
+  margin-top: var(--spacing-s);
+  border-top: 1px solid var(--color-grey-00);
+}
+
+.opening-hours__day {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr) auto;
+  column-gap: var(--spacing-s);
+  row-gap: var(--spacing-xs);
+  align-items: start;
+  padding-block: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-grey-00);
+}
+
+.opening-hours__day-name {
+  font-weight: var(--font-weight-bold);
+}
+
+.opening-hours__day-name,
+.opening-hours__not-open {
+  display: flex;
+  align-items: center;
+  min-height: var(--oh-control-height);
+}
+
+.opening-hours__not-open {
+  color: var(--color-text-muted);
+}
+
+.opening-hours__sets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.opening-hours__set {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+/* The wrapper is full-width by default; shrink it to the picker. */
+.opening-hours__set .govbb-input-wrapper {
+  width: auto;
+}
+
+.opening-hours__set input[type="time"] {
+  width: 10rem;
+}
+
+/* On small screens each day stacks: name, its sets of hours, then the Add
+   hours button — the side-by-side grid leaves too little room for a pair of
+   pickers. Slimmer picker padding keeps "start to end" on one line. */
+@media (max-width: 40rem) {
+  .opening-hours__day {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .opening-hours__day-name {
+    min-height: 0;
+  }
+
+  .opening-hours__add {
+    justify-self: start;
+  }
+
+  .opening-hours__set input[type="time"] {
+    width: 9.25rem;
+    padding-inline: var(--spacing-xs);
+  }
 }
 
 /* ---- Submission confirmation panels -------------------------------------- */
@@ -506,6 +644,35 @@
 
 .govbb-content-text {
   margin-bottom: var(--spacing-m);
+}
+
+/* Warning variant: amber left rule with a filled roundel, no panel. Reserved
+ * for advisory copy the applicant can proceed past (e.g. a short lead time),
+ * so it must read as louder than the blue inset without looking like a
+ * blocking validation error. */
+.govbb-warning-text {
+  display: flex;
+  gap: var(--spacing-s);
+  align-items: flex-start;
+  padding: var(--spacing-s) var(--spacing-m);
+  margin-bottom: var(--spacing-m);
+  border-left: var(--color-yellow-00) 0.25rem solid;
+}
+
+.govbb-warning-text__icon {
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--color-yellow-00);
+  color: var(--color-black-00);
+  font-weight: 700;
+  line-height: 1.75rem;
+  text-align: center;
+}
+
+.govbb-warning-text__body > :last-child {
+  margin-bottom: 0;
 }
 
 /* ---- Applicant name (declaration step) ----------------------------------- */

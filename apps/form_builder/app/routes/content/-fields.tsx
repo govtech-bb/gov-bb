@@ -1,4 +1,9 @@
-import { LANDING_CATEGORIES, VISIBILITY_LEVELS, type ViewLevel, type StartLinkType } from "./-lib";
+import {
+  LANDING_CATEGORIES,
+  VISIBILITY_LEVELS,
+  type ViewLevel,
+  type StartLinkType,
+} from "./-lib";
 import { BodyEditor } from "./-body-editor";
 import { FormCombobox } from "./-form-combobox";
 import type { EditorState } from "./-editor-state";
@@ -20,6 +25,9 @@ export function PageFields({
   layout: "stacked" | "wide";
 }) {
   const { state, set, setState } = ed;
+  const categoryIsUnlisted =
+    Boolean(state.category) &&
+    !LANDING_CATEGORIES.some((category) => category.slug === state.category);
 
   const linkField = (
     <div className={s.field}>
@@ -46,13 +54,19 @@ export function PageFields({
       ) : state.linkType === "form" ? (
         <div className={s.subField}>
           {formOptions.length === 0 ? (
-            <input
-              className={s.input}
-              type="text"
-              value={state.formId}
-              onChange={(e) => set("formId", e.target.value)}
-              placeholder="form-id (e.g. get-birth-certificate)"
-            />
+            <>
+              <label className={s.srOnly} htmlFor="sp-form-id">
+                Form ID
+              </label>
+              <input
+                id="sp-form-id"
+                className={s.input}
+                type="text"
+                value={state.formId}
+                onChange={(e) => set("formId", e.target.value)}
+                placeholder="form-id (e.g. get-birth-certificate)"
+              />
+            </>
           ) : (
             <FormCombobox
               forms={formOptions}
@@ -130,7 +144,7 @@ export function PageFields({
 
   const pathField = ed.fixedPath ? (
     <div className={s.field}>
-      <label className={s.label}>File</label>
+      <span className={s.label}>File</span>
       <small className={s.fileNote}>{ed.fixedPath}</small>
       {collisionHelp}
     </div>
@@ -186,6 +200,14 @@ export function PageFields({
                 {c.title}
               </option>
             ))}
+            {categoryIsUnlisted && (
+              <option value={state.category}>
+                {state.category}
+                {ed.editRevision?.source === "pr"
+                  ? " (in this PR)"
+                  : " (current page)"}
+              </option>
+            )}
             <option value="__new__">＋ Create new category…</option>
           </select>
         </div>
@@ -231,8 +253,15 @@ export function PageFields({
             }}
             placeholder="Housing and land"
           />
+          <label
+            className={`${s.label} ${s.subField}`}
+            htmlFor="sp-newcat-description"
+          >
+            Category description (optional)
+          </label>
           <textarea
-            className={`${s.textarea} ${s.subField}`}
+            id="sp-newcat-description"
+            className={s.textarea}
             rows={2}
             value={ed.newCatDesc}
             onChange={(e) => ed.setNewCatDesc(e.target.value)}
@@ -295,9 +324,14 @@ export function PageFields({
         Body
       </label>
       <BodyEditor
+        id="sp-body"
+        ariaLabel="Page body"
         value={state.body}
         onChange={(body) => set("body", body)}
-        linkType={state.linkType}
+        profile={{
+          kind: "landing-page",
+          startLinkType: state.linkType,
+        }}
       />
     </div>
   );

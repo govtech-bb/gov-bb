@@ -14,6 +14,7 @@ import type {
 } from "@/email/email-body.builder";
 import type { FilesService } from "@/files/files.service";
 import type { FormConfigService } from "@/forms/form-config/form-config.service";
+import type { CatchmentContactService } from "@/catchment/catchment-contact.service";
 import type { ContactDetails, ServiceContract } from "@govtech-bb/form-types";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import { NonRetryableError } from "./non-retryable-error";
@@ -173,6 +174,15 @@ function makeFormConfigService(
   } as unknown as Mocked<FormConfigService>;
 }
 
+/** CatchmentContactService stub — resolves the polyclinic inbox at send time. */
+function makeCatchmentContactService(
+  mdaEmail: string | null = null,
+): Mocked<CatchmentContactService> {
+  return {
+    resolveMdaEmail: vi.fn().mockResolvedValue(mdaEmail),
+  } as unknown as Mocked<CatchmentContactService>;
+}
+
 /** NotificationLogRepository stub. `record` is best-effort and never throws;
  *  returned so tests can assert what outcome was logged. */
 function makeNotificationLog(): Mocked<NotificationLogRepository> {
@@ -193,6 +203,7 @@ describe("EmailProcessor", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
   });
@@ -316,6 +327,7 @@ describe("EmailProcessor", () => {
         makeBodyBuilder(),
         makeFilesService(),
         makeFormConfigService(),
+        makeCatchmentContactService(),
         makeNotificationLog(),
       );
       await processor.process(makePayload());
@@ -384,6 +396,7 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
+        makeCatchmentContactService(),
         makeNotificationLog(),
       );
       const payload = makePayload({ recipientField: "contactDetails.email" });
@@ -411,6 +424,7 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
+        makeCatchmentContactService(),
         makeNotificationLog(),
       );
       const payload = makePayload({ recipientField: "contactDetails.email" });
@@ -447,6 +461,7 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
+        makeCatchmentContactService(),
         makeNotificationLog(),
       );
       const payload = makePayload();
@@ -471,6 +486,7 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
+        makeCatchmentContactService(),
         makeNotificationLog(),
       );
       const payload = makePayload();
@@ -499,6 +515,7 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
+        makeCatchmentContactService(),
         makeNotificationLog(),
       );
       const payload = makePayload();
@@ -530,6 +547,7 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
+        makeCatchmentContactService(),
         makeNotificationLog(),
       );
       // contactDetails has no `fax` key.
@@ -553,6 +571,7 @@ describe("EmailProcessor", () => {
         bodyBuilder,
         makeFilesService(),
         makeFormConfigService(),
+        makeCatchmentContactService(),
         makeNotificationLog(),
       );
       const payload = makePayload({ recipientField: "contactDetails.address" });
@@ -579,6 +598,7 @@ describe("EmailProcessor — config.* recipient resolution", () => {
       makeBodyBuilder(),
       makeFilesService(),
       formConfig,
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
     const payload = makePayload({ recipientField: "config.mdaEmail" });
@@ -599,6 +619,7 @@ describe("EmailProcessor — config.* recipient resolution", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(null),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
     const payload = makePayload({ recipientField: "config.mdaEmail" });
@@ -618,6 +639,7 @@ describe("EmailProcessor — config.* recipient resolution", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(null),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
     const payload = makePayload({ recipientField: "config.mdaEmail" });
@@ -635,6 +657,7 @@ describe("EmailProcessor — config.* recipient resolution", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(null),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
     const payload = makePayload({ recipientField: "config.mdaEmail" });
@@ -661,6 +684,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
   }
@@ -677,6 +701,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
 
@@ -705,6 +730,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(null, "Registration Department"),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
 
@@ -728,6 +754,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       makeBodyBuilder(),
       makeFilesService(),
       formConfig,
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
 
@@ -745,6 +772,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService("mda@dept.gov.bb"),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
 
@@ -765,6 +793,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       bodyBuilder,
       makeFilesService(),
       makeFormConfigService(),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
 
@@ -788,6 +817,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       bodyBuilder,
       makeFilesService(),
       makeFormConfigService(),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
 
@@ -821,6 +851,7 @@ describe("EmailProcessor — dynamic template rendering", () => {
       bodyBuilder,
       makeFilesService(),
       makeFormConfigService(),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
 
@@ -851,6 +882,7 @@ describe("EmailProcessor — reference code in plain-text and fallback HTML bodi
       bodyBuilder,
       makeFilesService(),
       makeFormConfigService(),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
 
@@ -880,6 +912,7 @@ describe("EmailProcessor — reference code in plain-text and fallback HTML bodi
       bodyBuilder,
       makeFilesService(),
       makeFormConfigService(),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
 
@@ -955,6 +988,7 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
       makeBodyBuilder(STUB_CTX, undefined, FILE_CONTRACT),
       filesService,
       makeFormConfigService(),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
   });
@@ -993,6 +1027,7 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
       ),
       filesService,
       makeFormConfigService(),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
 
@@ -1013,6 +1048,7 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
       makeBodyBuilder(STUB_CTX, undefined, FILE_CONTRACT),
       filesService,
       makeFormConfigService("mda-notify@gov.bb"),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
 
@@ -1042,6 +1078,7 @@ describe("EmailProcessor — uploaded file attachments (issue #658)", () => {
       makeBodyBuilder(STUB_CTX, undefined, makeContract()),
       filesService,
       makeFormConfigService(),
+      makeCatchmentContactService(),
       makeNotificationLog(),
     );
 
@@ -1175,6 +1212,7 @@ describe("EmailProcessor — notification_log recording", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(mdaEmail),
+      makeCatchmentContactService(),
       notificationLog,
     );
     return { processor, notificationLog };
@@ -1249,7 +1287,10 @@ describe("EmailProcessor — catchment.mdaEmail recipient resolution", () => {
     vi.clearAllMocks();
   });
 
-  it("sends the MDA email to the resolved catchment address", async () => {
+  it("sends the MDA email to the inbox stored for the resolved polyclinic", async () => {
+    const catchmentContact = makeCatchmentContactService(
+      "ehd.wspc@health.gov.bb",
+    );
     const processor = new EmailProcessor(
       makeConfig(),
       makeMailer(),
@@ -1257,6 +1298,7 @@ describe("EmailProcessor — catchment.mdaEmail recipient resolution", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(),
+      catchmentContact,
       makeNotificationLog(),
     );
     const payload = makePayload(
@@ -1264,21 +1306,25 @@ describe("EmailProcessor — catchment.mdaEmail recipient resolution", () => {
       {},
       {
         resolvedCatchment: {
-          polyclinic: "P",
+          polyclinic: "Sir Winston Scott Polyclinic",
           programmeCode: "C",
-          mdaEmail: "ehd.wspc@health.gov.bb",
         },
       },
     );
 
     await processor.process(payload);
 
+    // Looked up by the serving catchment the submission resolved to — the same
+    // key catchment_contact rows are stored under.
+    expect(catchmentContact.resolveMdaEmail).toHaveBeenCalledWith(
+      "Sir Winston Scott Polyclinic",
+    );
     expect(getSentInput().Destination?.ToAddresses).toEqual([
       "ehd.wspc@health.gov.bb",
     ]);
   });
 
-  it("fails NO_RECIPIENT when the resolved catchment has no email", async () => {
+  it("fails NO_RECIPIENT when the resolved polyclinic has no stored inbox", async () => {
     const notificationLog = makeNotificationLog();
     const processor = new EmailProcessor(
       makeConfig(),
@@ -1287,6 +1333,7 @@ describe("EmailProcessor — catchment.mdaEmail recipient resolution", () => {
       makeBodyBuilder(),
       makeFilesService(),
       makeFormConfigService(),
+      makeCatchmentContactService(null),
       notificationLog,
     );
     const payload = makePayload(
@@ -1294,9 +1341,8 @@ describe("EmailProcessor — catchment.mdaEmail recipient resolution", () => {
       {},
       {
         resolvedCatchment: {
-          polyclinic: "P",
+          polyclinic: "Branford Taitt Polyclinic",
           programmeCode: "C",
-          mdaEmail: null,
         },
       },
     );
@@ -1309,5 +1355,26 @@ describe("EmailProcessor — catchment.mdaEmail recipient resolution", () => {
     expect(notificationLog.record).toHaveBeenCalledWith(
       expect.objectContaining({ outcome: "no_recipient", recipient: null }),
     );
+  });
+
+  it("fails NO_RECIPIENT without a lookup when no catchment resolved", async () => {
+    const catchmentContact = makeCatchmentContactService("ehd@health.gov.bb");
+    const processor = new EmailProcessor(
+      makeConfig(),
+      makeMailer(),
+      makeTemplateService(),
+      makeBodyBuilder(),
+      makeFilesService(),
+      makeFormConfigService(),
+      catchmentContact,
+      makeNotificationLog(),
+    );
+
+    await expect(
+      processor.process(makePayload({ recipientField: "catchment.mdaEmail" })),
+    ).rejects.toBeInstanceOf(NonRetryableError);
+
+    expect(catchmentContact.resolveMdaEmail).not.toHaveBeenCalled();
+    expect(mockSend).not.toHaveBeenCalled();
   });
 });

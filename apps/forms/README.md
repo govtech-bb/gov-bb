@@ -21,15 +21,17 @@ pnpm test:smoke    # Live smoke: drives REAL DB-backed forms end-to-end and
 ```
 
 The **live smoke** suite (`e2e/smoke/`, run via `playwright.smoke.config.ts`) is
-kept out of the normal `test:e2e` / `nx test` run. By default it targets
-`https://forms.sandbox.alpha.gov.bb`; override with `SMOKE_BASE_URL`:
+kept out of the normal `test:e2e` / `nx test` run. `SMOKE_BASE_URL` names the
+target environment and is **required** — a smoke run submits for real, so there
+is deliberately no default to fall back on:
 
 ```bash
-# Against the deployed sandbox (default):
-pnpm exec nx run forms:smoke
+# Against the deployed sandbox:
+SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb pnpm exec nx run forms:smoke
 
 # Against a local stack (Vite :3000 + API :3001 pointed at a real S3 bucket
-# via `aws sso login`):
+# via `aws sso login`). Vite is started for you if nothing is already serving
+# that URL; the API you still start yourself:
 SMOKE_BASE_URL=http://localhost:3000 pnpm --filter @govtech-bb/forms test:smoke
 
 # Just the temp-teacher form:

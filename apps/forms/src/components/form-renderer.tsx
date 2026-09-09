@@ -1,10 +1,11 @@
 import {
   ClientPrimitive,
   FieldValidationErrors,
+  FieldValidationProperties,
   FormRendererProps,
   FormValues,
 } from "@forms/types";
-import FieldRenderer from "./field-renderer";
+import FieldRenderer, { InsetFieldEntry } from "./field-renderer";
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -13,6 +14,7 @@ import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { shallow } from "@tanstack/react-store";
 import { isDateValidationError } from "@govtech-bb/form-validation";
+import { Behaviour } from "@govtech-bb/form-types";
 import { useStepGuard } from "../hooks/use-step-guard";
 import Review from "./review";
 import SubmissionConfirmation from "./submission-confirmation";
@@ -38,7 +40,11 @@ import { reviewDwellSeconds } from "./review-dwell";
 import { buildValidationErrorPayload } from "./validation-error-event";
 import { stepCompleteEventName } from "./step-events";
 import { StatusBanner } from "@govtech-bb/react";
-import { resolveStepTitle } from "@govtech-bb/form-conditions";
+import {
+  resolveConditionalMarkdown,
+  resolveFieldLabel,
+  resolveStepTitle,
+} from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
 
 // The feedback form citizens are sent to from a confirmation page, and its
@@ -47,6 +53,10 @@ import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
 // local. The originating form id is appended as `?source=` at render time.
 const EXIT_SURVEY_FORM_ID = "exit-survey";
 const EXIT_SURVEY_FIRST_STEP = "difficulty-rating";
+
+/** Stable empty map for steps with no `conditionalLabel` fields (#2521), so
+ * the label selector returns an unchanging reference for them. */
+const EMPTY_LABELS: Record<string, string> = {};
 
 // ---------------------------------------------------------------------------
 // Field grouping (show-hide + radio/select conditional reveal)
@@ -59,15 +69,18 @@ type ShowHideFieldGroup = {
   controlled: ClientPrimitive[];
 };
 /**
- * A radio or single-value select field that has one or more sibling fields
- * that should be revealed inline (inset) when a specific option is selected.
- * Each entry in the map keys on the option value and holds the ordered list
- * of fields to reveal.
+ * A radio, single-value select or checkbox field that has one or more sibling
+ * fields that should be revealed inline (inset) when a specific option is
+ * selected. Each entry in the map keys on the option value and holds the
+ * ordered groups to reveal — groups, not bare fields, so a revealed field that
+ * is itself an option host carries its own reveals and nests a level deeper
+ * (e.g. "are you organising this event?" revealed by "is this for an event?",
+ * with the organiser's details revealed in turn under its own "no").
  */
 type OptionConditionalFieldGroup = {
   type: "option-conditional";
   field: ClientPrimitive;
-  conditionalsByOption: Map<string, ClientPrimitive[]>;
+  conditionalsByOption: Map<string, FieldGroup[]>;
 };
 type FieldGroup =
   | PlainFieldGroup
@@ -75,15 +88,42 @@ type FieldGroup =
   | OptionConditionalFieldGroup;
 
 /**
- * A field hosts inset conditional reveals when it offers a single-choice
- * option list: radios, or selects without `multiple`. Multi-selects keep the
- * page-level conditional fallback — "equal" against an array value is murky.
+ * A field hosts inset conditional reveals when its options each have a DOM
+ * position to nest under: radios, selects without `multiple`, and multi-option
+ * checkboxes. A single-option checkbox is a confirmation, not an option list,
+ * so its reveals stay page-level; `multiple` selects have no per-option
+ * position to nest under.
  */
 function supportsOptionConditionals(field: ClientPrimitive): boolean {
   return (
     field.htmlType === "radio" ||
-    (field.htmlType === "select" && !field.multiple)
+    (field.htmlType === "select" && !field.multiple) ||
+    (field.htmlType === "checkbox" && (field.options?.length ?? 0) > 1)
   );
+}
+
+/**
+ * The single option value a reveal behaviour hangs off, or null when it does
+ * not name exactly one. A checkbox holds an array, so its reveals are authored
+ * as `in` with a one-entry list; `equal` covers radio/select. A behaviour
+ * naming several options (`in: ["employed", "self-employed"]`) has no single
+ * option to nest under, so it keeps the page-level fallback.
+ */
+function revealedOptionValue(behaviour: Behaviour): string | null {
+  if (behaviour.type !== "fieldConditionalOn" || !("value" in behaviour)) {
+    return null;
+  }
+  if (behaviour.operator === "equal" && !Array.isArray(behaviour.value)) {
+    return String(behaviour.value);
+  }
+  if (
+    behaviour.operator === "in" &&
+    Array.isArray(behaviour.value) &&
+    behaviour.value.length === 1
+  ) {
+    return String(behaviour.value[0]);
+  }
+  return null;
 }
 
 /**
@@ -112,23 +152,23 @@ function buildFieldGroups(fields: ClientPrimitive[]): FieldGroup[] {
       groups.push({ type: "show-hide", toggle: field, controlled });
     } else if (supportsOptionConditionals(field)) {
       // Collect sibling fields that are revealed by a specific option value
-      // on this radio/select (fieldConditionalOn + operator "equal").
+      // on this radio/select/checkbox (see `revealedOptionValue`).
       const conditionalsByOption = new Map<string, ClientPrimitive[]>();
 
       for (const other of fields) {
         if (controlledIds.has(other.id) || other.id === field.id) continue;
 
-        const revealBehaviour = other.behaviours?.find(
-          (b) =>
-            b.type === "fieldConditionalOn" &&
-            "targetFieldId" in b &&
-            b.targetFieldId === field.fieldId &&
-            "operator" in b &&
-            b.operator === "equal",
-        );
+        const optionValue = other.behaviours
+          ?.filter(
+            (b) =>
+              b.type === "fieldConditionalOn" &&
+              "targetFieldId" in b &&
+              b.targetFieldId === field.fieldId,
+          )
+          .map(revealedOptionValue)
+          .find((v) => v !== null);
 
-        if (revealBehaviour && "value" in revealBehaviour) {
-          const optionValue = String(revealBehaviour.value);
+        if (optionValue != null) {
           if (!conditionalsByOption.has(optionValue)) {
             conditionalsByOption.set(optionValue, []);
           }
@@ -141,7 +181,16 @@ function buildFieldGroups(fields: ClientPrimitive[]): FieldGroup[] {
         groups.push({
           type: "option-conditional",
           field,
-          conditionalsByOption,
+          // Group each option's reveals among themselves, so a revealed option
+          // host keeps its own reveals instead of them landing beside it. The
+          // recursion always runs on a strictly smaller set (the host is never
+          // in its own reveal list), so it terminates.
+          conditionalsByOption: new Map(
+            [...conditionalsByOption.entries()].map(([optVal, revealed]) => [
+              optVal,
+              buildFieldGroups(revealed),
+            ]),
+          ),
         });
       } else {
         groups.push({ type: "plain", field });
@@ -152,6 +201,58 @@ function buildFieldGroups(fields: ClientPrimitive[]): FieldGroup[] {
   }
 
   return groups;
+}
+
+/**
+ * Flatten grouped reveals into the entries a radio/select/checkbox renders
+ * under one option. An option-conditional group keeps its own reveal map, so
+ * the nesting carries as deep as the conditions go. A show-hide group inside a
+ * reveal keeps its pre-existing flat rendering — its bordered wrapper is a
+ * page-level affordance.
+ */
+function insetEntriesFromGroups(
+  groups: FieldGroup[],
+  resolveValidators: (field: ClientPrimitive) => FieldValidationProperties,
+): InsetFieldEntry[] {
+  return groups.flatMap((group) => {
+    if (group.type === "option-conditional") {
+      return [
+        {
+          field: group.field,
+          validationProperties: resolveValidators(group.field),
+          insetFieldsByOption: insetFieldsByOptionFromGroups(
+            group.conditionalsByOption,
+            resolveValidators,
+          ),
+        },
+      ];
+    }
+    if (group.type === "show-hide") {
+      return [group.toggle, ...group.controlled].map((field) => ({
+        field,
+        validationProperties: resolveValidators(field),
+      }));
+    }
+    return [
+      {
+        field: group.field,
+        validationProperties: resolveValidators(group.field),
+      },
+    ];
+  });
+}
+
+/** The option → inset entries map a host field is rendered with. */
+function insetFieldsByOptionFromGroups(
+  conditionalsByOption: Map<string, FieldGroup[]>,
+  resolveValidators: (field: ClientPrimitive) => FieldValidationProperties,
+): Map<string, InsetFieldEntry[]> {
+  return new Map(
+    [...conditionalsByOption.entries()].map(([optVal, groups]) => [
+      optVal,
+      insetEntriesFromGroups(groups, resolveValidators),
+    ]),
+  );
 }
 
 export default function FormRenderer({
@@ -301,9 +402,40 @@ function ActiveStep({
   navigateToStep,
   completeAndContinue,
 }: ActiveStepProps) {
-  const currentFields = React.useMemo(
-    () => [...currentStep.fields],
+  // A field may carry `conditionalLabel` overrides (#2521) that reword it off
+  // an earlier answer, so its label — like the step title below — has to
+  // recompute when the watched value changes. Only fields that actually carry
+  // overrides are resolved; every other step keeps the stable empty map and
+  // re-renders exactly as before.
+  const hasConditionalLabels = React.useMemo(
+    () => currentStep.fields.some((field) => field.conditionalLabel?.length),
     [currentStep],
+  );
+  const resolvedLabels = useStore(
+    form.store,
+    (state) => {
+      if (!hasConditionalLabels) return EMPTY_LABELS;
+      const values = buildStepScopedValues(
+        state.values as Record<string, unknown>,
+      );
+      const labels: Record<string, string> = {};
+      for (const field of currentStep.fields) {
+        if (field.conditionalLabel?.length) {
+          labels[field.id] = resolveFieldLabel(field, values);
+        }
+      }
+      return labels;
+    },
+    shallow,
+  );
+  const currentFields = React.useMemo(
+    () =>
+      currentStep.fields.map((field) =>
+        resolvedLabels[field.id]
+          ? { ...field, label: resolvedLabels[field.id] }
+          : field,
+      ),
+    [currentStep, resolvedLabels],
   );
 
   // #801: distinguish repeat instances beyond the first. undefined for base
@@ -568,7 +700,16 @@ function ActiveStep({
           stepTitle={resolvedStepTitle}
           processingMessage={currentStep.description}
           nextSteps={currentStep.nextSteps}
-          markdownContent={currentStep.markdownContent}
+          // The branch resolved at submit, when the answers were still live
+          // (#2068). Falling back to a defaults-only resolution rather than the
+          // raw `markdownContent` matters: a state persisted before this shipped
+          // — or the error paths, which commit no resolution — would otherwise
+          // render a literal `{token}`. For a step with no conditional passages
+          // this is `markdownContent` unchanged.
+          markdownContent={
+            submissionState?.resolvedMarkdown ??
+            resolveConditionalMarkdown(currentStep, {})
+          }
           hideReferenceNumber={currentStep.hideReferenceNumber}
           contactDetails={formMeta.contactDetails}
           onTryAgain={() => navigateToStep("check-your-answers")}
@@ -689,19 +830,13 @@ function ActiveStep({
             }
 
             if (group.type === "option-conditional") {
-              // Build a map of option value → [{field, validationProperties}]
-              // so the radio/select FieldRenderer can render inset fields per
-              // option.
-              const insetFieldsByOption = new Map(
-                [...group.conditionalsByOption.entries()].map(
-                  ([optVal, insetFields]) => [
-                    optVal,
-                    insetFields.map((f) => ({
-                      field: f,
-                      validationProperties: resolveValidators(f),
-                    })),
-                  ],
-                ),
+              // Build a map of option value → inset entries so the
+              // radio/select FieldRenderer can render inset fields per option.
+              // An entry that is itself an option host carries its own map, so
+              // the reveal nests as deep as the conditions do.
+              const insetFieldsByOption = insetFieldsByOptionFromGroups(
+                group.conditionalsByOption,
+                resolveValidators,
               );
 
               return (

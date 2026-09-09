@@ -41,13 +41,13 @@ export function EmergencyShelterLandingPage() {
     <div className="mb-l flex max-w-2xl flex-col gap-m">
       <div className="flex flex-col gap-xs">
         <Heading as="h1">{META.title}</Heading>
-        <div className="border-blue-10 border-b-4 pb-4 text-mid-grey-00">
-          <Text as="p" size="caption">
+        <div className="border-blue-10 border-b-4 pb-4 text-grey-70">
+          <Text as="p" size="body-sm">
             Last updated on {format(parseISO(SHELTERS_LAST_UPDATED), 'PPP')}.
             Next review: {format(parseISO(SHELTERS_NEXT_REVIEW), 'PPP')}.
           </Text>
         </div>
-        <Text as="p" className="text-mid-grey-00">
+        <Text as="p" className="text-grey-70">
           Search emergency shelters to use in the event of a hurricane or
           tropical storm.
         </Text>
@@ -57,7 +57,7 @@ export function EmergencyShelterLandingPage() {
         <LinkButton className="self-start" href={EMERGENCY_SHELTER_FIND_HREF}>
           Find a shelter
         </LinkButton>
-        <Text as="p" className="text-mid-grey-00" size="caption">
+        <Text as="p" className="text-grey-70" size="body-sm">
           It&apos;s free and you don&apos;t need to sign in.
         </Text>
       </div>
@@ -87,18 +87,18 @@ export function EmergencyShelterLandingPage() {
           {EMERGENCY_PHONES.map((phone) => (
             <li key={phone.service}>
               <a
-                className="flex h-full flex-col gap-xxs border-red-00 border-l-4 bg-red-10 p-s text-current no-underline transition-colors hover:bg-red-40 focus-visible:outline focus-visible:outline-4 focus-visible:outline-red-100 focus-visible:outline-offset-2"
+                className="flex h-full flex-col gap-xxs border-red-80 border-l-4 bg-red-10 p-s text-current no-underline transition-colors hover:bg-red-20 focus-visible:outline focus-visible:outline-4 focus-visible:outline-red-40 focus-visible:outline-offset-2"
                 href={phone.tel}
               >
                 <span className="font-bold">{phone.service}</span>
-                <span className="font-bold text-red-00 text-xl">
+                <span className="font-bold text-red-80 text-body">
                   {phone.number}
                 </span>
               </a>
             </li>
           ))}
         </ul>
-        <Text as="p" size="caption">
+        <Text as="p" size="body-sm">
           <Link href={`${EMERGENCY_SHELTER_GUIDANCE_HREF}#phone-numbers`}>
             See all phone numbers
           </Link>
@@ -180,7 +180,7 @@ export function EmergencyShelterLandingPage() {
         </ul>
       </section>
 
-      <aside className="border-blue-100 border-l-4 bg-blue-10 px-s py-xm">
+      <aside className="border-blue-40 border-l-4 bg-blue-10 px-s py-xm">
         <Heading as="h2" size="h3">
           Before you go to a shelter
         </Heading>
@@ -193,7 +193,7 @@ export function EmergencyShelterLandingPage() {
         </Text>
       </aside>
 
-      <Text as="p" className="text-mid-grey-00" size="caption">
+      <Text as="p" className="text-grey-70" size="body-sm">
         Source: 2026 Emergency Shelter Booklet, Department of Emergency
         Management.
       </Text>

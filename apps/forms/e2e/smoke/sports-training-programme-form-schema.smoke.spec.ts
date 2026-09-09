@@ -23,6 +23,9 @@
  *    day/month/year widget; must be in the past.
  *  - `contact.contact-parish` / `emergency-parish` are `components/parish` →
  *    native `<select>` with slug values (use "st-michael").
+ *  - `emergency.emergency-relationship` is `components/relationship` → native
+ *    `<select>` with slug values (use "parent"); it was a text input before
+ *    #2217 re-pointed it off `components/name`.
  *  - `experience.years-of-experience` is `components/generic-number` → number
  *    input (fillField).
  *  - Conditionals / branches we choose to keep the optional sub-fields hidden:
@@ -132,7 +135,7 @@ test.describe("Community Sports Training Programme — Live Smoke", () => {
       faker.person.firstName(),
     );
     await fillField(page, step, "emergency-last-name", faker.person.lastName());
-    await fillField(page, step, "emergency-relationship", "Parent");
+    await selectDropdown(page, step, "emergency-relationship", "parent");
     await fillField(
       page,
       step,

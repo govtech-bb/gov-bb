@@ -92,7 +92,6 @@
           "overrides": {
             "fieldId": "address-line-2",
             "label": "Address line 2",
-            "hint": "Optional",
             "validations": {
               "required": {
                 "value": false
@@ -105,9 +104,7 @@
         },
         {
           "ref": "components/postcode",
-          "overrides": {
-            "hint": "Optional"
-          }
+          "overrides": {}
         },
         {
           "ref": "components/telephone",
@@ -156,8 +153,7 @@
           "ref": "components/middle-name",
           "overrides": {
             "fieldId": "kin-middle-name",
-            "label": "Middle name",
-            "hint": "Optional"
+            "label": "Middle name"
           }
         },
         {
@@ -230,8 +226,7 @@
               "required": {
                 "value": false
               }
-            },
-            "hint": "Optional"
+            }
           }
         },
         {
@@ -243,7 +238,6 @@
         {
           "ref": "components/postcode",
           "overrides": {
-            "hint": "Optional",
             "fieldId": "kin-postcode"
           }
         },

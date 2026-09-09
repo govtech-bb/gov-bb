@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import NodeCache from "node-cache";
 import MarkdownIt from "markdown-it";
 import { DateTime } from "luxon";
@@ -14,11 +15,15 @@ import {
   formatDateValue,
 } from "@govtech-bb/form-validation";
 import {
+  resolveFieldLabel,
   resolveStepTitle,
+  interpolateConfirmationMarkdown,
+  resolveConditionalMarkdown,
   type StepScopedValues,
 } from "@govtech-bb/form-conditions";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import { deriveHigherRiskSelection } from "../forms/submissions/derive-higher-risk";
+import { isOptionField, resolveOptionDisplay } from "../forms/field-display";
 import type {
   SubmissionAuditTrail,
   SubmissionCreatedEvent,
@@ -141,6 +146,7 @@ export class EmailBodyBuilder {
 
   constructor(
     private readonly formDefinitionsService: FormDefinitionsService,
+    private readonly config: ConfigService,
   ) {}
 
   async build(payload: SubmissionCreatedEvent): Promise<EmailTemplateContext> {
@@ -174,6 +180,7 @@ export class EmailBodyBuilder {
                 step,
                 instance as Record<string, unknown>,
                 meta,
+                values as StepScopedValues,
                 needsIndex ? `${stepTitle} (${i + 1})` : stepTitle,
               ),
             )
@@ -184,6 +191,7 @@ export class EmailBodyBuilder {
           step,
           (rawVal as Record<string, unknown>) ?? {},
           meta,
+          values as StepScopedValues,
           stepTitle,
         );
         return section.fields.length > 0 ? [section] : [];
@@ -215,17 +223,28 @@ export class EmailBodyBuilder {
     // It's the same markdown the live confirmation page renders; parsing it
     // synchronously (marked.parse returns a string when async isn't enabled)
     // keeps the email copy in step with the page.
-    const rawMarkdown = contract.steps.find(
+    const confirmationStep = contract.steps.find(
       (s) => s.stepId === "submission-confirmation",
-    )?.markdownContent;
-    // Substitute the resolved polyclinic into the `{polyclinic}` token so the
-    // email names the Environmental Health Department the request went to —
-    // same token + fallback as the live confirmation page
-    // (submission-confirmation.tsx), keeping the email and page copy in step.
-    const markdownContent = rawMarkdown?.replaceAll(
-      "{polyclinic}",
-      payload.resolvedCatchment?.polyclinic ?? "your local polyclinic",
     );
+    // Fill any per-answer passages the body declares (#2068) — the inspection
+    // wording, an organiser-only officer-request paragraph — from the submitted
+    // values, using the same resolver the confirmation page resolves with, so
+    // the branch in this email matches the branch on screen. Runs before token
+    // interpolation below so a conditional passage may itself carry
+    // `{polyclinic}` / `{landingUrl}`.
+    const rawMarkdown = confirmationStep
+      ? resolveConditionalMarkdown(confirmationStep, values as StepScopedValues)
+      : undefined;
+    // Substitute the resolved polyclinic into the `{polyclinic}` token so the
+    // email names the polyclinic the request went to, and the landing origin
+    // into `{landingUrl}` so an authored link to a service page is absolute —
+    // an email has no base URL, so a root-relative href is simply dead. Shared
+    // with the live confirmation page via interpolateConfirmationMarkdown so
+    // the email and page copy can't drift (#2201).
+    const markdownContent = interpolateConfirmationMarkdown(rawMarkdown, {
+      polyclinic: payload.resolvedCatchment?.polyclinic,
+      landingUrl: this.config.get<string>("app.landingUrl"),
+    });
     const markdownHtml = markdownContent
       ? markdownRenderer.render(markdownContent)
       : undefined;
@@ -294,6 +313,7 @@ export class EmailBodyBuilder {
     step: FormStep,
     stepValues: Record<string, unknown>,
     meta: SubmissionAuditTrail,
+    allValues: StepScopedValues,
     titleOverride?: string,
   ): EmailSection {
     // When activeFieldIds for a step is absent, default to showing all fields.
@@ -323,6 +343,13 @@ export class EmailBodyBuilder {
 
     const fields = step.elements
       .filter((el) => !SKIP_TYPES.has(el.htmlType))
+      // `ui.hidden` fields are machine-written and were never shown to the
+      // applicant — in production that is the geocoded routing coordinate. They
+      // carry data the CMS payload needs, but printing
+      // "Address coordinates: 13.09,-59.57" shows the citizen and the polyclinic
+      // a row neither asked for and neither can act on. check-your-answers
+      // already filters them the same way (review.tsx).
+      .filter((el) => !el.ui?.hidden)
       .filter((el) =>
         activeFieldIds === undefined
           ? true
@@ -330,7 +357,10 @@ export class EmailBodyBuilder {
       )
       .filter((el) => !hiddenFieldIds.includes(el.fieldId))
       .map((el) => ({
-        label: el.label,
+        // Resolve any per-answer label override (#2521) the same way the step
+        // title is resolved above, so the email names each answer exactly as
+        // the applicant was asked for it.
+        label: resolveFieldLabel(el, allValues),
         value: this.formatValue(el, stepValues[el.fieldId]),
       }))
       .filter((f) => f.value !== "");
@@ -341,38 +371,15 @@ export class EmailBodyBuilder {
   private formatValue(field: Primitive, raw: unknown): string {
     if (raw === null || raw === undefined || raw === "") return "";
 
+    // Option fields (radio/select/checkbox/checkbox-accordion) resolve value
+    // slugs to labels via the shared helper — the same resolution the CMS
+    // webhook payload uses (#842) — then render as a comma-joined string.
+    if (isOptionField(field)) {
+      const display = resolveOptionDisplay(field, raw);
+      return Array.isArray(display) ? display.join(", ") : String(display);
+    }
+
     switch (field.htmlType) {
-      case "radio":
-        return (
-          field.options?.find((o) => o.value === String(raw))?.label ??
-          String(raw)
-        );
-
-      case "select": {
-        // select[multiple] carries an array of values; single-select carries a scalar.
-        if (field.multiple && Array.isArray(raw)) {
-          return this.resolveOptionLabels(field.options ?? [], raw);
-        }
-        return (
-          field.options?.find((o) => o.value === String(raw))?.label ??
-          String(raw)
-        );
-      }
-
-      case "checkbox":
-        return this.resolveOptionLabels(
-          field.options ?? [],
-          Array.isArray(raw) ? raw : [raw],
-        );
-
-      case "checkbox-accordion":
-        // Value is a flat string[] across all categories; resolve labels from
-        // the groups' options flattened into one list.
-        return this.resolveOptionLabels(
-          (field.groups ?? []).flatMap((g) => g.options),
-          Array.isArray(raw) ? raw : [raw],
-        );
-
       case "file": {
         // Stored answer is an array of { key, name, size, type } upload items.
         // Mirror FilesService.collectFileEntries: only items with a non-empty
@@ -400,19 +407,11 @@ export class EmailBodyBuilder {
       }
 
       default:
-        return String(raw);
+        // Multi-value string answers (fieldArray, opening-hours entries)
+        // join like every other list in the email — ", ", not the bare
+        // comma String() would produce.
+        return Array.isArray(raw) ? raw.map(String).join(", ") : String(raw);
     }
-  }
-
-  private resolveOptionLabels(
-    options: Array<{ label: string; value: string }>,
-    selected: unknown[],
-  ): string {
-    return selected
-      .map(
-        (v) => options.find((o) => o.value === String(v))?.label ?? String(v),
-      )
-      .join(", ");
   }
 }
 

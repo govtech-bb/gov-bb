@@ -8,6 +8,10 @@ publish_date: 2026-05-12
 categories:
   - money-financial-support
   - work-employment
+keywords:
+  - redundancy pay
+  - redundancy payment
+  - layoff pay
 ---
 
 If you were sent home from your job, your employer may owe you severance payment. This tool gives you an estimate based on the [Severance Payments Act (Cap. 355A)](https://www.nis.gov.bb/severance/) — it is not legal advice.

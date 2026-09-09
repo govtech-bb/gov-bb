@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { pageHead } from '../../../lib/page-head'
-import { type TokenOutcome, unsubscribeSubscription } from './-lib/water-alerts'
+import { unsubscribeSubscription } from './-lib/water-alerts'
+import type { TokenOutcome } from './-lib/water-alerts'
 import { ResultNotice } from './-ui/result-notice'
 
 export const Route = createFileRoute(
@@ -15,6 +16,7 @@ export const Route = createFileRoute(
     pageHead(
       'Unsubscribe from water alerts',
       'Stop getting water-outage alert emails.',
+      { noindex: true },
     ),
   component: UnsubscribePage,
 })
@@ -37,6 +39,11 @@ const MESSAGES: Record<
     tone: 'error',
     title: 'This link is not valid',
     body: 'This unsubscribe link is invalid or has expired. If you keep getting emails, contact us.',
+  },
+  unavailable: {
+    tone: 'error',
+    title: 'We could not unsubscribe you',
+    body: 'Your subscription has not been changed. Please open this link again in a few minutes.',
   },
 }
 

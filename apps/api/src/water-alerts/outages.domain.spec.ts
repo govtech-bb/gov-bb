@@ -98,6 +98,20 @@ describe("parseEventWindow", () => {
       parseEventWindow("no date here", new Date(NOW).toISOString()),
     ).toEqual({});
   });
+
+  it("handles next-year midnight notices and explicit years without an end time", () => {
+    const published = "2026-12-31T12:00:00.000Z";
+    expect(
+      parseEventWindow("Work until January 1 at 12 a.m.", published),
+    ).toEqual({
+      eventDay: "2027-01-01",
+      endsAt: "2027-01-01T04:00:00.000Z",
+    });
+    expect(parseEventWindow("Work on January 1, 2028", published)).toEqual({
+      eventDay: "2028-01-01",
+      endsAt: undefined,
+    });
+  });
 });
 
 describe("bbDayKey", () => {

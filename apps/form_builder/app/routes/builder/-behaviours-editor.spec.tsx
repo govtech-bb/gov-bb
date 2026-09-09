@@ -82,7 +82,7 @@ it("disables the Target Field picker until a Target Step is chosen", () => {
       targetFieldId: "",
       operator: "equal",
       value: "",
-    } as unknown as Behaviour,
+    },
   ]);
   expect(targetFieldSelect()).toBeDisabled();
 });
@@ -95,7 +95,7 @@ it("enables the Target Field picker once a Target Step is set", () => {
       targetFieldId: "",
       operator: "equal",
       value: "",
-    } as unknown as Behaviour,
+    },
   ]);
   expect(targetFieldSelect()).toBeEnabled();
 });
@@ -108,7 +108,7 @@ it("limits Target Field options to fields in the selected Target Step", () => {
       targetFieldId: "",
       operator: "equal",
       value: "",
-    } as unknown as Behaviour,
+    },
   ]);
   const options = within(targetFieldSelect())
     .getAllByRole("option")
@@ -129,7 +129,7 @@ it("uses the resolved field id as the option value", () => {
       targetFieldId: "",
       operator: "equal",
       value: "",
-    } as unknown as Behaviour,
+    },
   ]);
   const firstName = within(targetFieldSelect()).getByRole("option", {
     name: "First Name",
@@ -145,7 +145,7 @@ it("clears an incompatible Target Field when the Target Step changes", async () 
       targetFieldId: "first-name",
       operator: "equal",
       value: "",
-    } as unknown as Behaviour,
+    },
   ]);
   await userEvent.selectOptions(targetStepSelect(), "step-2");
   expect(onChange).toHaveBeenLastCalledWith([
@@ -180,7 +180,7 @@ it("keeps the Target Field when the new step still contains it", async () => {
           targetFieldId: "shared",
           operator: "equal",
           value: "",
-        } as unknown as Behaviour,
+        },
       ]}
       fieldRefs={refs}
       stepRefs={STEP_REFS}
@@ -224,7 +224,7 @@ it("renders distinct options for two fields in a step that resolve to the same i
           targetFieldId: "",
           operator: "equal",
           value: "",
-        } as unknown as Behaviour,
+        },
       ]}
       fieldRefs={refs}
       stepRefs={STEP_REFS}
@@ -279,7 +279,7 @@ it("renders a true/false select for a boolean Target Field", () => {
       targetFieldId: "agree",
       operator: "equal",
       value: true,
-    } as unknown as Behaviour,
+    },
   ]);
   const select = valueBooleanSelect();
   expect(select).toBeDefined();
@@ -300,7 +300,7 @@ it("stores a real boolean when the true/false control changes", async () => {
       targetFieldId: "agree",
       operator: "equal",
       value: true,
-    } as unknown as Behaviour,
+    },
   ]);
   await userEvent.selectOptions(
     valueBooleanSelect() as HTMLSelectElement,
@@ -319,7 +319,7 @@ it("renders a text input for a non-boolean Target Field", () => {
       targetFieldId: "first-name",
       operator: "equal",
       value: "",
-    } as unknown as Behaviour,
+    },
   ]);
   expect(valueBooleanSelect()).toBeUndefined();
   expect(screen.getByRole("textbox")).toBeInTheDocument();
@@ -333,7 +333,7 @@ it("resets the value to true when the Target Field switches to boolean", async (
       targetFieldId: "first-name",
       operator: "equal",
       value: "hello",
-    } as unknown as Behaviour,
+    },
   ]);
   await userEvent.selectOptions(targetFieldSelect(), "agree");
   expect(onChange).toHaveBeenLastCalledWith([
@@ -349,7 +349,7 @@ it("resets the value to an empty string when the Target Field switches to non-bo
       targetFieldId: "agree",
       operator: "equal",
       value: true,
-    } as unknown as Behaviour,
+    },
   ]);
   await userEvent.selectOptions(targetFieldSelect(), "first-name");
   expect(onChange).toHaveBeenLastCalledWith([
@@ -431,7 +431,7 @@ it("the Min input for repeatable has min='1' and changing to 0 stores 1", () => 
     <BehavioursEditor
       scope="step"
       behaviours={[
-        { type: "repeatable", min: 1, max: 5 } as unknown as Behaviour,
+        { type: "repeatable", min: 1, max: 5 },
       ]}
       fieldRefs={FIELD_REFS}
       stepRefs={STEP_REFS}
@@ -458,7 +458,7 @@ it("with min: 3, changing Max to 2 stores 3 (clamped to atLeastParam)", () => {
     <BehavioursEditor
       scope="step"
       behaviours={[
-        { type: "repeatable", min: 3, max: 5 } as unknown as Behaviour,
+        { type: "repeatable", min: 3, max: 5 },
       ]}
       fieldRefs={FIELD_REFS}
       stepRefs={STEP_REFS}
@@ -483,7 +483,7 @@ it("raising Min above current Max also raises Max (min: 7 with max: 5 stores { m
     <BehavioursEditor
       scope="step"
       behaviours={[
-        { type: "repeatable", min: 3, max: 5 } as unknown as Behaviour,
+        { type: "repeatable", min: 3, max: 5 },
       ]}
       fieldRefs={FIELD_REFS}
       stepRefs={STEP_REFS}
@@ -514,7 +514,7 @@ it("renders the gated step/field/operator/value controls for an optionalIf behav
           targetFieldId: "agree",
           operator: "equal",
           value: true,
-        } as unknown as Behaviour,
+        },
       ]}
       fieldRefs={FIELD_REFS}
       stepRefs={STEP_REFS}
@@ -535,7 +535,7 @@ it("renders the gated step/field/operator/value controls for an optionalIf behav
 
 it("renders a text input for repeatable's Add another label with the default as placeholder", () => {
   renderStepBehaviour([
-    { type: "repeatable", min: 1, max: 5 } as unknown as Behaviour,
+    { type: "repeatable", min: 1, max: 5 },
   ]);
   const input = screen.getByPlaceholderText("Add another?");
   expect(input).toBeInTheDocument();
@@ -549,7 +549,7 @@ it("shows the stored addAnotherLabel value", () => {
       min: 1,
       max: 5,
       addAnotherLabel: "Add another qualification?",
-    } as unknown as Behaviour,
+    },
   ]);
   expect(screen.getByPlaceholderText("Add another?")).toHaveValue(
     "Add another qualification?",
@@ -575,7 +575,7 @@ it("does not initialize addAnotherLabel when adding a repeatable behaviour", asy
 
 it("stores typed text as addAnotherLabel", async () => {
   const onChange = renderStepBehaviour([
-    { type: "repeatable", min: 1, max: 5 } as unknown as Behaviour,
+    { type: "repeatable", min: 1, max: 5 },
   ]);
   await userEvent.type(screen.getByPlaceholderText("Add another?"), "A");
   expect(onChange).toHaveBeenLastCalledWith([
@@ -590,7 +590,7 @@ it("deletes addAnotherLabel from the behaviour when the input is blanked", async
       min: 1,
       max: 5,
       addAnotherLabel: "X",
-    } as unknown as Behaviour,
+    },
   ]);
   await userEvent.clear(screen.getByPlaceholderText("Add another?"));
   const updated = onChange.mock.lastCall?.[0][0] as Record<string, unknown>;
@@ -599,7 +599,7 @@ it("deletes addAnotherLabel from the behaviour when the input is blanked", async
 
 it("treats whitespace-only input as blank", async () => {
   const onChange = renderStepBehaviour([
-    { type: "repeatable", min: 1, max: 5 } as unknown as Behaviour,
+    { type: "repeatable", min: 1, max: 5 },
   ]);
   await userEvent.type(screen.getByPlaceholderText("Add another?"), " ");
   const updated = onChange.mock.lastCall?.[0][0] as Record<string, unknown>;
@@ -618,7 +618,7 @@ function renderSharedFields(
   render(
     <BehavioursEditor
       scope="step"
-      behaviours={[{ type: "sharedFields", fieldIds } as unknown as Behaviour]}
+      behaviours={[{ type: "sharedFields", fieldIds }]}
       fieldRefs={refs}
       stepRefs={STEP_REFS}
       onChange={onChange}
@@ -773,7 +773,7 @@ it("offers the numeric comparison operators (gte/lte/gt/lt)", () => {
       targetFieldId: "first-name",
       operator: "equal",
       value: "",
-    } as unknown as Behaviour,
+    },
   ]);
   const values = within(operatorSelect()!)
     .getAllByRole("option")
@@ -789,7 +789,7 @@ it("shows a duration transform selector once a numeric operator is chosen", () =
       targetFieldId: "first-name",
       operator: "gte",
       value: "16",
-    } as unknown as Behaviour,
+    },
   ]);
   expect(transformSelect()).toBeDefined();
 });
@@ -802,7 +802,7 @@ it("hides the transform selector for non-numeric operators", () => {
       targetFieldId: "first-name",
       operator: "equal",
       value: "",
-    } as unknown as Behaviour,
+    },
   ]);
   expect(transformSelect()).toBeUndefined();
 });
@@ -815,7 +815,7 @@ it("writes the chosen transform onto the behaviour", async () => {
       targetFieldId: "first-name",
       operator: "gte",
       value: "16",
-    } as unknown as Behaviour,
+    },
   ]);
   await userEvent.selectOptions(transformSelect()!, "yearsSince");
   expect(onChange).toHaveBeenLastCalledWith([
@@ -832,7 +832,7 @@ it("clears a stale transform when the operator switches to a non-numeric one (#1
       operator: "gte",
       value: "16",
       transform: "yearsSince",
-    } as unknown as Behaviour,
+    },
   ]);
   await userEvent.selectOptions(operatorSelect()!, "equal");
   const next = onChange.mock.calls.at(-1)![0][0] as Record<string, unknown>;
@@ -849,7 +849,7 @@ it("keeps the transform when switching between numeric operators (#1020)", async
       operator: "gte",
       value: "16",
       transform: "yearsSince",
-    } as unknown as Behaviour,
+    },
   ]);
   await userEvent.selectOptions(operatorSelect()!, "lte");
   const next = onChange.mock.calls.at(-1)![0][0] as Record<string, unknown>;
@@ -863,14 +863,14 @@ it("keeps the transform when switching between numeric operators (#1020)", async
 
 const IN_HINT = "Enter multiple values separated by commas";
 
-function inBehaviour(value: unknown): Behaviour {
+function inBehaviour(value: string[]): Behaviour {
   return {
     type: "stepConditionalOn",
     targetStepId: "step-1",
     targetFieldId: "first-name", // non-boolean target
     operator: "in",
     value,
-  } as unknown as Behaviour;
+  };
 }
 
 it("displays an array `in` value as a comma-separated string", () => {
@@ -931,7 +931,7 @@ it("does not show the comma hint for a non-`in` operator", () => {
       targetFieldId: "first-name",
       operator: "equal",
       value: "",
-    } as unknown as Behaviour,
+    },
   ]);
   expect(screen.queryByText(IN_HINT)).not.toBeInTheDocument();
 });
@@ -944,7 +944,7 @@ it("wraps an existing scalar value into an array when switching to `in`", async 
       targetFieldId: "first-name",
       operator: "equal",
       value: "other",
-    } as unknown as Behaviour,
+    },
   ]);
   await userEvent.selectOptions(operatorSelect()!, "in");
   const next = onChange.mock.calls.at(-1)![0][0] as Record<string, unknown>;
@@ -960,7 +960,7 @@ it("wraps an empty scalar value into an empty array when switching to `in`", asy
       targetFieldId: "first-name",
       operator: "equal",
       value: "",
-    } as unknown as Behaviour,
+    },
   ]);
   await userEvent.selectOptions(operatorSelect()!, "in");
   const next = onChange.mock.calls.at(-1)![0][0] as Record<string, unknown>;
@@ -983,7 +983,7 @@ it("leaves a boolean target's value untouched when switching to `in`", async () 
       targetFieldId: "agree", // boolean target
       operator: "equal",
       value: true,
-    } as unknown as Behaviour,
+    },
   ]);
   await userEvent.selectOptions(operatorSelect()!, "in");
   const next = onChange.mock.calls.at(-1)![0][0] as Record<string, unknown>;
@@ -1040,4 +1040,182 @@ it("normalizes the displayed text from the committed array on blur (#1738)", asy
   await userEvent.tab();
   // Re-query: the value-keyed remount replaces the DOM node on commit.
   expect(screen.getByRole("textbox")).toHaveValue("abc, def");
+});
+
+// #2317: fieldArray ("Answer more than once") becomes a first-class authoring
+// tool — safe defaults, min/max clamps, availability gated on the field types
+// the runtime actually repeats, and an in-row "The applicant sees" miniature.
+
+function renderFieldArrayEditor(
+  behaviours: Behaviour[],
+  onChange = vi.fn(),
+  currentField: { label: string; htmlType: string } | undefined = {
+    label: "Middle name",
+    htmlType: "text",
+  },
+) {
+  render(
+    <BehavioursEditor
+      scope="field"
+      behaviours={behaviours}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={onChange}
+      currentStepId="step-1"
+      currentField={currentField}
+    />,
+  );
+  return onChange;
+}
+
+it("adding Answer more than once initialises { min: 1, max: 4 } with no addAnotherLabel", async () => {
+  const onChange = renderFieldArrayEditor([]);
+  await userEvent.selectOptions(addBehaviourSelect(), "fieldArray");
+  const added = onChange.mock.lastCall?.[0][0] as Record<string, unknown>;
+  expect(added).toMatchObject({ type: "fieldArray", min: 1, max: 4 });
+  expect("addAnotherLabel" in added).toBe(false);
+});
+
+it("the Start with input has min='1' and changing to 0 stores 1", () => {
+  const onChange = vi.fn();
+  renderFieldArrayEditor(
+    [{ type: "fieldArray", min: 1, max: 4 }],
+    onChange,
+  );
+  const minInput = screen
+    .getAllByRole("spinbutton")
+    .find((el) =>
+      (el as HTMLInputElement)
+        .closest("div")
+        ?.textContent?.includes("Start with"),
+    ) as HTMLInputElement;
+  expect(minInput).toHaveAttribute("min", "1");
+  fireEvent.change(minInput, { target: { value: "0" } });
+  const lastCall = onChange.mock.lastCall?.[0] as Behaviour[];
+  expect((lastCall[0] as Record<string, unknown>)["min"]).toBe(1);
+});
+
+it("with min: 3, lowering Allow up to to 2 stores 3 (clamped to Start with)", () => {
+  const onChange = vi.fn();
+  renderFieldArrayEditor(
+    [{ type: "fieldArray", min: 3, max: 5 }],
+    onChange,
+  );
+  const maxInput = screen
+    .getAllByRole("spinbutton")
+    .find((el) =>
+      (el as HTMLInputElement)
+        .closest("div")
+        ?.textContent?.includes("Allow up to"),
+    ) as HTMLInputElement;
+  fireEvent.change(maxInput, { target: { value: "2" } });
+  const lastCall = onChange.mock.lastCall?.[0] as Behaviour[];
+  expect((lastCall[0] as Record<string, unknown>)["max"]).toBe(3);
+});
+
+it("raising Start with above Allow up to raises both", () => {
+  const onChange = vi.fn();
+  renderFieldArrayEditor(
+    [{ type: "fieldArray", min: 2, max: 4 }],
+    onChange,
+  );
+  const minInput = screen
+    .getAllByRole("spinbutton")
+    .find((el) =>
+      (el as HTMLInputElement)
+        .closest("div")
+        ?.textContent?.includes("Start with"),
+    ) as HTMLInputElement;
+  fireEvent.change(minInput, { target: { value: "6" } });
+  const lastCall = onChange.mock.lastCall?.[0] as Behaviour[];
+  expect((lastCall[0] as Record<string, unknown>)["min"]).toBe(6);
+  expect((lastCall[0] as Record<string, unknown>)["max"]).toBe(6);
+});
+
+it("renders a text input for the Add another link text with the runtime default as placeholder", () => {
+  renderFieldArrayEditor([
+    { type: "fieldArray", min: 1, max: 4 },
+  ]);
+  expect(screen.getByPlaceholderText("Add Another")).toBeInTheDocument();
+});
+
+it("disables Answer more than once for a select field, with a reason and a hint", () => {
+  renderFieldArrayEditor([], vi.fn(), {
+    label: "Region",
+    htmlType: "select",
+  });
+  const option = within(addBehaviourSelect()).getByRole("option", {
+    name: /Answer more than once — needs a text-like field/,
+  });
+  expect(option).toBeDisabled();
+  expect(
+    screen.getByText(
+      "Only text, number, phone, email, time and long-answer fields can be answered more than once.",
+    ),
+  ).toBeInTheDocument();
+});
+
+it("offers Answer more than once enabled (no hint) for a text field", () => {
+  renderFieldArrayEditor([]);
+  const option = within(addBehaviourSelect()).getByRole("option", {
+    name: "Answer more than once",
+  });
+  expect(option).not.toBeDisabled();
+  expect(
+    screen.queryByText(/can be answered more than once/),
+  ).not.toBeInTheDocument();
+});
+
+it("miniature shows the field label, one box per Start with, and the default link text", () => {
+  renderFieldArrayEditor([
+    { type: "fieldArray", min: 2, max: 4 },
+  ]);
+  expect(screen.getByText("The applicant sees")).toBeInTheDocument();
+  expect(screen.getByText("Middle name")).toBeInTheDocument();
+  expect(screen.getAllByTestId("fa-miniature-box")).toHaveLength(2);
+  expect(screen.getByText("+ Add Another")).toBeInTheDocument();
+});
+
+it("miniature link line uses the typed addAnotherLabel", () => {
+  renderFieldArrayEditor([
+    {
+      type: "fieldArray",
+      min: 1,
+      max: 4,
+      addAnotherLabel: "Add another middle name",
+    },
+  ]);
+  expect(screen.getByText("+ Add another middle name")).toBeInTheDocument();
+});
+
+it("miniature hides the link line when min equals max", () => {
+  renderFieldArrayEditor([
+    { type: "fieldArray", min: 3, max: 3 },
+  ]);
+  expect(screen.getAllByTestId("fa-miniature-box")).toHaveLength(3);
+  expect(screen.queryByText("+ Add Another")).not.toBeInTheDocument();
+});
+
+it("renders no miniature without currentField", () => {
+  render(
+    <BehavioursEditor
+      scope="field"
+      behaviours={[
+        { type: "fieldArray", min: 1, max: 4 },
+      ]}
+      fieldRefs={FIELD_REFS}
+      stepRefs={STEP_REFS}
+      onChange={vi.fn()}
+      currentStepId="step-1"
+    />,
+  );
+  expect(screen.queryByText("The applicant sees")).not.toBeInTheDocument();
+});
+
+it("miniature caps at 5 boxes and collapses the rest to an '…and N more' line", () => {
+  renderFieldArrayEditor([
+    { type: "fieldArray", min: 8, max: 10 },
+  ]);
+  expect(screen.getAllByTestId("fa-miniature-box")).toHaveLength(5);
+  expect(screen.getByText("…and 3 more")).toBeInTheDocument();
 });

@@ -184,6 +184,50 @@ describe("AddressLookupField", () => {
     expect(handleChange).toHaveBeenLastCalledWith("My own address");
   });
 
+  // Picking a suggestion writes the routing coordinate, then editing the address
+  // by hand used to leave it behind — so the CMS received a precise coordinate
+  // for an address the applicant had already replaced, and catchment routing
+  // sent the application to the polyclinic serving the OLD address.
+  it("clears the geocoded coordinate when the address is edited by hand", async () => {
+    mockSearch.mockResolvedValue([
+      {
+        label:
+          "Chefette, Prescott Boulevard, Bridgetown, St. Michael, Barbados",
+        lat: "13.1",
+        lon: "-59.6",
+        line1: "Chefette, Prescott Boulevard",
+        line2: "Bridgetown",
+        parish: "st-michael",
+      },
+    ]);
+    renderField();
+
+    await userEvent.type(screen.getByRole("combobox"), "Che");
+    await userEvent.click(await screen.findByRole("option"));
+    setFieldValue.mockClear();
+
+    await userEvent.type(screen.getByRole("combobox"), "X");
+
+    expect(setFieldValue).toHaveBeenCalledWith(
+      "step-1.event-address-coordinates",
+      "",
+    );
+  });
+
+  // The parish is the routing fallback the server fills the coordinate from, and
+  // it is a field the applicant can see and correct — so it survives an edit.
+  it("leaves the parish alone when the address is edited by hand", async () => {
+    mockSearch.mockResolvedValue([]);
+    renderField();
+
+    await userEvent.type(screen.getByRole("combobox"), "My own address");
+
+    expect(setFieldValue).not.toHaveBeenCalledWith(
+      "step-1.event-parish",
+      expect.anything(),
+    );
+  });
+
   it("shows a non-blocking notice when the lookup fails", async () => {
     mockSearch.mockRejectedValue(new Error("network down"));
     renderField();

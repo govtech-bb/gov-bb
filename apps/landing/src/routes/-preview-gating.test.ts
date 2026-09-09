@@ -1,5 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ContentPage } from '../content/registry'
+// Type-only, so it erases at runtime and the route still loads lazily, after
+// the mocks below are in place.
+import type * as ContentRouteModule from './$'
 
 // Mock the registry to drive the gate's throw paths deterministically. Only the
 // exports the routes use are stubbed.
@@ -13,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   isStartSubPageVisible: vi.fn(() => true),
   isUrlVisible: vi.fn(() => true),
   urlLevel: vi.fn(() => 'public' as const),
+  resolveBareSlugRedirect: vi.fn(() => undefined as string | undefined),
   PAGES: [] as ContentPage[],
 }))
 
@@ -61,11 +65,20 @@ beforeEach(() => {
   mocks.isStartSubPageVisible.mockReturnValue(true)
   mocks.isUrlVisible.mockReturnValue(true)
   mocks.urlLevel.mockReturnValue('public')
+  mocks.resolveBareSlugRedirect.mockReturnValue(undefined)
 })
+
+// Load the route once. Pulling the route + content graph through Vite's
+// transform takes longer than the 5s default testTimeout on a loaded CI runner,
+// and the cost lands on whichever test imports first — so the hook takes it,
+// with its own generous timeout, and every test then sees a warm module.
+let Route: typeof ContentRouteModule.Route
+beforeAll(async () => {
+  ;({ Route } = await import('./$'))
+}, 60_000)
 
 describe('$ route loader gating', () => {
   it('throws notFound for a gated page the viewer cannot see', async () => {
-    const { Route } = await import('./$')
     mocks.findPage.mockReturnValue(fakePage)
     mocks.isVisible.mockReturnValue(false)
 
@@ -79,8 +92,48 @@ describe('$ route loader gating', () => {
     expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'public', new Map())
   })
 
+  it('301-redirects a bare service slug to its canonical URL (#2145)', async () => {
+    // No page/category matches the bare slug, so the loader reaches the
+    // pre-404 bare-slug resolution.
+    mocks.findPage.mockReturnValue(undefined)
+    mocks.resolveBareSlugRedirect.mockReturnValue(
+      'family-birth-relationships/get-marriage-certificate',
+    )
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const err = await loader({
+      params: { _splat: 'get-marriage-certificate' },
+      context: { level: 'public', serviceStatuses: [] },
+    }).catch((e: unknown) => e)
+
+    const opts = (err as { options?: { href?: string; statusCode?: number } })
+      .options
+    expect(opts?.href).toBe(
+      '/family-birth-relationships/get-marriage-certificate',
+    )
+    expect(opts?.statusCode).toBe(301)
+    // Gating context is threaded through to the resolver.
+    expect(mocks.resolveBareSlugRedirect).toHaveBeenCalledWith(
+      'get-marriage-certificate',
+      'public',
+      new Map(),
+    )
+  })
+
+  it('falls through to notFound when a bare slug does not resolve (#2145)', async () => {
+    mocks.findPage.mockReturnValue(undefined)
+    mocks.resolveBareSlugRedirect.mockReturnValue(undefined)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const err = await loader({
+      params: { _splat: 'not-a-real-service' },
+      context: { level: 'public', serviceStatuses: [] },
+    }).catch((e: unknown) => e)
+
+    expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
+  })
+
   it('throws notFound for a /start step whose form is non-public to the public', async () => {
-    const { Route } = await import('./$')
     const startPage: ContentPage = {
       ...fakePage,
       slug: 'apply-for-conductor-licence/start',
@@ -104,7 +157,6 @@ describe('$ route loader gating', () => {
   })
 
   it('serves a /start step whose form is in the public available list', async () => {
-    const { Route } = await import('./$')
     const startPage: ContentPage = {
       ...fakePage,
       slug: 'get-birth-certificate/start',
@@ -126,7 +178,6 @@ describe('$ route loader gating', () => {
   })
 
   it('serves a non-public /start step to a reviewer who can access the form', async () => {
-    const { Route } = await import('./$')
     const startPage: ContentPage = {
       ...fakePage,
       slug: 'apply-for-conductor-licence/start',
@@ -149,7 +200,6 @@ describe('$ route loader gating', () => {
   })
 
   it('returns the page (with the available-forms list) when the viewer can see it', async () => {
-    const { Route } = await import('./$')
     mocks.findPage.mockReturnValue(fakePage)
     mocks.isVisible.mockReturnValue(true)
 
@@ -171,7 +221,6 @@ describe('$ route loader gating', () => {
   })
 
   it('flags a page whose form is under maintenance', async () => {
-    const { Route } = await import('./$')
     const formPage: ContentPage = {
       ...fakePage,
       frontmatter: {
@@ -195,7 +244,6 @@ describe('$ route loader gating', () => {
   })
 
   it('does not flag a page whose form is not under maintenance', async () => {
-    const { Route } = await import('./$')
     const formPage: ContentPage = {
       ...fakePage,
       frontmatter: {
@@ -216,7 +264,6 @@ describe('$ route loader gating', () => {
   })
 
   it('flags a page whose form has closed and hides its Start link (#1936)', async () => {
-    const { Route } = await import('./$')
     const formPage: ContentPage = {
       ...fakePage,
       frontmatter: {
@@ -240,7 +287,6 @@ describe('$ route loader gating', () => {
   })
 
   it('does not flag a page whose form has not closed (#1936)', async () => {
-    const { Route } = await import('./$')
     const formPage: ContentPage = {
       ...fakePage,
       frontmatter: {
@@ -262,7 +308,6 @@ describe('$ route loader gating', () => {
   })
 
   it('hides the form and flags maintenance when service_status disables it for the public', async () => {
-    const { Route } = await import('./$')
     const formPage: ContentPage = {
       ...fakePage,
       slug: 'svc',
@@ -295,7 +340,6 @@ describe('$ route loader gating', () => {
 
 describe('$ route category gating', () => {
   it('throws notFound for a category with no service visible at the viewer level', async () => {
-    const { Route } = await import('./$')
     mocks.isCategoryVisible.mockReturnValue(false)
 
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
@@ -312,7 +356,6 @@ describe('$ route category gating', () => {
   })
 
   it('renders the category for a reviewer whose level can see it', async () => {
-    const { Route } = await import('./$')
     mocks.isCategoryVisible.mockReturnValue(true)
 
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
@@ -327,7 +370,6 @@ describe('$ route category gating', () => {
 
 describe('$ route subcategory gating', () => {
   it('throws notFound for a subcategory whose category is hidden at the viewer level', async () => {
-    const { Route } = await import('./$')
     mocks.findPage.mockReturnValue(undefined)
     mocks.isCategoryVisible.mockReturnValue(false)
 
@@ -345,7 +387,6 @@ describe('$ route subcategory gating', () => {
   })
 
   it('renders the subcategory for a reviewer whose level can see it', async () => {
-    const { Route } = await import('./$')
     mocks.findPage.mockReturnValue(undefined)
     mocks.isCategoryVisible.mockReturnValue(true)
 

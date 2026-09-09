@@ -1,10 +1,23 @@
-import type { RuleRunner } from "../types";
+import type { ValidationConfig } from "@govtech-bb/form-types";
+import type { RuleRunner, StepScopedValues } from "../types";
 
 interface FileEntry {
   name: string;
   size: number;
   type?: string;
 }
+
+/**
+ * What a client sends when the browser could not type the file at all — an
+ * extensionless scan, an unrecognised document. It means "unknown binary", NOT
+ * a claim about the content, so it is never evidence that a file is allowed:
+ * an unverified upload has to earn acceptance on its extension instead.
+ *
+ * Shared so the browser-side pre-check and the API's presign gate agree on
+ * which value carries that meaning — if they drift, a file one accepts the
+ * other refuses.
+ */
+export const UNVERIFIED_CONTENT_TYPE = "application/octet-stream";
 
 const toFiles = (v: unknown): FileEntry[] =>
   Array.isArray(v) ? (v as FileEntry[]) : [];
@@ -25,7 +38,16 @@ const toBareExt = (allowed: string): string => {
   return lower.startsWith(".") ? lower.slice(1) : lower;
 };
 
-export const fileTypesRunner: RuleRunner = (value, config) => {
+// Typed with `allValues` OPTIONAL rather than as a bare RuleRunner: this rule
+// reads nothing from the surrounding form state, and its two direct callers —
+// the browser pre-check and the API presign gate — validate a single file with
+// no such state to pass. Still assignable where RULE_REGISTRY wants a
+// RuleRunner, so the registry keeps calling it with all three.
+export const fileTypesRunner: (
+  value: unknown,
+  config: ValidationConfig,
+  allValues?: StepScopedValues,
+) => string | null = (value, config) => {
   const allowed = config.value as string[];
   if (!Array.isArray(allowed)) return null;
   const msg = config.error ?? `Allowed file types: ${allowed.join(", ")}`;

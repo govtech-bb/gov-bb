@@ -138,6 +138,32 @@ export function useRecipeValidation({
         return result;
       }
 
+      // Pre-flight: a hand-typed "(optional)" in a label renders doubled —
+      // the form appends the suffix itself from `required: {value: false}`.
+      // The Label input strips it on blur; this catches AI-generated and
+      // hand-edited recipes arriving with the suffix already in the text.
+      const optionalLabelIssues: ValidationIssue[] = [];
+      for (const step of editableSteps) {
+        for (const field of step.fields) {
+          const label = field.overrides?.label;
+          if (label && /\(optional\)\s*$|,\s*optional\s*$/i.test(label)) {
+            optionalLabelIssues.push({
+              path: `steps[${step.stepId}].${field.id}.label`,
+              message: `Remove "(optional)" from the label "${label}" — untick Required instead and the form adds the suffix automatically.`,
+            });
+          }
+        }
+      }
+      if (optionalLabelIssues.length > 0) {
+        const result: RecipeValidateResponse = {
+          valid: false,
+          issues: optionalLabelIssues,
+        };
+        setValidateResult(result);
+        setLastSaveStatus("error");
+        return result;
+      }
+
       const recipe = serializeRecipeDraft(draft);
       const raw = (await validateRecipe({
         data: { recipe },

@@ -18,6 +18,7 @@
 
 import {
   FormFetchError,
+  FormValidationError,
   fetchFormDefinition,
   fetchFormDefinitions,
   fetchFormDraft,
@@ -474,6 +475,71 @@ describe("postFormSubmission", () => {
       submittedAt: null,
     });
     expect(result?.meta?.deferred).toEqual(deferred);
+  });
+
+  // The server's field-level validation messages used to be thrown away:
+  // makeFetch turned every non-2xx into a generic FormFetchError, so a 422 that
+  // named the exact offending field rendered as "Something went wrong" with no
+  // way for the citizen to act on it (the per-instance 422s of #1257 landed the
+  // same way).
+  it("throws FormValidationError carrying the server's field errors on a 422", async () => {
+    const errors = {
+      "about-restaurant": { "restaurant-parish": ["Select the parish"] },
+    };
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        status: "failed",
+        message: "Validation failed",
+        data: null,
+        statusCode: 422,
+        meta: { errors },
+      }),
+    } as unknown as Response);
+
+    await expect(
+      postFormSubmission(minimalFormMeta as FormMeta, {}),
+    ).rejects.toMatchObject({
+      name: "FormValidationError",
+      status: 422,
+      errors,
+    });
+  });
+
+  it("throws a plain FormFetchError for a 422 that carries no field errors", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        status: "failed",
+        message: "Validation failed",
+        data: null,
+        statusCode: 422,
+      }),
+    } as unknown as Response);
+
+    const err = await postFormSubmission(minimalFormMeta as FormMeta, {}).catch(
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(FormFetchError);
+    expect(err).not.toBeInstanceOf(FormValidationError);
+  });
+
+  // An error body that is not JSON at all (a gateway HTML page, an empty 502)
+  // must not turn a failed submission into an unhandled parse error.
+  it("still throws FormFetchError when the error body is unreadable", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 502,
+      json: async () => {
+        throw new Error("not json");
+      },
+    } as unknown as Response);
+
+    await expect(
+      postFormSubmission(minimalFormMeta as FormMeta, {}),
+    ).rejects.toMatchObject({ name: "FormFetchError", status: 502 });
   });
 
   it("sends a POST request with the idempotency-key header, correct URL, and {formId, values} body", async () => {

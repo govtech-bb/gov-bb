@@ -39,7 +39,6 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Optional",
             "label": "Middle name",
             "fieldId": "tenant-middle-name"
           }
@@ -63,7 +62,6 @@
         {
           "ref": "components/email",
           "overrides": {
-            "hint": "Optional",
             "label": "Email address",
             "fieldId": "email",
             "validations": {
@@ -126,7 +124,6 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Optional",
             "label": "Middle name",
             "fieldId": "landlord-middle-name"
           }
@@ -175,7 +172,6 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "hint": "Optional",
             "label": "Company representative first name",
             "fieldId": "company-representative-person-first-name",
             "validations": {
@@ -188,7 +184,6 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Optional",
             "label": "Company representative middle name",
             "fieldId": "company-representative-middle-name"
           }
@@ -196,7 +191,6 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "hint": "Optional",
             "label": "Company representative last name",
             "fieldId": "company-representative-person-last-name",
             "validations": {
@@ -243,7 +237,6 @@
         {
           "ref": "components/address",
           "overrides": {
-            "hint": "Optional",
             "label": "Address line 2",
             "fieldId": "tenantry-address-line-2",
             "validations": {
@@ -262,7 +255,6 @@
             "ui": {
               "width": "short"
             },
-            "hint": "Optional",
             "label": "Postcode",
             "fieldId": "tenantry-postcode"
           }

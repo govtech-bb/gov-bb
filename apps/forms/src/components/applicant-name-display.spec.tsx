@@ -9,6 +9,7 @@ import type { Mock } from "vitest";
  * - Displays full name (first + middle + last), middle omitted when absent
  * - Resolves the `applicant-details` naming (applicant-first-name, …)
  * - Resolves the camelCase naming (firstName, otherNames, lastName)
+ * - Resolves the `your-*` naming (your-first-name, …)
  * - Displays the current date formatted DD/MM/YYYY
  */
 
@@ -73,6 +74,18 @@ describe("ApplicantNameDisplay", () => {
     });
     render(<ApplicantNameDisplay form={mockForm} />);
     expect(screen.getByText(/Jane Marie Doe/)).toBeInTheDocument();
+  });
+
+  it("resolves the `your-*` naming and includes the middle name", () => {
+    // Food-business and restaurant licence recipes name the applicant's own
+    // details `your-first-name` / `your-middle-name` / `your-last-name`.
+    mockUseStore.mockReturnValue({
+      "about-you_your-first-name": "Grace",
+      "about-you_your-middle-name": "Adaeze",
+      "about-you_your-last-name": "Belgrave",
+    });
+    render(<ApplicantNameDisplay form={mockForm} />);
+    expect(screen.getByText(/Grace Adaeze Belgrave/)).toBeInTheDocument();
   });
 
   it("omits the middle name when absent", () => {

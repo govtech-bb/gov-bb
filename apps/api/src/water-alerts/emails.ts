@@ -1,3 +1,5 @@
+import Handlebars from "handlebars";
+
 /**
  * Water-alert email content. Pure builders — they return { subject, html, text }
  * and do no sending, so they're easy to unit-test. Delivery goes through the
@@ -63,11 +65,11 @@ export function buildAlertEmail(
   unsubscribeUrl: string,
 ): EmailContent {
   const html = renderEmail(`
-    <h1 class="title">Water notice for ${areaLabel}</h1>
-    <p class="intro"><strong>${notice.title}</strong></p>
-    <p class="intro">${notice.summary}</p>
-    <p style="margin: 24px 0;"><a class="btn" href="${notice.link}">Read the full BWA notice</a></p>
-    <p class="muted">You're getting this because you signed up for water alerts in ${areaLabel}. <a href="${unsubscribeUrl}">Unsubscribe</a>.</p>
+    <h1 class="title">Water notice for ${Handlebars.escapeExpression(areaLabel)}</h1>
+    <p class="intro"><strong>${Handlebars.escapeExpression(notice.title)}</strong></p>
+    <p class="intro">${Handlebars.escapeExpression(notice.summary)}</p>
+    <p style="margin: 24px 0;"><a class="btn" href="${Handlebars.escapeExpression(notice.link)}">Read the full BWA notice</a></p>
+    <p class="muted">You're getting this because you signed up for water alerts in ${Handlebars.escapeExpression(areaLabel)}. <a href="${Handlebars.escapeExpression(unsubscribeUrl)}">Unsubscribe</a>.</p>
   `);
   const text = [
     `Water notice for ${areaLabel}`,
@@ -93,8 +95,8 @@ export function buildConfirmEmail(
 ): EmailContent {
   const html = renderEmail(`
     <h1 class="title">Confirm your water alerts</h1>
-    <p class="intro">You asked to get an email when water is affected in <strong>${areaLabel}</strong>. Confirm below and we'll let you know whenever there's a notice for your area.</p>
-    <p style="margin: 24px 0;"><a class="btn" href="${confirmUrl}">Confirm my alerts</a></p>
+    <p class="intro">You asked to get an email when water is affected in <strong>${Handlebars.escapeExpression(areaLabel)}</strong>. Confirm below and we'll let you know whenever there's a notice for your area.</p>
+    <p style="margin: 24px 0;"><a class="btn" href="${Handlebars.escapeExpression(confirmUrl)}">Confirm my alerts</a></p>
     <p class="muted">If you didn't ask for this, you can ignore this email — nothing will happen.</p>
   `);
   const text = [

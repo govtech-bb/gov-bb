@@ -543,6 +543,7 @@ describe("buildDeployPayload", () => {
     editSha: null,
     baseFrontmatter: null,
     createPath: null,
+    editRevision: null,
   };
 
   it("builds a create payload with the slug and body-derived button label", () => {
@@ -552,6 +553,7 @@ describe("buildDeployPayload", () => {
     expect(p.buttonLabel).toBe("Start now");
     expect(p.prDescription).toBe("why");
     expect(p.newCategory).toBeUndefined();
+    expect(p.expectedRevision).toEqual({ source: "absent" });
     expect(p).not.toHaveProperty("path");
   });
 
@@ -560,12 +562,16 @@ describe("buildDeployPayload", () => {
       ...baseInput,
       editPath: "apps/landing/src/content/x.md",
       editSha: "abc",
+      editRevision: { source: "base", sha: "abc" },
       baseFrontmatter: { keep: 1 },
     });
     expect(p.slug).toBeUndefined();
-    expect(p.path).toBe("apps/landing/src/content/x.md");
-    expect(p.sha).toBe("abc");
-    expect(p.baseFrontmatter).toEqual({ keep: 1 });
+    expect(p).toMatchObject({
+      path: "apps/landing/src/content/x.md",
+      sha: "abc",
+      baseFrontmatter: { keep: 1 },
+    });
+    expect(p.expectedRevision).toEqual({ source: "base", sha: "abc" });
   });
 
   it("carries the createPath without a sha in fixed-create mode", () => {
@@ -574,7 +580,9 @@ describe("buildDeployPayload", () => {
       createPath: "apps/landing/src/content/y/start.md",
     });
     expect(p.slug).toBeUndefined();
-    expect(p.path).toBe("apps/landing/src/content/y/start.md");
+    expect(p).toMatchObject({
+      path: "apps/landing/src/content/y/start.md",
+    });
     expect(p).not.toHaveProperty("sha");
   });
 

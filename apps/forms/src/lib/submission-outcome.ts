@@ -19,6 +19,7 @@ export interface SubmissionOutcome {
  */
 export function resolveSubmissionOutcome(
   response: FormSubmissionResponse,
+  resolvedMarkdown?: string,
 ): SubmissionOutcome {
   const base = {
     // Prefer the human-readable referenceCode (e.g. "JPP-20260604-130732-9JZRZC")
@@ -34,6 +35,10 @@ export function resolveSubmissionOutcome(
     // The confirmation page substitutes it into the `{polyclinic}` token; absent
     // for every other form, where the token falls back to a generic phrase.
     polyclinic: response.meta?.resolvedPolyclinic,
+    // Confirmation body with its per-answer passages already filled (#2068).
+    // Resolved by the caller while the answers are still in the form store —
+    // submit success clears the draft, so it cannot be recomputed later.
+    resolvedMarkdown,
   };
 
   // Drive the UI off the SUBMISSION status (`data.status`: submitted /

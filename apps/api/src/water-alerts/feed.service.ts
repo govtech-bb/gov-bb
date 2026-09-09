@@ -1,10 +1,12 @@
 import { HttpService } from "@nestjs/axios";
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { XMLParser } from "fast-xml-parser";
 import { firstValueFrom } from "rxjs";
+import { z } from "zod";
 import {
   classifyType,
   clip,
+  decodeEntities,
   matchParishes,
   type Outage,
   parseEventWindow,
@@ -18,14 +20,28 @@ const DEFAULT_FEED_URL =
 // a burst of page loads doesn't hammer the BWA site. On the honesty principle
 // we never serve a stale copy once it expires — a failed refresh throws.
 const FEED_TTL_MS = 10 * 60 * 1000;
+const MAX_FEED_BYTES = 2 * 1024 * 1024;
 
-interface RssItem {
-  title?: string;
-  link?: string;
-  pubDate?: string;
-  description?: string;
-  "content:encoded"?: string;
-  guid?: string | { "#text"?: string };
+const rssItemSchema = z.object({
+  title: z.string().trim().min(1),
+  link: z.string().trim().min(1),
+  pubDate: z.string().min(1),
+  description: z.string().optional(),
+  "content:encoded": z.string().optional(),
+  guid: z.string().trim().max(512).optional(),
+});
+const rssSchema = z.object({
+  rss: z.object({
+    channel: z.object({
+      item: z.union([rssItemSchema, z.array(rssItemSchema)]).optional(),
+    }),
+  }),
+});
+
+export interface OutagesFeed {
+  outages: Outage[];
+  /** ISO instant this feed was fetched, including when served from cache. */
+  checkedAt: string;
 }
 
 /**
@@ -40,9 +56,12 @@ interface RssItem {
  */
 @Injectable()
 export class FeedService {
-  private readonly logger = new Logger(FeedService.name);
-  private readonly parser = new XMLParser({ ignoreAttributes: false });
-  private cache: { expires: number; outages: Outage[] } | null = null;
+  private readonly parser = new XMLParser({
+    ignoreAttributes: true,
+    parseTagValue: false,
+    processEntities: false,
+  });
+  private cache: { expires: number; feed: OutagesFeed } | null = null;
 
   constructor(private readonly http: HttpService) {}
 
@@ -51,13 +70,14 @@ export class FeedService {
   }
 
   /** Parsed BWA notices, freshest first-parsed order. Throws on feed failure. */
-  async fetchOutages(): Promise<Outage[]> {
-    if (this.cache && this.cache.expires > Date.now())
-      return this.cache.outages;
+  async fetchOutages(): Promise<OutagesFeed> {
+    if (this.cache && this.cache.expires > Date.now()) return this.cache.feed;
 
     const response = await firstValueFrom(
       this.http.get<string>(this.feedUrl, {
         responseType: "text",
+        timeout: 10_000,
+        maxContentLength: MAX_FEED_BYTES,
         headers: {
           "User-Agent": "gov.bb-water-alerts/1.0 (https://gov.bb)",
           Accept: "application/rss+xml, application/xml, text/xml",
@@ -65,40 +85,47 @@ export class FeedService {
       }),
     );
 
-    const outages = this.parse(response.data);
-    this.cache = { expires: Date.now() + FEED_TTL_MS, outages };
-    return outages;
+    const feed = {
+      outages: this.parse(response.data),
+      checkedAt: new Date().toISOString(),
+    };
+    this.cache = { expires: Date.now() + FEED_TTL_MS, feed };
+    return feed;
   }
 
   private parse(xml: string): Outage[] {
-    const parsed = this.parser.parse(xml);
-    const rawItems = parsed?.rss?.channel?.item;
-    const items: RssItem[] = Array.isArray(rawItems)
+    if (typeof xml !== "string" || /<!DOCTYPE/i.test(xml)) {
+      throw new Error("Invalid BWA RSS feed");
+    }
+    const parsed = rssSchema.parse(this.parser.parse(xml, true));
+    const rawItems = parsed.rss.channel.item;
+    const items = Array.isArray(rawItems)
       ? rawItems
       : rawItems
         ? [rawItems]
         : [];
-    return items.map((item, index) => this.toOutage(item, index));
+    return items.map((item) => this.toOutage(item));
   }
 
-  private toOutage(item: RssItem, index: number): Outage {
-    const title =
-      typeof item.title === "string" ? item.title : "Water service notice";
+  private toOutage(item: z.infer<typeof rssItemSchema>): Outage {
+    const title = stripHtml(item.title);
+    const link = new URL(decodeEntities(item.link));
+    if (!["https:", "http:"].includes(link.protocol)) {
+      throw new Error("Invalid BWA notice link");
+    }
     const body = stripHtml(
       `${item.description ?? ""} ${item["content:encoded"] ?? ""}`,
     );
     const haystack = `${title} ${body}`;
-    const published = item.pubDate
-      ? new Date(item.pubDate).toISOString()
-      : new Date().toISOString();
-    const guid =
-      typeof item.guid === "object" ? item.guid?.["#text"] : item.guid;
+    const published = new Date(item.pubDate).toISOString();
+    const id = item.guid || link.href;
+    if (id.length > 512) throw new Error("Invalid BWA notice identifier");
     const { eventDay, endsAt } = parseEventWindow(haystack, published);
 
     return {
-      id: guid || item.link || `bwa-${index}`,
-      title: stripHtml(title),
-      link: item.link ?? this.feedUrl,
+      id,
+      title,
+      link: link.href,
       published,
       summary: clip(body, 280),
       parishes: matchParishes(haystack),

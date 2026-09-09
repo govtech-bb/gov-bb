@@ -31,6 +31,10 @@ describe("content primitive", () => {
     expect(contentVariantSchema.parse("details")).toBe("details");
   });
 
+  it("accepts the warning variant", () => {
+    expect(contentVariantSchema.parse("warning")).toBe("warning");
+  });
+
   it("keeps content/variant/summary through field overrides", () => {
     const o = fieldOverridesSchema.parse({
       content: "body",

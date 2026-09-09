@@ -4,21 +4,39 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useFormsList } from "./-use-forms-list";
 import { listForms } from "../../server/forms";
+import { listOpenDeployPRs, type OpenDeployPR } from "../../server/publish";
 import type { BuilderFormSummary } from "../../types/index";
 
 vi.mock("../../server/forms", () => ({
   listForms: vi.fn(),
 }));
+// listOpenDeployPRs (#2390) is fetched alongside listForms; mock it so the
+// existing tests below don't hit a real createServerFn RPC.
+vi.mock("../../server/publish", () => ({
+  listOpenDeployPRs: vi.fn(),
+}));
 
 const mockListForms = vi.mocked(listForms);
+const mockListOpenDeployPRs = vi.mocked(listOpenDeployPRs);
 
 const FORMS: BuilderFormSummary[] = [
   { id: "passport", formId: "passport", title: "Passport", version: "1.0.0", isPublished: true },
 ];
 
+const OPEN_PR: OpenDeployPR = {
+  formId: "passport",
+  prNumber: 7,
+  prUrl: "https://github.com/govtech-bb/gov-bb/pull/7",
+  branch: "deploy/passport",
+};
+
 describe("useFormsList", () => {
   beforeEach(() => {
     mockListForms.mockReset();
+    mockListOpenDeployPRs.mockReset();
+    // Most tests below don't care about PRs; default to none so Promise.all
+    // settles instead of hanging on an un-mocked pending call.
+    mockListOpenDeployPRs.mockResolvedValue([]);
   });
 
   it("starts loading: forms is null and there is no error", () => {
@@ -63,6 +81,43 @@ describe("useFormsList", () => {
     mockListForms.mockReturnValue(new Promise<BuilderFormSummary[]>(() => {}));
     renderHook(() => useFormsList());
     expect(mockListForms).toHaveBeenCalledTimes(1);
+  });
+
+  describe("openPRs (#2390)", () => {
+    it("assembles openPRs keyed by formId once both calls resolve", async () => {
+      mockListForms.mockResolvedValue(FORMS);
+      mockListOpenDeployPRs.mockResolvedValue([OPEN_PR]);
+      const { result } = renderHook(() => useFormsList());
+      await waitFor(() => expect(result.current.forms).toEqual(FORMS));
+      expect(result.current.openPRs).toEqual(
+        new Map([[OPEN_PR.formId, OPEN_PR]]),
+      );
+    });
+
+    it("keeps the highest-numbered PR when one form has two open Deploy PRs", async () => {
+      // findOpenPRByHeadRef breaks this tie by highest PR number, so the badge
+      // must link to the SAME PR the next Deploy would push onto (#2390) —
+      // otherwise the picker points at one PR while Deploy writes to another.
+      mockListForms.mockResolvedValue(FORMS);
+      mockListOpenDeployPRs.mockResolvedValue([
+        { ...OPEN_PR, prNumber: 9, prUrl: "https://example.test/9" },
+        { ...OPEN_PR, prNumber: 4, prUrl: "https://example.test/4" },
+      ]);
+      const { result } = renderHook(() => useFormsList());
+      await waitFor(() => expect(result.current.openPRs.size).toBe(1));
+      expect(result.current.openPRs.get("passport")?.prNumber).toBe(9);
+    });
+
+    it("degrades to an empty map (not a load failure) when listOpenDeployPRs rejects", async () => {
+      // A GitHub hiccup/rate-limit on the PR lookup must never blank the
+      // whole Open picker — the forms list comes from a different backend.
+      mockListForms.mockResolvedValue(FORMS);
+      mockListOpenDeployPRs.mockRejectedValue(new Error("rate limited"));
+      const { result } = renderHook(() => useFormsList());
+      await waitFor(() => expect(result.current.forms).toEqual(FORMS));
+      expect(result.current.openPRs).toEqual(new Map());
+      expect(result.current.loadError).toBeNull();
+    });
   });
 
   describe("upsertForm", () => {

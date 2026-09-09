@@ -14,6 +14,7 @@ import {
   type PublicFormSummary,
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
+import { programmeCodeFromProcessors } from "@/forms/submissions/processors/webhook-mapping";
 
 // Resolved relative to this file so the loader works in both the source tree
 // (dev: apps/api/src/forms/form-definitions/recipes/) and the compiled tree
@@ -38,6 +39,25 @@ export function isLeafName(name: string): boolean {
 // edit produces (the nx asset watcher re-copies the file, which fires
 // multiple change events) into one reload.
 const WATCH_DEBOUNCE_MS = 250;
+
+/**
+ * A recipe that declares `catchmentRouting` must also carry a mapped webhook:
+ * CatchmentRoutingService composes the per-polyclinic CMS programme code from
+ * `mapping.programmeCode`, so without one every submission resolves no code,
+ * the MDA email finds no recipient, and the case is dropped rather than
+ * misrouted. That failure is per-submission and silent from the outside — this
+ * turns it into a boot-time rejection of the recipe instead.
+ */
+function assertCatchmentRoutingHasProgrammeCode(
+  recipe: ServiceContractRecipe,
+  filePath: string,
+): void {
+  if (!recipe.catchmentRouting) return;
+  if (programmeCodeFromProcessors(recipe.processors ?? [])) return;
+  throw new Error(
+    `Recipe ${filePath}: declares catchmentRouting but no webhook processor with mapping.programmeCode — catchment routing has nothing to compose a programme code from`,
+  );
+}
 
 @Injectable()
 export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
@@ -164,6 +184,7 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
             `Recipe ${filePath}: filename "${filenameFormId}" does not match recipe.formId "${recipe.formId}"`,
           );
         }
+        assertCatchmentRoutingHasProgrammeCode(recipe, filePath);
         next.set(recipe.formId, recipe);
       } catch (err) {
         const e = err as Error;

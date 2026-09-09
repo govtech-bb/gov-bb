@@ -1,6 +1,11 @@
 import MiniSearch from 'minisearch'
-import { isSubPage, isUrlVisible, PAGES } from '../content/registry'
-import { CATEGORY_BY_SLUG } from '../content/categories'
+import type { SearchOptions, SearchResult } from 'minisearch'
+import {
+  isDigitalService,
+  isSubPage,
+  isUrlVisible,
+  PAGES,
+} from '../content/registry'
 import type { ViewLevel } from './frontmatter'
 
 type SearchKind = 'service'
@@ -10,7 +15,7 @@ export interface SearchHit {
   title: string
   description: string
   href: string
-  category: string
+  digital: boolean
   kind: SearchKind
 }
 
@@ -19,143 +24,148 @@ interface IndexDoc extends SearchHit {
   keywords: string
 }
 
+const INDEX_FIELDS = ['title', 'keywords', 'description', 'body']
+const IDENTITY_FIELDS = ['title', 'keywords', 'description']
+const AUTOCOMPLETE_FIELDS = ['title', 'keywords']
+const MIN_PREFIX_LENGTH = 3
+const MIN_FUZZY_LENGTH = 5
+const MIN_SUGGESTION_LENGTH = 3
+const MAX_SUGGESTIONS = 5
+const TOKEN_SEPARATOR = /[\n\r\p{Z}\p{P}]+/u
+
+// A relaxed result must match exact title/alias terms, not merely description
+// or body copy. Keeping these thresholds together makes the no-result policy
+// testable and prevents query-specific score cut-offs.
+const RELAXED_CONFIDENCE = {
+  minimumMatchedTerms: 2,
+  minimumQueryCoverage: 0.5,
+  minimumTitleOrKeywordTerms: 2,
+}
+
 const STOPWORDS = new Set([
   'a',
   'an',
-  'the',
-  'of',
-  'for',
-  'to',
-  'in',
-  'on',
-  'at',
   'and',
-  'or',
-  'is',
   'are',
-  'be',
   'as',
+  'at',
+  'barbados',
+  'be',
   'by',
-  'with',
-  'from',
-  'i',
-  'you',
-  'my',
-  'your',
-  'how',
-  'do',
   'can',
-])
-
-const SYNONYM_GROUPS: Array<{
-  triggers: Array<string>
-  extras: Array<string>
-}> = [
-  {
-    triggers: ['tax', 'taxes', 'revenue', 'vat'],
-    extras: ['tax', 'taxes', 'revenue', 'VAT', 'BRA'],
-  },
-  {
-    triggers: ['licence', 'license', 'driving', 'driver'],
-    extras: ['licence', 'license', 'driving', 'driver', 'permit'],
-  },
-  {
-    triggers: ['health', 'medical', 'hospital', 'clinic'],
-    extras: ['health', 'medical', 'hospital', 'clinic', 'doctor'],
-  },
-  {
-    triggers: ['school', 'education', 'student', 'teacher'],
-    extras: ['school', 'education', 'student', 'teacher', 'learning'],
-  },
-  {
-    triggers: ['passport', 'immigration', 'visa'],
-    extras: ['passport', 'immigration', 'visa', 'travel document'],
-  },
-  {
-    triggers: ['identification', 'national id'],
-    extras: ['ID', 'identification', 'national ID'],
-  },
-  {
-    triggers: ['police', 'constabulary', 'crime'],
-    extras: ['police', 'constabulary', 'crime', 'RBPF'],
-  },
-  {
-    triggers: ['pension', 'retirement', 'nis'],
-    extras: ['pension', 'retirement', 'NIS', 'national insurance'],
-  },
-  {
-    triggers: ['business', 'company', 'incorporation', 'registry'],
-    extras: ['business', 'company', 'incorporation', 'registry'],
-  },
-  {
-    triggers: ['birth', 'death', 'marriage', 'certificate'],
-    extras: ['birth', 'death', 'marriage', 'certificate', 'civil registration'],
-  },
-  {
-    triggers: ['job', 'employment', 'labour', 'labor'],
-    extras: ['job', 'employment', 'work', 'labour', 'vacancy'],
-  },
-  {
-    triggers: ['water', 'wastewater', 'sewerage'],
-    extras: ['water', 'wastewater', 'sewerage', 'BWA'],
-  },
-  {
-    triggers: ['electricity', 'power', 'energy'],
-    extras: ['electricity', 'power', 'energy', 'BL&P'],
-  },
-  {
-    triggers: ['transport', 'bus', 'transit'],
-    extras: ['transport', 'bus', 'transit', 'BTB'],
-  },
-]
-
-const ACRONYM_STOPWORDS = new Set([
-  'of',
-  'and',
-  'the',
+  'do',
+  'find',
   'for',
-  'to',
+  'from',
+  'get',
+  'government',
+  'how',
+  'i',
   'in',
+  'is',
+  'looking',
+  'me',
+  'my',
+  'need',
+  'of',
   'on',
-  '&',
-  'a',
-  'an',
+  'or',
+  'please',
+  's',
+  'service',
+  'the',
+  'to',
+  'want',
+  'what',
+  'when',
+  'where',
+  'which',
+  'who',
+  'why',
+  'with',
+  'you',
+  'your',
 ])
 
-function synonymsFor(text: string): Array<string> {
-  const lower = text.toLowerCase()
-  const out = new Set<string>()
-  for (const { triggers, extras } of SYNONYM_GROUPS) {
-    const hit = triggers.some((t) =>
-      new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(
-        lower,
-      ),
-    )
-    if (hit) for (const e of extras) out.add(e)
-  }
-  return [...out]
+const TERM_NORMALIZATIONS: Record<string, string> = {
+  center: 'centre',
+  centers: 'centres',
+  color: 'colour',
+  colors: 'colours',
+  labor: 'labour',
+  license: 'licence',
+  licensed: 'licence',
+  licenses: 'licence',
+  licences: 'licence',
+  licensing: 'licence',
+  notarize: 'notarised',
+  notarized: 'notarised',
+  organization: 'organisation',
+  organizations: 'organisation',
+  program: 'programme',
+  programs: 'programmes',
+  subsidized: 'subsidised',
 }
 
-function significantWords(name: string): Array<string> {
-  return name
-    .replace(/['’`]s\b/gi, '')
-    .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
-    .split(/[\s-]+/)
-    .filter((w) => w && !ACRONYM_STOPWORDS.has(w.toLowerCase()))
+const MATCH_OPTIONS: SearchOptions = {
+  combineWith: 'AND',
+  fuzzy: (term) => (term.length >= MIN_FUZZY_LENGTH ? 0.2 : false),
+  maxFuzzy: 1,
+  prefix: (term, index, terms) =>
+    term.length >= MIN_PREFIX_LENGTH && index === terms.length - 1,
+  weights: { fuzzy: 0.2, prefix: 0.4 },
 }
 
-function acronymsFor(name: string): Array<string> {
-  const words = significantWords(name)
-  if (words.length < 2) return []
-  const letters = words.map((w) => w[0]?.toUpperCase() ?? '')
-  const out = new Set<string>()
-  out.add(letters.join(''))
-  if (letters.length > 3) out.add(letters.slice(0, 3).join(''))
-  return [...out]
+const SEARCH_OPTIONS: SearchOptions = {
+  ...MATCH_OPTIONS,
+  boost: { title: 8, keywords: 5, description: 2, body: 0.2 },
 }
 
-function stripMarkdown(md: string): string {
-  return md
+const AUTOCOMPLETE_OPTIONS: SearchOptions = {
+  ...MATCH_OPTIONS,
+  fields: AUTOCOMPLETE_FIELDS,
+  boost: { title: 8, keywords: 5 },
+}
+
+const RELAXED_OPTIONS: SearchOptions = {
+  fields: IDENTITY_FIELDS,
+  boost: { title: 8, keywords: 5, description: 2 },
+  combineWith: 'OR',
+  fuzzy: false,
+  prefix: false,
+}
+
+function normalizeTerm(term: string): string {
+  const lower = term.toLowerCase()
+  return TERM_NORMALIZATIONS[lower] ?? lower
+}
+
+function processTerm(term: string): string | null {
+  const normalized = normalizeTerm(term)
+  return STOPWORDS.has(normalized) ? null : normalized
+}
+
+function tokenize(text: string): Array<string> {
+  return text.normalize('NFKC').split(TOKEN_SEPARATOR).filter(Boolean)
+}
+
+function meaningfulTerms(text: string): Array<string> {
+  return tokenize(text)
+    .map(processTerm)
+    .filter((term): term is string => term !== null)
+}
+
+/** Normalize user input exactly as the search index does. */
+export function normalizeSearchQuery(query: string): string {
+  return [...new Set(meaningfulTerms(query))].join(' ')
+}
+
+function normalizeLiteralPrefix(text: string): string {
+  return tokenize(text).map(normalizeTerm).join(' ')
+}
+
+function stripMarkdown(markdown: string): string {
+  return markdown
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/`([^`]*)`/g, '$1')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
@@ -166,72 +176,137 @@ function stripMarkdown(md: string): string {
     .trim()
 }
 
-function buildKeywords(
-  title: string,
-  description: string,
-  extra: ReadonlyArray<string> = [],
-): string {
-  return [
-    ...extra,
-    ...acronymsFor(title),
-    ...synonymsFor(`${title} ${description}`),
-  ].join(' ')
-}
-
 function buildIndex(): {
-  ms: MiniSearch<IndexDoc>
-  docs: Map<string, IndexDoc>
+  engine: MiniSearch<IndexDoc>
+  documents: Map<string, IndexDoc>
 } {
-  const docs = new Map<string, IndexDoc>()
+  const documents = new Map<string, IndexDoc>()
 
   for (const page of PAGES) {
-    // Step pages (e.g. `<service>/start`) are reached from their entry page, not searched for.
     if (isSubPage(page)) continue
-    const firstCat = page.frontmatter.categories[0]
-    const category =
-      (firstCat && CATEGORY_BY_SLUG[firstCat]?.title) || 'Service'
-    const title = page.frontmatter.title
-    const description = page.frontmatter.description ?? ''
-    const doc: IndexDoc = {
+    const document: IndexDoc = {
       id: `service:${page.url}`,
-      title,
-      description,
+      title: page.frontmatter.title,
+      description: page.frontmatter.description ?? '',
       body: stripMarkdown(page.body),
-      keywords: buildKeywords(title, description, page.frontmatter.keywords),
+      keywords: page.frontmatter.keywords?.join(' ') ?? '',
       href: `/${page.url}`,
-      category,
+      digital: isDigitalService(page),
       kind: 'service',
     }
-    docs.set(doc.id, doc)
+    documents.set(document.id, document)
   }
 
-  const ms = new MiniSearch<IndexDoc>({
+  const engine = new MiniSearch<IndexDoc>({
     idField: 'id',
-    fields: ['title', 'keywords', 'description', 'body'],
-    storeFields: ['title', 'description', 'href', 'category', 'kind'],
-    processTerm: (term) => {
-      const lower = term.toLowerCase()
-      return STOPWORDS.has(lower) ? null : lower
-    },
-    searchOptions: {
-      boost: { keywords: 5, title: 4, description: 1.5, body: 0.3 },
-      fuzzy: (term) => (term.length > 3 ? 0.2 : 0),
-      prefix: (term) => term.length >= 1,
-      combineWith: 'AND',
-      weights: { fuzzy: 0.3, prefix: 0.3 },
-    },
+    fields: INDEX_FIELDS,
+    tokenize,
+    processTerm,
+    searchOptions: SEARCH_OPTIONS,
   })
-  ms.addAll([...docs.values()])
-  return { ms, docs }
+  engine.addAll([...documents.values()])
+  return { engine, documents }
 }
 
-const indexPromise: { current: ReturnType<typeof buildIndex> | null } = {
-  current: null,
+let index: ReturnType<typeof buildIndex> | undefined
+
+function getIndex(): ReturnType<typeof buildIndex> {
+  return (index ??= buildIndex())
 }
 
-function getIndex() {
-  if (!indexPromise.current) indexPromise.current = buildIndex()
-  return indexPromise.current
+function toSearchHit(document: IndexDoc): SearchHit {
+  return {
+    id: document.id,
+    title: document.title,
+    description: document.description,
+    href: document.href,
+    digital: document.digital,
+    kind: document.kind,
+  }
+}
+
+function matchedTermCount(
+  result: SearchResult,
+  fields: ReadonlyArray<string>,
+): number {
+  return Object.values(result.match).filter((matchedFields) =>
+    fields.some((field) => matchedFields.includes(field)),
+  ).length
+}
+
+function identityTier(result: SearchResult): number {
+  const matchesAllTermsIn = (field: string) =>
+    matchedTermCount(result, [field]) >= result.queryTerms.length
+
+  if (matchesAllTermsIn('title')) return 3
+  if (matchesAllTermsIn('keywords')) return 2
+  if (matchesAllTermsIn('description')) return 1
+  return 0
+}
+
+function rankingTier(
+  result: SearchResult,
+  document: IndexDoc | undefined,
+  queryTerms: ReadonlyArray<string>,
+): number {
+  const title = document ? meaningfulTerms(document.title).join(' ') : ''
+  const query = queryTerms.join(' ')
+
+  if (title === query) return 5
+  if (` ${title} `.includes(` ${query} `)) return 4
+  return identityTier(result)
+}
+
+function rankResults(
+  results: Array<SearchResult>,
+  documents: ReadonlyMap<string, IndexDoc>,
+  queryTerms: ReadonlyArray<string>,
+): Array<SearchResult> {
+  return results.sort((left, right) => {
+    const leftDocument = documents.get(String(left.id))
+    const rightDocument = documents.get(String(right.id))
+    return (
+      rankingTier(right, rightDocument, queryTerms) -
+        rankingTier(left, leftDocument, queryTerms) ||
+      right.score - left.score ||
+      (leftDocument?.title ?? '').localeCompare(rightDocument?.title ?? '')
+    )
+  })
+}
+
+function isStrongStrictResult(result: SearchResult): boolean {
+  return (
+    result.queryTerms.length > 1 ||
+    matchedTermCount(result, AUTOCOMPLETE_FIELDS) > 0
+  )
+}
+
+function isStrongRelaxedResult(
+  result: SearchResult,
+  queryTermCount: number,
+): boolean {
+  const matchedTerms = result.queryTerms.length
+  return (
+    matchedTerms >= RELAXED_CONFIDENCE.minimumMatchedTerms &&
+    matchedTerms / queryTermCount >= RELAXED_CONFIDENCE.minimumQueryCoverage &&
+    matchedTermCount(result, AUTOCOMPLETE_FIELDS) >=
+      RELAXED_CONFIDENCE.minimumTitleOrKeywordTerms
+  )
+}
+
+function visibleHits(
+  results: ReadonlyArray<SearchResult>,
+  documents: ReadonlyMap<string, IndexDoc>,
+  viewer: ViewLevel,
+  overlay?: ReadonlyMap<string, ViewLevel>,
+): Array<SearchHit> {
+  return results.flatMap((result) => {
+    const document = documents.get(String(result.id))
+    if (!document || !isUrlVisible(document.href.slice(1), viewer, overlay)) {
+      return []
+    }
+    return [toSearchHit(document)]
+  })
 }
 
 export function search(
@@ -239,23 +314,81 @@ export function search(
   viewer: ViewLevel = 'public',
   overlay?: ReadonlyMap<string, ViewLevel>,
 ): Array<SearchHit> {
-  const trimmed = query.trim()
-  if (!trimmed) return []
-  const { ms, docs } = getIndex()
-  return ms
-    .search(trimmed)
-    .map((r): SearchHit => {
-      const stored = docs.get(String(r.id))
-      return {
-        id: String(r.id),
-        title: (r.title as string) ?? stored?.title ?? '',
-        description: (r.description as string) ?? stored?.description ?? '',
-        href: (r.href as string) ?? stored?.href ?? '',
-        category: (r.category as string) ?? stored?.category ?? '',
-        kind: (r.kind as SearchKind) ?? stored?.kind ?? 'service',
-      }
-    })
-    .filter((hit) =>
-      isUrlVisible(hit.id.slice('service:'.length), viewer, overlay),
+  const normalized = normalizeSearchQuery(query)
+  if (!normalized) return []
+
+  const { engine, documents } = getIndex()
+  const queryTerms = normalized.split(' ')
+  const strictIdentityResults = engine
+    .search(normalized, { fields: IDENTITY_FIELDS })
+    .filter(isStrongStrictResult)
+
+  if (strictIdentityResults.length > 0) {
+    const identityMatches = new Set(
+      strictIdentityResults.map((result) => String(result.id)),
     )
+    return visibleHits(
+      rankResults(
+        engine
+          .search(normalized)
+          .filter((result) => identityMatches.has(String(result.id))),
+        documents,
+        queryTerms,
+      ),
+      documents,
+      viewer,
+      overlay,
+    )
+  }
+
+  const relaxedResults = engine
+    .search(normalized, RELAXED_OPTIONS)
+    .filter((result) => isStrongRelaxedResult(result, queryTerms.length))
+
+  return visibleHits(
+    rankResults(relaxedResults, documents, queryTerms),
+    documents,
+    viewer,
+    overlay,
+  )
+}
+
+export function suggest(
+  query: string,
+  viewer: ViewLevel = 'public',
+  overlay?: ReadonlyMap<string, ViewLevel>,
+): Array<SearchHit> {
+  const trimmed = query.trim()
+  if (trimmed.length < MIN_SUGGESTION_LENGTH) return []
+
+  const { engine, documents } = getIndex()
+  const normalizedPrefix = normalizeLiteralPrefix(trimmed)
+  const normalizedQuery = normalizeSearchQuery(trimmed)
+  const titlePrefixDocuments = [...documents.values()]
+    .filter((document) =>
+      normalizeLiteralPrefix(document.title).startsWith(normalizedPrefix),
+    )
+    .sort((left, right) => left.title.localeCompare(right.title))
+  const searchDocuments = normalizedQuery
+    ? rankResults(
+        engine.search(normalizedQuery, AUTOCOMPLETE_OPTIONS),
+        documents,
+        normalizedQuery.split(' '),
+      ).flatMap((result) => documents.get(String(result.id)) ?? [])
+    : []
+
+  const suggestions: Array<SearchHit> = []
+  const seen = new Set<string>()
+  for (const document of [...titlePrefixDocuments, ...searchDocuments]) {
+    if (
+      seen.has(document.id) ||
+      !isUrlVisible(document.href.slice(1), viewer, overlay)
+    ) {
+      continue
+    }
+    seen.add(document.id)
+    suggestions.push(toSearchHit(document))
+    if (suggestions.length === MAX_SUGGESTIONS) break
+  }
+  return suggestions
 }

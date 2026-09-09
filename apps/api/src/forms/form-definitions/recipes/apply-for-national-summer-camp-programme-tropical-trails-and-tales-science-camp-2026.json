@@ -427,8 +427,13 @@
             "ui": {
               "width": "long"
             },
-            "label": "Address line 2, optional",
+            "label": "Address line 2",
             "fieldId": "parent-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -911,7 +916,7 @@
           "ref": "components/generic-tel",
           "overrides": {
             "hint": "For example, a landline, work number or another number we can use in an emergency.",
-            "label": "Other phone number, optional",
+            "label": "Other phone number",
             "fieldId": "emergency-other-phone",
             "validations": {
               "required": {

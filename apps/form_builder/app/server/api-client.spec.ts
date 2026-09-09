@@ -29,8 +29,8 @@ describe("api-client call() timeout", () => {
       "TimeoutError",
     );
     (globalThis as { fetch: typeof fetch }).fetch = vi
-      .fn()
-      .mockRejectedValue(abortErr) as unknown as typeof fetch;
+      .fn<typeof fetch>()
+      .mockRejectedValue(abortErr);
 
     const { api } = await import("./api-client");
 
@@ -44,13 +44,10 @@ describe("api-client call() timeout", () => {
   });
 
   it("passes an AbortSignal to fetch so the request is bounded", async () => {
-    const fetchSpy = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    });
-    (globalThis as { fetch: typeof fetch }).fetch =
-      fetchSpy as unknown as typeof fetch;
+    const fetchSpy = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response("{}", { status: 200 }));
+    (globalThis as { fetch: typeof fetch }).fetch = fetchSpy;
 
     const { api } = await import("./api-client");
     await api.post("/builder/ai/edit", {});

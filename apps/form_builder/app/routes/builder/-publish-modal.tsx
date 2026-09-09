@@ -7,7 +7,14 @@ interface PublishModalProps {
   draft: RecipeDraft;
   baseBranch: string;
   isPublishing: boolean;
-  publishSuccess: { prUrl: string; prNumber: number } | null;
+  // #2390: updatedExistingPR distinguishes a fresh PR from a push onto one
+  // already open for this form, so the success copy below can say which
+  // happened.
+  publishSuccess: {
+    prUrl: string;
+    prNumber: number;
+    updatedExistingPR: boolean;
+  } | null;
   publishError: string | null;
   /** Read-only lock (#874): another user holds the editing claim. Warns and
    *  disables Deploy even if the modal was already open when it flipped. */
@@ -43,8 +50,21 @@ export function PublishModal({
         {publishSuccess ? (
           <div className={styles.validationSuccess}>
             <p>
-              PR <strong>#{publishSuccess.prNumber}</strong> opened on{" "}
-              <code>{baseBranch}</code>.
+              {publishSuccess.updatedExistingPR ? (
+                // #2390: this form already had a Deploy PR in review, so the
+                // recipe was pushed onto it instead of opening a duplicate
+                // that would conflict with it on the same recipe file.
+                <>
+                  Pushed to the already-open PR{" "}
+                  <strong>#{publishSuccess.prNumber}</strong> for this form —
+                  no duplicate PR was created.
+                </>
+              ) : (
+                <>
+                  PR <strong>#{publishSuccess.prNumber}</strong> opened on{" "}
+                  <code>{baseBranch}</code>.
+                </>
+              )}
             </p>
             <p>
               <a

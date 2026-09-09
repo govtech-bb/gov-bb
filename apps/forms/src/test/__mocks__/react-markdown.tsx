@@ -15,3 +15,25 @@ export default function ReactMarkdown({
 }) {
   return <div data-testid="react-markdown">{children}</div>;
 }
+
+// Verbatim copy of react-markdown@9's defaultUrlTransform. markdown-components
+// imports it to sanitise hrefs, and this alias replaces the whole module, so
+// the named export has to exist here too.
+export function defaultUrlTransform(value: string): string {
+  const colon = value.indexOf(":");
+  const questionMark = value.indexOf("?");
+  const numberSign = value.indexOf("#");
+  const slash = value.indexOf("/");
+
+  if (
+    colon < 0 ||
+    (slash > -1 && colon > slash) ||
+    (questionMark > -1 && colon > questionMark) ||
+    (numberSign > -1 && colon > numberSign) ||
+    /^(https?|ircs?|mailto|xmpp)$/i.test(value.slice(0, colon))
+  ) {
+    return value;
+  }
+
+  return "";
+}

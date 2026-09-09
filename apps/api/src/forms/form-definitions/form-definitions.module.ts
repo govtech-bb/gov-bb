@@ -24,6 +24,6 @@ import { ServiceStatusModule } from "@/services/service-status.module";
     RecipeFileLoaderService,
     DraftArchiveService,
   ],
-  exports: [FormDefinitionsService],
+  exports: [FormDefinitionsService, RecipeFileLoaderService],
 })
 export class FormDefinitionsModule {}

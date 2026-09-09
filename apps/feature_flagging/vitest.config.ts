@@ -17,7 +17,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["app/**/*.spec.{ts,tsx}"],
+    // `*.spec.ts` picks up build-env.spec.ts, which sits next to the
+    // vite.config.ts that calls the guard it covers.
+    include: ["app/**/*.spec.{ts,tsx}", "*.spec.ts"],
     setupFiles: ["./vitest.setup.ts"],
     css: {
       modules: {

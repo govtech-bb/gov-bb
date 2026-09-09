@@ -35,7 +35,7 @@ function Harness({
 }: {
   initial: RecipeDraft;
   contacts?: MdaContact[] | null;
-  onCreateContact?: Mock<Promise<MdaContact>, [CreateMdaContactInput]>;
+  onCreateContact?: Mock<(input: CreateMdaContactInput) => Promise<MdaContact>>;
 }) {
   const [draft, dispatch] = useReducer(recipeReducer, initial);
   return (

@@ -16,14 +16,19 @@ import type { Mock } from "vitest";
 
 import { render, screen, act } from "@testing-library/react";
 
+// Stable across the hook's calls so a test can assert where a submit sent the
+// citizen — `() => vi.fn()` would hand back a fresh spy on every render.
+const { mockNavigate } = vi.hoisted(() => ({ mockNavigate: vi.fn() }));
+
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (routeConfig: any) => ({
     ...routeConfig,
     useLoaderData: vi.fn(),
     useSearch: vi.fn(),
   }),
-  // RouteComponent calls useNavigate to strip the ?preview= token after load.
-  useNavigate: () => vi.fn(),
+  // RouteComponent calls useNavigate to strip the ?preview= token after load,
+  // and to move to a step the server reported a validation error on.
+  useNavigate: () => mockNavigate,
 }));
 
 vi.mock("@tanstack/react-form", () => ({
@@ -79,7 +84,10 @@ vi.mock("../../../lib/form-category", () => ({
   formCategory: vi.fn(() => "test-category"),
 }));
 
-vi.mock("@forms/form-api", () => ({
+// Keep the real module's error classes: RouteComponent branches on
+// `instanceof FormValidationError`, so a stubbed stand-in would never match.
+vi.mock("@forms/form-api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@forms/form-api")>()),
   formatDataForSubmission: vi.fn(() => ({})),
   postFormSubmission: vi.fn(),
 }));
@@ -95,6 +103,7 @@ import {
   getVisibleFields,
   restoreRepeatableStepsFromStorage,
 } from "@forms/lib";
+import { FormValidationError } from "@forms/form-api";
 import {
   getFormData,
   getSubmissionState,
@@ -139,6 +148,7 @@ const mockFormInstance = {
   getFieldValue: vi.fn(),
   validateField: vi.fn().mockResolvedValue([]),
   handleSubmit: vi.fn(),
+  setFieldMeta: vi.fn(),
 };
 
 const mockVisibleStep = {
@@ -742,6 +752,110 @@ describe("RouteComponent onSubmit handler", () => {
     expect(mockFormRendererProps.current.submissionState).toEqual(
       expect.objectContaining({ submissionSuccess: false }),
     );
+  });
+
+  // A 422 naming the exact field the server rejected used to be flattened into
+  // the generic "Something went wrong" panel, leaving the citizen with a retry
+  // that would fail identically and no idea which answer was at fault (#1257).
+  describe("server-side validation errors (422)", () => {
+    const stepWithParish = {
+      stepId: "step1",
+      title: "Step 1",
+      behaviours: [],
+      fields: [
+        {
+          id: "step1_parish",
+          fieldId: "parish",
+          stepId: "step1",
+          name: "parish",
+          label: "Parish",
+          htmlType: "select",
+          disabled: false,
+          hidden: false,
+          conditionallyHidden: false,
+          behaviours: [],
+        },
+      ],
+    };
+
+    function rejectWithFieldErrors(errors: unknown) {
+      (postFormSubmission as Mock).mockRejectedValue(
+        new FormValidationError("Validation failed", 422, errors),
+      );
+    }
+
+    it("puts the server's message on the field it names", async () => {
+      mockGetVisibleSteps.mockReturnValue([stepWithParish]);
+      const onSubmit = renderAndExtractOnSubmit();
+      rejectWithFieldErrors({ step1: { parish: ["Select the parish"] } });
+
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+
+      expect(mockFormInstance.setFieldMeta).toHaveBeenCalledWith(
+        "step1_parish",
+        expect.any(Function),
+      );
+      const updater = mockFormInstance.setFieldMeta.mock.calls[0][1] as (
+        prev: unknown,
+      ) => { errors: string[]; isValid: boolean };
+      expect(updater({ errors: [], isValid: true, errorMap: {} })).toEqual(
+        expect.objectContaining({
+          errors: ["Select the parish"],
+          isValid: false,
+        }),
+      );
+    });
+
+    it("sends the citizen back to the step holding the error", async () => {
+      mockGetVisibleSteps.mockReturnValue([stepWithParish]);
+      const onSubmit = renderAndExtractOnSubmit();
+      rejectWithFieldErrors({ step1: { parish: ["Select the parish"] } });
+
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+
+      const search = mockNavigate.mock.calls.at(-1)?.[0]?.search as (
+        prev: Record<string, unknown>,
+      ) => Record<string, unknown>;
+      expect(search({})).toEqual(expect.objectContaining({ step: "step1" }));
+    });
+
+    it("does not commit a failed submission state, so the answers stay editable", async () => {
+      mockGetVisibleSteps.mockReturnValue([stepWithParish]);
+      const onSubmit = renderAndExtractOnSubmit();
+      rejectWithFieldErrors({ step1: { parish: ["Select the parish"] } });
+
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+
+      expect(mockFormRendererProps.current.submissionState).toBeUndefined();
+      expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
+        form: "test-form",
+        category: "test-category",
+        errors: "validation",
+      });
+    });
+
+    // Nothing to show a citizen means we must not swallow the failure: fall back
+    // to the panel rather than leaving them on a step with no feedback.
+    it("falls back to the failure panel when no error maps to a field", async () => {
+      mockGetVisibleSteps.mockReturnValue([stepWithParish]);
+      const onSubmit = renderAndExtractOnSubmit();
+      rejectWithFieldErrors({ "step-that-moved": { parish: ["stale"] } });
+
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+
+      expect(mockFormInstance.setFieldMeta).not.toHaveBeenCalled();
+      expect(mockFormRendererProps.current.submissionState).toEqual(
+        expect.objectContaining({ submissionSuccess: false }),
+      );
+    });
   });
 
   it("filters hidden and conditionally-hidden fields before submission", async () => {

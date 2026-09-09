@@ -23,8 +23,7 @@ export class WaterSentAlertRepository extends BaseRepository<WaterSentAlertEntit
    * given (notice_id, area) pairs — in a SINGLE set-based statement, whatever the
    * subscriber count. `noticeIds[i]`/`areas[i]` are parallel arrays zipped by
    * `unnest`; the join finds confirmed subscribers, and UNIQUE(notice_id,
-   * subscriber_id) + ON CONFLICT DO NOTHING makes it idempotent (the exactly-once
-   * guarantee). No per-subscriber round-trips.
+   * subscriber_id) + ON CONFLICT DO NOTHING prevents duplicate claims.
    */
   async claimForPairs(noticeIds: string[], areas: string[]): Promise<void> {
     if (noticeIds.length === 0) return;
@@ -54,7 +53,8 @@ export class WaterSentAlertRepository extends BaseRepository<WaterSentAlertEntit
               s."unsubscribe_token" AS "unsubscribeToken"
        FROM "water_sent_alerts" sa
        JOIN "water_subscribers" s ON s."id" = sa."subscriber_id"
-       WHERE sa."sent" = false AND sa."notice_id" = ANY($1::text[])`,
+       WHERE sa."sent" = false AND s."status" = 'confirmed'
+         AND sa."notice_id" = ANY($1::text[])`,
       [noticeIds],
     );
   }

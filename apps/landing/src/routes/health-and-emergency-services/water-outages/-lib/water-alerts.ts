@@ -2,44 +2,68 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { formsApiBase } from '../../../../lib/forms-api-url'
 import type { Outage } from './outages'
+import { PARISHES } from './parishes'
 
 export interface WaterOutagesData {
   outages: Outage[]
-  /** ISO instant the API read the feed. */
   checkedAt: string | null
-  /** Server timestamp used for all "is it past / today" calcs, so SSR and
-   *  client render identically. */
+  /** One server timestamp keeps freshness labels identical during hydration. */
   now: number
-  /** True when the BWA feed was unreachable — show the honest paused state. */
   failed: boolean
 }
 
-/** SSR loader data: parsed BWA notices from the API (GET /water-alerts/outages). */
-export const getWaterOutages = createServerFn().handler(
-  async (): Promise<WaterOutagesData> => {
-    const now = Date.now()
-    try {
-      const res = await fetch(`${formsApiBase()}/water-alerts/outages`)
-      if (!res.ok) return { outages: [], checkedAt: null, now, failed: true }
-      const data = (await res.json()) as {
-        outages: Outage[]
-        checkedAt?: string
-      }
-      return {
-        outages: data.outages ?? [],
-        checkedAt: data.checkedAt ?? null,
-        now,
-        failed: false,
-      }
-    } catch {
-      return { outages: [], checkedAt: null, now, failed: true }
-    }
-  },
+const OutagesSchema = z.object({
+  outages: z.array(
+    z.object({
+      id: z.string().min(1),
+      title: z.string(),
+      link: z.url({ protocol: /^https?$/ }),
+      published: z.iso.datetime(),
+      summary: z.string(),
+      parishes: z.array(z.string()),
+      type: z.enum(['emergency', 'planned', 'repair', 'notice']),
+      eventDay: z.iso.date().optional(),
+      endsAt: z.iso.datetime({ offset: true }).optional(),
+    }),
+  ),
+  checkedAt: z.iso.datetime(),
+})
+
+export async function fetchWaterOutages(
+  apiBase: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<WaterOutagesData> {
+  const now = Date.now()
+  try {
+    const res = await fetchImpl(
+      `${apiBase.replace(/\/+$/, '')}/water-alerts/outages`,
+      {
+        signal: AbortSignal.timeout(15_000),
+      },
+    )
+    if (!res.ok) throw new Error('Water notices unavailable')
+    return { ...OutagesSchema.parse(await res.json()), now, failed: false }
+  } catch {
+    return { outages: [], checkedAt: null, now, failed: true }
+  }
+}
+
+export const getWaterOutages = createServerFn().handler(() =>
+  fetchWaterOutages(formsApiBase()),
 )
 
 const SubscribeSchema = z.object({
-  email: z.string(),
-  area: z.string().optional().default('all'),
+  email: z.string().trim().max(254).pipe(z.email()),
+  area: z
+    .string()
+    .refine(
+      (value) =>
+        value === '' ||
+        value === 'all' ||
+        PARISHES.some((p) => p.value === value),
+    )
+    .optional()
+    .default('all'),
 })
 
 export interface SubscribeState {
@@ -49,14 +73,16 @@ export interface SubscribeState {
 
 const GENERIC_ERROR = 'Something went wrong. Please try again in a moment.'
 
-/** Pure, testable subscribe call — the real API base is injected by the handler. */
 export async function postSubscribe(
   data: unknown,
   opts: { apiBase: string; fetchImpl?: typeof fetch },
 ): Promise<SubscribeState> {
   const parsed = SubscribeSchema.safeParse(data)
   if (!parsed.success) {
-    return { ok: false, message: 'Please enter a valid email address.' }
+    return {
+      ok: false,
+      message: 'Please enter a valid email address and choose an area.',
+    }
   }
   const apiBase = opts.apiBase.replace(/\/+$/, '')
   const doFetch = opts.fetchImpl ?? fetch
@@ -65,21 +91,18 @@ export async function postSubscribe(
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(parsed.data),
+      signal: AbortSignal.timeout(15_000),
     })
     if (!res.ok) return { ok: false, message: GENERIC_ERROR }
-    const body = (await res.json()) as { message?: string }
-    return {
-      ok: true,
-      message:
-        body.message ??
-        'Almost done. Check your email and click the link to confirm.',
-    }
+    const body = z
+      .object({ message: z.string().min(1) })
+      .parse(await res.json())
+    return { ok: true, message: body.message }
   } catch {
     return { ok: false, message: GENERIC_ERROR }
   }
 }
 
-/** Sign up for water alerts (POST /water-alerts/subscribe). */
 export const subscribeWaterAlerts = createServerFn({ method: 'POST' })
   .validator((raw: unknown) => raw as Record<string, unknown>)
   .handler(
@@ -87,13 +110,8 @@ export const subscribeWaterAlerts = createServerFn({ method: 'POST' })
       postSubscribe(data, { apiBase: formsApiBase() }),
   )
 
-export type TokenOutcome = 'done' | 'already' | 'invalid'
+export type TokenOutcome = 'done' | 'already' | 'invalid' | 'unavailable'
 
-/**
- * Pure caller for the confirm/unsubscribe token endpoints
- * (GET /water-alerts/{confirm,unsubscribe}/:token). A bad token or any failure
- * resolves to 'invalid' so the page always renders a sensible message.
- */
 export async function callTokenEndpoint(
   kind: 'confirm' | 'unsubscribe',
   token: string,
@@ -105,26 +123,27 @@ export async function callTokenEndpoint(
   try {
     const res = await doFetch(
       `${apiBase}/water-alerts/${kind}/${encodeURIComponent(token)}`,
+      { signal: AbortSignal.timeout(15_000), cache: 'no-store' },
     )
-    if (!res.ok) return 'invalid'
-    const body = (await res.json()) as { result?: TokenOutcome }
-    return body.result ?? 'invalid'
+    if (!res.ok) return 'unavailable'
+    const body = z
+      .object({ result: z.enum(['done', 'already', 'invalid']) })
+      .parse(await res.json())
+    return body.result
   } catch {
-    return 'invalid'
+    return 'unavailable'
   }
 }
 
-/** Confirm a sign-up from the emailed link (GET /water-alerts/confirm/:token). */
 export const confirmSubscription = createServerFn({ method: 'GET' })
-  .validator((raw: unknown) => String(raw))
+  .validator((raw: unknown) => (typeof raw === 'string' ? raw : ''))
   .handler(
     async ({ data }): Promise<TokenOutcome> =>
       callTokenEndpoint('confirm', data, { apiBase: formsApiBase() }),
   )
 
-/** Unsubscribe from the emailed link (GET /water-alerts/unsubscribe/:token). */
 export const unsubscribeSubscription = createServerFn({ method: 'GET' })
-  .validator((raw: unknown) => String(raw))
+  .validator((raw: unknown) => (typeof raw === 'string' ? raw : ''))
   .handler(
     async ({ data }): Promise<TokenOutcome> =>
       callTokenEndpoint('unsubscribe', data, { apiBase: formsApiBase() }),

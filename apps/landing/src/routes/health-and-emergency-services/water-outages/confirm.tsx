@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { pageHead } from '../../../lib/page-head'
-import { confirmSubscription, type TokenOutcome } from './-lib/water-alerts'
+import { confirmSubscription } from './-lib/water-alerts'
+import type { TokenOutcome } from './-lib/water-alerts'
 import { ResultNotice } from './-ui/result-notice'
 
 export const Route = createFileRoute(
@@ -15,6 +16,7 @@ export const Route = createFileRoute(
     pageHead(
       'Confirm your water alerts',
       'Confirm your email to start getting water-outage alerts.',
+      { noindex: true },
     ),
   component: ConfirmPage,
 })
@@ -37,6 +39,11 @@ const MESSAGES: Record<
     tone: 'error',
     title: 'This link is not valid',
     body: 'This confirmation link is invalid or has expired. Please sign up again to get a new link.',
+  },
+  unavailable: {
+    tone: 'error',
+    title: 'We could not confirm your alerts',
+    body: 'The water alerts service is unavailable. Please open this link again in a few minutes.',
   },
 }
 

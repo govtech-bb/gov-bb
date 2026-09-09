@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { SendEmailCommand } from "@aws-sdk/client-sesv2";
+import Handlebars from "handlebars";
 import { DataSource } from "typeorm";
 import { SesMailer } from "../email/ses-mailer";
 import { type AlertNotice, buildAlertEmail, type EmailContent } from "./emails";
@@ -34,8 +35,8 @@ export interface CheckSummary {
 
 /**
  * The alert checker. Every 30 minutes it reads the BWA feed, matches confirmed
- * subscribers to each active notice, and emails them exactly once
- * (claim-then-send via the water_sent_alerts unique constraint). Ported from the
+ * subscribers to each active notice, and records successful sends to avoid
+ * repeats during normal operation. Ported from the
  * prototype's src/lib/checker.ts; the GitHub-Actions-hits-an-open-endpoint
  * trigger becomes an in-process @Cron, guarded by a Postgres advisory lock so
  * multiple API tasks don't run it concurrently.
@@ -53,7 +54,7 @@ export class CheckerService {
   ) {}
 
   private get siteUrl(): string {
-    return (process.env.PUBLIC_SITE_URL ?? "http://localhost:3000").replace(
+    return (process.env.LANDING_BASE_URL || "http://localhost:3000").replace(
       /\/+$/,
       "",
     );
@@ -70,8 +71,8 @@ export class CheckerService {
   @Cron("*/30 * * * *")
   async scheduled(): Promise<void> {
     const runner = this.dataSource.createQueryRunner();
-    await runner.connect();
     try {
+      await runner.connect();
       const [{ pg_try_advisory_lock: locked }] = await runner.query(
         `SELECT pg_try_advisory_lock($1)`,
         [CHECK_LOCK_KEY],
@@ -114,7 +115,7 @@ export class CheckerService {
     opts: { notices?: Outage[]; dryRun?: boolean } = {},
   ): Promise<CheckSummary> {
     const now = Date.now();
-    const notices = opts.notices ?? (await this.feed.fetchOutages());
+    const notices = opts.notices ?? (await this.feed.fetchOutages()).outages;
     const active = notices.filter((o) => !isPast(o, now));
     const noticeById = new Map(active.map((n) => [n.id, n]));
 
@@ -258,7 +259,7 @@ export class CheckerService {
       await this.mailer.sendSimple({
         to,
         subject,
-        html: `<pre>${text}</pre>`,
+        html: `<pre>${Handlebars.escapeExpression(text)}</pre>`,
         text,
       });
     } catch (err) {

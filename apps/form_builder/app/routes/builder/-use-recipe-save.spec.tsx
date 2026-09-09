@@ -153,6 +153,32 @@ describe("useRecipeSave", () => {
       expect(result.current.publishSuccess).toEqual({ prUrl: "u", prNumber: 1 });
       expect(result.current.isPublishing).toBe(false);
     });
+
+    it("refetches the forms list after a successful deploy so the badge appears", async () => {
+      // openPRs comes from GitHub, so unlike the row patch it can't be derived
+      // locally — without this the just-deployed form shows no "In review"
+      // badge until the next picker mount (#2390).
+      publishRecipe.mockResolvedValue({ prUrl: "u", prNumber: 1, updatedExistingPR: false });
+      const { result, refetchForms } = render({ hasUnsavedChanges: false });
+
+      await act(async () => {
+        await result.current.handlePublish("desc");
+      });
+
+      expect(refetchForms).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not refetch when the deploy fails", async () => {
+      publishRecipe.mockRejectedValue(new Error("boom"));
+      const { result, refetchForms } = render({ hasUnsavedChanges: false });
+
+      await act(async () => {
+        await result.current.handlePublish("desc");
+      });
+
+      expect(result.current.publishError).toBe("boom");
+      expect(refetchForms).not.toHaveBeenCalled();
+    });
   });
 
   describe("handleOpenPublish", () => {

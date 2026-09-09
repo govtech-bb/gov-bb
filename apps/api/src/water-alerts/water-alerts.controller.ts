@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   HttpCode,
   Logger,
   Param,
@@ -10,19 +11,12 @@ import {
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import { SubscribeDto } from "./dto/subscribe.dto";
-import { FeedService } from "./feed.service";
-import type { Outage } from "./outages.domain";
+import { FeedService, type OutagesFeed } from "./feed.service";
 import {
   type SubscribeResult,
   SubscriptionService,
   type TokenOutcome,
 } from "./subscription.service";
-
-export interface OutagesResponse {
-  outages: Outage[];
-  /** ISO instant the feed was read. */
-  checkedAt: string;
-}
 
 @Controller("water-alerts")
 export class WaterAlertsController {
@@ -43,10 +37,9 @@ export class WaterAlertsController {
     medium: { limit: 120, ttl: 60_000 },
   })
   @Get("outages")
-  async outages(): Promise<OutagesResponse> {
+  async outages(): Promise<OutagesFeed> {
     try {
-      const outages = await this.feed.fetchOutages();
-      return { outages, checkedAt: new Date().toISOString() };
+      return await this.feed.fetchOutages();
     } catch (error) {
       this.logger.warn(
         `Could not reach the BWA feed: ${(error as Error).message}`,
@@ -61,12 +54,14 @@ export class WaterAlertsController {
     medium: { limit: 20, ttl: 60_000 },
   })
   @Post("subscribe")
+  @Header("Cache-Control", "no-store")
   subscribe(@Body() body: SubscribeDto): Promise<SubscribeResult> {
     return this.subscriptions.subscribe(body.email, body.area);
   }
 
   /** `GET /water-alerts/confirm/:token` — flip pending → confirmed. */
   @Get("confirm/:token")
+  @Header("Cache-Control", "no-store")
   async confirm(
     @Param("token") token: string,
   ): Promise<{ result: TokenOutcome }> {
@@ -75,6 +70,7 @@ export class WaterAlertsController {
 
   /** `GET /water-alerts/unsubscribe/:token` — mark unsubscribed (link click). */
   @Get("unsubscribe/:token")
+  @Header("Cache-Control", "no-store")
   async unsubscribe(
     @Param("token") token: string,
   ): Promise<{ result: TokenOutcome }> {
@@ -87,6 +83,7 @@ export class WaterAlertsController {
    */
   @HttpCode(200)
   @Post("unsubscribe/:token")
+  @Header("Cache-Control", "no-store")
   async unsubscribeOneClick(@Param("token") token: string): Promise<void> {
     await this.subscriptions.unsubscribe(token);
   }

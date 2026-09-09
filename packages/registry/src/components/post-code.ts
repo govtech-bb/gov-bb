@@ -1,4 +1,5 @@
 import type { TextPrimitive } from "@govtech-bb/form-types";
+import { POSTCODE_FORMAT } from "../barbados-id-patterns";
 
 export const Postcode: TextPrimitive = {
   fieldId: "postcode",
@@ -9,8 +10,8 @@ export const Postcode: TextPrimitive = {
   },
   validations: {
     pattern: {
-      value: "^BB\\d{5}$",
-      error: "Enter a valid postcode (for example, BB17004)",
+      value: POSTCODE_FORMAT.pattern,
+      error: POSTCODE_FORMAT.error,
     },
   },
 };

@@ -52,7 +52,9 @@ OAUTH_REDIRECT_BASE=http://localhost:3005
 ```
 
 `GITHUB_ORG` / `GITHUB_TEAM_SLUG` are **not** needed locally (dev skips the
-membership check). Then:
+membership check), and `LANDING_URL` / `FORMS_URL` are not needed either — unset,
+the table's service links fall back to the docker-stack origins (see
+[Where a service title links to](#where-a-service-title-links-to)). Then:
 
 ```bash
 pnpm dev:feature_flagging_ui   # serves http://localhost:3005
@@ -74,10 +76,43 @@ All three sources are fetched from `apps/api` at request time and merged in
 - forms — `GET /form-definitions`,
 - live statuses — `GET /service_status`.
 
-Nothing is baked at build time, so new landing pages appear once the api serves
-them (the api regenerates its `services-index.generated.ts` and redeploys) — no
-redeploy of this app needed. If `GET /services` is unavailable the tool degrades
-to forms + statuses.
+No catalogue data is baked at build time, so new landing pages appear once the
+api serves them (the api regenerates its `services-index.generated.ts` and
+redeploys) — no redeploy of this app needed. If `GET /services` is unavailable
+the tool degrades to forms + statuses.
+
+### Where a service title links to
+
+Each row's title links to the service's public page — its landing content page,
+or the form itself for a form-only service (`app/lib/service-url.ts`). The two
+base origins for those links, **`LANDING_URL`** and **`FORMS_URL`**, are the one
+thing here that _is_ fixed at build time: Amplify Hosting Compute doesn't pass
+branch env vars to the SSR Lambda at runtime, so `vite.config.ts` bakes them
+into the bundle via `define`. Changing either one on an Amplify branch therefore
+needs a **redeploy** of that branch before the links change.
+
+**Don't hardcode the values here** — read them off the environment being
+deployed, so a domain change doesn't leave this file lying:
+
+- **landing** and **forms** origins for an environment are whatever that
+  environment's deploy workflow smoke-tests: `AMPLIFY_LANDING_URL` /
+  `AMPLIFY_FORMS_URL` at the top of `deploy-staging.yml` and `deploy-prod.yml`,
+  or the per-app `APP_URL` of the landing and forms smoke steps in
+  `deploy-sandbox.yml`. Using those keeps a link pointing at the same site QA is
+  looking at, and they move when DNS moves.
+- Don't assume the naming is uniform across environments, or that every
+  environment has a custom domain yet — check the workflow rather than
+  extrapolating from another environment's hostname.
+- **local dev** needs nothing: unset falls back to the docker-stack origins that
+  `app/lib/service-url.ts` defaults to.
+
+Those defaults are right for a local run and useless anywhere else, so a
+**deployed** build (one where Amplify's `AWS_APP_ID` is present) with either var
+missing **fails the build** instead of shipping links to the reader's own
+machine, which is how they went unnoticed on sandbox in
+[#2167](https://github.com/govtech-bb/gov-bb/issues/2167). That guard is
+`build-env.ts`, called from `vite.config.ts` and covered by `build-env.spec.ts`
+— the spec fails if it's ever weakened back to a silent fallback.
 
 ## Deployment / infra checklist
 
@@ -93,6 +128,10 @@ requires one-time infra, done outside the codebase:
       `GITHUB_TEAM_SLUG`, and the `FEATURE_FLAGGING_TOKENS_SECRET_ARN`
       (`{ session_secret }`) +
       `FEATURE_FLAGGING_GITHUB_OAUTH_SECRET_ARN` (`{ client_id, client_secret }`).
+- [ ] Set `LANDING_URL` + `FORMS_URL` on **every** tracked branch (sandbox,
+      staging, prod) — where to read the values per environment is in
+      [Where a service title links to](#where-a-service-title-links-to). The
+      build **fails** without them, so a branch that misses them can't deploy.
 - [ ] Ensure `apps/api` has `GITHUB_ORG` + `GITHUB_TEAM_SLUG` set so it can
       authorize the forwarded GitHub tokens in prod (no shared admin token
       needed — see the `apps/api` GitHub-auth change).

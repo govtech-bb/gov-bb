@@ -62,8 +62,6 @@ env:
   FORM_BUILDER_API_SMOKE_URL: https://api.staging.alpha.gov.bb/builder/health
   AMPLIFY_FORMS_URL: https://forms.staging.alpha.gov.bb
   AMPLIFY_LANDING_URL: https://staging.alpha.gov.bb
-  AMPLIFY_CHAT_URL: https://chat.staging.alpha.gov.bb
-  AMPLIFY_CHAT_HEALTH_URL: https://chat.staging.alpha.gov.bb/api/health
   AMPLIFY_FORM_BUILDER_URL: https://builder.staging.alpha.gov.bb
 
 jobs:
@@ -96,7 +94,6 @@ jobs:
       fb-api: ${{ steps.affected.outputs.fb-api }}
       forms: ${{ steps.affected.outputs.forms }}
       landing: ${{ steps.affected.outputs.landing }}
-      chat: ${{ steps.affected.outputs.chat }}
       fb-app: ${{ steps.affected.outputs.fb-app }}
       migrations: ${{ steps.affected.outputs.migrations }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
@@ -135,7 +132,6 @@ jobs:
           echo "fb-api=$(has form-builder-api)" >> "$GITHUB_OUTPUT"
           echo "forms=$(has forms)" >> "$GITHUB_OUTPUT"
           echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
-          echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
           echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
 
           # TypeORM migrations live in packages/database/src/migrations/; the old
@@ -336,86 +332,13 @@ jobs:
           LABEL: form-builder
         run: bash .github/scripts/smoke-test-url.sh
 
-  deploy-chat-ingest:
-    # Chatbot RAG ingest one-shot Fargate task. Build image, push to staging
-    # ECR, then invoke the indexer Lambda so content changes propagate to
-    # chat-staging immediately instead of waiting for the cron.
-    name: Build, Push & Trigger chat-ingest
-    needs: setup
-    if: needs.setup.outputs.chat == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          persist-credentials: false
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to ECR
-        id: ecr-login
-        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
-
-      - name: Build and push chat-ingest image
-        run: |
-          set -euo pipefail
-          INGEST_URI="${{ steps.ecr-login.outputs.registry }}/chatbot-ingest-staging:${{ github.sha }}"
-          INGEST_LATEST="${{ steps.ecr-login.outputs.registry }}/chatbot-ingest-staging:latest"
-          docker build --platform linux/amd64 -f apps/chat/Dockerfile.ingest -t "$INGEST_URI" -t "$INGEST_LATEST" .
-          docker push "$INGEST_URI"
-          docker push "$INGEST_LATEST"
-
-      - name: Invoke RAG indexer
-        env:
-          COMMIT_SHA: ${{ github.sha }}
-          INDEXER: chatbot-rag-indexer-staging
-        run: |
-          set -euo pipefail
-          PAYLOAD=$(printf '{"startedBy":"gh-%.36s"}' "$COMMIT_SHA")
-
-          aws lambda invoke \
-            --function-name "$INDEXER" \
-            --payload "$PAYLOAD" \
-            --cli-binary-format raw-in-base64-out \
-            --region "$AWS_REGION" \
-            /tmp/indexer-out.json > /tmp/invoke-meta.json
-
-          echo "Lambda invocation metadata:"
-          cat /tmp/invoke-meta.json
-          echo
-          echo "Indexer response body:"
-          cat /tmp/indexer-out.json
-          echo
-
-          # Lambda returns 200 even when the function errored — FunctionError
-          # is the protocol-level error signal we check first. Then the
-          # application-level signal is the body's "status" field — the
-          # indexer Lambda returns {"status":"started","taskArn":"..."} on
-          # success (it kicks off a Fargate task and returns immediately;
-          # it doesn't wait for ingest to complete).
-          if jq -e '.FunctionError' /tmp/invoke-meta.json >/dev/null 2>&1; then
-            echo "❌ Lambda invocation reported a FunctionError"
-            exit 1
-          fi
-
-          STATUS=$(jq -r '.status // "unknown"' /tmp/indexer-out.json 2>/dev/null || echo "parse-error")
-          if [ "$STATUS" != "started" ]; then
-            echo "❌ Indexer returned status=\"$STATUS\" (expected \"started\")"
-            exit 1
-          fi
-          echo "✅ Indexer reported success — ingest task started"
-
   # ---------------------------------------------------------------------------
   # SSR smoke gate — boots each affected WEB_COMPUTE app's BUILT compute server
   # in the runner and asserts its homepage responds (<500, no hang) BEFORE the
   # Amplify deploy jobs run. Catches "compiles clean but hangs/5xx at runtime"
   # regressions that build/typecheck/unit all miss — e.g. the 2026-05-31 outage
   # where a transitive @tanstack/react-start bump hung landing's createServerFn
-  # SSR path (30s timeout → 500). amplify-{landing,chat,form-builder} need this
+  # SSR path (30s timeout → 500). amplify-{landing,form-builder} need this
   # job, so a failure here BLOCKS the deploy and staging stays on the last good
   # version. forms is static (WEB) — no compute server to smoke.
   # ---------------------------------------------------------------------------
@@ -424,7 +347,6 @@ jobs:
     needs: setup
     if: |
       needs.setup.outputs.landing == 'true'
-      || needs.setup.outputs.chat == 'true'
       || needs.setup.outputs.fb-app == 'true'
       || needs.setup.outputs.amplify-config == 'true'
     runs-on: ubuntu-latest
@@ -449,12 +371,6 @@ jobs:
         run: |
           pnpm exec nx build landing
           node .github/scripts/ssr-smoke.mjs apps/landing/.amplify-hosting/compute/default landing
-
-      - name: Smoke chat
-        if: needs.setup.outputs.chat == 'true' || needs.setup.outputs.amplify-config == 'true'
-        run: |
-          pnpm exec nx build chat
-          node .github/scripts/ssr-smoke.mjs apps/chat/.amplify-hosting/compute/default chat
 
       - name: Smoke form-builder
         if: needs.setup.outputs.fb-app == 'true' || needs.setup.outputs.amplify-config == 'true'
@@ -584,76 +500,6 @@ jobs:
           LABEL: landing
         run: bash .github/scripts/smoke-test-url.sh
 
-  amplify-chat:
-    name: Amplify build (chat)
-    needs: [setup, ssr-smoke]
-    if: needs.setup.outputs.chat == 'true' || needs.setup.outputs.amplify-config == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          persist-credentials: false
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Trigger and monitor Amplify build
-        env:
-          AMPLIFY_APP_ID: d2kl5gyeq6yv2d
-          AMPLIFY_BRANCH: staging
-          APP_LABEL: chat
-        run: |
-          set -euo pipefail
-          JOB_ID=$(aws amplify start-job \
-            --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
-            --job-type RELEASE --region "$AWS_REGION" \
-            --query jobSummary.jobId --output text)
-          echo "Amplify $APP_LABEL job: $JOB_ID"
-
-          for i in $(seq 1 30); do
-            STATUS=$(aws amplify get-job \
-              --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
-              --job-id "$JOB_ID" --region "$AWS_REGION" \
-              --query job.summary.status --output text)
-            echo "[$i/30] $APP_LABEL: $STATUS"
-            case "$STATUS" in
-              SUCCEED) echo "✅ Amplify $APP_LABEL build succeeded"; exit 0 ;;
-              FAILED|CANCELLED) echo "❌ Amplify $APP_LABEL build $STATUS"; exit 1 ;;
-            esac
-            sleep 30
-          done
-          echo "❌ Amplify $APP_LABEL build did not finish in 15 min"
-          exit 1
-
-      # The Terraform AWS provider doesn't manage compute_role_arn on
-      # aws_amplify_app, and a number of unrelated operations (tofu apply,
-      # console Amplify edits, possibly Amplify release jobs themselves) can
-      # silently clear it. Without the compute role, the chat SSR Lambda has
-      # no IAM identity and Bedrock calls fail with "Could not load
-      # credentials from any providers" — which causes /api/health to return
-      # db: disconnected. Re-attach every deploy to keep chat healing itself.
-      - name: Restore chat Amplify compute role
-        run: |
-          set -euo pipefail
-          aws amplify update-app \
-            --app-id d2kl5gyeq6yv2d \
-            --compute-role-arn arn:aws:iam::096863132510:role/gov-bb-chat-amplify-compute-staging \
-            --region "$AWS_REGION" \
-            --query "app.computeRoleArn" \
-            --output text
-          echo "✅ Chat compute role restored"
-
-      - name: Smoke test chat /api/health (validates db connection)
-        env:
-          URL: ${{ env.AMPLIFY_CHAT_HEALTH_URL }}
-          LABEL: chat
-          EXPECT_JSON_FIELD: .db
-          EXPECT_JSON_VALUE: connected
-        run: bash .github/scripts/smoke-test-url.sh
-
   amplify-form-builder:
     name: Amplify build (form-builder)
     needs: [setup, ssr-smoke]
@@ -711,7 +557,7 @@ jobs:
 
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-form-builder, deploy-chat-ingest, ssr-smoke, amplify-forms, amplify-landing, amplify-chat, amplify-form-builder]
+    needs: [setup, deploy-api, deploy-form-builder, ssr-smoke, amplify-forms, amplify-landing, amplify-form-builder]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -738,10 +584,8 @@ jobs:
             row "SSR smoke (pre-deploy)" "${{ needs.ssr-smoke.result }}"
             row "API"                  "${{ needs.deploy-api.result }}"
             row "form-builder API"     "${{ needs.deploy-form-builder.result }}"
-            row "chat-ingest"          "${{ needs.deploy-chat-ingest.result }}"
             row "Amplify forms"        "${{ needs.amplify-forms.result }}"
             row "Amplify landing"      "${{ needs.amplify-landing.result }}"
-            row "Amplify chat"         "${{ needs.amplify-chat.result }}"
             row "Amplify form-builder" "${{ needs.amplify-form-builder.result }}"
             echo ""
             echo "**URLs (ALB / amplifyapp.com until DNS lands):**"
@@ -749,6 +593,5 @@ jobs:
             echo "- form-builder: ${{ env.FORM_BUILDER_API_SMOKE_URL }}"
             echo "- forms: ${{ env.AMPLIFY_FORMS_URL }}"
             echo "- landing: ${{ env.AMPLIFY_LANDING_URL }}"
-            echo "- chat: ${{ env.AMPLIFY_CHAT_URL }}"
             echo "- form-builder app: ${{ env.AMPLIFY_FORM_BUILDER_URL }}"
           } >> "$GITHUB_STEP_SUMMARY"

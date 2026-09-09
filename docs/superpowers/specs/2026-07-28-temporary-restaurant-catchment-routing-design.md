@@ -5,6 +5,30 @@
 **Related:** [2026-07-22 temporary restaurant licence integration design](./2026-07-22-temporary-restaurant-licence-integration-design.md)
 **Prototype:** `govtech-bb/newforms` → `Prototypes/temporary-restaurant-licence.html` (+ `Prototypes/polyclinic-catchments.geojson`)
 
+> **Partly superseded — 2026-08-10.** The mechanism described here (GeoJSON
+> point-in-polygon, parish fallback, `resolvedCatchment` on the event, the
+> `catchment.mdaEmail` recipient token) is still exactly how routing works. Two
+> details below are now out of date, changed when
+> `request-an-environmental-health-officer` became the second catchment-routed
+> form:
+>
+> 1. **`PROGRAMME_CODES` no longer exists.** Codes are keyed by **formId then
+>    catchment** as `PROGRAMME_CODES_BY_FORM`, because one catchment serves
+>    several services and each has its own CMS queue. Boot validation now checks
+>    every form's map against the GeoJSON, in both directions, and `resolve()`
+>    takes a `formId`.
+> 2. **The codes are no longer derived placeholders.** Both forms now carry
+>    CMS-issued codes, and `Frederick Miller Polyclinic` routes to each form's
+>    `…_ST_PHILIP` code rather than its own — it has no Environmental Health
+>    Department and its area falls under St. Philip. So
+>    `TEMP_RESTAURANT_LICENCE_FREDERICK_MILLER`, quoted below, is no longer used
+>    by this codebase.
+>
+> The July decisions are left as written — this is the record of what was
+> designed then. For current behaviour read
+> `apps/api/src/catchment/polyclinic-routing.ts` and
+> [the 2026-08-10 officer-request design](./2026-08-10-environmental-health-officer-request-design.md) §8.4.
+
 ## 1. Problem
 
 The webhook processor's `programmeCode` and the MDA-notification email's recipient are both **static single values** in the recipe today:
@@ -64,6 +88,9 @@ The routing data (everything **not** geometry) is small, static, and ours, so it
 
 ```ts
 /** Derived placeholder programme codes — swap for real CMS codes when issued. */
+/* SUPERSEDED 2026-08-10: now PROGRAMME_CODES_BY_FORM, keyed formId → catchment,
+   with CMS-issued codes; Frederick Miller maps to …_ST_PHILIP. See the banner
+   at the top of this document. */
 export const PROGRAMME_CODES: Record<string, string> = {
   "Branford Taitt Polyclinic":                       "TEMP_RESTAURANT_LICENCE_BRANFORD_TAITT",
   "David Thompson Health & Social Services Complex": "TEMP_RESTAURANT_LICENCE_DAVID_THOMPSON",

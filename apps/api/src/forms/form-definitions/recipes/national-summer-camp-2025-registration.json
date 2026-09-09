@@ -219,7 +219,6 @@
         {
           "ref": "components/address",
           "overrides": {
-            "hint": "Optional",
             "label": "Address Line 2",
             "fieldId": "guardian-address-line-2",
             "validations": {

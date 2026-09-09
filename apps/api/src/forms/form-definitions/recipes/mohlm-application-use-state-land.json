@@ -1,6 +1,6 @@
 {
   "formId": "mohlm-application-use-state-land",
-  "title": "Application to Use State Land",
+  "title": "Application to use state land",
   "description": "Ministry of Housing, Lands and Maintenance application form for using state land",
   "processors": [
     {
@@ -24,9 +24,7 @@
         },
         {
           "ref": "components/middle-name",
-          "overrides": {
-            "hint": "Optional"
-          }
+          "overrides": {}
         },
         {
           "ref": "components/last-name"
@@ -88,7 +86,6 @@
         {
           "ref": "components/email",
           "overrides": {
-            "hint": "Optional",
             "validations": {
               "required": {
                 "value": false
@@ -192,7 +189,6 @@
             "ui": {
               "hideLabel": true
             },
-            "hint": "Optional",
             "label": "Address line 2",
             "fieldId": "property-address-line-2",
             "validations": {
@@ -217,7 +213,6 @@
         {
           "ref": "components/postcode",
           "overrides": {
-            "hint": "Optional",
             "fieldId": "property-postcode"
           }
         },
@@ -311,6 +306,9 @@
             "label": "Photo of the land",
             "fieldId": "photo-of-land",
             "validations": {
+              "required": {
+                "value": false
+              },
               "fileTypes": {
                 "error": "Upload a PNG, JPG or PDF file",
                 "value": [
@@ -318,6 +316,10 @@
                   "image/jpeg",
                   "application/pdf"
                 ]
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }

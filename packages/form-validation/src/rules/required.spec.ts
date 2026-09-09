@@ -31,6 +31,21 @@ describe("requiredRunner", () => {
     expect(requiredRunner(["a"], cfg(), {})).toBeNull();
   });
 
+  it("fails an array of blank strings (rows added but never typed into)", () => {
+    expect(requiredRunner([""], cfg(), {})).toBe("This field is required");
+    expect(requiredRunner(["", "  "], cfg(), {})).toBe(
+      "This field is required",
+    );
+  });
+
+  it("passes an array with at least one real entry among blanks", () => {
+    expect(requiredRunner(["", "a"], cfg(), {})).toBeNull();
+  });
+
+  it("passes an array of non-string entries (files)", () => {
+    expect(requiredRunner([{ key: "k", name: "n" }], cfg(), {})).toBeNull();
+  });
+
   it("passes 0 (number zero is valid)", () => {
     expect(requiredRunner(0, cfg(), {})).toBeNull();
   });

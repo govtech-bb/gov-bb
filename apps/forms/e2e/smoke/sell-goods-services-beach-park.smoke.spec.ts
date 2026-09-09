@@ -18,9 +18,10 @@
  * Notes (from the 1.2.0 recipe contract):
  *  - Field IDs are `${stepId}_${fieldId}`.
  *  - `applicant-title`, `applicant-nationality`, `applicant-parish`,
- *    `prof-ref-parish`, `pers-ref-parish` and the testimonial relationship /
- *    parish fields render as native `<select>` (registry defaults + custom
- *    option lists) — use `selectDropdown` with slug values.
+ *    `prof-ref-parish`, `pers-ref-parish`, the referee relationship fields
+ *    (`prof-ref-relationship`, `pers-ref-relationship`) and the testimonial
+ *    relationship / parish fields render as native `<select>` (registry
+ *    defaults + custom option lists) — use `selectDropdown` with slug values.
  *  - `applicant-dob` is a `date-of-birth` three-part widget; must be in the past.
  *  - `passport-toggle` is a show/hide left OFF so the conditional
  *    `applicant-passport-number` stays hidden and `applicant-nid` is required —
@@ -125,7 +126,7 @@ test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => 
       faker.person.firstName(),
     );
     await fillField(page, step, "prof-ref-last-name", faker.person.lastName());
-    await fillField(page, step, "prof-ref-relationship", "Former manager");
+    await selectDropdown(page, step, "prof-ref-relationship", "colleague");
     await fillField(page, step, "prof-ref-email", "testing@govtech.bb");
     await fillField(page, step, "prof-ref-telephone", "246-418-1234");
     await fillField(
@@ -154,7 +155,7 @@ test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => 
       faker.person.firstName(),
     );
     await fillField(page, step, "pers-ref-last-name", faker.person.lastName());
-    await fillField(page, step, "pers-ref-relationship", "Community mentor");
+    await selectDropdown(page, step, "pers-ref-relationship", "friend");
     await fillField(page, step, "pers-ref-email", "testing@govtech.bb");
     await fillField(page, step, "pers-ref-telephone", "246-418-1234");
     await fillField(
@@ -264,11 +265,13 @@ test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => 
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
-    // The deployed confirmation screen renders the generic "Thank you for your
-    // application" heading rather than the recipe's `submission-confirmation`
-    // title ("Application submitted") — match what the live renderer shows.
+    // Heading and subheading come from the recipe's `submission-confirmation`
+    // step (`title` / `description`) — the description replaces the generic
+    // "Your submission has been saved" default in the helper.
     await submitAndConfirm(page, {
       heading: "Thank you for your application",
+      subheading:
+        "Your information has been sent to the National Conservation Commission (NCC).",
     });
   });
 });

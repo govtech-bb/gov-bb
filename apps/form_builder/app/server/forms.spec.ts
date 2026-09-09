@@ -409,6 +409,9 @@ describe("listForms", () => {
       isDisabled: true,
       isOrphanOverride: true,
       isPublished: false,
+      // #2411: a synthetic override row is seeded after `draftIds` is built,
+      // so it must not claim a working copy — there is no row to delete.
+      hasDraftRow: false,
     });
   });
 
@@ -481,6 +484,9 @@ describe("listForms", () => {
       version: "2.0.0",
       isPublished: true,
       isDisabled: true,
+      // #2411: the row is real, so the flag is true even though the picker
+      // suppresses the action here — Enable wins a disabled row.
+      hasDraftRow: true,
     });
   });
 
@@ -714,5 +720,89 @@ describe("getRecipe (draft-vs-published precedence)", () => {
 
     expect(result.meta).toBeUndefined();
     expect(result.title).toBe("Conductor (draft)");
+  });
+});
+
+describe("listForms — hasDraftRow (#2411)", () => {
+  function stub(drafts: unknown[], published: unknown[]) {
+    apiGet.mockImplementation((path: string) => {
+      if (path === "/builder/forms") return Promise.resolve(drafts);
+      if (path === "/builder/forms/published")
+        return Promise.resolve(published);
+      if (path === "/builder/forms/disabled") return Promise.resolve([]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+  }
+
+  it("flags a published form that a scratch row is shadowing", async () => {
+    stub(
+      [
+        {
+          id: "uuid-1",
+          formId: "passport-renewal",
+          title: "Passport Renewal (working copy)",
+          version: "1.1.0",
+          isPublished: false,
+        },
+      ],
+      [
+        {
+          formId: "passport-renewal",
+          title: "Passport Renewal",
+          version: "1.0.0",
+        },
+      ],
+    );
+
+    const [form] = await listForms();
+
+    // Both true at once is the whole point: the row wins the merge, and
+    // isPublished is OR'd back on. Without hasDraftRow the picker cannot tell
+    // this apart from a published form with no working copy.
+    expect(form).toMatchObject({
+      formId: "passport-renewal",
+      isPublished: true,
+      hasDraftRow: true,
+    });
+  });
+
+  it("does not flag a published form with no scratch row", async () => {
+    stub(
+      [],
+      [
+        {
+          formId: "drivers-licence",
+          title: "Drivers Licence",
+          version: "1.0.0",
+        },
+      ],
+    );
+
+    const [form] = await listForms();
+
+    expect(form).toMatchObject({
+      formId: "drivers-licence",
+      isPublished: true,
+      hasDraftRow: false,
+    });
+  });
+
+  it("flags a draft-only form", async () => {
+    stub(
+      [
+        {
+          id: "uuid-2",
+          formId: "new-thing",
+          title: "New Thing",
+          version: "0.1.0",
+          isPublished: false,
+        },
+      ],
+      [],
+    );
+
+    const [form] = await listForms();
+
+    expect(form).toMatchObject({ formId: "new-thing", hasDraftRow: true });
   });
 });

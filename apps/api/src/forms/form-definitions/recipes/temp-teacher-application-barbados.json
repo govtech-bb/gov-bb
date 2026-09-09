@@ -61,7 +61,7 @@
           "overrides": {
             "fieldId": "other-names",
             "label": "Other Names",
-            "hint": "Optional. Provide only if known",
+            "hint": "Provide only if known",
             "validations": {
               "required": {
                 "value": false
@@ -842,6 +842,10 @@
                   ".png"
                 ]
               },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
+              },
               "maxSize": {
                 "error": "The file must be 25MB or smaller",
                 "value": 26214400
@@ -874,6 +878,10 @@
                   ".docx",
                   ".png"
                 ]
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               },
               "maxSize": {
                 "error": "The files must be 25MB or smaller in total",
@@ -914,14 +922,6 @@
                 "value": "confirmed"
               }
             ]
-          }
-        },
-        {
-          "ref": "components/date-of-birth",
-          "overrides": {
-            "fieldId": "declaration-date",
-            "label": "Date of declaration",
-            "isHidden": true
           }
         }
       ],

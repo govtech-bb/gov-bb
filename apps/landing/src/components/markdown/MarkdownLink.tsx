@@ -15,7 +15,13 @@ export function MarkdownLink({
   const isAnchorHeading =
     typeof rest.className === 'string' &&
     rest.className.includes('anchor-heading')
-  const isExternal = !(safeHref.startsWith('/') || safeHref.startsWith('#'))
+  // `tel:` hands off to the dialler rather than navigating, so it must not get
+  // target="_blank" — that leaves a blank tab behind on desktop.
+  const isExternal = !(
+    safeHref.startsWith('/') ||
+    safeHref.startsWith('#') ||
+    safeHref.startsWith('tel:')
+  )
 
   if (isStartLink) {
     const {
@@ -39,7 +45,13 @@ export function MarkdownLink({
   }
 
   return (
-    <Link external={isExternal} href={safeHref} {...rest}>
+    <Link
+      href={safeHref}
+      {...(isExternal
+        ? { rel: 'noopener noreferrer', target: '_blank' }
+        : undefined)}
+      {...rest}
+    >
       {children}
     </Link>
   )

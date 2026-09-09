@@ -22,11 +22,11 @@ vi.mock("../../server/ai-builder/convert", () => ({
 }));
 
 // Stub global fetch for the direct browser → S3 PUT. jsdom (the test env) ships
-// neither fetch nor Response, so install a plain mock and a duck-typed fake
-// response — the sidebar only reads `.ok` off the result.
-const okResponse = { ok: true, status: 200 } as unknown as Response;
+// neither fetch nor Response, so stub the global with a plain mock and a
+// duck-typed fake response — the sidebar only reads `.ok` off the result.
+const okResponse = { ok: true, status: 200 };
 const fetchSpy = vi.fn(async () => okResponse);
-(globalThis as unknown as { fetch: typeof fetch }).fetch = fetchSpy as unknown as typeof fetch;
+vi.stubGlobal("fetch", fetchSpy);
 
 beforeEach(() => {
   startEditRecipe.mockReset();
@@ -819,6 +819,27 @@ describe("AiSidebar — Upload", () => {
     );
     // The context is back in the box so the user doesn't have to retype it.
     expect((box as HTMLTextAreaElement).value).toBe("skip the payment page");
+  });
+
+  it("shows the friendly upload message, not the browser's \"Failed to fetch\", when the S3 POST is refused (#2511)", async () => {
+    const user = setupUser();
+    presignPdfUpload.mockResolvedValue({ url: "https://s3/url", fields: { key: "uploads/abc.pdf" }, s3Key: "uploads/abc.pdf" });
+    // A CORS-refused or dropped cross-origin POST rejects the fetch outright —
+    // it never resolves to a response whose `.ok` we could check.
+    fetchSpy.mockRejectedValue(new TypeError("Failed to fetch"));
+    setup();
+
+    await pickPdf(user);
+    await user.click(screen.getByRole("button", { name: /upload/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /upload failed — please refresh and try again/i,
+      ),
+    );
+    expect(screen.getByRole("alert")).not.toHaveTextContent(/failed to fetch/i);
+    // The upload never happened, so the convert must not have been started.
+    expect(startPdfConvert).not.toHaveBeenCalled();
   });
 
   it("shows an apply-specific error, not an upload error, when apply rejects after a successful convert (#1532)", async () => {

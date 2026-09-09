@@ -4,7 +4,10 @@ import { AnyFormApi } from "@tanstack/react-form";
 import { ClientFormStep, ClientPrimitive, FormMeta } from "@forms/types";
 import { getInstanceMarker, getVisibleFields } from "@forms/lib";
 import { DateValue } from "@govtech-bb/form-types";
-import { resolveStepTitle } from "@govtech-bb/form-conditions";
+import {
+  resolveFieldLabel,
+  resolveStepTitle,
+} from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
@@ -125,6 +128,16 @@ export default function Review({
         return fileNames.join(", ");
       }
       default:
+        // fieldArray answers are string arrays (#2317): join the non-blank
+        // entries comma-space separated, or return null (row omitted) when
+        // every entry is blank — String(value) would render "Ann,Bee" and
+        // turn an all-blank array into a lone "," row.
+        if (Array.isArray(value)) {
+          const answers = value.filter(
+            (v) => v !== undefined && v !== null && v !== "",
+          );
+          return answers.length > 0 ? answers.map(String).join(", ") : null;
+        }
         return emptyToNull(value);
     }
   };
@@ -190,7 +203,9 @@ export default function Review({
                 <dl className="govbb-summary-list">
                   {rows.map(({ field, value }) => (
                     <div key={field.id} className="govbb-summary-list__row">
-                      <dt className="govbb-summary-list__key">{field.label}</dt>
+                      <dt className="govbb-summary-list__key">
+                        {resolveFieldLabel(field, stepScopedValues)}
+                      </dt>
                       <dd className="govbb-summary-list__value">{value}</dd>
                     </div>
                   ))}

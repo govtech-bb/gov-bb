@@ -14,9 +14,22 @@ on:
     # individual jobs (it already skips unchanged apps). The point of this
     # block is to skip jobs even nx-affected would skip, so docs-only PRs
     # don't burn ~12 min spinning up `setup` for nothing.
+    #
+    # NEVER add a bare "**.md" here. Markdown is PRODUCT CONTENT in this repo —
+    # every landing service page lives in apps/landing/src/content/**/*.md and
+    # is compiled into the site at build time. "**.md" matches at any depth, so
+    # it swallowed content-only PRs entirely: GitHub skips a run only when EVERY
+    # changed path matches, and a copy-only edit changes nothing but .md. The
+    # skip cascaded — no run means no `advance-sandbox`, so the `sandbox` branch
+    # pointer never moved and Amplify (which builds that branch) had nothing to
+    # ship. It stayed hidden because editing frontmatter regenerates
+    # services-index.generated.ts / form-categories.generated.ts, and those .ts
+    # files re-armed the trigger by accident; body-copy-only edits don't, so
+    # they silently deferred to the next unrelated deploy. Broke #2490, #2498,
+    # #2499 and #2500. Scope docs skips to real paths, never a filetype.
     paths-ignore:
-      - "**.md"
       - "docs/**"
+      - "*.md" # root-level only (README, CONTRIBUTING…), NOT "**.md"
       - ".gitignore"
       - ".gitattributes"
       - ".husky/**"

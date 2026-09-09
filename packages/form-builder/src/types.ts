@@ -5,6 +5,7 @@ import type {
   ContactDetails,
   FormStep,
   RecipeMeta,
+  CatchmentRouting,
 } from "@govtech-bb/form-types";
 
 // Per-child field overrides for a block (keyed by child fieldId)
@@ -32,6 +33,10 @@ export interface RecipeStepDraft {
   // the builder, while nextSteps is carried through untouched (no editor yet).
   markdownContent?: string;
   nextSteps?: FormStep["nextSteps"];
+  // Per-answer passages inside `markdownContent` (#2068). No editor yet, so it
+  // is carried through untouched like `nextSteps` — without that a republish
+  // would strip the segments and leave every `{token}` in the body unfilled.
+  conditionalMarkdown?: FormStep["conditionalMarkdown"];
 }
 
 // Editor-only id mirrors RecipeFieldDraft.id: minted on deserialize, stripped on
@@ -68,4 +73,10 @@ export interface RecipeDraft {
   // legacy draft (predating the control) → treated as `public` by
   // getRecipeVisibility; a new draft seeds `{ visibility: "draft" }`.
   meta?: RecipeMeta;
+  // Environmental Health catchment routing — the "stepId.fieldId" paths the API
+  // reads to pick a serving polyclinic. Not authorable in the builder, but it
+  // has to survive an open → deploy cycle: dropping it silently unroutes the
+  // form (no `catchment.mdaEmail` recipient, no per-polyclinic programme code).
+  // Same `!== undefined` guard as contactDetails/meta.
+  catchmentRouting?: CatchmentRouting;
 }
