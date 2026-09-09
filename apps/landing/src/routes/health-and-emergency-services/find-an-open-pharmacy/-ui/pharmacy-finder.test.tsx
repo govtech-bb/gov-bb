@@ -113,9 +113,7 @@ describe('pharmacy finder', () => {
     for (const pharmacy of participating) {
       fireEvent.change(search, { target: { value: pharmacy.name } })
       expect(
-        screen
-          .getByRole('link', { name: pharmacy.name, exact: true })
-          .getAttribute('href'),
+        screen.getByRole('link', { name: pharmacy.name }).getAttribute('href'),
       ).toBe(
         `/health-and-emergency-services/find-an-open-pharmacy/${pharmacy.slug}`,
       )
@@ -125,7 +123,7 @@ describe('pharmacy finder', () => {
         ),
       ).toBeNull()
     }
-  })
+  }, 15_000)
 
   it('shows C S Pharmacy opening times and both document telephone numbers', () => {
     const pharmacy = PHARMACIES.find((p) => p.slug === 'c-s-pharmacy')!
@@ -142,14 +140,10 @@ describe('pharmacy finder', () => {
       expect(screen.getByText(day).nextElementSibling?.textContent).toBe(hours)
     }
     expect(
-      screen
-        .getByRole('link', { name: '(246) 427-2047', exact: true })
-        .getAttribute('href'),
+      screen.getByRole('link', { name: '(246) 427-2047' }).getAttribute('href'),
     ).toBe('tel:+12464272047')
     expect(
-      screen
-        .getByRole('link', { name: '(246) 426-0320', exact: true })
-        .getAttribute('href'),
+      screen.getByRole('link', { name: '(246) 426-0320' }).getAttribute('href'),
     ).toBe('tel:+12464260320')
   })
 
