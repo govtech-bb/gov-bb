@@ -10,7 +10,10 @@
     "./form-categories": "./src/form-categories.ts",
     "./load": "./src/load.ts",
     "./markdown-authoring": "./src/markdown-authoring.ts",
-    "./types": "./src/types.ts"
+    "./smart-tool-fields": "./src/smart-tool-fields.ts",
+    "./smart-tools": "./src/smart-tools.ts",
+    "./types": "./src/types.ts",
+    "./format-copy": "./src/format-copy.ts"
   },
   "dependencies": {
     "entities": "8.0.0",

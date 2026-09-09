@@ -5,7 +5,9 @@
  */
 
 import { Heading, Text } from '@govtech-bb/react'
-import { PHARMACIES, PHARMACY_COUNT } from '../-data/pharmacies'
+import { PHARMACY_CONTENT } from '../-data/pharmacies'
+import type { PharmacyContent, PharmacyCopy } from '../-data/pharmacies'
+import { formatCopy } from '../-lib/copy'
 import type { FilterAction, FilterState } from '../-lib/finder-filters'
 import { matchesFilters } from '../-lib/finder-filters'
 import {
@@ -18,14 +20,22 @@ export function NoResultsPanel({
   filters,
   now,
   dispatch,
+  content = PHARMACY_CONTENT,
 }: {
   filters: FilterState
   now: Date | null
   dispatch: (action: FilterAction) => void
+  content?: PharmacyContent
 }) {
+  const copy = content.copy.noResults
+  const matchCount = (count: number) =>
+    formatCopy(copy.matchCount, {
+      count,
+      total: content.pharmacies.length,
+    })
   const relaxed = (overrides: Partial<FilterState>) => {
     const relaxedFilters = { ...filters, ...overrides }
-    return PHARMACIES.filter((pharmacy) =>
+    return content.pharmacies.filter((pharmacy) =>
       matchesFilters(pharmacy, relaxedFilters, now),
     )
   }
@@ -42,14 +52,16 @@ export function NoResultsPanel({
     if (closedMatches.length > 0) {
       const next = soonestOpening(closedMatches, now)
       const opensAt = next
-        ? ` ${next.pharmacy.name} opens ${
-            next.isToday ? '' : `${WEEKDAY_LABELS[next.weekday]} `
-          }${formatTime(next.opens)}.`
+        ? ` ${formatCopy(copy.nextOpening, {
+            name: next.pharmacy.name,
+            day: next.isToday ? '' : `${WEEKDAY_LABELS[next.weekday]} `,
+            time: formatTime(next.opens),
+          })}`
         : ''
       hatches.push({
         key: 'closed',
-        label: 'Include pharmacies with other opening times',
-        caption: `${closedMatches.length} of the ${PHARMACY_COUNT} pharmacies would match.${opensAt}`,
+        label: copy.includeOtherHours,
+        caption: `${matchCount(closedMatches.length)}${opensAt}`,
         action: { type: 'set-open-now', value: false },
       })
     }
@@ -60,8 +72,8 @@ export function NoResultsPanel({
     if (anyParish.length > 0) {
       hatches.push({
         key: 'parishes',
-        label: 'Search all parishes',
-        caption: `${anyParish.length} of the ${PHARMACY_COUNT} pharmacies would match.`,
+        label: copy.searchAllParishes,
+        caption: matchCount(anyParish.length),
         action: { type: 'clear-parishes' },
       })
     }
@@ -72,8 +84,8 @@ export function NoResultsPanel({
     if (anyType.length > 0) {
       hatches.push({
         key: 'type',
-        label: 'Include government and private pharmacies',
-        caption: `${anyType.length} of the ${PHARMACY_COUNT} pharmacies would match.`,
+        label: copy.includeTypes,
+        caption: matchCount(anyType.length),
         action: { type: 'set-type', value: 'all' },
       })
     }
@@ -84,8 +96,8 @@ export function NoResultsPanel({
     if (anySlip.length > 0) {
       hatches.push({
         key: 'slip',
-        label: 'Show pharmacies for any prescription colour',
-        caption: `${anySlip.length} of the ${PHARMACY_COUNT} pharmacies would match. Check your prescription is accepted before you travel.`,
+        label: copy.anySlip,
+        caption: `${matchCount(anySlip.length)} ${copy.checkPrescription}`,
         action: { type: 'set-slip', value: 'any' },
       })
     }
@@ -95,8 +107,8 @@ export function NoResultsPanel({
     if (allMatches.length > 0) {
       hatches.push({
         key: 'subsidised',
-        label: 'Include all listed pharmacies',
-        caption: `${allMatches.length} of the ${PHARMACY_COUNT} pharmacies would match. Check participation and medication costs before travelling.`,
+        label: copy.allListed,
+        caption: `${matchCount(allMatches.length)} ${copy.checkParticipation}`,
         action: { type: 'set-subsidised-only', value: false },
       })
     }
@@ -107,8 +119,8 @@ export function NoResultsPanel({
     if (withoutSearch.length > 0) {
       hatches.push({
         key: 'search',
-        label: `Clear your search “${filters.search.trim()}”`,
-        caption: `${withoutSearch.length} of the ${PHARMACY_COUNT} pharmacies would match.`,
+        label: formatCopy(copy.clearSearch, { query: filters.search.trim() }),
+        caption: matchCount(withoutSearch.length),
         action: { type: 'set-search', value: '' },
       })
     }
@@ -118,9 +130,8 @@ export function NoResultsPanel({
   if (hatches.length === 0) {
     hatches.push({
       key: 'all',
-      label: 'Reset filters',
-      caption:
-        'Return to the default list of government and participating private pharmacies.',
+      label: content.copy.finder.resetFiltersLabel,
+      caption: copy.resetDescription,
       action: { type: 'clear-all' },
     })
   }
@@ -128,9 +139,9 @@ export function NoResultsPanel({
   return (
     <div className="flex flex-col gap-s rounded-lg bg-grey-20 p-s">
       <Heading as="h3" size="h4">
-        No pharmacies match your search
+        {copy.heading}
       </Heading>
-      <Text as="p">{noResultsReason(filters)}</Text>
+      <Text as="p">{noResultsReason(filters, copy)}</Text>
       <ul className="flex list-none flex-col gap-xs p-0">
         {hatches.map((hatch) => (
           <li key={hatch.key}>
@@ -153,31 +164,34 @@ export function NoResultsPanel({
   )
 }
 
-function noResultsReason(filters: FilterState): string {
+function noResultsReason(
+  filters: FilterState,
+  copy: PharmacyCopy['noResults'],
+): string {
   const query = filters.search.trim()
-  let sentence =
+  const parts = [
     filters.type === 'government'
-      ? 'No government pharmacies'
+      ? copy.governmentNone
       : filters.type === 'private-sbs'
-        ? 'No private pharmacies'
-        : 'No pharmacies'
+        ? copy.privateNone
+        : copy.none,
+  ]
   if (query) {
-    sentence += ` matching “${query}”`
+    parts.push(formatCopy(copy.query, { query }))
   }
   if (filters.slip !== 'any') {
-    sentence += ` accepting a ${filters.slip} prescription`
+    parts.push(formatCopy(copy.slip, { colour: filters.slip }))
   }
   if (filters.parishes.length > 0) {
-    sentence += ` in ${listJoin(filters.parishes)}`
+    parts.push(
+      formatCopy(copy.parishes, { parishes: listJoin(filters.parishes) }),
+    )
   }
-  sentence += filters.openNow
-    ? ' have confirmed opening hours right now.'
-    : ' were found.'
+  parts.push(filters.openNow ? copy.noneOpen : copy.noneFound)
   if (filters.subsidisedOnly && filters.type !== 'government') {
-    sentence +=
-      ' Only government and confirmed participating private pharmacies were included.'
+    parts.push(copy.subsidisedOnly)
   }
-  return sentence
+  return parts.join(' ')
 }
 
 function listJoin(items: string[]): string {

@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, sandbox, staging, dev]
+    branches: [main, sandbox, staging, dev, "feat/smart-tools-*"]
   # Re-validate the trunk after every merge. CI otherwise runs only on
   # pull_request, so a break that emerges from the COMBINATION of two
   # independently-green PRs (e.g. #1875's recipes + #1970's new lint, incident

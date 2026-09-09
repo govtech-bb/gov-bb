@@ -6,8 +6,9 @@
  */
 
 import { Text } from '@govtech-bb/react'
-import type { Pharmacy } from '../-data/pharmacies'
-import { WEEKDAYS } from '../-data/pharmacies'
+import type { Pharmacy, PharmacyContent } from '../-data/pharmacies'
+import { PHARMACY_CONTENT, WEEKDAYS } from '../-data/pharmacies'
+import { formatCopy } from '../-lib/copy'
 import {
   barbadosWallClock,
   formatTime,
@@ -50,17 +51,20 @@ export function StatusSkeleton() {
 export function StatusLine({
   pharmacy,
   now,
+  content = PHARMACY_CONTENT,
 }: {
   pharmacy: Pharmacy
   now: Date
+  content?: PharmacyContent
 }) {
+  const copy = content.copy.hours
   const status = pharmacyStatus(pharmacy, now)
 
   if (status === null) {
     return (
       <Text as="p" className="text-grey-70" size="body-sm" weight="bold">
         <Dot className="bg-grey-70" />
-        Today's hours not confirmed. Call before travelling.
+        {copy.unknownToday}
       </Text>
     )
   }
@@ -72,9 +76,9 @@ export function StatusLine({
       return (
         <Text as="p" size="body-sm" weight="bold">
           <Dot className="bg-yellow-80" />
-          Closes in {minutesLeft} min{' '}
+          {formatCopy(copy.closingSoon, { minutes: minutesLeft })}{' '}
           <Text as="span" className="text-grey-70" size="body-sm">
-            at {formatTime(status.closes)}
+            {formatCopy(copy.at, { time: formatTime(status.closes) })}
           </Text>
         </Text>
       )
@@ -82,9 +86,9 @@ export function StatusLine({
     return (
       <Text as="p" className="text-green-80" size="body-sm" weight="bold">
         <Dot className="bg-green-80" />
-        Open{' '}
+        {copy.open}{' '}
         <Text as="span" className="text-grey-70" size="body-sm">
-          until {formatTime(status.closes)}
+          {formatCopy(copy.until, { time: formatTime(status.closes) })}
         </Text>
       </Text>
     )
@@ -96,19 +100,24 @@ export function StatusLine({
     const wall = barbadosWallClock(now)
     const tomorrow = WEEKDAYS[(WEEKDAYS.indexOf(wall.weekday) + 1) % 7]
     if (nextOpen.isToday) {
-      opensPart = `opens ${formatTime(nextOpen.opens)}`
+      opensPart = formatCopy(copy.opensToday, {
+        time: formatTime(nextOpen.opens),
+      })
     } else if (nextOpen.weekday === tomorrow && nextOpen.opens === '00:00') {
       // "Opens Tuesday midnight" reads as Tuesday night; it means tonight.
-      opensPart = 'opens midnight tonight'
+      opensPart = copy.opensMidnight
     } else {
-      opensPart = `opens ${WEEKDAY_LABELS[nextOpen.weekday]} ${formatTime(nextOpen.opens)}`
+      opensPart = formatCopy(copy.opensDay, {
+        day: WEEKDAY_LABELS[nextOpen.weekday],
+        time: formatTime(nextOpen.opens),
+      })
     }
   }
 
   return (
     <Text as="p" className="text-grey-70" size="body-sm" weight="bold">
       <Dot className="bg-grey-70" />
-      Closed
+      {copy.closed}
       {opensPart && (
         <Text as="span" size="body-sm">
           {' '}
@@ -125,24 +134,30 @@ export function StatusLine({
  */
 const COST_TAGS = {
   government: {
-    label: 'Government pharmacy: no dispensing fee',
+    label: 'government',
     className: 'bg-green-10 text-green-80',
   },
   participating: {
-    label: 'Participating private pharmacy: dispensing fee',
+    label: 'participating',
     className: 'bg-teal-10 text-teal-80',
   },
   'not-participating': {
-    label: 'Outside the Drug Service subsidy',
+    label: 'notParticipating',
     className: 'bg-grey-20 text-grey-70',
   },
   unconfirmed: {
-    label: 'Subsidy participation not confirmed',
+    label: 'unconfirmed',
     className: 'bg-grey-20 text-grey-70',
   },
 } as const
 
-export function CostChip({ pharmacy }: { pharmacy: Pharmacy }) {
+export function CostChip({
+  pharmacy,
+  content = PHARMACY_CONTENT,
+}: {
+  pharmacy: Pharmacy
+  content?: PharmacyContent
+}) {
   const cost =
     COST_TAGS[
       pharmacy.type === 'government'
@@ -158,7 +173,7 @@ export function CostChip({ pharmacy }: { pharmacy: Pharmacy }) {
       size="body-sm"
       weight="bold"
     >
-      {cost.label}
+      {content.copy.cost[cost.label]}
     </Text>
   )
 }

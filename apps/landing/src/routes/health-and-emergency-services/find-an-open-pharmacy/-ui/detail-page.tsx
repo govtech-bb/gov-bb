@@ -11,22 +11,25 @@
 import { Heading, Link, LinkButton, Text } from '@govtech-bb/react'
 import { format, parseISO } from 'date-fns'
 import { useEffect, useState } from 'react'
-import type { Pharmacy } from '../-data/pharmacies'
-import { PHARMACIES_LAST_UPDATED } from '../-data/pharmacies'
+import type { Pharmacy, PharmacyContent } from '../-data/pharmacies'
+import { PHARMACY_CONTENT } from '../-data/pharmacies'
+import { formatCopy } from '../-lib/copy'
 import { barbadosWallClock, isBankHoliday } from '../-lib/opening-hours'
-import {
-  DRUG_SERVICE_PHONE,
-  mapsUrl,
-  telHref,
-  whatsappHref,
-} from '../-lib/routes'
+import { mapsUrl, telHref, whatsappHref } from '../-lib/routes'
 import { Caveat } from './caveat'
 import { MapPinIcon } from './icons'
 import { SlipsAccepted } from './slips-accepted'
 import { CostChip, StatusLine, StatusSkeleton } from './status-pill'
 import { WeeklyHoursRows } from './weekly-hours'
 
-export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
+export function PharmacyDetailPage({
+  pharmacy,
+  content = PHARMACY_CONTENT,
+}: {
+  pharmacy: Pharmacy
+  content?: PharmacyContent
+}) {
+  const { detail, drugService, page } = content.copy
   // Post-mount only, so server and hydration markup match (same approach as
   // the finder). Ticks each minute so the status stays honest.
   const [now, setNow] = useState<Date | null>(null)
@@ -38,7 +41,7 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
 
   const today = now ? barbadosWallClock(now).weekday : null
   const hasPlace = pharmacy.parish !== 'All parishes'
-  const whatsapp = whatsappHref(pharmacy)
+  const whatsapp = whatsappHref(pharmacy, detail.whatsappMessage)
 
   return (
     <div className="mb-l flex max-w-2xl flex-col gap-m">
@@ -46,17 +49,19 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
         <Heading as="h1">{pharmacy.name}</Heading>
         <div className="border-blue-10 border-b-4 pb-4 text-grey-70">
           <Text as="p" size="body-sm">
-            Last updated on {format(parseISO(PHARMACIES_LAST_UPDATED), 'PPP')}.
+            {formatCopy(page.lastUpdated, {
+              date: format(parseISO(content.lastUpdated), 'PPP'),
+            })}
           </Text>
         </div>
         <div className="min-h-5">
           {now ? (
-            <StatusLine now={now} pharmacy={pharmacy} />
+            <StatusLine now={now} pharmacy={pharmacy} content={content} />
           ) : (
             <StatusSkeleton />
           )}
         </div>
-        <CostChip pharmacy={pharmacy} />
+        <CostChip pharmacy={pharmacy} content={content} />
         <Text as="p" className="inline-flex items-baseline gap-2">
           <MapPinIcon />
           {pharmacy.address}
@@ -64,68 +69,59 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
       </div>
 
       {pharmacy.pppStatus === 'not-participating' && (
-        <Caveat>
-          This pharmacy does not participate in the Drug Service subsidy. Ask
-          the pharmacy about medication costs before you travel.
-        </Caveat>
+        <Caveat>{detail.nonParticipatingWarning}</Caveat>
       )}
       {pharmacy.pppStatus === 'unconfirmed' && (
-        <Caveat tone="confidence">
-          Contact the Drug Service to confirm this branch's participation before
-          relying on subsidised medication here.
-        </Caveat>
+        <Caveat tone="confidence">{detail.unconfirmedWarning}</Caveat>
       )}
 
       <div className="flex flex-wrap items-center gap-s">
         {hasPlace && (
           <LinkButton external href={mapsUrl(pharmacy)}>
-            Get directions
+            {detail.directionsLabel}
           </LinkButton>
         )}
         {pharmacy.phone && (
           <LinkButton href={telHref(pharmacy.phone)} variant="secondary">
-            Call {pharmacy.phone}
+            {formatCopy(detail.callLabel, { phone: pharmacy.phone })}
           </LinkButton>
         )}
       </div>
       {!pharmacy.phone && (
         <Text as="p">
-          No number listed. Call the Drug Service on{' '}
-          <Link href={telHref(DRUG_SERVICE_PHONE)}>{DRUG_SERVICE_PHONE}</Link>.
+          {detail.noPhone}{' '}
+          <Link href={telHref(drugService.phone)}>{drugService.phone}</Link>.
         </Text>
       )}
 
       <section aria-labelledby="opening-times" className="flex flex-col gap-s">
         <Heading as="h2" id="opening-times">
-          Opening times
+          {detail.openingHeading}
         </Heading>
         {pharmacy.hours ? (
           <WeeklyHoursRows
+            content={content}
             hours={pharmacy.hours}
             today={today}
             todayIsHoliday={now ? isBankHoliday(now) : false}
             bankHolidayHours={pharmacy.bankHolidayHours}
           />
         ) : (
-          <Caveat tone="confidence">
-            Opening hours have not been confirmed. Call before you go.
-          </Caveat>
+          <Caveat tone="confidence">{detail.unknownHours}</Caveat>
         )}
         {pharmacy.notes && <Caveat tone="confidence">{pharmacy.notes}</Caveat>}
         <div className="border-blue-40 border-l-4 bg-blue-10 px-s py-xm">
           <Text as="p">
-            <strong>Public holidays:</strong> many pharmacies close or shorten
-            their hours on public holidays. Call before you go.
+            <strong>{detail.holidayLabel}</strong> {detail.holidayWarning}
           </Text>
         </div>
       </section>
 
-      <SlipsAccepted pharmacy={pharmacy} />
+      <SlipsAccepted pharmacy={pharmacy} content={content} />
 
       <Caveat>
-        <strong>If your prescription is refused:</strong> contact the Drug
-        Service if you need help checking your entitlement. Call{' '}
-        <Link href={telHref(DRUG_SERVICE_PHONE)}>{DRUG_SERVICE_PHONE}</Link>.
+        <strong>{detail.refusedLabel}</strong> {detail.refusedDescription}{' '}
+        <Link href={telHref(drugService.phone)}>{drugService.phone}</Link>.
       </Caveat>
 
       <section
@@ -133,34 +129,36 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
         className="flex flex-col gap-s"
       >
         <Heading as="h2" id="contact-and-help">
-          Contact and help
+          {detail.contactHeading}
         </Heading>
         {pharmacy.phone && (
           <Text as="p">
-            Telephone:{' '}
+            {detail.telephoneLabel}{' '}
             <Link href={telHref(pharmacy.phone)}>{pharmacy.phone}</Link>
           </Text>
         )}
         {pharmacy.phoneExtension && (
           <Text as="p">
-            Dial extension {pharmacy.phoneExtension} after calling.
+            {formatCopy(detail.extensionMessage, {
+              extension: pharmacy.phoneExtension,
+            })}
           </Text>
         )}
         {pharmacy.additionalPhones?.map((phone) => (
           <Text as="p" key={phone}>
-            Alternative telephone: <Link href={telHref(phone)}>{phone}</Link>
+            {detail.alternativeTelephoneLabel}{' '}
+            <Link href={telHref(phone)}>{phone}</Link>
           </Text>
         ))}
         {whatsapp && (
           <Caveat tone="channel">
             <Link external href={whatsapp}>
-              Order prescription via WhatsApp (opens in a new tab)
+              {detail.whatsappLabel}
             </Link>
           </Caveat>
         )}
         <Text as="p" className="text-grey-70" size="body-sm">
-          Opening hours and Drug Service participation can change. Call ahead to
-          confirm.
+          {detail.callAhead}
         </Text>
       </section>
     </div>

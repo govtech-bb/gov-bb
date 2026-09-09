@@ -1,11 +1,14 @@
 import type { FeatureMeta } from '../../../content/feature-meta'
+import { SHELTER_CONTENT } from './-data/emergency-shelters'
+import { formatCopy } from './-lib/copy'
 
 /** Service-level metadata — discoverability only. See feature-meta.ts (no UI imports here). */
 export const META = {
   url: 'health-and-emergency-services/find-an-emergency-shelter',
-  title: 'Find an emergency shelter',
-  description:
-    'Search all 70 emergency shelters in Barbados to use during a hurricane or tropical storm. Filter by parish, category and accessibility, and read what to bring before you go.',
+  title: SHELTER_CONTENT.copy.metadata.title,
+  description: formatCopy(SHELTER_CONTENT.copy.metadata.description, {
+    count: SHELTER_CONTENT.shelters.length,
+  }),
   category: 'health-and-emergency-services',
   keywords: [
     'shelter',

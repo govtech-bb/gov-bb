@@ -1,4 +1,6 @@
 import type { Pharmacy } from '../-data/pharmacies'
+import { PHARMACY_CONTENT } from '../-data/pharmacies'
+import { formatCopy } from './copy'
 // import { parsePhoneNumberFromString } from 'libphonenumber-js'
 
 const PHARMACY_LANDING_HREF =
@@ -33,17 +35,18 @@ export function telHref(phone: string): string {
   return `tel:${phoneE164(phone)}`
 }
 
-export const DRUG_SERVICE_PHONE = '(246) 535-4300'
+export const DRUG_SERVICE_PHONE = PHARMACY_CONTENT.copy.drugService.phone
 
 /**
  * Only the explicitly verified prescription channel may receive a prescription.
  */
-export function whatsappHref(pharmacy: Pharmacy): string | null {
+export function whatsappHref(
+  pharmacy: Pharmacy,
+  message = PHARMACY_CONTENT.copy.detail.whatsappMessage,
+): string | null {
   if (!pharmacy.whatsapp) return null
   // const number = parsePhoneNumberFromString(pharmacy.whatsapp, 'BB')
   const number = phoneE164(pharmacy.whatsapp).slice(1)
-  const text = encodeURIComponent(
-    `Hello, I would like to fill a prescription at ${pharmacy.name}. I will send a photo of my prescription.`,
-  )
+  const text = encodeURIComponent(formatCopy(message, { name: pharmacy.name }))
   return `https://wa.me/${number}?text=${text}`
 }

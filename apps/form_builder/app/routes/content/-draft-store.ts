@@ -23,11 +23,13 @@ export function readDraft<T>(key: string): T | null {
   }
 }
 
-export function writeDraft<T>(key: string, value: T): void {
+export function writeDraft<T>(key: string, value: T): boolean {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    return true;
   } catch {
-    // storage full/blocked/SSR — best-effort, the editor state still holds it.
+    // storage full/blocked/SSR — the editor state still holds it.
+    return false;
   }
 }
 

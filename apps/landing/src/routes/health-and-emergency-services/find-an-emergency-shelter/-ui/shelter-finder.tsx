@@ -21,14 +21,21 @@ import {
 } from '@govtech-bb/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { EMERGENCY_SHELTERS, PARISHES } from '../-data/emergency-shelters'
-import type { LatLon, Shelter } from '../-data/emergency-shelters'
+import {
+  getDemPhone,
+  PARISHES,
+  SHELTER_CONTENT,
+} from '../-data/emergency-shelters'
+import type {
+  LatLon,
+  Shelter,
+  ShelterContent,
+  ShelterCopy,
+} from '../-data/emergency-shelters'
+import { formatCopy } from '../-lib/copy'
 import { shelterDistance, userIsOnIsland } from '../-lib/shelter-distance'
 import { Chevron, CloseIcon, LocationIcon } from './icons'
 import { ShelterCard } from './shelter-card'
-
-const DEM_TEL = 'tel:+12464387575'
-const DEM_NUMBER = '438-7575'
 
 type SortKey = 'parish' | 'name' | 'capacity' | 'distance'
 type LocationState = 'idle' | 'loading' | 'success'
@@ -118,16 +125,23 @@ const GEO_OPTIONS: PositionOptions = {
   maximumAge: 60_000,
 }
 
-const LOCATION_ERRORS: Record<number, string> = {
-  1: 'You blocked location access. Allow location in your browser, or filter by parish instead.',
-  2: 'Your location is unavailable. Filter by parish instead.',
-  3: 'The location request timed out. Filter by parish instead.',
+const LOCATION_ERRORS: Record<number, keyof ShelterCopy['location']> = {
+  1: 'permissionDenied',
+  2: 'unavailable',
+  3: 'timedOut',
 }
 
 /** Shelters shown before the "Show more" button appears. */
 const PAGE_SIZE = 12
 
-export function ShelterFinder() {
+export function ShelterFinder({
+  content = SHELTER_CONTENT,
+}: { content?: ShelterContent } = {}) {
+  const { finder: copy, common, location } = content.copy
+  const dem = getDemPhone(content)
+  const accessibleCount = content.shelters.filter(
+    (shelter) => shelter.access,
+  ).length
   const [parishes, setParishes] = useState<string[]>([])
   const [categories, setCategories] = useState<string[]>([])
   const [accessible, setAccessible] = useState(false)
@@ -135,7 +149,9 @@ export function ShelterFinder() {
   const [sort, setSort] = useState<SortKey>('parish')
 
   const [userLocation, setUserLocation] = useState<LatLon | null>(null)
-  const [locationStatus, setLocationStatus] = useState<string | null>(null)
+  const [locationStatus, setLocationStatus] = useState<
+    keyof ShelterCopy['location'] | null
+  >(null)
   const [locationState, setLocationState] = useState<LocationState>('idle')
   const [filterOpen, setFilterOpen] = useState(true)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
@@ -191,22 +207,28 @@ export function ShelterFinder() {
 
   const results = useMemo(() => {
     const active: Filters = { parishes, categories, accessible, search }
-    return EMERGENCY_SHELTERS.filter((shelter) =>
-      matchesFilters(shelter, active),
-    ).sort((a, b) => compareForSort(a, b, sort, userLocation))
-  }, [parishes, categories, accessible, search, sort, userLocation])
+    return content.shelters
+      .filter((shelter) => matchesFilters(shelter, active))
+      .sort((a, b) => compareForSort(a, b, sort, userLocation))
+  }, [
+    content.shelters,
+    parishes,
+    categories,
+    accessible,
+    search,
+    sort,
+    userLocation,
+  ])
 
   const visibleShelters = results.slice(0, visibleCount)
 
   const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setLocationStatus(
-        'Your device does not support location. You can still filter by parish.',
-      )
+      setLocationStatus('unsupported')
       setSort('parish')
       return
     }
-    setLocationStatus('Finding your location…')
+    setLocationStatus('loading')
     setLocationState('loading')
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -218,26 +240,19 @@ export function ShelterFinder() {
           setUserLocation(null)
           setLocationState('idle')
           setSort('parish')
-          setLocationStatus(
-            "You appear to be outside Barbados, so distance isn't meaningful. Filter by parish instead.",
-          )
+          setLocationStatus('outsideBarbados')
           return
         }
         setUserLocation(found)
         setLocationState('success')
         setSort('distance')
-        setLocationStatus(
-          'Sorted by distance from your parish. Two shelters in the same parish show the same distance.',
-        )
+        setLocationStatus('success')
       },
       (error) => {
         setUserLocation(null)
         setLocationState('idle')
         setSort('parish')
-        setLocationStatus(
-          LOCATION_ERRORS[error.code] ??
-            'Could not get your location. Filter by parish instead.',
-        )
+        setLocationStatus(LOCATION_ERRORS[error.code] ?? 'failed')
       },
       GEO_OPTIONS,
     )
@@ -268,14 +283,14 @@ export function ShelterFinder() {
     })),
     ...categories.map((c) => ({
       key: `cat:${c}`,
-      label: `Category ${c}`,
+      label: formatCopy(common.categoryLabel, { category: c }),
       remove: () => setCategories((list) => list.filter((x) => x !== c)),
     })),
     ...(accessible
       ? [
           {
             key: 'access',
-            label: 'Accessible bathroom',
+            label: common.accessibleBathroom,
             remove: () => setAccessible(false),
           },
         ]
@@ -284,26 +299,22 @@ export function ShelterFinder() {
 
   const locationLabel =
     locationState === 'loading'
-      ? 'Finding your location…'
+      ? location.loading
       : locationState === 'success'
-        ? 'Location set — refresh'
-        : 'Use my location'
+        ? location.refresh
+        : location.use
 
   return (
-    <section aria-label="Shelter finder">
-      <Text
-        as="p"
-        className="mb-s text-grey-70 print:hidden"
-        size="body-sm"
-      >
+    <section aria-label={copy.label}>
+      <Text as="p" className="mb-s text-grey-70 print:hidden" size="body-sm">
         <button
           className="underline"
           onClick={() => window.print()}
           type="button"
         >
-          Print this list
+          {copy.printLabel}
         </button>{' '}
-        to keep a paper copy. Each shelter has a Google Maps directions link.
+        {copy.printHint}
       </Text>
 
       <div className="lg:grid lg:grid-cols-[20rem_1fr] lg:gap-8">
@@ -318,7 +329,9 @@ export function ShelterFinder() {
               onClick={() => setFilterOpen((open) => !open)}
               type="button"
             >
-              <span className="font-bold text-body underline">Filter</span>
+              <span className="font-bold text-body underline">
+                {copy.filterLabel}
+              </span>
               <Chevron open={filterOpen} />
             </button>
 
@@ -329,9 +342,9 @@ export function ShelterFinder() {
               >
                 <Input
                   autoComplete="off"
-                  label="Search by name"
+                  label={copy.searchLabel}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="e.g. Combermere"
+                  placeholder={copy.searchPlaceholder}
                   type="search"
                   value={search}
                 />
@@ -356,25 +369,25 @@ export function ShelterFinder() {
                       className="text-grey-70"
                       size="body-sm"
                     >
-                      {locationStatus}
+                      {location[locationStatus]}
                     </Text>
                   )}
                 </div>
 
                 <Select
-                  label="Sort by"
+                  label={copy.sortLabel}
                   onChange={(event) =>
                     onSortChange(event.target.value as SortKey)
                   }
                   value={sort}
                 >
-                  <option value="parish">Parish (default)</option>
-                  <option value="name">Name</option>
-                  <option value="capacity">Largest first</option>
-                  <option value="distance">Nearest first</option>
+                  <option value="parish">{copy.sortParish}</option>
+                  <option value="name">{copy.sortName}</option>
+                  <option value="capacity">{copy.sortCapacity}</option>
+                  <option value="distance">{copy.sortDistance}</option>
                 </Select>
 
-                <FilterGroup defaultOpen={false} title="Parish">
+                <FilterGroup defaultOpen={false} title={copy.parishHeading}>
                   {PARISHES.map((name) => (
                     <Checkbox
                       checked={parishes.includes(name)}
@@ -389,13 +402,13 @@ export function ShelterFinder() {
                 </FilterGroup>
 
                 <FilterGroup
-                  hint="Category 1 is used during a hurricane; Category 2 is used after one has passed."
-                  title="Category"
+                  hint={copy.categoryHint}
+                  title={copy.categoryHeading}
                 >
                   <Checkbox
                     checked={categories.includes('1')}
                     id="cat-1"
-                    label="Category 1"
+                    label={formatCopy(common.categoryLabel, { category: 1 })}
                     onChange={() =>
                       setCategories((list) => toggleValue(list, '1'))
                     }
@@ -403,7 +416,7 @@ export function ShelterFinder() {
                   <Checkbox
                     checked={categories.includes('2')}
                     id="cat-2"
-                    label="Category 2"
+                    label={formatCopy(common.categoryLabel, { category: 2 })}
                     onChange={() =>
                       setCategories((list) => toggleValue(list, '2'))
                     }
@@ -411,13 +424,15 @@ export function ShelterFinder() {
                 </FilterGroup>
 
                 <FilterGroup
-                  hint="Only 14 shelters have a bathroom suitable for people who use a wheelchair. The rest of the building may not be step-free — call ahead if you need to check."
-                  title="Accessibility"
+                  hint={formatCopy(copy.accessibilityHint, {
+                    count: accessibleCount,
+                  })}
+                  title={copy.accessibilityHeading}
                 >
                   <Checkbox
                     checked={accessible}
                     id="filter-access"
-                    label="Has an accessible bathroom"
+                    label={copy.accessibleLabel}
                     onChange={(event) =>
                       setAccessible(event.currentTarget.checked)
                     }
@@ -438,7 +453,7 @@ export function ShelterFinder() {
                     >
                       {tag.label}
                       <CloseIcon />
-                      <span className="sr-only">Remove filter</span>
+                      <span className="sr-only">{copy.removeFilterLabel}</span>
                     </button>
                   ))}
                 </div>
@@ -447,7 +462,7 @@ export function ShelterFinder() {
                   onClick={clearAll}
                   type="button"
                 >
-                  Clear all
+                  {copy.clearAllLabel}
                 </button>
               </div>
             )}
@@ -457,14 +472,21 @@ export function ShelterFinder() {
         {/* Results — single column on mobile, grid on desktop */}
         <div>
           <Text as="p" className="mb-s font-bold" role="status">
-            {resultCountLabel(visibleShelters.length, results.length)}
+            {resultCountLabel(visibleShelters.length, results.length, copy)}
           </Text>
 
           {results.length === 0 ? (
             <div className="border-blue-40 border-l-4 bg-blue-10 px-s py-xm">
               <Text as="p">
-                Try clearing a filter above, or call the Department of Emergency
-                Management on <Link href={DEM_TEL}>{DEM_NUMBER}</Link> for help.
+                {copy.emptyIntroduction}
+                {dem && (
+                  <>
+                    {' '}
+                    {common.phoneConnector}{' '}
+                    <Link href={dem.tel}>{dem.display}</Link>
+                  </>
+                )}{' '}
+                {copy.emptySuffix}
               </Text>
             </div>
           ) : (
@@ -472,8 +494,9 @@ export function ShelterFinder() {
               <ul className="grid list-none auto-rows-fr grid-cols-1 gap-s p-0 lg:grid-cols-2">
                 {visibleShelters.map((shelter) => (
                   <ShelterCard
+                    content={content}
                     distance={shelterDistance(shelter, userLocation)}
-                    key={shelter.name}
+                    key={shelter.id}
                     shelter={shelter}
                   />
                 ))}
@@ -487,12 +510,12 @@ export function ShelterFinder() {
                     type="button"
                     variant="secondary"
                   >
-                    Show{' '}
-                    {Math.min(
-                      PAGE_SIZE,
-                      results.length - visibleShelters.length,
-                    )}{' '}
-                    more shelters
+                    {formatCopy(copy.showMore, {
+                      count: Math.min(
+                        PAGE_SIZE,
+                        results.length - visibleShelters.length,
+                      ),
+                    })}
                   </Button>
                 </div>
               )}
@@ -545,12 +568,16 @@ function FilterGroup({
   )
 }
 
-function resultCountLabel(visible: number, matched: number): string {
+function resultCountLabel(
+  visible: number,
+  matched: number,
+  copy: ShelterCopy['finder'],
+): string {
   if (matched === 0) {
-    return 'No shelters match your filters'
+    return copy.noMatches
   }
   if (visible >= matched) {
-    return `Showing all ${matched} shelters`
+    return formatCopy(copy.allMatches, { count: matched })
   }
-  return `Showing ${visible} of ${matched} shelters`
+  return formatCopy(copy.pagedMatches, { visible, count: matched })
 }

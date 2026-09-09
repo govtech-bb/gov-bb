@@ -5,8 +5,14 @@
  * highlighted row).
  */
 
-import type { Pharmacy, Weekday, WeeklyHours } from '../-data/pharmacies'
-import { WEEKDAYS } from '../-data/pharmacies'
+import type {
+  Pharmacy,
+  PharmacyContent,
+  Weekday,
+  WeeklyHours,
+} from '../-data/pharmacies'
+import { PHARMACY_CONTENT, WEEKDAYS } from '../-data/pharmacies'
+import { formatCopy } from '../-lib/copy'
 import { dayHoursLabel, WEEKDAY_LABELS } from '../-lib/opening-hours'
 
 export function WeeklyHoursRows({
@@ -14,17 +20,23 @@ export function WeeklyHoursRows({
   today,
   todayIsHoliday,
   bankHolidayHours,
+  content = PHARMACY_CONTENT,
 }: {
   hours: WeeklyHours
   today: Weekday | null
   todayIsHoliday: boolean
   bankHolidayHours: Pharmacy['bankHolidayHours']
+  content?: PharmacyContent
 }) {
+  const copy = content.copy.hours
   return (
     <dl className="govbb-text-body m-0 flex flex-col divide-y divide-grey-20">
       {WEEKDAYS.map((weekday) => {
         const isToday = weekday === today && !todayIsHoliday
-        const label = dayHoursLabel(hours[weekday])
+        const label =
+          hours[weekday].length === 0
+            ? copy.closed
+            : dayHoursLabel(hours[weekday])
         return (
           <div
             className={`flex items-baseline justify-between gap-s px-xs py-xxs ${
@@ -34,12 +46,12 @@ export function WeeklyHoursRows({
           >
             <dt>
               {isToday
-                ? `Today, ${WEEKDAY_LABELS[weekday]}`
+                ? formatCopy(copy.todayLabel, { day: WEEKDAY_LABELS[weekday] })
                 : WEEKDAY_LABELS[weekday]}
             </dt>
             <dd
               className={`m-0 text-right tabular-nums ${
-                !isToday && label === 'Closed' ? 'text-grey-70' : ''
+                !isToday && hours[weekday].length === 0 ? 'text-grey-70' : ''
               }`}
             >
               {label}
@@ -50,11 +62,13 @@ export function WeeklyHoursRows({
       <div
         className={`flex items-baseline justify-between gap-s px-xs py-xxs ${todayIsHoliday ? 'bg-blue-10 govbb-text-bold' : ''}`}
       >
-        <dt>{todayIsHoliday ? 'Today, public holiday' : 'Public holidays'}</dt>
+        <dt>{todayIsHoliday ? copy.publicHolidayToday : copy.publicHoliday}</dt>
         <dd className="m-0 text-right tabular-nums">
           {bankHolidayHours
-            ? dayHoursLabel(bankHolidayHours)
-            : 'Not confirmed. Call before travelling.'}
+            ? bankHolidayHours.length === 0
+              ? copy.closed
+              : dayHoursLabel(bankHolidayHours)
+            : copy.unknownHoliday}
         </dd>
       </div>
     </dl>

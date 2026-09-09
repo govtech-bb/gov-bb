@@ -10,61 +10,57 @@
 
 import { Heading, Link, ShowHide, Text } from '@govtech-bb/react'
 import { format, parseISO } from 'date-fns'
-import {
-  EMERGENCY_SHELTERS,
-  SHELTERS_LAST_UPDATED,
-  SHELTERS_NEXT_REVIEW,
-} from '../-data/emergency-shelters'
-import {
-  DISTRICT_CHAIRS,
-  HURRICANE_TERMS,
-  PHONE_DIRECTORY,
-} from '../-data/guidance-data'
+import { getDemPhone, SHELTER_CONTENT } from '../-data/emergency-shelters'
+import type { ShelterContent } from '../-data/emergency-shelters'
+import { formatCopy } from '../-lib/copy'
 import type { PhoneEntry } from '../-data/guidance-data'
 import { EMERGENCY_SHELTER_FIND_HREF } from '../-lib/routes'
 
-const DEM_TEL = 'tel:+12464387575'
-
-export const TITLE = 'Before you go to a shelter'
-export const DESCRIPTION =
-  'What to bring, shelter rules, accessibility, the entry protocol, District Emergency Organisations, hurricane terms and emergency phone numbers for Barbados emergency shelters.'
+export const TITLE = SHELTER_CONTENT.copy.guidance.title
+export const DESCRIPTION = SHELTER_CONTENT.copy.guidance.description
 
 const CONTENTS = [
-  { id: 'go-bag', label: 'What to bring (Emergency Go Bag)' },
-  { id: 'before-you-leave', label: 'Before you leave home' },
-  { id: 'what-to-expect', label: 'What to expect when you arrive' },
-  { id: 'rules', label: 'Shelter rules' },
-  { id: 'protocol', label: 'Protocol for entering shelters' },
-  { id: 'accessible-shelters', label: 'Shelters with an accessible bathroom' },
-  {
-    id: 'district-organisations',
-    label: 'Your District Emergency Organisation',
-  },
-  { id: 'hurricane-terms', label: 'Hurricane terms' },
-  { id: 'phone-numbers', label: 'All phone numbers' },
-]
+  { id: 'go-bag', section: 'goBag' },
+  { id: 'before-you-leave', section: 'beforeYouLeave' },
+  { id: 'what-to-expect', section: 'arrival' },
+  { id: 'rules', section: 'rules' },
+  { id: 'protocol', section: 'protocol' },
+  { id: 'accessible-shelters', section: 'accessible' },
+  { id: 'district-organisations', section: 'districts' },
+  { id: 'hurricane-terms', section: 'terms' },
+  { id: 'phone-numbers', section: 'phones' },
+] as const
 
-const accessibleShelters = EMERGENCY_SHELTERS.filter(
-  (shelter) => shelter.access,
-)
-const accessibleCategory1 = accessibleShelters.filter((s) => s.category === 1)
-const accessibleCategory2 = accessibleShelters.filter((s) => s.category === 2)
-
-export function EmergencyShelterGuidancePage() {
+export function EmergencyShelterGuidancePage({
+  content = SHELTER_CONTENT,
+}: { content?: ShelterContent } = {}) {
+  const { guidance: copy, common } = content.copy
+  const dem = getDemPhone(content)
+  const accessibleShelters = content.shelters.filter(
+    (shelter) => shelter.access,
+  )
+  const accessibleCategory1 = accessibleShelters.filter(
+    (shelter) => shelter.category === 1,
+  )
+  const accessibleCategory2 = accessibleShelters.filter(
+    (shelter) => shelter.category === 2,
+  )
   return (
     <div className="mb-l flex max-w-[44rem] flex-col gap-m">
       <div className="flex flex-col gap-xs">
-        <Heading as="h1">{TITLE}</Heading>
+        <Heading as="h1">{copy.title}</Heading>
         <div className="border-blue-10 border-b-4 pb-4 text-grey-70">
           <Text as="p" size="body-sm">
-            Last updated on {format(parseISO(SHELTERS_LAST_UPDATED), 'PPP')}.
-            Next review: {format(parseISO(SHELTERS_NEXT_REVIEW), 'PPP')}.
+            {formatCopy(common.freshness, {
+              lastUpdated: format(parseISO(content.lastUpdated), 'PPP'),
+              nextReview: format(parseISO(content.nextReview), 'PPP'),
+            })}
           </Text>
         </div>
       </div>
 
       <Text as="p" className="text-grey-70">
-        Read this guidance before you go to an emergency shelter in Barbados.
+        {copy.introduction}
       </Text>
 
       <nav
@@ -72,142 +68,82 @@ export function EmergencyShelterGuidancePage() {
         className="flex flex-col gap-s border-teal-80 border-l-4 bg-teal-10 p-s"
       >
         <Heading as="h2" id="contents-heading" size="h3">
-          Contents
+          {copy.contentsHeading}
         </Heading>
         <ul className="list-disc space-y-xs pl-6">
           {CONTENTS.map((item) => (
             <li key={item.id}>
-              <Link href={`#${item.id}`}>{item.label}</Link>
+              <Link href={`#${item.id}`}>{copy[item.section].heading}</Link>
             </li>
           ))}
         </ul>
       </nav>
 
-      <GuidanceSection heading="What to bring (Emergency Go Bag)" id="go-bag">
+      <GuidanceSection heading={copy.goBag.heading} id="go-bag">
+        <Text as="p">{copy.goBag.introduction}</Text>
+        <BulletList items={copy.goBag.items} />
         <Text as="p">
-          Pack a Go Bag that is easy to grab if you have to leave home. Refresh
-          it at the start of the hurricane season on 1 June.
-        </Text>
-        <BulletList
-          items={[
-            'Bottled water',
-            'A small first aid kit and any prescription medication',
-            'A small flashlight and spare batteries',
-            'Infant essentials — medicine, sterile water, diapers, ready formula, bottles',
-            "Your ID, passport or driver's licence, in water-tight plastic bags",
-            'Cash, in denominations of $20 and less',
-            'Hand sanitiser and wipes',
-            'Personal toiletries and sanitary items',
-            'A whistle',
-            'A portable radio and batteries',
-            'Ready-to-eat food (canned, packaged or boxed) and a can opener',
-          ]}
-        />
-        <Text as="p">
-          Also keep a <strong>Household Disaster Supply Kit</strong> at home for
-          use after the storm — drinking water, two weeks of non-perishable
-          food, a tarpaulin, clean-up supplies and a fire extinguisher.
-        </Text>
-      </GuidanceSection>
-
-      <GuidanceSection heading="Before you leave home" id="before-you-leave">
-        <BulletList
-          items={[
-            'Listen for evacuation advice on local radio, TV news and official social media. Leave when you are told to.',
-            'Fill containers with water — the bathtub, sinks and the washing machine.',
-            'Shut off water and electricity at the mains.',
-            'Close the valve on large propane tanks and anchor them.',
-            'Lock all windows and doors.',
-            'Take your Go Bag and any prescription medication.',
-            'Leave early, in daylight if you can. Do not drive through floodwater.',
-          ]}
-        />
-        <Text as="p">
-          <strong>Pets are not allowed in shelters.</strong> Arrange to leave
-          them with friends or family, and pack a Pet Survival Kit.
+          {copy.goBag.kitPrefix} <strong>{copy.goBag.kitEmphasis}</strong>{' '}
+          {copy.goBag.kitSuffix}
         </Text>
       </GuidanceSection>
 
       <GuidanceSection
-        heading="What to expect when you arrive"
-        id="what-to-expect"
+        heading={copy.beforeYouLeave.heading}
+        id="before-you-leave"
       >
-        <BulletList
-          items={[
-            'A warden will register you and your family at the door. Have your ID ready.',
-            'The warden will assign you a space — this may be a hall, a classroom or a smaller individual room.',
-            'Food is not provided. Bring your own from your Go Bag and Disaster Supply Kit.',
-            'Bedding is not provided either. Bring a pillow, blanket or sleeping bag if you can.',
-            "The space is shared. Be considerate of other occupants and follow the warden's instructions.",
-            'Cell signal, internet and electricity may be down. Keep a portable radio with you for updates.',
-            'Wardens may ask you to help with simple shelter tasks. You are expected to cooperate.',
-          ]}
-        />
-      </GuidanceSection>
-
-      <GuidanceSection heading="Shelter rules" id="rules">
+        <BulletList items={copy.beforeYouLeave.items} />
         <Text as="p">
-          The Senior Warden runs the shelter and their decisions are final.
-          Every occupant must cooperate, including helping with shelter tasks if
-          the Warden asks.
-        </Text>
-        <Text as="p">
-          You <strong>cannot</strong> bring:
-        </Text>
-        <BulletList items={['pets', 'firearms or other weapons', 'alcohol']} />
-        <Text as="p">
-          You <strong>cannot</strong>:
-        </Text>
-        <BulletList
-          items={[
-            'smoke in the shelter',
-            'damage the building, furniture or equipment — you will be prosecuted',
-            'use violence, profane language or behave in an anti-social way',
-          ]}
-        />
-        <Text as="p">
-          Shelter staff are <strong>not</strong> responsible for any belongings
-          you bring. The Department of Emergency Management is not liable for
-          lost or damaged property.
-        </Text>
-        <Text as="p">
-          If a State of Emergency is declared under the Emergency Management Act
-          (CAP 160A), you must follow any orders made under the Act.
+          <strong>{copy.beforeYouLeave.petsEmphasis}</strong>{' '}
+          {copy.beforeYouLeave.petsAdvice}
         </Text>
       </GuidanceSection>
 
-      <GuidanceSection heading="Protocol for entering shelters" id="protocol">
-        <BulletList
-          items={[
-            'You do not have to wear a face mask, but you can if you want to.',
-            'If you have new respiratory symptoms, you must wear a face mask.',
-            'Hand sanitiser is available on entry — using it is optional.',
-            'If you have been isolating at home with a communicable illness, tell the warden on arrival and wear a face mask.',
-          ]}
-        />
+      <GuidanceSection heading={copy.arrival.heading} id="what-to-expect">
+        <BulletList items={copy.arrival.items} />
+      </GuidanceSection>
+
+      <GuidanceSection heading={copy.rules.heading} id="rules">
+        <Text as="p">{copy.rules.introduction}</Text>
         <Text as="p">
-          Shelters can open at any time during the Atlantic hurricane season,
-          between 1 June and 30 November.
+          {copy.rules.you} <strong>{copy.rules.cannot}</strong>{' '}
+          {copy.rules.bring}
         </Text>
+        <BulletList items={copy.rules.prohibitedItems} />
+        <Text as="p">
+          {copy.rules.you} <strong>{copy.rules.cannot}</strong>:
+        </Text>
+        <BulletList items={copy.rules.prohibitedActions} />
+        <Text as="p">
+          {copy.rules.propertyPrefix}{' '}
+          <strong>{copy.rules.propertyEmphasis}</strong>{' '}
+          {copy.rules.propertySuffix}
+        </Text>
+        <Text as="p">{copy.rules.stateOfEmergency}</Text>
+      </GuidanceSection>
+
+      <GuidanceSection heading={copy.protocol.heading} id="protocol">
+        <BulletList items={copy.protocol.items} />
+        <Text as="p">{copy.protocol.seasonInformation}</Text>
       </GuidanceSection>
 
       <GuidanceSection
-        heading="Shelters with an accessible bathroom"
+        heading={copy.accessible.heading}
         id="accessible-shelters"
       >
         <Text as="p">
-          {accessibleShelters.length} shelters have a bathroom suitable for
-          people who use a wheelchair. The rest of the building may not be
-          step-free — call ahead if you need to check.
+          {formatCopy(copy.accessible.introduction, {
+            count: accessibleShelters.length,
+          })}
         </Text>
         <Heading as="h3" size="h3">
-          Category 1 (used during a hurricane)
+          {copy.accessible.category1Heading}
         </Heading>
         <BulletList
           items={accessibleCategory1.map((s) => `${s.name} — ${s.parish}`)}
         />
         <Heading as="h3" size="h3">
-          Category 2 (used after a hurricane)
+          {copy.accessible.category2Heading}
         </Heading>
         <BulletList
           items={accessibleCategory2.map((s) => `${s.name} — ${s.parish}`)}
@@ -215,21 +151,16 @@ export function EmergencyShelterGuidancePage() {
       </GuidanceSection>
 
       <GuidanceSection
-        heading="Your District Emergency Organisation"
+        heading={copy.districts.heading}
         id="district-organisations"
       >
-        <Text as="p">
-          A District Emergency Organisation (DEO) is a network of trained
-          volunteers who coordinate the emergency response for your community.
-          Contact your local chairperson if you need community-level help
-          before, during or after an emergency.
-        </Text>
-        <ShowHide summary="Find your district chairperson">
+        <Text as="p">{copy.districts.introduction}</Text>
+        <ShowHide summary={copy.districts.summary}>
           <ul className="m-0 flex list-none flex-col p-0">
-            {DISTRICT_CHAIRS.map((chair) => (
+            {content.districtChairs.map((chair) => (
               <li
                 className="grid gap-0.5 border-grey-20 border-b py-s sm:grid-cols-[1fr_1fr] sm:items-baseline sm:gap-6"
-                key={chair.district}
+                key={chair.id}
               >
                 <span className="font-bold">{chair.district}</span>
                 <span>
@@ -239,23 +170,26 @@ export function EmergencyShelterGuidancePage() {
             ))}
           </ul>
           <Text as="p" className="mt-s text-grey-70" size="body-sm">
-            Some districts (Christ Church South, Christ Church West Central and
-            St. Michael North) currently have no listed chairperson. Contact DEM
-            on <Link href={DEM_TEL}>438-7575</Link> if your district is not
-            shown.
+            {copy.districts.missingIntroduction}
+            {dem && (
+              <>
+                {' '}
+                {common.phoneConnector}{' '}
+                <Link href={dem.tel}>{dem.display}</Link>
+              </>
+            )}{' '}
+            {copy.districts.missingSuffix}
           </Text>
         </ShowHide>
       </GuidanceSection>
 
-      <GuidanceSection heading="Hurricane terms" id="hurricane-terms">
-        <Text as="p">
-          Words you may hear on local radio or TV during a storm.
-        </Text>
+      <GuidanceSection heading={copy.terms.heading} id="hurricane-terms">
+        <Text as="p">{copy.terms.introduction}</Text>
         <dl className="m-0 flex flex-col">
-          {HURRICANE_TERMS.map((entry) => (
+          {content.hurricaneTerms.map((entry) => (
             <div
               className="flex flex-col gap-0.5 border-grey-20 border-b py-s"
-              key={entry.term}
+              key={entry.id}
             >
               <dt className="font-bold">{entry.term}</dt>
               <dd className="m-0 text-grey-70">{entry.definition}</dd>
@@ -264,19 +198,16 @@ export function EmergencyShelterGuidancePage() {
         </dl>
       </GuidanceSection>
 
-      <GuidanceSection heading="All phone numbers" id="phone-numbers">
-        <Text as="p">
-          Save these numbers ahead of the hurricane season. All numbers below
-          are published in the 2026 Emergency Shelter Booklet.
-        </Text>
-        {PHONE_DIRECTORY.map((group) => (
-          <div className="flex flex-col gap-s" key={group.heading}>
+      <GuidanceSection heading={copy.phones.heading} id="phone-numbers">
+        <Text as="p">{copy.phones.introduction}</Text>
+        {content.phoneDirectory.map((group) => (
+          <div className="flex flex-col gap-s" key={group.id}>
             <Heading as="h3" size="h3">
               {group.heading}
             </Heading>
             <ul className="m-0 flex list-none flex-col p-0">
               {group.entries.map((entry) => (
-                <PhoneRow entry={entry} key={entry.label} />
+                <PhoneRow entry={entry} key={entry.id} />
               ))}
             </ul>
           </div>
@@ -285,18 +216,15 @@ export function EmergencyShelterGuidancePage() {
 
       <aside className="border-grey-20 border-t pt-m">
         <Heading as="h2" size="h3">
-          Ready to find a shelter?
+          {copy.findHeading}
         </Heading>
         <Text as="p">
-          <Link href={EMERGENCY_SHELTER_FIND_HREF}>
-            Find a shelter near you
-          </Link>
+          <Link href={EMERGENCY_SHELTER_FIND_HREF}>{copy.findLabel}</Link>
         </Text>
       </aside>
 
       <Text as="p" className="text-grey-70" size="body-sm">
-        Source: 2026 Emergency Shelter Booklet, Department of Emergency
-        Management.
+        {common.source}
       </Text>
     </div>
   )
@@ -325,7 +253,7 @@ function GuidanceSection({
   )
 }
 
-function BulletList({ items }: { items: string[] }) {
+function BulletList({ items }: { items: ReadonlyArray<string> }) {
   return (
     <ul className="list-disc space-y-xs pl-6">
       {items.map((item) => (
@@ -341,7 +269,7 @@ function PhoneRow({ entry }: { entry: PhoneEntry }) {
       <span className="font-bold">{entry.label}</span>
       <span>
         {entry.contacts.map((contact, index) => (
-          <span key={contact.tel}>
+          <span key={contact.id}>
             {index > 0 && ', '}
             <Link href={contact.tel}>{contact.display}</Link>
             {contact.note ? ` ${contact.note}` : ''}

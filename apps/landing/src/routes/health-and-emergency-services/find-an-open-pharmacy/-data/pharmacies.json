@@ -1,5 +1,162 @@
 {
+  "schemaVersion": 1,
   "lastUpdated": "2026-09-09",
+  "copy": {
+    "page": {
+      "title": "Search for pharmacies",
+      "description": "See which pharmacies are open now anywhere in Barbados, find free or subsidised medication through the Barbados Drug Service, and filter by parish.",
+      "lastUpdated": "Last updated on {date}.",
+      "introduction": "Find government and participating private pharmacies across Barbados. Covered medication is free at government pharmacies for eligible patients; participating private pharmacies charge a dispensing fee. Government pharmacies appear first.",
+      "eligibilityLinkLabel": "Check who qualifies and what to bring",
+      "sourceHeading": "Where this information comes from",
+      "sourceDescription": "Pharmacy details come from the Drug Service register and published pharmacy information. Participation that has not been confirmed is labelled separately. Call before travelling to check hours, medication availability and costs."
+    },
+    "drugService": {
+      "heading": "Drug Service",
+      "description": "If a pharmacy is refusing your Drug Service prescription, contact the Drug Service for help checking your entitlement.",
+      "phoneLabel": "Phone:",
+      "phone": "(246) 535-4300",
+      "emailLabel": "Email:",
+      "email": "management@drugservice.gov.bb",
+      "websiteLabel": "Website:",
+      "website": "https://drugservice.gov.bb",
+      "websiteLinkLabel": "drugservice.gov.bb",
+      "addressLabel": "Address:",
+      "address": "6th Floor, Warrens Tower II"
+    },
+    "finder": {
+      "label": "Pharmacy finder",
+      "resultsHeading": "Results",
+      "noScript": "Call the pharmacies below to confirm opening times.",
+      "filterHeading": "Filter pharmacies",
+      "filterToggle": "Filter",
+      "searchLabel": "Search by name or place",
+      "searchPlaceholder": "e.g. Winston Scott, Oistins",
+      "costHeading": "Cost and type",
+      "typeLabel": "Pharmacy type",
+      "typeDescription": "Covered medication is free at government pharmacies for eligible patients. Participating private pharmacies charge a dispensing fee.",
+      "typeAll": "All pharmacy types",
+      "typeGovernment": "Government",
+      "typePrivate": "Private (takes subsidy)",
+      "subsidisedLabel": "Free and subsidised medication only",
+      "prescriptionHeading": "Prescription colour",
+      "prescriptionLabel": "Colour",
+      "prescriptionDescription": "The colour of the prescription your doctor gave you. Yellow and green (GEHP) prescriptions are filled at government pharmacies. Call to check your medication is covered.",
+      "prescriptionAny": "Any colour",
+      "slipFilterLabel": "{colour} prescription",
+      "openingHeading": "Opening hours",
+      "openNowLabel": "Open right now",
+      "openNowDescription": "Uses Barbados time and listed dispensing hours. Pharmacies with unconfirmed hours today are excluded. Call before travelling.",
+      "parishHeading": "Parish",
+      "removeFilterLabel": "Remove filter",
+      "resetFiltersLabel": "Reset filters",
+      "noMatches": "No pharmacies match your filters",
+      "oneMatch": "Showing 1 pharmacy",
+      "allMatches": "Showing all {count} pharmacies",
+      "pagedMatches": "Showing {visible} of {count} pharmacies",
+      "showMore": "Show {count} more pharmacies"
+    },
+    "location": {
+      "loading": "Finding your location…",
+      "active": "Location on (turn off)",
+      "use": "Use my location",
+      "unsupported": "Your browser cannot share your location. You can still filter by parish.",
+      "success": "Government pharmacies first. Within each group, open pharmacies come first, then those nearest to you.",
+      "permissionDenied": "Location permission is blocked, so results are not sorted by distance. Allow location in your browser settings, or filter by parish instead.",
+      "unavailable": "We could not get your location, so results are not sorted by distance. Filter by parish instead.",
+      "timedOut": "The location request timed out. Try again, or filter by parish instead.",
+      "failed": "We could not get your location. Filter by parish instead."
+    },
+    "detail": {
+      "fallbackTitle": "Pharmacy",
+      "fallbackDescription": "Pharmacy details.",
+      "metadataDescription": "Opening hours, phone number and directions for {name}, {parish}, Barbados.",
+      "directionsLabel": "Get directions",
+      "cardDirectionsLabel": "Directions",
+      "callLabel": "Call {phone}",
+      "noPhone": "No number listed. Call the Drug Service on",
+      "openingHeading": "Opening times",
+      "unknownHours": "Opening hours have not been confirmed. Call before you go.",
+      "holidayLabel": "Public holidays:",
+      "holidayWarning": "many pharmacies close or shorten their hours on public holidays. Call before you go.",
+      "refusedLabel": "If your prescription is refused:",
+      "refusedDescription": "contact the Drug Service if you need help checking your entitlement. Call",
+      "contactHeading": "Contact and help",
+      "telephoneLabel": "Telephone:",
+      "extensionMessage": "Dial extension {extension} after calling.",
+      "alternativeTelephoneLabel": "Alternative telephone:",
+      "whatsappLabel": "Order prescription via WhatsApp (opens in a new tab)",
+      "whatsappMessage": "Hello, I would like to fill a prescription at {name}. I will send a photo of my prescription.",
+      "callAhead": "Opening hours and Drug Service participation can change. Call ahead to confirm.",
+      "nonParticipatingWarning": "This pharmacy does not participate in the Drug Service subsidy. Ask the pharmacy about medication costs before you travel.",
+      "unconfirmedWarning": "Contact the Drug Service to confirm this branch's participation before relying on subsidised medication here.",
+      "fullDetailsLabel": "Full details"
+    },
+    "slips": {
+      "heading": "Prescriptions accepted",
+      "introduction": "Check the colour of the prescription your doctor gave you before you travel.",
+      "helpLabel": "What prescription colours mean",
+      "labels": {
+        "white": "White (Drug Service)",
+        "yellow": "Yellow (GEHP)",
+        "green": "Green (GEHP dependant)"
+      },
+      "accepted": "Accepted",
+      "notAccepted": "Not accepted",
+      "unconfirmed": "Drug Service participation is not confirmed. Call to check whether this prescription is covered.",
+      "governmentAccepted": "Accepted for selected medications. Call to check yours is covered.",
+      "privateAccepted": "Accepted. A small dispensing fee applies.",
+      "nearest": "Not accepted here. Nearest pharmacy accepting {colour} is {name}, {parish}, {distance}.",
+      "whiteFallback": "Not accepted here. Participating private pharmacies accept it.",
+      "governmentFallback": "Not accepted here. Government polyclinic pharmacies accept it."
+    },
+    "cost": {
+      "government": "Government pharmacy: no dispensing fee",
+      "participating": "Participating private pharmacy: dispensing fee",
+      "notParticipating": "Outside the Drug Service subsidy",
+      "unconfirmed": "Subsidy participation not confirmed"
+    },
+    "hours": {
+      "unknownToday": "Today's hours not confirmed. Call before travelling.",
+      "open": "Open",
+      "until": "until {time}",
+      "closingSoon": "Closes in {minutes} min",
+      "at": "at {time}",
+      "closed": "Closed",
+      "opensToday": "opens {time}",
+      "opensMidnight": "opens midnight tonight",
+      "opensDay": "opens {day} {time}",
+      "todayLabel": "Today, {day}",
+      "publicHolidayToday": "Today, public holiday",
+      "publicHoliday": "Public holidays",
+      "unknownHoliday": "Not confirmed. Call before travelling.",
+      "unknownWeek": "Call to confirm opening hours",
+      "privateSlipWarning": "Yellow or green (GEHP) prescriptions are not covered here. You would pay full price."
+    },
+    "noResults": {
+      "heading": "No pharmacies match your search",
+      "includeOtherHours": "Include pharmacies with other opening times",
+      "searchAllParishes": "Search all parishes",
+      "includeTypes": "Include government and private pharmacies",
+      "anySlip": "Show pharmacies for any prescription colour",
+      "allListed": "Include all listed pharmacies",
+      "clearSearch": "Clear your search “{query}”",
+      "resetDescription": "Return to the default list of government and participating private pharmacies.",
+      "matchCount": "{count} of the {total} pharmacies would match.",
+      "nextOpening": "{name} opens {day}{time}.",
+      "checkPrescription": "Check your prescription is accepted before you travel.",
+      "checkParticipation": "Check participation and medication costs before travelling.",
+      "governmentNone": "No government pharmacies",
+      "privateNone": "No private pharmacies",
+      "none": "No pharmacies",
+      "query": "matching “{query}”",
+      "slip": "accepting a {colour} prescription",
+      "parishes": "in {parishes}",
+      "noneOpen": "have confirmed opening hours right now.",
+      "noneFound": "were found.",
+      "subsidisedOnly": "Only government and confirmed participating private pharmacies were included."
+    }
+  },
   "pharmacies": [
     {
       "slug": "winston-scott-polyclinic",
@@ -58,12 +215,14 @@
           "fields": ["hours"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
           "checkedOn": "2026-09-07",
-          "note": "Schedule retained from the reviewed government register; this date records the dataset review."
+          "note": "Schedule retained from the reviewed government register; this date records the dataset review.",
+          "id": "winston-scott-polyclinic-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "winston-scott-polyclinic-source-2"
         }
       ]
     },
@@ -119,12 +278,14 @@
           "fields": ["hours"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
           "checkedOn": "2026-09-07",
-          "note": "Schedule retained from the reviewed government register; this date records the dataset review."
+          "note": "Schedule retained from the reviewed government register; this date records the dataset review.",
+          "id": "branford-taitt-polyclinic-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "branford-taitt-polyclinic-source-2"
         }
       ]
     },
@@ -180,12 +341,14 @@
           "fields": ["hours"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
           "checkedOn": "2026-09-07",
-          "note": "Schedule retained from the reviewed government register; this date records the dataset review."
+          "note": "Schedule retained from the reviewed government register; this date records the dataset review.",
+          "id": "edgar-cochrane-polyclinic-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "edgar-cochrane-polyclinic-source-2"
         }
       ]
     },
@@ -241,12 +404,14 @@
           "fields": ["hours"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
           "checkedOn": "2026-09-07",
-          "note": "Schedule retained from the reviewed government register; this date records the dataset review."
+          "note": "Schedule retained from the reviewed government register; this date records the dataset review.",
+          "id": "eunice-gibson-polyclinic-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "eunice-gibson-polyclinic-source-2"
         }
       ]
     },
@@ -302,12 +467,14 @@
           "fields": ["hours"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
           "checkedOn": "2026-09-07",
-          "note": "Schedule retained from the reviewed government register; this date records the dataset review."
+          "note": "Schedule retained from the reviewed government register; this date records the dataset review.",
+          "id": "randal-phillips-polyclinic-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "randal-phillips-polyclinic-source-2"
         }
       ]
     },
@@ -363,12 +530,14 @@
           "fields": ["hours"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
           "checkedOn": "2026-09-07",
-          "note": "Schedule retained from the reviewed government register; this date records the dataset review."
+          "note": "Schedule retained from the reviewed government register; this date records the dataset review.",
+          "id": "frederick-miller-polyclinic-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "frederick-miller-polyclinic-source-2"
         }
       ]
     },
@@ -424,12 +593,14 @@
           "fields": ["hours"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
           "checkedOn": "2026-09-07",
-          "note": "Schedule retained from the reviewed government register; this date records the dataset review."
+          "note": "Schedule retained from the reviewed government register; this date records the dataset review.",
+          "id": "david-thompson-health-complex-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "david-thompson-health-complex-source-2"
         }
       ]
     },
@@ -485,12 +656,14 @@
           "fields": ["hours"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
           "checkedOn": "2026-09-07",
-          "note": "Schedule retained from the reviewed government register; this date records the dataset review."
+          "note": "Schedule retained from the reviewed government register; this date records the dataset review.",
+          "id": "maurice-byer-polyclinic-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "maurice-byer-polyclinic-source-2"
         }
       ]
     },
@@ -546,12 +719,14 @@
           "fields": ["hours"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
           "checkedOn": "2026-09-07",
-          "note": "Schedule retained from the reviewed government register; this date records the dataset review."
+          "note": "Schedule retained from the reviewed government register; this date records the dataset review.",
+          "id": "st-philip-polyclinic-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "st-philip-polyclinic-source-2"
         }
       ]
     },
@@ -593,12 +768,14 @@
           "fields": ["hours"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
           "checkedOn": "2026-09-07",
-          "note": "Schedule retained from the reviewed government register; this date records the dataset review."
+          "note": "Schedule retained from the reviewed government register; this date records the dataset review.",
+          "id": "st-andrew-outpatient-clinic-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "st-andrew-outpatient-clinic-source-2"
         }
       ]
     },
@@ -645,12 +822,14 @@
           "fields": ["hours"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
           "checkedOn": "2026-09-07",
-          "note": "Schedule retained from the reviewed government register; this date records the dataset review."
+          "note": "Schedule retained from the reviewed government register; this date records the dataset review.",
+          "id": "st-joseph-outpatient-clinic-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "st-joseph-outpatient-clinic-source-2"
         }
       ]
     },
@@ -697,12 +876,14 @@
           "fields": ["hours"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
           "checkedOn": "2026-09-07",
-          "note": "Schedule retained from the reviewed government register; this date records the dataset review."
+          "note": "Schedule retained from the reviewed government register; this date records the dataset review.",
+          "id": "st-thomas-outpatient-clinic-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "Drug Service register of government dispensaries, May 2026 (existing reviewed dataset)",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "st-thomas-outpatient-clinic-source-2"
         }
       ]
     },
@@ -775,19 +956,22 @@
         {
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 49",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "imart-pharmacy-lanterns-mall-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "https://www.imartstores.com/pharmacy.html",
           "checkedOn": "2026-09-07",
-          "note": "Telephone also checked against Active.Private.Participating.Pharmacies.Aug.2026.docx."
+          "note": "Telephone also checked against Active.Private.Participating.Pharmacies.Aug.2026.docx.",
+          "id": "imart-pharmacy-lanterns-mall-source-2"
         },
         {
           "fields": ["hours"],
           "source": "https://www.imartstores.com/about-us/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 54, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm. Existing weekly hours agree with the supplied schedule."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 54, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm. Existing weekly hours agree with the supplied schedule.",
+          "id": "imart-pharmacy-lanterns-mall-source-3"
         }
       ]
     },
@@ -849,19 +1033,22 @@
         {
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 51",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "imart-pharmacy-sheraton-mall-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "https://www.imartstores.com/pharmacy.html",
           "checkedOn": "2026-09-07",
-          "note": "Telephone also checked against Active.Private.Participating.Pharmacies.Aug.2026.docx."
+          "note": "Telephone also checked against Active.Private.Participating.Pharmacies.Aug.2026.docx.",
+          "id": "imart-pharmacy-sheraton-mall-source-2"
         },
         {
           "fields": ["hours"],
           "source": "https://www.imartstores.com/about-us/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 56, reviewed 2026-09-09. Supplied hours: Mon–Sat 9am–6pm, Sun closed. Existing independently reviewed weekly hours retained where the document differs."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 56, reviewed 2026-09-09. Supplied hours: Mon–Sat 9am–6pm, Sun closed. Existing independently reviewed weekly hours retained where the document differs.",
+          "id": "imart-pharmacy-sheraton-mall-source-3"
         }
       ]
     },
@@ -934,19 +1121,22 @@
         {
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 53",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "imart-pharmacy-haggatt-hall-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "https://www.imartstores.com/pharmacy.html",
           "checkedOn": "2026-09-07",
-          "note": "Telephone also checked against Active.Private.Participating.Pharmacies.Aug.2026.docx."
+          "note": "Telephone also checked against Active.Private.Participating.Pharmacies.Aug.2026.docx.",
+          "id": "imart-pharmacy-haggatt-hall-source-2"
         },
         {
           "fields": ["hours"],
           "source": "https://www.imartstores.com/about-us/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 58, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm. Existing weekly hours agree with the supplied schedule."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 58, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm. Existing weekly hours agree with the supplied schedule.",
+          "id": "imart-pharmacy-haggatt-hall-source-3"
         }
       ]
     },
@@ -1019,18 +1209,21 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "imart-pharmacy-the-walk-welches-source-1"
         },
         {
           "fields": ["hours"],
           "source": "https://www.imartstores.com/about-us/",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "imart-pharmacy-the-walk-welches-source-2"
         },
         {
           "fields": ["contacts"],
           "source": "https://www.imartstores.com/pharmacy.html",
           "checkedOn": "2026-09-07",
-          "note": "Published branch WhatsApp number; telephone retained from existing directory."
+          "note": "Published branch WhatsApp number; telephone retained from existing directory.",
+          "id": "imart-pharmacy-the-walk-welches-source-3"
         }
       ]
     },
@@ -1091,13 +1284,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 55",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "imart-pharmacy-wildey-commercial-centre-source-1"
         },
         {
           "fields": ["hours"],
           "source": "https://www.imartstores.com/about-us/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 60, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm, Sun closed. Existing weekly hours agree with the supplied schedule."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 60, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm, Sun closed. Existing weekly hours agree with the supplied schedule.",
+          "id": "imart-pharmacy-wildey-commercial-centre-source-2"
         }
       ]
     },
@@ -1118,13 +1313,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 56",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "imart-pharmacy-six-roads-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 61",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–8pm, Sun closed."
+          "note": "Supplied hours: Mon–Sat 8am–8pm, Sun closed.",
+          "id": "imart-pharmacy-six-roads-source-2"
         }
       ],
       "hours": {
@@ -1235,19 +1432,22 @@
         {
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 54",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "imart-pharmacy-the-estates-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "https://www.imartstores.com/pharmacy.html",
           "checkedOn": "2026-09-07",
-          "note": "Telephone also checked against Active.Private.Participating.Pharmacies.Aug.2026.docx."
+          "note": "Telephone also checked against Active.Private.Participating.Pharmacies.Aug.2026.docx.",
+          "id": "imart-pharmacy-the-estates-source-2"
         },
         {
           "fields": ["hours"],
           "source": "https://www.imartstores.com/about-us/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 59, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm. Existing weekly hours agree with the supplied schedule."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 59, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm. Existing weekly hours agree with the supplied schedule.",
+          "id": "imart-pharmacy-the-estates-source-3"
         }
       ]
     },
@@ -1308,13 +1508,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 50",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "imart-pharmacy-w-plaza-source-1"
         },
         {
           "fields": ["hours"],
           "source": "https://wplazawelches.com/service/i-mart-pharmacy/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 55, reviewed 2026-09-09. Supplied hours: Mon–Sat 9am–6pm, Sun closed. Existing weekly hours agree with the supplied schedule."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 55, reviewed 2026-09-09. Supplied hours: Mon–Sat 9am–6pm, Sun closed. Existing weekly hours agree with the supplied schedule.",
+          "id": "imart-pharmacy-w-plaza-source-2"
         }
       ]
     },
@@ -1331,13 +1533,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 52",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "imart-pharmacy-welches-plaza-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 57",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm.",
+          "id": "imart-pharmacy-welches-plaza-source-2"
         }
       ],
       "hours": {
@@ -1404,13 +1608,15 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "dasae-pharmacy-sparman-clinic-source-1"
         },
         {
           "fields": ["hours"],
           "source": "GovTech pharmacy prototype dataset, 23 July 2026",
           "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: overnight dispensing hours have not been confirmed independently of clinic/reception hours."
+          "note": "Schedule withheld: overnight dispensing hours have not been confirmed independently of clinic/reception hours.",
+          "id": "dasae-pharmacy-sparman-clinic-source-2"
         }
       ]
     },
@@ -1432,13 +1638,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 41",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "healthrite-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 45",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–8pm; Sat 8am–9pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–8pm; Sat 8am–9pm; Sun closed.",
+          "id": "healthrite-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -1498,13 +1706,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 84",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "pharmaceuticals-plus-inc-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 91",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 9am–8pm; Sun closed."
+          "note": "Supplied hours: Mon–Sat 9am–8pm; Sun closed.",
+          "id": "pharmaceuticals-plus-inc-source-2"
         }
       ],
       "hours": {
@@ -1566,13 +1776,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 36",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "felimar-plus-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 40",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–4:30pm; Sat 9am–2pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–4:30pm; Sat 9am–2pm; Sun closed.",
+          "id": "felimar-plus-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -1632,13 +1844,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 60",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "lewis-drug-mart-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 66",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 9am–2pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 9am–2pm; Sun closed.",
+          "id": "lewis-drug-mart-source-2"
         }
       ],
       "hours": {
@@ -1698,13 +1912,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 2",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "a-plus-care-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 3",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 9am–5pm; Sat 8:30am–3pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 9am–5pm; Sat 8:30am–3pm; Sun closed.",
+          "id": "a-plus-care-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -1764,13 +1980,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 24",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "cosmopolitan-pharmacy-six-roads-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 26",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm.",
+          "id": "cosmopolitan-pharmacy-six-roads-source-2"
         }
       ],
       "hours": {
@@ -1842,7 +2060,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "market-hill-dispensary-source-1"
         }
       ]
     },
@@ -1864,7 +2083,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "swm-pharmacy-source-1"
         }
       ]
     },
@@ -1885,13 +2105,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 22",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "community-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 24",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri–Sun 8am–12pm."
+          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri–Sun 8am–12pm.",
+          "id": "community-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -1956,13 +2178,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 96",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "rxpharma-medical-supplies-dispensary-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 104",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sun 8:30am–9pm."
+          "note": "Supplied hours: Mon–Sun 8:30am–9pm.",
+          "id": "rxpharma-medical-supplies-dispensary-source-2"
         }
       ],
       "hours": {
@@ -2027,13 +2251,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 16",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "bt-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 18",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–5pm; Sun 9am–12:30pm."
+          "note": "Supplied hours: Mon–Sat 8am–5pm; Sun 9am–12:30pm.",
+          "id": "bt-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -2097,13 +2323,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 103",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "top-tier-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 112",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 9am–3pm; Sat 9am–1pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 9am–3pm; Sat 9am–1pm; Sun closed.",
+          "id": "top-tier-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -2204,19 +2432,22 @@
         {
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 79",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "oneup-pharmacy-wildey-mall-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "https://oneuppharmacy.com/",
           "checkedOn": "2026-09-07",
-          "note": "Additional telephone from Active.Private.Participating.Pharmacies.Aug.2026.docx."
+          "note": "Additional telephone from Active.Private.Participating.Pharmacies.Aug.2026.docx.",
+          "id": "oneup-pharmacy-wildey-mall-source-2"
         },
         {
           "fields": ["hours"],
           "source": "https://oneuppharmacy.com/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 86, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm. Existing independently reviewed weekly hours retained where the document differs. Public holiday hours supplied by this document."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 86, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm. Existing independently reviewed weekly hours retained where the document differs. Public holiday hours supplied by this document.",
+          "id": "oneup-pharmacy-wildey-mall-source-3"
         }
       ],
       "bankHolidayHours": [
@@ -2283,19 +2514,22 @@
         {
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 78",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "oneup-pharmacy-jemmotts-lane-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "https://oneuppharmacy.com/",
           "checkedOn": "2026-09-07",
-          "note": "Additional telephone from Active.Private.Participating.Pharmacies.Aug.2026.docx."
+          "note": "Additional telephone from Active.Private.Participating.Pharmacies.Aug.2026.docx.",
+          "id": "oneup-pharmacy-jemmotts-lane-source-2"
         },
         {
           "fields": ["hours"],
           "source": "https://oneuppharmacy.com/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 85, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm. Existing independently reviewed weekly hours retained where the document differs. Public holiday hours supplied by this document."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 85, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm. Existing independently reviewed weekly hours retained where the document differs. Public holiday hours supplied by this document.",
+          "id": "oneup-pharmacy-jemmotts-lane-source-3"
         }
       ],
       "bankHolidayHours": [
@@ -2358,19 +2592,22 @@
         {
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 80",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "oneup-pharmacy-triad-health-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "https://oneuppharmacy.com/",
           "checkedOn": "2026-09-07",
-          "note": "Additional telephone from Active.Private.Participating.Pharmacies.Aug.2026.docx."
+          "note": "Additional telephone from Active.Private.Participating.Pharmacies.Aug.2026.docx.",
+          "id": "oneup-pharmacy-triad-health-source-2"
         },
         {
           "fields": ["hours"],
           "source": "https://oneuppharmacy.com/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 87, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm; Sun closed; bank holidays closed. Existing independently reviewed weekly hours retained where the document differs. Public holiday hours supplied by this document."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 87, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm; Sun closed; bank holidays closed. Existing independently reviewed weekly hours retained where the document differs. Public holiday hours supplied by this document.",
+          "id": "oneup-pharmacy-triad-health-source-3"
         }
       ],
       "bankHolidayHours": []
@@ -2428,18 +2665,21 @@
         {
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 81",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "oneup-pharmacy-diagnostic-medical-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "https://oneuppharmacy.com/",
           "checkedOn": "2026-09-07",
-          "note": "Additional telephone from Active.Private.Participating.Pharmacies.Aug.2026.docx."
+          "note": "Additional telephone from Active.Private.Participating.Pharmacies.Aug.2026.docx.",
+          "id": "oneup-pharmacy-diagnostic-medical-source-2"
         },
         {
           "fields": ["hours"],
           "source": "https://oneuppharmacy.com/",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "oneup-pharmacy-diagnostic-medical-source-3"
         }
       ]
     },
@@ -2460,13 +2700,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 19",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "callies-pharmacy-bayside-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 21",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Wed 8am–5pm; Thu–Fri 8am–6pm; Sat 9am–2pm; Sun closed."
+          "note": "Supplied hours: Mon–Wed 8am–5pm; Thu–Fri 8am–6pm; Sat 9am–2pm; Sun closed.",
+          "id": "callies-pharmacy-bayside-source-2"
         }
       ],
       "hours": {
@@ -2522,13 +2764,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 20",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "callies-pharmacy-cottage-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 22",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Thu 9am–5pm; Fri 9am–2:30pm; Sat–Sun 8:30am–2:30pm."
+          "note": "Supplied hours: Mon–Thu 9am–5pm; Fri 9am–2:30pm; Sat–Sun 8:30am–2:30pm.",
+          "id": "callies-pharmacy-cottage-source-2"
         }
       ],
       "hours": {
@@ -2588,13 +2832,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 31",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "elcourt-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 35",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 9am–8pm; Sun closed."
+          "note": "Supplied hours: Mon–Sat 9am–8pm; Sun closed.",
+          "id": "elcourt-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -2654,13 +2900,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 61",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "lyte-drug-mart-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 67",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–7pm; Sun 8am–4pm."
+          "note": "Supplied hours: Mon–Sat 8am–7pm; Sun 8am–4pm.",
+          "id": "lyte-drug-mart-source-2"
         }
       ],
       "hours": {
@@ -2720,13 +2968,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 82",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "palmcourt-dispensary-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 89",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–5:30pm; Sat 9am–3pm; Sun 9am–12pm."
+          "note": "Supplied hours: Mon–Fri 8am–5:30pm; Sat 9am–3pm; Sun 9am–12pm.",
+          "id": "palmcourt-dispensary-source-2"
         }
       ],
       "hours": {
@@ -2790,13 +3040,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 48",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "holborn-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 53",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 9am–4pm; Sat closed; Sun 9am–2pm."
+          "note": "Supplied hours: Mon–Fri 9am–4pm; Sat closed; Sun 9am–2pm.",
+          "id": "holborn-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -2851,13 +3103,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 3",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "ace-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 4",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sun 7am–6:30pm."
+          "note": "Supplied hours: Mon–Sun 7am–6:30pm.",
+          "id": "ace-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -2922,7 +3176,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "bayside-pharmacy-source-1"
         }
       ]
     },
@@ -2943,13 +3198,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 18",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "c-s-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 20",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–4:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–4:30pm; Sun closed.",
+          "id": "c-s-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -3008,13 +3265,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 21",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "collins-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 23",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 9am–6pm; Sat 9am–3:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 9am–6pm; Sat 9am–3:30pm; Sun closed.",
+          "id": "collins-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -3074,13 +3333,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 25",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "delaware-dispensary-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 27",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 9am–6pm; Sun closed; bank holidays vary."
+          "note": "Supplied hours: Mon–Sat 9am–6pm; Sun closed; bank holidays vary.",
+          "id": "delaware-dispensary-source-2"
         }
       ],
       "hours": {
@@ -3139,13 +3400,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 27",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "eagle-hall-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 29",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm.",
+          "id": "eagle-hall-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -3215,13 +3478,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 32",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "elgar-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 36",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 9am–5pm; Sat 9am–2pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 9am–5pm; Sat 9am–2pm; Sun closed.",
+          "id": "elgar-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -3281,18 +3546,21 @@
           "fields": ["ppp"],
           "source": "User-confirmed correction, 7 September 2026",
           "checkedOn": "2026-09-07",
-          "note": "User confirmed this branch participates, correcting the earlier non-participating status."
+          "note": "User confirmed this branch participates, correcting the earlier non-participating status.",
+          "id": "pharm-n-care-warrens-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 87",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "pharm-n-care-warrens-source-2"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 95",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8:30am–5pm; Sat 9am–2pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–5pm; Sat 9am–2pm; Sun closed.",
+          "id": "pharm-n-care-warrens-source-3"
         }
       ],
       "hours": {
@@ -3351,13 +3619,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 37",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "flanders-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 41",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–4:30pm; Sat 8am–3:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–4:30pm; Sat 8am–3:30pm; Sun closed.",
+          "id": "flanders-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -3418,7 +3688,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "friendship-pharmacy-source-1"
         }
       ]
     },
@@ -3439,7 +3710,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "grants-pharmacy-cosmetique-source-1"
         }
       ]
     },
@@ -3459,13 +3731,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 70",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "maxwell-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 76",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–4:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–4:30pm; Sun closed.",
+          "id": "maxwell-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -3525,7 +3799,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "medic-aid-dispensary-source-1"
         }
       ]
     },
@@ -3545,13 +3820,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 75",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "neighbourhood-care-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 82",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm.",
+          "id": "neighbourhood-care-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -3623,7 +3900,8 @@
           "fields": ["ppp"],
           "source": "User-confirmed correction, 7 September 2026",
           "checkedOn": "2026-09-07",
-          "note": "User confirmed this branch does not participate in the PPP."
+          "note": "User confirmed this branch does not participate in the PPP.",
+          "id": "pharm-n-care-worthing-source-1"
         }
       ]
     },
@@ -3644,7 +3922,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "the-pharmacy-shoppe-source-1"
         }
       ]
     },
@@ -3660,13 +3939,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 85",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "pharmacy-world-inc-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 93",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8:30am–5pm; Sat 8:30am–3pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–5pm; Sat 8:30am–3pm; Sun closed.",
+          "id": "pharmacy-world-inc-source-2"
         }
       ],
       "hours": {
@@ -3726,7 +4007,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "station-hill-medical-complex-pharmacy-source-1"
         }
       ]
     },
@@ -3744,7 +4026,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "jillandeehlp-island-wide-delivery-source-1"
         }
       ]
     },
@@ -3766,7 +4049,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "1-stop-pharmacy-source-1"
         }
       ]
     },
@@ -3787,13 +4071,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 6",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "alpha-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 7",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8:30am–5:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Sat 8:30am–5:30pm; Sun closed.",
+          "id": "alpha-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -3848,13 +4134,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 7",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "apothec-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 8",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 9am–7pm; Sat 9am–5pm; Sun 9am–3pm."
+          "note": "Supplied hours: Mon–Fri 9am–7pm; Sat 9am–5pm; Sun 9am–3pm.",
+          "id": "apothec-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -3914,13 +4202,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 10",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "avis-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "https://www.avispharmacyltd.com/",
           "checkedOn": "2026-09-09",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 11, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–7pm; Sun 8am–4pm. Existing independently reviewed weekly hours retained where the document differs."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 11, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–7pm; Sun 8am–4pm. Existing independently reviewed weekly hours retained where the document differs.",
+          "id": "avis-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -3981,7 +4271,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "belleville-dispensary-source-1"
         }
       ]
     },
@@ -3998,13 +4289,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 15",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "brittons-hill-medical-centre-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 16",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–5pm; Sun 9am–12:30pm."
+          "note": "Supplied hours: Mon–Sat 8am–5pm; Sun 9am–12:30pm.",
+          "id": "brittons-hill-medical-centre-source-2"
         }
       ],
       "hours": {
@@ -4070,7 +4363,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "carledon-drug-emporium-inc-source-1"
         }
       ]
     },
@@ -4092,7 +4386,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "carlton-pharmacy-source-1"
         }
       ]
     },
@@ -4114,7 +4409,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "cave-s-pharmacy-source-1"
         }
       ]
     },
@@ -4136,7 +4432,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "crayton-s-pharmacy-source-1"
         }
       ]
     },
@@ -4158,7 +4455,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "dnk-pharmacy-source-1"
         }
       ]
     },
@@ -4180,7 +4478,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "e-c-gill-drugstore-source-1"
         }
       ]
     },
@@ -4202,7 +4501,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "eastern-pharmacy-source-1"
         }
       ]
     },
@@ -4223,13 +4523,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 29",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "elbethel-pharmacy-2nd-avenue-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 33",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–5:30pm; Sat 9am–3pm; Sun 9am–12pm."
+          "note": "Supplied hours: Mon–Fri 8am–5:30pm; Sat 9am–3pm; Sun 9am–12pm.",
+          "id": "elbethel-pharmacy-2nd-avenue-source-2"
         }
       ],
       "hours": {
@@ -4294,13 +4596,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 17",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "cb-forde-ltd-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 19",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–5pm; Sun 9am–12:30pm."
+          "note": "Supplied hours: Mon–Sat 8am–5pm; Sun 9am–12:30pm.",
+          "id": "cb-forde-ltd-source-2"
         }
       ],
       "hours": {
@@ -4366,7 +4670,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "gill-shirley-s-gill-s-pharmacy-source-1"
         }
       ]
     },
@@ -4388,7 +4693,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "griffiths-reliance-pharmacy-ltd-source-1"
         }
       ]
     },
@@ -4410,7 +4716,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "grosvenor-pharmacy-inc-source-1"
         }
       ]
     },
@@ -4432,7 +4739,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "hastings-pharmacy-source-1"
         }
       ]
     },
@@ -4448,13 +4756,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 42",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "health-care-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 46",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–7pm; Sun 9am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–7pm; Sun 9am–2pm.",
+          "id": "health-care-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -4519,13 +4829,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 45",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "henley-s-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 50",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8:30am–6:30pm; Sat 9am–4pm; Sun 9am–2pm."
+          "note": "Supplied hours: Mon–Fri 8:30am–6:30pm; Sat 9am–4pm; Sun 9am–2pm.",
+          "id": "henley-s-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -4590,13 +4902,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 46",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "heritage-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 51",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–3pm & 6:45pm–9pm; Sat 8am–1:30pm; Sun 8am–12:30pm."
+          "note": "Supplied hours: Mon–Fri 8am–3pm & 6:45pm–9pm; Sat 8am–1:30pm; Sun 8am–12:30pm.",
+          "id": "heritage-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -4682,7 +4996,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "imperial-pharmacy-source-1"
         }
       ]
     },
@@ -4704,7 +5019,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "jems-pharmacy-source-1"
         }
       ]
     },
@@ -4725,13 +5041,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 59",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "joe-s-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 65",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–6pm; Sat 8am–4pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–6pm; Sat 8am–4pm; Sun closed.",
+          "id": "joe-s-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -4792,13 +5110,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 1",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "a-p-jones-co-ltd-source-1"
         },
         {
           "fields": ["hours"],
           "source": "https://carib.guide/public/place/a-p-jones?c=barbados",
           "checkedOn": "2026-09-09",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 2, reviewed 2026-09-09. Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–5pm; Sun closed. Existing weekly hours agree with the supplied schedule."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 2, reviewed 2026-09-09. Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–5pm; Sun closed. Existing weekly hours agree with the supplied schedule.",
+          "id": "a-p-jones-co-ltd-source-2"
         }
       ],
       "hours": {
@@ -4859,18 +5179,21 @@
           "fields": ["ppp"],
           "source": "User-confirmed correction, 7 September 2026",
           "checkedOn": "2026-09-07",
-          "note": "User confirmed this branch participates, correcting the earlier non-participating status."
+          "note": "User confirmed this branch participates, correcting the earlier non-participating status.",
+          "id": "premier-pharmacy-source-1"
         },
         {
           "fields": ["contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 90",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "premier-pharmacy-source-2"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 98",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 8:30am–4:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 8:30am–4:30pm; Sun closed.",
+          "id": "premier-pharmacy-source-3"
         }
       ],
       "hours": {
@@ -4931,7 +5254,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "k-o-d-s-pharmacy-source-1"
         }
       ]
     },
@@ -4953,7 +5277,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "maranatha-pharmacy-source-1"
         }
       ]
     },
@@ -4975,7 +5300,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "maycare-pharmacy-source-1"
         }
       ]
     },
@@ -4997,13 +5323,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 71",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "mayfield-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 78",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Thu 9am–5pm; Fri 9am–2:30pm; Sat–Sun 8:30am–2:30pm."
+          "note": "Supplied hours: Mon–Thu 9am–5pm; Fri 9am–2:30pm; Sat–Sun 8:30am–2:30pm.",
+          "id": "mayfield-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -5069,7 +5397,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "neil-s-pharmacy-source-1"
         }
       ]
     },
@@ -5090,13 +5419,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 77",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "o-hana-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 84",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 9am–8pm; Sun closed; bank holidays closed."
+          "note": "Supplied hours: Mon–Sat 9am–8pm; Sun closed; bank holidays closed.",
+          "id": "o-hana-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -5157,13 +5488,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 83",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "pearson-s-pharmacies-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 90",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm.",
+          "id": "pearson-s-pharmacies-source-2"
         }
       ],
       "hours": {
@@ -5228,13 +5561,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 86",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "pharmaco-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 94",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–4pm; Sat 8am–1pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–4pm; Sat 8am–1pm; Sun closed.",
+          "id": "pharmaco-source-2"
         }
       ],
       "hours": {
@@ -5295,7 +5630,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "pickwick-pharmacy-source-1"
         }
       ]
     },
@@ -5316,13 +5652,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 89",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "pine-dispensary-inc-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 97",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–4:30pm; Sat 8am–3:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–4:30pm; Sat 8am–3:30pm; Sun closed.",
+          "id": "pine-dispensary-inc-source-2"
         }
       ],
       "hours": {
@@ -5383,7 +5721,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "prescription-specialist-pharmacy-the-source-1"
         }
       ]
     },
@@ -5404,13 +5743,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 92",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "prescriptions-plus-inc-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 100",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 9am–5pm; Sat 9am–1pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 9am–5pm; Sat 9am–1pm; Sun closed.",
+          "id": "prescriptions-plus-inc-source-2"
         }
       ],
       "hours": {
@@ -5471,7 +5812,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "river-road-dispensary-source-1"
         }
       ]
     },
@@ -5493,7 +5835,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "rock-dundo-pharmacy-source-1"
         }
       ]
     },
@@ -5514,13 +5857,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 23",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "cosmopolitan-pharmacy-roebuck-street-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 25",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–5:30pm; Sat 8am–4pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–5:30pm; Sat 8am–4pm; Sun closed.",
+          "id": "cosmopolitan-pharmacy-roebuck-street-source-2"
         }
       ],
       "hours": {
@@ -5581,7 +5926,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "s-e-well-care-pharmacy-source-1"
         }
       ]
     },
@@ -5602,13 +5948,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 97",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "s-k-total-health-pharmacy-inc-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 105",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–1pm; Sun closed."
+          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–1pm; Sun closed.",
+          "id": "s-k-total-health-pharmacy-inc-source-2"
         }
       ],
       "hours": {
@@ -5663,13 +6011,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 98",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "standard-pharmacy-ltd-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 106",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8:30am–6:30pm; Sat 9am–4pm; Sun 9am–2pm."
+          "note": "Supplied hours: Mon–Fri 8:30am–6:30pm; Sat 9am–4pm; Sun 9am–2pm.",
+          "id": "standard-pharmacy-ltd-source-2"
         }
       ],
       "hours": {
@@ -5735,7 +6085,8 @@
           "fields": ["ppp"],
           "source": "User-confirmed correction, 7 September 2026",
           "checkedOn": "2026-09-07",
-          "note": "User confirmed this branch does not participate in the PPP."
+          "note": "User confirmed this branch does not participate in the PPP.",
+          "id": "total-care-pharmacy-source-1"
         }
       ]
     },
@@ -5756,13 +6107,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 40",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "h-c-walkes-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 44",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 9am–5pm; Sat 9am–1pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 9am–5pm; Sat 9am–1pm; Sun closed.",
+          "id": "h-c-walkes-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -5823,7 +6176,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "weekes-l-a-drug-store-source-1"
         }
       ]
     },
@@ -5845,7 +6199,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "welches-dispensary-source-1"
         }
       ]
     },
@@ -5867,13 +6222,15 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 109",
           "checkedOn": "2026-09-07",
-          "note": "WhatsApp ordering confirmed at https://wholehealthpharmacybb.com/index on 2026-09-09; the pharmacy publishes its existing telephone number for Call / WhatsApp."
+          "note": "WhatsApp ordering confirmed at https://wholehealthpharmacybb.com/index on 2026-09-09; the pharmacy publishes its existing telephone number for Call / WhatsApp.",
+          "id": "whole-health-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "https://carib.guide/place/whole-health-pharmacy",
           "checkedOn": "2026-09-09",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 118, reviewed 2026-09-09. Supplied hours: Mon–Fri 8am–5pm; Sat 8am – 3pm; Sun closed; Bank Holidays Closed. Existing weekly hours agree with the supplied schedule. Public holiday hours supplied by this document."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 118, reviewed 2026-09-09. Supplied hours: Mon–Fri 8am–5pm; Sat 8am – 3pm; Sun closed; Bank Holidays Closed. Existing weekly hours agree with the supplied schedule. Public holiday hours supplied by this document.",
+          "id": "whole-health-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -5936,7 +6293,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "worrell-s-pharmacy-inc-source-1"
         }
       ]
     },
@@ -5958,7 +6316,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "worthing-pharmacy-source-1"
         }
       ]
     },
@@ -5978,13 +6337,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 66",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "massy-pharmacy-warrens-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 72",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm.",
+          "id": "massy-pharmacy-warrens-source-2"
         }
       ],
       "hours": {
@@ -6054,13 +6415,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 68",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "massy-pharmacy-sky-mall-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 74",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm.",
+          "id": "massy-pharmacy-sky-mall-source-2"
         }
       ],
       "hours": {
@@ -6130,13 +6493,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 63",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "massy-pharmacy-sunset-crest-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 69",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm.",
+          "id": "massy-pharmacy-sunset-crest-source-2"
         }
       ],
       "hours": {
@@ -6206,13 +6571,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 65",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "massy-pharmacy-six-roads-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 71",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–7pm; Sun 8am–1pm; bank holidays 8am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–7pm; Sun 8am–1pm; bank holidays 8am–2pm.",
+          "id": "massy-pharmacy-six-roads-source-2"
         }
       ],
       "hours": {
@@ -6278,13 +6645,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 67",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "massy-pharmacy-worthing-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 73",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm.",
+          "id": "massy-pharmacy-worthing-source-2"
         }
       ],
       "hours": {
@@ -6354,13 +6723,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 64",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "massy-pharmacy-oistins-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 70",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm.",
+          "id": "massy-pharmacy-oistins-source-2"
         }
       ],
       "hours": {
@@ -6432,13 +6803,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 95",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "roundhay-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 103",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–8pm; Sat 8am–4pm; Sun 8am–12pm."
+          "note": "Supplied hours: Mon–Fri 8am–8pm; Sat 8am–4pm; Sun 8am–12pm.",
+          "id": "roundhay-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -6503,13 +6876,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 28",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "elbethel-pharmacy-6th-avenue-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 30",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm.",
+          "id": "elbethel-pharmacy-6th-avenue-source-2"
         }
       ],
       "hours": {
@@ -6580,13 +6955,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 8",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "aqua-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 9",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–6pm; Sat 8am–4pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–6pm; Sat 8am–4pm; Sun closed.",
+          "id": "aqua-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -6642,13 +7019,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 13",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "betterlife-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 14",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–5pm; Sat 8am–2pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–5pm; Sat 8am–2pm; Sun closed.",
+          "id": "betterlife-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -6708,13 +7087,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 38",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "get-well-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 42",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 8:30am–4:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 8:30am–4:30pm; Sun closed.",
+          "id": "get-well-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -6774,7 +7155,8 @@
           "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx",
           "checkedOn": "2026-09-07",
-          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation."
+          "note": "Participation has not been confirmed for this branch; absence of a separate listing is not treated as confirmed non-participation.",
+          "id": "city-pharmacy-inc-source-1"
         }
       ]
     },
@@ -6794,13 +7176,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 69",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "massy-pharmacy-coverley-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 75",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–5pm; Sun closed."
+          "note": "Supplied hours: Mon–Sat 8am–5pm; Sun closed.",
+          "id": "massy-pharmacy-coverley-source-2"
         }
       ],
       "hours": {
@@ -6855,13 +7239,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 4",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "advanced-care-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "https://www.findyello.com/barbados/advanced-care-pharmacy/profile/",
           "checkedOn": "2026-09-09",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 5, reviewed 2026-09-09. Supplied hours: Mon–Fri 8:30am–4:30pm; Sat–Sun closed. Existing weekly hours agree with the supplied schedule."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 5, reviewed 2026-09-09. Supplied hours: Mon–Fri 8:30am–4:30pm; Sat–Sun closed. Existing weekly hours agree with the supplied schedule.",
+          "id": "advanced-care-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -6911,13 +7297,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 5",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "allington-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "https://www.cybo.com/BB-biz/allington-pharmacy_1k",
           "checkedOn": "2026-09-09",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 6, reviewed 2026-09-09. Supplied hours: Mon 9am–6pm; Tue 9am–6pm; Wed 9am–6pm; Thu 9am–5pm; Fri 9am–6pm; Sat 9am–1:30pm; Sun closed. Existing weekly hours agree with the supplied schedule."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 6, reviewed 2026-09-09. Supplied hours: Mon 9am–6pm; Tue 9am–6pm; Wed 9am–6pm; Thu 9am–5pm; Fri 9am–6pm; Sat 9am–1:30pm; Sun closed. Existing weekly hours agree with the supplied schedule.",
+          "id": "allington-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -6972,13 +7360,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 9",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "avida-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 10",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 9am–2pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 9am–2pm; Sun closed.",
+          "id": "avida-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -7033,13 +7423,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 11",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "bato-s-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 12",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–3pm; Sun 9am–1pm."
+          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–3pm; Sun 9am–1pm.",
+          "id": "bato-s-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -7100,13 +7492,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 12",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "belmont-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 13",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8:30am–4:30pm; Sat 8:30am–2pm; Sun 9am–1pm; bank holidays 9am–12pm."
+          "note": "Supplied hours: Mon–Fri 8:30am–4:30pm; Sat 8:30am–2pm; Sun 9am–1pm; bank holidays 9am–12pm.",
+          "id": "belmont-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -7173,13 +7567,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 14",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "beyond-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 15",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 7am–7pm; Sat 8am–3:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 7am–7pm; Sat 8am–3:30pm; Sun closed.",
+          "id": "beyond-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -7235,13 +7631,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 26",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "drugmart-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 28",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 9am–8pm; Sun closed; bank holidays closed."
+          "note": "Supplied hours: Mon–Sat 9am–8pm; Sun closed; bank holidays closed.",
+          "id": "drugmart-source-2"
         }
       ],
       "hours": {
@@ -7298,13 +7696,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 30",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "elbethel-pharmacy-prerogative-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 34",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm.",
+          "id": "elbethel-pharmacy-prerogative-source-2"
         }
       ],
       "hours": {
@@ -7364,13 +7764,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 33",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "elgar-pharmacy-market-hill-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 37",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8:30am–5pm; Sat 8:30am–3pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–5pm; Sat 8:30am–3pm; Sun closed.",
+          "id": "elgar-pharmacy-market-hill-source-2"
         }
       ],
       "hours": {
@@ -7425,13 +7827,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 34",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "elitecare-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 38",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–4pm; Sat 8am–1pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–4pm; Sat 8am–1pm; Sun closed.",
+          "id": "elitecare-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -7487,13 +7891,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 35",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "enterprise-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 39",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8:30am–5pm; Sat 9am–2pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–5pm; Sat 9am–2pm; Sun closed.",
+          "id": "enterprise-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -7549,13 +7955,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 39",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "habibi-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 43",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8:30am–4:30pm; Sat 9am–1:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–4:30pm; Sat 9am–1:30pm; Sun closed.",
+          "id": "habibi-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -7610,13 +8018,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 43",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "health-care-pharmacy-westbury-road-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 48",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sun 8:30am–9pm."
+          "note": "Supplied hours: Mon–Sun 8:30am–9pm.",
+          "id": "health-care-pharmacy-westbury-road-source-2"
         }
       ],
       "hours": {
@@ -7676,13 +8086,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 44",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "health-sync-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 49",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–1pm; Sun closed."
+          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–1pm; Sun closed.",
+          "id": "health-sync-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -7737,13 +8149,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 47",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "heritage-pharmacy-kendal-hill-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 52",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–5pm; Sat 8am–1:30pm; Sun 9am–12:30pm."
+          "note": "Supplied hours: Mon–Fri 8am–5pm; Sat 8am–1:30pm; Sun 9am–12:30pm.",
+          "id": "heritage-pharmacy-kendal-hill-source-2"
         }
       ],
       "hours": {
@@ -7804,13 +8218,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 57",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "jems-pharmacy-four-roads-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 63",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8:30am–5:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Sat 8:30am–5:30pm; Sun closed.",
+          "id": "jems-pharmacy-four-roads-source-2"
         }
       ],
       "hours": {
@@ -7866,13 +8282,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 58",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "j-j-pharma-c-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 64",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 9am–7pm; Sat 9am–5pm; Sun 9am–3pm."
+          "note": "Supplied hours: Mon–Fri 9am–7pm; Sat 9am–5pm; Sun 9am–3pm.",
+          "id": "j-j-pharma-c-source-2"
         }
       ],
       "hours": {
@@ -7932,13 +8350,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 62",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "massy-pharmacy-sargeants-village-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 68",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–7pm; Sun 9am–2pm; bank holidays 8am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–7pm; Sun 9am–2pm; bank holidays 8am–2pm.",
+          "id": "massy-pharmacy-sargeants-village-source-2"
         }
       ],
       "hours": {
@@ -8004,13 +8424,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 72",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "medshop-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 79",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 9am–6pm; Sat 9am–3:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 9am–6pm; Sat 9am–3:30pm; Sun closed.",
+          "id": "medshop-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -8065,13 +8487,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 73",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "medpro-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 80",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri–Sun 8am–12pm."
+          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri–Sun 8am–12pm.",
+          "id": "medpro-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -8131,13 +8555,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 74",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "neighbourhood-care-pharmacy-bank-hall-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 81",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–5:30pm; Sat 8am–4pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–5:30pm; Sat 8am–4pm; Sun closed.",
+          "id": "neighbourhood-care-pharmacy-bank-hall-source-2"
         }
       ],
       "hours": {
@@ -8192,13 +8618,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 76",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "nutripharm-services-inc-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 83",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 9am–6pm; Sun closed; bank holidays vary."
+          "note": "Supplied hours: Mon–Sat 9am–6pm; Sun closed; bank holidays vary.",
+          "id": "nutripharm-services-inc-source-2"
         }
       ],
       "hours": {
@@ -8253,13 +8681,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 88",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "phillips-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 96",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–4:30pm; Sat 9am–2pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–4:30pm; Sat 9am–2pm; Sun closed.",
+          "id": "phillips-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -8314,13 +8744,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 91",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "prescriptions-online-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 99",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8:30am–4:30pm; Sat 9am–1:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–4:30pm; Sat 9am–1:30pm; Sun closed.",
+          "id": "prescriptions-online-source-2"
         }
       ],
       "hours": {
@@ -8376,13 +8808,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 93",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "price-drug-mart-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 101",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–8pm; Sat 8am–9pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–8pm; Sat 8am–9pm; Sun closed.",
+          "id": "price-drug-mart-source-2"
         }
       ],
       "hours": {
@@ -8437,13 +8871,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 94",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "rosegate-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 102",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sat 8am–7pm; Sun 9am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–7pm; Sun 9am–2pm.",
+          "id": "rosegate-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -8504,13 +8940,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 99",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "strathclyde-pharmacy-health-shop-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 108",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–5pm; Sat 8am–1:30pm; Sun 9am–12:30pm."
+          "note": "Supplied hours: Mon–Fri 8am–5pm; Sat 8am–1:30pm; Sun 9am–12:30pm.",
+          "id": "strathclyde-pharmacy-health-shop-source-2"
         }
       ],
       "hours": {
@@ -8570,13 +9008,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 100",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "tdl-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 109",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 9am–4pm; Sat closed; Sun 9am–2pm."
+          "note": "Supplied hours: Mon–Fri 9am–4pm; Sat closed; Sun 9am–2pm.",
+          "id": "tdl-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -8632,13 +9072,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 101",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "the-pharmacy-hub-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 110",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Sun 8am–8pm."
+          "note": "Supplied hours: Mon–Sun 8am–8pm.",
+          "id": "the-pharmacy-hub-source-2"
         }
       ],
       "hours": {
@@ -8702,13 +9144,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 102",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "total-care-pharmacy-emerald-city-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 111",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon 8am–5pm; Tue 8am–7pm; Wed 8am–5pm; Thu 8am–7pm; Fri 8am–5pm; Sat 9am–5pm; Sun closed."
+          "note": "Supplied hours: Mon 8am–5pm; Tue 8am–7pm; Wed 8am–5pm; Thu 8am–7pm; Fri 8am–5pm; Sat 9am–5pm; Sun closed.",
+          "id": "total-care-pharmacy-emerald-city-source-2"
         }
       ],
       "hours": {
@@ -8763,13 +9207,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 104",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "unique-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 113",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 9am–3pm; Sat 9am–1pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 9am–3pm; Sat 9am–1pm; Sun closed.",
+          "id": "unique-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -8825,13 +9271,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 105",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "vitalpharm-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 114",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8am–4pm; Sat 8am–12pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–4pm; Sat 8am–12pm; Sun closed.",
+          "id": "vitalpharm-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -8887,13 +9335,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 106",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "we-care-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 115",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 9am–5pm; Sat 9am–3pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 9am–5pm; Sat 9am–3pm; Sun closed.",
+          "id": "we-care-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -8948,13 +9398,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 107",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "welches-pharmacy-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 116",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8:30 am–6pm; Sat 8:30am – 3pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30 am–6pm; Sat 8:30am – 3pm; Sun closed.",
+          "id": "welches-pharmacy-source-2"
         }
       ],
       "hours": {
@@ -9009,13 +9461,15 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 108",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "id": "wellhouse-dispensary-source-1"
         },
         {
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 117",
           "checkedOn": "2026-09-09",
-          "note": "Supplied hours: Mon–Fri 8:30am–4:30pm; Sat–Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–4:30pm; Sat–Sun closed.",
+          "id": "wellhouse-dispensary-source-2"
         }
       ],
       "hours": {

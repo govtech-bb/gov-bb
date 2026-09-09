@@ -5,17 +5,13 @@
  */
 
 import { Heading, Link, Text } from '@govtech-bb/react'
-import type { Pharmacy } from '../-data/pharmacies'
-import { PHARMACIES } from '../-data/pharmacies'
+import type { Pharmacy, PharmacyContent } from '../-data/pharmacies'
+import { PHARMACY_CONTENT } from '../-data/pharmacies'
+import { formatCopy } from '../-lib/copy'
 import { formatDistanceKm } from '../-lib/pharmacy-distance'
 import { SLIP_COLOURS_HREF } from '../-lib/routes'
 import type { SlipColour } from '../-lib/slips'
-import {
-  acceptsSlip,
-  nearestAccepting,
-  SLIP_COLOURS,
-  SLIP_LABELS,
-} from '../-lib/slips'
+import { acceptsSlip, nearestAccepting, SLIP_COLOURS } from '../-lib/slips'
 import { CheckIcon, CrossIcon } from './icons'
 
 const SWATCH_CLASSES = {
@@ -24,28 +20,45 @@ const SWATCH_CLASSES = {
   green: 'bg-green-10 border-green-80',
 } satisfies Record<SlipColour, string>
 
-function slipDescription(pharmacy: Pharmacy, slip: SlipColour): string {
+function slipDescription(
+  pharmacy: Pharmacy,
+  slip: SlipColour,
+  content: PharmacyContent,
+): string {
+  const copy = content.copy.slips
   if (pharmacy.pppStatus === 'unconfirmed') {
-    return 'Drug Service participation is not confirmed. Call to check whether this prescription is covered.'
+    return copy.unconfirmed
   }
   if (acceptsSlip(pharmacy, slip)) {
     if (pharmacy.type === 'government') {
       // QEH-issued slips are filled at government pharmacies for selected
       // medications only - see the slip colours page.
-      return 'Accepted for selected medications. Call to check yours is covered.'
+      return copy.governmentAccepted
     }
-    return 'Accepted. A small dispensing fee applies.'
+    return copy.privateAccepted
   }
-  const nearest = nearestAccepting(pharmacy, slip, PHARMACIES)
+  const nearest = nearestAccepting(pharmacy, slip, content.pharmacies)
   if (nearest) {
-    return `Not accepted here. Nearest pharmacy accepting ${slip} is ${nearest.pharmacy.name}, ${nearest.pharmacy.parish}, ${formatDistanceKm(nearest.km)}.`
+    return formatCopy(copy.nearest, {
+      colour: slip,
+      name: nearest.pharmacy.name,
+      parish: nearest.pharmacy.parish,
+      distance: formatDistanceKm(nearest.km),
+    })
   }
-  return slip === 'white'
-    ? 'Not accepted here. Participating private pharmacies accept it.'
-    : 'Not accepted here. Government polyclinic pharmacies accept it.'
+  return slip === 'white' ? copy.whiteFallback : copy.governmentFallback
 }
 
-function SlipRow({ pharmacy, slip }: { pharmacy: Pharmacy; slip: SlipColour }) {
+function SlipRow({
+  pharmacy,
+  slip,
+  content,
+}: {
+  pharmacy: Pharmacy
+  slip: SlipColour
+  content: PharmacyContent
+}) {
+  const copy = content.copy.slips
   const mark =
     pharmacy.pppStatus === 'unconfirmed' ? null : acceptsSlip(
         pharmacy,
@@ -53,12 +66,12 @@ function SlipRow({ pharmacy, slip }: { pharmacy: Pharmacy; slip: SlipColour }) {
       ) ? (
       <span className="text-green-80">
         <CheckIcon />
-        <span className="govbb-visually-hidden">Accepted</span>
+        <span className="govbb-visually-hidden">{copy.accepted}</span>
       </span>
     ) : (
       <span className="text-red-80">
         <CrossIcon />
-        <span className="govbb-visually-hidden">Not accepted</span>
+        <span className="govbb-visually-hidden">{copy.notAccepted}</span>
       </span>
     )
 
@@ -71,30 +84,41 @@ function SlipRow({ pharmacy, slip }: { pharmacy: Pharmacy; slip: SlipColour }) {
       <span className="mt-0.75">{mark}</span>
       <div className="flex flex-col gap-xxs">
         <Text as="p" weight="bold">
-          {SLIP_LABELS[slip]}
+          {copy.labels[slip]}
         </Text>
         <Text as="p" className="text-grey-70" size="body-sm">
-          {slipDescription(pharmacy, slip)}
+          {slipDescription(pharmacy, slip, content)}
         </Text>
       </div>
     </li>
   )
 }
 
-export function SlipsAccepted({ pharmacy }: { pharmacy: Pharmacy }) {
+export function SlipsAccepted({
+  pharmacy,
+  content = PHARMACY_CONTENT,
+}: {
+  pharmacy: Pharmacy
+  content?: PharmacyContent
+}) {
+  const copy = content.copy.slips
   return (
     <section aria-labelledby="slips-accepted" className="flex flex-col gap-s">
       <Heading as="h2" id="slips-accepted">
-        Prescriptions accepted
+        {copy.heading}
       </Heading>
       <Text as="p" className="text-grey-70">
-        Check the colour of the prescription your doctor gave you before you
-        travel.{' '}
-        <Link href={SLIP_COLOURS_HREF}>What prescription colours mean</Link>
+        {copy.introduction}{' '}
+        <Link href={SLIP_COLOURS_HREF}>{copy.helpLabel}</Link>
       </Text>
       <ul className="flex list-none flex-col gap-xs p-0">
         {SLIP_COLOURS.map((slip) => (
-          <SlipRow key={slip} pharmacy={pharmacy} slip={slip} />
+          <SlipRow
+            key={slip}
+            pharmacy={pharmacy}
+            slip={slip}
+            content={content}
+          />
         ))}
       </ul>
     </section>

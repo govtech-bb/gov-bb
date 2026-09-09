@@ -15,17 +15,14 @@
  */
 
 import type { Pharmacy } from '../-data/pharmacies'
+import { PHARMACY_CONTENT } from '../-data/pharmacies'
 import { pharmacyDistanceKm } from './pharmacy-distance'
 
 export const SLIP_COLOURS = ['white', 'yellow', 'green'] as const
 
 export type SlipColour = (typeof SLIP_COLOURS)[number]
 
-export const SLIP_LABELS = {
-  white: 'White (Drug Service)',
-  yellow: 'Yellow (GEHP)',
-  green: 'Green (GEHP dependant)',
-} satisfies Record<SlipColour, string>
+export const SLIP_LABELS = PHARMACY_CONTENT.copy.slips.labels
 
 export function acceptsSlip(pharmacy: Pharmacy, slip: SlipColour): boolean {
   if (pharmacy.type === 'government') return slip !== 'white'

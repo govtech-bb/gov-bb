@@ -14,6 +14,7 @@ import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ContentIndexRouteImport } from './routes/content/index'
 import { Route as BuilderIndexRouteImport } from './routes/builder/index'
+import { Route as ContentToolRouteImport } from './routes/content/tool'
 import { Route as ContentEditRouteImport } from './routes/content/edit'
 import { Route as AuthGithubRouteImport } from './routes/auth/github'
 import { Route as AuthDeniedRouteImport } from './routes/auth/denied'
@@ -44,6 +45,11 @@ const BuilderIndexRoute = BuilderIndexRouteImport.update({
   path: '/',
   getParentRoute: () => BuilderRoute,
 } as any)
+const ContentToolRoute = ContentToolRouteImport.update({
+  id: '/tool',
+  path: '/tool',
+  getParentRoute: () => ContentRoute,
+} as any)
 const ContentEditRoute = ContentEditRouteImport.update({
   id: '/edit',
   path: '/edit',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
   '/content/edit': typeof ContentEditRoute
+  '/content/tool': typeof ContentToolRoute
   '/builder/': typeof BuilderIndexRoute
   '/content/': typeof ContentIndexRoute
   '/auth/github/callback': typeof AuthGithubCallbackRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
   '/content/edit': typeof ContentEditRoute
+  '/content/tool': typeof ContentToolRoute
   '/builder': typeof BuilderIndexRoute
   '/content': typeof ContentIndexRoute
   '/auth/github/callback': typeof AuthGithubCallbackRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
   '/content/edit': typeof ContentEditRoute
+  '/content/tool': typeof ContentToolRoute
   '/builder/': typeof BuilderIndexRoute
   '/content/': typeof ContentIndexRoute
   '/auth/github_/callback': typeof AuthGithubCallbackRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/auth/denied'
     | '/auth/github'
     | '/content/edit'
+    | '/content/tool'
     | '/builder/'
     | '/content/'
     | '/auth/github/callback'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/auth/denied'
     | '/auth/github'
     | '/content/edit'
+    | '/content/tool'
     | '/builder'
     | '/content'
     | '/auth/github/callback'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '/auth/denied'
     | '/auth/github'
     | '/content/edit'
+    | '/content/tool'
     | '/builder/'
     | '/content/'
     | '/auth/github_/callback'
@@ -177,6 +189,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BuilderIndexRouteImport
       parentRoute: typeof BuilderRoute
     }
+    '/content/tool': {
+      id: '/content/tool'
+      path: '/tool'
+      fullPath: '/content/tool'
+      preLoaderRoute: typeof ContentToolRouteImport
+      parentRoute: typeof ContentRoute
+    }
     '/content/edit': {
       id: '/content/edit'
       path: '/edit'
@@ -221,11 +240,13 @@ const BuilderRouteWithChildren =
 
 interface ContentRouteChildren {
   ContentEditRoute: typeof ContentEditRoute
+  ContentToolRoute: typeof ContentToolRoute
   ContentIndexRoute: typeof ContentIndexRoute
 }
 
 const ContentRouteChildren: ContentRouteChildren = {
   ContentEditRoute: ContentEditRoute,
+  ContentToolRoute: ContentToolRoute,
   ContentIndexRoute: ContentIndexRoute,
 }
 
