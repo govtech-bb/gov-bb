@@ -1,4 +1,5 @@
 import { ContactDetails, formatClosingDateTime } from "@govtech-bb/form-types";
+import { Heading, Link, ServiceHeading, Text } from "@govtech-bb/react";
 
 interface ApplicationClosedProps {
   serviceTitle: string;
@@ -23,16 +24,14 @@ export default function ApplicationClosed({
   );
 
   return (
-    <div className="container pb-8 lg:pb-16">
-      <div className="form-page form-width">
-        <div className="form-page__header">
-          <h1 className="govbb-text-h1">
-            Applications for {serviceTitle} have closed
-          </h1>
-          <p className="form-page__step-description">
-            The application window has closed.
-          </p>
-        </div>
+    <div className="govbb-width-container govbb-main-wrapper govbb-grid-row">
+      <div className="form-page govbb-grid-column-two-thirds-from-desktop">
+        <ServiceHeading
+          description="The application window has closed."
+          className="mb-8"
+        >
+          Applications for {serviceTitle} have closed
+        </ServiceHeading>
 
         <div className="form-page__closed-panel">
           <p className="form-page__closed-panel-label">Application closed</p>
@@ -41,27 +40,24 @@ export default function ApplicationClosed({
 
         {hasContact && contactDetails && (
           <div className="form-page__contact">
-            <h2 className="govbb-text-h2">Have a question?</h2>
-            <p>
+            <Heading as="h2">Have a question?</Heading>
+            <Text className="govbb-text-break-word">
               If you need assistance or have any questions, please contact{" "}
               {contactDetails.title ? `the ${contactDetails.title}` : "us"}
               {contactDetails.email && (
                 <>
                   {" "}
                   at{" "}
-                  <a
-                    className="govbb-link"
-                    href={`mailto:${contactDetails.email}`}
-                  >
+                  <Link href={`mailto:${contactDetails.email}`}>
                     {contactDetails.email}
-                  </a>
+                  </Link>
                 </>
               )}
               {contactDetails.telephoneNumber && (
                 <> or call {contactDetails.telephoneNumber}</>
               )}
               .
-            </p>
+            </Text>
           </div>
         )}
       </div>

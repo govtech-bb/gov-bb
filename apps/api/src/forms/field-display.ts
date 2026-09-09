@@ -26,8 +26,8 @@ function labelOf(
 
 /**
  * Resolve an option field's raw submission value to its display label(s):
- *  - `radio` / single `select` → the label string;
- *  - multi `select` / `checkbox` / `checkbox-accordion` → an array of labels.
+ *  - `radio` / `select` → the label string;
+ *  - `checkbox` / `checkbox-accordion` → an array of labels.
  * An unmatched value falls back to the raw value (stringified). A non-option
  * field returns its raw value unchanged — callers format those themselves.
  *
@@ -37,12 +37,8 @@ function labelOf(
 export function resolveOptionDisplay(field: Primitive, raw: unknown): unknown {
   switch (field.htmlType) {
     case "radio":
-      return labelOf(field.options, raw);
-
     case "select":
-      return field.multiple && Array.isArray(raw)
-        ? raw.map((v) => labelOf(field.options, v))
-        : labelOf(field.options, raw);
+      return labelOf(field.options, raw);
 
     case "checkbox":
       return (Array.isArray(raw) ? raw : [raw]).map((v) =>

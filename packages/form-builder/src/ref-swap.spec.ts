@@ -212,7 +212,7 @@ describe("migrateOverridesForRef", () => {
     expect(result.validations).toBeUndefined();
   });
 
-  it("carries options but drops select-only `multiple` for a select -> radio swap", () => {
+  it("carries options but drops `multiple` for a select -> radio swap", () => {
     const overrides: FieldOverrides = {
       options: [{ label: "A", value: "a" }],
       multiple: true,
@@ -223,14 +223,20 @@ describe("migrateOverridesForRef", () => {
     expect(result.multiple).toBeUndefined();
   });
 
-  it("carries `multiple` when the target is a select (radio -> select)", () => {
+  it("drops multi-select settings when switching a checkbox to a select", () => {
     const overrides: FieldOverrides = {
       options: [{ label: "A", value: "a" }],
       multiple: true,
+      validations: {
+        required: { value: true },
+        minSelection: { value: 2 },
+        maxSelection: { value: 3 },
+      },
     };
-    const result = migrateOverridesForRef(overrides, "radio", "select");
+    const result = migrateOverridesForRef(overrides, "checkbox", "select");
     expect(result.options).toEqual([{ label: "A", value: "a" }]);
-    expect(result.multiple).toBe(true);
+    expect(result.multiple).toBeUndefined();
+    expect(result.validations).toEqual({ required: { value: true } });
   });
 
   it("drops options and multiple when leaving the choice group (select -> text)", () => {

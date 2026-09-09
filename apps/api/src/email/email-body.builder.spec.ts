@@ -66,7 +66,6 @@ function makeContract(
             fieldId: "languages",
             label: "Languages",
             htmlType: "select",
-            multiple: true,
             options: [
               { label: "English", value: "en" },
               { label: "French", value: "fr" },
@@ -106,7 +105,7 @@ function makePayload(
         gender: "female",
         interests: ["sports", "art"],
         country: "bb",
-        languages: ["en", "fr"],
+        languages: "en",
         dob: { day: 5, month: 6, year: 1990 },
       },
       contact: {
@@ -768,11 +767,11 @@ describe("EmailBodyBuilder", () => {
       expect(field?.value).toBe("Barbados");
     });
 
-    it("resolves multi-select (select[multiple]) values to joined option labels", async () => {
+    it("resolves a select without a multiple flag to its option label", async () => {
       const ctx = await builder.build(makePayload());
       const field = ctx.sections[0].fields.find((f) => f.label === "Languages");
 
-      expect(field?.value).toBe("English, French");
+      expect(field?.value).toBe("English");
     });
 
     it("formats object-shaped date values instead of '[object Object]'", async () => {
@@ -1404,12 +1403,10 @@ describe("EmailBodyBuilder", () => {
       expect(titles).not.toContain("Contact Details");
     });
 
-    it("uses fallback string when select[multiple] option label is not found", async () => {
-      // Branch in resolveOptionLabels: ??.label ?? String(v) for a missing option
+    it("uses fallback string when a select option label is not found", async () => {
       const payload = makePayload();
-      (payload.values["personal"] as Record<string, unknown>)["languages"] = [
-        "unknown-code",
-      ];
+      (payload.values["personal"] as Record<string, unknown>)["languages"] =
+        "unknown-code";
       const ctx = await builder.build(payload);
       const field = ctx.sections[0].fields.find((f) => f.label === "Languages");
       expect(field?.value).toBe("unknown-code");
@@ -1434,17 +1431,6 @@ describe("EmailBodyBuilder", () => {
       const ctx = await builder.build(payload);
       const field = ctx.sections[0].fields.find((f) => f.label === "Interests");
       expect(field?.value).toBe("Sports");
-    });
-
-    it("handles select[multiple]=true with scalar value (falls through to single-select path)", async () => {
-      // Branch: `field.multiple && Array.isArray(raw)` is false when raw is scalar
-      const payload = makePayload();
-      (payload.values["personal"] as Record<string, unknown>)["languages"] =
-        "en" as unknown as string[];
-      const ctx = await builder.build(payload);
-      const field = ctx.sections[0].fields.find((f) => f.label === "Languages");
-      // Falls through to single-select: finds option label "English"
-      expect(field?.value).toBe("English");
     });
   });
 });

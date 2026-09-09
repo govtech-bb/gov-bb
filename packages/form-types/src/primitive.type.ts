@@ -183,7 +183,8 @@ export type CheckboxAccordionPrimitive = z.infer<
 export const selectPrimitiveSchema = basePrimitiveSchema.extend({
   options: z.array(optionSchema),
   htmlType: z.literal("select"),
-  multiple: z.boolean(),
+  // Accept legacy false flags, but selects cannot enable multiple values.
+  multiple: z.literal(false).optional(),
 });
 export type SelectPrimitive = z.infer<typeof selectPrimitiveSchema>;
 

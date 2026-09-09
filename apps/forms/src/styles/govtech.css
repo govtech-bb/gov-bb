@@ -1,224 +1,32 @@
-@import "@fontsource/figtree/400.css";
-@import "@fontsource/figtree/500.css";
-@import "@fontsource/figtree/600.css";
-@import "@fontsource/figtree/700.css";
 @import "tailwindcss";
-@import "@govtech-bb/design";
-
-@source "../../../../node_modules/@govtech-bb/react/dist/**/*.{js,cjs}";
-
-@theme {
-  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
-}
-
-/* Page wrapper used by every section (header, banner, page content, footer):
- * capped at the design's 1512px frame, centred. Side gutters step from 16px on
- * mobile up to the --xl (128px) token on large screens. */
-.container {
-  width: 100%;
-  max-width: 1512px;
-  margin-inline: auto;
-  padding-inline: var(--spacing-s); /* 16px — mobile */
-}
-
-@media (min-width: 48rem) {
-  .container {
-    padding-inline: var(--spacing-l); /* 64px — tablet */
-  }
-}
-
-@media (min-width: 64rem) {
-  .container {
-    padding-inline: var(--spacing-xl); /* 128px — desktop */
-  }
-}
-
-.form-width {
-  width: 100%;
-}
-
-@media (min-width: 48rem) {
-  .form-width {
-    width: calc(100% * 2 / 3);
-  }
-}
-
-/* ---------------------------------------------------------------------------
- * Forms-app layout + surfaces the @govtech-bb/styles base stylesheet doesn't
- * cover. Form fields themselves use govbb-* classes directly (see
- * field-renderer). Everything below composes the same brand tokens the styles
- * package ships (var(--color-*), var(--spacing-*), var(--font-size-*)).
- * ------------------------------------------------------------------------- */
-
-/* Firefox grows a second focus ring on text fields (#1229): this file's
- * `@import "tailwindcss"` adds a second preflight whose
- * `:-moz-focusring { outline: auto }` lands in the merged `base` layer AFTER
- * the design system's inner-control `outline: 0` reset, and wins at equal
- * specificity. Re-assert the reset unlayered so it beats the layer. */
-:where(
-    .govbb-input-wrapper,
-    .govbb-select-wrapper,
-    .govbb-date-input-wrapper,
-    .govbb-number-input-wrapper
-  )
-  > :where(input, select, textarea) {
-  outline: 0;
-}
-
-/* The muted "(optional)" suffix inside field labels and legends. Required
- * fields carry no mark. Mirrors the design system's .govbb-label__optional,
- * which the published @govtech-bb/styles doesn't ship yet — drop this rule
- * when the app moves to a styles release that includes it. */
-.govbb-label__optional {
-  font-weight: 400;
-  color: var(--color-mid-grey-00);
-}
-
-/* The skip-to-content link (#341) is meant to stay hidden until focused, but
- * @govtech-bb/styles ships an inverted `.govbb-visually-hidden-focusable`
- * rule: it applies the *visible* styles in the `:not(:focus)` state and never
- * hides the element, so the link renders on every page. Re-assert the correct
- * behaviour here (this file loads after the styles package, so it wins at equal
- * specificity): clip it away when unfocused, leaving the styles package's
- * focus reveal intact. Matches `.govbb-visually-hidden`. */
-.govbb-visually-hidden-focusable:not(:focus):not(:focus-visible) {
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border-width: 0;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  position: absolute;
-  overflow: hidden;
-}
-
-/* Page + step layout (replaces the former design-system module classes) */
-.form-page {
-  font-family: var(--font-family-base), sans-serif;
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-}
-
-.form-page__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  padding-block: var(--spacing-l) var(--spacing-m);
-}
-
-.form-page__header h1 {
-  margin: 0;
-}
+@import "@govtech-bb/frontend/tailwind";
+/* Match landing: application utilities can override component styles. */
+@import "@govtech-bb/frontend/css" layer(components);
 
 .form-page__step {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-s);
+  gap: var(--govbb-space-s);
 }
 
-.form-page__service-title {
-  font-size: var(--font-size-h4);
-  line-height: var(--line-height-h4);
-  border-left: var(--color-blue-40) 0.25rem solid;
-  color: var(--color-mid-grey-00);
-  padding: 0.5rem 1rem;
-}
-
-.form-page__step-description {
-  margin-bottom: var(--spacing-s);
-}
-
-/* Per-field width hints carried on the govbb-form-group wrapper. Full width on
- * mobile; capped to a fixed measure at >=768px (see the media query near the
- * end of this file). */
-.govbb-form-group[data-field-width="short"],
-.govbb-form-group[data-field-width="medium"] {
-  width: 100%;
-}
-
-/* Vertical spacing for a group of radio/checkbox options. The govbb-checkboxes
- * wrapper isn't in this package version, so the gap is supplied here. */
-.form-page__options {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-/* Single declaration/consent checkbox alignment (#405). The package's
- * `.govbb-checkbox-item` uses `align-items: center`, which centres the tall
- * 3rem checkbox against the *whole* multi-line consent paragraph so it no
- * longer lines up with the first line. For the single-option branch only
- * (tagged `form-page__single-checkbox` in field-renderer), top-align the row
- * and nudge the label down so its first line sits optically centred against
- * the checkbox — half the difference between the checkbox height and one line
- * box (font-size x line-height). Compound selector keeps specificity above the
- * package rule regardless of stylesheet order; multi-option groups are
- * untouched. */
-.govbb-checkbox-item.form-page__single-checkbox {
-  align-items: flex-start;
-}
-
-.govbb-checkbox-item.form-page__single-checkbox .govbb-checkbox-item__label {
-  padding-top: calc(
-    (3rem - var(--font-size-body) * var(--line-height-body)) / 2
-  );
-}
-
-/* The consent/declaration copy is rendered from markdown (react-markdown emits
- * bare <p>/<ul>, which Tailwind's preflight resets to zero margin — collapsing
- * the intro line, bullet list and confirming statement together). Restore the
- * vertical rhythm between them, matching .form-page__markdown-content. */
-.govbb-checkbox-item__label > :first-child {
-  margin-top: 0;
-}
-
-.govbb-checkbox-item__label p,
-.govbb-checkbox-item__label ul,
-.govbb-checkbox-item__label ol {
-  margin: 0 0 var(--spacing-s);
-}
-
-.govbb-checkbox-item__label > :last-child {
-  margin-bottom: 0;
-}
-
-/* ---- Show/hide -----------------------------------------------------------
- * The show-hide toggle now renders as a native <details>/<summary> using the
- * @govtech-bb/styles `.govbb-show-hide*` classes (#341). The revealed content
- * is a sibling `.govbb-show-hide__content` wrapper in form-renderer; the
- * vertical spacing between the summary and that wrapper comes from the parent
- * `.form-page__step` flex gap, so no app-local rules are needed here. */
-
-/* ---- Select conditional reveal (#863) -------------------------------------
- * Inset fields revealed by a select option. @govtech-bb/styles only ships the
- * radio variant (.govbb-radio-item__conditional), and its display toggling
- * relies on a checked-radio sibling selector — so the select variant is
- * supplied here with the same inset look. Visibility is handled by
- * conditional rendering in field-renderer, not CSS. */
+/* Select reveals are rendered by the app; radio and checkbox reveals come
+   from the package. */
 .govbb-select__conditional {
-  margin-top: var(--spacing-xs);
+  margin-top: var(--govbb-space-xs);
   padding-left: 2.5rem;
-  padding-bottom: var(--spacing-s);
-  border-left: 8px solid var(--color-grey-00);
+  padding-bottom: var(--govbb-space-s);
+  border-left: 8px solid var(--govbb-color-neutral);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-s);
+  gap: var(--govbb-space-s);
 }
 
-/* ---- Checkbox conditional reveal ------------------------------------------
- * @govtech-bb/styles ships the inset look for a checkbox reveal, but lays it
- * out as a block — fine for one revealed field, and the caterer reveal is
- * four. Elsewhere on the step the fields are spaced by the parent flex `gap`,
- * so restate that here (this rule is unlayered and the package's is inside
- * `@layer base`, so it wins on `display`). The checked-sibling guard is kept
- * so the package's hide-when-unticked rule still holds; the app renders the
- * wrapper only when ticked anyway. */
+/* Space multiple fields within a revealed checkbox option. */
 .govbb-checkbox-item:has(> .govbb-checkbox:checked)
   + .govbb-checkbox-item__conditional {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-s);
+  gap: var(--govbb-space-s);
 }
 
 /* ---- Opt-in indented field (ui.indent) ------------------------------------
@@ -230,7 +38,7 @@
  * down the whole revealed group. */
 .govbb-field--indented {
   padding-left: 2.5rem;
-  border-left: 8px solid var(--color-grey-00);
+  border-left: 8px solid var(--govbb-color-neutral);
 }
 
 /* `.form-page__step` lays its fields out as a flex column with a `gap`, so
@@ -239,27 +47,8 @@
  * the first pulls itself up by the gap and re-adds it as padding INSIDE its
  * own border, closing the seams into a single continuous rail. */
 .govbb-field--indented + .govbb-field--indented {
-  margin-top: calc(-1 * var(--spacing-s));
-  padding-top: var(--spacing-s);
-}
-
-/* ---- Checkbox accordion (#2065) ------------------------------------------
- * A collapsible multi-select matching the prototype: each category is a
- * checkbox that, when ticked, expands to reveal its item checkboxes in a
- * blue-bordered inset. Categories are stacked with a small gap. */
-.form-page__accordion {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-s);
-}
-
-.govbb-accordion-group__content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  margin: var(--spacing-xs) 0 var(--spacing-m);
-  padding-left: var(--spacing-l);
-  border-left: 4px solid var(--color-blue-40);
+  margin-top: calc(-1 * var(--govbb-space-s));
+  padding-top: var(--govbb-space-s);
 }
 
 /* "Higher-risk" badge on a category label: a small yellow pill flagging the
@@ -268,14 +57,14 @@
   display: inline-block;
   margin-left: 6px;
   padding: 1px 8px;
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-bold);
+  font-size: var(--govbb-font-size-body-sm);
+  font-weight: 700;
   border-radius: 4px;
 }
 
 .govbb-tag--higher-risk {
-  background: var(--color-yellow-10);
-  border: 1px solid var(--color-yellow-00);
+  background: var(--govbb-yellow-10);
+  border: 1px solid var(--govbb-yellow-80);
 }
 
 /* ---- Opening hours weekly grid (#2358) ------------------------------------
@@ -287,32 +76,29 @@
   /* The height of a single-line control row ("Not open", the Add hours
      button) that day names centre against. */
   --oh-control-height: calc(
-    var(--spacing-s) * 2 + 1.5rem + var(--border-width-form, 2px) * 2
+    var(--govbb-space-s) * 2 + 1.5rem + var(--govbb-border-width-form) * 2
   );
 }
 
-/* The "same hours every weekday" toggle sits between the hint and the grid. */
-.opening-hours__same-weekdays {
-  margin-block: var(--spacing-s);
-}
-
 .opening-hours__week {
-  margin-top: var(--spacing-s);
-  border-top: 1px solid var(--color-grey-00);
+  inline-size: 100%;
+  container-type: inline-size;
+  margin-top: var(--govbb-space-s);
+  border-top: 1px solid var(--govbb-color-neutral);
 }
 
 .opening-hours__day {
   display: grid;
   grid-template-columns: 7.5rem minmax(0, 1fr) auto;
-  column-gap: var(--spacing-s);
-  row-gap: var(--spacing-xs);
+  column-gap: var(--govbb-space-s);
+  row-gap: var(--govbb-space-xs);
   align-items: start;
-  padding-block: var(--spacing-xs);
-  border-bottom: 1px solid var(--color-grey-00);
+  padding-block: var(--govbb-space-xs);
+  border-bottom: 1px solid var(--govbb-color-neutral);
 }
 
 .opening-hours__day-name {
-  font-weight: var(--font-weight-bold);
+  font-weight: 700;
 }
 
 .opening-hours__day-name,
@@ -323,35 +109,31 @@
 }
 
 .opening-hours__not-open {
-  color: var(--color-text-muted);
+  color: var(--govbb-color-muted);
 }
 
 .opening-hours__sets {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-s);
+  gap: var(--govbb-space-s);
 }
 
 .opening-hours__set {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--spacing-xs);
-}
-
-/* The wrapper is full-width by default; shrink it to the picker. */
-.opening-hours__set .govbb-input-wrapper {
-  width: auto;
+  gap: var(--govbb-space-xs);
 }
 
 .opening-hours__set input[type="time"] {
-  width: 10rem;
+  inline-size: auto;
+  flex: none;
 }
 
-/* On small screens each day stacks: name, its sets of hours, then the Add
+/* In narrow containers each day stacks: name, its sets of hours, then the Add
    hours button — the side-by-side grid leaves too little room for a pair of
-   pickers. Slimmer picker padding keeps "start to end" on one line. */
-@media (max-width: 40rem) {
+   pickers. */
+@container (max-width: 40rem) {
   .opening-hours__day {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -363,233 +145,43 @@
   .opening-hours__add {
     justify-self: start;
   }
-
-  .opening-hours__set input[type="time"] {
-    width: 9.25rem;
-    padding-inline: var(--spacing-xs);
-  }
 }
 
-/* ---- Submission confirmation panels -------------------------------------- */
-/* Full-width wrapper for the confirmation step — no container/padding so the
- * banner can bleed to the viewport edges; inner sections supply their own
- * .container. */
-.form-page-confirmation {
-  font-family: var(--font-family-base), sans-serif;
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-}
-
+/* Submission confirmation panels. */
 .form-page__confirmation {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-/* Payment confirmation header (composed with .form-page__header). Adds a fixed
- * banner height so the title block is a consistent height across payment
- * states. The no-payment state uses the teal banner panel below instead. */
-.form-page__confirmation-header {
-  min-height: 16.75rem;
+  gap: var(--govbb-space-xs);
 }
 
 .form-page__reference {
-  display: flex;
-  gap: var(--spacing-s);
-  margin: var(--spacing-s) 0 var(--spacing-m);
-  padding: var(--spacing-s);
-  background-color: var(--color-grey-00);
-  border-radius: var(--radius-sm);
-}
-
-.form-page__reference dt {
-  font-weight: var(--font-weight-bold);
-}
-
-.form-page__reference dd {
-  margin: 0;
-}
-
-/* Full-bleed banner. The panel is a full-width child of <main> (no container),
- * so its teal background reaches the viewport edges; the inner .container keeps
- * the text aligned with the rest of the page. Fixed banner height with a 64px
- * top / 32px bottom inset. */
-.form-page__panel {
-  min-height: 16.75rem;
-  padding-block: var(--spacing-l) var(--spacing-m);
-}
-
-.form-page__panel-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-s);
+  margin-block: var(--govbb-space-s) var(--govbb-space-m);
 }
 
 .form-page__panel--success {
-  background-color: var(--color-teal-40);
-}
-
-.form-page__panel--error {
-  background-color: var(--color-red-40);
-}
-
-.form-page__panel-service-title {
-  font-size: var(--font-size-h4);
-  line-height: var(--line-height-h4);
-  color: var(--color-black-00);
-  padding: 0.5rem 1rem;
-}
-
-.form-page__panel--success .form-page__panel-service-title {
-  border-left: var(--color-teal-00) 0.25rem solid;
-}
-
-.form-page__panel--error .form-page__panel-service-title {
-  border-left: var(--color-red-00) 0.25rem solid;
-}
-
-.form-page__panel-subheading {
-  font-size: var(--font-size-h4);
-  line-height: var(--line-height-body);
-  font-weight: var(--font-weight-normal);
-}
-
-/* ---- Payment block (GOV.BB design system: govbb-payment) ----------------- */
-/* Canonical payment summary card. Not shipped in @govtech-bb/styles, so its
- * markup + CSS are copied here per the design-system block spec:
- * https://govtech-bb.github.io/design-system/llm/blocks/payment.md
- * `--color-text` is not defined in @govtech-bb/design, so fall back to black. */
-.govbb-payment {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xm);
-  padding: var(--spacing-xm);
-  border-radius: var(--spacing-xxs);
-  background: var(--color-blue-10);
-  color: var(--color-text, var(--color-black-00));
-}
-
-.govbb-payment--success {
-  background: var(--color-green-00);
-  color: var(--color-white-00);
-}
-
-.govbb-payment--failed {
-  background: var(--color-red-00);
-  color: var(--color-white-00);
-}
-
-.govbb-payment__header {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding-bottom: var(--spacing-xm);
-  border-bottom: 1px solid var(--color-mid-grey-00);
-}
-
-.govbb-payment--success .govbb-payment__header,
-.govbb-payment--failed .govbb-payment__header {
-  border-bottom-color: var(--color-grey-00);
-}
-
-.govbb-payment__title {
-  font-size: var(--font-size-h2);
-  line-height: var(--line-height-h2);
-  font-weight: var(--font-weight-bold);
-  margin: 0;
-}
-
-.govbb-payment__description {
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  margin: 0;
-}
-
-.govbb-payment__items {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-s);
-}
-
-.govbb-payment__item {
-  display: flex;
-  gap: var(--spacing-s);
-  align-items: flex-start;
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-}
-
-.govbb-payment__item-label {
-  flex: 1 0 0;
-  min-width: 0;
-  margin: 0;
-  font-weight: var(--font-weight-bold);
-}
-
-.govbb-payment__item-value {
-  margin: 0;
-  white-space: nowrap;
-}
-
-.govbb-payment__note {
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  margin: 0;
-  font-style: italic;
-  color: var(--color-mid-grey-00);
-}
-
-.govbb-payment--success .govbb-payment__note,
-.govbb-payment--failed .govbb-payment__note {
-  color: inherit;
-  font-style: normal;
-}
-
-/* ---- Feedback section (plain — no callout box, per the confirmation design) */
-.form-page__feedback {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--spacing-xs);
-  margin-top: var(--spacing-m);
-}
-
-.form-page__feedback h3 {
-  margin-top: 0;
+  background-color: var(--govbb-teal-20);
 }
 
 .form-page__print {
-  margin-top: var(--spacing-m);
+  margin-top: var(--govbb-space-m);
 }
 
 /* ---- Next steps + contact details ---------------------------------------- */
 .form-page__next-steps {
-  margin-top: var(--spacing-m);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
+  margin-block-start: var(--govbb-space-m);
 }
 
 .form-page__contact {
-  margin-top: var(--spacing-m);
+  margin-block-start: var(--govbb-space-m);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-s); /* 16px between inner elements */
+  gap: var(--govbb-space-s);
 }
 
 .form-page__contact-body {
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-s);
-}
-
-.form-page__contact-body p {
-  margin: 0;
-}
-
-.form-page__contact-label {
-  font-weight: var(--font-weight-bold);
+  gap: var(--govbb-space-s);
 }
 
 /* ---- Applications-closed page (#1936) ------------------------------------ *
@@ -597,33 +189,19 @@
  * (same tokens as the service-title caption and payment panel), a small bold
  * grey label, and the formatted closing datetime beneath it. */
 .form-page__closed-panel {
-  padding: var(--spacing-s) var(--spacing-s);
-  background: var(--color-blue-10);
-  border-left: var(--color-blue-40) 0.25rem solid;
+  padding: var(--govbb-space-s) var(--govbb-space-s);
+  background: var(--govbb-color-highlight);
+  border-left: var(--govbb-blue-20) 0.25rem solid;
 }
 
 .form-page__closed-panel-label {
-  margin-bottom: var(--spacing-xxs);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-mid-grey-00);
+  margin-bottom: var(--govbb-space-xxs);
+  font-weight: 700;
+  color: var(--govbb-color-muted);
 }
 
-/* ---- Markdown content (recipe-authored confirmation copy) ---------------- *
- * react-markdown emits bare <p> elements, which Tailwind's preflight resets to
- * zero margin — collapsing paragraphs together. Restore vertical rhythm between
- * them (matching body spacing), and align the block with the next-steps panel. */
 .form-page__markdown-content {
-  margin-top: var(--spacing-m);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-}
-
-.form-page__markdown-content p {
-  margin: 0 0 var(--spacing-s);
-}
-
-.form-page__markdown-content p:last-child {
-  margin-bottom: 0;
+  margin-top: var(--govbb-space-m);
 }
 
 /* ---- Content element (htmlType "content") ------------------------------- *
@@ -631,19 +209,14 @@
  * service-title caption and closed panel). Text variant: block spacing only;
  * the details variant reuses the .govbb-show-hide* classes. */
 .govbb-inset-text {
-  padding: var(--spacing-s) var(--spacing-m);
-  margin-bottom: var(--spacing-m);
-  background: var(--color-blue-10);
-  border-left: var(--color-blue-40) 0.25rem solid;
-}
-
-.govbb-inset-text > :last-child,
-.govbb-content-text > :last-child {
-  margin-bottom: 0;
+  padding: var(--govbb-space-s) var(--govbb-space-m);
+  margin-bottom: var(--govbb-space-m);
+  background: var(--govbb-color-highlight);
+  border-left: var(--govbb-blue-20) 0.25rem solid;
 }
 
 .govbb-content-text {
-  margin-bottom: var(--spacing-m);
+  margin-bottom: var(--govbb-space-m);
 }
 
 /* Warning variant: amber left rule with a filled roundel, no panel. Reserved
@@ -652,11 +225,11 @@
  * blocking validation error. */
 .govbb-warning-text {
   display: flex;
-  gap: var(--spacing-s);
+  gap: var(--govbb-space-s);
   align-items: flex-start;
-  padding: var(--spacing-s) var(--spacing-m);
-  margin-bottom: var(--spacing-m);
-  border-left: var(--color-yellow-00) 0.25rem solid;
+  padding: var(--govbb-space-s) var(--govbb-space-m);
+  margin-bottom: var(--govbb-space-m);
+  border-left: var(--govbb-yellow-80) 0.25rem solid;
 }
 
 .govbb-warning-text__icon {
@@ -664,133 +237,26 @@
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 50%;
-  background: var(--color-yellow-00);
-  color: var(--color-black-00);
+  background: var(--govbb-yellow-80);
+  color: var(--govbb-color-ink);
   font-weight: 700;
   line-height: 1.75rem;
   text-align: center;
-}
-
-.govbb-warning-text__body > :last-child {
-  margin-bottom: 0;
 }
 
 /* ---- Applicant name (declaration step) ----------------------------------- */
 .form-page__applicant {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xxs);
-}
-
-/* ---- Review / check-your-answers (summary list) -------------------------
- * govbb-summary-section / govbb-summary-list are not in this package version
- * (alpha.16); the official component CSS is ported here under the same class
- * names, composed from brand tokens. Remove once the package ships them. */
-.govbb-summary-section {
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-areas:
-    "heading"
-    "content"
-    "button";
-  row-gap: var(--spacing-xs);
-  padding-bottom: var(--spacing-m);
-  margin-bottom: var(--spacing-m);
-  border-bottom: 4px solid var(--color-grey-00);
-}
-
-.govbb-summary-section:last-child {
-  padding-bottom: 0;
-  margin-bottom: 0;
-  border-bottom: 0;
-}
-
-.govbb-summary-section__title {
-  grid-area: heading;
-  margin: 0;
-  font-size: var(--font-size-h2);
-  line-height: var(--line-height-h2);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text);
-}
-
-.govbb-summary-section__action {
-  grid-area: button;
-  justify-self: start;
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-}
-
-.govbb-summary-list {
-  grid-area: content;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  margin: 0;
-}
-
-.govbb-summary-list__row {
-  display: flex;
-  flex-direction: column;
-}
-
-.govbb-summary-list__key {
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text);
-}
-
-.govbb-summary-list__value {
-  margin: 0;
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  color: var(--color-text);
-}
-
-@media (min-width: 768px) {
-  .govbb-summary-section {
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "heading button"
-      "content content";
-  }
-
-  .govbb-summary-section__action {
-    place-self: center end;
-  }
-
-  .govbb-summary-list {
-    gap: var(--spacing-s);
-  }
-
-  .govbb-summary-list__row {
-    flex-direction: row;
-    column-gap: var(--spacing-xs);
-  }
-
-  .govbb-summary-list__key {
-    flex: 0 0 33.3333%;
-  }
-
-  .govbb-summary-list__value {
-    flex: 0 0 66.6666%;
-  }
-}
-
-/* ---- Error / not-found pages --------------------------------------------- */
-.form-page__message {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-s);
+  gap: var(--govbb-space-xxs);
 }
 
 /* Fixed-measure field widths (GOV.UK style). `ch` units size the cap to the
  * field's own type, not its container, so a short field inside a show-hide
  * inset renders the same as a standalone one — percentage widths compounded
- * against every wrapper (.form-width 2/3 column × inset padding × 33%) and
- * left inset fields tiny. `width: 100%` from the base rule above remains the
- * floor, so fields still shrink inside containers narrower than the cap.
+ * against every wrapper (two-thirds column × inset padding × 33%) and
+ * left inset fields tiny. The package's form group supplies `width: 100%`,
+ * so fields still shrink inside containers narrower than the cap.
  * `long` (or no hint) stays unstyled: full width of the form column. */
 @media (min-width: 768px) {
   .govbb-form-group[data-field-width="short"] {
@@ -802,51 +268,9 @@
   }
 }
 
-/* ---- Address lookup (geocoder) -------------------------------------------
- * The suggestions list overlays the fields below instead of pushing them
- * down: the wrapper is the positioning context and the listbox is absolutely
- * positioned directly beneath the input. Styled to read as one control with
- * the `.govbb-input` above it. */
-.govbb-address-lookup {
-  position: relative;
-  /* `.govbb-form-group` is a flex column with `align-items: flex-start`, so
-   * this wrapper must claim full width or it (and the absolutely-positioned
-   * suggestions) collapse to the input's intrinsic width. */
+/* Fill the field group's width so address suggestions follow the input. */
+.govbb-form-group > .govbb-combobox {
   width: 100%;
-}
-
-.govbb-address-suggestions {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 20;
-  margin: 2px 0 0;
-  padding: 0;
-  list-style: none;
-  background: var(--color-white-00);
-  border: 1px solid var(--color-mid-grey-00);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  max-height: 15rem;
-  overflow-y: auto;
-}
-
-.govbb-address-suggestion {
-  padding: var(--spacing-xs) var(--spacing-s);
-  font-size: var(--font-size-body);
-  color: var(--color-text);
-  cursor: pointer;
-  border-bottom: 1px solid var(--color-grey-00);
-}
-
-.govbb-address-suggestion:last-child {
-  border-bottom: 0;
-}
-
-.govbb-address-suggestion:hover,
-.govbb-address-suggestion[aria-selected="true"] {
-  background: var(--color-blue-10);
 }
 
 /* ---- Print: a clean paper copy of the confirmation (#2132) --------------- */
@@ -855,27 +279,24 @@
    next and contact details — with no page chrome, no action controls, an even
    vertical rhythm, and no block split across a page break. */
 @media print {
-  /* Chrome + every interactive control (actions are useless on paper): the
-     Print button, feedback link, "Continue to payment" and "Try again" buttons.
-     `[class*="govbb-btn"]` covers both the primary and --secondary variants. */
+  /* Hide page chrome and actions on paper. */
   .no-print,
   .form-page__print,
-  .form-page__feedback,
-  .govbb-btn,
-  [class*="govbb-btn"] {
+  .govbb-payment__note,
+  .form-page .govbb-button-group,
+  .govbb-button {
     display: none !important;
   }
 
   /* Use the paper's own margin: drop the on-screen page gutters and the fixed
      two-thirds measure so content isn't boxed into a narrow column. */
-  .container {
-    max-width: none !important;
+  .govbb-width-container {
+    max-inline-size: none !important;
     padding-inline: 0 !important;
-    padding-bottom: 0 !important;
   }
 
-  .form-width {
-    width: 100% !important;
+  .govbb-main-wrapper {
+    padding-block: 0 !important;
   }
 
   /* Page-break control below relies on `break-inside: avoid`, which Chrome
@@ -885,28 +306,23 @@
      mid-block. Flatten these containers to plain block flow in print so the
      browser honours the page-break rules. */
   .form-page__confirmation,
-  .form-page__panel-body,
+  .govbb-grid-row,
+  .govbb-service-heading,
   .govbb-payment,
+  .form-page__next-steps,
   .form-page__contact {
     display: block !important;
   }
 
-  /* The success/error banner is a tall (16.75rem) coloured block; print drops
-     the background, leaving a big empty gap. Collapse it to plain heading text. */
-  .form-page__panel {
-    min-height: 0 !important;
-    padding-block: 0 !important;
-  }
-
-  .form-page__panel--success,
-  .form-page__panel--error {
+  .form-page__panel--success {
     background: none !important;
-    color: var(--color-black-00) !important;
+    color: var(--govbb-color-ink) !important;
   }
 
   /* Payment summary card: drop its surface/border/shadow so the receipt lines
      print as plain text, consistent with the non-payment layout. */
   .govbb-payment {
+    color: var(--govbb-color-ink) !important;
     background: none !important;
     border: 0 !important;
     box-shadow: none !important;
@@ -919,23 +335,20 @@
   .form-page__next-steps,
   .form-page__markdown-content,
   .form-page__contact {
-    margin-top: var(--spacing-m) !important;
+    margin-top: var(--govbb-space-m) !important;
   }
 
   /* Page breaks: keep a cohesive block whole and never orphan a heading from
      the content it introduces. */
   h1,
   h2,
-  h3,
-  .govbb-text-h1,
-  .govbb-text-h2,
-  .govbb-text-h3 {
+  h3 {
     break-after: avoid-page;
   }
 
   .form-page__reference,
   .form-page__contact,
-  .govbb-payment__item,
+  .govbb-payment__row,
   .form-page__next-steps > div,
   .form-page__next-steps li {
     break-inside: avoid;

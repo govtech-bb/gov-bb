@@ -37,7 +37,7 @@ describe("resolveOptionDisplay", () => {
     expect(resolveOptionDisplay(f, "citizen")).toBe("Barbadian citizen");
   });
 
-  it("checkbox / multi-select → an array of labels", () => {
+  it("checkbox → an array of labels", () => {
     const f = field({
       htmlType: "checkbox",
       options: [

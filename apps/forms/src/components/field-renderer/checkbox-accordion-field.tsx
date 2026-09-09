@@ -1,4 +1,5 @@
 import { JSX, useState } from "react";
+import { Checkbox, Fieldset, FormGroup, Hint } from "@govtech-bb/react";
 import type { OptionGroup } from "@govtech-bb/form-types";
 import ErrorMessage from "../error-message";
 import { FieldRenderContext } from "./render-context";
@@ -14,20 +15,25 @@ import { FieldRenderContext } from "./render-context";
  */
 function AccordionCategory({
   group,
-  idBase,
-  fieldId,
   selected,
+  invalid,
   onToggleItem,
 }: {
   group: OptionGroup;
-  idBase: string;
-  fieldId: string;
   selected: string[];
+  invalid?: boolean;
   onToggleItem: (value: string) => void;
 }): JSX.Element {
   const hasSelection = group.options.some((o) => selected.includes(o.value));
   const [open, setOpen] = useState(hasSelection);
-  const itemsId = `${idBase}-items`;
+  const label = (
+    <>
+      {group.label}
+      {group.higherRisk && (
+        <span className="govbb-tag govbb-tag--higher-risk">Higher-risk</span>
+      )}
+    </>
+  );
 
   // A category holding exactly ONE item has nothing worth expanding: the
   // expander would cost two ticks (open the category, then tick its lone item)
@@ -37,74 +43,38 @@ function AccordionCategory({
   if (group.options.length === 1) {
     const option = group.options[0];
     return (
-      <div className="govbb-accordion-group">
-        <div className="govbb-checkbox-item">
-          <input
-            type="checkbox"
-            className="govbb-checkbox"
-            id={`${fieldId}-${option.value}`}
-            checked={selected.includes(option.value)}
-            onChange={() => onToggleItem(option.value)}
-          />
-          <label
-            className="govbb-checkbox-item__label"
-            htmlFor={`${fieldId}-${option.value}`}
-          >
-            {group.label}
-            {group.higherRisk && (
-              <span className="govbb-tag govbb-tag--higher-risk">
-                Higher-risk
-              </span>
-            )}
-          </label>
-        </div>
-      </div>
+      <Checkbox
+        label={label}
+        checked={selected.includes(option.value)}
+        aria-invalid={invalid}
+        onChange={() => onToggleItem(option.value)}
+      />
     );
   }
 
   return (
-    <div className="govbb-accordion-group">
-      <div className="govbb-checkbox-item">
-        <input
-          type="checkbox"
-          className="govbb-checkbox"
-          id={idBase}
-          checked={open}
-          aria-expanded={open}
-          aria-controls={itemsId}
-          onChange={() => setOpen((o) => !o)}
-        />
-        <label className="govbb-checkbox-item__label" htmlFor={idBase}>
-          {group.label}
-          {group.higherRisk && (
-            <span className="govbb-tag govbb-tag--higher-risk">
-              Higher-risk
-            </span>
-          )}
-        </label>
-      </div>
-      {open && (
-        <div id={itemsId} className="govbb-accordion-group__content">
-          {group.options.map((option) => (
-            <div className="govbb-checkbox-item" key={option.value}>
-              <input
-                type="checkbox"
-                className="govbb-checkbox"
-                id={`${fieldId}-${option.value}`}
+    <Checkbox
+      label={label}
+      checked={open}
+      aria-expanded={open}
+      aria-invalid={invalid}
+      onChange={() => setOpen((o) => !o)}
+      conditional={
+        open && (
+          <FormGroup>
+            {group.options.map((option) => (
+              <Checkbox
+                key={option.value}
+                label={option.label}
                 checked={selected.includes(option.value)}
+                aria-invalid={invalid}
                 onChange={() => onToggleItem(option.value)}
               />
-              <label
-                className="govbb-checkbox-item__label"
-                htmlFor={`${fieldId}-${option.value}`}
-              >
-                {option.label}
-              </label>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+            ))}
+          </FormGroup>
+        )
+      }
+    />
   );
 }
 
@@ -117,6 +87,8 @@ export function renderCheckboxAccordionField(
     hintId,
     errorId,
     errorMessage,
+    describedBy,
+    invalid,
     labelClass,
     labelSuffix,
     commitChange,
@@ -132,29 +104,26 @@ export function renderCheckboxAccordionField(
   };
 
   return (
-    <fieldset className="govbb-fieldset" id={field.id}>
+    <Fieldset
+      id={field.id}
+      disabled={field.disabled}
+      aria-describedby={describedBy}
+    >
       <legend className={labelClass("govbb-fieldset__legend")}>
         {field.label}
         {labelSuffix}
       </legend>
-      {field.hint && (
-        <p className="govbb-hint" id={hintId}>
-          {field.hint}
-        </p>
-      )}
+      {field.hint && <Hint id={hintId}>{field.hint}</Hint>}
       <ErrorMessage id={errorId} message={errorMessage} />
-      <div className="form-page__accordion">
-        {field.groups?.map((group, i) => (
-          <AccordionCategory
-            key={group.label}
-            group={group}
-            idBase={`${field.id}-cat-${i}`}
-            fieldId={field.id}
-            selected={selected}
-            onToggleItem={toggle}
-          />
-        ))}
-      </div>
-    </fieldset>
+      {field.groups?.map((group) => (
+        <AccordionCategory
+          key={group.label}
+          group={group}
+          selected={selected}
+          invalid={invalid}
+          onToggleItem={toggle}
+        />
+      ))}
+    </Fieldset>
   );
 }

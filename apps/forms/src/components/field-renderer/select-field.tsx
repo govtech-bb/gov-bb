@@ -1,4 +1,5 @@
 import { JSX } from "react";
+import { FormGroup, Hint, Label, Select } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import { FieldRenderContext } from "./render-context";
 import FieldRenderer from "./index";
@@ -14,7 +15,6 @@ export function renderSelectField(ctx: FieldRenderContext): JSX.Element {
     hintId,
     errorId,
     errorMessage,
-    labelClass,
     labelSuffix,
     commitChange,
     insetFieldsByOption,
@@ -23,51 +23,39 @@ export function renderSelectField(ctx: FieldRenderContext): JSX.Element {
     draftToken,
   } = ctx;
 
-  const isMultiple = field.multiple ?? false;
-  const selectValue = f.state.value as string | string[] | undefined;
+  const selectValue = f.state.value as string | undefined;
   // Conditional reveal (#863): inset fields keyed to the selected
   // option. Unlike radio there is no per-option DOM position, so
-  // the reveal renders below the whole control. Multi-selects never
-  // receive insetFieldsByOption (see buildFieldGroups).
+  // the reveal renders below the whole control.
   const selectInsetEntries =
-    !isMultiple && typeof selectValue === "string"
+    typeof selectValue === "string"
       ? insetFieldsByOption?.get(selectValue)
       : undefined;
   return (
-    <div className="govbb-form-group" data-field-width={field.ui?.width}>
-      <label className={labelClass("govbb-label")} htmlFor={field.id}>
+    <FormGroup data-field-width={field.ui?.width}>
+      <Label
+        className={field.ui?.hideLabel ? "govbb-visually-hidden" : undefined}
+        htmlFor={field.id}
+        optional={labelSuffix !== null}
+      >
         {field.label}
-        {labelSuffix}
-      </label>
-      {field.hint && (
-        <p className="govbb-hint" id={hintId}>
-          {field.hint}
-        </p>
-      )}
+      </Label>
+      {field.hint && <Hint id={hintId}>{field.hint}</Hint>}
       <ErrorMessage id={errorId} message={errorMessage} />
-      <div className="govbb-select-wrapper">
-        <select
-          {...sharedProps}
-          {...requiredProps}
-          className="govbb-select"
-          multiple={isMultiple}
-          value={selectValue ? selectValue : isMultiple ? [] : ""}
-          aria-invalid={invalid}
-          onChange={(e) => commitChange(e.target.value)}
-        >
-          <option value=""></option>
-          {field.options?.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <span className="govbb-select__chevron" aria-hidden="true">
-          <svg viewBox="0 0 12 8">
-            <path d="M0 8 6 0 12 8z" />
-          </svg>
-        </span>
-      </div>
+      <Select
+        {...sharedProps}
+        {...requiredProps}
+        value={selectValue ?? ""}
+        aria-invalid={invalid}
+        onChange={(e) => commitChange(e.target.value)}
+      >
+        <option value=""></option>
+        {field.options?.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </Select>
       {selectInsetEntries && (
         <div className="govbb-select__conditional">
           {selectInsetEntries.map(
@@ -90,6 +78,6 @@ export function renderSelectField(ctx: FieldRenderContext): JSX.Element {
           )}
         </div>
       )}
-    </div>
+    </FormGroup>
   );
 }

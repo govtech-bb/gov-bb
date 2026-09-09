@@ -17,11 +17,12 @@ import type { FieldRenderContext } from "./render-context";
 // ---------------------------------------------------------------------------
 let committed: unknown;
 
-function Harness({ initial }: { initial?: string[] }) {
+function Harness({ initial, step }: { initial?: string[]; step?: number }) {
   const [value, setValue] = useState<unknown>(initial);
   const ctx = {
     field: {
       id: "opening-hours-opening-hours",
+      step,
       label: "When is the restaurant open?",
       hint: 'Select "Add hours" for each day the restaurant is open.',
     },
@@ -65,6 +66,11 @@ describe("parseOpeningHours / serializeOpeningHours", () => {
     expect(
       serializeOpeningHours(parseOpeningHours(["Friday 09:00 -"])),
     ).toEqual(["Friday 09:00 -"]);
+  });
+
+  it("preserves native times with seconds so an invalid draft can be corrected", () => {
+    const entries = ["Monday 09:00:30 - 17:00:30", "Tuesday 09:00:30.125 -"];
+    expect(serializeOpeningHours(parseOpeningHours(entries))).toEqual(entries);
   });
 
   it("drops entries that are not opening hours instead of crashing", () => {
@@ -124,6 +130,33 @@ describe("OpeningHoursField", () => {
     setTime("Monday closing time", "17:00");
     expect(committed).toEqual(["Monday 09:00 - 17:00"]);
     expect(screen.getAllByText("Not open")).toHaveLength(6);
+  });
+
+  it.each([undefined, 1, 90, 0, -60, 60, 1800])(
+    "uses whole-minute picker increments for a configured step of %s",
+    (step) => {
+      render(<Harness initial={["Monday 09:00 - 17:00"]} step={step} />);
+      const input = screen.getByLabelText(
+        "Monday opening time",
+      ) as HTMLInputElement;
+      input.stepUp();
+      expect(input.value).toBe(step === 1800 ? "09:30" : "09:01");
+    },
+  );
+
+  it("keeps a range with seconds visible and preserves it when another day changes", async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={["Monday 09:00:30 - 17:00:30"]} step={1} />);
+    expect(screen.getByLabelText("Monday opening time")).toHaveValue(
+      "09:00:30",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Add hours for Tuesday" }),
+    );
+    expect(committed).toEqual(["Monday 09:00:30 - 17:00:30", "Tuesday -"]);
+    setTime("Monday opening time", "09:00");
+    setTime("Monday closing time", "17:00");
+    expect(committed).toEqual(["Monday 09:00 - 17:00", "Tuesday -"]);
   });
 
   it("keeps the days independent and orders entries Monday-first", async () => {
@@ -215,6 +248,45 @@ describe("OpeningHoursField", () => {
 
       await tickBox(user);
       expect(committed).toEqual(WEEKDAYS.map((day) => `${day} 11:00 - 15:00`));
+    });
+
+    it("confirms replacement of different weekday hours and lets the applicant cancel", async () => {
+      const user = userEvent.setup();
+      const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+      const weekend = "Saturday 10:00 - 14:00";
+      render(
+        <Harness
+          initial={["Monday 09:00 - 17:00", "Tuesday 10:00 - 16:00", weekend]}
+        />,
+      );
+      try {
+        await tickBox(user);
+        expect(confirm).toHaveBeenCalledWith(
+          "Use Monday's hours for every weekday? This will replace the other weekday hours you have entered.",
+        );
+        expect(committed).toBeUndefined();
+        expect(screen.getByRole("checkbox")).not.toBeChecked();
+        expect(screen.getByLabelText("Tuesday opening time")).toHaveValue(
+          "10:00",
+        );
+        expect(screen.getByLabelText("Tuesday closing time")).toHaveValue(
+          "16:00",
+        );
+
+        confirm.mockReturnValue(true);
+        await tickBox(user);
+        expect(committed).toEqual([
+          ...WEEKDAYS.map((day) => `${day} 09:00 - 17:00`),
+          weekend,
+        ]);
+        expect(screen.getByRole("checkbox")).toBeChecked();
+        await tickBox(user);
+        expect(screen.getByLabelText("Tuesday opening time")).toHaveValue(
+          "09:00",
+        );
+      } finally {
+        confirm.mockRestore();
+      }
     });
 
     it("starts combined when every weekday already shares the same hours", () => {

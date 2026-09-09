@@ -893,18 +893,12 @@ importers:
 
   apps/forms:
     dependencies:
-      '@fontsource/figtree':
-        specifier: ^5.2.10
-        version: 5.2.10
       '@govtech-bb/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
       '@govtech-bb/content':
         specifier: workspace:*
         version: link:../../packages/content
-      '@govtech-bb/design':
-        specifier: ^1.0.0-alpha.17
-        version: 1.0.0-alpha.17
       '@govtech-bb/form-conditions':
         specifier: workspace:*
         version: link:../../packages/form-conditions
@@ -914,12 +908,12 @@ importers:
       '@govtech-bb/form-validation':
         specifier: workspace:*
         version: link:../../packages/form-validation
+      '@govtech-bb/frontend':
+        specifier: 1.0.0-alpha.29
+        version: 1.0.0-alpha.29
       '@govtech-bb/react':
-        specifier: ^1.0.0-alpha.17
-        version: 1.0.0-alpha.17(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)
-      '@govtech-bb/styles':
-        specifier: ^1.0.0-alpha.17
-        version: 1.0.0-alpha.17
+        specifier: 1.0.0-alpha.29
+        version: 1.0.0-alpha.29(react@19.2.7)
       '@maskito/core':
         specifier: ^5.2.2
         version: 5.3.1
@@ -2559,9 +2553,6 @@ packages:
     resolution: {integrity: sha512-Qfgm1X290SHfkg8XvLPXlu6xOH/ytLUILGXDskYyQowmlnlxNsYDCmdynbNMHMXIs6GpI6Wsl/aorskwbl6cLQ==}
     peerDependencies:
       react: '>=18'
-
-  '@govtech-bb/styles@1.0.0-alpha.17':
-    resolution: {integrity: sha512-4klEF5AgbhXyIE11pdQQhqLH2dCWqZDLINcL516cpjMBzobkVqK5Jb41KvfSysUYUSGTEiv+XQrTzq+joHRM6Q==}
 
   '@grpc/grpc-js@1.14.4':
     resolution: {integrity: sha512-k9Dj3DV/itK9D06Y8f190Qgop7/Ui+D0njFV3LHMPwPT75DpXLQohE9Wmz0QElrJnzsjB7KPWiKJbOl7IPDArQ==}
@@ -11439,8 +11430,6 @@ snapshots:
       '@govtech-bb/frontend': 1.0.0-alpha.29
       class-variance-authority: 0.7.1
       react: 19.2.7
-
-  '@govtech-bb/styles@1.0.0-alpha.17': {}
 
   '@grpc/grpc-js@1.14.4':
     dependencies:
