@@ -81,6 +81,8 @@
 }
 
 .opening-hours__week {
+  inline-size: 100%;
+  container-type: inline-size;
   margin-top: var(--govbb-space-s);
   border-top: 1px solid var(--govbb-color-neutral);
 }
@@ -124,13 +126,14 @@
 }
 
 .opening-hours__set input[type="time"] {
-  width: 10rem;
+  inline-size: auto;
+  flex: none;
 }
 
-/* On small screens each day stacks: name, its sets of hours, then the Add
+/* In narrow containers each day stacks: name, its sets of hours, then the Add
    hours button — the side-by-side grid leaves too little room for a pair of
    pickers. */
-@media (max-width: 40rem) {
+@container (max-width: 40rem) {
   .opening-hours__day {
     grid-template-columns: minmax(0, 1fr);
   }

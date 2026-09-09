@@ -53,9 +53,10 @@ const MAX_SETS_PER_DAY = 3;
 // One stored entry: "Monday 09:00 - 17:00". Halves are optional so a set
 // that is added but not yet completed still round-trips through form state;
 // the registry component's pattern rule rejects those partial entries on
-// submit.
+// submit. Preserve native values with seconds too, so validation can reject
+// them without the applicant losing the range on the next edit.
 const ENTRY_PATTERN = new RegExp(
-  `^(${OPENING_HOURS_DAYS.join("|")})\\s*(\\d{1,2}:\\d{2})?\\s*-\\s*(\\d{1,2}:\\d{2})?$`,
+  `^(${OPENING_HOURS_DAYS.join("|")})\\s*(\\d{1,2}:\\d{2}(?::\\d{2}(?:\\.\\d{1,3})?)?)?\\s*-\\s*(\\d{1,2}:\\d{2}(?::\\d{2}(?:\\.\\d{1,3})?)?)?$`,
 );
 
 /** Parse the stored string array back into per-day sets of hours. Entries
@@ -124,6 +125,9 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
   } = ctx;
 
   const week = parseOpeningHours(f.state.value);
+  // The opening-hours contract uses minutes; sub-minute steps expose seconds.
+  const timeStep =
+    field.step && field.step > 0 && field.step % 60 === 0 ? field.step : 60;
 
   // Screen-reader announcement for add/remove; visually hidden.
   const [status, setStatus] = useState("");
@@ -160,8 +164,19 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
     if (checked) {
       // The first weekday that already has hours becomes the shared set, so
       // ticking the box after filling Monday spreads Monday's hours.
-      const template =
-        WEEKDAYS.map((day) => week[day]).find((sets) => sets.length > 0) ?? [];
+      const templateDay = WEEKDAYS.find((day) => week[day].length > 0);
+      const template = templateDay ? week[templateDay] : [];
+      const replacesHours = WEEKDAYS.some(
+        (day) => week[day].length > 0 && !hoursSetsEqual(week[day], template),
+      );
+      if (
+        replacesHours &&
+        !window.confirm(
+          `Use ${templateDay}'s hours for every weekday? This will replace the other weekday hours you have entered.`,
+        )
+      ) {
+        return;
+      }
       commitChange(
         serializeOpeningHours({
           ...week,
@@ -228,15 +243,15 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
       <Input
         type="time"
         value={rowSets(row)[index][half]}
-        step={field.step}
+        step={timeStep}
         disabled={field.disabled}
         onBlur={f.handleBlur}
         // Only the halves the applicant still has to fix are marked
-        // invalid — an empty picker, or both when open equals close — so
-        // a format error doesn't paint valid times red.
+        // invalid: missing times, unsupported seconds, or equal open/close.
         aria-invalid={
           invalid &&
           (rowSets(row)[index][half] === "" ||
+            rowSets(row)[index][half].length > 5 ||
             rowSets(row)[index].start === rowSets(row)[index].end)
             ? true
             : undefined
