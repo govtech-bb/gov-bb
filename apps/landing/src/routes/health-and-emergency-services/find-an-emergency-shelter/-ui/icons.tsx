@@ -6,7 +6,7 @@ export function Chevron({ open }: { open: boolean }) {
   return (
     <svg
       aria-hidden="true"
-      className={`size-6 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+      className={`size-6 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
       fill="none"
       focusable="false"
       viewBox="0 0 24 24"
@@ -19,7 +19,7 @@ export function Chevron({ open }: { open: boolean }) {
         strokeWidth="2"
       />
     </svg>
-  );
+  )
 }
 
 export function CloseIcon() {
@@ -38,7 +38,7 @@ export function CloseIcon() {
         strokeWidth="2"
       />
     </svg>
-  );
+  )
 }
 
 export function LocationIcon() {
@@ -66,7 +66,7 @@ export function LocationIcon() {
       />
       <circle cx="12" cy="12" fill="currentColor" r="1.5" />
     </svg>
-  );
+  )
 }
 
 /** Hollow teardrop pin with a ring hole — scales with surrounding text. */
@@ -94,5 +94,5 @@ export function MapPinIcon() {
         strokeWidth="2"
       />
     </svg>
-  );
+  )
 }

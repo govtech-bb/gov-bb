@@ -1,0 +1,582 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-09T19:01:03.338124Z",
+  "title": "Design System: Content and Smart tools",
+  "extensions": {
+    "colorMeta": {
+      "el-0": {
+        "displayName": "Control surface",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-50": {
+        "displayName": "Quiet hover",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-100": {
+        "displayName": "Workspace surface",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-150": {
+        "displayName": "Row separator",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-200": {
+        "displayName": "Ordinary border",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-250": {
+        "displayName": "Stronger border",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-400": {
+        "displayName": "Chip hover border",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-500": {
+        "displayName": "Focused input border",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-800": {
+        "displayName": "Labels and primary hover",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-1000": {
+        "displayName": "Strong action surface",
+        "role": "primary",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "txt": {
+        "displayName": "Primary text",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "txt-dim": {
+        "displayName": "Secondary list metadata",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "on-inverse": {
+        "displayName": "Inverse text",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "err-bg": {
+        "displayName": "Error surface",
+        "tonalRamp": [
+          "oklch(15% 0.0174 17.46)",
+          "oklch(26% 0.0174 17.46)",
+          "oklch(37% 0.0174 17.46)",
+          "oklch(49% 0.0174 17.46)",
+          "oklch(60% 0.0174 17.46)",
+          "oklch(72% 0.0174 17.46)",
+          "oklch(84% 0.0174 17.46)",
+          "oklch(95% 0.0174 17.46)"
+        ]
+      },
+      "err-bd": {
+        "displayName": "Error border",
+        "tonalRamp": [
+          "oklch(15% 0.0590 22.29)",
+          "oklch(26% 0.0590 22.29)",
+          "oklch(37% 0.0590 22.29)",
+          "oklch(49% 0.0590 22.29)",
+          "oklch(60% 0.0590 22.29)",
+          "oklch(72% 0.0590 22.29)",
+          "oklch(84% 0.0590 22.29)",
+          "oklch(95% 0.0590 22.29)"
+        ]
+      },
+      "err-tx": {
+        "displayName": "Error text",
+        "tonalRamp": [
+          "oklch(15% 0.1473 28.14)",
+          "oklch(26% 0.1473 28.14)",
+          "oklch(37% 0.1473 28.14)",
+          "oklch(49% 0.1473 28.14)",
+          "oklch(60% 0.1473 28.14)",
+          "oklch(72% 0.1473 28.14)",
+          "oklch(84% 0.1473 28.14)",
+          "oklch(95% 0.1473 28.14)"
+        ]
+      },
+      "el-0-dark": {
+        "displayName": "Control surface (dark)",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-50-dark": {
+        "displayName": "Quiet hover (dark)",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-100-dark": {
+        "displayName": "Workspace surface (dark)",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-150-dark": {
+        "displayName": "Row separator (dark)",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-200-dark": {
+        "displayName": "Ordinary border (dark)",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-250-dark": {
+        "displayName": "Stronger border (dark)",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-400-dark": {
+        "displayName": "Chip hover border (dark)",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-500-dark": {
+        "displayName": "Focused input border (dark)",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-800-dark": {
+        "displayName": "Labels and primary hover (dark)",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-1000-dark": {
+        "displayName": "Strong action surface (dark)",
+        "role": "primary",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "txt-dark": {
+        "displayName": "Primary text (dark)",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "on-inverse-dark": {
+        "displayName": "Inverse text (dark)",
+        "role": "neutral",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "err-bg-dark": {
+        "displayName": "Error surface (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.0543 24.99)",
+          "oklch(26% 0.0543 24.99)",
+          "oklch(37% 0.0543 24.99)",
+          "oklch(49% 0.0543 24.99)",
+          "oklch(60% 0.0543 24.99)",
+          "oklch(72% 0.0543 24.99)",
+          "oklch(84% 0.0543 24.99)",
+          "oklch(95% 0.0543 24.99)"
+        ]
+      },
+      "err-bd-dark": {
+        "displayName": "Error border (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.0980 26.89)",
+          "oklch(26% 0.0980 26.89)",
+          "oklch(37% 0.0980 26.89)",
+          "oklch(49% 0.0980 26.89)",
+          "oklch(60% 0.0980 26.89)",
+          "oklch(72% 0.0980 26.89)",
+          "oklch(84% 0.0980 26.89)",
+          "oklch(95% 0.0980 26.89)"
+        ]
+      },
+      "err-tx-dark": {
+        "displayName": "Error text (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.0677 22.01)",
+          "oklch(26% 0.0677 22.01)",
+          "oklch(37% 0.0677 22.01)",
+          "oklch(49% 0.0677 22.01)",
+          "oklch(60% 0.0677 22.01)",
+          "oklch(72% 0.0677 22.01)",
+          "oklch(84% 0.0677 22.01)",
+          "oklch(95% 0.0677 22.01)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "body": {
+        "displayName": "Body",
+        "purpose": "Content shell and field values."
+      },
+      "title": {
+        "displayName": "Document title",
+        "purpose": "The Smart tools header title."
+      },
+      "group": {
+        "displayName": "Field group",
+        "purpose": "Native fieldset legends."
+      },
+      "label": {
+        "displayName": "Field label",
+        "purpose": "Labels beside native controls."
+      },
+      "control": {
+        "displayName": "Action label",
+        "purpose": "Primary and secondary action labels."
+      },
+      "hint": {
+        "displayName": "Tool hint",
+        "purpose": "Readable field and preview guidance."
+      },
+      "badge": {
+        "displayName": "Review badge",
+        "purpose": "Compact pending-publication links."
+      }
+    },
+    "shadows": [
+      {
+        "name": "field-focus",
+        "value": "0 0 0 2px rgba(0, 0, 0, 0.06)",
+        "purpose": "The inherited input focus ring; not card elevation."
+      }
+    ],
+    "motion": [
+      {
+        "name": "primary-state",
+        "value": "background 0.15s, opacity 0.15s",
+        "purpose": "Inherited primary action hover and opacity changes."
+      },
+      {
+        "name": "tool-link-state",
+        "value": "border-color 0.12s, background 0.12s",
+        "purpose": "Inherited Content tool-link hover treatment."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "editor-stacked",
+        "value": "64rem"
+      },
+      {
+        "name": "compact-content",
+        "value": "40rem"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The current step\u2019s main action, shown here in its enabled state.",
+      "html": "<button class=\"ds-primary\" type=\"button\">Review changes</button>",
+      "css": ".ds-primary{display:inline-flex;align-items:center;gap:7px;border-radius:var(--rad-m,8px);font-size:13.5px;font-weight:500;letter-spacing:-0.15px;text-decoration:none;cursor:pointer;font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;padding:9px 16px;border:none;background:var(--el-1000,#1c1c1c);color:var(--on-inverse,#ffffff);transition:background .15s,opacity .15s;}.ds-primary:hover:not(:disabled){background:var(--el-800,#3a3a3a);}.ds-primary:focus-visible{outline:2px solid currentColor;outline-offset:2px;}.ds-primary:disabled{opacity:.4;cursor:not-allowed;}"
+    },
+    {
+      "name": "Secondary action",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A supporting editor action with the inherited bordered treatment.",
+      "html": "<button class=\"ds-secondary\" type=\"button\">Continue editing</button>",
+      "css": ".ds-secondary{display:inline-flex;align-items:center;gap:7px;border-radius:var(--rad-m,8px);font-size:13.5px;font-weight:500;letter-spacing:-0.15px;text-decoration:none;cursor:pointer;font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;padding:8px 14px;border:1px solid var(--el-200,#e5e5e5);background:var(--el-0,#ffffff);color:var(--txt,#1c1c1c);}.ds-secondary:hover{background:var(--el-50,#fbfbfa);border-color:var(--el-250,#dcdcdc);}.ds-secondary:focus-visible{outline:2px solid currentColor;outline-offset:2px;}"
+    },
+    {
+      "name": "Native text field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A visible field label and the shared input surface; sample content only.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-label\" for=\"ds-pharmacy-name\">Name</label><input class=\"ds-input\" id=\"ds-pharmacy-name\" name=\"name\" type=\"text\" value=\"Example pharmacy\"></div>",
+      "css": ".ds-field{font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;font-size:14px;letter-spacing:-.15px;margin-bottom:18px;}.ds-label{display:block;margin-bottom:6px;font-size:13px;font-weight:500;color:var(--el-800,#3a3a3a);}.ds-input{width:100%;padding:9px 12px;border:1px solid var(--el-200,#e5e5e5);border-radius:var(--rad-s,6px);background:var(--el-0,#ffffff);color:var(--txt,#1c1c1c);font-size:14px;font-family:inherit;}.ds-input:focus,.ds-input:focus-visible{outline:none;border-color:var(--el-500,#8a8a8a);box-shadow:0 0 0 2px rgba(0,0,0,.06);}"
+    },
+    {
+      "name": "Return to Content",
+      "kind": "nav",
+      "refersTo": "button-secondary",
+      "description": "The Smart tools header\u2019s ordinary navigation link.",
+      "html": "<a class=\"ds-back\" href=\"/content\">Back to Content</a>",
+      "css": ".ds-back{display:inline-flex;align-items:center;gap:7px;border-radius:var(--rad-m,8px);font-size:13.5px;font-weight:500;letter-spacing:-0.15px;text-decoration:none;cursor:pointer;font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;padding:8px 14px;border:1px solid var(--el-200,#e5e5e5);background:var(--el-0,#ffffff);color:var(--txt,#1c1c1c);}.ds-back:hover{background:var(--el-50,#fbfbfa);border-color:var(--el-250,#dcdcdc);}.ds-back:focus-visible{outline:2px solid currentColor;outline-offset:2px;}"
+    },
+    {
+      "name": "Review badge",
+      "kind": "chip",
+      "refersTo": "review-badge",
+      "description": "A separate link for a pending Smart tools change; the number is sample content.",
+      "html": "<a class=\"ds-review-badge\" href=\"#review\">In review #123</a>",
+      "css": ".ds-review-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;letter-spacing:.02em;background:var(--el-1000,#1c1c1c);color:var(--on-inverse,#ffffff);text-transform:none;font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;}.ds-review-badge:focus-visible{outline:2px solid currentColor;outline-offset:2px;}"
+    },
+    {
+      "name": "Content category card",
+      "kind": "card",
+      "refersTo": "group-card",
+      "description": "The existing flat group surface and divided service rows.",
+      "html": "<ul class=\"ds-group-card\"><li class=\"ds-service-row\"><span class=\"ds-service-title\">Find a pharmacy</span></li><li class=\"ds-service-row\"><span class=\"ds-service-title\">Income tax calculator</span></li></ul>",
+      "css": ".ds-group-card{list-style:none;margin:0;padding:0;background:var(--el-0,#ffffff);color:var(--txt,#1c1c1c);border:1px solid var(--el-200,#e5e5e5);border-radius:var(--rad-l,12px);overflow:hidden;font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;letter-spacing:-.15px;}.ds-service-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 16px;}.ds-service-row:not(:last-child){border-bottom:1px solid var(--el-150,#f0f0ee);}.ds-service-row:hover{background:var(--el-50,#fbfbfa);}.ds-service-title{flex:1;min-width:0;font-size:14px;font-weight:500;overflow-wrap:break-word;text-wrap:pretty;}@media(max-width:40rem){.ds-service-row{align-items:stretch;flex-direction:column;}}"
+    },
+    {
+      "name": "Selected record",
+      "kind": "custom",
+      "refersTo": "record-selected",
+      "description": "A full-width pressed record control, shown with sample record text.",
+      "html": "<ul class=\"ds-records\"><li><button class=\"ds-record\" type=\"button\" aria-pressed=\"true\">Example pharmacy</button></li></ul>",
+      "css": ".ds-records{list-style:none;padding:0;max-height:260px;overflow:auto;margin-block:12px;border-block:1px solid var(--el-200,#e5e5e5);}.ds-record{display:inline-flex;align-items:center;gap:7px;border-radius:var(--rad-m,8px);font-size:13.5px;font-weight:500;letter-spacing:-0.15px;text-decoration:none;cursor:pointer;font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;padding:8px 14px;border:1px solid var(--el-200,#e5e5e5);background:var(--el-0,#ffffff);color:var(--txt,#1c1c1c);width:100%;min-height:40px;text-align:left;justify-content:flex-start;margin-block:3px;}.ds-record:hover{background:var(--el-50,#fbfbfa);border-color:var(--el-250,#dcdcdc);}.ds-record[aria-pressed=\"true\"]{background:var(--el-1000,#1c1c1c);color:var(--on-inverse,#ffffff);}.ds-record:focus-visible{outline:2px solid currentColor;outline-offset:2px;}"
+    },
+    {
+      "name": "Validation banner",
+      "kind": "custom",
+      "refersTo": "error-banner",
+      "description": "The shared semantic error surface; the live editor adds field links and focus management.",
+      "html": "<div class=\"ds-error\" role=\"alert\" tabindex=\"-1\"><p>Check these fields. Your draft has been kept.</p></div>",
+      "css": ".ds-error{margin-bottom:16px;padding:10px 12px;border:1px solid var(--err-bd,#f3c0bd);border-radius:var(--rad-s,6px);background:var(--err-bg,#fdeded);color:var(--err-tx,#8c1d18);font-size:13px;letter-spacing:-.15px;font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Content workspace",
+    "overview": "This is a source-derived record of the incumbent Content interface, scoped to its service list and Smart tools editor. It extends the existing workspace with familiar fields, record controls, review steps, and a public preview. It does not establish a new application-wide theme.\n\nThe authority is [Content styling](app/routes/content/-styles.module.css), [Smart tools styling](app/routes/content/-tools.module.css), [the editor](app/routes/content/tool.tsx), [fields](app/routes/content/-tool-fields.tsx), [preview](app/routes/content/-tool-preview.tsx), and [Content home](app/routes/content/index.tsx). No approved design comp or browser screenshots were available; this document records source behavior, not a visual verification result.",
+    "keyCharacteristics": [
+      "Neutral surfaces, compact Inter typography, and restrained borders.",
+      "Native controls with visible labels and grouped records.",
+      "A responsive editor beside the actual public interface."
+    ],
+    "rules": [],
+    "dos": [
+      "**Do** reuse the Content theme variables, type roles, and native controls.",
+      "**Do** keep labels, hints, errors, and review states visible and associated with their controls.",
+      "**Do** preserve the actual public tool interface inside the preview and the editor's one-column responsive layout."
+    ],
+    "donts": [
+      "**Don't** introduce a separate Smart tools palette, display font, or decorative card hierarchy.",
+      "**Don't** turn tool maintenance into a raw configuration editor for non-coders.",
+      "**Don't** treat submitted changes as already published or source inspection as browser verification."
+    ]
+  }
+}

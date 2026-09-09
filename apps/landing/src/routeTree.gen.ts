@@ -16,6 +16,7 @@ import { Route as ServiceUnavailableRouteImport } from './routes/service-unavail
 import { Route as SearchResultsRouteImport } from './routes/search-results'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as PreviewStartPageRouteImport } from './routes/preview-start-page'
+import { Route as PreviewSmartToolRouteImport } from './routes/preview-smart-tool'
 import { Route as JavascriptRequiredRouteImport } from './routes/javascript-required'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as SplatRouteImport } from './routes/$'
@@ -69,6 +70,11 @@ const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
 const PreviewStartPageRoute = PreviewStartPageRouteImport.update({
   id: '/preview-start-page',
   path: '/preview-start-page',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreviewSmartToolRoute = PreviewSmartToolRouteImport.update({
+  id: '/preview-smart-tool',
+  path: '/preview-smart-tool',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JavascriptRequiredRoute = JavascriptRequiredRouteImport.update({
@@ -192,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/$': typeof SplatRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
+  '/preview-smart-tool': typeof PreviewSmartToolRoute
   '/preview-start-page': typeof PreviewStartPageRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/search-results': typeof SearchResultsRoute
@@ -220,6 +227,7 @@ export interface FileRoutesByTo {
   '/$': typeof SplatRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
+  '/preview-smart-tool': typeof PreviewSmartToolRoute
   '/preview-start-page': typeof PreviewStartPageRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/search-results': typeof SearchResultsRoute
@@ -247,6 +255,7 @@ export interface FileRoutesById {
   '/$': typeof SplatRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
+  '/preview-smart-tool': typeof PreviewSmartToolRoute
   '/preview-start-page': typeof PreviewStartPageRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/search-results': typeof SearchResultsRoute
@@ -277,6 +286,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/feedback'
     | '/javascript-required'
+    | '/preview-smart-tool'
     | '/preview-start-page'
     | '/robots.txt'
     | '/search-results'
@@ -305,6 +315,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/feedback'
     | '/javascript-required'
+    | '/preview-smart-tool'
     | '/preview-start-page'
     | '/robots.txt'
     | '/search-results'
@@ -331,6 +342,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/feedback'
     | '/javascript-required'
+    | '/preview-smart-tool'
     | '/preview-start-page'
     | '/robots.txt'
     | '/search-results'
@@ -360,6 +372,7 @@ export interface RootRouteChildren {
   SplatRoute: typeof SplatRoute
   FeedbackRoute: typeof FeedbackRoute
   JavascriptRequiredRoute: typeof JavascriptRequiredRoute
+  PreviewSmartToolRoute: typeof PreviewSmartToolRoute
   PreviewStartPageRoute: typeof PreviewStartPageRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SearchResultsRoute: typeof SearchResultsRoute
@@ -427,6 +440,13 @@ declare module '@tanstack/react-router' {
       path: '/preview-start-page'
       fullPath: '/preview-start-page'
       preLoaderRoute: typeof PreviewStartPageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preview-smart-tool': {
+      id: '/preview-smart-tool'
+      path: '/preview-smart-tool'
+      fullPath: '/preview-smart-tool'
+      preLoaderRoute: typeof PreviewSmartToolRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/javascript-required': {
@@ -612,6 +632,7 @@ const rootRouteChildren: RootRouteChildren = {
   SplatRoute: SplatRoute,
   FeedbackRoute: FeedbackRoute,
   JavascriptRequiredRoute: JavascriptRequiredRoute,
+  PreviewSmartToolRoute: PreviewSmartToolRoute,
   PreviewStartPageRoute: PreviewStartPageRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SearchResultsRoute: SearchResultsRoute,

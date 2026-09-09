@@ -15,10 +15,12 @@ import {
 } from '@govtech-bb/react'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { PARISHES } from '../-data/pharmacies'
+import { PARISHES, PHARMACY_CONTENT } from '../-data/pharmacies'
+import type { PharmacyContent } from '../-data/pharmacies'
+import { formatCopy } from '../-lib/copy'
 import type { FilterAction, FilterState } from '../-lib/finder-filters'
 import { SLIP_COLOURS_HREF } from '../-lib/routes'
-import { SLIP_COLOURS, SLIP_LABELS } from '../-lib/slips'
+import { SLIP_COLOURS } from '../-lib/slips'
 import { Chevron, CloseIcon } from './icons'
 
 type LocationState = 'idle' | 'loading' | 'success'
@@ -30,6 +32,7 @@ export function FilterSidebar({
   locationStatus,
   onRequestLocation,
   onClearLocation,
+  content = PHARMACY_CONTENT,
 }: {
   filters: FilterState
   dispatch: (action: FilterAction) => void
@@ -37,7 +40,9 @@ export function FilterSidebar({
   locationStatus: string | null
   onRequestLocation: () => void
   onClearLocation: () => void
+  content?: PharmacyContent
 }) {
+  const { finder: copy, location, slips } = content.copy
   // Open by default on desktop, where the panel sits beside the results -
   // but on small screens it stacks above them, so it starts closed to keep
   // the first pharmacy within reach.
@@ -60,8 +65,8 @@ export function FilterSidebar({
             key: 'type',
             label:
               filters.type === 'government'
-                ? 'Government'
-                : 'Private (takes subsidy)',
+                ? copy.typeGovernment
+                : copy.typePrivate,
             action: { type: 'set-type', value: 'all' } as FilterAction,
           },
         ]
@@ -70,7 +75,9 @@ export function FilterSidebar({
       ? [
           {
             key: 'slip',
-            label: `${filters.slip.charAt(0).toUpperCase()}${filters.slip.slice(1)} prescription`,
+            label: formatCopy(copy.slipFilterLabel, {
+              colour: `${filters.slip.charAt(0).toUpperCase()}${filters.slip.slice(1)}`,
+            }),
             action: { type: 'set-slip', value: 'any' } as FilterAction,
           },
         ]
@@ -79,7 +86,7 @@ export function FilterSidebar({
       ? [
           {
             key: 'open',
-            label: 'Open right now',
+            label: copy.openNowLabel,
             action: { type: 'set-open-now', value: false } as FilterAction,
           },
         ]
@@ -98,15 +105,15 @@ export function FilterSidebar({
 
   const locationLabel =
     locationState === 'loading'
-      ? 'Finding your location…'
+      ? location.loading
       : locationState === 'success'
-        ? 'Location on (turn off)'
-        : 'Use my location'
+        ? location.active
+        : location.use
 
   return (
     <div className="mb-m flex flex-col gap-m lg:mb-0 print:hidden">
       <Heading as="h2" className="govbb-visually-hidden">
-        Filter pharmacies
+        {copy.filterHeading}
       </Heading>
       <div>
         <button
@@ -117,7 +124,7 @@ export function FilterSidebar({
           type="button"
         >
           <Text as="span" className="underline" weight="bold">
-            Filter
+            {copy.filterToggle}
           </Text>
           <Chevron open={filterOpen} />
         </button>
@@ -146,19 +153,19 @@ export function FilterSidebar({
 
             <Input
               autoComplete="off"
-              label="Search by name or place"
+              label={copy.searchLabel}
               onChange={(event) =>
                 dispatch({ type: 'set-search', value: event.target.value })
               }
-              placeholder="e.g. Winston Scott, Oistins"
+              placeholder={copy.searchPlaceholder}
               type="search"
               value={filters.search}
             />
 
-            <FilterGroup title="Cost and type">
+            <FilterGroup title={copy.costHeading}>
               <Select
-                label="Pharmacy type"
-                description="Covered medication is free at government pharmacies for eligible patients. Participating private pharmacies charge a dispensing fee."
+                label={copy.typeLabel}
+                description={copy.typeDescription}
                 onChange={(event) =>
                   dispatch({
                     type: 'set-type',
@@ -171,14 +178,14 @@ export function FilterSidebar({
                 }
                 value={filters.type}
               >
-                <option value="all">All pharmacy types</option>
-                <option value="government">Government</option>
-                <option value="private-sbs">Private (takes subsidy)</option>
+                <option value="all">{copy.typeAll}</option>
+                <option value="government">{copy.typeGovernment}</option>
+                <option value="private-sbs">{copy.typePrivate}</option>
               </Select>
               <Checkbox
                 checked={filters.subsidisedOnly}
                 id="filter-subsidised"
-                label="Free and subsidised medication only"
+                label={copy.subsidisedLabel}
                 onChange={(event) =>
                   dispatch({
                     type: 'set-subsidised-only',
@@ -188,10 +195,10 @@ export function FilterSidebar({
               />
             </FilterGroup>
 
-            <FilterGroup title="Prescription colour">
+            <FilterGroup title={copy.prescriptionHeading}>
               <Select
-                label="Colour"
-                description="The colour of the prescription your doctor gave you. Yellow and green (GEHP) prescriptions are filled at government pharmacies. Call to check your medication is covered."
+                label={copy.prescriptionLabel}
+                description={copy.prescriptionDescription}
                 onChange={(event) =>
                   dispatch({
                     type: 'set-slip',
@@ -205,24 +212,22 @@ export function FilterSidebar({
                 }
                 value={filters.slip}
               >
-                <option value="any">Any colour</option>
+                <option value="any">{copy.prescriptionAny}</option>
                 {SLIP_COLOURS.map((slip) => (
                   <option key={slip} value={slip}>
-                    {SLIP_LABELS[slip]}
+                    {slips.labels[slip]}
                   </option>
                 ))}
               </Select>
-              <Link href={SLIP_COLOURS_HREF}>
-                What prescription colours mean
-              </Link>
+              <Link href={SLIP_COLOURS_HREF}>{slips.helpLabel}</Link>
             </FilterGroup>
 
-            <FilterGroup title="Opening hours">
+            <FilterGroup title={copy.openingHeading}>
               <Checkbox
                 checked={filters.openNow}
                 id="filter-open-now"
-                label="Open right now"
-                description="Uses Barbados time and listed dispensing hours. Pharmacies with unconfirmed hours today are excluded. Call before travelling."
+                label={copy.openNowLabel}
+                description={copy.openNowDescription}
                 onChange={(event) =>
                   dispatch({
                     type: 'set-open-now',
@@ -232,7 +237,7 @@ export function FilterSidebar({
               />
             </FilterGroup>
 
-            <FilterGroup defaultOpen={false} title="Parish">
+            <FilterGroup defaultOpen={false} title={copy.parishHeading}>
               {PARISHES.map((name) => (
                 <Checkbox
                   checked={filters.parishes.includes(name)}
@@ -264,7 +269,9 @@ export function FilterSidebar({
                 >
                   <Text as="span">{tag.label}</Text>
                   <CloseIcon />
-                  <span className="govbb-visually-hidden">Remove filter</span>
+                  <span className="govbb-visually-hidden">
+                    {copy.removeFilterLabel}
+                  </span>
                 </button>
               ))}
             </div>
@@ -277,7 +284,7 @@ export function FilterSidebar({
                 type="button"
               >
                 <Text as="span" weight="bold">
-                  Reset filters
+                  {copy.resetFiltersLabel}
                 </Text>
               </button>
             )}

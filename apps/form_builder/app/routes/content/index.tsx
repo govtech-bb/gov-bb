@@ -23,6 +23,8 @@ import {
   linkableForms,
   type ViewLevel,
 } from "./-lib";
+import { SMART_TOOLS, TOOL_KIND_LABELS } from "@govtech-bb/content/smart-tools";
+import { listSmartTools } from "./-tools-server";
 import type { ContentPageSummary, ContentReviewClaim } from "./-server";
 import { useContentList } from "./-use-content-list";
 import { ErrorBanner } from "./-modals";
@@ -34,15 +36,16 @@ import s from "./-styles.module.css";
 
 export const Route = createFileRoute("/content/")({
   loader: async () => {
-    const [forms, baseBranch] = await Promise.all([
+    const [forms, baseBranch, tools] = await Promise.all([
       // Hide disabled draft-only / orphan-override rows the picker uses for
       // re-enable (#1658) — they have no live recipe to link content to.
       listForms()
         .then(linkableForms)
         .catch(() => []),
       getPublishBaseBranch().catch(() => "dev"),
+      listSmartTools(),
     ]);
-    return { forms, baseBranch };
+    return { forms, baseBranch, tools };
   },
   component: ContentHome,
 });
@@ -94,6 +97,10 @@ function isStartPage(path: string): boolean {
 
 /** One page belonging to a service row — existing or still to create. */
 interface PageSlot {
+  toolId?: string;
+  toolAvailable?: boolean;
+  toolReview?: { prUrl: string; prNumber: number };
+  toolWarning?: string;
   label: string;
   page?: ContentPageSummary;
   /** Create-mode params when the page doesn't exist yet (form rows only). */
@@ -140,7 +147,7 @@ function PrBadge({
 }
 
 function ContentHome() {
-  const { forms } = Route.useLoaderData();
+  const { forms, tools } = Route.useLoaderData();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const list = useContentList(true);
@@ -238,10 +245,40 @@ function ContentHome() {
       }),
     );
 
+    for (const tool of SMART_TOOLS) {
+      const loaded = tools.find((entry) => entry.id === tool.id);
+      const slot: PageSlot = {
+        label: TOOL_KIND_LABELS[tool.kind],
+        toolId: tool.id,
+        toolAvailable: loaded?.available,
+        toolReview: loaded && "review" in loaded ? loaded.review : undefined,
+        toolWarning: loaded?.warning,
+      };
+      const introduction = tool.introduction
+        ? pageRows.find((row) =>
+            row.slots.some(
+              (entry) =>
+                entry.page?.path === `${CONTENT_ROOT}${tool.introduction}`,
+            ),
+          )
+        : undefined;
+      if (introduction) {
+        introduction.slots.push(slot);
+        introduction.searchText += ` smart tool ${tool.kind}`;
+      } else
+        pageRows.push({
+          key: `tool:${tool.id}`,
+          title: tool.title,
+          category: tool.category,
+          hasForm: false,
+          searchText: `${tool.title} smart tool ${tool.kind}`.toLowerCase(),
+          slots: [slot],
+        });
+    }
     return [...formRows, ...pageRows].sort((a, b) =>
       a.title.localeCompare(b.title),
     );
-  }, [forms, byForm, noForm]);
+  }, [forms, byForm, noForm, tools]);
 
   const hasPR = (p?: ContentPageSummary) =>
     !!p && (list.openPRs.get(p.path)?.length ?? 0) > 0;
@@ -253,7 +290,7 @@ function ContentHome() {
       case "draft":
         return row.slots.some((sl) => sl.page?.visibility === "draft");
       case "pr":
-        return row.slots.some((sl) => hasPR(sl.page));
+        return row.slots.some((sl) => hasPR(sl.page) || Boolean(sl.toolReview));
       default:
         return true;
     }
@@ -296,9 +333,12 @@ function ContentHome() {
   const missingCount = formRowsAll.filter((r) =>
     r.slots.some((sl) => !sl.page),
   ).length;
-  const openPRCount = new Set(
-    [...list.openPRs.values()].flat().map((claim) => claim.prNumber),
-  ).size;
+  const openPRCount = new Set([
+    ...[...list.openPRs.values()].flat().map((claim) => claim.prNumber),
+    ...tools.flatMap((tool) =>
+      "review" in tool && tool.review ? [tool.review.prNumber] : [],
+    ),
+  ]).size;
 
   const toggle = (slug: string) =>
     setCollapsedList((cur) =>
@@ -306,6 +346,36 @@ function ContentHome() {
     );
 
   function chip(slot: PageSlot) {
+    if (slot.toolId)
+      return (
+        <span key={slot.toolId} className={s.pageActions}>
+          {slot.toolAvailable ? (
+            <Link
+              to="/content/tool"
+              search={{ id: slot.toolId }}
+              className={`${s.chip} ${s.chipFilled}`}
+            >
+              <PencilEdit02Icon size={13} aria-hidden="true" />
+              {slot.label}
+            </Link>
+          ) : (
+            <span className={s.chipReadOnly}>
+              Editor unavailable. {slot.toolWarning}
+            </span>
+          )}
+          {slot.toolReview && (
+            <a
+              href={slot.toolReview.prUrl}
+              className={`${s.badge} ${s.badgePr}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              In review #{slot.toolReview.prNumber}
+            </a>
+          )}
+        </span>
+      );
+
     if (slot.page) {
       const claims = list.openPRs.get(slot.page.path) ?? [];
       const editable =
@@ -372,7 +442,7 @@ function ContentHome() {
           <SectionSwitch current="content" />
           <div>
             <div className={s.eyebrow}>Content</div>
-            <h1 className={s.docTitle}>Landing pages</h1>
+            <h1 className={s.docTitle}>Content and Smart tools</h1>
           </div>
         </div>
         <div className={s.headerActions}>

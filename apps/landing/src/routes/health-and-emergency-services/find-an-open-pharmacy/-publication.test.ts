@@ -30,7 +30,7 @@ describe('pharmacy publication', () => {
       const context = call(route.options.beforeLoad, {
         context: { level: 'public', serviceStatuses: enabled },
       })
-      const params = { slug: 'winston-scott-polyclinic' }
+      const params = { slug: PHARMACIES[0].slug }
       const loaderData =
         route === detail ? call(detail.options.loader, { params }) : undefined
       const head = call(route.options.head, {
@@ -58,7 +58,6 @@ describe('pharmacy publication', () => {
     expect(paths).toContain(`/${service}/find`)
     for (const pharmacy of PHARMACIES)
       expect(paths).toContain(`/${service}/${pharmacy.slug}`)
-    expect(paths).toContain(`/${service}/market-hill-dispensary`)
   })
 
   it('keeps preview and withdrawn services private throughout the route family', () => {
@@ -72,7 +71,7 @@ describe('pharmacy publication', () => {
         const context = call(route.options.beforeLoad, {
           context: { level: 'preview', serviceStatuses },
         })
-        const params = { slug: 'winston-scott-polyclinic' }
+        const params = { slug: PHARMACIES[0].slug }
         const loaderData =
           route === detail ? call(detail.options.loader, { params }) : undefined
         const head = call(route.options.head, {
@@ -91,17 +90,13 @@ describe('pharmacy publication', () => {
     expect(paths.some((path) => path.startsWith(`/${service}`))).toBe(false)
   })
 
-  it('resolves pharmacies without hours and returns not found for unknown slugs', () => {
-    for (const slug of [
-      'market-hill-dispensary',
-      'holborn-pharmacy',
-      'dasae-pharmacy-sparman-clinic',
-    ]) {
+  it('resolves every authored pharmacy and returns not found for unknown slugs', () => {
+    for (const pharmacy of PHARMACIES) {
       expect(
         call(detail.options.loader, {
-          params: { slug },
+          params: { slug: pharmacy.slug },
         }),
-      ).toMatchObject({ slug })
+      ).toEqual(pharmacy)
     }
     expect(() =>
       call(detail.options.loader, {

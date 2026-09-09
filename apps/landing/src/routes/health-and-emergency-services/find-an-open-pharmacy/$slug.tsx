@@ -4,6 +4,8 @@ import { isUrlVisible, urlLevel } from '../../../content/registry'
 import { pageHead } from '../../../lib/page-head'
 import { deriveVisibilityOverlay } from '../../../lib/service-status'
 import { SITE_URL } from '../../../lib/site-url'
+import { PHARMACY_CONTENT } from './-data/pharmacies'
+import { formatCopy } from './-lib/copy'
 import { pharmacyJsonLd } from './-lib/json-ld'
 import { findPharmacyBySlug } from './-lib/pharmacy-slug'
 import { PharmacyDetailPage } from './-ui/detail-page'
@@ -30,10 +32,13 @@ export const Route = createFileRoute(
     const isPublic = match.context.pharmacyServiceLevel === 'public'
     const path = `/${CONTENT_URL}/${params.slug}`
     const head = pageHead(
-      pharmacy?.name ?? 'Pharmacy',
+      pharmacy?.name ?? PHARMACY_CONTENT.copy.detail.fallbackTitle,
       pharmacy
-        ? `Opening hours, phone number and directions for ${pharmacy.name}, ${pharmacy.parish}, Barbados.`
-        : 'Pharmacy details.',
+        ? formatCopy(PHARMACY_CONTENT.copy.detail.metadataDescription, {
+            name: pharmacy.name,
+            parish: pharmacy.parish,
+          })
+        : PHARMACY_CONTENT.copy.detail.fallbackDescription,
       { noindex: !isPublic, path },
     )
     if (!pharmacy || !isPublic) return head

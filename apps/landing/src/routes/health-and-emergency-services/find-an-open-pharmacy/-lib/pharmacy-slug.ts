@@ -1,6 +1,9 @@
 import type { Pharmacy } from '../-data/pharmacies'
 import { PHARMACIES } from '../-data/pharmacies'
 
-export function findPharmacyBySlug(slug: string): Pharmacy | undefined {
-  return PHARMACIES.find((pharmacy) => pharmacy.slug === slug)
+export function findPharmacyBySlug(
+  slug: string,
+  pharmacies: ReadonlyArray<Pharmacy> = PHARMACIES,
+): Pharmacy | undefined {
+  return pharmacies.find((pharmacy) => pharmacy.slug === slug)
 }

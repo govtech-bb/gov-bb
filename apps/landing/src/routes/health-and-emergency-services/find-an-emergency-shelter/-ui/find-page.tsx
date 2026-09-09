@@ -8,70 +8,74 @@
 
 import { Heading, Link, Text } from '@govtech-bb/react'
 import { format, parseISO } from 'date-fns'
-import {
-  SHELTER_COUNT,
-  SHELTERS_LAST_UPDATED,
-  SHELTERS_NEXT_REVIEW,
-} from '../-data/emergency-shelters'
+import { getDemPhone, SHELTER_CONTENT } from '../-data/emergency-shelters'
+import type { ShelterContent } from '../-data/emergency-shelters'
+import { formatCopy } from '../-lib/copy'
 import { EMERGENCY_SHELTER_GUIDANCE_HREF } from '../-lib/routes'
 import { ShelterFinder } from './shelter-finder'
 
-const DEM_TEL = 'tel:+12464387575'
-const DEM_NUMBER = '438-7575'
+export const TITLE = SHELTER_CONTENT.copy.findPage.title
+export const DESCRIPTION = formatCopy(
+  SHELTER_CONTENT.copy.findPage.description,
+  { count: SHELTER_CONTENT.shelters.length },
+)
 
-export const TITLE = 'Search shelters'
-export const DESCRIPTION = `Search and filter all ${SHELTER_COUNT} emergency shelters in Barbados by parish, accessibility and category.`
-
-export function FindEmergencyShelterPage() {
+export function FindEmergencyShelterPage({
+  content = SHELTER_CONTENT,
+}: { content?: ShelterContent } = {}) {
+  const { findPage: copy, common } = content.copy
+  const dem = getDemPhone(content)
   return (
     <div className="mb-l flex flex-col gap-m">
       <div className="flex flex-col gap-xs">
-        <Heading as="h1">{TITLE}</Heading>
+        <Heading as="h1">{copy.title}</Heading>
         <div className="border-blue-10 border-b-4 pb-4 text-grey-70">
           <Text as="p" size="body-sm">
-            Last updated on {format(parseISO(SHELTERS_LAST_UPDATED), 'PPP')}.
-            Next review: {format(parseISO(SHELTERS_NEXT_REVIEW), 'PPP')}.
+            {formatCopy(common.freshness, {
+              lastUpdated: format(parseISO(content.lastUpdated), 'PPP'),
+              nextReview: format(parseISO(content.nextReview), 'PPP'),
+            })}
           </Text>
         </div>
       </div>
 
       <div className="border-red-80 border-l-4 bg-red-10 px-s py-xm">
         <Text as="p">
-          <strong>No shelter is currently open.</strong> This page lists every
-          shelter in the 2026 booklet — not the live status. The Department of
-          Emergency Management activates shelters only during a hurricane or
-          tropical storm. For the official list of open shelters, listen to
-          local radio, follow DEM on social media, or call DEM on{' '}
-          <Link href={DEM_TEL}>{DEM_NUMBER}</Link>.
+          <strong>{copy.activationHeading}</strong>{' '}
+          {copy.activationIntroduction}
+          {dem && (
+            <>
+              {' '}
+              {common.phoneConnector} <Link href={dem.tel}>{dem.display}</Link>
+            </>
+          )}
+          .
         </Text>
       </div>
 
       <Text as="p" className="text-grey-70">
-        Search all {SHELTER_COUNT} emergency shelters in Barbados. Filter by
-        parish, category and accessibility.
+        {formatCopy(copy.introduction, { count: content.shelters.length })}
       </Text>
 
-      <ShelterFinder />
+      <ShelterFinder content={content} />
 
       <aside
         aria-labelledby="going-to-shelter-heading"
         className="flex flex-col gap-xs border-grey-20 border-t pt-m"
       >
         <Heading as="h2" id="going-to-shelter-heading" size="h3">
-          Going to a shelter?
+          {copy.guidanceHeading}
         </Heading>
         <Text as="p">
           <Link href={EMERGENCY_SHELTER_GUIDANCE_HREF}>
-            Read what to bring, shelter rules and other guidance
+            {copy.guidanceLinkLabel}
           </Link>{' '}
-          before you leave.
+          {copy.guidanceIntroduction}
         </Text>
       </aside>
 
       <Text as="p" className="text-grey-70" size="body-sm">
-        Source: 2026 Emergency Shelter Booklet, Department of Emergency
-        Management. Distance is calculated from the centre of each parish.
-        Parish coordinates © OpenStreetMap contributors.
+        {common.source} {copy.distanceSource}
       </Text>
     </div>
   )

@@ -13,6 +13,12 @@
 
 // biome-ignore-all lint/style/useNumericSeparators: latitude/longitude read more clearly without digit grouping
 import shelterData from './emergency-shelters.json'
+import type {
+  DistrictChair,
+  HurricaneTerm,
+  PhoneContact,
+  PhoneGroup,
+} from './guidance-data'
 
 export const PARISHES = [
   'Christ Church',
@@ -36,6 +42,8 @@ export interface LatLon {
 }
 
 export interface Shelter {
+  /** Permanent record identity; does not change when its name or parish changes. */
+  id: string
   name: string
   parish: Parish
   /** 1 = used during a hurricane; 2 = used after one has passed. */
@@ -56,9 +64,29 @@ export interface Shelter {
   address?: string
 }
 
-export const STORM_SEASON_LABEL = '1 June to 30 November'
-export const SHELTERS_LAST_UPDATED = '2026-05-27'
-export const SHELTERS_NEXT_REVIEW = '2027-05-01'
+export type ShelterCopy = typeof shelterData.copy
+
+export interface ShelterContent {
+  schemaVersion: 1
+  lastUpdated: string
+  nextReview: string
+  season: string
+  shelters: ReadonlyArray<Shelter>
+  districtChairs: ReadonlyArray<DistrictChair>
+  hurricaneTerms: ReadonlyArray<HurricaneTerm>
+  phoneDirectory: ReadonlyArray<PhoneGroup>
+  copy: ShelterCopy
+}
+
+export const SHELTER_CONTENT: ShelterContent = {
+  ...shelterData,
+  schemaVersion: 1,
+  shelters: shelterData.shelters as ReadonlyArray<Shelter>,
+}
+
+export const STORM_SEASON_LABEL = SHELTER_CONTENT.season
+export const SHELTERS_LAST_UPDATED = SHELTER_CONTENT.lastUpdated
+export const SHELTERS_NEXT_REVIEW = SHELTER_CONTENT.nextReview
 
 /**
  * Approximate centre of each parish, used to estimate distance for the
@@ -80,5 +108,12 @@ export const PARISH_CENTROIDS: Record<Parish, LatLon> = {
   'St. Thomas': { lat: 13.1833, lon: -59.5833 },
 }
 
-export const EMERGENCY_SHELTERS = shelterData as Shelter[]
+export const EMERGENCY_SHELTERS = SHELTER_CONTENT.shelters
 export const SHELTER_COUNT = EMERGENCY_SHELTERS.length
+
+/** Resolve by permanent identity so editing the switchboard label keeps links intact. */
+export function getDemPhone(content: ShelterContent): PhoneContact | undefined {
+  return content.phoneDirectory
+    .flatMap((group) => group.entries)
+    .find((entry) => entry.id === 'dem-main-switchboard')?.contacts[0]
+}

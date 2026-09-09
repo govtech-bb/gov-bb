@@ -11,11 +11,12 @@
  */
 
 import { Heading, Link, LinkButton, Text } from '@govtech-bb/react'
-import type { Pharmacy } from '../-data/pharmacies'
+import type { Pharmacy, PharmacyContent } from '../-data/pharmacies'
+import { PHARMACY_CONTENT } from '../-data/pharmacies'
+import { formatCopy } from '../-lib/copy'
 import { weeklyHoursSummary } from '../-lib/opening-hours'
 import { formatDistanceKm } from '../-lib/pharmacy-distance'
 import {
-  DRUG_SERVICE_PHONE,
   mapsUrl,
   pharmacyDetailHref,
   telHref,
@@ -30,15 +31,18 @@ export function PharmacyCard({
   now,
   distanceKm = null,
   printOnly = false,
+  content = PHARMACY_CONTENT,
 }: {
   pharmacy: Pharmacy
   now: Date | null
   distanceKm?: number | null
   /** Rendered for the printed list only - hidden on screen. */
   printOnly?: boolean
+  content?: PharmacyContent
 }) {
+  const { detail, drugService, hours } = content.copy
   const hasPlace = pharmacy.parish !== 'All parishes'
-  const whatsapp = whatsappHref(pharmacy)
+  const whatsapp = whatsappHref(pharmacy, detail.whatsappMessage)
 
   return (
     <li
@@ -49,7 +53,7 @@ export function PharmacyCard({
       {/* Reserved height so the post-mount status line causes no layout shift. */}
       <div className="min-h-5">
         {now ? (
-          <StatusLine now={now} pharmacy={pharmacy} />
+          <StatusLine now={now} pharmacy={pharmacy} content={content} />
         ) : (
           <StatusSkeleton />
         )}
@@ -59,7 +63,7 @@ export function PharmacyCard({
         <Link href={pharmacyDetailHref(pharmacy)}>{pharmacy.name}</Link>
       </Heading>
 
-      <CostChip pharmacy={pharmacy} />
+      <CostChip pharmacy={pharmacy} content={content} />
 
       <div className="flex flex-col gap-1 text-grey-70">
         <Text as="p" className="inline-flex items-start gap-2" size="body-sm">
@@ -88,7 +92,7 @@ export function PharmacyCard({
           <span className="tabular-nums">
             {pharmacy.hours
               ? weeklyHoursSummary(pharmacy.hours)
-              : 'Call to confirm opening hours'}
+              : hours.unknownWeek}
           </span>
         </Text>
       </div>
@@ -96,16 +100,13 @@ export function PharmacyCard({
       {pharmacy.notes && <Caveat tone="confidence">{pharmacy.notes}</Caveat>}
 
       {pharmacy.pppStatus === 'participating' && (
-        <Caveat tone="coverage">
-          Yellow or green (GEHP) prescriptions are not covered here. You would
-          pay full price.
-        </Caveat>
+        <Caveat tone="coverage">{hours.privateSlipWarning}</Caveat>
       )}
 
       {whatsapp && (
         <Caveat tone="channel">
           <Link external href={whatsapp}>
-            Order prescription via WhatsApp (opens in a new tab)
+            {detail.whatsappLabel}
           </Link>
         </Caveat>
       )}
@@ -114,32 +115,33 @@ export function PharmacyCard({
         <div className="flex flex-wrap items-center gap-2 print:hidden">
           {pharmacy.phone && (
             <LinkButton href={telHref(pharmacy.phone)}>
-              Call {pharmacy.phone}
+              {formatCopy(detail.callLabel, { phone: pharmacy.phone })}
             </LinkButton>
           )}
           {hasPlace && (
             <LinkButton external href={mapsUrl(pharmacy)} variant="secondary">
-              Directions
+              {detail.cardDirectionsLabel}
             </LinkButton>
           )}
           <LinkButton href={pharmacyDetailHref(pharmacy)} variant="tertiary">
-            Full details
+            {detail.fullDetailsLabel}
           </LinkButton>
         </div>
         {pharmacy.phone ? (
           <Text as="p" className="hidden print:block" size="body-sm">
-            Call {pharmacy.phone}
+            {formatCopy(detail.callLabel, { phone: pharmacy.phone })}
           </Text>
         ) : (
           <Text as="p" className="text-grey-70" size="body-sm">
-            No number listed. Call the Drug Service on{' '}
-            <Link href={telHref(DRUG_SERVICE_PHONE)}>{DRUG_SERVICE_PHONE}</Link>
-            .
+            {detail.noPhone}{' '}
+            <Link href={telHref(drugService.phone)}>{drugService.phone}</Link>.
           </Text>
         )}
         {pharmacy.phoneExtension && (
           <Text as="p" className="text-grey-70" size="body-sm">
-            Dial extension {pharmacy.phoneExtension} after calling.
+            {formatCopy(detail.extensionMessage, {
+              extension: pharmacy.phoneExtension,
+            })}
           </Text>
         )}
       </div>

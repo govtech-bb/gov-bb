@@ -71,6 +71,7 @@ export type PppStatus =
   | 'not-applicable'
 
 export interface Verification {
+  id?: string
   fields: ReadonlyArray<'ppp' | 'hours' | 'contacts'>
   source: string
   /** Date this source was checked, not a guarantee that the facts cannot change. */
@@ -109,7 +110,22 @@ export interface Pharmacy {
   verification?: ReadonlyArray<Verification>
 }
 
-export const PHARMACIES_LAST_UPDATED = pharmacyData.lastUpdated
+/** Maintained public copy; placeholders are filled from the current result. */
+export type PharmacyCopy = typeof pharmacyData.copy
 
-export const PHARMACIES = pharmacyData.pharmacies as ReadonlyArray<Pharmacy>
+export interface PharmacyContent {
+  schemaVersion: 1
+  lastUpdated: string
+  copy: PharmacyCopy
+  pharmacies: ReadonlyArray<Pharmacy>
+}
+
+export const PHARMACY_CONTENT: PharmacyContent = {
+  ...pharmacyData,
+  schemaVersion: 1,
+  pharmacies: pharmacyData.pharmacies as ReadonlyArray<Pharmacy>,
+}
+
+export const PHARMACIES_LAST_UPDATED = PHARMACY_CONTENT.lastUpdated
+export const PHARMACIES = PHARMACY_CONTENT.pharmacies
 export const PHARMACY_COUNT = PHARMACIES.length

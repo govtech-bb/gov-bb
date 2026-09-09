@@ -19,8 +19,9 @@ import {
   useRef,
   useState,
 } from 'react'
-import { PHARMACIES } from '../-data/pharmacies'
-import type { LatLon } from '../-data/pharmacies'
+import { PHARMACY_CONTENT } from '../-data/pharmacies'
+import type { LatLon, PharmacyContent, PharmacyCopy } from '../-data/pharmacies'
+import { formatCopy } from '../-lib/copy'
 import type { FilterAction } from '../-lib/finder-filters'
 import {
   compareForSort,
@@ -43,19 +44,10 @@ const GEO_OPTIONS: PositionOptions = {
 
 // Keyed by GeolocationPositionError.code - an arbitrary runtime number, so
 // a Map lookup, not a literal-keyed object.
-const LOCATION_ERRORS = new Map<number, string>([
-  [
-    1,
-    'Location permission is blocked, so results are not sorted by distance. Allow location in your browser settings, or filter by parish instead.',
-  ],
-  [
-    2,
-    'We could not get your location, so results are not sorted by distance. Filter by parish instead.',
-  ],
-  [
-    3,
-    'The location request timed out. Try again, or filter by parish instead.',
-  ],
+const LOCATION_ERRORS = new Map<number, keyof PharmacyCopy['location']>([
+  [1, 'permissionDenied'],
+  [2, 'unavailable'],
+  [3, 'timedOut'],
 ])
 
 type LocationState = 'idle' | 'loading' | 'success'
@@ -63,7 +55,10 @@ type LocationState = 'idle' | 'loading' | 'success'
 /** Pharmacies shown before the "Show more" button appears. */
 const PAGE_SIZE = 12
 
-export function PharmacyFinder() {
+export function PharmacyFinder({
+  content = PHARMACY_CONTENT,
+}: { content?: PharmacyContent } = {}) {
+  const { copy, pharmacies } = content
   const [filters, dispatchFilters] = useReducer(filtersReducer, DEFAULT_FILTERS)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
@@ -74,7 +69,9 @@ export function PharmacyFinder() {
 
   const [userLocation, setUserLocation] = useState<LatLon | null>(null)
   const [locationState, setLocationState] = useState<LocationState>('idle')
-  const [locationStatus, setLocationStatus] = useState<string | null>(null)
+  const [locationStatus, setLocationStatus] = useState<
+    keyof PharmacyCopy['location'] | null
+  >(null)
 
   // The current instant, set after mount only so the server render (no
   // status line) matches the hydration render exactly. Ticks each minute so
@@ -93,13 +90,11 @@ export function PharmacyFinder() {
   const requestLocation = useCallback(() => {
     const requestId = ++locationRequest.current
     if (!navigator.geolocation) {
-      setLocationStatus(
-        'Your browser cannot share your location. You can still filter by parish.',
-      )
+      setLocationStatus('unsupported')
       return
     }
     setLocationState('loading')
-    setLocationStatus('Finding your location…')
+    setLocationStatus('loading')
     navigator.geolocation.getCurrentPosition(
       (position) => {
         if (!mounted.current || requestId !== locationRequest.current) return
@@ -108,18 +103,13 @@ export function PharmacyFinder() {
           lon: position.coords.longitude,
         })
         setLocationState('success')
-        setLocationStatus(
-          'Government pharmacies first. Within each group, open pharmacies come first, then those nearest to you.',
-        )
+        setLocationStatus('success')
       },
       (error) => {
         if (!mounted.current || requestId !== locationRequest.current) return
         setUserLocation(null)
         setLocationState('idle')
-        setLocationStatus(
-          LOCATION_ERRORS.get(error.code) ??
-            'We could not get your location. Filter by parish instead.',
-        )
+        setLocationStatus(LOCATION_ERRORS.get(error.code) ?? 'failed')
       },
       GEO_OPTIONS,
     )
@@ -181,10 +171,10 @@ export function PharmacyFinder() {
 
   const results = useMemo(
     () =>
-      PHARMACIES.filter((pharmacy) =>
-        matchesFilters(pharmacy, filters, now),
-      ).sort((a, b) => compareForSort(a, b, now, userLocation)),
-    [filters, now, userLocation],
+      pharmacies
+        .filter((pharmacy) => matchesFilters(pharmacy, filters, now))
+        .sort((a, b) => compareForSort(a, b, now, userLocation)),
+    [pharmacies, filters, now, userLocation],
   )
 
   // The complete default directory remains usable without JavaScript.
@@ -192,15 +182,18 @@ export function PharmacyFinder() {
     now === null ? results : results.slice(0, visibleCount)
 
   return (
-    <section aria-label="Pharmacy finder">
+    <section aria-label={copy.finder.label}>
       <div className="govbb-grid-row">
         <div className="govbb-grid-column-one-third-from-desktop">
           {now !== null && (
             <FilterSidebar
+              content={content}
               dispatch={dispatch}
               filters={filters}
               locationState={locationState}
-              locationStatus={locationStatus}
+              locationStatus={
+                locationStatus ? copy.location[locationStatus] : null
+              }
               onClearLocation={clearLocation}
               onRequestLocation={requestLocation}
             />
@@ -209,12 +202,10 @@ export function PharmacyFinder() {
 
         <div className="govbb-grid-column-two-thirds-from-desktop">
           <Heading as="h2" className="govbb-visually-hidden">
-            Results
+            {copy.finder.resultsHeading}
           </Heading>
           <noscript>
-            <Text as="p">
-              Call the pharmacies below to confirm opening times.
-            </Text>
+            <Text as="p">{copy.finder.noScript}</Text>
           </noscript>
           <>
             <Text
@@ -224,10 +215,19 @@ export function PharmacyFinder() {
               aria-atomic="true"
               weight="bold"
             >
-              {resultCountLabel(visiblePharmacies.length, results.length)}
+              {resultCountLabel(
+                visiblePharmacies.length,
+                results.length,
+                copy.finder,
+              )}
             </Text>
             {results.length === 0 ? (
-              <NoResultsPanel dispatch={dispatch} filters={filters} now={now} />
+              <NoResultsPanel
+                content={content}
+                dispatch={dispatch}
+                filters={filters}
+                now={now}
+              />
             ) : (
               <>
                 <ul
@@ -236,6 +236,7 @@ export function PharmacyFinder() {
                 >
                   {results.map((pharmacy, index) => (
                     <PharmacyCard
+                      content={content}
                       distanceKm={pharmacyDistanceKm(pharmacy, userLocation)}
                       key={pharmacy.slug}
                       now={now}
@@ -255,12 +256,12 @@ export function PharmacyFinder() {
                       type="button"
                       variant="secondary"
                     >
-                      Show{' '}
-                      {Math.min(
-                        PAGE_SIZE,
-                        results.length - visiblePharmacies.length,
-                      )}{' '}
-                      more pharmacies
+                      {formatCopy(copy.finder.showMore, {
+                        count: Math.min(
+                          PAGE_SIZE,
+                          results.length - visiblePharmacies.length,
+                        ),
+                      })}
                     </Button>
                   </div>
                 )}
@@ -273,13 +274,17 @@ export function PharmacyFinder() {
   )
 }
 
-function resultCountLabel(visible: number, matched: number): string {
+function resultCountLabel(
+  visible: number,
+  matched: number,
+  copy: PharmacyCopy['finder'],
+): string {
   if (matched === 0) {
-    return 'No pharmacies match your filters'
+    return copy.noMatches
   }
-  if (matched === 1) return 'Showing 1 pharmacy'
+  if (matched === 1) return copy.oneMatch
   if (visible >= matched) {
-    return `Showing all ${matched} pharmacies`
+    return formatCopy(copy.allMatches, { count: matched })
   }
-  return `Showing ${visible} of ${matched} pharmacies`
+  return formatCopy(copy.pagedMatches, { visible, count: matched })
 }

@@ -8,84 +8,78 @@
 
 import { Heading, Link, LinkButton, Text } from '@govtech-bb/react'
 import { format, parseISO } from 'date-fns'
-import {
-  SHELTERS_LAST_UPDATED,
-  SHELTERS_NEXT_REVIEW,
-  STORM_SEASON_LABEL,
-} from '../-data/emergency-shelters'
+import { getDemPhone, SHELTER_CONTENT } from '../-data/emergency-shelters'
+import type { ShelterContent } from '../-data/emergency-shelters'
+import { formatCopy } from '../-lib/copy'
 import {
   EMERGENCY_SHELTER_FIND_HREF,
   EMERGENCY_SHELTER_GUIDANCE_HREF,
 } from '../-lib/routes'
-import { META } from '../-meta'
 
-interface EmergencyPhone {
-  service: string
-  number: string
-  tel: string
-}
-
-const EMERGENCY_PHONES: EmergencyPhone[] = [
-  { service: 'Police', number: '211', tel: 'tel:211' },
-  { service: 'Fire Service', number: '311', tel: 'tel:311' },
-  { service: 'Ambulance', number: '511', tel: 'tel:511' },
-  {
-    service: 'Department of Emergency Management',
-    number: '438-7575',
-    tel: 'tel:+12464387575',
-  },
-]
-
-export function EmergencyShelterLandingPage() {
+export function EmergencyShelterLandingPage({
+  content = SHELTER_CONTENT,
+}: { content?: ShelterContent } = {}) {
+  const { landing: copy, common } = content.copy
+  const dem = getDemPhone(content)
+  const emergencyPhones = content.phoneDirectory.flatMap((group) =>
+    group.entries.flatMap((entry) => {
+      const phone = entry.contacts[0]
+      return entry.landingLabel && phone
+        ? [
+            {
+              id: entry.id,
+              service: entry.landingLabel,
+              number: phone.display,
+              tel: phone.tel,
+            },
+          ]
+        : []
+    }),
+  )
   return (
     <div className="mb-l flex max-w-2xl flex-col gap-m">
       <div className="flex flex-col gap-xs">
-        <Heading as="h1">{META.title}</Heading>
+        <Heading as="h1">{content.copy.metadata.title}</Heading>
         <div className="border-blue-10 border-b-4 pb-4 text-grey-70">
           <Text as="p" size="body-sm">
-            Last updated on {format(parseISO(SHELTERS_LAST_UPDATED), 'PPP')}.
-            Next review: {format(parseISO(SHELTERS_NEXT_REVIEW), 'PPP')}.
+            {formatCopy(common.freshness, {
+              lastUpdated: format(parseISO(content.lastUpdated), 'PPP'),
+              nextReview: format(parseISO(content.nextReview), 'PPP'),
+            })}
           </Text>
         </div>
         <Text as="p" className="text-grey-70">
-          Search emergency shelters to use in the event of a hurricane or
-          tropical storm.
+          {copy.introduction}
         </Text>
       </div>
 
       <div className="flex flex-col gap-xs">
         <LinkButton className="self-start" href={EMERGENCY_SHELTER_FIND_HREF}>
-          Find a shelter
+          {copy.findLabel}
         </LinkButton>
         <Text as="p" className="text-grey-70" size="body-sm">
-          It&apos;s free and you don&apos;t need to sign in.
+          {copy.freeHint}
         </Text>
       </div>
 
       <section aria-labelledby="how-it-works" className="flex flex-col gap-s">
         <Heading as="h2" id="how-it-works">
-          How this service works
+          {copy.howHeading}
         </Heading>
-        <Text as="p">You can search for shelters online.</Text>
+        <Text as="p">{copy.searchInfo}</Text>
+        <Text as="p">{copy.audience}</Text>
         <Text as="p">
-          This service is for anyone in Barbados, including residents and
-          visitors.
-        </Text>
-        <Text as="p">
-          You may go to a shelter once it is open. Shelters open only when the
-          Department of Emergency Management announces that they are ready,
-          during the Atlantic hurricane season (
-          <strong>{STORM_SEASON_LABEL}</strong>).
+          {copy.openingInfo} (<strong>{content.season}</strong>).
         </Text>
       </section>
 
       <section aria-labelledby="help-now" className="flex flex-col gap-s">
         <Heading as="h2" id="help-now">
-          If you need help now, call:
+          {copy.helpHeading}
         </Heading>
         <ul className="grid list-none auto-rows-fr grid-cols-1 gap-xs p-0 sm:grid-cols-2">
-          {EMERGENCY_PHONES.map((phone) => (
-            <li key={phone.service}>
+          {emergencyPhones.map((phone) => (
+            <li key={phone.id}>
               <a
                 className="flex h-full flex-col gap-xxs border-red-80 border-l-4 bg-red-10 p-s text-current no-underline transition-colors hover:bg-red-20 focus-visible:outline focus-visible:outline-4 focus-visible:outline-red-40 focus-visible:outline-offset-2"
                 href={phone.tel}
@@ -100,21 +94,19 @@ export function EmergencyShelterLandingPage() {
         </ul>
         <Text as="p" size="body-sm">
           <Link href={`${EMERGENCY_SHELTER_GUIDANCE_HREF}#phone-numbers`}>
-            See all phone numbers
+            {copy.phoneDirectoryLabel}
           </Link>
         </Text>
       </section>
 
       <section aria-labelledby="use-this" className="flex flex-col gap-s">
         <Heading as="h2" id="use-this">
-          Use this service to
+          {copy.useHeading}
         </Heading>
         <ul className="list-disc space-y-xxs pl-6">
-          <li>find shelters in your parish</li>
-          <li>see which shelters have accessible bathrooms or potable water</li>
-          <li>
-            see which shelters are used during or after a hurricane or storm
-          </li>
+          {copy.useItems.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
         </ul>
       </section>
 
@@ -123,13 +115,12 @@ export function EmergencyShelterLandingPage() {
         className="flex flex-col gap-s"
       >
         <Heading as="h2" id="what-youll-need">
-          What you&apos;ll need
+          {copy.packingHeading}
         </Heading>
         <Text as="p">
-          Pack a Go Bag with bottled water, your ID, any prescription
-          medication, a flashlight, and some cash.{' '}
+          {copy.packingIntroduction}{' '}
           <Link href={`${EMERGENCY_SHELTER_GUIDANCE_HREF}#go-bag`}>
-            See the full Go Bag list
+            {copy.goBagLinkLabel}
           </Link>
           .
         </Text>
@@ -137,65 +128,57 @@ export function EmergencyShelterLandingPage() {
 
       <section aria-labelledby="key-things" className="flex flex-col gap-s">
         <Heading as="h2" id="key-things">
-          Key things to know
+          {copy.keyHeading}
         </Heading>
         <ul className="list-disc space-y-xxs pl-6">
-          <li>
-            Stay at home, or with family or friends, if it is safe to do so.
-          </li>
-          <li>
-            Pets, alcohol, firearms and other weapons are not allowed in
-            shelters.
-          </li>
-          <li>Smoking is not allowed inside shelters.</li>
-          <li>You are responsible for your belongings.</li>
+          {copy.keyItems.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
         </ul>
         <Text as="p">
           <Link href={`${EMERGENCY_SHELTER_GUIDANCE_HREF}#rules`}>
-            See the full shelter rules
+            {copy.fullRulesLabel}
           </Link>{' '}
-          before you go.
+          {copy.beforeYouGo}
         </Text>
       </section>
 
       <section aria-labelledby="other-ways" className="flex flex-col gap-s">
         <Heading as="h2" id="other-ways">
-          Other ways to find a shelter
+          {copy.otherHeading}
         </Heading>
-        <Text as="p">You can also:</Text>
+        <Text as="p">{copy.otherIntroduction}</Text>
         <ul className="list-disc space-y-xxs pl-6">
+          {copy.otherItems.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
           <li>
-            listen to local radio or watch TV news for the official list of open
-            shelters
-          </li>
-          <li>
-            follow the Department of Emergency Management, the Ministry of
-            Educational Transformation, and the Barbados Government Information
-            Service on social media
-          </li>
-          <li>
-            call the Department of Emergency Management at{' '}
-            <Link href="tel:+12464387575">438-7575</Link>
+            {copy.callDem}
+            {dem && (
+              <>
+                {' '}
+                {copy.callDemConnector}{' '}
+                <Link href={dem.tel}>{dem.display}</Link>
+              </>
+            )}
           </li>
         </ul>
       </section>
 
       <aside className="border-blue-40 border-l-4 bg-blue-10 px-s py-xm">
         <Heading as="h2" size="h3">
-          Before you go to a shelter
+          {copy.guidanceHeading}
         </Heading>
         <Text as="p">
           <Link href={EMERGENCY_SHELTER_GUIDANCE_HREF}>
-            Read the full guidance
+            {copy.guidanceLinkLabel}
           </Link>{' '}
-          on rules, what to bring, accessibility, entry procedures and emergency
-          phone numbers.
+          {copy.guidanceIntroduction}
         </Text>
       </aside>
 
       <Text as="p" className="text-grey-70" size="body-sm">
-        Source: 2026 Emergency Shelter Booklet, Department of Emergency
-        Management.
+        {common.source}
       </Text>
     </div>
   )
