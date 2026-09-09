@@ -28,6 +28,7 @@ import { faker } from "@faker-js/faker";
 import { test } from "@playwright/test";
 import {
   STEP_TIMEOUT,
+  openSmokeForm,
   advance,
   currentStep,
   expectStep,
@@ -47,7 +48,7 @@ test.describe("CSEC Private Candidate Registration — Live Smoke", () => {
     const firstName = faker.person.firstName();
     const lastName = faker.person.lastName();
 
-    await page.goto(`/forms/${FORM_ID}`);
+    await openSmokeForm(page, FORM_ID);
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });

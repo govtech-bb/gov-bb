@@ -42,6 +42,7 @@ import { test, expect } from "@playwright/test";
 import { TEST_PNG, TEST_PNG_2, TEST_PNG_3 } from "../helpers/test-data";
 import {
   STEP_TIMEOUT,
+  openSmokeForm,
   advance,
   expectStep,
   fillDate,
@@ -61,7 +62,7 @@ test.describe("Temporary Teacher Application — Live Smoke", () => {
     const firstName = faker.person.firstName();
     const lastName = faker.person.lastName();
 
-    await page.goto(`/forms/${FORM_ID}`);
+    await openSmokeForm(page, FORM_ID);
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });

@@ -31,6 +31,15 @@ const UPLOAD_TIMEOUT = 30_000;
 const primaryButton = (page: Page) =>
   page.getByRole("button", { name: /^(Continue|Submit)$/ });
 
+/** Open a published recipe, including private forms when a preview token is set. */
+export async function openSmokeForm(page: Page, formId: string): Promise<void> {
+  const previewToken = process.env.PREVIEW_TOKEN;
+  const search = previewToken
+    ? `?preview=${encodeURIComponent(previewToken)}`
+    : "";
+  await page.goto(`/forms/${formId}${search}`);
+}
+
 /** Read the current `?step=` param. */
 export function currentStep(page: Page): string {
   return new URL(page.url()).searchParams.get("step") ?? "";

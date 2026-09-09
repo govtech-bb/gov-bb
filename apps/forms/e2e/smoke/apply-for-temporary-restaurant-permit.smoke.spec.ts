@@ -67,6 +67,7 @@ import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
 import {
   STEP_TIMEOUT,
+  openSmokeForm,
   advance,
   expectLeadTimeWarningIsAdvisory,
   expectStep,
@@ -300,11 +301,7 @@ test.describe("Temporary Restaurant Permit — Live Smoke", () => {
     if (logData) console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     // A preview-gated form needs the token; a public one ignores the param.
-    const previewToken = process.env.PREVIEW_TOKEN;
-    const landing = previewToken
-      ? `/forms/${FORM_ID}?preview=${encodeURIComponent(previewToken)}`
-      : `/forms/${FORM_ID}`;
-    await page.goto(landing);
+    await openSmokeForm(page, FORM_ID);
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });
