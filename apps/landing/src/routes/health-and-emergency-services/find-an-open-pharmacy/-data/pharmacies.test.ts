@@ -20,9 +20,7 @@ describe('pharmacy dataset', () => {
     expect(PHARMACIES).toEqual(ALL_PHARMACIES)
     for (const slug of [
       'market-hill-dispensary',
-      'holborn-pharmacy',
       'dasae-pharmacy-sparman-clinic',
-      'rxpharma-medical-supplies-dispensary',
     ]) {
       expect(findPharmacyBySlug(slug)).toBeDefined()
       expect(findPharmacyBySlug(slug)?.hours).toBeUndefined()
@@ -30,7 +28,17 @@ describe('pharmacy dataset', () => {
     expect(findPharmacyBySlug('winston-scott-polyclinic')).toBeDefined()
   })
 
-  it('adds corroborated hours while withholding inconsistent document schedules', () => {
+  it('includes opening hours for all 109 pharmacies in the supplied participating list', () => {
+    const participating = ALL_PHARMACIES.filter(
+      (pharmacy) => pharmacy.pppStatus === 'participating',
+    )
+    expect(participating).toHaveLength(109)
+    for (const pharmacy of participating) {
+      expect(pharmacy.hours, pharmacy.name).toBeDefined()
+    }
+  })
+
+  it('keeps the previously reviewed schedules when filling missing hours', () => {
     expect(findPharmacyBySlug('avis-pharmacy')?.hours).toMatchObject({
       mon: [{ opens: '08:00', closes: '18:00' }],
       sat: [{ opens: '08:00', closes: '16:00' }],
@@ -49,16 +57,45 @@ describe('pharmacy dataset', () => {
     expect(
       pharmacyStatus(findPharmacyBySlug('avis-pharmacy')!, sunday)?.open,
     ).toBe(false)
-    for (const slug of ['bt-pharmacy', 'joe-s-pharmacy', 'tdl-pharmacy']) {
-      const pharmacy = findPharmacyBySlug(slug)!
-      expect(pharmacy.hours).toBeUndefined()
-      expect(pharmacyStatus(pharmacy, sunday)).toBeNull()
-      expect(pharmacy.verification).toContainEqual(
-        expect.objectContaining({
-          fields: ['hours'],
-          note: expect.stringContaining('Hours withheld:'),
-        }),
-      )
+  })
+
+  it('uses the complete C S Pharmacy schedule from its named document row', () => {
+    const pharmacy = findPharmacyBySlug('c-s-pharmacy')!
+    expect(pharmacy.hours).toEqual({
+      mon: [{ opens: '08:00', closes: '17:00' }],
+      tue: [{ opens: '08:00', closes: '17:00' }],
+      wed: [{ opens: '08:00', closes: '17:00' }],
+      thu: [{ opens: '08:00', closes: '17:00' }],
+      fri: [{ opens: '08:00', closes: '18:00' }],
+      sat: [{ opens: '08:00', closes: '16:30' }],
+      sun: [],
+    })
+    expect(pharmacyStatus(pharmacy, new Date('2026-09-11T21:30:00Z'))).toEqual({
+      open: true,
+      closes: '18:00',
+    })
+    expect(
+      pharmacyStatus(pharmacy, new Date('2026-09-12T20:30:00Z'))?.open,
+    ).toBe(false)
+  })
+
+  it('retains supplied split shifts and distinguishes fixed and varying holiday hours', () => {
+    expect(findPharmacyBySlug('heritage-pharmacy')?.hours?.mon).toEqual([
+      { opens: '08:00', closes: '15:00' },
+      { opens: '18:45', closes: '21:00' },
+    ])
+    expect(findPharmacyBySlug('belmont-pharmacy')?.bankHolidayHours).toEqual([
+      { opens: '09:00', closes: '12:00' },
+    ])
+    expect(
+      findPharmacyBySlug('massy-pharmacy-sargeants-village')?.bankHolidayHours,
+    ).toEqual([{ opens: '08:00', closes: '14:00' }])
+    expect(findPharmacyBySlug('drugmart')?.bankHolidayHours).toEqual([])
+    expect(
+      findPharmacyBySlug('whole-health-pharmacy')?.bankHolidayHours,
+    ).toEqual([])
+    for (const slug of ['delaware-dispensary', 'nutripharm-services-inc']) {
+      expect(findPharmacyBySlug(slug)?.bankHolidayHours).toBeUndefined()
     }
   })
 
@@ -149,7 +186,7 @@ describe('pharmacy dataset', () => {
       address: 'Shop 11, Welches Plaza, St. Michael',
       phoneExtension: '3',
     })
-    expect(welches?.hours).toBeUndefined()
+    expect(welches?.hours?.sun).toEqual([{ opens: '09:00', closes: '14:00' }])
   })
 
   it('uses the parishes from the August 2026 PPP list', () => {
