@@ -53,6 +53,7 @@ import {
   selectDropdown,
   selectRadio,
   STEP_TIMEOUT,
+  openSmokeForm,
   submitAndConfirm,
 } from "../helpers/smoke";
 
@@ -69,7 +70,7 @@ test.describe("Get a Primary School Textbook Grant — Live Smoke", () => {
     const firstName = faker.person.firstName();
     const lastName = faker.person.lastName();
 
-    await page.goto(`/forms/${FORM_ID}`);
+    await openSmokeForm(page, FORM_ID);
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });
