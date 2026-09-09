@@ -16,6 +16,15 @@ import { AttachmentCard } from "./attachments";
 import { attachmentMetadata, attachmentPart } from "./attachment-data";
 import { restoreTranscript } from "./history";
 
+const pdfMock = vi.hoisted(() => ({ getDocument: vi.fn() }));
+vi.mock("pdfjs-dist", () => ({
+  GlobalWorkerOptions: { workerSrc: "" },
+  getDocument: pdfMock.getDocument,
+}));
+vi.mock("pdfjs-dist/build/pdf.worker.min.mjs?url", () => ({
+  default: "/pdf.worker.mjs",
+}));
+
 it("keeps custom and multiple-choice answers when navigating, and submits the final answer once", async () => {
   const submit = vi.fn(async () => {});
   render(
@@ -258,4 +267,62 @@ it("detects a whole-block selection anchored on the editable element", () => {
   expect(action).toHaveBeenCalledWith(
     expect.objectContaining({ selection: "A complete paragraph." }),
   );
+});
+
+it("shares the rendered PDF image while releasing each thumbnail's blob URL", async () => {
+  const create = vi
+    .fn()
+    .mockReturnValueOnce("blob:first")
+    .mockReturnValueOnce("blob:second");
+  const revoke = vi.fn();
+  Object.defineProperties(URL, {
+    createObjectURL: { value: create, configurable: true },
+    revokeObjectURL: { value: revoke, configurable: true },
+  });
+  const png = new Blob(["rendered pixels"], { type: "image/png" });
+  const toBlob = vi
+    .spyOn(HTMLCanvasElement.prototype, "toBlob")
+    .mockImplementation((callback) => callback(png));
+  const destroy = vi.fn(async () => {});
+  pdfMock.getDocument.mockReturnValue({
+    promise: Promise.resolve({
+      getPage: async () => ({
+        getViewport: () => ({ width: 100, height: 160 }),
+        render: () => ({ promise: Promise.resolve() }),
+      }),
+    }),
+    destroy,
+  });
+  const file = new File(["pdf bytes"], "form.pdf", { type: "application/pdf" });
+  Object.defineProperty(file, "arrayBuffer", {
+    value: async () => new ArrayBuffer(8),
+  });
+  const metadata = {
+    id: "pdf",
+    name: file.name,
+    type: "application/pdf" as const,
+    size: file.size,
+  };
+  const view = render(
+    <>
+      <AttachmentCard attachment={metadata} file={file} />
+      <AttachmentCard attachment={metadata} file={file} />
+    </>,
+  );
+  try {
+    const previews = await screen.findAllByAltText("Preview of form.pdf");
+    expect(previews.map((preview) => preview.getAttribute("src"))).toEqual([
+      "blob:first",
+      "blob:second",
+    ]);
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(create).toHaveBeenCalledWith(png);
+    expect(toBlob).toHaveBeenCalledWith(expect.any(Function), "image/png");
+    expect(pdfMock.getDocument).toHaveBeenCalledOnce();
+    expect(destroy).toHaveBeenCalledOnce();
+  } finally {
+    view.unmount();
+    toBlob.mockRestore();
+  }
+  expect(revoke.mock.calls).toEqual([["blob:first"], ["blob:second"]]);
 });

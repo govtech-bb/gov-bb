@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Delete02Icon, Rocket01Icon, SparklesIcon } from "hugeicons-react";
+import { Delete02Icon, Rocket01Icon } from "hugeicons-react";
 import { CONTENT_ROOT, VISIBILITY_LEVELS } from "./-lib";
 import type { OpenContentPR } from "./-server";
 import type { EditorState } from "./-editor-state";

@@ -129,7 +129,7 @@ vi.mock("./-recipe-reducer", async () => {
 // findRecipeIdCollisions is swappable per test (default: no collisions) so the
 // AI apply path's collision pre-flight can be driven. formatCollisionIssues
 // stays real, so its message text is asserted directly.
-let mockCollisions: ReturnType<
+const mockCollisions: ReturnType<
   typeof import("@govtech-bb/form-builder").findRecipeIdCollisions
 > = { fieldIdCollisions: [], stepIdCollisions: [] };
 vi.mock("@govtech-bb/form-builder", async () => {

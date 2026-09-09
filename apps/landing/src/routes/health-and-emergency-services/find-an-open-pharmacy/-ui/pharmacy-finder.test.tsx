@@ -110,10 +110,13 @@ describe('pharmacy finder', () => {
       (pharmacy) => pharmacy.pppStatus === 'participating',
     )
     expect(participating).toHaveLength(109)
+    // Avoid recomputing accessible names across the page for all 109 searches.
     for (const pharmacy of participating) {
       fireEvent.change(search, { target: { value: pharmacy.name } })
       expect(
-        screen.getByRole('link', { name: pharmacy.name }).getAttribute('href'),
+        screen
+          .getByText(pharmacy.name, { selector: 'a[href]' })
+          .getAttribute('href'),
       ).toBe(
         `/health-and-emergency-services/find-an-open-pharmacy/${pharmacy.slug}`,
       )

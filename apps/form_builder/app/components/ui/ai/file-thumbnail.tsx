@@ -3,7 +3,7 @@ import { File01Icon } from "hugeicons-react";
 import s from "./components.module.css";
 
 // Weak keys release the cached first page when the conversation releases its File.
-const pages = new WeakMap<File, Promise<string>>();
+const pages = new WeakMap<File, Promise<Blob>>();
 function pdfThumbnail(file: File) {
   let page = pages.get(file);
   if (!page) {
@@ -27,7 +27,12 @@ function pdfThumbnail(file: File) {
         canvas.width = Math.ceil(viewport.width);
         canvas.height = Math.ceil(viewport.height);
         await first.render({ canvas, viewport }).promise;
-        return canvas.toDataURL("image/png");
+        return await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("Unable to render PDF preview"));
+          }, "image/png");
+        });
       } finally {
         await task.destroy();
       }
@@ -59,11 +64,14 @@ export function FileThumbnail({
     }
     if (file.type !== "application/pdf") return;
     let active = true;
+    let url: string | undefined;
     setLoading(true);
     void pdfThumbnail(file)
       .then(
-        (url) => {
-          if (active) setPreview(url);
+        (blob) => {
+          if (!active) return;
+          url = URL.createObjectURL(blob);
+          setPreview(url);
         },
         () => {},
       )
@@ -72,6 +80,7 @@ export function FileThumbnail({
       });
     return () => {
       active = false;
+      if (url) URL.revokeObjectURL(url);
     };
   }, [file]);
   const extension =
