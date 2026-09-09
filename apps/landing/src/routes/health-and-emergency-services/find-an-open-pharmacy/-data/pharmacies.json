@@ -787,7 +787,7 @@
           "fields": ["hours"],
           "source": "https://www.imartstores.com/about-us/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 54, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 54, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm. Existing weekly hours agree with the supplied schedule."
         }
       ]
     },
@@ -861,7 +861,7 @@
           "fields": ["hours"],
           "source": "https://www.imartstores.com/about-us/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 56, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 9am–6pm, Sun closed. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 56, reviewed 2026-09-09. Supplied hours: Mon–Sat 9am–6pm, Sun closed. Existing independently reviewed weekly hours retained where the document differs."
         }
       ]
     },
@@ -946,7 +946,7 @@
           "fields": ["hours"],
           "source": "https://www.imartstores.com/about-us/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 58, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 58, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm. Existing weekly hours agree with the supplied schedule."
         }
       ]
     },
@@ -1097,7 +1097,7 @@
           "fields": ["hours"],
           "source": "https://www.imartstores.com/about-us/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 60, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 8am–8pm, Sun closed. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 60, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm, Sun closed. Existing weekly hours agree with the supplied schedule."
         }
       ]
     },
@@ -1122,12 +1122,50 @@
         },
         {
           "fields": ["hours"],
-          "source": "GovTech pharmacy prototype dataset, 23 July 2026",
-          "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 61, reviewed 2026-09-09. Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm, Sun closed."
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 61",
+          "checkedOn": "2026-09-09",
+          "note": "Supplied hours: Mon–Sat 8am–8pm, Sun closed."
         }
       ],
-      "notes": "Call to confirm pharmacy opening hours."
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "imart-pharmacy-the-estates",
@@ -1209,7 +1247,7 @@
           "fields": ["hours"],
           "source": "https://www.imartstores.com/about-us/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 59, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 59, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm. Existing weekly hours agree with the supplied schedule."
         }
       ]
     },
@@ -1276,7 +1314,7 @@
           "fields": ["hours"],
           "source": "https://wplazawelches.com/service/i-mart-pharmacy/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 55, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 9am–6pm, Sun closed. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 55, reviewed 2026-09-09. Supplied hours: Mon–Sat 9am–6pm, Sun closed. Existing weekly hours agree with the supplied schedule."
         }
       ]
     },
@@ -1289,7 +1327,6 @@
       "address": "Shop 11, Welches Plaza, St. Michael",
       "phone": "(246) 271-3784",
       "phoneExtension": "3",
-      "notes": "Opening hours have not been confirmed.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -1300,9 +1337,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 57",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      }
     },
     {
       "slug": "dasae-pharmacy-sparman-clinic",
@@ -1357,9 +1438,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 45",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–8pm; Sat 8am–9pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–8pm; Sat 8am–9pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "21:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "pharmaceuticals-plus-inc",
@@ -1384,9 +1504,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 91",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 9am–8pm; Sun closed."
+          "note": "Supplied hours: Mon–Sat 9am–8pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "felimar-plus-pharmacy",
@@ -1413,9 +1572,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 40",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–4:30pm; Sat 9am–2pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–4:30pm; Sat 9am–2pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "lewis-drug-mart",
@@ -1440,9 +1638,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 66",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 9am–2pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 9am–2pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "a-plus-care-pharmacy",
@@ -1467,9 +1704,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 3",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–5pm; Sat 8:30am–3pm; Sun closed. Review findings: https://www.cybo.com/BB-biz/acare-pharmacy: Search result: Mon–Fri 09:00–17:00; Sat 08:30–15:00; Sun closed. Opened page: Mon–Fri 08:30–17:00; Sat 08:30–15:00; Sun closed.. Same source URL produced differently aged versions; matching Gall Hill address and 428-3497. Linked apluscarepharmacy.com unavailable. Do not treat as clean corroboration."
+          "note": "Supplied hours: Mon–Fri 9am–5pm; Sat 8:30am–3pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:30",
+            "closes": "15:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "cosmopolitan-pharmacy-six-roads",
@@ -1494,7 +1770,57 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 26",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm."
+        }
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      },
+      "bankHolidayHours": [
+        {
+          "opens": "10:00",
+          "closes": "14:00"
         }
       ]
     },
@@ -1565,9 +1891,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 24",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 8am–5pm; Fri–Sun 8am–12pm."
+          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri–Sun 8am–12pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "12:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "12:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "08:00",
+            "closes": "12:00"
+          }
+        ]
+      }
     },
     {
       "slug": "rxpharma-medical-supplies-dispensary",
@@ -1590,12 +1960,55 @@
         },
         {
           "fields": ["hours"],
-          "source": "GovTech pharmacy prototype dataset, 23 July 2026",
-          "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 104, reviewed 2026-09-09. Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sun 8:30am–9pm."
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 104",
+          "checkedOn": "2026-09-09",
+          "note": "Supplied hours: Mon–Sun 8:30am–9pm."
         }
       ],
-      "notes": "Call to confirm pharmacy opening hours."
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "21:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "21:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "21:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "21:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "21:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:30",
+            "closes": "21:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "08:30",
+            "closes": "21:00"
+          }
+        ]
+      }
     },
     {
       "slug": "bt-pharmacy",
@@ -1618,12 +2031,55 @@
         },
         {
           "fields": ["hours"],
-          "source": "GovTech pharmacy prototype dataset, 23 July 2026",
-          "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 18, reviewed 2026-09-09. Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–5pm; Sun 9am–12:30pm."
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 18",
+          "checkedOn": "2026-09-09",
+          "note": "Supplied hours: Mon–Sat 8am–5pm; Sun 9am–12:30pm."
         }
       ],
-      "notes": "Call to confirm pharmacy opening hours."
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "12:30"
+          }
+        ]
+      }
     },
     {
       "slug": "top-tier-pharmacy",
@@ -1645,12 +2101,50 @@
         },
         {
           "fields": ["hours"],
-          "source": "GovTech pharmacy prototype dataset, 23 July 2026",
-          "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 112, reviewed 2026-09-09. Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–3pm; Sat 9am–1pm; Sun closed."
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 112",
+          "checkedOn": "2026-09-09",
+          "note": "Supplied hours: Mon–Fri 9am–3pm; Sat 9am–1pm; Sun closed."
         }
       ],
-      "notes": "Call to confirm pharmacy opening hours."
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "15:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "15:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "15:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "15:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "15:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "13:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "oneup-pharmacy-wildey-mall",
@@ -1722,7 +2216,13 @@
           "fields": ["hours"],
           "source": "https://oneuppharmacy.com/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 86, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 86, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm. Existing independently reviewed weekly hours retained where the document differs. Public holiday hours supplied by this document."
+        }
+      ],
+      "bankHolidayHours": [
+        {
+          "opens": "10:00",
+          "closes": "14:00"
         }
       ]
     },
@@ -1795,7 +2295,13 @@
           "fields": ["hours"],
           "source": "https://oneuppharmacy.com/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 85, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 85, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm. Existing independently reviewed weekly hours retained where the document differs. Public holiday hours supplied by this document."
+        }
+      ],
+      "bankHolidayHours": [
+        {
+          "opens": "10:00",
+          "closes": "14:00"
         }
       ]
     },
@@ -1864,9 +2370,10 @@
           "fields": ["hours"],
           "source": "https://oneuppharmacy.com/",
           "checkedOn": "2026-09-07",
-          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 87, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 8am–8pm; Sun closed; bank holidays closed. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 87, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–8pm; Sun closed; bank holidays closed. Existing independently reviewed weekly hours retained where the document differs. Public holiday hours supplied by this document."
         }
-      ]
+      ],
+      "bankHolidayHours": []
     },
     {
       "slug": "oneup-pharmacy-diagnostic-medical",
@@ -1957,12 +2464,50 @@
         },
         {
           "fields": ["hours"],
-          "source": "GovTech pharmacy prototype dataset, 23 July 2026",
-          "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 21, reviewed 2026-09-09. Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Wed 8am–5pm; Thu–Fri 8am–6pm; Sat 9am–2pm; Sun closed."
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 21",
+          "checkedOn": "2026-09-09",
+          "note": "Supplied hours: Mon–Wed 8am–5pm; Thu–Fri 8am–6pm; Sat 9am–2pm; Sun closed."
         }
       ],
-      "notes": "Call to confirm pharmacy opening hours."
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "callies-pharmacy-cottage",
@@ -1981,12 +2526,55 @@
         },
         {
           "fields": ["hours"],
-          "source": "GovTech pharmacy prototype dataset, 23 July 2026",
-          "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 22, reviewed 2026-09-09. Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 9am–5pm; Fri 9am–2:30pm; Sat–Sun 8:30am–2:30pm."
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 22",
+          "checkedOn": "2026-09-09",
+          "note": "Supplied hours: Mon–Thu 9am–5pm; Fri 9am–2:30pm; Sat–Sun 8:30am–2:30pm."
         }
       ],
-      "notes": "Call to confirm pharmacy opening hours."
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "14:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:30",
+            "closes": "14:30"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "08:30",
+            "closes": "14:30"
+          }
+        ]
+      }
     },
     {
       "slug": "elcourt-pharmacy",
@@ -1996,7 +2584,6 @@
       "parish": "Christ Church",
       "address": "Maxwell Main Road, Christ Church",
       "phone": "(246) 428-5323",
-      "notes": "Listed as 8am–10pm. Call to confirm opening days.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -2007,9 +2594,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 35",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 9am–8pm; Sun closed."
+          "note": "Supplied hours: Mon–Sat 9am–8pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "lyte-drug-mart",
@@ -2024,7 +2650,6 @@
         "lon": -59.596507
       },
       "additionalPhones": ["(246) 231-2366"],
-      "notes": "Listed as 8am–5:30pm. Call to confirm opening days.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -2035,9 +2660,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 67",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–7pm; Sun 8am–4pm."
+          "note": "Supplied hours: Mon–Sat 8am–7pm; Sun 8am–4pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ]
+      }
     },
     {
       "slug": "palmcourt-dispensary",
@@ -2047,7 +2716,6 @@
       "parish": "St. Michael",
       "address": "28 Pine Road, Belleville, St. Michael",
       "phone": "(246) 437-8098",
-      "notes": "Listed as 8am–4:30pm. Call to confirm opening days.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -2058,9 +2726,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 89",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–5:30pm; Sat 9am–3pm; Sun 9am–12pm."
+          "note": "Supplied hours: Mon–Fri 8am–5:30pm; Sat 9am–3pm; Sun 9am–12pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "15:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "12:00"
+          }
+        ]
+      }
     },
     {
       "slug": "holborn-pharmacy",
@@ -2074,7 +2786,6 @@
         "lat": 13.095956,
         "lon": -59.601443
       },
-      "notes": "Call to confirm pharmacy opening hours.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -2083,11 +2794,50 @@
         },
         {
           "fields": ["hours"],
-          "source": "GovTech pharmacy prototype dataset, 23 July 2026",
-          "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: opening days were assumed. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 53, reviewed 2026-09-09. Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–4pm; Sat closed; Sun 9am–2pm."
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 53",
+          "checkedOn": "2026-09-09",
+          "note": "Supplied hours: Mon–Fri 9am–4pm; Sat closed; Sun 9am–2pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "16:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "16:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "16:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "16:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "16:00"
+          }
+        ],
+        "sat": [],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      }
     },
     {
       "slug": "ace-pharmacy",
@@ -2107,9 +2857,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 4",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sun 7am–6:30pm. Review findings: https://www.waze.com/live-map/directions/bb/saint-michael/bridgetown/ace-pharmacy%2C-dermatology-and-orthopaedic-clinic?to=place.ChIJz8eYK4T3Q4wRyUCg5ds9GSs: Mon–Sun 07:00–18:30. Exact name/address/228-2026 match; supports document but conflicts with other directories. https://www.findyello.com/barbados/ace-pharmacy/profile/3-10th-avenue/: Mon–Sun 07:00–20:00. Exact phone/address match, conflicts with document and Waze. No primary source found."
+          "note": "Supplied hours: Mon–Sun 7am–6:30pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "07:00",
+            "closes": "18:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "07:00",
+            "closes": "18:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "07:00",
+            "closes": "18:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "07:00",
+            "closes": "18:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "07:00",
+            "closes": "18:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "07:00",
+            "closes": "18:30"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "07:00",
+            "closes": "18:30"
+          }
+        ]
+      }
     },
     {
       "slug": "bayside-pharmacy",
@@ -2155,9 +2949,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 20",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–4:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–4:30pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "collins-pharmacy",
@@ -2181,9 +3014,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 23",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–6pm; Sat 9am–3:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 9am–6pm; Sat 9am–3:30pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "15:30"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "delaware-dispensary",
@@ -2208,9 +3080,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 27",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 9am–6pm; Sun closed; bank holidays vary."
+          "note": "Supplied hours: Mon–Sat 9am–6pm; Sun closed; bank holidays vary."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "eagle-hall-pharmacy",
@@ -2234,7 +3145,57 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 29",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm."
+        }
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      },
+      "bankHolidayHours": [
+        {
+          "opens": "10:00",
+          "closes": "14:00"
         }
       ]
     },
@@ -2260,9 +3221,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 36",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–5pm; Sat 9am–2pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 9am–5pm; Sat 9am–2pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "pharm-n-care-warrens",
@@ -2292,9 +3292,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 95",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–5pm; Sat 9am–2pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–5pm; Sat 9am–2pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "flanders-pharmacy",
@@ -2318,9 +3357,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 41",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–4:30pm; Sat 8am–3:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–4:30pm; Sat 8am–3:30pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "15:30"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "friendship-pharmacy",
@@ -2387,9 +3465,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 76",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–4:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–4:30pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "medic-aid-dispensary",
@@ -2434,7 +3551,57 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 82",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm."
+        }
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      },
+      "bankHolidayHours": [
+        {
+          "opens": "10:00",
+          "closes": "14:00"
         }
       ]
     },
@@ -2499,9 +3666,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 93",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–5pm; Sat 8:30am–3pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–5pm; Sat 8:30am–3pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:30",
+            "closes": "15:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "station-hill-medical-complex-pharmacy",
@@ -2587,9 +3793,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 7",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8:30am–5:30pm; Sun closed. Review findings: https://www.findyello.com/barbados/alpha-pharmacy/profile/: No confirmed pharmacy schedule. Exact Sunnyside/426-3499 listing, no hours. Targeted searches found no current pharmacy-owned schedule."
+          "note": "Supplied hours: Mon–Sat 8:30am–5:30pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "apothec-pharmacy",
@@ -2609,9 +3854,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 8",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–7pm; Sat 9am–5pm; Sun 9am–3pm. Review findings: https://www.findyello.com/barbados/apothec-pharmacy/profile/: No confirmed pharmacy schedule. Exact phone 436-6337 but directory address is older Dayrells Road; no hours. Document schedule happens to match Avida directory schedule, suggesting misassignment."
+          "note": "Supplied hours: Mon–Fri 9am–7pm; Sat 9am–5pm; Sun 9am–3pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "19:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "19:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "19:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "19:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "19:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "15:00"
+          }
+        ]
+      }
     },
     {
       "slug": "avis-pharmacy",
@@ -2631,7 +3920,7 @@
           "fields": ["hours"],
           "source": "https://www.avispharmacyltd.com/",
           "checkedOn": "2026-09-09",
-          "note": "Pharmacy website hours used; the supplied document conflicts. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 11: Supplied hours: Mon–Sat 8am–7pm; Sun 8am–4pm."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 11, reviewed 2026-09-09. Supplied hours: Mon–Sat 8am–7pm; Sun 8am–4pm. Existing independently reviewed weekly hours retained where the document differs."
         }
       ],
       "hours": {
@@ -2715,9 +4004,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 16",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–5pm; Sun 9am–12:30pm. Review findings: https://www.todosbiz.com/en-BB/brittons-hill-medical-clinic-centre-and-246-429-5461: Table: Mon–Sat 09:00–13:00; Sun 08:00–13:00. Description: Pharmacy every day 09:00–13:00.. Exact 429-5461/Brittons medical complex; conflicts with document. Its own table/description mix clinic and pharmacy Sunday hours, so unsuitable for definite schedule."
+          "note": "Supplied hours: Mon–Sat 8am–5pm; Sun 9am–12:30pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "12:30"
+          }
+        ]
+      }
     },
     {
       "slug": "carledon-drug-emporium-inc",
@@ -2896,9 +4229,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 33",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–5:30pm; Sat 9am–3pm; Sun 9am–12pm."
+          "note": "Supplied hours: Mon–Fri 8am–5:30pm; Sat 9am–3pm; Sun 9am–12pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "15:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "12:00"
+          }
+        ]
+      }
     },
     {
       "slug": "cb-forde-ltd",
@@ -2923,9 +4300,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 19",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–5pm; Sun 9am–12:30pm."
+          "note": "Supplied hours: Mon–Sat 8am–5pm; Sun 9am–12:30pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "12:30"
+          }
+        ]
+      }
     },
     {
       "slug": "gill-shirley-s-gill-s-pharmacy",
@@ -3033,9 +4454,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 46",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–7pm; Sun 9am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–7pm; Sun 9am–2pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      }
     },
     {
       "slug": "henley-s-pharmacy",
@@ -3060,9 +4525,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 50",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–6:30pm; Sat 9am–4pm; Sun 9am–2pm."
+          "note": "Supplied hours: Mon–Fri 8:30am–6:30pm; Sat 9am–4pm; Sun 9am–2pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "18:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "18:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "18:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "18:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "18:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "16:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      }
     },
     {
       "slug": "heritage-pharmacy",
@@ -3087,9 +4596,73 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 51",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–3pm & 6:45pm–9pm; Sat 8am–1:30pm; Sun 8am–12:30pm."
+          "note": "Supplied hours: Mon–Fri 8am–3pm & 6:45pm–9pm; Sat 8am–1:30pm; Sun 8am–12:30pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "15:00"
+          },
+          {
+            "opens": "18:45",
+            "closes": "21:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "15:00"
+          },
+          {
+            "opens": "18:45",
+            "closes": "21:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "15:00"
+          },
+          {
+            "opens": "18:45",
+            "closes": "21:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "15:00"
+          },
+          {
+            "opens": "18:45",
+            "closes": "21:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "15:00"
+          },
+          {
+            "opens": "18:45",
+            "closes": "21:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "13:30"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "08:00",
+            "closes": "12:30"
+          }
+        ]
+      }
     },
     {
       "slug": "imperial-pharmacy",
@@ -3158,9 +4731,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 65",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–6pm; Sat 8am–4pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–6pm; Sat 8am–4pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "a-p-jones-co-ltd",
@@ -3186,7 +4798,7 @@
           "fields": ["hours"],
           "source": "https://carib.guide/public/place/a-p-jones?c=barbados",
           "checkedOn": "2026-09-09",
-          "note": "Supplied document hours corroborated against a public business directory with a matching pharmacy telephone number. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 2: Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–5pm; Sun closed. The directory does not state a schedule update date; checkedOn records this review. Public holiday hours remain unconfirmed."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 2, reviewed 2026-09-09. Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–5pm; Sun closed. Existing weekly hours agree with the supplied schedule."
         }
       ],
       "hours": {
@@ -3258,9 +4870,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 98",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 8:30am–4:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 8:30am–4:30pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "k-o-d-s-pharmacy",
@@ -3352,9 +5003,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 78",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 9am–5pm; Fri 9am–2:30pm; Sat–Sun 8:30am–2:30pm."
+          "note": "Supplied hours: Mon–Thu 9am–5pm; Fri 9am–2:30pm; Sat–Sun 8:30am–2:30pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "14:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:30",
+            "closes": "14:30"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "08:30",
+            "closes": "14:30"
+          }
+        ]
+      }
     },
     {
       "slug": "neil-s-pharmacy",
@@ -3401,9 +5096,49 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 84",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 9am–8pm; Sun closed; bank holidays closed."
+          "note": "Supplied hours: Mon–Sat 9am–8pm; Sun closed; bank holidays closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": []
+      },
+      "bankHolidayHours": []
     },
     {
       "slug": "pearson-s-pharmacies",
@@ -3428,9 +5163,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 90",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      }
     },
     {
       "slug": "pharmaco",
@@ -3455,9 +5234,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 94",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–4pm; Sat 8am–1pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–4pm; Sat 8am–1pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "13:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "pickwick-pharmacy",
@@ -3504,9 +5322,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 97",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–4:30pm; Sat 8am–3:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–4:30pm; Sat 8am–3:30pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "15:30"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "prescription-specialist-pharmacy-the",
@@ -3553,9 +5410,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 100",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–5pm; Sat 9am–1pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 9am–5pm; Sat 9am–1pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "13:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "river-road-dispensary",
@@ -3624,9 +5520,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 25",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–5:30pm; Sat 8am–4pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–5:30pm; Sat 8am–4pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "s-e-well-care-pharmacy",
@@ -3673,9 +5608,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 105",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–1pm; Sun closed."
+          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–1pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "13:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "standard-pharmacy-ltd",
@@ -3695,9 +5669,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 106",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–6:30pm; Sat 9am–4pm; Sun 9am–2pm."
+          "note": "Supplied hours: Mon–Fri 8:30am–6:30pm; Sat 9am–4pm; Sun 9am–2pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "18:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "18:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "18:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "18:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "18:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "16:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      }
     },
     {
       "slug": "total-care-pharmacy",
@@ -3744,9 +5762,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 44",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–5pm; Sat 9am–1pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 9am–5pm; Sat 9am–1pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "13:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "weekes-l-a-drug-store",
@@ -3816,7 +5873,7 @@
           "fields": ["hours"],
           "source": "https://carib.guide/place/whole-health-pharmacy",
           "checkedOn": "2026-09-09",
-          "note": "Supplied document hours corroborated against a public business directory with a matching pharmacy telephone number. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 118: Supplied hours: Mon–Fri 8am–5pm; Sat 8am – 3pm; Sun closed; Bank Holidays Closed. The directory does not state a schedule update date; checkedOn records this review. Public holiday hours remain unconfirmed."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 118, reviewed 2026-09-09. Supplied hours: Mon–Fri 8am–5pm; Sat 8am – 3pm; Sun closed; Bank Holidays Closed. Existing weekly hours agree with the supplied schedule. Public holiday hours supplied by this document."
         }
       ],
       "hours": {
@@ -3858,7 +5915,8 @@
         ],
         "sun": []
       },
-      "whatsapp": "(246) 422-5207"
+      "whatsapp": "(246) 422-5207",
+      "bankHolidayHours": []
     },
     {
       "slug": "worrell-s-pharmacy-inc",
@@ -3926,7 +5984,57 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 72",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
+        }
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      },
+      "bankHolidayHours": [
+        {
+          "opens": "08:00",
+          "closes": "14:00"
         }
       ]
     },
@@ -3952,7 +6060,57 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 74",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
+        }
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      },
+      "bankHolidayHours": [
+        {
+          "opens": "08:00",
+          "closes": "14:00"
         }
       ]
     },
@@ -3978,7 +6136,57 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 69",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
+        }
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      },
+      "bankHolidayHours": [
+        {
+          "opens": "08:00",
+          "closes": "14:00"
         }
       ]
     },
@@ -4004,7 +6212,57 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 71",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–7pm; Sun 8am–1pm; bank holidays 8am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–7pm; Sun 8am–1pm; bank holidays 8am–2pm."
+        }
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "08:00",
+            "closes": "13:00"
+          }
+        ]
+      },
+      "bankHolidayHours": [
+        {
+          "opens": "08:00",
+          "closes": "14:00"
         }
       ]
     },
@@ -4026,7 +6284,57 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 73",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
+        }
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      },
+      "bankHolidayHours": [
+        {
+          "opens": "08:00",
+          "closes": "14:00"
         }
       ]
     },
@@ -4052,7 +6360,57 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 70",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
+        }
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      },
+      "bankHolidayHours": [
+        {
+          "opens": "08:00",
+          "closes": "14:00"
         }
       ]
     },
@@ -4080,9 +6438,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 103",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–8pm; Sat 8am–4pm; Sun 8am–12pm."
+          "note": "Supplied hours: Mon–Fri 8am–8pm; Sat 8am–4pm; Sun 8am–12pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "08:00",
+            "closes": "12:00"
+          }
+        ]
+      }
     },
     {
       "slug": "elbethel-pharmacy-6th-avenue",
@@ -4107,7 +6509,57 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 30",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm."
+        }
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      },
+      "bankHolidayHours": [
+        {
+          "opens": "10:00",
+          "closes": "14:00"
         }
       ]
     },
@@ -4124,7 +6576,6 @@
         "lon": -59.579202
       },
       "additionalPhones": ["(246) 233-3118"],
-      "notes": "Call to confirm pharmacy opening hours.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -4133,11 +6584,50 @@
         },
         {
           "fields": ["hours"],
-          "source": "GovTech pharmacy prototype dataset, 23 July 2026",
-          "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 9, reviewed 2026-09-09. Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–6pm; Sat 8am–4pm; Sun closed. Review findings: https://www.aqua-pharmacy.com/LUX/Public/OSWelcome.asp: No confirmed pharmacy schedule. Pharmacy-owned site confirms Coral Sands/622-2782/233-3118 but no schedule available; homepage cookie gate. https://www.todosbiz.com/en-BB/aqua-pharmacy-246-622-2782: Mon–Sat 08:30–17:30; Sun closed. Exact address/phone; conflicts with document. https://carib.guide/place/aqua-pharmacy?c=barbados: Mon–Fri 08:30–17:00; Sat 09:00–14:00; Sun closed. Exact address/phone; also conflicts with document and other directories."
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 9",
+          "checkedOn": "2026-09-09",
+          "note": "Supplied hours: Mon–Fri 8am–6pm; Sat 8am–4pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "betterlife-pharmacy",
@@ -4158,9 +6648,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 14",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–5pm; Sat 8am–2pm; Sun closed. Review findings: https://www.todosbiz.com/en-BB/betterlife-pharmacy-246-571-3788: Mon–Fri 08:30–17:30; Sat 09:00–14:00; Sun closed. Exact Friendship Terrace/571-3788; conflicts with document. Linked pharmacy Facebook fetch unavailable. https://bb.near-place.com/betterlife-pharmacy-friendship-terrace-building-2-1-friendship-terrace-green-hill: Mon–Fri 08:30–18:00; Sat 09:00–14:00; Sun closed. Directory differs from document and TodosBiz."
+          "note": "Supplied hours: Mon–Fri 8am–5pm; Sat 8am–2pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "14:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "get-well-pharmacy",
@@ -4175,7 +6704,6 @@
         "lon": -59.591569
       },
       "additionalPhones": ["(246) 828-9599"],
-      "notes": "Opening hours have not been confirmed.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -4186,9 +6714,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 42",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 8:30am–4:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 8:30am–4:30pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "city-pharmacy-inc",
@@ -4233,9 +6800,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 75",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–5pm; Sun closed."
+          "note": "Supplied hours: Mon–Sat 8am–5pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "advanced-care-pharmacy",
@@ -4255,7 +6861,7 @@
           "fields": ["hours"],
           "source": "https://www.findyello.com/barbados/advanced-care-pharmacy/profile/",
           "checkedOn": "2026-09-09",
-          "note": "Supplied document hours corroborated against a public business directory with a matching pharmacy telephone number. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 5: Supplied hours: Mon–Fri 8:30am–4:30pm; Sat–Sun closed. The directory does not state a schedule update date; checkedOn records this review. Public holiday hours remain unconfirmed."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 5, reviewed 2026-09-09. Supplied hours: Mon–Fri 8:30am–4:30pm; Sat–Sun closed. Existing weekly hours agree with the supplied schedule."
         }
       ],
       "hours": {
@@ -4311,7 +6917,7 @@
           "fields": ["hours"],
           "source": "https://www.cybo.com/BB-biz/allington-pharmacy_1k",
           "checkedOn": "2026-09-09",
-          "note": "Supplied document hours corroborated against a public business directory with a matching pharmacy telephone number. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 6: Supplied hours: Mon 9am–6pm; Tue 9am–6pm; Wed 9am–6pm; Thu 9am–5pm; Fri 9am–6pm; Sat 9am–1:30pm; Sun closed. The directory does not state a schedule update date; checkedOn records this review. Public holiday hours remain unconfirmed."
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 6, reviewed 2026-09-09. Supplied hours: Mon 9am–6pm; Tue 9am–6pm; Wed 9am–6pm; Thu 9am–5pm; Fri 9am–6pm; Sat 9am–1:30pm; Sun closed. Existing weekly hours agree with the supplied schedule."
         }
       ],
       "hours": {
@@ -4372,9 +6978,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 10",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 9am–2pm; Sun closed. Review findings: https://www.findyello.com/barbados/avida-pharmacy/profile/: Mon–Fri 09:00–19:00; Sat 09:00–17:00; Sun 09:00–15:00. Exact Ellerton Building/Welches/537-0294; conflicts with document. TodosBiz independently displays same schedule; linked Instagram account unavailable. https://www.instagram.com/avida_pharmacy/: No confirmed pharmacy schedule. Pharmacy social account discovered through linked directory; fetch failed."
+          "note": "Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 9am–2pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "bato-s-pharmacy",
@@ -4394,9 +7039,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 12",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–3pm; Sun 9am–1pm. Review findings: https://mahabirsagencies.com/: Store Mon–Sat 08:30–18:00. Official Mahabirs retail groceries/vape site shares King Street/426-1699 ext1, but does not establish Batos pharmacy dispensing hours. Do not import retail schedule."
+          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–3pm; Sun 9am–1pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "15:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "13:00"
+          }
+        ]
+      }
     },
     {
       "slug": "belmont-pharmacy",
@@ -4417,7 +7106,57 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 13",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–4:30pm; Sat 8:30am–2pm; Sun 9am–1pm; bank holidays 9am–12pm."
+          "note": "Supplied hours: Mon–Fri 8:30am–4:30pm; Sat 8:30am–2pm; Sun 9am–1pm; bank holidays 9am–12pm."
+        }
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:30",
+            "closes": "14:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "13:00"
+          }
+        ]
+      },
+      "bankHolidayHours": [
+        {
+          "opens": "09:00",
+          "closes": "12:00"
         }
       ]
     },
@@ -4440,9 +7179,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 15",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 7am–7pm; Sat 8am–3:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 7am–7pm; Sat 8am–3:30pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "07:00",
+            "closes": "19:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "07:00",
+            "closes": "19:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "07:00",
+            "closes": "19:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "07:00",
+            "closes": "19:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "07:00",
+            "closes": "19:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "15:30"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "drugmart",
@@ -4463,9 +7241,49 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 28",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 9am–8pm; Sun closed; bank holidays closed."
+          "note": "Supplied hours: Mon–Sat 9am–8pm; Sun closed; bank holidays closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": []
+      },
+      "bankHolidayHours": []
     },
     {
       "slug": "elbethel-pharmacy-prerogative",
@@ -4486,9 +7304,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 34",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      }
     },
     {
       "slug": "elgar-pharmacy-market-hill",
@@ -4508,9 +7370,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 37",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–5pm; Sat 8:30am–3pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–5pm; Sat 8:30am–3pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:30",
+            "closes": "15:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "elitecare-pharmacy",
@@ -4530,9 +7431,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 38",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–4pm; Sat 8am–1pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–4pm; Sat 8am–1pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "13:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "enterprise-pharmacy",
@@ -4553,9 +7493,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 39",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–5pm; Sat 9am–2pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–5pm; Sat 9am–2pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "habibi-pharmacy",
@@ -4576,9 +7555,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 43",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–4:30pm; Sat 9am–1:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–4:30pm; Sat 9am–1:30pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "13:30"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "health-care-pharmacy-westbury-road",
@@ -4598,9 +7616,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 48",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sun 8:30am–9pm."
+          "note": "Supplied hours: Mon–Sun 8:30am–9pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "21:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "21:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "21:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "21:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "21:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:30",
+            "closes": "21:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "08:30",
+            "closes": "21:00"
+          }
+        ]
+      }
     },
     {
       "slug": "health-sync-pharmacy",
@@ -4620,9 +7682,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 49",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–1pm; Sun closed."
+          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–1pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "13:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "heritage-pharmacy-kendal-hill",
@@ -4642,9 +7743,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 52",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–5pm; Sat 8am–1:30pm; Sun 9am–12:30pm."
+          "note": "Supplied hours: Mon–Fri 8am–5pm; Sat 8am–1:30pm; Sun 9am–12:30pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "13:30"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "12:30"
+          }
+        ]
+      }
     },
     {
       "slug": "jems-pharmacy-four-roads",
@@ -4665,9 +7810,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 63",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8:30am–5:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Sat 8:30am–5:30pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:30",
+            "closes": "17:30"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "j-j-pharma-c",
@@ -4688,9 +7872,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 64",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–7pm; Sat 9am–5pm; Sun 9am–3pm."
+          "note": "Supplied hours: Mon–Fri 9am–7pm; Sat 9am–5pm; Sun 9am–3pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "19:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "19:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "19:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "19:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "19:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "15:00"
+          }
+        ]
+      }
     },
     {
       "slug": "massy-pharmacy-sargeants-village",
@@ -4710,7 +7938,57 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 68",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–7pm; Sun 9am–2pm; bank holidays 8am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–7pm; Sun 9am–2pm; bank holidays 8am–2pm."
+        }
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      },
+      "bankHolidayHours": [
+        {
+          "opens": "08:00",
+          "closes": "14:00"
         }
       ]
     },
@@ -4732,9 +8010,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 79",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–6pm; Sat 9am–3:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 9am–6pm; Sat 9am–3:30pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "15:30"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "medpro-pharmacy",
@@ -4754,9 +8071,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 80",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 8am–5pm; Fri–Sun 8am–12pm."
+          "note": "Supplied hours: Mon–Thu 8am–5pm; Fri–Sun 8am–12pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "12:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "12:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "08:00",
+            "closes": "12:00"
+          }
+        ]
+      }
     },
     {
       "slug": "neighbourhood-care-pharmacy-bank-hall",
@@ -4776,9 +8137,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 81",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–5:30pm; Sat 8am–4pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–5:30pm; Sat 8am–4pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "17:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "nutripharm-services-inc",
@@ -4798,9 +8198,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 83",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 9am–6pm; Sun closed; bank holidays vary."
+          "note": "Supplied hours: Mon–Sat 9am–6pm; Sun closed; bank holidays vary."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "phillips-pharmacy",
@@ -4820,9 +8259,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 96",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–4:30pm; Sat 9am–2pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–4:30pm; Sat 9am–2pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "16:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "prescriptions-online",
@@ -4842,9 +8320,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 99",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–4:30pm; Sat 9am–1:30pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–4:30pm; Sat 9am–1:30pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "13:30"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "price-drug-mart",
@@ -4865,9 +8382,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 101",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–8pm; Sat 8am–9pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–8pm; Sat 8am–9pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "21:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "rosegate-pharmacy",
@@ -4887,9 +8443,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 102",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–7pm; Sun 9am–2pm."
+          "note": "Supplied hours: Mon–Sat 8am–7pm; Sun 9am–2pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      }
     },
     {
       "slug": "strathclyde-pharmacy-health-shop",
@@ -4910,9 +8510,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 108",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–5pm; Sat 8am–1:30pm; Sun 9am–12:30pm."
+          "note": "Supplied hours: Mon–Fri 8am–5pm; Sat 8am–1:30pm; Sun 9am–12:30pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "13:30"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "12:30"
+          }
+        ]
+      }
     },
     {
       "slug": "tdl-pharmacy",
@@ -4932,9 +8576,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 109",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–4pm; Sat closed; Sun 9am–2pm."
+          "note": "Supplied hours: Mon–Fri 9am–4pm; Sat closed; Sun 9am–2pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "16:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "16:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "16:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "16:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "16:00"
+          }
+        ],
+        "sat": [],
+        "sun": [
+          {
+            "opens": "09:00",
+            "closes": "14:00"
+          }
+        ]
+      }
     },
     {
       "slug": "the-pharmacy-hub",
@@ -4955,9 +8638,53 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 110",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sun 8am–8pm."
+          "note": "Supplied hours: Mon–Sun 8am–8pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ],
+        "sun": [
+          {
+            "opens": "08:00",
+            "closes": "20:00"
+          }
+        ]
+      }
     },
     {
       "slug": "total-care-pharmacy-emerald-city",
@@ -4981,9 +8708,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 111",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon 8am–5pm; Tue 8am–7pm; Wed 8am–5pm; Thu 8am–7pm; Fri 8am–5pm; Sat 9am–5pm; Sun closed."
+          "note": "Supplied hours: Mon 8am–5pm; Tue 8am–7pm; Wed 8am–5pm; Thu 8am–7pm; Fri 8am–5pm; Sat 9am–5pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "19:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "unique-pharmacy",
@@ -5003,9 +8769,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 113",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–3pm; Sat 9am–1pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 9am–3pm; Sat 9am–1pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "15:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "15:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "15:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "15:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "15:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "13:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "vitalpharm-pharmacy",
@@ -5026,9 +8831,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 114",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–4pm; Sat 8am–12pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8am–4pm; Sat 8am–12pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "12:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "we-care-pharmacy",
@@ -5049,9 +8893,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 115",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–5pm; Sat 9am–3pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 9am–5pm; Sat 9am–3pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "15:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "welches-pharmacy",
@@ -5071,9 +8954,48 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 116",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30 am–6pm; Sat 8:30am – 3pm; Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30 am–6pm; Sat 8:30am – 3pm; Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "18:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "18:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "18:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "18:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "18:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:30",
+            "closes": "15:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "wellhouse-dispensary",
@@ -5093,9 +9015,43 @@
           "fields": ["hours"],
           "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 117",
           "checkedOn": "2026-09-09",
-          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–4:30pm; Sat–Sun closed."
+          "note": "Supplied hours: Mon–Fri 8:30am–4:30pm; Sat–Sun closed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "sat": [],
+        "sun": []
+      }
     }
   ]
 }
