@@ -70,7 +70,7 @@ describe('pharmacy finder', () => {
     expect(html).not.toContain('Show 12 more')
   })
 
-  it('shows the full directory when the subsidy filter is cleared', () => {
+  it('shows the full directory and excludes unknown hours only when open now is selected', () => {
     render(<PharmacyFinder />)
     expect(screen.getByText('Showing 12 of 121 pharmacies')).toBeTruthy()
     fireEvent.click(
@@ -79,11 +79,10 @@ describe('pharmacy finder', () => {
       }),
     )
     expect(screen.getByText('Showing 12 of 163 pharmacies')).toBeTruthy()
-  })
-
-  it('excludes unknown hours only when open now is selected', () => {
-    window.history.replaceState({}, '', '/?q=Market+Hill+Dispensary&all=1')
-    render(<PharmacyFinder />)
+    fireEvent.change(
+      screen.getByRole('searchbox', { name: 'Search by name or place' }),
+      { target: { value: 'Market Hill Dispensary' } },
+    )
     expect(
       screen.getByRole('link', { name: 'Market Hill Dispensary' }),
     ).toBeTruthy()
