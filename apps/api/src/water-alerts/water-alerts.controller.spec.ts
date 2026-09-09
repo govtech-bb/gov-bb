@@ -1,0 +1,75 @@
+import { ServiceUnavailableException } from "@nestjs/common";
+import type { FeedService } from "./feed.service";
+import type { Outage } from "./outages.domain";
+import type { SubscriptionService } from "./subscription.service";
+import { WaterAlertsController } from "./water-alerts.controller";
+
+const OUTAGE: Outage = {
+  id: "notice-1",
+  title: "Repair",
+  link: "https://x",
+  published: "2026-06-22T08:00:00.000Z",
+  summary: "s",
+  parishes: ["saint-michael"],
+  type: "repair",
+};
+
+function make(
+  feed: Partial<FeedService>,
+  subs: Partial<SubscriptionService> = {},
+): WaterAlertsController {
+  return new WaterAlertsController(
+    feed as FeedService,
+    subs as SubscriptionService,
+  );
+}
+
+describe("WaterAlertsController", () => {
+  it("returns the outages with the upstream fetch timestamp", async () => {
+    const checkedAt = "2026-06-22T08:00:00.000Z";
+    const controller = make({
+      fetchOutages: vi.fn().mockResolvedValue({ outages: [OUTAGE], checkedAt }),
+    });
+    const res = await controller.outages();
+    expect(res.outages).toEqual([OUTAGE]);
+    expect(res.checkedAt).toBe(checkedAt);
+  });
+
+  it("maps a feed failure to a 503", async () => {
+    const controller = make({
+      fetchOutages: vi.fn().mockRejectedValue(new Error("feed down")),
+    });
+    await expect(controller.outages()).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+  });
+
+  it("delegates subscribe to the service", async () => {
+    const subscribe = vi
+      .fn()
+      .mockResolvedValue({ ok: true, message: "check email", emailSent: true });
+    const controller = make({}, { subscribe });
+    const res = await controller.subscribe({ email: "a@b.com", area: "all" });
+    expect(subscribe).toHaveBeenCalledWith("a@b.com", "all");
+    expect(res.ok).toBe(true);
+  });
+
+  it("returns the confirm/unsubscribe outcome", async () => {
+    const controller = make(
+      {},
+      {
+        confirm: vi.fn().mockResolvedValue("done"),
+        unsubscribe: vi.fn().mockResolvedValue("already"),
+      },
+    );
+    expect(await controller.confirm("t1")).toEqual({ result: "done" });
+    expect(await controller.unsubscribe("t2")).toEqual({ result: "already" });
+  });
+
+  it("one-click unsubscribe calls the service and returns void", async () => {
+    const unsubscribe = vi.fn().mockResolvedValue("done");
+    const controller = make({}, { unsubscribe });
+    await expect(controller.unsubscribeOneClick("t3")).resolves.toBeUndefined();
+    expect(unsubscribe).toHaveBeenCalledWith("t3");
+  });
+});
