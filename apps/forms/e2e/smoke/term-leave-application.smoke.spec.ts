@@ -119,7 +119,8 @@ test.describe("Term Leave Application — Live Smoke", () => {
     await expect(applicant).toContainText(`${firstName} ${lastName}`);
     await expect(applicant).toContainText(/\b\d{2}\/\d{2}\/\d{4}\b/);
     await page
-      .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

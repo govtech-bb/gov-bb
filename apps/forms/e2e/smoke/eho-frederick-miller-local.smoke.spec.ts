@@ -31,6 +31,7 @@ import {
   selectDropdown,
   selectRadio,
   submitAndConfirm,
+  tickCheckbox,
 } from "../helpers/smoke";
 
 const FORM_ID = "request-an-environmental-health-officer";
@@ -220,7 +221,7 @@ test("routes a Frederick Miller event to St. Philip and mints an MOH-EHO referen
   step = expectStep(page, "food-details");
   await page.getByRole("checkbox", { name: "Other food", exact: true }).check();
   await fillField(page, step, "other-food-description", data.otherFood);
-  await page.locator(`input[id="${step}_food-source-supplier"]`).check();
+  await tickCheckbox(page, step, "food-source", "supplier");
   await expect(page.locator(`[id="${step}_supplier-details"]`)).toBeVisible({
     timeout: STEP_TIMEOUT,
   });

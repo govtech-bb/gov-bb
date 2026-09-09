@@ -45,6 +45,7 @@ function AccordionCategory({
     return (
       <Checkbox
         label={label}
+        value={option.value}
         checked={selected.includes(option.value)}
         aria-invalid={invalid}
         onChange={() => onToggleItem(option.value)}
@@ -66,6 +67,7 @@ function AccordionCategory({
               <Checkbox
                 key={option.value}
                 label={option.label}
+                value={option.value}
                 checked={selected.includes(option.value)}
                 aria-invalid={invalid}
                 onChange={() => onToggleItem(option.value)}

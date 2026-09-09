@@ -110,7 +110,8 @@ test.describe("Statement of Travelling — Live Smoke", () => {
     // ─── Declaration ─────────────────────────────────────────────────────────
     step = expectStep(page, "declaration", { exact: true });
     await page
-      .locator(`input[id="${step}_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="${step}_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

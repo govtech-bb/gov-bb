@@ -41,7 +41,7 @@
  * The renderer auto-injects `check-your-answers` immediately before the
  * `declaration` step (see build-form.ts). The declaration step carries a
  * single-option `declaration-confirmed` confirmation checkbox whose input is
- * `declaration_declaration-confirmed-confirmed`.
+ * `declaration_declaration-confirmed`.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect } from "@playwright/test";
@@ -126,7 +126,8 @@ test.describe("Barbados Secondary Entrance Exam — Choice of School — Live Sm
     // ─── Declaration ─────────────────────────────────────────────────────────
     expectStep(page, "declaration");
     await page
-      .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

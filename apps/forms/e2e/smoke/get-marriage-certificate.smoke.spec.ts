@@ -34,7 +34,7 @@
  *    `number-of-copies-non-national` hidden.
  *  - `check-your-answers` is an explicit recipe step (guarded advance).
  *  - `declaration` is the explicit final step; its single-option confirmation
- *    checkbox input is `declaration_declaration-confirmed-confirmed`.
+ *    checkbox input is `declaration_declaration-confirmed`.
  *  - The `submission-confirmation` step title is "Application submitted" and the
  *    recipe sets no processing message, so the subheading falls back to the
  *    helper default ("Your submission has been saved") and is omitted here.
@@ -144,7 +144,8 @@ test.describe("Get a Marriage Certificate — Live Smoke", () => {
     // ─── Declaration ─────────────────────────────────────────────────────────
     expectStep(page, "declaration", { exact: true });
     await page
-      .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

@@ -381,7 +381,8 @@ async function fillHouseholdIncome(page: Page, data: Data): Promise<void> {
 async function confirmAndSubmit(page: Page): Promise<void> {
   const step = expectStep(page, "declaration", { exact: true });
   await page
-    .locator(`input[id="${step}_declaration-confirmed-confirmed"]`)
+    .locator(`fieldset[id="${step}_declaration-confirmed"]`)
+    .getByRole("checkbox")
     .check();
 
   await submitAndConfirm(page, {
