@@ -490,7 +490,9 @@ jobs:
       - name: Run affected tests
         id: test
         run: |
-          pnpm exec nx affected -t test --nxBail=false 2>&1 | tee test-output.txt
+          # Each project starts its own Vitest workers; Nx's default of eight
+          # concurrent projects starves DOM tests on the shared runner.
+          pnpm exec nx affected -t test --parallel=2 --nxBail=false 2>&1 | tee test-output.txt
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 
@@ -545,7 +547,7 @@ jobs:
             echo ""
             echo "**Fix it locally:**"
             echo '```bash'
-            echo "pnpm exec nx affected -t test"
+            echo "pnpm exec nx affected -t test --parallel=2"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           exit 1

@@ -16,6 +16,8 @@ import { FormEditingSessionEntity } from "./entities/form-editing-session.entity
 import { ServiceStatusEntity } from "./entities/service-status.entity";
 import { ServiceStatusAuditLogEntity } from "./entities/service-status-audit-log.entity";
 import { NotificationLogEntity } from "./entities/notification-log.entity";
+import { WaterSubscriberEntity } from "./entities/water-subscriber.entity";
+import { WaterSentAlertEntity } from "./entities/water-sent-alert.entity";
 
 // Migrations
 import { CreateFormsTables1774544962999 } from "./migrations/1774544962999-CreateFormsTables";
@@ -44,6 +46,7 @@ import { RenameSwimmingPoolFormId1787769265564 } from "./migrations/178776926556
 import { RenameTemporaryRestaurantFormId1787855665564 } from "./migrations/1787855665564-RenameTemporaryRestaurantFormId";
 import { DeleteSupersededEnvironmentalHealthForms1787942065564 } from "./migrations/1787942065564-DeleteSupersededEnvironmentalHealthForms";
 import { RenameEnvironmentalHealthFormIds1788028465564 } from "./migrations/1788028465564-RenameEnvironmentalHealthFormIds";
+import { CreateWaterAlertsTables1785917644000 } from "./migrations/1785917644000-CreateWaterAlertsTables";
 
 export const entities = [
   FormComponentEntity,
@@ -61,6 +64,8 @@ export const entities = [
   ServiceStatusEntity,
   ServiceStatusAuditLogEntity,
   NotificationLogEntity,
+  WaterSubscriberEntity,
+  WaterSentAlertEntity,
 ];
 
 export const migrations = [
@@ -90,6 +95,7 @@ export const migrations = [
   RenameTemporaryRestaurantFormId1787855665564,
   DeleteSupersededEnvironmentalHealthForms1787942065564,
   RenameEnvironmentalHealthFormIds1788028465564,
+  CreateWaterAlertsTables1785917644000,
 ];
 
 /**

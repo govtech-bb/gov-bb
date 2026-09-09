@@ -24,3 +24,4 @@ export { RenameSwimmingPoolFormId1787769265564 } from "./1787769265564-RenameSwi
 export { RenameTemporaryRestaurantFormId1787855665564 } from "./1787855665564-RenameTemporaryRestaurantFormId";
 export { DeleteSupersededEnvironmentalHealthForms1787942065564 } from "./1787942065564-DeleteSupersededEnvironmentalHealthForms";
 export { RenameEnvironmentalHealthFormIds1788028465564 } from "./1788028465564-RenameEnvironmentalHealthFormIds";
+export { CreateWaterAlertsTables1785917644000 } from "./1785917644000-CreateWaterAlertsTables";

@@ -29,3 +29,8 @@ export {
   NotificationOutcome,
   NotificationDeliveryStatus,
 } from "./notification-log.entity";
+export {
+  WaterSubscriberEntity,
+  WaterSubscriberStatus,
+} from "./water-subscriber.entity";
+export { WaterSentAlertEntity } from "./water-sent-alert.entity";
