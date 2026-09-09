@@ -2,6 +2,7 @@
 
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
+import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { locateParish } from '../-lib/geo'
 import { subscribeWaterAlerts } from '../-lib/water-alerts'
@@ -71,6 +72,20 @@ const DATA: WaterOutagesData = {
 }
 
 let success: PositionCallback
+const retry = vi.fn()
+
+function TestPage({ data }: { data: WaterOutagesData }) {
+  const [selected, setSelected] = useState('')
+  return (
+    <WaterOutagesPage
+      data={data}
+      selected={selected}
+      onSelect={setSelected}
+      onRetry={retry}
+      retrying={false}
+    />
+  )
+}
 
 beforeEach(() => {
   vi.stubGlobal(
@@ -95,24 +110,32 @@ afterEach(() => {
 
 describe('water outages page', () => {
   it('server-renders notices before the browser-only map loads', () => {
-    const html = renderToString(<WaterOutagesPage data={DATA} />)
+    const html = renderToString(<TestPage data={DATA} />)
     expect(html).toContain('Michael repair')
     expect(html).toContain('Loading the parish map')
     expect(html).not.toContain('leaflet-container')
+    expect(html.indexOf('Michael repair')).toBeLessThan(
+      html.indexOf('Loading the parish map'),
+    )
+    expect(html.indexOf('Loading the parish map')).toBeLessThan(
+      html.indexOf('Get email alerts'),
+    )
   })
 
   it('keeps the title and sign-up available when the live feed fails', () => {
-    render(<WaterOutagesPage data={{ ...DATA, failed: true, outages: [] }} />)
+    render(<TestPage data={{ ...DATA, failed: true, outages: [] }} />)
     expect(screen.getByRole('heading', { level: 1, name: TITLE })).toBeTruthy()
     expect(screen.getByRole('link', { name: /BWA website/ })).toBeTruthy()
     expect(
       screen.getByRole('button', { name: 'Get email alerts' }),
     ).toBeTruthy()
     expect(screen.queryByText(/There are no current BWA notices/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(retry).toHaveBeenCalledOnce()
   })
 
   it('filters from the map and dropdown while keeping general notices visible', async () => {
-    render(<WaterOutagesPage data={DATA} />)
+    render(<TestPage data={DATA} />)
     fireEvent.click(
       await screen.findByRole('button', { name: 'Map St. Michael: 1 notice' }),
     )
@@ -125,7 +148,9 @@ describe('water outages page', () => {
       screen.getByRole('heading', { name: 'General advisory' }),
     ).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'John repair' })).toBeNull()
-    expect(screen.getByText('Past notices (1)')).toBeTruthy()
+    expect(screen.getByText('Older notices (1)')).toBeTruthy()
+    expect(screen.getByText('Older notice')).toBeTruthy()
+    expect(screen.queryByText('Ended')).toBeNull()
     fireEvent.change(parish, { target: { value: 'saint-john' } })
     expect(screen.getByRole('heading', { name: 'John repair' })).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Michael repair' })).toBeNull()
@@ -140,7 +165,7 @@ describe('water outages page', () => {
       if (failure === 'outside Barbados')
         vi.mocked(locateParish).mockResolvedValue(null)
       else vi.mocked(locateParish).mockRejectedValue(new Error('lookup failed'))
-      render(<WaterOutagesPage data={DATA} />)
+      render(<TestPage data={DATA} />)
       await screen.findByRole('button', { name: /Map St. Michael/ })
       fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
       await act(async () => {
@@ -164,7 +189,7 @@ describe('water outages page', () => {
       value: 'saint-michael',
       exact: true,
     })
-    render(<WaterOutagesPage data={DATA} />)
+    render(<TestPage data={DATA} />)
     await screen.findByRole('button', { name: /Map St. Michael/ })
     fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
     const parish = screen.getByRole<HTMLSelectElement>('combobox', {
@@ -210,5 +235,57 @@ describe('water outages page', () => {
     expect(subscribeWaterAlerts).toHaveBeenLastCalledWith({
       data: { email: 'resident@example.com', area: 'saint-john' },
     })
+  })
+
+  it('cancels without sending, restores focus, and clears stale errors when reopened', () => {
+    render(<SubscribeForm selectedArea="saint-john" selectedLabel="St. John" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Get email alerts' }))
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Your email address' }),
+      {
+        target: { value: 'unfinished@' },
+      },
+    )
+    fireEvent.submit(screen.getByRole('form'))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('form')).toBeNull()
+    const trigger = screen.getByRole('button', { name: 'Get email alerts' })
+    expect(document.activeElement).toBe(trigger)
+    expect(subscribeWaterAlerts).not.toHaveBeenCalled()
+    fireEvent.click(trigger)
+    const input = screen.getByRole<HTMLInputElement>('textbox', {
+      name: 'Your email address',
+    })
+    expect(input.value).toBe('unfinished@')
+    expect(input.getAttribute('aria-invalid')).not.toBe('true')
+  })
+
+  it('keeps Cancel unavailable while the confirmation request is being sent', async () => {
+    let finish!: (value: { ok: boolean; message: string }) => void
+    vi.mocked(subscribeWaterAlerts).mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+    )
+    render(<SubscribeForm selectedArea="" selectedLabel={null} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Get email alerts' }))
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Your email address' }),
+      {
+        target: { value: 'resident@example.com' },
+      },
+    )
+    fireEvent.submit(screen.getByRole('form'))
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Cancel' })
+        .disabled,
+    ).toBe(true)
+    await act(async () => {
+      finish({ ok: false, message: 'Please try again.' })
+    })
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Cancel' })
+        .disabled,
+    ).toBe(false)
   })
 })

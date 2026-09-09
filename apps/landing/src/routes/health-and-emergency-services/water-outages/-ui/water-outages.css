@@ -15,6 +15,11 @@
     gap: var(--govbb-space-xm);
   }
 
+  .water-outages-page :is(p, h1, h2, h3) {
+    max-inline-size: var(--govbb-measure);
+    overflow-wrap: anywhere;
+  }
+
   .water-outages-figure,
   .water-outages-card {
     gap: var(--govbb-space-xs);
@@ -59,6 +64,11 @@
     font-family: var(--govbb-font-sans);
   }
 
+  .water-outages-marker:focus-visible {
+    outline: 3px solid var(--govbb-color-ink);
+    outline-offset: 3px;
+  }
+
   .water-outages-map-message,
   .water-outages-card {
     padding: var(--govbb-space-xm);
@@ -95,7 +105,6 @@
     color: var(--govbb-blue-90);
   }
 
-  .water-outages-badge[data-state='active'],
   .water-outages-result[data-tone='success'] {
     background: var(--govbb-green-10);
     color: var(--govbb-green-80);
