@@ -17,7 +17,7 @@ import { LexicalExtensionComposer } from "@lexical/react/LexicalExtensionCompose
 import { RichTextExtension } from "@lexical/rich-text";
 import { TableExtension } from "@lexical/table";
 import { configExtension, defineExtension } from "lexical";
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import {
   LandingComponentNode,
   RawBreakNode,
@@ -30,6 +30,7 @@ import {
 } from "./-body-editor-plugins";
 import type { BodyEditorProps } from "./-body-editor-types";
 import { SlidingTabs } from "./-sliding-tabs";
+import { SelectionActions } from "../../components/ui/ai/selection-actions";
 import s from "./-styles.module.css";
 
 export type { BodyEditorProfile, BodyEditorProps } from "./-body-editor-types";
@@ -85,7 +86,9 @@ export function BodyEditor({
   value,
   onChange,
   profile,
+  onAiAction,
 }: BodyEditorProps) {
+  const editorHost = useRef<HTMLDivElement>(null);
   const compatibility = useMemo(
     () => analyzeMarkdownCompatibility(value, profile.kind),
     [profile.kind, value],
@@ -111,7 +114,7 @@ export function BodyEditor({
       extension={bodyEditorExtension}
       contentEditable={null}
     >
-      <div className={s.bodyEditor}>
+      <div className={s.bodyEditor} ref={editorHost}>
         <div className={s.bodyToolbar}>
           {mode === "visual" && <EditorToolbar profile={profile} />}
           <SlidingTabs
@@ -195,6 +198,13 @@ export function BodyEditor({
           )}
         </div>
 
+        {onAiAction && (
+          <SelectionActions
+            target={editorHost}
+            value={value}
+            onAction={onAiAction}
+          />
+        )}
         <MarkdownSyncPlugin
           enabled={visualAvailable}
           value={value}

@@ -2,14 +2,14 @@
 
 A web application for authoring **form recipes** for the GovTech Barbados Modular Forms platform. A "recipe" is a versioned, JSON-shaped form definition that downstream apps consume to render a multi-step government service form. This builder is the authoring tool — it does not render the public-facing forms themselves.
 
-Authoring happens on **one unified screen**: a visual, step-and-field editor with full control over every override, plus a **collapsible AI assistant sidebar** docked beside it. The AI assistant (Claude) converts a PDF or text description of a paper form into a recipe, or applies a text tweak to the form you're already editing — writing directly to the live draft, with no DB round trip.
+Authoring happens on **one unified screen**: a visual, step-and-field editor with full control over every override, plus a **collapsible AI assistant sidebar** docked beside it. The AI assistant (Claude) converts a PDF or text description of a paper form into a recipe, or proposes a change to the current draft. Changes require review and explicit approval.
 
 ---
 
 ## 1. Entry & Navigation
 
 - The root URL (`/`) redirects to `/builder`.
-- `/builder` *is* the editor — it lands directly in the visual builder with the AI sidebar docked on the right (expanded by default, collapsible). There is no separate landing page and no `/builder/ui` or `/builder/ai` route.
+- `/builder` _is_ the editor — it lands directly in the visual builder with the AI sidebar docked on the right (expanded by default, collapsible). There is no separate landing page and no `/builder/ui` or `/builder/ai` route.
 
 ---
 
@@ -37,8 +37,8 @@ The toolbar at the top of the builder exposes:
 - Steps are listed in order. Two **required tail steps** are always present and locked at the end of every form:
   - `declaration` — "Declaration"
   - `submission-confirmation` — "Submission Confirmation"
-  These cannot be deleted, reordered, or renamed (their Step ID is read-only).
-- **Add Step** inserts a new step *above* the required tail. New steps are given an auto-generated ID (`step-1`, `step-2`, …) and a placeholder title (`Step N`).
+    These cannot be deleted, reordered, or renamed (their Step ID is read-only).
+- **Add Step** inserts a new step _above_ the required tail. New steps are given an auto-generated ID (`step-1`, `step-2`, …) and a placeholder title (`Step N`).
 - Each editable step supports reorder (up/down), delete (with confirmation), and selection.
 - A **Switch to AI Builder** shortcut sits at the top of the list.
 
@@ -56,12 +56,12 @@ When a step is selected, its details are editable:
 
 Fields are added through a **Field Picker** with four tabs:
 
-| Tab | Source |
-|---|---|
-| **Primitives** | Built-in primitive components from the registry catalog |
-| **Components** | The `REGISTRY_COMPONENTS` set from `@govtech-bb/registry` |
-| **Blocks** | Composite block definitions (groups of related fields) |
-| **Custom** | Custom components defined in the `custom_components` database table |
+| Tab            | Source                                                              |
+| -------------- | ------------------------------------------------------------------- |
+| **Primitives** | Built-in primitive components from the registry catalog             |
+| **Components** | The `REGISTRY_COMPONENTS` set from `@govtech-bb/registry`           |
+| **Blocks**     | Composite block definitions (groups of related fields)              |
+| **Custom**     | Custom components defined in the `custom_components` database table |
 
 Once added to a step, each field supports:
 
@@ -108,7 +108,7 @@ The **Preview** modal calls `previewRecipe`, which hydrates the draft (resolves 
 - Form ID, title, version, total step count.
 - Each step with its title, description, and the list of fields showing their resolved `label`, `htmlType`, and `fieldId`.
 
-This is a *summary*, not an interactive rendering of the form.
+This is a _summary_, not an interactive rendering of the form.
 
 ### 2.8 Submitting
 
@@ -133,40 +133,52 @@ Examples surfaced through descriptors include `fieldConditionalOn`, `stepConditi
 
 ---
 
-## 3. The AI assistant sidebar
+## 3. The AI assistant
 
-A collapsible panel docked to the right of the editor, sharing the editor's live `draft` / `version` state. It is **stateless**: every action is a single, self-contained call to `POST /builder/ai/convert` — there is no server-side conversation, session, or growing history (closes #332). The transcript shown in the sidebar is held client-side for the session's lifetime only.
+A resizable sidebar serves both the form builder and content editor. It uses
+the current draft and selection as context, offers Ask and Review edits modes,
+and renders streamed replies with TanStack Markdown. Mobile uses a full-screen
+native dialog; the panel supports keyboard resizing, Stop, Retry, and copying
+replies. All AI components live under `app/components/ui/ai`.
 
-The system prompt is built per call from the base prompt plus a dynamically appended list of live custom components from the database, so the AI always knows which `components/<namespace>/<type>` refs it may use.
+### 3.1 Transport and tools
 
-### 3.1 Two actions
+The authenticated Start function `createAiAccess` obtains a short-lived token.
+The browser then streams directly from `POST /builder/ai/chat`, avoiding the
+Amplify SSR time limit. The API uses the latest pinned official TanStack AI and
+Bedrock packages, the existing domain prompts, and allowlisted lookup,
+validation, and proposal tools. There is no fenced-JSON extraction or model
+job polling. The provider remains AWS Bedrock.
 
-- **Upload** — attach a PDF (or PNG/JPG) and convert it to a recipe. Stands alone: no accompanying message is required. The file is sent inline as base64; the sidebar guards uploads at **4 MB** client-side (the Amplify SSR Lambda caps request bodies at ~6 MB, and base64 inflates the payload ~1.4×). An oversize file is rejected before upload with a clear message; a 413 at the edge is decoded from TanStack Start's cryptic "Invariant failed".
-- **Edit Form** — a text tweak (e.g. "make the email field required") applied to the current draft. The live draft is serialized and sent as `recipeJson` alongside the `message`; the AI returns the **full modified recipe** (full replacement, not a patch).
+### 3.2 Review before applying
 
-Loading state ("Thinking…") and errors are surfaced inline in the sidebar.
+Form proposals are structurally parsed, normalized through the editor reducer,
+and validated against the contract and registry. Content proposals use a
+strict field allowlist. Review shows the actual changes and repair warnings.
+Only explicit approval can call the client edit tool, once, while the same
+draft revision and editing permission still hold. Closing the assistant,
+unmounting, or losing the editing claim prevents delayed application.
 
-### 3.2 Recipe extraction
+Semantic errors may be applied as a repairable draft after review. Structural
+errors and validation-service failures block Apply. Save and Deploy retain
+their strict gates. Payment settings, MDA selection, credentials, opaque
+metadata, and fixed content paths remain protected.
 
-The server extracts a recipe JSON from the assistant's response by scanning for a fenced ` ```json ` block (or any fenced block / raw object) containing both `"formId"` and `"steps"`. If none is found — a purely conversational reply — `recipe` comes back `null` and the sidebar simply shows the reply, leaving the draft untouched.
+### 3.3 Documents and recovery
 
-### 3.3 Applying a recipe to the live draft
+Authors can attach a PDF up to 20 MB or PNG/JPEG up to 10 MB through a direct
+S3 POST. Type, size, extension, and signature checks precede Textract. A signed
+owner-bound reference lets retries poll the same extraction instead of
+uploading again. Ready documents join the next message as context. Stop
+aborts model work and local upload/polling; Textract may finish remotely.
 
-A returned recipe is applied through the editor's pipeline before it can replace the draft:
+### 3.4 Conversation history
 
-1. **Deserialize** the recipe into a draft (reusing the catalog).
-2. **No-op guard** — if the result is structurally identical to the current draft (ignoring version, timestamps, and editor-only ids), nothing is applied and the version is not bumped.
-3. **Validate** — a uniqueness pre-flight (`findRecipeIdCollisions`) followed by the server contract validator (`validateRecipe`). On failure the error is surfaced in the sidebar and the draft is **not** overwritten.
-4. **Confirm** — if the editor already holds content, the user confirms before the overwrite.
-5. **Apply** — `LOAD_DRAFT` replaces the draft and the working version's **patch** is bumped once.
-
-Publishing is not the sidebar's job: the AI assistant only ever writes to the live draft. Saving and deploying stay the editor's existing Save draft / Deploy flow.
-
-### 3.4 AI configuration
-
-- Provider is selectable via `AI_PROVIDER` env var: `anthropic` (default) or `bedrock`.
-- Model is selectable via `AI_MODEL`; defaults to `claude-sonnet-4-20250514` for Anthropic or `us.anthropic.claude-sonnet-4-6` for Bedrock.
-- If `ANTHROPIC_API_KEY` is missing (and Bedrock isn't configured), AI features fail with a clear error.
+TanStack's IndexedDB persistence stores an inert transcript, indexed by user
+and form/page in localStorage. Restoring never replays tools, reapplies a
+draft, or resumes a pending approval. Interrupted conversations offer Retry
+against the current editor state. History deletion removes the transcript and
+document reference. Storage failures remain visible without blocking chat.
 
 ---
 
@@ -175,6 +187,7 @@ Publishing is not the sidebar's job: the AI assistant only ever writes to the li
 The app uses TanStack Start's `createServerFn` so all "API endpoints" are in-process server functions. Two groups:
 
 **Form CRUD & registry**
+
 - `listForms` — distinct forms, latest version of each, with title + published flag.
 - `getRecipe(formId)` — latest recipe for a form.
 - `submitRecipe(recipe)` — create a new `(formId, version)` row.
@@ -185,7 +198,9 @@ The app uses TanStack Start's `createServerFn` so all "API endpoints" are in-pro
 - `previewRecipe(recipe)` — hydrates a recipe into a `ServiceContract`.
 
 **AI assistant**
-- `convertRecipe({ message?, recipeJson?, pdfBase64? })` — the single stateless AI call. Proxies `POST /builder/ai/convert` and returns `{ recipe, reply }` (`recipe` is `null` for a conversational reply). Edit Form sends `{ message, recipeJson }`; Upload sends `{ pdfBase64 }`.
+
+- `createAiAccess()` — authenticated, server-only token exchange. Chat and
+  document requests then go directly from the browser to the API.
 
 ---
 
@@ -195,14 +210,14 @@ The app uses TanStack Start's `createServerFn` so all "API endpoints" are in-pro
 - **Tables used**:
   - `form_definitions` — `(id, form_id, version, schema jsonb, published_at, created_at, updated_at)`. The builder reads/writes here directly.
   - `custom_components` — provides the "Custom" tab in the field picker and is appended to the AI system prompt.
-- **AI assistant** — fully **stateless**. There is no server-side session store; each `convert` call is self-contained and survives a server restart with no loss (the sidebar carries the live recipe on every turn).
+- **AI assistant** — browser-local history; the API keeps no model job or conversation store. Every request carries bounded conversation context and the current editor snapshot.
 - **Catalog cache** — `getCatalogFn` caches the merged builtin + custom catalog for 60 seconds.
 
 ---
 
 ## 6. Domain model (recipes)
 
-The shape produced by either authoring mode (full schema lives in `@govtech-bb/form-types` and is documented in `app/server/ai-builder/prompts/system-prompt.md`):
+The shape produced by either authoring mode (full schema lives in `@govtech-bb/form-types` and is documented in `../form_builder_api/src/ai/system-prompt.ts`):
 
 ```
 ServiceContractRecipe {
@@ -232,36 +247,12 @@ Notable rules enforced by the builder:
 ## 7. Local development
 
 - Run with `pnpm dev:form-builder-app` (Nx-orchestrated) or `npm run dev` from `apps/form_builder` (Vite + TanStack Start).
-- `.env.example` documents the required env vars: `DB_*`, `PORT`, `AI_PROVIDER`, `AI_MODEL`, `ANTHROPIC_API_KEY`, optional `AWS_REGION`.
-- Tests are Jest-based (see `*.spec.ts` files); runs via `npm test` inside the app.
+- `.env.example` documents the required env vars: the frontend API/auth settings and backend Bedrock/S3/Textract configuration.
+- Tests use Vitest (see `*.spec.ts` files); run `pnpm test` inside the app.
 
 ---
 
-## 8. Things to clarify with the team
+## 8. Current AI architecture
 
-> The following came up during exploration and aren't fully obvious from the code. They are not bugs by default — just questions to confirm intent.
-
-1. ~~**In-memory AI sessions.**~~ *Resolved (#490/#332):* the AI assistant is now stateless — there is no server-side session `Map`. Each `convert` call is self-contained, so a restart loses nothing and horizontal scaling is unaffected.
-
-2. **PDF handling under Anthropic vs. Bedrock.** Under the Anthropic provider, uploaded files are sent as base64 with `media_type: "image/png"` regardless of actual file type, while Bedrock receives a true `document/pdf` content block. The chat UI also accepts `.png/.jpg/.jpeg` in addition to `.pdf`. Is image-as-PDF intentional fallback, or should there be true PDF parsing on the Anthropic path?
-
-3. **Unused PDF magic-byte validator.** `app/server/ai-builder/pdf-validation.ts` imports from `@nestjs/common` and exports an Express/Multer file filter, but the AI route accepts base64 directly from the client without invoking it. Should this be wired in, removed, or is it a leftover from an earlier NestJS-based design?
-
-4. **Hardcoded preview URL.** After AI-publish, the preview link is hardcoded to `https://app-sandbox.alpha.gov.bb/forms/<formId>`. Should this be env-driven so it points to the right environment (sandbox vs. prod)?
-
-5. **Required tail steps can be empty.** The "all editable steps have fields" gate excludes the required `declaration` and `submission-confirmation` steps, so a recipe can be submitted with empty declaration/confirmation steps. Is that intentional (their content comes from elsewhere downstream), or should the builder seed/require their fields?
-
-6. **Two publish paths with different semantics.**
-   - The UI builder's **Submit** sets `published_at = null` (creates an unpublished draft).
-   - The AI builder's **Publish** sets `published_at = NOW()`.
-   There is no "publish" button in the UI builder and no obvious unpublish flow. Combined with the design doc note that "publish/unpublish is out of scope — it will be removed", this looks transitional. What is the intended publish workflow?
-
-7. **`processors` is always `[]`.** The schema requires a `processors` array and both authoring modes always emit `[]`. The codebase has SQL files that backfill processors after the fact. Is there a planned UI for editing processors, or are they always managed outside the builder?
-
-8. **Custom components without a UI to manage them.** The Custom tab and the AI system prompt both read from the `custom_components` table, but there's no apparent UI in this app for creating/editing custom components. Where is that authored?
-
-9. **Catalog cache TTL.** `getCatalogFn` caches the merged catalog for 60 seconds. If a custom component is added (presumably via another app or SQL), the AI system prompt won't see it until the cache expires. (Note: `convert` reads custom components live per call, so only the shared catalog cache applies.) Is 60s the right window, or should there be a cache-invalidation hook?
-
-10. **`start` script vs. build output.** `package.json` declares `"start": "node dist/server/server.js"`, but the Vite/TanStack Start build target hasn't been verified to emit exactly that path. Worth confirming for production/Docker deployment.
-
-11. **Recipe-extraction heuristic.** The AI server tries multiple strategies to extract JSON from free-form assistant text (fenced blocks, then brace-balanced substrings). If the AI returns multiple candidate JSON objects, the first that parses and contains `formId` + `steps` wins. Should the system prompt enforce a single, machine-friendly output format to remove that ambiguity?
+See [ADR 0072](../../docs/decisions/0072-builder-ai-streams-with-reviewed-client-edits.md)
+for the streaming, approval, persistence, and upload contracts.

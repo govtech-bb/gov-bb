@@ -12,8 +12,8 @@ RUN chown app:app /app
 USER app
 
 COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml nx.json tsconfig.base.json ./
+COPY --chown=app:app patches/ ./patches/
 COPY --chown=app:app apps/form_builder_api/package.json apps/form_builder_api/
-COPY --chown=app:app packages/ai-bedrock/package.json packages/ai-bedrock/
 COPY --chown=app:app packages/database/package.json packages/database/
 COPY --chown=app:app packages/form-builder/package.json packages/form-builder/
 COPY --chown=app:app packages/form-types/package.json packages/form-types/
@@ -83,6 +83,8 @@ COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
 
 # node_modules from builder (has all deps resolved)
 COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
+# pnpm hoists older chat versions to the root; preserve this API's newer packages.
+COPY --from=builder --chown=app:app /app/apps/form_builder_api/node_modules/ ./node_modules/
 
 # Drop esbuild from the runtime image (#1567). esbuild ships a Go-compiled
 # binary (@esbuild/<platform>/bin/esbuild) that AWS Inspector flags as
@@ -115,7 +117,6 @@ RUN mkdir -p node_modules/@govtech-bb && \
     done
 
 # Package manifests needed for module resolution
-COPY --from=builder --chown=app:app /app/packages/ai-bedrock/package.json ./packages/ai-bedrock/
 COPY --from=builder --chown=app:app /app/packages/database/package.json ./packages/database/
 COPY --from=builder --chown=app:app /app/packages/form-builder/package.json ./packages/form-builder/
 COPY --from=builder --chown=app:app /app/packages/form-types/package.json ./packages/form-types/

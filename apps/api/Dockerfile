@@ -17,6 +17,7 @@ RUN chown app:app /app
 USER app
 
 COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml nx.json tsconfig.base.json ./
+COPY --chown=app:app patches/ ./patches/
 
 # Per-workspace manifests are required for pnpm to resolve the workspace graph.
 COPY --chown=app:app apps/api/package.json apps/api/

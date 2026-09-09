@@ -3,13 +3,7 @@ import { getDataSource } from "../db.js";
 import { getSystemPrompt } from "./system-prompt.js";
 import { formatCustomComponentList } from "./custom-component-prompt.js";
 
-// Build the system prompt with the live custom components appended. This is the
-// one DB read each convert call makes — one extra read per AI action, by design
-// (the old per-session prompt cache is gone with the session model).
-//
-// Shared by both AI entry points so PDF uploads and text edits reference the
-// same live component list: routes/ai.ts (runEditBedrock) and
-// routes/ai-upload.ts (runBedrock).
+// Registry entries are untrusted data, sanitized before they join the prompt.
 export async function buildSystemPrompt(): Promise<string> {
   const ds = await getDataSource();
   const customs = await ds.getRepository(CustomComponent).find();

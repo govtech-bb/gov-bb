@@ -1,5 +1,8 @@
 # Form Builder AI — Automatic Component Selection Guardrails
 
+> The transport and application flow described here is superseded by
+> [ADR 0072](decisions/0072-builder-ai-streams-with-reviewed-client-edits.md). Domain guardrails still apply.
+
 **Status:** Implemented (embedded in system prompt)
 **Location:** `apps/form_builder_api/src/ai/system-prompt.ts` (the prompt in code is the source of truth; this document is a summary and may lag it)
 **Related Ticket:** trello-form-builder-ai-guardrails.md

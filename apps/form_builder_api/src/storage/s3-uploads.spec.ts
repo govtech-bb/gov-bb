@@ -44,7 +44,7 @@ describe("presignUpload", () => {
     const { Conditions } = createPresignedPostMock.mock.calls[0][1];
     expect(Conditions).toContainEqual([
       "content-length-range",
-      0,
+      1,
       MAX_PDF_BYTES,
     ]);
     expect(MAX_PDF_BYTES).toBe(20 * 1024 * 1024);

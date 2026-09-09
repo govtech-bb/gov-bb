@@ -47,7 +47,7 @@ packages/
   form-builder/      Shared form-builder logic and components.
   database/          TypeORM entities, DB access, and recipe file loaders.
   git-publish/       Publishes recipes to the repo via git commits.
-  ai-bedrock/        AWS Bedrock client wrapper.
+  ai-bedrock/        Shared model aliases and static chat stream helpers.
   analytics/         Analytics event tracking.
   aws-secrets/       AWS Secrets Manager helpers.
   content/           Shared content / markdown loaders.

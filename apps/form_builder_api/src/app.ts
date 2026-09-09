@@ -6,6 +6,9 @@ import rateLimit from "express-rate-limit";
 import { formsRouter } from "./routes/forms";
 import { mdaContactsRouter } from "./routes/mda-contacts";
 import { registryRouter } from "./routes/registry";
+import { aiChatRouter } from "./routes/ai-chat";
+import { aiDocumentsRouter } from "./routes/ai-documents";
+import { aiAccessHandler, aiErrorHandler } from "./ai/access";
 import { aiRouter } from "./routes/ai";
 import { presenceRouter } from "./routes/presence";
 import { authMiddleware } from "./middleware/auth";
@@ -58,7 +61,9 @@ const builderLimiter = rateLimit({
 // limiter is a valid Express 5 handler at runtime — only the type identities
 // differ — so we re-assert the app's own RequestHandler type.
 app.use("/builder", builderLimiter as unknown as RequestHandler);
+app.use("/builder/ai", aiChatRouter, aiDocumentsRouter, aiErrorHandler);
 app.use("/builder", authMiddleware);
+app.post("/builder/ai/access", aiAccessHandler);
 
 // Routes
 app.use("/builder/forms", formsRouter);
