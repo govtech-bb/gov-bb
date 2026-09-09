@@ -10,6 +10,20 @@ const FeedbackSchema = z
     visitReason: z.string(),
     whatWentWrong: z.string(),
     referrer: z.string().optional().default(''),
+    // Optional reply-to address. Blank is valid (feedback stays anonymous); a
+    // non-blank value must be a valid email. Trim first, then treat an
+    // all-whitespace value as absent so it is never forwarded to the API — the
+    // API's `email` is @IsOptional and would reject an empty string.
+    email: z
+      .string()
+      .optional()
+      .default('')
+      .transform((v) => v.trim())
+      .refine((v) => v === '' || z.email().safeParse(v).success, {
+        message:
+          'Enter an email address in the correct format, like name@example.com',
+      })
+      .transform((v) => (v === '' ? undefined : v)),
   })
   .refine((d) => d.visitReason.trim() || d.whatWentWrong.trim(), {
     message: 'At least one feedback field is required',
