@@ -367,7 +367,8 @@ export async function fillStaffDetails(
 async function confirmAndSubmit(page: Page): Promise<void> {
   const step = expectStep(page, "declaration");
   await page
-    .locator(`input[id="${step}_declaration-confirmed-confirmed"]`)
+    .locator(`fieldset[id="${step}_declaration-confirmed"]`)
+    .getByRole("checkbox")
     .check();
 
   await submitAndConfirm(page, {

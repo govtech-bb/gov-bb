@@ -31,7 +31,7 @@
  *    widgets; start must be today-or-future and end must be after start.
  *  - `check-your-answers` is an explicit recipe step (guarded advance).
  *  - `declaration` is the explicit final step; its single-option checkbox input
- *    is `declaration_declaration-confirmed-confirmed`.
+ *    is `declaration_declaration-confirmed`.
  *  - The confirmation step title is "Application submitted" and there is no
  *    confirmation `description`/processing message, so the default
  *    "Your submission has been saved" subheading applies (omitted here).
@@ -148,7 +148,8 @@ test.describe("Post Office Redirection (Business) — Live Smoke", () => {
     // ─── Declaration ─────────────────────────────────────────────────────────
     expectStep(page, "declaration", { exact: true });
     await page
-      .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

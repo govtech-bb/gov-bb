@@ -45,6 +45,7 @@ export function renderRadioField(ctx: FieldRenderContext): JSX.Element {
             {...inputProps}
             {...requiredProps}
             label={option.label}
+            value={option.value}
             checked={isSelected}
             aria-invalid={invalid}
             onChange={() => commitChange(option.value)}

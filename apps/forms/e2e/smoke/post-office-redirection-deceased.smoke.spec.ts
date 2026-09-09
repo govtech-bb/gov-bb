@@ -34,7 +34,7 @@
  *    explicit `declaration` step (see build-form.ts) — handled with the guarded
  *    advance below.
  *  - `declaration` is the explicit final step; its single-option checkbox input
- *    is `declaration_declaration-confirmed-confirmed`.
+ *    is `declaration_declaration-confirmed`.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect } from "@playwright/test";
@@ -139,7 +139,8 @@ test.describe("Post Office Mail Redirection (Deceased) — Live Smoke", () => {
     // ─── Declaration ─────────────────────────────────────────────────────────
     expectStep(page, "declaration", { exact: true });
     await page
-      .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

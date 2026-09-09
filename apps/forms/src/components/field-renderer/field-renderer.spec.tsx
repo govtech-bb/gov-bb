@@ -176,11 +176,15 @@ describe("FieldRenderer", () => {
         ],
       }),
     );
+    expect(screen.getByRole("radio", { name: "Yes" })).toHaveAttribute(
+      "value",
+      "yes",
+    );
     await user.click(screen.getByRole("radio", { name: "Yes" }));
     expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith("yes");
   });
 
-  it("checkbox → renders checkbox inputs", () => {
+  it("checkbox → renders checkbox inputs with their option values", () => {
     const { container } = renderField(
       primitive("checkbox", {
         options: [
@@ -191,6 +195,14 @@ describe("FieldRenderer", () => {
     );
     const inputs = container.querySelectorAll("input");
     expect(inputs.length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByRole("checkbox", { name: "A" })).toHaveAttribute(
+      "value",
+      "a",
+    );
+    expect(screen.getByRole("checkbox", { name: "B" })).toHaveAttribute(
+      "value",
+      "b",
+    );
   });
 
   it("time → renders a native time input", () => {

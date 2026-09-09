@@ -306,10 +306,8 @@ export async function fillOwnerDetails(
   // ─── "Same as the business" hides the whole owner address block ───────────
   // Added by the same publish that ungated the business address. Toggle it to
   // prove the reveal, then leave it unticked so a real owner address is sent.
-  // Checkbox ids are `${stepId}_${fieldId}-${optionValue}`, and this field's
-  // single option repeats the fieldId — hence the doubled segment.
   const sameAsBusiness = page.locator(
-    `input[type=checkbox][id="${step}_owner-address-same-as-business-owner-address-same-as-business"]`,
+    `fieldset[id="${step}_owner-address-same-as-business"] input[type=checkbox][value="owner-address-same-as-business"]`,
   );
   const ownerAddressLine1 = page.locator(
     `input[id="${step}_owner-address-line-1"]`,
@@ -372,7 +370,8 @@ async function confirmAndSubmit(page: Page): Promise<void> {
   const step = expectStep(page, "declaration");
   await expect(page.locator("h1")).toContainText("Declaration");
   await page
-    .locator(`input[id="${step}_declaration-confirmed-confirmed"]`)
+    .locator(`fieldset[id="${step}_declaration-confirmed"]`)
+    .getByRole("checkbox")
     .check();
 
   await submitAndConfirm(page, {

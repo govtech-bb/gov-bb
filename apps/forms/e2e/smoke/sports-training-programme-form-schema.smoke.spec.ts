@@ -41,7 +41,7 @@
  *  - The renderer auto-injects `check-your-answers` before the declaration; it is
  *    guarded below.
  *  - `declaration` is the explicit final step; its single-option confirmation
- *    checkbox input is `declaration_declaration-confirmed-confirmed`. The
+ *    checkbox input is `declaration_declaration-confirmed`. The
  *    recipe's `declaration-date` is `isHidden`, so it is not filled.
  *  - The confirmation step title is "Application submitted" (rendered as the h1)
  *    and the recipe sets no processing message, so the subheading falls back to
@@ -164,7 +164,8 @@ test.describe("Community Sports Training Programme — Live Smoke", () => {
     // ─── Declaration ─────────────────────────────────────────────────────────
     step = expectStep(page, "declaration", { exact: true });
     await page
-      .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

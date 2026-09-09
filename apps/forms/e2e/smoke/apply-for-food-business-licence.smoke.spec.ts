@@ -312,7 +312,9 @@ export async function fillApplicantDetails(
   } else {
     // "Myself" — the whole applicant block stays out of the way.
     await expect(
-      page.locator(`input[type=radio][id="${step}_applicant-type-individual"]`),
+      page.locator(
+        `fieldset[id="${step}_applicant-type"] input[type=radio][value="individual"]`,
+      ),
     ).toBeHidden();
     await expect(applicantEmail).toBeHidden();
   }
@@ -361,7 +363,7 @@ export async function fillAboutTheFoodBusiness(
   }
 
   const alreadyOpenYes = page.locator(
-    `input[type=radio][id="${step}_business-already-open-yes"]`,
+    `fieldset[id="${step}_business-already-open"] input[type=radio][value="yes"]`,
   );
   if (opts.alreadyOpen) {
     await expect(alreadyOpenYes).toBeVisible({ timeout: STEP_TIMEOUT });
@@ -530,7 +532,8 @@ async function confirmAndSubmit(page: Page): Promise<void> {
   const step = expectStep(page, "declaration");
   await expect(page.locator("h1")).toContainText("Declaration");
   await page
-    .locator(`input[id="${step}_declaration-confirmed-confirmed"]`)
+    .locator(`fieldset[id="${step}_declaration-confirmed"]`)
+    .getByRole("checkbox")
     .check();
 
   await submitAndConfirm(page, {

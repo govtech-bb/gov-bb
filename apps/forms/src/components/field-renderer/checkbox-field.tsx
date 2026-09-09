@@ -43,6 +43,7 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
         <Checkbox
           {...inputProps}
           {...requiredProps}
+          value={option.value}
           checked={option.value === value}
           aria-invalid={invalid}
           onChange={() =>
@@ -89,6 +90,7 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
             key={option.value}
             {...inputProps}
             label={option.label}
+            value={option.value}
             checked={isChecked}
             aria-invalid={invalid}
             onChange={() => toggle(option.value)}

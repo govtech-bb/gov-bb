@@ -34,7 +34,7 @@
  *    `adult-dependents.adult-any-adults` = "no" keeps `adult-details` hidden.
  *  - `check-your-answers` is an explicit recipe step.
  *  - `declaration` is the explicit final step; its single-option checkbox input
- *    is `declaration_declaration-confirmed-confirmed`. The recipe's
+ *    is `declaration_declaration-confirmed`. The recipe's
  *    `declaration-date-of-declaration` is `isHidden`, so it is not filled.
  */
 import { faker } from "@faker-js/faker";
@@ -130,7 +130,8 @@ test.describe("Post Office Redirection (Individual) — Live Smoke", () => {
     // ─── Declaration ─────────────────────────────────────────────────────────
     step = expectStep(page, "declaration", { exact: true });
     await page
-      .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

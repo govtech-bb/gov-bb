@@ -32,7 +32,7 @@
  *    and a multi-file `passport-photos` upload requiring 2 files (via
  *    uploadMany) — the live field enforces a minItems of 2.
  *  - `declaration` is the explicit final step; its single-option confirmation
- *    checkbox input is `declaration_declaration-confirmed-confirmed`. The
+ *    checkbox input is `declaration_declaration-confirmed`. The
  *    renderer auto-injects `check-your-answers` immediately before it.
  *  - The `submission-confirmation` step has title "Application submitted" and no
  *    description, so the confirmation heading is "Application submitted" and the
@@ -102,7 +102,9 @@ test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => 
     // "services" routes to `services-details` and keeps `goods-details` hidden.
     step = expectStep(page, "goods-or-services", { exact: true });
     await page
-      .locator(`input[type=radio][id="${step}_goods-or-services-services"]`)
+      .locator(
+        `fieldset[id="${step}_goods-or-services"] input[type=radio][value="services"]`,
+      )
       .check();
     await advance(page, step);
 
@@ -261,7 +263,8 @@ test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => 
     // ─── Declaration ─────────────────────────────────────────────────────────
     step = expectStep(page, "declaration", { exact: true });
     await page
-      .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

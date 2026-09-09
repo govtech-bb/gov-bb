@@ -39,7 +39,7 @@
  *  - The renderer auto-injects `check-your-answers` before the declaration;
  *    handled with the guarded pattern.
  *  - `declaration` is the explicit final step; its single-option checkbox input
- *    is `declaration_declaration-confirmed-confirmed`. The hidden
+ *    is `declaration_declaration-confirmed`. The hidden
  *    `declaration-date` field needs no interaction.
  *  - Confirmation: the `submission-confirmation` step's `title` ("Application
  *    submitted") is the h1; it sets no `description`, so the subheading falls
@@ -154,7 +154,8 @@ test.describe("Get a Birth Certificate — Live Smoke", () => {
     // ─── Declaration ─────────────────────────────────────────────────────────
     expectStep(page, "declaration", { exact: true });
     await page
-      .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

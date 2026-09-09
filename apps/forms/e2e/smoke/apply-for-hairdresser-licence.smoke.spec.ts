@@ -195,9 +195,7 @@ export async function openForm(page: Page): Promise<void> {
 }
 
 /**
- * Tick one option of a multi-option checkbox field. Checkbox inputs share the
- * `${stepId}_${fieldId}-${value}` id shape with radios, so this mirrors
- * `selectRadio` from the shared helpers (which is radio-only by design).
+ * Tick one checkbox by its field and native value, independent of package IDs.
  */
 async function checkOption(
   page: Page,
@@ -206,7 +204,9 @@ async function checkOption(
   optionValue: string,
 ): Promise<void> {
   await page
-    .locator(`input[type=checkbox][id="${stepId}_${suffix}-${optionValue}"]`)
+    .locator(
+      `fieldset[id="${stepId}_${suffix}"] input[type=checkbox][value="${optionValue}"]`,
+    )
     .check();
 }
 
@@ -370,7 +370,8 @@ async function confirmAndSubmit(page: Page): Promise<void> {
   const step = expectStep(page, "declaration");
   await expect(page.locator("h1")).toContainText("Confirm and submit");
   await page
-    .locator(`input[id="${step}_declaration-confirmed-confirmed"]`)
+    .locator(`fieldset[id="${step}_declaration-confirmed"]`)
+    .getByRole("checkbox")
     .check();
 
   await submitAndConfirm(page, {

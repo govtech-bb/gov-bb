@@ -48,8 +48,8 @@
  *  - food-served is a checkbox-accordion: open a category, then tick one leaf.
  *    "Other food" is a single-option group, so it renders as one plain checkbox
  *    (no expander) and ticking it reveals the required other-food-description.
- *  - food-source is a TWO-option checkbox (values "supplier" and "caterer"), so
- *    the input ids are `<step>_food-source-supplier` / `-caterer`. It gates the
+ *  - food-source is a TWO-option checkbox (values "supplier" and "caterer").
+ *    The fieldset id is `<step>_food-source`. It gates the
  *    supplier textarea and the caterer contact fields respectively.
  */
 import { faker } from "@faker-js/faker";
@@ -65,6 +65,7 @@ import {
   selectDropdown,
   selectRadio,
   submitAndConfirm,
+  tickCheckbox,
   uploadOne,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
@@ -306,7 +307,7 @@ test.describe("Request an Environmental Health Officer — Live Smoke", () => {
     // food-source gates the supplier textarea: absent until the box is ticked.
     const supplierDetails = page.locator(`[id="${step}_supplier-details"]`);
     await expect(supplierDetails).toBeHidden();
-    await page.locator(`input[id="${step}_food-source-supplier"]`).check();
+    await tickCheckbox(page, step, "food-source", "supplier");
     await expect(supplierDetails).toBeVisible({ timeout: STEP_TIMEOUT });
     await fillField(page, step, "supplier-details", data.supplierDetails);
     await advance(page, step);
