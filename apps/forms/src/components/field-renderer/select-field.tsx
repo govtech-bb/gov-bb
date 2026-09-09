@@ -32,10 +32,7 @@ export function renderSelectField(ctx: FieldRenderContext): JSX.Element {
       ? insetFieldsByOption?.get(selectValue)
       : undefined;
   return (
-    <FormGroup
-      className="form-page__select-field"
-      data-field-width={field.ui?.width}
-    >
+    <FormGroup data-field-width={field.ui?.width}>
       <Label
         className={field.ui?.hideLabel ? "govbb-visually-hidden" : undefined}
         htmlFor={field.id}

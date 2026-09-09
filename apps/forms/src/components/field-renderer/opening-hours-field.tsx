@@ -255,7 +255,7 @@ export function OpeningHoursField({ ctx }: { ctx: FieldRenderContext }) {
 
   return (
     <Fieldset
-      className="opening-hours form-page__text-field form-page__choice-field"
+      className="opening-hours"
       id={field.id}
       aria-describedby={describedBy}
     >

@@ -29,7 +29,7 @@ export function renderRadioField(ctx: FieldRenderContext): JSX.Element {
 
   const value: string = (f.state.value as string | undefined) ?? "";
   return (
-    <Fieldset className="form-page__choice-field" id={field.id}>
+    <Fieldset id={field.id}>
       <legend className={labelClass("govbb-fieldset__legend")}>
         {field.label}
         {labelSuffix}

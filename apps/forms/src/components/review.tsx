@@ -160,7 +160,7 @@ export default function Review({
   );
 
   return (
-    <div className="form-page__review">
+    <div>
       {visibleSteps
         .filter((step) => !excludeStepIds.includes(step.stepId))
         .map((step) => {

@@ -7,9 +7,7 @@ import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
 import { SubmissionConfirmationProps } from "../types/props.type";
 import {
   Button,
-  Feedback,
   Heading,
-  Link,
   LinkButton,
   List,
   Payment,
@@ -198,19 +196,21 @@ export default function SubmissionConfirmation({
       {/* Only invite feedback when a target is provided. The exit survey's own
           confirmation passes no feedbackUrl, so it never links to itself. */}
       {feedbackUrl && (
-        <Feedback
-          heading="Help us improve this service"
-          className="mt-8 no-print"
-        >
+        <section className="mt-8 flex flex-col items-start gap-2 no-print">
+          <Heading as="h2" size="h3">
+            Help us improve this service
+          </Heading>
           <Text>
             We are always working to improve government services. If you have a
             moment, you can tell us about your experience today.
           </Text>
-          <Link href={feedbackUrl}>Give feedback on this service</Link>
+          <LinkButton variant="secondary" href={feedbackUrl}>
+            Give feedback on this service
+          </LinkButton>
           <Text>
             This will take about 30 seconds. Your responses are anonymous.
           </Text>
-        </Feedback>
+        </section>
       )}
     </>
   );
@@ -223,7 +223,7 @@ export default function SubmissionConfirmation({
   if (processing) {
     return (
       <>
-        <div className="form-page__panel form-page__panel--success govbb-main-wrapper">
+        <div className="form-page__panel--success govbb-main-wrapper">
           <div className="govbb-width-container govbb-grid-row">
             <ServiceHeading
               className="govbb-grid-column-two-thirds-from-desktop"
@@ -276,7 +276,7 @@ export default function SubmissionConfirmation({
   if (!hasPayment) {
     return (
       <>
-        <div className="form-page__panel form-page__panel--success govbb-main-wrapper">
+        <div className="form-page__panel--success govbb-main-wrapper">
           <div className="govbb-width-container govbb-grid-row">
             <ServiceHeading
               className="govbb-grid-column-two-thirds-from-desktop"

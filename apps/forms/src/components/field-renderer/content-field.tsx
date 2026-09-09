@@ -29,9 +29,7 @@ export function renderContentElement(field: ClientPrimitive): JSX.Element {
             !
           </span>
           <span className="govbb-visually-hidden">Warning:</span>
-          <div className="govbb-warning-text__body govbb-prose wrap-anywhere">
-            {body}
-          </div>
+          <div className="govbb-prose wrap-anywhere">{body}</div>
         </div>
       );
     case "details":

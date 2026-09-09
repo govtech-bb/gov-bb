@@ -25,12 +25,7 @@ export function renderDateField(ctx: FieldRenderContext): JSX.Element {
   // The fieldset id is the ErrorSummary anchor target; the error is
   // described at the group level per the GOV.UK date input markup.
   return (
-    <Fieldset
-      className="form-page__text-field"
-      id={field.id}
-      role="group"
-      aria-describedby={describedBy}
-    >
+    <Fieldset id={field.id} role="group" aria-describedby={describedBy}>
       <legend className={labelClass("govbb-fieldset__legend")}>
         {field.label}
         {labelSuffix}

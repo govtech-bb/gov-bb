@@ -61,7 +61,7 @@ function AccordionCategory({
       onChange={() => setOpen((o) => !o)}
       conditional={
         open && (
-          <FormGroup className="form-page__choice-field">
+          <FormGroup>
             {group.options.map((option) => (
               <Checkbox
                 key={option.value}
@@ -105,7 +105,6 @@ export function renderCheckboxAccordionField(
 
   return (
     <Fieldset
-      className="form-page__choice-field"
       id={field.id}
       disabled={field.disabled}
       aria-describedby={describedBy}

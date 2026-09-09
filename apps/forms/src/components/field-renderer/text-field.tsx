@@ -57,10 +57,7 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
   const inputElement = renderRepeatableOrSingle(ctx, renderControl);
 
   return (
-    <FormGroup
-      className="form-page__text-field"
-      data-field-width={field.ui?.width}
-    >
+    <FormGroup data-field-width={field.ui?.width}>
       <Label
         id={`${field.id}-label`}
         className={field.ui?.hideLabel ? "govbb-visually-hidden" : undefined}

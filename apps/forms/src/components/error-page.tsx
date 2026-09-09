@@ -49,7 +49,7 @@ export function ErrorPage({
   primary,
 }: ErrorPageProps) {
   return (
-    <div className="error-page govbb-width-container govbb-main-wrapper">
+    <div className="govbb-width-container govbb-main-wrapper">
       <div className="govbb-grid-row">
         <div className="govbb-grid-column-two-thirds-from-desktop flex flex-col gap-6 lg:gap-8">
           <Heading as="h1">{title}</Heading>

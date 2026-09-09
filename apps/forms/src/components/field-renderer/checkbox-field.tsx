@@ -33,7 +33,7 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
     const option = field.options[0];
     const value = (f.state.value as string | undefined) ?? "";
     return (
-      <Fieldset className="form-page__choice-field" id={field.id}>
+      <Fieldset id={field.id}>
         <legend className={labelClass("govbb-fieldset__legend")}>
           {field.label}
           {labelSuffix}
@@ -74,7 +74,7 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
   };
 
   return (
-    <Fieldset className="form-page__choice-field" id={field.id}>
+    <Fieldset id={field.id}>
       <legend className={labelClass("govbb-fieldset__legend")}>
         {field.label}
         {labelSuffix}

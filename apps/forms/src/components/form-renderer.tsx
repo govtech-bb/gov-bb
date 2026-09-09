@@ -680,7 +680,7 @@ function ActiveStep({
             formMeta.formId,
           )}`;
     return (
-      <div className="form-page-confirmation">
+      <div>
         <SubmissionConfirmation
           key={"submission-confirmation"}
           serviceTitle={formMeta.formTitle}

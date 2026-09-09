@@ -9,14 +9,6 @@
   gap: var(--govbb-space-s);
 }
 
-/* Per-field width hints carried on the govbb-form-group wrapper. Full width on
- * mobile; capped to a fixed measure at >=768px (see the media query near the
- * end of this file). */
-.govbb-form-group[data-field-width="short"],
-.govbb-form-group[data-field-width="medium"] {
-  width: 100%;
-}
-
 /* Select reveals are rendered by the app; radio and checkbox reveals come
    from the package. */
 .govbb-select__conditional {
@@ -167,10 +159,6 @@
   background-color: var(--govbb-teal-20);
 }
 
-.form-page__panel--error {
-  background-color: var(--govbb-red-20);
-}
-
 .form-page__print {
   margin-top: var(--govbb-space-m);
 }
@@ -260,19 +248,12 @@
   gap: var(--govbb-space-xxs);
 }
 
-/* ---- Error / not-found pages --------------------------------------------- */
-.form-page__message {
-  display: flex;
-  flex-direction: column;
-  gap: var(--govbb-space-s);
-}
-
 /* Fixed-measure field widths (GOV.UK style). `ch` units size the cap to the
  * field's own type, not its container, so a short field inside a show-hide
  * inset renders the same as a standalone one — percentage widths compounded
  * against every wrapper (two-thirds column × inset padding × 33%) and
- * left inset fields tiny. `width: 100%` from the base rule above remains the
- * floor, so fields still shrink inside containers narrower than the cap.
+ * left inset fields tiny. The package's form group supplies `width: 100%`,
+ * so fields still shrink inside containers narrower than the cap.
  * `long` (or no hint) stays unstyled: full width of the form column. */
 @media (min-width: 768px) {
   .govbb-form-group[data-field-width="short"] {
@@ -285,7 +266,7 @@
 }
 
 /* Fill the field group's width so address suggestions follow the input. */
-.form-page__text-field > .govbb-combobox {
+.govbb-form-group > .govbb-combobox {
   width: 100%;
 }
 
@@ -330,8 +311,7 @@
     display: block !important;
   }
 
-  .form-page__panel--success,
-  .form-page__panel--error {
+  .form-page__panel--success {
     background: none !important;
     color: var(--govbb-color-ink) !important;
   }
@@ -359,10 +339,7 @@
      the content it introduces. */
   h1,
   h2,
-  h3,
-  .govbb-text-h1,
-  .govbb-text-h2,
-  .govbb-text-h3 {
+  h3 {
     break-after: avoid-page;
   }
 
